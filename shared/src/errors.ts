@@ -1,16 +1,177 @@
-export interface OperationContextValueSnapshot { name:string; value:unknown; sensitive:boolean; }
+/**
+ * One diagnostic value recorded against an application operation.
+ *
+ * Sensitive values should already have been masked before they
+ * reach this transport-neutral snapshot.
+ */
+export interface OperationContextValueSnapshot {
+  name: string;
+  value: unknown;
+  sensitive: boolean;
+}
+
+/**
+ * Immutable diagnostic snapshot of one semantic application
+ * operation.
+ *
+ * Operation nodes may contain child operations, allowing us to
+ * retain the complete semantic path that led to an error.
+ */
 export interface OperationNodeSnapshot {
- id:string; description:string; userDescription?:string; status:'running'|'completed'|'failed'|'cancelled';
- startedAt:string; completedAt?:string; durationMs?:number; comments:OperationContextValueSnapshot[]; children:OperationNodeSnapshot[]; errorCode?:string; errorMessage?:string;
+  id: string;
+
+  /**
+   * Internal/developer-oriented description of the operation.
+   */
+  description: string;
+
+  /**
+   * Optional shorter description suitable for displaying
+   * to the end user.
+   */
+  userDescription?: string;
+
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
+
+  startedAt: string;
+
+  completedAt?: string;
+
+  /**
+   * Calculated operation duration in milliseconds.
+   */
+  durationMs?: number;
+
+  /**
+   * Diagnostic values captured while the operation was running.
+   */
+  comments: OperationContextValueSnapshot[];
+
+  /**
+   * Nested semantic operations.
+   */
+  children: OperationNodeSnapshot[];
+
+  /**
+   * Application-specific error information when this operation
+   * failed.
+   */
+  errorCode?: string;
+  errorMessage?: string;
 }
-/** Transport-neutral application error; HTTP mapping is deliberately outside services. */
+
+/**
+ * Transport-neutral application error.
+ *
+ * HTTP mapping deliberately lives outside the application/service
+ * layer so the same errors can later be used by different transports
+ * or presentation technologies.
+ */
 export class AppError extends Error {
- operationTrace?:OperationNodeSnapshot[];
- constructor(public readonly code:string,message:string,public readonly userMessage:string,public readonly retryable=false,options?:{cause?:unknown}){super(message,{cause:options?.cause});this.name=new.target.name;}
+  /**
+   * Optional semantic operation trace attached by OperationContext.
+   */
+  operationTrace?: OperationNodeSnapshot[];
+
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly userMessage: string,
+    public readonly retryable = false,
+    options?: {
+      cause?: unknown;
+    },
+  ) {
+    super(message, {
+      cause: options?.cause,
+    });
+
+    this.name = new.target.name;
+  }
 }
-export class NotFoundError extends AppError { constructor(entity:string,id:string){super('NOT_FOUND',`${entity} '${id}' was not found.`,`The requested ${entity} could not be found.`);} }
-export class ConflictError extends AppError { constructor(code:string,dev:string,user:string){super(code,dev,user,false);} }
-export class ValidationAppError extends AppError { constructor(msg:string,user=msg){super('VALIDATION_ERROR',msg,user,false);} }
-export class AuthenticationError extends AppError { constructor(){super('INVALID_CREDENTIALS','Invalid email/user-name or password.','Invalid email/user-name or password.',true);} }
-export class ForbiddenAppError extends AppError { constructor(msg='Forbidden.'){super('FORBIDDEN',msg,'You are not authorized to perform this operation.');} }
-export class StorageAppError extends AppError { constructor(msg:string,cause?:unknown){super('STORAGE_ERROR',msg,'The application could not persist the requested changes.',true,{cause});} }
+
+/**
+ * Requested business object/entity could not be found.
+ */
+export class NotFoundError extends AppError {
+  constructor(entity: string, id: string) {
+    super(
+      'NOT_FOUND',
+      `${entity} '${id}' was not found.`,
+      `The requested ${entity} could not be found.`,
+    );
+  }
+}
+
+/**
+ * A requested operation conflicts with existing application state.
+ *
+ * Typical examples include:
+ *
+ * - duplicate user-name;
+ * - duplicate email address;
+ * - duplicate application name;
+ * - another uniqueness constraint.
+ */
+export class ConflictError extends AppError {
+  constructor(code: string, developerMessage: string, userMessage: string) {
+    super(code, developerMessage, userMessage, false);
+  }
+}
+
+/**
+ * Business/application validation failure.
+ */
+export class ValidationAppError extends AppError {
+  constructor(message: string, userMessage = message) {
+    super('VALIDATION_ERROR', message, userMessage, false);
+  }
+}
+
+/**
+ * Authentication failure.
+ *
+ * The message intentionally does not disclose whether the supplied
+ * email/user-name or password was the incorrect part.
+ */
+export class AuthenticationError extends AppError {
+  constructor() {
+    super(
+      'INVALID_CREDENTIALS',
+      'Invalid email/user-name or password.',
+      'Invalid email/user-name or password.',
+      true,
+    );
+  }
+}
+
+/**
+ * Authenticated user is not authorized to perform the requested
+ * operation.
+ */
+export class ForbiddenAppError extends AppError {
+  constructor(message = 'Forbidden.') {
+    super('FORBIDDEN', message, 'You are not authorized to perform this operation.');
+  }
+}
+
+/**
+ * Storage/persistence operation failed.
+ *
+ * This remains storage-engine-neutral so it can be used by the
+ * current in-memory/JSON implementation as well as future database
+ * adapters.
+ */
+export class StorageAppError extends AppError {
+  constructor(message: string, cause?: unknown) {
+    super(
+      'STORAGE_ERROR',
+      message,
+      'The application could not persist the requested changes.',
+      true,
+      {
+        cause,
+      },
+    );
+  }
+}

@@ -1,2 +1,23 @@
-export const PASSWORD_MIN_LENGTH=9;
-export function validatePassword(password:string):string[]{const f:string[]=[];if(password.length<PASSWORD_MIN_LENGTH)f.push('Password must contain more than 8 characters.');if(!/[A-Za-z]/.test(password))f.push('Password must contain at least one alphabetic character.');if(!/[0-9]/.test(password))f.push('Password must contain at least one numeric character.');if(!/[^A-Za-z0-9]/.test(password))f.push('Password must contain at least one symbol character.');return f;}
+export const PASSWORD_MIN_LENGTH = 8;
+
+export function validatePassword(password: string): string[] {
+  const f: string[] = [];
+
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    f.push('Password must contain more than 8 characters.');
+  }
+
+  if (!/[A-Za-z]/.test(password)) {
+    f.push('Password must contain at least one alphabetic character.');
+  }
+
+  if (!/[0-9]/.test(password)) {
+    f.push('Password must contain at least one numeric character.');
+  }
+
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    f.push('Password must contain at least one symbol character.');
+  }
+
+  return f;
+}
