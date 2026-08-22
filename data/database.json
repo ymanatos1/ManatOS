@@ -1,5 +1,18 @@
 {
-  "sysUsers": {},
+  "sysUsers": {
+    "66ad5e12-aee2-4ab9-809e-97fb60526247": {
+      "id": "66ad5e12-aee2-4ab9-809e-97fb60526247",
+      "name": "Admin",
+      "email": "yiannis@manatos.gr",
+      "emailVerified": true,
+      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$t+49iVGHO/bxwogJ8sucrQ$Z+W1EZTC+pDe0dAy4iKrHfcR0z4LDCo2yoM2pOxjI+M",
+      "passwordChangedAt": "2026-08-22T04:54:43.872Z",
+      "role": "Admin",
+      "enabled": true,
+      "createdAt": "2026-08-22T04:54:43.873Z",
+      "updatedAt": "2026-08-22T04:54:43.873Z"
+    }
+  },
   "sysPrincipals": {},
   "sysApplications": {},
   "sysLicenses": {},
