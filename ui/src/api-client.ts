@@ -1,0 +1,9 @@
+import {AppError} from '@manatos/shared';import {config} from './config.js';
+interface Env<T>{data:T;paging?:Record<string,number>;metadata?:unknown} interface Err{error?:{code?:string;message?:string;retryable?:boolean;operationTrace?:import('@manatos/shared').OperationNodeSnapshot[];developerMessage?:string;stack?:string}}
+/** UI -> API boundary; moving the API later requires only configuration changes. */
+export class ApiClient{
+ get<T>(path:string,internal=false){return this.request<T>(path,{method:'GET'},internal);} post<T>(path:string,body?:unknown,internal=false){return this.request<T>(path,{method:'POST',body:body===undefined?undefined:JSON.stringify(body)},internal);} put<T>(path:string,body?:unknown,internal=false){return this.request<T>(path,{method:'PUT',body:body===undefined?undefined:JSON.stringify(body)},internal);} patch<T>(path:string,body?:unknown,internal=false){return this.request<T>(path,{method:'PATCH',body:JSON.stringify(body??{})},internal);}async delete(path:string,internal=false){const r=await fetch(config.API_BASE_URL+path,{method:'DELETE',headers:internal?{'x-internal-api-key':config.INTERNAL_API_KEY}:{}});if(!r.ok)await this.fail(r);}
+ private async request<T>(path:string,init:RequestInit,internal:boolean):Promise<Env<T>>{const r=await fetch(config.API_BASE_URL+path,{...init,headers:{accept:'application/json',...(init.body?{'content-type':'application/json'}:{}),...(internal?{'x-internal-api-key':config.INTERNAL_API_KEY}:{})}});if(!r.ok)await this.fail(r);return await r.json() as Env<T>;}
+ private async fail(r:Response):Promise<never>{let p:Err={};try{p=await r.json() as Err;}catch{}const x=p.error;const e=new AppError(x?.code??`HTTP_${r.status}`,x?.developerMessage??x?.message??r.statusText,x?.message??'The requested operation could not be completed.',x?.retryable??r.status>=500);e.operationTrace=x?.operationTrace;throw e;}
+}
+export const apiClient=new ApiClient();

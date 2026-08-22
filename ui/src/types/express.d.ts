@@ -1,0 +1,3 @@
+import 'express-session';import type {SysUser} from '@manatos/shared';import type {SessionErrorEntry} from '../errors/session-error-log.js';
+declare module 'express-session'{interface SessionData{userId?:string;authenticationMethod?:string;csrfToken?:string;errorLog?:SessionErrorEntry[];activeApplicationId?:string;pendingExternalRegistration?:{provider:string;providerSubject:string;email:string;emailVerified:boolean;displayName?:string;firstName?:string;lastName?:string;};}}
+declare global{namespace Express{interface User extends SysUser{} interface AuthInfo{externalProfile?:import('../auth/passport.js').ExternalProfile;}}}

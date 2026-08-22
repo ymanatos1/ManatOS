@@ -1,0 +1,99 @@
+{
+  "info": {
+    "name": "ManatOS System API",
+    "_postman_id": "e7d4d3c6-1b65-4f2f-9c75-000000000001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "apiVersion",
+      "value": "v1"
+    },
+    {
+      "key": "internalApiKey",
+      "value": "change-this-internal-key"
+    }
+  ],
+  "item": [
+    {
+      "name": "SysUsers",
+      "item": [
+        {
+          "name": "List SysUsers",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysUsers"
+          }
+        },
+        {
+          "name": "SysUsers metadata",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata"
+          }
+        }
+      ]
+    },
+    {
+      "name": "SysPrincipals",
+      "item": [
+        {
+          "name": "List SysPrincipals",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals"
+          }
+        },
+        {
+          "name": "SysPrincipals metadata",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata"
+          }
+        }
+      ]
+    },
+    {
+      "name": "SysApplications",
+      "item": [
+        {
+          "name": "List SysApplications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysApplications"
+          }
+        },
+        {
+          "name": "SysApplications metadata",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata"
+          }
+        }
+      ]
+    },
+    {
+      "name": "SysLicenses",
+      "item": [
+        {
+          "name": "List SysLicenses",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses"
+          }
+        },
+        {
+          "name": "SysLicenses metadata",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata"
+          }
+        }
+      ]
+    }
+  ]
+}

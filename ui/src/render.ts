@@ -1,0 +1,1 @@
+import ejs from 'ejs';import type {Response} from 'express';import {resolve} from 'node:path';export async function renderPage(res:Response,view:string,model:Record<string,unknown>={}){const dir=resolve(process.cwd(),'views');const body=await ejs.renderFile(resolve(dir,`${view}.ejs`),{...res.locals,...model});res.render('layout/shell',{...model,body});}
