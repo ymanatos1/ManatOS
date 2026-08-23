@@ -19,6 +19,8 @@ const httpStatusByErrorCode: Record<string, number> = {
   INVALID_ACCESS_TOKEN: 401,
 
   FORBIDDEN: 403,
+  EMAIL_NOT_VERIFIED: 403,
+  ADMIN_EMAIL_VERIFICATION_DISABLED: 403,
 
   NOT_FOUND: 404,
 
@@ -80,12 +82,12 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     success: false,
 
     /**
-     * Global user-facing message.
+     * Global user-facing failure message.
      *
-     * UI/API clients can always inspect this root property without
-     * understanding the internal error representation.
+     * This mirrors error.message and is deliberately distinct from the
+     * success-only command property named message.
      */
-    message: appError.userMessage,
+    errorMessage: appError.userMessage,
 
     error: {
       code: appError.code,

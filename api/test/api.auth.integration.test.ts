@@ -215,6 +215,14 @@ describe('API integration - authentication and sessions', () => {
 
     expectFailure(blocked.body);
 
+    expect(blocked.body.error.code).toBe('EMAIL_NOT_VERIFIED');
+
+    expect(blocked.body.errorMessage).toBe(
+      'Your email address must be verified before you can sign in.',
+    );
+
+    expect(blocked.body.errorMessage).toBe(blocked.body.error.message);
+
     /**
      * Email delivery / verification-link mechanics are
      * a different responsibility.

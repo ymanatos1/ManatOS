@@ -7,6 +7,8 @@ import {
 
 import request from 'supertest';
 
+import { config } from '../src/config.js';
+
 import {
   createTestApi,
   bearer,
@@ -83,6 +85,57 @@ describe('API integration - server and generic SysBO behavior', () => {
         persistence: 'JSON',
         flushed: true,
       });
+    });
+  });
+
+  describe('SysUser administration commands', () => {
+    it('allows Admin email verification only when enabled by configuration', async () => {
+      const token = await loginAdmin(context.app);
+
+      const registration = await request(context.app)
+        .post('/api/v1/auth/register')
+        .send({
+          name: 'NeedsVerification',
+          email: 'needs-verification@example.test',
+          password: 'VerifyMe!123',
+        });
+
+      expect(registration.status).toBe(201);
+
+      const userId = registration.body.data.id as string;
+
+      const originalSetting = config.ADMIN_EMAIL_VERIFICATION_ENABLED;
+
+      try {
+        /**
+         * Disabled configuration must block the explicit Admin command.
+         */
+        config.ADMIN_EMAIL_VERIFICATION_ENABLED = false;
+
+        const disabled = await request(context.app)
+          .post(`/api/v1/SysUsers/${userId}/verify-email`)
+          .set('Authorization', bearer(token));
+
+        expect(disabled.status).toBe(403);
+        expectFailure(disabled.body);
+        expect(disabled.body.error.code).toBe('ADMIN_EMAIL_VERIFICATION_DISABLED');
+
+        /**
+         * Enabling the feature allows the Admin command.
+         */
+        config.ADMIN_EMAIL_VERIFICATION_ENABLED = true;
+
+        const verified = await request(context.app)
+          .post(`/api/v1/SysUsers/${userId}/verify-email`)
+          .set('Authorization', bearer(token));
+
+        expect(verified.status).toBe(200);
+        expectCommandSuccess(verified.body);
+        expect(verified.body.data.emailVerified).toBe(true);
+        expect(verified.body.data.updatedBy).toBe('Admin');
+      } finally {
+        config.ADMIN_EMAIL_VERIFICATION_ENABLED = originalSetting;
+      }
     });
   });
 
@@ -423,6 +476,10 @@ describe('API integration - server and generic SysBO behavior', () => {
 
       expect(response.body.paths).toHaveProperty(
         '/api/v1/SysApplications',
+      );
+
+      expect(response.body.paths).toHaveProperty(
+        '/api/v1/SysUsers/{id}/verify-email',
       );
     });
 

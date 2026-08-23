@@ -126,6 +126,31 @@ export function createPageRoutes() {
   );
 
   /**
+   * Dedicated password page for the currently authenticated user.
+   *
+   * The same page supports both cases:
+   *   - an existing local password -> Change password;
+   *   - no local password          -> Set password.
+   */
+  router.get(
+    '/account/password',
+
+    requireSignedIn,
+
+    async (_req, res) =>
+      renderPage(
+        res,
+        'pages/account-password',
+
+        {
+          title: (res.locals.currentUser as SysUser & { hasPassword?: boolean }).hasPassword
+            ? 'Change password'
+            : 'Set password',
+        },
+      ),
+  );
+
+  /**
    * Change/set the currently authenticated user's password.
    *
    * This now uses the normal Bearer-protected auth endpoint rather than

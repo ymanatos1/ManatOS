@@ -21,6 +21,7 @@ import { requireInternalApiKey } from './http/internal-api-key.js';
 import { requestContextMiddleware } from './http/request-context.js';
 
 import { createServerRouter } from './http/server-router.js';
+import { createSysUserCommandRouter } from './http/sys-user-command-router.js';
 
 import { buildOpenApiSpec } from './openapi.js';
 
@@ -156,6 +157,12 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    * SysUser creation requires specialized processing because a supplied
    * password must be validated and hashed before persistence.
    */
+  app.use(
+    '/api/v1/SysUsers',
+    requireAuthenticated,
+    createSysUserCommandRouter(services.users),
+  );
+
   app.use(
     '/api/v1/SysUsers',
     requireAuthenticated,

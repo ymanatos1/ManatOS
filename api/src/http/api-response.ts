@@ -49,8 +49,16 @@ export function sendCommand<T>(res: Response, message: string, data: T, status =
 /**
  * Standard API failure response.
  *
- * The root message intentionally mirrors error.message so every
- * API/UI consumer has one predictable human-readable message location.
+ * Failure responses deliberately use errorMessage rather than message.
+ * This makes the root envelope semantically unambiguous:
+ *
+ *   query success   -> success + data
+ *   command success -> success + message + data
+ *   failure         -> success=false + errorMessage + error
+ *
+ * errorMessage mirrors error.message exactly and is ALWAYS user-safe.
+ * It must never mirror AppError.message/developerMessage because that may
+ * contain internal diagnostic information.
  *
  * Optional data may contain non-sensitive diagnostic state, such as
  * readiness-check results.
@@ -58,7 +66,7 @@ export function sendCommand<T>(res: Response, message: string, data: T, status =
 export interface ApiFailureResponse<T = undefined> {
   success: false;
 
-  message: string;
+  errorMessage: string;
 
   error: {
     code: string;
@@ -78,18 +86,18 @@ export function sendFailure<T = undefined>(
   res: Response,
   status: number,
   code: string,
-  message: string,
+  errorMessage: string,
   retryable: boolean,
   data?: T,
 ) {
   return res.status(status).json({
     success: false,
 
-    message,
+    errorMessage,
 
     error: {
       code,
-      message,
+      message: errorMessage,
       retryable,
     },
 

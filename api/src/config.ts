@@ -48,6 +48,19 @@ const schema = z.object({
   API_ERROR_DETAIL_LEVEL: z.enum(['none', 'basic', 'operations', 'full']).default('basic'),
 
   /**
+   * Allows authenticated Admin users to explicitly verify another
+   * SysUser email address through the dedicated command endpoint.
+   *
+   * Kept as a runtime feature switch because installations may prefer
+   * verification to occur exclusively through email links/identity
+   * providers.
+   */
+  ADMIN_EMAIL_VERIFICATION_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+
+  /**
    * Optional administrator bootstrap configuration.
    */
   BOOTSTRAP_ADMIN_NAME: z.string().optional(),

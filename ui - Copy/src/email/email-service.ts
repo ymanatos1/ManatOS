@@ -1,0 +1,4 @@
+import type {SysUser} from '@manatos/shared';export interface IEmailService{sendWelcomeAndVerificationEmail(u:SysUser,url?:string):Promise<void>;sendPasswordChangedEmail(u:SysUser):Promise<void>;sendPasswordResetEmail(u:SysUser,url:string):Promise<void>}
+/** Development adapter: prints mail to terminal. Replace later with SMTP/Nodemailer/etc. */
+export class ConsoleEmailService implements IEmailService{async sendWelcomeAndVerificationEmail(u:SysUser,url?:string){console.log(`\n[MAIL] To ${u.email}: Welcome to ManatOS${url?` - verify: ${url}`:''}\n`);}async sendPasswordChangedEmail(u:SysUser){console.log(`\n[MAIL] To ${u.email}: Your password was changed. If this was not you, recover your account.\n`);}async sendPasswordResetEmail(u:SysUser,url:string){console.log(`\n[MAIL] To ${u.email}: Set/reset password: ${url}\n`);}}
+export const emailService=new ConsoleEmailService();

@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 
-import { ForbiddenAppError, NotFoundError, operationContext, type SysUser } from '@manatos/shared';
+import { AppError, NotFoundError, operationContext, type SysUser } from '@manatos/shared';
 
 import { config } from '../config.js';
 
@@ -115,7 +115,12 @@ export function createAuthRouter(users: SysUserService): Router {
            * session token.
            */
           if (!user.emailVerified) {
-            throw new ForbiddenAppError('Email verification is required before API login.');
+            throw new AppError(
+              'EMAIL_NOT_VERIFIED',
+              'Email verification is required before API login.',
+              'Your email address must be verified before you can sign in.',
+              false,
+            );
           }
 
           const clientInfo = sessionClientInfo(req);

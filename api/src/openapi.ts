@@ -108,7 +108,11 @@ export function buildOpenApiSpec() {
     },
 
     components: {
-      schemas,
+      schemas: {
+        ...schemas,
+
+        ApiFailure: apiFailureSchema(),
+      },
 
       securitySchemes: {
         bearerAuth: {
@@ -150,6 +154,8 @@ export function buildOpenApiSpec() {
        * Protected SysBO resources.
        */
       '/api/v1/SysUsers': genericOperations('SysUser'),
+
+      '/api/v1/SysUsers/{id}/verify-email': adminVerifyEmailOperation(),
 
       '/api/v1/SysPrincipals': genericOperations('SysPrincipal'),
 
@@ -210,6 +216,109 @@ const genericOperations = (name: string) => ({
     },
   },
 });
+
+/**
+ * Global failure envelope.
+ *
+ * errorMessage mirrors error.message and is always user-safe.
+ * developerMessage, when enabled by API_ERROR_DETAIL_LEVEL=full, remains
+ * inside error and is deliberately not mirrored to the root.
+ */
+function apiFailureSchema() {
+  return {
+    type: 'object',
+    required: ['success', 'errorMessage', 'error'],
+    properties: {
+      success: {
+        type: 'boolean',
+        const: false,
+      },
+      errorMessage: {
+        type: 'string',
+        description: 'User-safe failure message. Mirrors error.message.',
+      },
+      error: {
+        type: 'object',
+        required: ['code', 'message', 'retryable'],
+        properties: {
+          code: {
+            type: 'string',
+          },
+          message: {
+            type: 'string',
+          },
+          retryable: {
+            type: 'boolean',
+          },
+          developerMessage: {
+            type: 'string',
+            description: 'Present only when API_ERROR_DETAIL_LEVEL=full.',
+          },
+          operationTrace: {
+            type: 'array',
+            description: 'Present when API_ERROR_DETAIL_LEVEL is operations or full.',
+            items: {
+              type: 'object',
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
+function failureResponse(description: string) {
+  return {
+    description,
+    content: {
+      'application/json': {
+        schema: {
+          $ref: '#/components/schemas/ApiFailure',
+        },
+      },
+    },
+  };
+}
+
+/**
+ * Explicit Admin command for email verification.
+ */
+function adminVerifyEmailOperation() {
+  return {
+    post: {
+      summary: 'Verify a SysUser email as Admin',
+      description:
+        'Marks the selected SysUser email as verified. Requires an authenticated Admin and ADMIN_EMAIL_VERIFICATION_ENABLED=true.',
+      tags: ['System Business Objects'],
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      parameters: [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: {
+            type: 'string',
+            format: 'uuid',
+          },
+        },
+      ],
+      responses: {
+        '200': {
+          description: 'Email verified successfully, or was already verified.',
+        },
+        '401': failureResponse('Authentication required or access token is invalid.'),
+        '403': failureResponse(
+          'Administrator role required or administrator email verification is disabled.',
+        ),
+        '404': failureResponse('SysUser not found.'),
+      },
+    },
+  };
+}
 
 /**
  * Public liveness/health endpoint.
@@ -316,12 +425,8 @@ function registerOperation() {
         '201': {
           description: 'Guest user registered.',
         },
-        '400': {
-          description: 'Validation failure.',
-        },
-        '409': {
-          description: 'User-name or email already exists.',
-        },
+        '400': failureResponse('Validation failure.'),
+        '409': failureResponse('User-name or email already exists.'),
       },
     },
   };
@@ -359,12 +464,8 @@ function loginOperation() {
         '200': {
           description: 'Login succeeded and an access token was returned.',
         },
-        '401': {
-          description: 'Invalid credentials.',
-        },
-        '403': {
-          description: 'Account cannot currently log in.',
-        },
+        '401': failureResponse('Invalid credentials.'),
+        '403': failureResponse('Account cannot currently log in.'),
       },
     },
   };

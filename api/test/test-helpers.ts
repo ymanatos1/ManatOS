@@ -193,7 +193,7 @@ export function expectFailure(
   body: unknown,
 ): asserts body is {
   success: false;
-  message: string;
+  errorMessage: string;
   error: {
     code: string;
     message: string;
@@ -202,7 +202,7 @@ export function expectFailure(
 } {
   const response = body as {
     success?: unknown;
-    message?: unknown;
+    errorMessage?: unknown;
     error?: {
       code?: unknown;
       message?: unknown;
@@ -215,10 +215,10 @@ export function expectFailure(
   }
 
   if (
-    typeof response.message !== 'string' ||
-    response.message.length === 0
+    typeof response.errorMessage !== 'string' ||
+    response.errorMessage.length === 0
   ) {
-    throw new Error(`Expected root failure message: ${JSON.stringify(body)}`);
+    throw new Error(`Expected root failure errorMessage: ${JSON.stringify(body)}`);
   }
 
   if (
@@ -229,9 +229,9 @@ export function expectFailure(
     throw new Error(`Expected structured error object: ${JSON.stringify(body)}`);
   }
 
-  if (response.message !== response.error.message) {
+  if (response.errorMessage !== response.error.message) {
     throw new Error(
-      `Root message must mirror error.message: ${JSON.stringify(body)}`,
+      `Root errorMessage must mirror error.message: ${JSON.stringify(body)}`,
     );
   }
 }
