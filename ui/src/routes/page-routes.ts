@@ -50,6 +50,27 @@ export function createPageRoutes() {
   );
 
   /**
+   * Application design/runtime playground landing page.
+   *
+   * The first version is intentionally only a welcome surface. Future
+   * SysApplication selection, design and execution features will be added
+   * behind this stable route.
+   */
+  router.get(
+    '/app-playground',
+
+    async (_req, res) =>
+      renderPage(
+        res,
+        'pages/app-playground',
+
+        {
+          title: 'App Playground',
+        },
+      ),
+  );
+
+  /**
    * API documentation link.
    */
   router.get(

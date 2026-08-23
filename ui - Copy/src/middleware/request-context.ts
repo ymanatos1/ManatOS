@@ -1,1 +1,0 @@
-import {randomUUID} from 'node:crypto';import type {RequestHandler} from 'express';import {operationContext} from '@manatos/shared';export const requestContextMiddleware:RequestHandler=(q,r,n)=>{const id=q.header('x-request-id')||randomUUID();r.setHeader('x-request-id',id);operationContext.runRequest(id,()=>n());};
