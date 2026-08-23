@@ -8,6 +8,8 @@ import type { SysUserService } from '../services/sys-user-service.js';
 
 import { internalAuditActor } from '../audit/audit-service.js';
 
+import { sendCommand, sendQuery } from './api-response.js';
+
 /**
  * Creates API endpoints intended for trusted internal use.
  *
@@ -57,9 +59,7 @@ export function createInternalRouter(
             String(req.body?.password ?? ''),
           );
 
-          res.json({
-            data: publicUser(user),
-          });
+          sendCommand(res, 'Credentials verified successfully.', publicUser(user));
         },
       ),
   );
@@ -80,9 +80,7 @@ export function createInternalRouter(
 
       const identity = await ext.find(provider, subject);
 
-      res.json({
-        data: identity,
-      });
+      sendQuery(res, identity);
     },
   );
 
@@ -123,9 +121,7 @@ export function createInternalRouter(
         actor,
       );
 
-      res.status(201).json({
-        data: externalIdentity,
-      });
+      sendCommand(res, 'External identity linked successfully.', externalIdentity, 201);
     },
   );
 
@@ -142,9 +138,7 @@ export function createInternalRouter(
       const userId = String(req.params.userId ?? '');
       const user = await users.setPassword(userId, String(req.body.password ?? ''), actor);
 
-      res.json({
-        data: publicUser(user),
-      });
+      sendCommand(res, `Password set successfully for user '${user.name}'.`, publicUser(user));
     },
   );
 
@@ -158,9 +152,7 @@ export function createInternalRouter(
       const userId = String(req.params.userId ?? '');
       const user = await users.setEmailVerified(userId, actor);
 
-      res.json({
-        data: publicUser(user),
-      });
+      sendCommand(res, `Email verified successfully for user '${user.name}'.`, publicUser(user));
     },
   );
 
@@ -183,9 +175,12 @@ export function createInternalRouter(
         actor,
       );
 
-      res.status(201).json({
-        data: link,
-      });
+      sendCommand(
+        res,
+        `User ${req.params.userId} linked to principal ${String(req.body.principalId)} successfully.`,
+        link,
+        201,
+      );
     },
   );
 

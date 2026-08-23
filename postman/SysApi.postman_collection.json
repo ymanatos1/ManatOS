@@ -21,7 +21,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Health status is ok', () => pm.expect(json.status).to.eql('ok'));"
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Health status is ok', () => pm.expect(json.data.status).to.eql('ok'));"
                 ]
               }
             }
@@ -54,7 +55,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Readiness status is ok', () => pm.expect(json.status).to.eql('ok'));"
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Readiness status is ok', () => pm.expect(json.data.status).to.eql('ok'));"
                 ]
               }
             }
@@ -76,6 +78,38 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Flush DB",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.eql('Database flushed successfully.'));",
+                  "pm.test('Storage reports flushed', () => pm.expect(json.data.flushed).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/flush-db",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "flush-db"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -92,6 +126,8 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "pm.test('Role forced to Guest', () => pm.expect(json.data.role).to.eql('Guest'));",
                   "pm.test('Email is not verified', () => pm.expect(json.data.emailVerified).to.eql(false));",
                   "if (json.data && json.data.id) pm.environment.set('testUserId', json.data.id);"
@@ -144,6 +180,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "pm.test('Access token returned', () => pm.expect(json.data.accessToken).to.be.a('string').and.not.empty);",
                   "pm.environment.set('accessToken', json.data.accessToken);",
                   "if (json.data.user && json.data.user.id) pm.environment.set('adminUserId', json.data.user.id);"
@@ -199,7 +237,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
                 ]
               }
             }
@@ -232,8 +273,9 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Sessions array returned', () => pm.expect(json.data.sessions).to.be.an('array'));",
-                  "pm.test('At least one active session exists', () => pm.expect(json.data.sessions.length).to.be.above(0));"
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('Sessions array returned', () => pm.expect(json.data.sessions).to.be.an('array'));"
                 ]
               }
             }
@@ -288,7 +330,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Logout",
@@ -300,7 +356,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Logout succeeded', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.eql('Logged out successfully.'));",
                   "pm.test('A session was revoked', () => pm.expect(json.data.revoked).to.eql(true));",
                   "if (pm.response.code === 200) pm.environment.unset('accessToken');"
                 ]
@@ -335,7 +392,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Logout-all succeeded', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.eql('All sessions logged out successfully.'));",
                   "pm.test('One or more sessions revoked', () => pm.expect(json.data.revokedSessions).to.be.above(0));",
                   "if (pm.response.code === 200) {",
                   "  pm.environment.unset('accessToken');",
@@ -373,6 +431,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "pm.test('Access token returned', () => pm.expect(json.data.accessToken).to.be.a('string').and.not.empty);",
                   "pm.environment.set('accessToken', json.data.accessToken);",
                   "if (json.data.user && json.data.user.id) pm.environment.set('adminUserId', json.data.user.id);"
@@ -430,6 +490,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Root success message returned', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "pm.test('Additional access token returned', () => pm.expect(json.data.accessToken).to.be.a('string').and.not.empty);",
                   "pm.environment.set('secondaryAccessToken', json.data.accessToken);"
                 ]
@@ -486,7 +548,9 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Secondary token sees sessions', () => pm.expect(json.data.sessions).to.be.an('array'));"
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('Sessions array returned', () => pm.expect(json.data.sessions).to.be.an('array'));"
                 ]
               }
             }
@@ -541,7 +605,23 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "SysUsers metadata",
@@ -561,7 +641,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create SysUser",
@@ -573,6 +668,8 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "if (json.data && json.data.id) pm.environment.set('testUserId', json.data.id);"
                 ]
               }
@@ -627,7 +724,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Patch SysUser",
@@ -661,7 +772,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete SysUser",
@@ -681,7 +806,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -705,7 +845,23 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "SysPrincipals metadata",
@@ -725,7 +881,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create SysPrincipal",
@@ -737,6 +908,8 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "if (json.data && json.data.id) pm.environment.set('testPrincipalId', json.data.id);"
                 ]
               }
@@ -791,7 +964,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Patch SysPrincipal",
@@ -825,7 +1012,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete SysPrincipal",
@@ -845,7 +1046,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -869,7 +1085,23 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "SysApplications metadata",
@@ -889,7 +1121,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create SysApplication",
@@ -901,6 +1148,8 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "if (json.data && json.data.id) pm.environment.set('testApplicationId', json.data.id);"
                 ]
               }
@@ -955,7 +1204,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Patch SysApplication",
@@ -989,7 +1252,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete SysApplication",
@@ -1009,7 +1286,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1033,7 +1325,23 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "SysLicenses metadata",
@@ -1053,7 +1361,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create SysLicense",
@@ -1065,6 +1388,8 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                   "if (json.data && json.data.id) pm.environment.set('testLicenseId', json.data.id);"
                 ]
               }
@@ -1119,7 +1444,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Patch SysLicense",
@@ -1153,7 +1492,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete SysLicense",
@@ -1173,7 +1526,22 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1213,7 +1581,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Resolve External Identity",
@@ -1244,7 +1626,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Set User Password",
@@ -1280,7 +1676,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Verify User Email",
@@ -1302,7 +1712,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Link User to Principal",
@@ -1338,7 +1762,21 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
         }
       ],
       "auth": {
@@ -1373,7 +1811,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is false', () => pm.expect(json.success).to.eql(false));",
+                  "pm.test('Root error message exists', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                  "pm.test('Root message mirrors error.message', () => pm.expect(json.message).to.eql(json.error.message));"
                 ]
               }
             }
@@ -1430,7 +1872,25 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                  "pm.test('createdBy protected', () => pm.expect(json.data.createdBy).to.not.eql('SomeoneElse'));",
+                  "pm.test('updatedBy protected', () => pm.expect(json.data.updatedBy).to.not.eql('SomeoneElse'));",
+                  "pm.test('createdAt protected', () => pm.expect(json.data.createdAt).to.not.eql('2000-01-01T00:00:00.000Z'));",
+                  "pm.test('updatedAt protected', () => pm.expect(json.data.updatedAt).to.not.eql('2000-01-01T00:00:00.000Z'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Revoked token -> 401",
@@ -1442,7 +1902,9 @@
                 "exec": [
                   "pm.test('Status 401', () => pm.response.to.have.status(401));",
                   "const json = pm.response.json();",
-                  "pm.test('Invalid token error returned', () => pm.expect(json.error.code).to.eql('INVALID_ACCESS_TOKEN'));"
+                  "pm.test('Success is false', () => pm.expect(json.success).to.eql(false));",
+                  "pm.test('Invalid token error returned', () => pm.expect(json.error.code).to.eql('INVALID_ACCESS_TOKEN'));",
+                  "pm.test('Root message mirrors error.message', () => pm.expect(json.message).to.eql(json.error.message));"
                 ]
               }
             }

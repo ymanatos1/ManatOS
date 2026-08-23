@@ -125,7 +125,9 @@ export function buildOpenApiSpec() {
        */
       '/health': healthOperation('Health check'),
 
-      '/ready': healthOperation('Readiness check'),
+      '/ready': readinessOperation('Readiness check'),
+
+      '/flush-db': flushDatabaseOperation(),
 
       /**
        * Authentication.
@@ -210,7 +212,7 @@ const genericOperations = (name: string) => ({
 });
 
 /**
- * Public health/readiness endpoint.
+ * Public liveness/health endpoint.
  */
 function healthOperation(summary: string) {
   return {
@@ -223,6 +225,55 @@ function healthOperation(summary: string) {
         },
         '503': {
           description: 'Server is not healthy or ready.',
+        },
+      },
+    },
+  };
+}
+/**
+ * Public readiness endpoint.
+ */
+function readinessOperation(summary: string) {
+  return {
+    get: {
+      summary,
+      tags: ['Server'],
+      responses: {
+        '200': {
+          description: 'Server is ready.',
+        },
+        '503': {
+          description: 'Server is not ready.',
+        },
+      },
+    },
+  };
+}
+
+function flushDatabaseOperation() {
+  return {
+    post: {
+      summary: 'Flush active database storage',
+      description:
+        'Forces the current storage adapter to flush its current state to durable persistence where applicable.',
+      tags: ['Server'],
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      responses: {
+        '200': {
+          description: 'Database flushed successfully.',
+        },
+        '401': {
+          description: 'Authentication required or access token is invalid.',
+        },
+        '403': {
+          description: 'Administrator role required.',
+        },
+        '503': {
+          description: 'Storage persistence operation failed.',
         },
       },
     },

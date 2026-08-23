@@ -16,6 +16,8 @@ import type { GenericSysBOService } from '../services/generic-sysbo-service.js';
 
 import { parseListQuery } from './query.js';
 
+import { sendCommand, sendQuery } from './api-response.js';
+
 /**
  * Builds the standard REST CRUD router for a metadata-driven SysBO.
  *
@@ -29,7 +31,13 @@ import { parseListQuery } from './query.js';
  *
  *   ?includeMetadata=true
  *
- * Normal CRUD responses return data only.
+ * GET/query responses return:
+ *
+ *   success + data
+ *
+ * Mutating operations return:
+ *
+ *   success + message + data
  */
 export function createSysBORouter<T extends SysBOEntity>(
   service: GenericSysBOService<T>,
@@ -52,7 +60,7 @@ export function createSysBORouter<T extends SysBOEntity>(
    * Return the hard-coded, UI-neutral BO metadata.
    */
   router.get('/$metadata', (_req, res) => {
-    res.json({
+    sendQuery(res, {
       metadata,
     });
   });
@@ -72,10 +80,14 @@ export function createSysBORouter<T extends SysBOEntity>(
 
         const includeMetadata = req.query.includeMetadata === 'true';
 
-        res.json({
-          ...(includeMetadata ? { metadata } : {}),
+        sendQuery(res, {
+          ...(includeMetadata
+            ? {
+                metadata,
+              }
+            : {}),
 
-          data: result.items.map((item) => sanitize(item, metadata)),
+          items: result.items.map((item) => sanitize(item, metadata)),
 
           paging: {
             total: result.total,
@@ -116,9 +128,7 @@ export function createSysBORouter<T extends SysBOEntity>(
         const subject = securityContext(req);
         await authorization.assertCan('read', subject, metadata.key, item);
 
-        res.json({
-          data: sanitize(item, metadata),
-        });
+        sendQuery(res, sanitize(item, metadata));
       },
     );
   });
@@ -148,9 +158,12 @@ export function createSysBORouter<T extends SysBOEntity>(
           ? await customCreate(req.body ?? {}, actor)
           : await service.create(req.body, actor);
 
-        res.status(201).json({
-          data: sanitize(item, metadata),
-        });
+        sendCommand(
+          res,
+          `${metadata.name} '${item.name}' created successfully.`,
+          sanitize(item, metadata),
+          201,
+        );
       },
     );
   };
@@ -188,9 +201,11 @@ export function createSysBORouter<T extends SysBOEntity>(
 
         const item = await service.update(id, req.body, actor);
 
-        res.json({
-          data: sanitize(item, metadata),
-        });
+        sendCommand(
+          res,
+          `${metadata.name} '${item.name}' updated successfully.`,
+          sanitize(item, metadata),
+        );
       },
     );
   };
@@ -231,7 +246,7 @@ export function createSysBORouter<T extends SysBOEntity>(
 
           await service.delete(id, actor);
 
-          res.status(204).end();
+          sendCommand(res, `${metadata.name} '${existing.name}' deleted successfully.`, { id });
         },
       );
     },

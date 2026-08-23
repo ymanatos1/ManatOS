@@ -79,19 +79,25 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   res.status(httpStatus).json({
     success: false,
 
+    /**
+     * Global user-facing message.
+     *
+     * UI/API clients can always inspect this root property without
+     * understanding the internal error representation.
+     */
+    message: appError.userMessage,
+
     error: {
-      /*
-       * Always-safe error information.
-       */
       code: appError.code,
 
+      /**
+       * Kept inside error as well so the error object remains
+       * independently meaningful and existing clients are not broken.
+       */
       message: appError.userMessage,
 
       retryable: appError.retryable,
 
-      /*
-       * Full developer diagnostics.
-       */
       ...(detailLevel === 'full'
         ? {
             developerMessage: appError.message,
@@ -100,11 +106,6 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
           }
         : {}),
 
-      /*
-       * Semantic operation trace.
-       *
-       * Available in both "operations" and "full" diagnostic modes.
-       */
       ...(detailLevel === 'operations' || detailLevel === 'full'
         ? {
             operationTrace: appError.operationTrace,

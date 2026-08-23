@@ -20,6 +20,8 @@ import { requireInternalApiKey } from './http/internal-api-key.js';
 
 import { requestContextMiddleware } from './http/request-context.js';
 
+import { createServerRouter } from './http/server-router.js';
+
 import { buildOpenApiSpec } from './openapi.js';
 
 import type { InMemoryDataStore } from './storage/in-memory-data-store.js';
@@ -38,7 +40,7 @@ import { requireAuthenticated } from './auth/auth-middleware.js';
 import { AuthorizationService } from './auth/authorization-service.js';
 import { createAuthRouter } from './auth/auth-router.js';
 
-import { HealthService } from './health/health-service.js';
+import { sendFailure } from './http/api-response.js';
 
 /**
  * Application services required by the HTTP/API layer.
@@ -240,36 +242,13 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   );
 
   /**
-   * Standard system health endpoints.
+   * Server-level operational routes:
+   *
+   *   GET  /health
+   *   GET  /ready
+   *   POST /flush-db
    */
-
-  const healthService = new HealthService(_store);
-
-  app.get(
-    '/health',
-
-    async (_req, res) => {
-      const health = await healthService.check();
-
-      res.status(health.status === 'ok' ? 200 : 503).json(health);
-    },
-  );
-
-  app.get(
-    '/ready',
-
-    async (_req, res) => {
-      /*
-       * Currently identical to /health.
-       *
-       * Later this endpoint may additionally verify database connectivity,
-       * migrations, Redis, mail services, etc.
-       */
-      const readiness = await healthService.check();
-
-      res.status(readiness.status === 'ok' ? 200 : 503).json(readiness);
-    },
-  );
+  app.use(createServerRouter(_store));
 
   /**
    * Trusted internal API.
@@ -289,17 +268,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    * API/application 404 fallback.
    */
   app.use((_req, res) => {
-    res.status(404).json({
-      success: false,
-
-      error: {
-        code: 'HTTP_NOT_FOUND',
-
-        message: 'The requested API resource was not found.',
-
-        retryable: false,
-      },
-    });
+    sendFailure(res, 404, 'HTTP_NOT_FOUND', 'The requested API resource was not found.', false);
   });
 
   /**

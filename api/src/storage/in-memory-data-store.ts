@@ -18,6 +18,8 @@ import { JsonFilePersistence } from './json-file-persistence.js';
 
 import type { DatabaseState } from './types.js';
 
+import type { StorageAdapter, StorageFlushResult } from './storage-adapter.js';
+
 /**
  * Replaceable data-store adapter.
  *
@@ -27,7 +29,7 @@ import type { DatabaseState } from './types.js';
  * A future SQL Server/PostgreSQL/etc. implementation should expose
  * equivalent storage behavior behind another adapter.
  */
-export class InMemoryDataStore {
+export class InMemoryDataStore implements StorageAdapter {
   private state!: DatabaseState;
 
   public sysUsers!: InMemoryRepository<SysUser>;
@@ -112,6 +114,29 @@ export class InMemoryDataStore {
    */
   async save(): Promise<void> {
     await this.persistence.save(this.state);
+  }
+
+  /**
+   * Explicitly flush the current in-memory database into its configured
+   * persistent backing store.
+   *
+   * For this adapter that means writing the complete current state into
+   * data/database.json through JsonFilePersistence.
+   *
+   * Future database adapters can implement this differently. A normal SQL
+   * adapter, for example, may report that no explicit flush is required
+   * because each committed transaction is already durable.
+   */
+  async flush(): Promise<StorageFlushResult> {
+    await this.persistence.save(this.state);
+
+    return {
+      provider: 'InMemory',
+      persistence: 'JSON',
+      flushed: true,
+      timestamp: new Date().toISOString(),
+      details: 'Current in-memory database state was persisted successfully.',
+    };
   }
 
   /**

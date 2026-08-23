@@ -12,6 +12,8 @@ import { accessTokenStore, type SessionClientInfo } from './access-token-store.j
 
 import { requireAuthenticated } from './auth-middleware.js';
 
+import { sendCommand, sendQuery } from '../http/api-response.js';
+
 /**
  * Authentication/session API.
  *
@@ -78,11 +80,7 @@ export function createAuthRouter(users: SysUserService): Router {
               : {}),
           });
 
-          res.status(201).json({
-            success: true,
-
-            data: publicUser(user),
-          });
+          sendCommand(res, 'Registration completed successfully.', publicUser(user), 201);
         },
       );
     },
@@ -124,22 +122,13 @@ export function createAuthRouter(users: SysUserService): Router {
 
           const token = accessTokenStore.create(user, config.API_ACCESS_TOKEN_MINUTES, clientInfo);
 
-          res.json({
-            success: true,
-
-            data: {
-              accessToken: token.token,
-
-              tokenType: 'Bearer',
-
-              sessionId: token.tokenId,
-
-              expiresInSeconds: config.API_ACCESS_TOKEN_MINUTES * 60,
-
-              expiresAt: new Date(token.expiresAt).toISOString(),
-
-              user: publicUser(user),
-            },
+          sendCommand(res, `User ${user.name} signed in successfully.`, {
+            accessToken: token.token,
+            tokenType: 'Bearer',
+            sessionId: token.tokenId,
+            expiresInSeconds: config.API_ACCESS_TOKEN_MINUTES * 60,
+            expiresAt: new Date(token.expiresAt).toISOString(),
+            user: publicUser(user),
           });
         },
       );
@@ -164,11 +153,7 @@ export function createAuthRouter(users: SysUserService): Router {
         throw new NotFoundError('SysUser', req.auth!.userId);
       }
 
-      res.json({
-        success: true,
-
-        data: publicUser(user),
-      });
+      sendQuery(res, publicUser(user));
     },
   );
 
@@ -181,14 +166,9 @@ export function createAuthRouter(users: SysUserService): Router {
     (req, res) => {
       const sessions = accessTokenStore.listUserSessions(req.auth!.userId, req.auth!.tokenId);
 
-      res.json({
-        success: true,
-
-        data: {
-          total: sessions.length,
-
-          sessions,
-        },
+      sendQuery(res, {
+        total: sessions.length,
+        sessions,
       });
     },
   );
@@ -204,16 +184,9 @@ export function createAuthRouter(users: SysUserService): Router {
 
       const revoked = accessTokenStore.revoke(req.accessToken!);
 
-      res.status(200).json({
-        success: true,
-
-        data: {
-          message: 'Logged out successfully.',
-
-          sessionId,
-
-          revoked,
-        },
+      sendCommand(res, 'Logged out successfully.', {
+        sessionId,
+        revoked,
       });
     },
   );
@@ -229,14 +202,8 @@ export function createAuthRouter(users: SysUserService): Router {
     (req, res) => {
       const revokedSessions = accessTokenStore.revokeAllForUser(req.auth!.userId);
 
-      res.status(200).json({
-        success: true,
-
-        data: {
-          message: 'All sessions logged out successfully.',
-
-          revokedSessions,
-        },
+      sendCommand(res, 'All sessions logged out successfully.', {
+        revokedSessions,
       });
     },
   );
@@ -273,11 +240,7 @@ export function createAuthRouter(users: SysUserService): Router {
             actor,
           );
 
-          res.json({
-            success: true,
-
-            data: publicUser(user),
-          });
+          sendCommand(res, 'Password changed successfully.', publicUser(user));
         },
       );
     },
