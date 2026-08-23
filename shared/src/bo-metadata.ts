@@ -155,6 +155,14 @@ const common: Record<string, SysBOFieldMetadata> = {
     generated: true,
     readOnly: true,
   },
+  createdBy: {
+    key: 'createdBy',
+    label: 'Created by',
+    type: 'string',
+    order: 911,
+    generated: true,
+    readOnly: true,
+  },
 
   updatedAt: {
     key: 'updatedAt',
@@ -162,6 +170,14 @@ const common: Record<string, SysBOFieldMetadata> = {
     type: 'date',
     order: 920,
 
+    generated: true,
+    readOnly: true,
+  },
+  updatedBy: {
+    key: 'updatedBy',
+    label: 'Updated by',
+    type: 'string',
+    order: 921,
     generated: true,
     readOnly: true,
   },

@@ -6,6 +6,8 @@ import type { ExternalIdentityService, UserPrincipalService } from '../services/
 
 import type { SysUserService } from '../services/sys-user-service.js';
 
+import { internalAuditActor } from '../audit/audit-service.js';
+
 /**
  * Creates API endpoints intended for trusted internal use.
  *
@@ -18,6 +20,8 @@ export function createInternalRouter(
   links: UserPrincipalService,
 ) {
   const router = Router();
+
+  const actor = internalAuditActor();
 
   /**
    * Verify local credentials.
@@ -115,6 +119,8 @@ export function createInternalRouter(
               }
             : {}),
         },
+
+        actor,
       );
 
       res.status(201).json({
@@ -133,11 +139,8 @@ export function createInternalRouter(
     '/SysUsers/:userId/password',
 
     async (req, res) => {
-      const user = await users.setPassword(
-        req.params.userId,
-
-        String(req.body.password ?? ''),
-      );
+      const userId = String(req.params.userId ?? '');
+      const user = await users.setPassword(userId, String(req.body.password ?? ''), actor);
 
       res.json({
         data: publicUser(user),
@@ -152,7 +155,8 @@ export function createInternalRouter(
     '/SysUsers/:userId/email-verified',
 
     async (req, res) => {
-      const user = await users.setEmailVerified(req.params.userId);
+      const userId = String(req.params.userId ?? '');
+      const user = await users.setEmailVerified(userId, actor);
 
       res.json({
         data: publicUser(user),
@@ -175,6 +179,8 @@ export function createInternalRouter(
         req.body.relationship as SysUserPrincipalRelationship,
 
         Boolean(req.body.isDefault),
+
+        actor,
       );
 
       res.status(201).json({

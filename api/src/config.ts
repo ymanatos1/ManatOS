@@ -23,6 +23,11 @@ const schema = z.object({
   API_PORT: z.coerce.number().int().positive().default(3000),
 
   /**
+   * API access token expiration time in minutes.
+   */
+  API_ACCESS_TOKEN_MINUTES: z.coerce.number().int().positive().default(60),
+
+  /**
    * JSON persistence file used by the current in-memory datastore.
    */
   DATA_FILE: z.string().default('../data/database.json'),

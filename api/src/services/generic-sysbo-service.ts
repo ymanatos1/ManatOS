@@ -1,4 +1,12 @@
-import { operationContext, type SysBOEntity, type SysBOMetadata } from '@manatos/shared';
+import {
+  operationContext,
+  type SysBOCreateInput,
+  type SysBOEntity,
+  type SysBOMetadata,
+  type SysBOUpdateInput,
+} from '@manatos/shared';
+
+import type { AuditActor } from '../audit/audit-service.js';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 
@@ -47,9 +55,14 @@ export class GenericSysBOService<T extends SysBOEntity> {
    *
    * - id
    * - createdAt
+   * - createdBy
    * - updatedAt
+   * - updatedBy
+   *
+   * The repository is responsible for enforcing metadata-defined
+   * uniqueness constraints.
    */
-  async create(input: Omit<T, 'id' | 'createdAt' | 'updatedAt'>): Promise<T> {
+  async create(input: SysBOCreateInput<T>, actor: AuditActor): Promise<T> {
     return this.store.executeTransaction(() =>
       operationContext.run(
         `Create ${this.metadata.name} in data store`,
@@ -57,7 +70,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
         async (scope) => {
           scope.comment('name', input.name);
 
-          return this.repository.create(input);
+          scope.comment('createdBy', actor.userName);
+
+          return this.repository.create(input, actor);
         },
       ),
     );
@@ -70,9 +85,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
    *
    * - checking existence;
    * - enforcing metadata-defined uniqueness;
-   * - updating updatedAt.
+   * - updating updatedAt, updatedBy.
    */
-  async update(id: string, changes: Partial<T>): Promise<T> {
+  async update(id: string, changes: SysBOUpdateInput<T>, actor: AuditActor): Promise<T> {
     return this.store.executeTransaction(() =>
       operationContext.run(
         `Update ${this.metadata.name} in data store`,
@@ -81,9 +96,10 @@ export class GenericSysBOService<T extends SysBOEntity> {
           scope.addContext({
             id,
             name: changes.name,
+            updatedBy: actor.userName,
           });
 
-          return this.repository.update(id, changes);
+          return this.repository.update(id, changes, actor);
         },
       ),
     );
@@ -92,15 +108,18 @@ export class GenericSysBOService<T extends SysBOEntity> {
   /**
    * Delete an existing entity by GUID.
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: string, actor: AuditActor): Promise<void> {
     await this.store.executeTransaction(() =>
       operationContext.run(
         `Delete ${this.metadata.name} from data store`,
 
         async (scope) => {
-          scope.comment('id', id);
+          scope.addContext({
+            id,
+            deletedBy: actor.userName,
+          });
 
-          await this.repository.delete(id);
+          await this.repository.delete(id, actor);
         },
       ),
     );

@@ -115,6 +115,31 @@ export class InMemoryDataStore {
   }
 
   /**
+   * Lightweight datastore health check.
+   *
+   * It intentionally performs no write operation.
+   */
+  healthCheck() {
+    if (!this.state) {
+      return {
+        status: 'error' as const,
+
+        provider: 'InMemory',
+
+        persistence: 'JSON',
+      };
+    }
+
+    return {
+      status: 'ok' as const,
+
+      provider: 'InMemory',
+
+      persistence: 'JSON',
+    };
+  }
+
+  /**
    * Recreate generic repositories over the current state.
    *
    * This is required after initialization and after a transaction

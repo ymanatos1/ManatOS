@@ -34,6 +34,12 @@ import type {
   UserPrincipalService,
 } from './services/domain-services.js';
 
+import { requireAuthenticated } from './auth/auth-middleware.js';
+import { AuthorizationService } from './auth/authorization-service.js';
+import { createAuthRouter } from './auth/auth-router.js';
+
+import { HealthService } from './health/health-service.js';
+
 /**
  * Application services required by the HTTP/API layer.
  */
@@ -59,6 +65,8 @@ export interface ApiServices {
  */
 export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   const app = express();
+
+  const authorization = new AuthorizationService(_store);
 
   /**
    * Basic security hardening.
@@ -132,6 +140,15 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   );
 
   /**
+   * Register auth.
+   */
+  app.use(
+    '/api/v1/auth',
+
+    createAuthRouter(services.users),
+  );
+
+  /**
    * SysUser CRUD.
    *
    * SysUser creation requires specialized processing because a supplied
@@ -139,59 +156,62 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    */
   app.use(
     '/api/v1/SysUsers',
+    requireAuthenticated,
 
     createSysBORouter(
       services.users,
       sysUsersMetadata,
 
-      async (body) => {
-        const name = String(body.name ?? '');
+      authorization,
 
-        const email = String(body.email ?? '');
+      async (body, actor) =>
+        services.users.createUser(
+          {
+            name: String(body.name ?? ''),
 
-        return services.users.createUser({
-          name,
-          email,
+            email: String(body.email ?? ''),
 
-          ...(body.password
-            ? {
-                password: String(body.password),
-              }
-            : {}),
+            ...(body.password
+              ? {
+                  password: String(body.password),
+                }
+              : {}),
 
-          ...(body.role
-            ? {
-                role: body.role as SysUserRole,
-              }
-            : {}),
+            ...(body.role
+              ? {
+                  role: body.role as SysUserRole,
+                }
+              : {}),
 
-          ...(body.firstName
-            ? {
-                firstName: String(body.firstName),
-              }
-            : {}),
+            ...(body.firstName
+              ? {
+                  firstName: String(body.firstName),
+                }
+              : {}),
 
-          ...(body.lastName
-            ? {
-                lastName: String(body.lastName),
-              }
-            : {}),
+            ...(body.lastName
+              ? {
+                  lastName: String(body.lastName),
+                }
+              : {}),
 
-          ...(body.description
-            ? {
-                description: String(body.description),
-              }
-            : {}),
+            ...(body.description
+              ? {
+                  description: String(body.description),
+                }
+              : {}),
 
-          ...(body.emailVerified !== undefined
-            ? {
-                emailVerified: Boolean(body.emailVerified),
-              }
-            : {}),
+            ...(body.emailVerified !== undefined
+              ? {
+                  emailVerified: Boolean(body.emailVerified),
+                }
+              : {}),
 
-          enabled: body.enabled !== false,
-        });
-      },
+            enabled: body.enabled !== false,
+          },
+
+          actor,
+        ),
     ),
   );
 
@@ -200,20 +220,55 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    */
   app.use(
     '/api/v1/SysPrincipals',
+    requireAuthenticated,
 
-    createSysBORouter(services.principals, sysPrincipalsMetadata),
+    createSysBORouter(services.principals, sysPrincipalsMetadata, authorization),
   );
 
   app.use(
     '/api/v1/SysApplications',
+    requireAuthenticated,
 
-    createSysBORouter(services.applications, sysApplicationsMetadata),
+    createSysBORouter(services.applications, sysApplicationsMetadata, authorization),
   );
 
   app.use(
     '/api/v1/SysLicenses',
+    requireAuthenticated,
 
-    createSysBORouter(services.licenses, sysLicensesMetadata),
+    createSysBORouter(services.licenses, sysLicensesMetadata, authorization),
+  );
+
+  /**
+   * Standard system health endpoints.
+   */
+
+  const healthService = new HealthService(_store);
+
+  app.get(
+    '/health',
+
+    async (_req, res) => {
+      const health = await healthService.check();
+
+      res.status(health.status === 'ok' ? 200 : 503).json(health);
+    },
+  );
+
+  app.get(
+    '/ready',
+
+    async (_req, res) => {
+      /*
+       * Currently identical to /health.
+       *
+       * Later this endpoint may additionally verify database connectivity,
+       * migrations, Redis, mail services, etc.
+       */
+      const readiness = await healthService.check();
+
+      res.status(readiness.status === 'ok' ? 200 : 503).json(readiness);
+    },
   );
 
   /**

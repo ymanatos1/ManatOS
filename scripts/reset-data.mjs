@@ -20,6 +20,10 @@ const path = resolve(process.cwd(), 'data/database.json');
  */
 const adminId = randomUUID();
 
+const adminEmail = 'yiannis@manatos.gr';
+const systemUserDate = new Date().toISOString();
+const systemUserName = 'Admin';
+
 const adminPasswordHash = await argon2.hash('admin', {
   type: argon2.argon2id,
 });
@@ -36,7 +40,7 @@ const data = {
 
       name: 'Admin',
 
-      email: 'yiannis@manatos.gr',
+      email: adminEmail,
       emailVerified: true,
 
       passwordHash: adminPasswordHash,
@@ -46,8 +50,10 @@ const data = {
 
       enabled: true,
 
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: systemUserDate,
+      createdBy: systemUserName,
+      updatedAt: systemUserDate,
+      updatedBy: systemUserName,
     },
   },
 
@@ -73,9 +79,14 @@ console.log(`Reset ${path}`);
 console.log('');
 console.log('Initial administrator created:');
 console.log(`  Id:       ${adminId}`);
-console.log('  User:     Admin');
-console.log('  Email:    yiannis@manatos.gr');
+console.log('  UserName: Admin');
+console.log('  Email:    $(adminEmail)');
 console.log('  Password: admin');
 console.log('  Role:     Admin');
 console.log('  Verified: Yes');
 console.log('  Enabled:  Yes');
+
+console.log(' createdAt: ${systemUserDate}');
+console.log(' createdBy: ${systemUserName}');
+console.log(' updatedAt: ${systemUserDate}');
+console.log(' updatedBy: ${systemUserName}');

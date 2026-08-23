@@ -1,8 +1,1252 @@
 {
   "info": {
+    "_postman_id": "c0836f70-06ff-4755-812c-51016e62c643",
     "name": "ManatOS System API",
-    "_postman_id": "e7d4d3c6-1b65-4f2f-9c75-000000000001",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "description": "Postman collection for ManatOS API authentication, health, SysBO CRUD and security tests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "1253976",
+    "_collection_link": "https://go.postman.co/collection/1253976-c0836f70-06ff-4755-812c-51016e62c643?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "00 - Server",
+      "item": [
+        {
+          "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Health status is ok', () => pm.expect(json.status).to.eql('ok'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ready",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Readiness status is ok', () => pm.expect(json.status).to.eql('ok'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ready"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 - Authentication",
+      "item": [
+        {
+          "name": "Register Guest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Role forced to Guest', () => pm.expect(json.data.role).to.eql('Guest'));",
+                  "pm.test('Email is not verified', () => pm.expect(json.data.emailVerified).to.eql(false));",
+                  "if (json.data && json.data.id) pm.environment.set('testUserId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"TestGuest\",\n  \"email\": \"testguest@example.com\",\n  \"password\": \"Testing!123\",\n  \"role\": \"Admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Access token returned', () => pm.expect(json.data.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.environment.set('accessToken', json.data.accessToken);",
+                  "if (json.data.user && json.data.user.id) pm.environment.set('adminUserId', json.data.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": \"Admin\",\n  \"password\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password (example - do not run casually)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin\",\n  \"newPassword\": \"Admin!12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\r",
+                  "    'Status 204',\r",
+                  "    () => pm.response.to.have.status(204)\r",
+                  ");\r",
+                  "\r",
+                  "if (pm.response.code === 204) {\r",
+                  "    pm.environment.unset('accessToken');\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "SysUsers",
+      "item": [
+        {
+          "name": "List SysUsers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysUsers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SysUsers metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysUsers",
+                "$metadata"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create SysUser",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set('testUserId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"PostmanUser\",\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"Testing!123\",\n  \"role\": \"Guest\",\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysUsers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get SysUser by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysUsers",
+                "{{testUserId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patch SysUser",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysUsers",
+                "{{testUserId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete SysUser",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysUsers",
+                "{{testUserId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "SysPrincipals",
+      "item": [
+        {
+          "name": "List SysPrincipals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysPrincipals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SysPrincipals metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysPrincipals",
+                "$metadata"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create SysPrincipal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set('testPrincipalId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Principal\",\n  \"principalType\": \"Person\",\n  \"parentId\": null,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysPrincipals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get SysPrincipal by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysPrincipals",
+                "{{testPrincipalId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patch SysPrincipal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysPrincipals",
+                "{{testPrincipalId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete SysPrincipal",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysPrincipals",
+                "{{testPrincipalId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "SysApplications",
+      "item": [
+        {
+          "name": "List SysApplications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysApplications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SysApplications metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysApplications",
+                "$metadata"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create SysApplication",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set('testApplicationId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Application\",\n  \"appName\": \"postman-app\",\n  \"fullName\": \"Postman Test Application\",\n  \"version\": \"0.1.0\",\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysApplications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get SysApplication by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysApplications",
+                "{{testApplicationId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patch SysApplication",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysApplications",
+                "{{testApplicationId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete SysApplication",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysApplications",
+                "{{testApplicationId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "SysLicenses",
+      "item": [
+        {
+          "name": "List SysLicenses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysLicenses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SysLicenses metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysLicenses",
+                "$metadata"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create SysLicense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set('testLicenseId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman License\",\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"applicationId\": \"{{testApplicationId}}\",\n  \"licenseKey\": \"POSTMAN-TEST\",\n  \"status\": \"Active\",\n  \"quantity\": 1,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysLicenses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get SysLicense by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysLicenses",
+                "{{testLicenseId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patch SysLicense",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysLicenses",
+                "{{testLicenseId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete SysLicense",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysLicenses",
+                "{{testLicenseId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - Internal",
+      "item": [
+        {
+          "name": "Verify Local Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": \"Admin\",\n  \"password\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/auth/verify-local",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "auth",
+                "verify-local"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve External Identity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-identities/resolve?provider=Google&subject=test-subject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "external-identities",
+                "resolve"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "Google"
+                },
+                {
+                  "key": "subject",
+                  "value": "test-subject"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set User Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"Testing!123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "SysUsers",
+                "{{testUserId}}",
+                "password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify User Email",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/email-verified",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "SysUsers",
+                "{{testUserId}}",
+                "email-verified"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Link User to Principal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"relationship\": \"Owner\",\n  \"isDefault\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/principals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "SysUsers",
+                "{{testUserId}}",
+                "principals"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          {
+            "key": "key",
+            "value": "x-internal-api-key",
+            "type": "string"
+          },
+          {
+            "key": "value",
+            "value": "{{internalApiKey}}",
+            "type": "string"
+          },
+          {
+            "key": "in",
+            "value": "header",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "90 - Security Tests",
+      "item": [
+        {
+          "name": "Anonymous protected request -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysUsers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Audit-field tampering protection",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Tamper test\",\n  \"createdBy\": \"SomeoneElse\",\n  \"updatedBy\": \"SomeoneElse\",\n  \"createdAt\": \"2000-01-01T00:00:00.000Z\",\n  \"updatedAt\": \"2000-01-01T00:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysApplications",
+                "{{testApplicationId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Revoked token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Run after Logout; expect 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
     {
@@ -16,84 +1260,30 @@
     {
       "key": "internalApiKey",
       "value": "change-this-internal-key"
-    }
-  ],
-  "item": [
-    {
-      "name": "SysUsers",
-      "item": [
-        {
-          "name": "List SysUsers",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysUsers"
-          }
-        },
-        {
-          "name": "SysUsers metadata",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata"
-          }
-        }
-      ]
     },
     {
-      "name": "SysPrincipals",
-      "item": [
-        {
-          "name": "List SysPrincipals",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals"
-          }
-        },
-        {
-          "name": "SysPrincipals metadata",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata"
-          }
-        }
-      ]
+      "key": "accessToken",
+      "value": ""
     },
     {
-      "name": "SysApplications",
-      "item": [
-        {
-          "name": "List SysApplications",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysApplications"
-          }
-        },
-        {
-          "name": "SysApplications metadata",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata"
-          }
-        }
-      ]
+      "key": "adminUserId",
+      "value": ""
     },
     {
-      "name": "SysLicenses",
-      "item": [
-        {
-          "name": "List SysLicenses",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses"
-          }
-        },
-        {
-          "name": "SysLicenses metadata",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata"
-          }
-        }
-      ]
+      "key": "testUserId",
+      "value": ""
+    },
+    {
+      "key": "testPrincipalId",
+      "value": ""
+    },
+    {
+      "key": "testApplicationId",
+      "value": ""
+    },
+    {
+      "key": "testLicenseId",
+      "value": ""
     }
   ]
 }

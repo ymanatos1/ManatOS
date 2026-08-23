@@ -109,9 +109,40 @@ export function buildOpenApiSpec() {
 
     components: {
       schemas,
+
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'Opaque',
+        },
+      },
     },
 
     paths: {
+      /**
+       * Server health/readiness.
+       */
+      '/health': healthOperation('Health check'),
+
+      '/ready': healthOperation('Readiness check'),
+
+      /**
+       * Authentication.
+       */
+      '/api/v1/auth/register': registerOperation(),
+
+      '/api/v1/auth/login': loginOperation(),
+
+      '/api/v1/auth/logout': logoutOperation(),
+
+      '/api/v1/auth/me': meOperation(),
+
+      '/api/v1/auth/password': passwordOperation(),
+
+      /**
+       * Protected SysBO resources.
+       */
       '/api/v1/SysUsers': genericOperations('SysUser'),
 
       '/api/v1/SysPrincipals': genericOperations('SysPrincipal'),
@@ -130,25 +161,248 @@ export function buildOpenApiSpec() {
 const genericOperations = (name: string) => ({
   get: {
     summary: `List ${name} entries`,
-
+    tags: ['System Business Objects'],
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
     responses: {
       '200': {
         description: 'OK',
+      },
+      '401': {
+        description: 'Authentication required',
+      },
+      '403': {
+        description: 'Not authorized',
       },
     },
   },
 
   post: {
     summary: `Create ${name}`,
-
+    tags: ['System Business Objects'],
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
     responses: {
       '201': {
         description: 'Created',
       },
-
+      '401': {
+        description: 'Authentication required',
+      },
+      '403': {
+        description: 'Not authorized',
+      },
       '409': {
         description: 'Unique field conflict',
       },
     },
   },
 });
+
+/**
+ * Public health/readiness endpoint.
+ */
+function healthOperation(summary: string) {
+  return {
+    get: {
+      summary,
+      tags: ['Server'],
+      responses: {
+        '200': {
+          description: 'Server is healthy.',
+        },
+        '503': {
+          description: 'Server is not healthy or ready.',
+        },
+      },
+    },
+  };
+}
+
+function registerOperation() {
+  return {
+    post: {
+      summary: 'Register Guest user',
+      tags: ['Authentication'],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['name', 'email', 'password'],
+              properties: {
+                name: {
+                  type: 'string',
+                  example: 'newuser',
+                },
+                email: {
+                  type: 'string',
+                  format: 'email',
+                  example: 'newuser@example.com',
+                },
+                password: {
+                  type: 'string',
+                  format: 'password',
+                  example: 'Example!123',
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        '201': {
+          description: 'Guest user registered.',
+        },
+        '400': {
+          description: 'Validation failure.',
+        },
+        '409': {
+          description: 'User-name or email already exists.',
+        },
+      },
+    },
+  };
+}
+
+function loginOperation() {
+  return {
+    post: {
+      summary: 'Login with email/user-name and password',
+      tags: ['Authentication'],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['identity', 'password'],
+              properties: {
+                identity: {
+                  type: 'string',
+                  description: 'Unique user-name or email address.',
+                  example: 'Admin',
+                },
+                password: {
+                  type: 'string',
+                  format: 'password',
+                  example: 'admin',
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Login succeeded and an access token was returned.',
+        },
+        '401': {
+          description: 'Invalid credentials.',
+        },
+        '403': {
+          description: 'Account cannot currently log in.',
+        },
+      },
+    },
+  };
+}
+
+function logoutOperation() {
+  return {
+    post: {
+      summary: 'Logout and revoke current access token',
+      tags: ['Authentication'],
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      responses: {
+        '204': {
+          description: 'Logged out successfully.',
+        },
+        '401': {
+          description: 'Authentication required.',
+        },
+      },
+    },
+  };
+}
+
+function meOperation() {
+  return {
+    get: {
+      summary: 'Get current authenticated user',
+      tags: ['Authentication'],
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      responses: {
+        '200': {
+          description: 'Current user returned.',
+        },
+        '401': {
+          description: 'Authentication required.',
+        },
+      },
+    },
+  };
+}
+
+function passwordOperation() {
+  return {
+    put: {
+      summary: 'Change or set current user password',
+      tags: ['Authentication'],
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['newPassword'],
+              properties: {
+                currentPassword: {
+                  type: 'string',
+                  format: 'password',
+                  description: 'Required when the account already has a local password.',
+                },
+                newPassword: {
+                  type: 'string',
+                  format: 'password',
+                  example: 'NewPassword!123',
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Password changed successfully.',
+        },
+        '400': {
+          description: 'Password validation failed.',
+        },
+        '401': {
+          description: 'Authentication or current password verification failed.',
+        },
+      },
+    },
+  };
+}

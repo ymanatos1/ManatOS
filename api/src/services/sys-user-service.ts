@@ -13,6 +13,11 @@ import {
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 
 import { GenericSysBOService } from './generic-sysbo-service.js';
+import {
+  SYSTEM_AUDIT_ACTOR,
+  registrationAuditActor,
+  type AuditActor,
+} from '../audit/audit-service.js';
 
 /**
  * Input accepted when creating a website SysUser.
@@ -63,7 +68,8 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    * When supplied, the password is validated and stored only as an
    * Argon2id hash.
    */
-  async createUser(input: CreateSysUserInput): Promise<SysUser> {
+  //async createUser(input: CreateSysUserInput): Promise<SysUser> {
+  async createUser(input: CreateSysUserInput, actor: AuditActor): Promise<SysUser> {
     return operationContext.run(
       'Prepare SysUser account',
 
@@ -82,39 +88,63 @@ export class SysUserService extends GenericSysBOService<SysUser> {
 
         const passwordChangedAt = passwordHash ? new Date().toISOString() : null;
 
-        return this.create({
-          name: input.name.trim(),
+        return this.create(
+          {
+            name: input.name.trim(),
 
-          email: input.email.trim().toLowerCase(),
+            email: input.email.trim().toLowerCase(),
 
-          emailVerified: input.emailVerified ?? false,
+            emailVerified: input.emailVerified ?? false,
 
-          passwordHash,
-          passwordChangedAt,
+            passwordHash,
+            passwordChangedAt,
 
-          role: input.role ?? SysUserRole.Guest,
+            role: input.role ?? SysUserRole.Guest,
 
-          ...(input.firstName
-            ? {
-                firstName: input.firstName,
-              }
-            : {}),
+            ...(input.firstName
+              ? {
+                  firstName: input.firstName,
+                }
+              : {}),
 
-          ...(input.lastName
-            ? {
-                lastName: input.lastName,
-              }
-            : {}),
+            ...(input.lastName
+              ? {
+                  lastName: input.lastName,
+                }
+              : {}),
 
-          ...(input.description
-            ? {
-                description: input.description,
-              }
-            : {}),
+            ...(input.description
+              ? {
+                  description: input.description,
+                }
+              : {}),
 
-          enabled: input.enabled ?? true,
-        });
+            enabled: input.enabled ?? true,
+          },
+          actor,
+        );
       },
+    );
+  }
+
+  /**
+   * Public website registration.
+   *
+   * The caller can never choose User/Admin here.
+   */
+  async registerGuest(input: Omit<CreateSysUserInput, 'role' | 'emailVerified'>): Promise<SysUser> {
+    return this.createUser(
+      {
+        ...input,
+
+        role: SysUserRole.Guest,
+
+        emailVerified: false,
+
+        enabled: true,
+      },
+
+      registrationAuditActor(input.name),
     );
   }
 
@@ -183,7 +213,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    * This also allows an externally registered account to acquire
    * local email/user-name + password authentication later.
    */
-  async setPassword(id: string, password: string): Promise<SysUser> {
+  async setPassword(id: string, password: string, actor: AuditActor): Promise<SysUser> {
     const passwordHash = await this.hashPassword(password);
 
     return this.update(
@@ -194,19 +224,58 @@ export class SysUserService extends GenericSysBOService<SysUser> {
 
         passwordChangedAt: new Date().toISOString(),
       },
+
+      actor,
     );
+  }
+
+  /**
+   * Change or establish the currently authenticated user's local password.
+   *
+   * If a password already exists, the current password must be supplied.
+   *
+   * An externally authenticated account without a local password may set
+   * its first local password without an old password because possession
+   * of the Bearer token already proves authenticated account access.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string | undefined,
+    newPassword: string,
+    actor: AuditActor,
+  ): Promise<SysUser> {
+    const user = await this.get(userId);
+
+    if (!user) {
+      throw new AuthenticationError();
+    }
+
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        throw new AuthenticationError();
+      }
+
+      const valid = await argon2.verify(user.passwordHash, currentPassword);
+
+      if (!valid) {
+        throw new AuthenticationError();
+      }
+    }
+
+    return this.setPassword(userId, newPassword, actor);
   }
 
   /**
    * Mark the user's email address as verified.
    */
-  async setEmailVerified(id: string): Promise<SysUser> {
+  async setEmailVerified(id: string, actor: AuditActor): Promise<SysUser> {
     return this.update(
       id,
 
       {
         emailVerified: true,
       },
+      actor,
     );
   }
 
@@ -227,17 +296,20 @@ export class SysUserService extends GenericSysBOService<SysUser> {
       return;
     }
 
-    await this.createUser({
-      name,
-      email,
-      password,
+    await this.createUser(
+      {
+        name,
+        email,
+        password,
 
-      emailVerified: true,
+        emailVerified: true,
 
-      role: SysUserRole.Admin,
+        role: SysUserRole.Admin,
 
-      description: 'Bootstrap administrator created from environment configuration.',
-    });
+        description: 'Bootstrap administrator created from environment configuration.',
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
   }
 
   /**

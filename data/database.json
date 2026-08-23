@@ -10,7 +10,23 @@
       "role": "Admin",
       "enabled": true,
       "createdAt": "2026-08-22T04:54:43.873Z",
-      "updatedAt": "2026-08-22T04:54:43.873Z"
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-22T04:54:43.873Z",
+      "updatedBy": "Admin"
+    },
+    "8c94d1b9-7420-4132-9673-f23d1633a056": {
+      "name": "newuser",
+      "email": "newuser@example.com",
+      "emailVerified": false,
+      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$z2wuPEYwyiLb4+JlRSD9Ug$V4329asJMd0oK1WJMyMBelczZLHaCeQnciaFbPN+HAI",
+      "passwordChangedAt": "2026-08-23T00:20:46.912Z",
+      "role": "Guest",
+      "enabled": true,
+      "id": "8c94d1b9-7420-4132-9673-f23d1633a056",
+      "createdAt": "2026-08-23T00:20:46.913Z",
+      "createdBy": "newuser",
+      "updatedAt": "2026-08-23T00:20:46.913Z",
+      "updatedBy": "newuser"
     }
   },
   "sysPrincipals": {},

@@ -9,6 +9,8 @@ import {
   sysLicensesMetadata,
   sysPrincipalsMetadata,
   type SysApplication,
+  type SysBOCreateInput,
+  type SysBOUpdateInput,
   type SysExternalIdentity,
   type SysLicense,
   type SysPrincipal,
@@ -21,6 +23,8 @@ import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 import { GenericSysBOService } from './generic-sysbo-service.js';
 
 import type { SysUserService } from './sys-user-service.js';
+
+import { auditService, type AuditActor } from '../audit/audit-service.js';
 
 /**
  * Application service for customer/commercial principals.
@@ -35,7 +39,11 @@ export class SysPrincipalService extends GenericSysBOService<SysPrincipal> {
    *
    * Adds domain-specific validation for parent relationships.
    */
-  override async update(id: string, changes: Partial<SysPrincipal>): Promise<SysPrincipal> {
+  override async update(
+    id: string,
+    changes: SysBOUpdateInput<SysPrincipal>,
+    actor: AuditActor,
+  ): Promise<SysPrincipal> {
     /*
      * A principal cannot be its own parent.
      */
@@ -56,7 +64,7 @@ export class SysPrincipalService extends GenericSysBOService<SysPrincipal> {
       throw new NotFoundError('SysPrincipal parent', changes.parentId);
     }
 
-    return super.update(id, changes);
+    return super.update(id, changes, actor);
   }
 }
 
@@ -85,6 +93,7 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
    */
   override async create(
     input: Omit<SysLicense, 'id' | 'createdAt' | 'updatedAt'>,
+    actor: AuditActor,
   ): Promise<SysLicense> {
     const principal = await this.store.sysPrincipals.getById(input.principalId);
 
@@ -98,7 +107,7 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
       throw new NotFoundError('SysApplication', input.applicationId);
     }
 
-    return super.create(input);
+    return super.create(input, actor);
   }
 }
 
@@ -149,6 +158,8 @@ export class ExternalIdentityService {
       emailVerified?: boolean;
       displayName?: string;
     },
+
+    actor: AuditActor,
   ): Promise<SysExternalIdentity> {
     const existing = await this.find(input.provider, input.providerSubject);
 
@@ -163,7 +174,7 @@ export class ExternalIdentityService {
     }
 
     return this.store.executeTransaction(async () => {
-      const now = new Date().toISOString();
+      const audit = auditService.createStamp(actor, 'sys-external-identities');
 
       const identity: SysExternalIdentity = {
         id: randomUUID(),
@@ -176,29 +187,15 @@ export class ExternalIdentityService {
 
         providerSubject: input.providerSubject,
 
-        ...(input.email
-          ? {
-              email: input.email,
-            }
-          : {}),
+        ...(input.email ? { email: input.email } : {}),
 
-        ...(input.emailVerified !== undefined
-          ? {
-              emailVerified: input.emailVerified,
-            }
-          : {}),
+        ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
 
-        ...(input.displayName
-          ? {
-              displayName: input.displayName,
-            }
-          : {}),
+        ...(input.displayName ? { displayName: input.displayName } : {}),
 
         enabled: true,
 
-        createdAt: now,
-
-        updatedAt: now,
+        ...audit,
       };
 
       this.store.externalIdentities().set(identity.id, identity);
@@ -233,6 +230,7 @@ export class UserPrincipalService {
     principalId: string,
     relationship: SysUserPrincipalRelationship,
     isDefault = false,
+    actor: AuditActor,
   ): Promise<SysUserPrincipal> {
     return operationContext.run(
       'Link SysUser to SysPrincipal',
@@ -257,7 +255,7 @@ export class UserPrincipalService {
         }
 
         return this.store.executeTransaction(async () => {
-          const now = new Date().toISOString();
+          const audit = auditService.createStamp(actor, 'sys-user-principals');
 
           const link: SysUserPrincipal = {
             id: randomUUID(),
@@ -271,9 +269,7 @@ export class UserPrincipalService {
 
             enabled: true,
 
-            createdAt: now,
-
-            updatedAt: now,
+            ...audit,
           };
 
           this.store.userPrincipals().set(link.id, link);
@@ -288,10 +284,10 @@ export class UserPrincipalService {
           if (user.role === SysUserRole.Guest) {
             await this.store.sysUsers.update(
               user.id,
-
               {
                 role: SysUserRole.User,
               },
+              actor,
             );
           }
 

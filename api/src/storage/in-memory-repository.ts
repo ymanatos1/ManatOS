@@ -3,9 +3,13 @@ import { randomUUID } from 'node:crypto';
 import {
   ConflictError,
   NotFoundError,
+  type SysBOCreateInput,
   type SysBOEntity,
   type SysBOMetadata,
+  type SysBOUpdateInput,
 } from '@manatos/shared';
+
+import { auditService, type AuditActor } from '../audit/audit-service.js';
 
 /**
  * Standard query options supported by the current generic
@@ -170,11 +174,13 @@ export class InMemoryRepository<T extends SysBOEntity> {
    *
    * - id
    * - createdAt
+   * - createdBy
    * - updatedAt
+   * - updatedBy
    *
    * Those values belong to the storage provider.
    */
-  async create(input: Omit<T, 'id' | 'createdAt' | 'updatedAt'>): Promise<T> {
+  async create(input: SysBOCreateInput<T>, actor: AuditActor): Promise<T> {
     /*
      * Creation input is intentionally not a complete T yet.
      * ensureUnique() only needs a property bag, so no unsafe generic
@@ -182,7 +188,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
      */
     await this.ensureUnique(input as Record<string, unknown>);
 
-    const now = new Date().toISOString();
+    const audit = auditService.createStamp(actor, this.metadata.key);
 
     const record = {
       ...input,
@@ -195,9 +201,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
        */
       id: randomUUID(),
 
-      createdAt: now,
-
-      updatedAt: now,
+      ...audit,
     } as T;
 
     this.records.set(record.id, record);
@@ -208,7 +212,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
   /**
    * Update an existing record.
    */
-  async update(id: string, changes: Partial<T>): Promise<T> {
+  async update(id: string, changes: SysBOUpdateInput<T>, actor: AuditActor): Promise<T> {
     const existing = this.records.get(id);
 
     if (!existing) {
@@ -216,16 +220,40 @@ export class InMemoryRepository<T extends SysBOEntity> {
     }
 
     /*
-     * id is deliberately forced back to its existing value so a caller
-     * cannot replace the technical identity of a persisted entity.
+     * This runtime filtering is intentional even though TypeScript also
+     * excludes these fields.
+     *
+     * An HTTP caller can still send arbitrary JSON at runtime.
      */
+    const safeChanges = {
+      ...changes,
+    } as Record<string, unknown>;
+
+    delete safeChanges.id;
+
+    delete safeChanges.createdAt;
+    delete safeChanges.createdBy;
+
+    delete safeChanges.updatedAt;
+    delete safeChanges.updatedBy;
+
+    const audit = auditService.updateStamp(actor, this.metadata.key);
+
     const candidate = {
       ...existing,
-      ...changes,
 
-      id,
+      ...safeChanges,
 
-      updatedAt: new Date().toISOString(),
+      /*
+       * Technical identity and creation audit are immutable.
+       */
+      id: existing.id,
+
+      createdAt: existing.createdAt,
+
+      createdBy: existing.createdBy,
+
+      ...audit,
     } as T;
 
     await this.ensureUnique(
@@ -242,12 +270,16 @@ export class InMemoryRepository<T extends SysBOEntity> {
   /**
    * Delete by generated GUID.
    */
-  async delete(id: string): Promise<void> {
-    const deleted = this.records.delete(id);
+  async delete(id: string, actor: AuditActor): Promise<void> {
+    const existing = this.records.get(id);
 
-    if (!deleted) {
+    if (!existing) {
       throw new NotFoundError(this.metadata.name, id);
     }
+
+    await auditService.beforeDelete(actor, this.metadata.key, existing);
+
+    this.records.delete(id);
   }
 
   /**

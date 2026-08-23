@@ -1,13 +1,19 @@
-import { Router, type RequestHandler } from 'express';
+import { Router, type Request, type RequestHandler } from 'express';
 
 import {
+  AuthenticationError,
   NotFoundError,
   operationContext,
   type SysBOEntity,
   type SysBOMetadata,
 } from '@manatos/shared';
 
+import { authenticatedAuditActor, type AuditActor } from '../audit/audit-service.js';
+
+import type { AuthorizationService } from '../auth/authorization-service.js';
+
 import type { GenericSysBOService } from '../services/generic-sysbo-service.js';
+
 import { parseListQuery } from './query.js';
 
 /**
@@ -29,13 +35,16 @@ export function createSysBORouter<T extends SysBOEntity>(
   service: GenericSysBOService<T>,
   metadata: SysBOMetadata<T>,
 
+  authorization: AuthorizationService,
+
   /**
    * Optional entity-specific creation hook.
    *
    * SysUser uses this because creation may involve password hashing
    * and other account-specific processing before persistence.
    */
-  customCreate?: (body: Record<string, unknown>) => Promise<T>,
+
+  customCreate?: (body: Record<string, unknown>, actor: AuditActor) => Promise<T>,
 ): Router {
   const router = Router();
 
@@ -56,6 +65,9 @@ export function createSysBORouter<T extends SysBOEntity>(
       `List ${metadata.pluralName}`,
 
       async () => {
+        const subject = securityContext(req);
+        await authorization.assertCan('read', subject, metadata.key);
+
         const result = await service.list(parseListQuery(req));
 
         const includeMetadata = req.query.includeMetadata === 'true';
@@ -67,11 +79,8 @@ export function createSysBORouter<T extends SysBOEntity>(
 
           paging: {
             total: result.total,
-
             page: result.page,
-
             pageSize: result.pageSize,
-
             totalPages: result.totalPages,
           },
         });
@@ -82,38 +91,37 @@ export function createSysBORouter<T extends SysBOEntity>(
   /**
    * Read one BO entry by its generated GUID.
    */
-  router.get(
-    '/:id',
+  router.get('/:id', async (req, res) => {
+    /*
+     * Express 5 types route parameters conservatively as potentially
+     * string | string[] | undefined.
+     *
+     * Our API contract requires exactly one string GUID, so normalize
+     * the route value here at the HTTP boundary.
+     */
+    const id = String(req.params.id ?? '');
 
-    async (req, res) => {
-      /*
-       * Express 5 types route parameters conservatively as potentially
-       * string | string[] | undefined.
-       *
-       * Our API contract requires exactly one string GUID, so normalize
-       * the route value here at the HTTP boundary.
-       */
-      const id = String(req.params.id ?? '');
+    await operationContext.runRoot(
+      `Read ${metadata.name}`,
 
-      await operationContext.runRoot(
-        `Read ${metadata.name}`,
+      async (scope) => {
+        scope.comment('id', id);
 
-        async (scope) => {
-          scope.comment('id', id);
+        const item = await service.get(id);
 
-          const item = await service.get(id);
+        if (!item) {
+          throw new NotFoundError(metadata.name, id);
+        }
 
-          if (!item) {
-            throw new NotFoundError(metadata.name, id);
-          }
+        const subject = securityContext(req);
+        await authorization.assertCan('read', subject, metadata.key, item);
 
-          res.json({
-            data: sanitize(item, metadata),
-          });
-        },
-      );
-    },
-  );
+        res.json({
+          data: sanitize(item, metadata),
+        });
+      },
+    );
+  });
 
   /**
    * Create one BO entry.
@@ -123,6 +131,11 @@ export function createSysBORouter<T extends SysBOEntity>(
       `Create ${metadata.name}`,
 
       async (scope) => {
+        const subject = securityContext(req);
+        await authorization.assertCan('create', subject, metadata.key);
+
+        const actor = authenticatedAuditActor(subject.userId, subject.userName);
+
         scope.comment('name', req.body?.name);
 
         /*
@@ -132,8 +145,8 @@ export function createSysBORouter<T extends SysBOEntity>(
          * before persistence.
          */
         const item = customCreate
-          ? await customCreate(req.body ?? {})
-          : await service.create(req.body);
+          ? await customCreate(req.body ?? {}, actor)
+          : await service.create(req.body, actor);
 
         res.status(201).json({
           data: sanitize(item, metadata),
@@ -157,12 +170,23 @@ export function createSysBORouter<T extends SysBOEntity>(
       `Update ${metadata.name}`,
 
       async (scope) => {
+        const subject = securityContext(req);
+
+        const existing = await service.get(id);
+
+        if (!existing) {
+          throw new NotFoundError(metadata.name, id);
+        }
+
+        await authorization.assertCan('update', subject, metadata.key, existing);
+        const actor = authenticatedAuditActor(subject.userId, subject.userName);
+
         scope.addContext({
           id,
           name: req.body?.name,
         });
 
-        const item = await service.update(id, req.body);
+        const item = await service.update(id, req.body, actor);
 
         res.json({
           data: sanitize(item, metadata),
@@ -188,9 +212,24 @@ export function createSysBORouter<T extends SysBOEntity>(
         `Delete ${metadata.name}`,
 
         async (scope) => {
-          scope.comment('id', id);
+          const subject = securityContext(req);
 
-          await service.delete(id);
+          const existing = await service.get(id);
+
+          if (!existing) {
+            throw new NotFoundError(metadata.name, id);
+          }
+
+          await authorization.assertCan('delete', subject, metadata.key, existing);
+
+          const actor = authenticatedAuditActor(subject.userId, subject.userName);
+
+          scope.addContext({
+            id,
+            deletedBy: actor.userName,
+          });
+
+          await service.delete(id, actor);
 
           res.status(204).end();
         },
@@ -242,4 +281,16 @@ function sanitize<T extends SysBOEntity>(
   }
 
   return result;
+}
+
+/**
+ * Return the authenticated API subject attached by
+ * requireAuthenticated middleware.
+ */
+function securityContext(req: Request) {
+  if (!req.auth) {
+    throw new AuthenticationError();
+  }
+
+  return req.auth;
 }
