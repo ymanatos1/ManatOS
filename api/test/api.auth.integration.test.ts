@@ -1,17 +1,12 @@
-import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
 
-import {
-  SYSTEM_AUDIT_ACTOR,
-} from '../src/audit/audit-service.js';
+import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
+
+import { config } from '../src/config.js';
 
 import {
   createTestApi,
@@ -21,10 +16,79 @@ import {
   expectQuerySuccess,
 } from './test-helpers.js';
 
+/**
+ * Public SysUser representation returned by the API.
+ *
+ * passwordHash must never appear in this object.
+ */
+interface PublicSysUser {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  role: string;
+  enabled: boolean;
+  hasPassword: boolean;
+  passwordChangedAt?: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  firstName?: string;
+  lastName?: string;
+  description?: string;
+}
+
+/**
+ * Payload returned after successful API login.
+ */
+interface LoginData {
+  accessToken: string;
+  tokenType: 'Bearer';
+  sessionId: string;
+  expiresInSeconds: number;
+  expiresAt: string;
+  user: PublicSysUser;
+}
+
+/**
+ * One session returned by GET /auth/sessions.
+ */
+interface UserSessionData {
+  sessionId: string;
+  createdAt: string;
+  expiresAt: string;
+  current: boolean;
+  clientName?: string;
+  userAgent?: string;
+  ipAddress?: string;
+}
+
+/**
+ * Payload returned by GET /auth/sessions.
+ */
+interface SessionsData {
+  sessions: UserSessionData[];
+  total: number;
+}
+
+/**
+ * Payload returned by POST /auth/logout.
+ */
+interface LogoutData {
+  revoked: boolean;
+  sessionId?: string;
+}
+
+/**
+ * Payload returned by POST /auth/logout-all.
+ */
+interface LogoutAllData {
+  revokedSessions: number;
+}
+
 describe('API integration - authentication and sessions', () => {
-  let context: Awaited<
-    ReturnType<typeof createTestApi>
-  >;
+  let context: Awaited<ReturnType<typeof createTestApi>>;
 
   beforeEach(async () => {
     context = await createTestApi();
@@ -33,37 +97,52 @@ describe('API integration - authentication and sessions', () => {
   it('registers only Guest accounts and never exposes passwordHash', async () => {
     const response = await registerGuest(
       context.app,
+
       {
         name: 'Yiannis',
+
         email: 'yiannis@example.test',
+
         password: 'Klania1234!',
+
+        /**
+         * A public registration request must not be able
+         * to promote itself to Admin.
+         */
         role: 'Admin',
       },
     );
 
     expect(response.status).toBe(201);
-    expectCommandSuccess(response.body);
 
-    expect(response.body.data).toMatchObject({
+    const user = commandData<PublicSysUser>(response.body);
+
+    expect(user).toMatchObject({
       name: 'Yiannis',
+
       email: 'yiannis@example.test',
+
       role: 'Guest',
+
       emailVerified: false,
+
       enabled: true,
+
       hasPassword: true,
     });
 
-    expect(response.body.data).not.toHaveProperty(
-      'passwordHash',
-    );
+    expect(user).not.toHaveProperty('passwordHash');
   });
 
   it('rejects duplicate user-name and email values case-insensitively', async () => {
     const original = await registerGuest(
       context.app,
+
       {
         name: 'Yiannis',
+
         email: 'yiannis@example.test',
+
         password: 'Klania1234!',
       },
     );
@@ -72,347 +151,517 @@ describe('API integration - authentication and sessions', () => {
 
     const duplicateName = await registerGuest(
       context.app,
+
       {
         name: 'YIANNIS',
+
         email: 'different@example.test',
+
         password: 'Klania1234!',
       },
     );
 
     expect(duplicateName.status).toBe(409);
+
     expectFailure(duplicateName.body);
 
-    expect(duplicateName.body.error.code).toBe(
-      'DUPLICATE_BO_VALUE',
-    );
+    expect(duplicateName.body.error.code).toBe('DUPLICATE_BO_VALUE');
 
     const duplicateEmail = await registerGuest(
       context.app,
+
       {
         name: 'DifferentUser',
+
         email: 'YIANNIS@EXAMPLE.TEST',
+
         password: 'Klania1234!',
       },
     );
 
     expect(duplicateEmail.status).toBe(409);
+
     expectFailure(duplicateEmail.body);
 
-    expect(duplicateEmail.body.error.code).toBe(
-      'DUPLICATE_BO_VALUE',
-    );
+    expect(duplicateEmail.body.error.code).toBe('DUPLICATE_BO_VALUE');
   });
 
   it('requires email verification before login and accepts either user-name or email afterwards', async () => {
     const registration = await registerGuest(
       context.app,
+
       {
         name: 'Yiannis',
+
         email: 'yiannis@example.test',
+
         password: 'Klania1234!',
       },
     );
 
-    const userId =
-      registration.body.data.id as string;
+    const registeredUser = commandData<PublicSysUser>(registration.body);
+
+    const userId = registeredUser.id;
 
     const blocked = await login(
       context.app,
+
       'Yiannis',
+
       'Klania1234!',
     );
 
     expect(blocked.status).toBe(403);
+
     expectFailure(blocked.body);
 
     /**
-     * Email delivery/verification-link mechanics are a separate concern.
-     * Mark the account verified through the service to continue testing the
-     * public login contract itself.
+     * Email delivery / verification-link mechanics are
+     * a different responsibility.
+     *
+     * Mark the account verified through the service layer
+     * so this test can continue concentrating on the public
+     * login contract.
      */
-    await context.services.users.setEmailVerified(
-      userId,
-      SYSTEM_AUDIT_ACTOR,
-    );
+    await context.services.users.setEmailVerified(userId, SYSTEM_AUDIT_ACTOR);
 
+    /**
+     * Login by unique user-name.
+     */
     const byUserName = await login(
       context.app,
+
       'Yiannis',
+
       'Klania1234!',
     );
 
     expect(byUserName.status).toBe(200);
-    expectCommandSuccess(byUserName.body);
 
-    expect(byUserName.body.data.user.name).toBe(
-      'Yiannis',
-    );
+    const userNameLogin = commandData<LoginData>(byUserName.body);
 
+    expect(userNameLogin.user.name).toBe('Yiannis');
+
+    /**
+     * Login by unique email.
+     */
     const byEmail = await login(
       context.app,
+
       'yiannis@example.test',
+
       'Klania1234!',
     );
 
     expect(byEmail.status).toBe(200);
-    expectCommandSuccess(byEmail.body);
 
-    expect(byEmail.body.data.user.id).toBe(
-      userId,
-    );
+    const emailLogin = commandData<LoginData>(byEmail.body);
+
+    expect(emailLogin.user.id).toBe(userId);
   });
 
   it('tracks concurrent sessions, revokes one session, then revokes all remaining sessions', async () => {
     const registration = await registerGuest(
       context.app,
+
       {
         name: 'SessionUser',
+
         email: 'sessions@example.test',
+
         password: 'Session!1234',
       },
     );
 
-    const userId =
-      registration.body.data.id as string;
+    const registeredUser = commandData<PublicSysUser>(registration.body);
 
-    await context.services.users.setEmailVerified(
-      userId,
-      SYSTEM_AUDIT_ACTOR,
-    );
+    const userId = registeredUser.id;
 
-    const firstLogin = await request(
-      context.app,
-    )
+    await context.services.users.setEmailVerified(userId, SYSTEM_AUDIT_ACTOR);
+
+    /**
+     * Create independent API session A.
+     */
+    const firstLogin = await request(context.app)
       .post('/api/v1/auth/login')
-      .set(
-        'x-client-name',
-        'Vitest Session A',
-      )
+      .set('x-client-name', 'Vitest Session A')
       .send({
         identity: 'SessionUser',
+
         password: 'Session!1234',
       });
 
     expect(firstLogin.status).toBe(200);
-    expectCommandSuccess(firstLogin.body);
 
-    const tokenA =
-      firstLogin.body.data.accessToken as string;
+    const firstLoginData = commandData<LoginData>(firstLogin.body);
 
-    const secondLogin = await request(
-      context.app,
-    )
+    const tokenA = firstLoginData.accessToken;
+
+    /**
+     * Create independent API session B.
+     */
+    const secondLogin = await request(context.app)
       .post('/api/v1/auth/login')
-      .set(
-        'x-client-name',
-        'Vitest Session B',
-      )
+      .set('x-client-name', 'Vitest Session B')
       .send({
         identity: 'SessionUser',
+
         password: 'Session!1234',
       });
 
     expect(secondLogin.status).toBe(200);
-    expectCommandSuccess(secondLogin.body);
 
-    const tokenB =
-      secondLogin.body.data.accessToken as string;
+    const secondLoginData = commandData<LoginData>(secondLogin.body);
 
+    const tokenB = secondLoginData.accessToken;
+
+    /**
+     * Separate logins must produce separate opaque tokens.
+     */
     expect(tokenB).not.toBe(tokenA);
 
-    const sessionsA = await request(
-      context.app,
-    )
+    /**
+     * Session A sees both active sessions and recognizes itself
+     * as the current one.
+     */
+    const sessionsA = await request(context.app)
       .get('/api/v1/auth/sessions')
-      .set(
-        'Authorization',
-        bearer(tokenA),
-      );
+      .set('Authorization', bearer(tokenA));
 
     expect(sessionsA.status).toBe(200);
-    expectQuerySuccess(sessionsA.body);
 
-    expect(sessionsA.body.data.total).toBe(2);
+    const sessionsData = queryData<SessionsData>(sessionsA.body);
 
-    expect(
-      sessionsA.body.data.sessions.filter(
-        (session: { current: boolean }) =>
-          session.current,
-      ),
-    ).toHaveLength(1);
+    expect(sessionsData.total).toBe(2);
 
-    expect(
-      sessionsA.body.data.sessions.map(
-        (session: {
-          clientName?: string;
-        }) => session.clientName,
-      ),
-    ).toEqual(
-      expect.arrayContaining([
-        'Vitest Session A',
-        'Vitest Session B',
-      ]),
-    );
+    expect(sessionsData.sessions.filter((session) => session.current)).toHaveLength(1);
 
-    const logoutA = await request(
-      context.app,
-    )
-      .post('/api/v1/auth/logout')
-      .set(
-        'Authorization',
-        bearer(tokenA),
-      );
-
-    expect(logoutA.status).toBe(200);
-    expectCommandSuccess(logoutA.body);
-
-    expect(logoutA.body.data.revoked).toBe(true);
-
-    const revokedA = await request(
-      context.app,
-    )
-      .get('/api/v1/auth/me')
-      .set(
-        'Authorization',
-        bearer(tokenA),
-      );
-
-    expect(revokedA.status).toBe(401);
-    expectFailure(revokedA.body);
-
-    expect(revokedA.body.error.code).toBe(
-      'INVALID_ACCESS_TOKEN',
+    expect(sessionsData.sessions.map((session) => session.clientName)).toEqual(
+      expect.arrayContaining(['Vitest Session A', 'Vitest Session B']),
     );
 
     /**
-     * Revoking session A must not invalidate independent session B.
+     * Logout session A only.
      */
-    const stillValidB = await request(
-      context.app,
-    )
+    const logoutA = await request(context.app)
+      .post('/api/v1/auth/logout')
+      .set('Authorization', bearer(tokenA));
+
+    expect(logoutA.status).toBe(200);
+
+    const logoutAData = commandData<LogoutData>(logoutA.body);
+
+    expect(logoutAData.revoked).toBe(true);
+
+    /**
+     * Token A must now be invalid.
+     */
+    const revokedA = await request(context.app)
       .get('/api/v1/auth/me')
-      .set(
-        'Authorization',
-        bearer(tokenB),
-      );
+      .set('Authorization', bearer(tokenA));
+
+    expect(revokedA.status).toBe(401);
+
+    expectFailure(revokedA.body);
+
+    expect(revokedA.body.error.code).toBe('INVALID_ACCESS_TOKEN');
+
+    /**
+     * Revoking session A must not invalidate independent
+     * session B.
+     */
+    const stillValidB = await request(context.app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', bearer(tokenB));
 
     expect(stillValidB.status).toBe(200);
-    expectQuerySuccess(stillValidB.body);
 
-    const logoutAll = await request(
-      context.app,
-    )
+    const currentUser = queryData<PublicSysUser>(stillValidB.body);
+
+    expect(currentUser.id).toBe(userId);
+
+    /**
+     * Revoke all remaining sessions for this user through B.
+     */
+    const logoutAll = await request(context.app)
       .post('/api/v1/auth/logout-all')
-      .set(
-        'Authorization',
-        bearer(tokenB),
-      );
+      .set('Authorization', bearer(tokenB));
 
     expect(logoutAll.status).toBe(200);
-    expectCommandSuccess(logoutAll.body);
 
-    expect(
-      logoutAll.body.data.revokedSessions,
-    ).toBeGreaterThanOrEqual(1);
+    const logoutAllData = commandData<LogoutAllData>(logoutAll.body);
 
-    const revokedB = await request(
-      context.app,
-    )
+    expect(logoutAllData.revokedSessions).toBeGreaterThanOrEqual(1);
+
+    /**
+     * Session B must now be invalid as well.
+     */
+    const revokedB = await request(context.app)
       .get('/api/v1/auth/me')
-      .set(
-        'Authorization',
-        bearer(tokenB),
-      );
+      .set('Authorization', bearer(tokenB));
 
     expect(revokedB.status).toBe(401);
+
     expectFailure(revokedB.body);
   });
 
   it('allows an authenticated user to change the local password', async () => {
-    const registration = await registerGuest(
-      context.app,
-      {
-        name: 'PasswordUser',
-        email: 'password@example.test',
-        password: 'Initial!1234',
-      },
-    );
+    const registration = await registerGuest(context.app, {
+      name: 'PasswordUser',
+      email: 'password@example.test',
+      password: 'Initial!1234',
+    });
 
-    const userId =
-      registration.body.data.id as string;
+    const registeredUser = commandData<PublicSysUser>(registration.body);
 
-    await context.services.users.setEmailVerified(
-      userId,
-      SYSTEM_AUDIT_ACTOR,
-    );
+    const userId = registeredUser.id;
 
-    const signedIn = await login(
-      context.app,
-      'PasswordUser',
-      'Initial!1234',
-    );
+    await context.services.users.setEmailVerified(userId, SYSTEM_AUDIT_ACTOR);
 
-    const token =
-      signedIn.body.data.accessToken as string;
+    /**
+     * Authenticate with the original password.
+     */
+    const signedIn = await login(context.app, 'PasswordUser', 'Initial!1234');
 
-    const changed = await request(
-      context.app,
-    )
+    const signedInData = commandData<LoginData>(signedIn.body);
+
+    const token = signedInData.accessToken;
+
+    /**
+     * Change password through the authenticated API command.
+     */
+    const changed = await request(context.app)
       .put('/api/v1/auth/password')
-      .set(
-        'Authorization',
-        bearer(token),
-      )
+      .set('Authorization', bearer(token))
       .send({
         currentPassword: 'Initial!1234',
         newPassword: 'Changed!1234',
       });
 
     expect(changed.status).toBe(200);
-    expectCommandSuccess(changed.body);
 
-    expect(changed.body.data).not.toHaveProperty(
-      'passwordHash',
-    );
+    const changedUser = commandData<PublicSysUser>(changed.body);
 
+    expect(changedUser).not.toHaveProperty('passwordHash');
+
+    expect(changedUser.hasPassword).toBe(true);
+
+    /**
+     * Original password must stop working.
+     */
     const oldPassword = await login(
       context.app,
+
       'PasswordUser',
+
       'Initial!1234',
     );
 
     expect(oldPassword.status).toBe(401);
+
     expectFailure(oldPassword.body);
 
+    /**
+     * New password must work.
+     */
     const newPassword = await login(
       context.app,
+
       'PasswordUser',
+
       'Changed!1234',
     );
 
     expect(newPassword.status).toBe(200);
-    expectCommandSuccess(newPassword.body);
+
+    const newLoginData = commandData<LoginData>(newPassword.body);
+
+    expect(newLoginData.user.id).toBe(userId);
+  });
+
+  it('creates an API session for a trusted externally authenticated verified Guest', async () => {
+    /**
+     * Create a Guest through the trusted external-registration endpoint.
+     *
+     * This intentionally has:
+     *
+     * - verified email;
+     * - no local password;
+     * - Guest role.
+     */
+    const registration = await request(context.app)
+      .post('/api/v1/internal/auth/register-external')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({
+        name: 'ExternalGuest',
+
+        email: 'external.guest@example.test',
+
+        emailVerified: true,
+
+        firstName: 'External',
+      });
+
+    expect(registration.status).toBe(201);
+
+    const registeredUser = commandData<PublicSysUser>(registration.body);
+
+    expect(registeredUser).toMatchObject({
+      name: 'ExternalGuest',
+
+      email: 'external.guest@example.test',
+
+      role: 'Guest',
+
+      emailVerified: true,
+
+      enabled: true,
+
+      hasPassword: false,
+    });
+
+    const userId = registeredUser.id;
+
+    /**
+     * The trusted UI now asks the API to create the ordinary
+     * Bearer session corresponding to that already-authenticated user.
+     */
+    const session = await request(context.app)
+      .post('/api/v1/internal/auth/session')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({
+        userId,
+
+        clientName: 'Vitest Web UI / Google',
+
+        userAgent: 'Vitest',
+
+        ipAddress: '127.0.0.1',
+      });
+
+    expect(session.status).toBe(200);
+
+    const sessionData = commandData<LoginData>(session.body);
+
+    expect(sessionData.accessToken).toBeTypeOf('string');
+
+    expect(sessionData.sessionId).toBeTypeOf('string');
+
+    expect(sessionData.expiresAt).toBeTypeOf('string');
+
+    expect(sessionData.user.id).toBe(userId);
+
+    expect(sessionData.user.hasPassword).toBe(false);
+
+    /**
+     * The resulting token must behave exactly like an ordinary
+     * API login token.
+     */
+    const me = await request(context.app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', bearer(sessionData.accessToken));
+
+    expect(me.status).toBe(200);
+
+    const currentUser = queryData<PublicSysUser>(me.body);
+
+    expect(currentUser.id).toBe(userId);
+  });
+
+  it('refuses trusted API-session creation until the user email is verified', async () => {
+    /**
+     * Public registration creates:
+     *
+     *   role = Guest
+     *   emailVerified = false
+     */
+    const registration = await registerGuest(
+      context.app,
+
+      {
+        name: 'UnverifiedBridgeUser',
+
+        email: 'unverified.bridge@example.test',
+
+        password: 'Bridge!1234',
+      },
+    );
+
+    expect(registration.status).toBe(201);
+
+    const registeredUser = commandData<PublicSysUser>(registration.body);
+
+    expect(registeredUser.emailVerified).toBe(false);
+
+    /**
+     * Even the trusted UI process is not allowed to bypass the
+     * verified-email requirement when creating an API session.
+     */
+    const session = await request(context.app)
+      .post('/api/v1/internal/auth/session')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({
+        userId: registeredUser.id,
+
+        clientName: 'Vitest Web UI',
+      });
+
+    expect(session.status).toBe(403);
+
+    expectFailure(session.body);
+
+    expect(session.body.error.code).toBe('FORBIDDEN');
   });
 });
 
+/**
+ * Register one Guest through the real public HTTP endpoint.
+ */
 async function registerGuest(
   app: ReturnType<typeof createApp>,
+
   body: Record<string, unknown>,
 ) {
-  return request(app)
-    .post('/api/v1/auth/register')
-    .send(body);
+  return request(app).post('/api/v1/auth/register').send(body);
 }
 
+/**
+ * Authenticate through the real public API.
+ */
 async function login(
   app: ReturnType<typeof createApp>,
+
   identity: string,
+
   password: string,
 ) {
-  return request(app)
-    .post('/api/v1/auth/login')
-    .send({
-      identity,
-      password,
-    });
+  return request(app).post('/api/v1/auth/login').send({
+    identity,
+    password,
+  });
+}
+
+/**
+ * Assert the global command-response envelope and return its
+ * data using the concrete payload type expected by this test.
+ *
+ * This is intentionally local to the test file.
+ *
+ * The common expectCommandSuccess() helper remains correctly generic
+ * and therefore exposes data as unknown.
+ */
+function commandData<T>(body: unknown): T {
+  expectCommandSuccess(body);
+
+  return body.data as T;
+}
+
+/**
+ * Assert the global GET/query-response envelope and return its
+ * concrete payload.
+ */
+function queryData<T>(body: unknown): T {
+  expectQuerySuccess(body);
+
+  return body.data as T;
 }

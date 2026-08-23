@@ -1,6 +1,13 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 
-import { operationContext, type SysUser, type SysUserPrincipalRelationship } from '@manatos/shared';
+import {
+  ForbiddenAppError,
+  NotFoundError,
+  SysUserRole,
+  operationContext,
+  type SysUser,
+  type SysUserPrincipalRelationship,
+} from '@manatos/shared';
 
 import type { ExternalIdentityService, UserPrincipalService } from '../services/domain-services.js';
 
@@ -8,13 +15,30 @@ import type { SysUserService } from '../services/sys-user-service.js';
 
 import { internalAuditActor } from '../audit/audit-service.js';
 
+import { accessTokenStore, type SessionClientInfo } from '../auth/access-token-store.js';
+
+import { config } from '../config.js';
+
 import { sendCommand, sendQuery } from './api-response.js';
 
 /**
  * Creates API endpoints intended for trusted internal use.
  *
- * These endpoints support authentication-related operations that
- * should not be exposed through the normal generic SysBO CRUD API.
+ * The complete router is mounted behind requireInternalApiKey.
+ *
+ * These endpoints are used for operations where an ordinary user Bearer
+ * token does not yet exist, for example:
+ *
+ * - external-provider account resolution;
+ * - external-provider registration;
+ * - email verification;
+ * - password recovery;
+ * - creation of an API session after trusted UI authentication.
+ *
+ * The internal API key authenticates the trusted UI PROCESS.
+ *
+ * It does not replace the user's Bearer token for normal business/SysBO
+ * operations.
  */
 export function createInternalRouter(
   users: SysUserService,
@@ -28,12 +52,14 @@ export function createInternalRouter(
   /**
    * Verify local credentials.
    *
-   * The identity supplied by the caller may be either:
+   * The normal browser/UI sign-in flow now uses:
    *
-   * - user-name
-   * - email address
+   *   POST /api/v1/auth/login
    *
-   * The service performs the actual password verification.
+   * directly.
+   *
+   * This internal endpoint is retained because it may still be useful to
+   * trusted internal clients.
    */
   router.post(
     '/auth/verify-local',
@@ -55,7 +81,6 @@ export function createInternalRouter(
 
           const user = await users.verifyLocalCredentials(
             String(req.body?.identity ?? ''),
-
             String(req.body?.password ?? ''),
           );
 
@@ -65,10 +90,197 @@ export function createInternalRouter(
   );
 
   /**
+   * Trusted SysUser lookup by user-name or email.
+   *
+   * Used before a normal authenticated API session exists, primarily for:
+   *
+   * - password recovery;
+   * - external-provider registration duplicate checks.
+   *
+   * This remains internal so unauthenticated public clients do not receive
+   * a general account-discovery endpoint.
+   */
+  router.get(
+    '/auth/lookup',
+
+    async (req, res) => {
+      const identity = String(req.query.identity ?? '');
+
+      const user = await users.lookupByIdentity(identity);
+
+      sendQuery(res, user ? publicUser(user) : null);
+    },
+  );
+
+  /**
+   * Register a SysUser following successful authentication by a trusted
+   * external identity provider handled by the UI.
+   *
+   * The caller is never allowed to choose User/Admin here.
+   *
+   * External-provider registrations always start as Guest.
+   */
+  router.post(
+    '/auth/register-external',
+
+    async (req, res) => {
+      await operationContext.runRoot(
+        'Register external-provider SysUser',
+
+        async (scope) => {
+          const name = String(req.body?.name ?? '');
+
+          const email = String(req.body?.email ?? '');
+
+          const emailVerified = Boolean(req.body?.emailVerified);
+
+          scope.addContext({
+            name,
+            email,
+            password: req.body?.password,
+            emailVerified,
+          });
+
+          const user = await users.createUser(
+            {
+              name,
+              email,
+
+              /*
+               * Security invariant:
+               *
+               * external registration cannot request User/Admin.
+               */
+              role: SysUserRole.Guest,
+
+              emailVerified,
+
+              enabled: true,
+
+              ...(req.body?.password
+                ? {
+                    password: String(req.body.password),
+                  }
+                : {}),
+
+              ...(req.body?.firstName
+                ? {
+                    firstName: String(req.body.firstName),
+                  }
+                : {}),
+
+              ...(req.body?.lastName
+                ? {
+                    lastName: String(req.body.lastName),
+                  }
+                : {}),
+
+              ...(req.body?.description
+                ? {
+                    description: String(req.body.description),
+                  }
+                : {}),
+            },
+
+            actor,
+          );
+
+          sendCommand(
+            res,
+            `External-provider user '${user.name}' registered successfully.`,
+            publicUser(user),
+            201,
+          );
+        },
+      );
+    },
+  );
+
+  /**
+   * Create an ordinary API session after the trusted UI has already
+   * authenticated the user through another approved mechanism.
+   *
+   * Primary example:
+   *
+   *   Google/Facebook
+   *       -> Passport in UI
+   *       -> resolved SysUser
+   *       -> POST /internal/auth/session
+   *       -> ordinary opaque API Bearer token
+   *
+   * This endpoint does not authenticate Google/Facebook itself.
+   */
+  router.post(
+    '/auth/session',
+
+    async (req, res) => {
+      await operationContext.runRoot(
+        'Create trusted UI API session',
+
+        async (scope) => {
+          const userId = String(req.body?.userId ?? '');
+
+          scope.addContext({
+            userId,
+            clientName: req.body?.clientName,
+          });
+
+          const user = await users.get(userId);
+
+          if (!user) {
+            throw new NotFoundError('SysUser', userId);
+          }
+
+          /*
+           * Disabled users must not receive new API sessions.
+           */
+          if (!user.enabled) {
+            throw new ForbiddenAppError('Disabled SysUser cannot receive an API session.');
+          }
+
+          /*
+           * Preserve the same verification requirement as normal
+           * POST /api/v1/auth/login.
+           */
+          if (!user.emailVerified) {
+            throw new ForbiddenAppError(
+              'Email verification is required before API session creation.',
+            );
+          }
+
+          const clientInfo = trustedSessionClientInfo(req);
+
+          const token = accessTokenStore.create(user, config.API_ACCESS_TOKEN_MINUTES, clientInfo);
+
+          sendCommand(
+            res,
+
+            `API session created successfully for user ${user.name}.`,
+
+            {
+              accessToken: token.token,
+
+              tokenType: 'Bearer',
+
+              sessionId: token.tokenId,
+
+              expiresInSeconds: config.API_ACCESS_TOKEN_MINUTES * 60,
+
+              expiresAt: new Date(token.expiresAt).toISOString(),
+
+              user: publicUser(user),
+            },
+          );
+        },
+      );
+    },
+  );
+
+  /**
    * Resolve an external authentication identity.
    *
-   * Typical providers may include Google, Facebook and future
-   * OAuth/OIDC identity providers.
+   * Typical providers include Google, Facebook and future OAuth/OIDC
+   * identity providers.
    */
   router.get(
     '/external-identities/resolve',
@@ -91,8 +303,10 @@ export function createInternalRouter(
     '/SysUsers/:userId/external-identities',
 
     async (req, res) => {
+      const userId = String(req.params.userId ?? '');
+
       const externalIdentity = await ext.add(
-        req.params.userId,
+        userId,
 
         {
           provider: String(req.body.provider),
@@ -128,14 +342,16 @@ export function createInternalRouter(
   /**
    * Set or replace a SysUser local password.
    *
-   * This allows an externally registered user to later establish
-   * local email/user-name + password authentication as well.
+   * This internal form remains appropriate for trusted password-recovery
+   * and external-account setup flows where an authenticated Bearer session
+   * may not yet exist.
    */
   router.put(
     '/SysUsers/:userId/password',
 
     async (req, res) => {
       const userId = String(req.params.userId ?? '');
+
       const user = await users.setPassword(userId, String(req.body.password ?? ''), actor);
 
       sendCommand(res, `Password set successfully for user '${user.name}'.`, publicUser(user));
@@ -150,6 +366,7 @@ export function createInternalRouter(
 
     async (req, res) => {
       const userId = String(req.params.userId ?? '');
+
       const user = await users.setEmailVerified(userId, actor);
 
       sendCommand(res, `Email verified successfully for user '${user.name}'.`, publicUser(user));
@@ -158,26 +375,37 @@ export function createInternalRouter(
 
   /**
    * Associate a website SysUser with a customer SysPrincipal.
+   *
+   * IMPORTANT:
+   *
+   * UserPrincipalService.link() has exactly five arguments:
+   *
+   *   1. userId
+   *   2. principalId
+   *   3. relationship
+   *   4. isDefault
+   *   5. actor
+   *
+   * Keep the TypeScript type assertion on the same expression line to
+   * avoid the parser ambiguity seen in the previous generated version.
    */
   router.post(
     '/SysUsers/:userId/principals',
 
     async (req, res) => {
-      const link = await links.link(
-        req.params.userId,
+      const userId = String(req.params.userId ?? '');
 
-        String(req.body.principalId),
+      const principalId = String(req.body.principalId ?? '');
 
-        req.body.relationship as SysUserPrincipalRelationship,
+      const relationship = req.body.relationship as SysUserPrincipalRelationship;
 
-        Boolean(req.body.isDefault),
+      const isDefault = Boolean(req.body.isDefault);
 
-        actor,
-      );
+      const link = await links.link(userId, principalId, relationship, isDefault, actor);
 
       sendCommand(
         res,
-        `User ${req.params.userId} linked to principal ${String(req.body.principalId)} successfully.`,
+        `User ${userId} linked to principal ${principalId} successfully.`,
         link,
         201,
       );
@@ -185,6 +413,42 @@ export function createInternalRouter(
   );
 
   return router;
+}
+
+/**
+ * Non-security-critical information describing the browser/client for an
+ * API session created through the trusted UI bridge.
+ *
+ * These values are diagnostic only.
+ *
+ * They do not participate in authentication or authorization.
+ */
+function trustedSessionClientInfo(req: Request): SessionClientInfo {
+  const clientName = req.body?.clientName ? String(req.body.clientName).trim() : undefined;
+
+  const userAgent = req.body?.userAgent ? String(req.body.userAgent).trim() : undefined;
+
+  const ipAddress = req.body?.ipAddress ? String(req.body.ipAddress).trim() : undefined;
+
+  return {
+    ...(clientName
+      ? {
+          clientName,
+        }
+      : {}),
+
+    ...(userAgent
+      ? {
+          userAgent,
+        }
+      : {}),
+
+    ...(ipAddress
+      ? {
+          ipAddress,
+        }
+      : {}),
+  };
 }
 
 /**
@@ -196,8 +460,8 @@ export function createInternalRouter(
  *
  *   hasPassword: true | false
  *
- * so that the UI can determine whether local password authentication
- * has been configured without exposing the actual password hash.
+ * so the UI can determine whether local password authentication exists
+ * without exposing the actual hash.
  */
 function publicUser(user: SysUser) {
   const { passwordHash: _ignored, ...safeUser } = user;

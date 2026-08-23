@@ -1,12 +1,492 @@
-import {Router} from 'express';import {AppError,operationContext} from '@manatos/shared';import {apiClient} from '../api-client.js';import {requireAdmin,requireSignedIn} from '../middleware/auth.js';import {requireCsrf} from '../middleware/csrf.js';import {renderPage} from '../render.js';import {addSessionError} from '../errors/session-error-log.js';import {getSysBODefinition} from '../sysbo/definitions.js';
-const pathByKey:Record<string,string>={'sys-users':'SysUsers','sys-principals':'SysPrincipals','sys-applications':'SysApplications','sys-licenses':'SysLicenses'};
-export function createSysBORoutes(){const r=Router();r.use(requireSignedIn,requireAdmin);
- r.get('/:key',async(q,res,n)=>{try{const d=getSysBODefinition(q.params.key),api=pathByKey[d.key],params=listQuery(q,d),x=await apiClient.get<Record<string,unknown>[]>(`/api/v1/${api}?${params}`);await renderPage(res,'pages/bo-list',{title:d.uiMetadata.listViewModel.title,definition:d,items:x.data,paging:x.paging,query:q.query});}catch(e){n(e);}});
- r.get('/:key/new',async(q,res,n)=>{try{const d=getSysBODefinition(q.params.key);await renderPage(res,'pages/bo-edit',{title:d.uiMetadata.editViewModel.createTitle,definition:d,item:{},isNew:true,referenceData:await references(d)});}catch(e){n(e);}});
- r.get('/:key/:id',async(q,res,n)=>{try{const d=getSysBODefinition(q.params.key),api=pathByKey[d.key],item=(await apiClient.get<Record<string,unknown>>(`/api/v1/${api}/${q.params.id}`)).data;await renderPage(res,'pages/bo-edit',{title:d.uiMetadata.editViewModel.editTitle,definition:d,item,isNew:false,referenceData:await references(d)});}catch(e){n(e);}});
- r.post('/:key/save',requireCsrf,async(q,res,n)=>{const d=getSysBODefinition(q.params.key),api=pathByKey[d.key],id=String(q.body.id??'');try{await operationContext.runRoot(`${id?'Update':'Create'} ${d.boMetadata.name}`,async s=>{s.addContext({id,name:q.body.name});const payload=formPayload(q.body,d);if(id)await apiClient.patch(`/api/v1/${api}/${id}`,payload);else await apiClient.post(`/api/v1/${api}`,payload);res.redirect(`/bo/${d.key}`);},`Saving ${d.boMetadata.name}`);}catch(e){const a=e instanceof AppError?e:new AppError('UNEXPECTED_ERROR',String(e),'The entry could not be saved.',true);addSessionError(q,a);await renderPage(res,'pages/bo-edit',{title:id?d.uiMetadata.editViewModel.editTitle:d.uiMetadata.editViewModel.createTitle,definition:d,item:{...q.body,id},isNew:!id,referenceData:await references(d),applicationError:a});}});
- r.post('/:key/:id/delete',requireCsrf,async(q,res,n)=>{try{const d=getSysBODefinition(q.params.key);await operationContext.runRoot(`Delete ${d.boMetadata.name}`,async()=>apiClient.delete(`/api/v1/${pathByKey[d.key]}/${q.params.id}`));res.redirect(`/bo/${d.key}`);}catch(e){n(e);}});
- r.get('/sys-applications/:id/play',async(q,res,n)=>{try{q.session.activeApplicationId=q.params.id;const app=(await apiClient.get<Record<string,unknown>>(`/api/v1/SysApplications/${q.params.id}`)).data;await renderPage(res,'pages/application-playground',{title:`${String(app.name)} Playground`,application:app});}catch(e){n(e);}});return r;}
-function listQuery(q:import('express').Request,d:ReturnType<typeof getSysBODefinition>){const p=new URLSearchParams();p.set('page',String(q.query.page??1));p.set('pageSize',String(q.query.pageSize??d.uiMetadata.paginationConfiguration.defaultPageSize));if(typeof q.query.sort==='string')p.set('sort',q.query.sort);if(q.query.direction==='desc')p.set('direction','desc');for(const f of d.uiMetadata.filterDefinition.fields){const v=q.query[`filter.${f}`];if(typeof v==='string'&&v)p.set(`filter.${f}`,v);}return p.toString();}
-function formPayload(body:Record<string,unknown>,d:ReturnType<typeof getSysBODefinition>){const out:Record<string,unknown>={};for(const f of Object.values(d.boMetadata.fieldDefinition)){if(f.generated||f.readOnly||f.sensitive)continue;const raw=body[f.key];if(f.type==='boolean')out[f.key]=raw==='on'||raw==='true'||raw===true;else if(f.type==='number')out[f.key]=Number(raw??0);else if(raw!==undefined&&raw!=='')out[f.key]=raw;else if(f.nullable)out[f.key]=null;}return out;}
-async function references(d:ReturnType<typeof getSysBODefinition>){const out:Record<string,unknown[]>={};for(const f of Object.values(d.boMetadata.fieldDefinition)){if(!f.referenceBOKey)continue;const api=pathByKey[f.referenceBOKey];if(api)out[f.key]=(await apiClient.get<unknown[]>(`/api/v1/${api}?pageSize=500&sort=name`)).data;}return out;}
+import { Router, type Request } from 'express';
+
+import { AppError, operationContext } from '@manatos/shared';
+
+import { apiClient } from '../api-client.js';
+
+import { apiSessionOptions } from '../auth/api-session.js';
+
+import { requireAdmin, requireSignedIn } from '../middleware/auth.js';
+
+import { requireCsrf } from '../middleware/csrf.js';
+
+import { renderPage } from '../render.js';
+
+import { addSessionError } from '../errors/session-error-log.js';
+
+import { getSysBODefinition } from '../sysbo/definitions.js';
+
+import type { SysBODefinition } from '../sysbo/types.js';
+
+const pathByKey: Record<string, string> = {
+  'sys-users': 'SysUsers',
+
+  'sys-principals': 'SysPrincipals',
+
+  'sys-applications': 'SysApplications',
+
+  'sys-licenses': 'SysLicenses',
+};
+
+/**
+ * Current generic SysBO list payload.
+ */
+interface SysBOListData<T> {
+  items: T[];
+
+  paging: {
+    total: number;
+
+    page: number;
+
+    pageSize: number;
+
+    totalPages: number;
+  };
+
+  metadata?: unknown;
+}
+
+/**
+ * Generic metadata-driven SysBO administration routes.
+ */
+export function createSysBORoutes() {
+  const router = Router();
+
+  /**
+   * Current administration UI is Admin-only.
+   *
+   * The API remains the ultimate authorization boundary.
+   */
+  router.use(requireSignedIn, requireAdmin);
+
+  /**
+   * List one SysBO.
+   */
+  router.get(
+    '/:key',
+
+    async (req, res, next) => {
+      try {
+        const key = routeParam(req.params.key);
+
+        const definition = getSysBODefinition(key);
+
+        const apiPath = apiPathFor(definition.key);
+
+        const query = listQuery(req, definition);
+
+        const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+          `/api/v1/${apiPath}?${query}`,
+
+          apiSessionOptions(req),
+        );
+
+        await renderPage(
+          res,
+          'pages/bo-list',
+
+          {
+            title: definition.uiMetadata.listViewModel.title,
+
+            definition,
+
+            items: response.data.items,
+
+            paging: response.data.paging,
+
+            query: req.query,
+          },
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  /**
+   * Display create form.
+   */
+  router.get(
+    '/:key/new',
+
+    async (req, res, next) => {
+      try {
+        const definition = getSysBODefinition(routeParam(req.params.key));
+
+        await renderPage(
+          res,
+          'pages/bo-edit',
+
+          {
+            title: definition.uiMetadata.editViewModel.createTitle,
+
+            definition,
+
+            item: {},
+
+            isNew: true,
+
+            referenceData: await references(req, definition),
+          },
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  /**
+   * Display edit form.
+   */
+  router.get(
+    '/:key/:id',
+
+    async (req, res, next) => {
+      try {
+        const key = routeParam(req.params.key);
+
+        const id = routeParam(req.params.id);
+
+        const definition = getSysBODefinition(key);
+
+        const apiPath = apiPathFor(definition.key);
+
+        const item = (
+          await apiClient.get<Record<string, unknown>>(
+            `/api/v1/${apiPath}/${id}`,
+
+            apiSessionOptions(req),
+          )
+        ).data;
+
+        await renderPage(
+          res,
+          'pages/bo-edit',
+
+          {
+            title: definition.uiMetadata.editViewModel.editTitle,
+
+            definition,
+
+            item,
+
+            isNew: false,
+
+            referenceData: await references(req, definition),
+          },
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  /**
+   * Create or update one SysBO entry.
+   */
+  router.post(
+    '/:key/save',
+
+    requireCsrf,
+
+    async (req, res, next) => {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+
+      const apiPath = apiPathFor(definition.key);
+
+      const id = String(req.body.id ?? '');
+
+      try {
+        await operationContext.runRoot(
+          `${id ? 'Update' : 'Create'} ${definition.boMetadata.name}`,
+
+          async (scope) => {
+            scope.addContext({
+              id,
+
+              name: req.body.name,
+            });
+
+            const payload = formPayload(req.body, definition);
+
+            if (id) {
+              await apiClient.patch(
+                `/api/v1/${apiPath}/${id}`,
+
+                payload,
+
+                apiSessionOptions(req),
+              );
+            } else {
+              await apiClient.post(
+                `/api/v1/${apiPath}`,
+
+                payload,
+
+                apiSessionOptions(req),
+              );
+            }
+
+            res.redirect(`/bo/${definition.key}`);
+          },
+
+          `Saving ${definition.boMetadata.name}`,
+        );
+      } catch (error) {
+        /**
+         * Session expiration should be handled centrally rather than being
+         * converted into a normal edit-form application popup.
+         */
+        if (error instanceof AppError && error.code === 'UI_API_SESSION_EXPIRED') {
+          next(error);
+
+          return;
+        }
+
+        const appError =
+          error instanceof AppError
+            ? error
+            : new AppError(
+                'UNEXPECTED_ERROR',
+
+                String(error),
+
+                'The entry could not be saved.',
+
+                true,
+              );
+
+        addSessionError(req, appError);
+
+        await renderPage(
+          res,
+          'pages/bo-edit',
+
+          {
+            title: id
+              ? definition.uiMetadata.editViewModel.editTitle
+              : definition.uiMetadata.editViewModel.createTitle,
+
+            definition,
+
+            item: {
+              ...req.body,
+              id,
+            },
+
+            isNew: !id,
+
+            referenceData: await references(req, definition),
+
+            applicationError: appError,
+          },
+        );
+      }
+    },
+  );
+
+  /**
+   * Delete one SysBO entry.
+   */
+  router.post(
+    '/:key/:id/delete',
+
+    requireCsrf,
+
+    async (req, res, next) => {
+      try {
+        const key = routeParam(req.params.key);
+
+        const id = routeParam(req.params.id);
+
+        const definition = getSysBODefinition(key);
+
+        const apiPath = apiPathFor(definition.key);
+
+        await operationContext.runRoot(
+          `Delete ${definition.boMetadata.name}`,
+
+          async () => {
+            await apiClient.delete(
+              `/api/v1/${apiPath}/${id}`,
+
+              apiSessionOptions(req),
+            );
+          },
+        );
+
+        res.redirect(`/bo/${definition.key}`);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  /**
+   * Open the future SysApplication playground.
+   */
+  router.get(
+    '/sys-applications/:id/play',
+
+    async (req, res, next) => {
+      try {
+        const id = routeParam(req.params.id);
+
+        req.session.activeApplicationId = id;
+
+        const application = (
+          await apiClient.get<Record<string, unknown>>(
+            `/api/v1/SysApplications/${id}`,
+
+            apiSessionOptions(req),
+          )
+        ).data;
+
+        await renderPage(
+          res,
+          'pages/application-playground',
+
+          {
+            title: `${String(application.name)} Playground`,
+
+            application,
+          },
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  return router;
+}
+
+/**
+ * Build list query parameters from the current UI request.
+ */
+function listQuery(
+  req: Request,
+
+  definition: SysBODefinition,
+): string {
+  const params = new URLSearchParams();
+
+  params.set(
+    'page',
+
+    String(req.query.page ?? 1),
+  );
+
+  params.set(
+    'pageSize',
+
+    String(req.query.pageSize ?? definition.uiMetadata.paginationConfiguration.defaultPageSize),
+  );
+
+  if (typeof req.query.sort === 'string') {
+    params.set('sort', req.query.sort);
+  }
+
+  if (req.query.direction === 'desc') {
+    params.set('direction', 'desc');
+  }
+
+  for (const field of definition.uiMetadata.filterDefinition.fields) {
+    const value = req.query[`filter.${field}`];
+
+    if (typeof value === 'string' && value) {
+      params.set(`filter.${field}`, value);
+    }
+  }
+
+  return params.toString();
+}
+
+/**
+ * Convert posted form values into UI-neutral SysBO data.
+ */
+function formPayload(
+  body: Record<string, unknown>,
+
+  definition: SysBODefinition,
+): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+
+  for (const field of Object.values(definition.boMetadata.fieldDefinition)) {
+    if (field.generated || field.readOnly || field.sensitive) {
+      continue;
+    }
+
+    const raw = body[field.key];
+
+    if (field.type === 'boolean') {
+      output[field.key] = raw === 'on' || raw === 'true' || raw === true;
+    } else if (field.type === 'number') {
+      output[field.key] = Number(raw ?? 0);
+    } else if (raw !== undefined && raw !== '') {
+      output[field.key] = raw;
+    } else if (field.nullable) {
+      output[field.key] = null;
+    }
+  }
+
+  return output;
+}
+
+/**
+ * Load referenced BO values used by reference/select controls.
+ */
+async function references(
+  req: Request,
+
+  definition: SysBODefinition,
+): Promise<Record<string, unknown[]>> {
+  const output: Record<string, unknown[]> = {};
+
+  for (const field of Object.values(definition.boMetadata.fieldDefinition)) {
+    if (!field.referenceBOKey) {
+      continue;
+    }
+
+    const apiPath = pathByKey[field.referenceBOKey];
+
+    if (!apiPath) {
+      continue;
+    }
+
+    const response = await apiClient.get<SysBOListData<unknown>>(
+      `/api/v1/${apiPath}?pageSize=500&sort=name`,
+
+      apiSessionOptions(req),
+    );
+
+    output[field.key] = response.data.items;
+  }
+
+  return output;
+}
+
+/**
+ * Resolve one configured API resource name.
+ */
+function apiPathFor(key: string): string {
+  const apiPath = pathByKey[key];
+
+  if (!apiPath) {
+    throw new Error(`No API path is configured for SysBO '${key}'.`);
+  }
+
+  return apiPath;
+}
+
+/**
+ * Normalize Express 5 route parameters at the HTTP boundary.
+ */
+function routeParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+
+  return value ?? '';
+}

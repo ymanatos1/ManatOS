@@ -13,6 +13,7 @@
     "dev:ui": "npm run dev --workspace ui",
     "build": "npm run build --workspace shared && npm run build --workspace api && npm run build --workspace ui",
     "test": "npm run test --workspace api && npm run test --workspace ui",
+    "verify": "npm run build && npm run test",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
