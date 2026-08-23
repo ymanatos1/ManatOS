@@ -136,7 +136,11 @@ export function buildOpenApiSpec() {
 
       '/api/v1/auth/logout': logoutOperation(),
 
+      '/api/v1/auth/logout-all': logoutAllOperation(),
+
       '/api/v1/auth/me': meOperation(),
+
+      '/api/v1/auth/sessions': sessionsOperation(),
 
       '/api/v1/auth/password': passwordOperation(),
 
@@ -318,7 +322,7 @@ function loginOperation() {
 function logoutOperation() {
   return {
     post: {
-      summary: 'Logout and revoke current access token',
+      summary: 'Logout current session',
       tags: ['Authentication'],
       security: [
         {
@@ -326,11 +330,55 @@ function logoutOperation() {
         },
       ],
       responses: {
-        '204': {
-          description: 'Logged out successfully.',
+        '200': {
+          description: 'Current session logged out successfully.',
         },
         '401': {
-          description: 'Authentication required.',
+          description: 'Authentication required or access token is no longer valid.',
+        },
+      },
+    },
+  };
+}
+
+function sessionsOperation() {
+  return {
+    get: {
+      summary: 'Get current user active sessions',
+      tags: ['Authentication'],
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      responses: {
+        '200': {
+          description: 'Active sessions returned.',
+        },
+        '401': {
+          description: 'Authentication required or access token is no longer valid.',
+        },
+      },
+    },
+  };
+}
+
+function logoutAllOperation() {
+  return {
+    post: {
+      summary: 'Logout all current user sessions',
+      tags: ['Authentication'],
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      responses: {
+        '200': {
+          description: 'All user sessions logged out successfully.',
+        },
+        '401': {
+          description: 'Authentication required or access token is no longer valid.',
         },
       },
     },

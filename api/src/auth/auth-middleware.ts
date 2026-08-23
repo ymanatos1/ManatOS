@@ -1,36 +1,70 @@
 import type { RequestHandler } from 'express';
 
-import { AuthenticationError, ForbiddenAppError, SysUserRole } from '@manatos/shared';
+import {
+  AuthenticationRequiredError,
+  ForbiddenAppError,
+  InvalidAccessTokenError,
+  SysUserRole,
+} from '@manatos/shared';
 
 import { accessTokenStore, type AccessTokenContext } from './access-token-store.js';
 
 declare global {
   namespace Express {
     interface Request {
+      /**
+       * Authenticated user/session context.
+       */
       auth?: AccessTokenContext;
+
+      /**
+       * Raw Bearer token for operations such as logout.
+       *
+       * This exists only for the duration of the HTTP request.
+       */
       accessToken?: string;
     }
   }
 }
 
 /**
- * Requires a valid Bearer access token.
+ * Require a valid API Bearer session.
  */
 export const requireAuthenticated: RequestHandler = (req, _res, next) => {
   const authorization = req.header('authorization');
 
-  if (!authorization?.startsWith('Bearer ')) {
-    next(new AuthenticationError());
+  /*
+   * No credentials were supplied.
+   */
+  if (!authorization) {
+    next(new AuthenticationRequiredError());
 
     return;
   }
 
-  const token = authorization.substring('Bearer '.length).trim();
+  /*
+   * An Authorization header exists, but it is not a valid Bearer header.
+   */
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    next(new InvalidAccessTokenError());
+
+    return;
+  }
+
+  const token = match[1]?.trim();
+
+  if (!token) {
+    next(new InvalidAccessTokenError());
+
+    return;
+  }
 
   const auth = accessTokenStore.validate(token);
 
   if (!auth) {
-    next(new AuthenticationError());
+    next(new InvalidAccessTokenError());
 
     return;
   }
@@ -43,7 +77,7 @@ export const requireAuthenticated: RequestHandler = (req, _res, next) => {
 };
 
 /**
- * Restrict an operation to the specified roles.
+ * Restrict an authenticated endpoint to specified roles.
  */
 export function requireRole(...roles: SysUserRole[]): RequestHandler {
   return (req, _res, next) => {

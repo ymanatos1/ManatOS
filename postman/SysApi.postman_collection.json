@@ -1,11 +1,11 @@
 {
   "info": {
-    "_postman_id": "c0836f70-06ff-4755-812c-51016e62c643",
+    "_postman_id": "116a6257-0413-4473-ab8a-eed1e069313c",
     "name": "ManatOS System API",
     "description": "Postman collection for ManatOS API authentication, health, SysBO CRUD and security tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1253976",
-    "_collection_link": "https://go.postman.co/collection/1253976-c0836f70-06ff-4755-812c-51016e62c643?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/1253976-116a6257-0413-4473-ab8a-eed1e069313c?source=collection_link"
   },
   "item": [
     {
@@ -135,7 +135,7 @@
           "response": []
         },
         {
-          "name": "Login Admin",
+          "name": "Login",
           "event": [
             {
               "listen": "test",
@@ -160,6 +160,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "x-client-name",
+                "value": "Postman Admin",
+                "type": "text"
               }
             ],
             "body": {
@@ -218,6 +223,40 @@
           "response": []
         },
         {
+          "name": "Get Sessions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Sessions array returned', () => pm.expect(json.data.sessions).to.be.an('array'));",
+                  "pm.test('At least one active session exists', () => pm.expect(json.data.sessions.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "sessions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Change Password (example - do not run casually)",
           "request": {
             "method": "PUT",
@@ -257,19 +296,14 @@
             {
               "listen": "test",
               "script": {
-                "exec": [
-                  "pm.test(\r",
-                  "    'Status 204',\r",
-                  "    () => pm.response.to.have.status(204)\r",
-                  ");\r",
-                  "\r",
-                  "if (pm.response.code === 204) {\r",
-                  "    pm.environment.unset('accessToken');\r",
-                  "}"
-                ],
                 "type": "text/javascript",
-                "packages": {},
-                "requests": {}
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Logout succeeded', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('A session was revoked', () => pm.expect(json.data.revoked).to.eql(true));",
+                  "if (pm.response.code === 200) pm.environment.unset('accessToken');"
+                ]
               }
             }
           ],
@@ -286,6 +320,200 @@
                 "{{apiVersion}}",
                 "auth",
                 "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout All Sessions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Logout-all succeeded', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('One or more sessions revoked', () => pm.expect(json.data.revokedSessions).to.be.above(0));",
+                  "if (pm.response.code === 200) {",
+                  "  pm.environment.unset('accessToken');",
+                  "  pm.environment.unset('secondaryAccessToken');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/logout-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "logout-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Access token returned', () => pm.expect(json.data.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.environment.set('accessToken', json.data.accessToken);",
+                  "if (json.data.user && json.data.user.id) pm.environment.set('adminUserId', json.data.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-client-name",
+                "value": "Postman Admin",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": \"Admin\",\n  \"password\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Admin - Additional Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Additional access token returned', () => pm.expect(json.data.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.environment.set('secondaryAccessToken', json.data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-client-name",
+                "value": "Postman Admin Secondary",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": \"Admin\",\n  \"password\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sessions with Secondary Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Secondary token sees sessions', () => pm.expect(json.data.sessions).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{secondaryAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "auth",
+                "sessions"
               ]
             }
           },
@@ -1212,7 +1440,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Run after Logout; expect 401', () => pm.response.to.have.status(401));"
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('Invalid token error returned', () => pm.expect(json.error.code).to.eql('INVALID_ACCESS_TOKEN'));"
                 ]
               }
             }

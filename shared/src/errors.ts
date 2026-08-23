@@ -146,6 +146,35 @@ export class AuthenticationError extends AppError {
 }
 
 /**
+ * No authentication credentials were supplied for a protected operation.
+ */
+export class AuthenticationRequiredError extends AppError {
+  constructor() {
+    super(
+      'AUTHENTICATION_REQUIRED',
+      'Authentication is required.',
+      'Authentication is required.',
+      false,
+    );
+  }
+}
+
+/**
+ * A Bearer access token was supplied but it is malformed, expired,
+ * revoked or otherwise invalid.
+ */
+export class InvalidAccessTokenError extends AppError {
+  constructor() {
+    super(
+      'INVALID_ACCESS_TOKEN',
+      'The supplied access token is invalid, expired or revoked.',
+      'Your session is no longer valid. Please sign in again.',
+      false,
+    );
+  }
+}
+
+/**
  * Authenticated user is not authorized to perform the requested
  * operation.
  */

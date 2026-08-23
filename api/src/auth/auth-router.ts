@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 
 import { ForbiddenAppError, NotFoundError, operationContext, type SysUser } from '@manatos/shared';
 
@@ -8,12 +8,12 @@ import { authenticatedAuditActor } from '../audit/audit-service.js';
 
 import type { SysUserService } from '../services/sys-user-service.js';
 
-import { accessTokenStore } from './access-token-store.js';
+import { accessTokenStore, type SessionClientInfo } from './access-token-store.js';
 
 import { requireAuthenticated } from './auth-middleware.js';
 
 /**
- * Authentication API.
+ * Authentication/session API.
  *
  * Public:
  *
@@ -22,18 +22,17 @@ import { requireAuthenticated } from './auth-middleware.js';
  *
  * Authenticated:
  *
- *   POST /logout
  *   GET  /me
  *   PUT  /password
+ *   GET  /sessions
+ *   POST /logout
+ *   POST /logout-all
  */
 export function createAuthRouter(users: SysUserService): Router {
   const router = Router();
 
   /**
    * Public Guest registration.
-   *
-   * Role supplied by the caller is deliberately ignored because public
-   * registration always creates a Guest account.
    */
   router.post(
     '/register',
@@ -59,9 +58,29 @@ export function createAuthRouter(users: SysUserService): Router {
             name,
             email,
             password,
+
+            ...(req.body?.firstName
+              ? {
+                  firstName: String(req.body.firstName),
+                }
+              : {}),
+
+            ...(req.body?.lastName
+              ? {
+                  lastName: String(req.body.lastName),
+                }
+              : {}),
+
+            ...(req.body?.description
+              ? {
+                  description: String(req.body.description),
+                }
+              : {}),
           });
 
           res.status(201).json({
+            success: true,
+
             data: publicUser(user),
           });
         },
@@ -70,7 +89,9 @@ export function createAuthRouter(users: SysUserService): Router {
   );
 
   /**
-   * Local authentication using either unique user-name or email.
+   * Create a new API session using user-name/email + password.
+   *
+   * Multiple concurrent sessions are deliberately supported.
    */
   router.post(
     '/login',
@@ -92,21 +113,26 @@ export function createAuthRouter(users: SysUserService): Router {
           const user = await users.verifyLocalCredentials(identity, password);
 
           /*
-           * Because Guest accounts may read all SysBOs in the current
-           * authorization policy, an unverified registration must not
-           * receive an access token.
+           * Accounts must verify their email before receiving an API
+           * session token.
            */
           if (!user.emailVerified) {
             throw new ForbiddenAppError('Email verification is required before API login.');
           }
 
-          const token = accessTokenStore.create(user, config.API_ACCESS_TOKEN_MINUTES);
+          const clientInfo = sessionClientInfo(req);
+
+          const token = accessTokenStore.create(user, config.API_ACCESS_TOKEN_MINUTES, clientInfo);
 
           res.json({
+            success: true,
+
             data: {
               accessToken: token.token,
 
               tokenType: 'Bearer',
+
+              sessionId: token.tokenId,
 
               expiresInSeconds: config.API_ACCESS_TOKEN_MINUTES * 60,
 
@@ -120,28 +146,13 @@ export function createAuthRouter(users: SysUserService): Router {
     },
   );
 
-  /**
-   * Everything below this point requires a valid Bearer token.
+  /*
+   * Everything below here requires an active session.
    */
   router.use(requireAuthenticated);
 
   /**
-   * Revoke the currently used access token immediately.
-   */
-  router.post(
-    '/logout',
-
-    (req, res) => {
-      if (req.accessToken) {
-        accessTokenStore.revoke(req.accessToken);
-      }
-
-      res.status(204).end();
-    },
-  );
-
-  /**
-   * Return the current account.
+   * Return the current authenticated account.
    */
   router.get(
     '/me',
@@ -154,20 +165,84 @@ export function createAuthRouter(users: SysUserService): Router {
       }
 
       res.json({
+        success: true,
+
         data: publicUser(user),
       });
     },
   );
 
   /**
+   * List all currently active API sessions belonging to this user.
+   */
+  router.get(
+    '/sessions',
+
+    (req, res) => {
+      const sessions = accessTokenStore.listUserSessions(req.auth!.userId, req.auth!.tokenId);
+
+      res.json({
+        success: true,
+
+        data: {
+          total: sessions.length,
+
+          sessions,
+        },
+      });
+    },
+  );
+
+  /**
+   * Revoke exactly the current API session.
+   */
+  router.post(
+    '/logout',
+
+    (req, res) => {
+      const sessionId = req.auth!.tokenId;
+
+      const revoked = accessTokenStore.revoke(req.accessToken!);
+
+      res.status(200).json({
+        success: true,
+
+        data: {
+          message: 'Logged out successfully.',
+
+          sessionId,
+
+          revoked,
+        },
+      });
+    },
+  );
+
+  /**
+   * Revoke every active API session belonging to the current user.
+   *
+   * This includes the current session.
+   */
+  router.post(
+    '/logout-all',
+
+    (req, res) => {
+      const revokedSessions = accessTokenStore.revokeAllForUser(req.auth!.userId);
+
+      res.status(200).json({
+        success: true,
+
+        data: {
+          message: 'All sessions logged out successfully.',
+
+          revokedSessions,
+        },
+      });
+    },
+  );
+
+  /**
    * Change or establish the current user's local password.
-   *
-   * Request:
-   *
-   * {
-   *   "currentPassword": "...",   // required only when one exists
-   *   "newPassword": "..."
-   * }
    */
   router.put(
     '/password',
@@ -186,7 +261,6 @@ export function createAuthRouter(users: SysUserService): Router {
             userId: req.auth!.userId,
 
             currentPassword,
-
             newPassword,
           });
 
@@ -200,6 +274,8 @@ export function createAuthRouter(users: SysUserService): Router {
           );
 
           res.json({
+            success: true,
+
             data: publicUser(user),
           });
         },
@@ -211,7 +287,45 @@ export function createAuthRouter(users: SysUserService): Router {
 }
 
 /**
- * PasswordHash must never leave the API.
+ * Collect non-security-critical information about the client session.
+ *
+ * req.ip is deliberately preferred over directly trusting
+ * X-Forwarded-For.
+ *
+ * When deploying behind a known reverse proxy, Express trust-proxy
+ * configuration should be configured correctly so req.ip represents
+ * the real client.
+ */
+function sessionClientInfo(req: Request): SessionClientInfo {
+  const clientName = req.header('x-client-name')?.trim();
+
+  const userAgent = req.header('user-agent')?.trim();
+
+  const ipAddress = req.ip;
+
+  return {
+    ...(clientName
+      ? {
+          clientName,
+        }
+      : {}),
+
+    ...(userAgent
+      ? {
+          userAgent,
+        }
+      : {}),
+
+    ...(ipAddress
+      ? {
+          ipAddress,
+        }
+      : {}),
+  };
+}
+
+/**
+ * Never expose passwordHash.
  */
 function publicUser(user: SysUser) {
   const {

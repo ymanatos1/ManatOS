@@ -12,19 +12,20 @@ import { config } from '../config.js';
  * This mapping therefore belongs here, at the HTTP transport boundary.
  */
 const httpStatusByErrorCode: Record<string, number> = {
+  VALIDATION_ERROR: 400,
+
+  INVALID_CREDENTIALS: 401,
+  AUTHENTICATION_REQUIRED: 401,
+  INVALID_ACCESS_TOKEN: 401,
+
+  FORBIDDEN: 403,
+
   NOT_FOUND: 404,
 
   DUPLICATE_BO_VALUE: 409,
 
   SELF_PARENT_NOT_ALLOWED: 409,
-
   EXTERNAL_IDENTITY_EXISTS: 409,
-
-  VALIDATION_ERROR: 400,
-
-  INVALID_CREDENTIALS: 401,
-
-  FORBIDDEN: 403,
 
   STORAGE_ERROR: 503,
 };
