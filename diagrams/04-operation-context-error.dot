@@ -1,0 +1,28 @@
+
+digraph G {
+  size="11.69,8.27!"; ratio=fill; margin=0.25;
+
+graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", labeljust="c"];
+node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"];
+edge [fontname="Arial", fontsize=8, arrowsize=0.7];
+
+  rankdir=LR;
+  label="ManatOS - OperationContext, Audit and Error Handling";
+
+  req [label="Incoming HTTP Request", fillcolor="#e8f4e5"];
+  ctx [label="requestContextMiddleware\nrequest/correlation context", fillcolor="#dcecff"];
+  root [label="operationContext.runRoot()\nsemantic root operation", fillcolor="#dcecff"];
+  child1 [label="Nested operation\ncompleted summary", fillcolor="#ecf8e8"];
+  child2 [label="Nested operation FAILED\nfull failed branch retained", fillcolor="#fde8e8"];
+  error [label="AppError\ncode + developer message + userMessage\nretryable + operationTrace + cause?", fillcolor="#fde8e8"];
+  handler [label="Central errorHandler\nHTTP status mapping\ndetail-level projection", fillcolor="#e9f2ff"];
+  response [label="Failure envelope\nsuccess=false\nmessage=userMessage\nerror.code / error.message / retryable\noptional operationTrace / stack", fillcolor="#fff7e8"];
+  mask [shape=note, fillcolor="#fff3d6", label="Sensitive context values\n(password, token, hash, secret, cookie, session, API key...)\n=> ********"];
+
+  req -> ctx -> root;
+  root -> child1 [label="nested work"];
+  root -> child2 [label="nested work"];
+  child2 -> error;
+  error -> handler -> response;
+  root -> mask [style=dashed, arrowhead=none];
+}

@@ -15,4 +15,39 @@ The same canonical error object can be serialized differently for:
 - bounded session error log;
 - server log.
 
-API detail level can be `none`, `basic`, `operations` or `full`. Production should normally avoid `full`.
+## API response envelope
+
+Successful API reads normally return:
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+Successful commands return a root confirmation message:
+
+```json
+{
+  "success": true,
+  "message": "Action completed successfully.",
+  "data": {}
+}
+```
+
+All API failures expose the user-facing message twice deliberately: once at the root for simple UI/client consumption and once inside `error` so the error object remains independently meaningful:
+
+```json
+{
+  "success": false,
+  "message": "User-safe error message.",
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "User-safe error message.",
+    "retryable": false
+  }
+}
+```
+
+API error detail level can be `normal`, `operations` or `full`. `operations` adds the semantic operation trace; `full` additionally exposes developer diagnostics and stack information. Production should normally avoid `full`.

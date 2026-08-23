@@ -39,9 +39,9 @@ npm run reset:data
 
 - **express** — Express 5 HTTP server, middleware and REST routing.
 - **argon2** — Argon2id password hashing/verification.
-- **swagger-ui-express** — interactive API explorer at `/api/`.
+- **swagger-ui-express** — interactive API explorer at `/api-docs/`.
 
-OpenAPI is generated programmatically from the canonical BO metadata; no separate swagger-jsdoc dependency is required.
+OpenAPI is generated programmatically from the canonical BO metadata; no separate swagger-jsdoc dependency is required. The raw specification is available at `/api/openapi.json`.
 
 ### UI
 
@@ -104,3 +104,43 @@ Recommended extensions and workspace defaults live in `.vscode/`. They are recom
 ## Commenting approach
 
 Source comments explain **why**: security invariants, ownership, metadata contracts, persistence semantics, operation tracing and extension points. Trivial syntax is deliberately left uncommented.
+
+
+## API response convention
+
+The REST API uses one global response-envelope rule:
+
+- successful GET/query operations return `success + data`;
+- successful command operations (`POST`, `PUT`, `PATCH`, `DELETE`) return `success + message + data`;
+- failures return `success: false` plus a root `message` and an `error` object. The root message mirrors `error.message` so clients have one predictable user-facing message location.
+
+Generic SysBO list responses place the collection in `data.items` and pagination information in `data.paging`. BO metadata is available through `GET /$metadata` or can be included in a list with `?includeMetadata=true`.
+
+## Server operational endpoints
+
+Server-level endpoints are grouped separately from versioned business resources:
+
+```text
+GET  /health
+GET  /ready
+POST /flush-db
+```
+
+`/health` is a public liveness check. `/ready` is a public readiness check and currently verifies the active datastore. `/flush-db` requires an authenticated Admin and delegates persistence semantics to the active storage adapter.
+
+## Automated API testing
+
+The API test suite is intentionally split by architectural concern:
+
+```text
+api/test/test-helpers.ts
+api/test/storage.contract.test.ts
+api/test/api.integration.test.ts
+api/test/api.auth.integration.test.ts
+```
+
+`storage.contract.test.ts` exercises persistence behavior intended to remain stable across future datastore adapters. `api.integration.test.ts` uses `SysApplication` as the representative generic SysBO instead of repeating identical CRUD tests for every resource. `api.auth.integration.test.ts` concentrates the security-sensitive registration, login, password and multi-session flows.
+
+Each integration test constructs the real Express application with a temporary in-memory datastore and temporary JSON persistence file; it does not require a listening server and never touches the development database.
+
+See `docs/Testing.md` for the coverage policy and detailed test responsibilities.

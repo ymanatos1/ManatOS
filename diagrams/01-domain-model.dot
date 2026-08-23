@@ -1,0 +1,41 @@
+
+digraph G {
+  size="11.69,8.27!"; ratio=fill; margin=0.25;
+
+graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", labeljust="c"];
+node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"];
+edge [fontname="Arial", fontsize=8, arrowsize=0.7];
+
+  rankdir=LR;
+  label="ManatOS - Domain Model (Core Security, Customer and Licensing Entities)";
+  node [shape=plain, style=""];
+
+  SysUser [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#e9f2ff">
+    <TR><TD><B>SysUser</B></TD></TR><TR><TD ALIGN="LEFT">id : GUID</TD></TR><TR><TD ALIGN="LEFT">name : string (unique)</TD></TR><TR><TD ALIGN="LEFT">email : string (unique)</TD></TR><TR><TD ALIGN="LEFT">emailVerified : boolean</TD></TR><TR><TD ALIGN="LEFT">passwordHash : string?</TD></TR><TR><TD ALIGN="LEFT">role : Admin | User | Guest</TD></TR><TR><TD ALIGN="LEFT">enabled : boolean</TD></TR><TR><TD ALIGN="LEFT">createdAt / createdBy</TD></TR><TR><TD ALIGN="LEFT">updatedAt / updatedBy</TD></TR></TABLE>>];
+
+  SysExternalIdentity [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fff4d6">
+    <TR><TD><B>SysExternalIdentity</B></TD></TR><TR><TD ALIGN="LEFT">id : GUID</TD></TR><TR><TD ALIGN="LEFT">userId : GUID</TD></TR><TR><TD ALIGN="LEFT">provider : string</TD></TR><TR><TD ALIGN="LEFT">providerSubject : string</TD></TR><TR><TD ALIGN="LEFT">email : string?</TD></TR><TR><TD ALIGN="LEFT">emailVerified : boolean?</TD></TR><TR><TD ALIGN="LEFT">displayName : string?</TD></TR><TR><TD ALIGN="LEFT">enabled : boolean</TD></TR></TABLE>>];
+
+  SysUserInvitation [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fff4d6">
+    <TR><TD><B>SysUserInvitation</B></TD></TR><TR><TD ALIGN="LEFT">id : GUID</TD></TR><TR><TD ALIGN="LEFT">principalId : GUID</TD></TR><TR><TD ALIGN="LEFT">invitedByUserId : GUID?</TD></TR><TR><TD ALIGN="LEFT">email : string</TD></TR><TR><TD ALIGN="LEFT">role : SysUserRole</TD></TR><TR><TD ALIGN="LEFT">tokenHash : string</TD></TR><TR><TD ALIGN="LEFT">expiresAt : DateTime</TD></TR></TABLE>>];
+
+  SysPrincipal [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ecf8e8">
+    <TR><TD><B>SysPrincipal</B></TD></TR><TR><TD ALIGN="LEFT">id : GUID</TD></TR><TR><TD ALIGN="LEFT">name : string (unique)</TD></TR><TR><TD ALIGN="LEFT">type : PrincipalType</TD></TR><TR><TD ALIGN="LEFT">parentId : GUID?</TD></TR><TR><TD ALIGN="LEFT">description : string?</TD></TR><TR><TD ALIGN="LEFT">enabled : boolean</TD></TR><TR><TD ALIGN="LEFT">audit fields</TD></TR></TABLE>>];
+
+  SysUserPrincipal [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#f1e9fb">
+    <TR><TD><B>SysUserPrincipal</B></TD></TR><TR><TD ALIGN="LEFT">id : GUID</TD></TR><TR><TD ALIGN="LEFT">userId : GUID</TD></TR><TR><TD ALIGN="LEFT">principalId : GUID</TD></TR><TR><TD ALIGN="LEFT">relationship</TD></TR><TR><TD ALIGN="LEFT">isDefault : boolean</TD></TR><TR><TD ALIGN="LEFT">enabled : boolean</TD></TR></TABLE>>];
+
+  SysApplication [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fdeaea">
+    <TR><TD><B>SysApplication</B></TD></TR><TR><TD ALIGN="LEFT">id : GUID</TD></TR><TR><TD ALIGN="LEFT">name : string (unique)</TD></TR><TR><TD ALIGN="LEFT">appName : string (unique)</TD></TR><TR><TD ALIGN="LEFT">fullName : string</TD></TR><TR><TD ALIGN="LEFT">description : string?</TD></TR><TR><TD ALIGN="LEFT">enabled : boolean</TD></TR><TR><TD ALIGN="LEFT">audit fields</TD></TR></TABLE>>];
+
+  SysLicense [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#f2e9fb">
+    <TR><TD><B>SysLicense</B></TD></TR><TR><TD ALIGN="LEFT">id : GUID</TD></TR><TR><TD ALIGN="LEFT">principalId : GUID</TD></TR><TR><TD ALIGN="LEFT">applicationId : GUID</TD></TR><TR><TD ALIGN="LEFT">licenseKey : string (unique)</TD></TR><TR><TD ALIGN="LEFT">status : LicenseStatus</TD></TR><TR><TD ALIGN="LEFT">quantity : number</TD></TR><TR><TD ALIGN="LEFT">enabled : boolean</TD></TR><TR><TD ALIGN="LEFT">audit fields</TD></TR></TABLE>>];
+
+  SysUser -> SysExternalIdentity [label="1 to 0..*"];
+  SysUser -> SysUserPrincipal [label="1 to 0..*"];
+  SysPrincipal -> SysUserPrincipal [label="1 to 0..*"];
+  SysPrincipal -> SysPrincipal [label="parent / children", constraint=false];
+  SysPrincipal -> SysLicense [label="1 to 0..*"];
+  SysApplication -> SysLicense [label="1 to 0..*"];
+  SysPrincipal -> SysUserInvitation [style=dashed, label="customer-first onboarding"];
+}

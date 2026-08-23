@@ -1,0 +1,13 @@
+ManatOS updated API tests
+
+Copy:
+  test-helpers.ts                -> api/test/test-helpers.ts
+  storage.contract.test.ts       -> api/test/storage.contract.test.ts
+  api.integration.test.ts        -> api/test/api.integration.test.ts
+  api.auth.integration.test.ts   -> api/test/api.auth.integration.test.ts
+
+Documentation:
+  Testing.md                     -> docs/Testing.md
+  DEVELOPMENT.md                 -> DEVELOPMENT.md
+
+The previous two compressed one-case tests should be replaced, not kept alongside these files.

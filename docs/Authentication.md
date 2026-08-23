@@ -29,3 +29,35 @@ The public request takes email/user-name but always responds generically. A rand
 ## Customer-first onboarding scaffold
 
 `SysUserInvitation` is included for the case where a customer/principal exists before a website account. It stores customer relationship intent plus a **hashed** activation token and expiry. The complete purchase/provisioning UI is intentionally deferred, but the data boundary is already available.
+
+
+## API login and access-token sessions
+
+The REST API provides public registration/login endpoints:
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+```
+
+API login accepts either user-name or email plus local password. The account must have a verified email address before an API access token is issued.
+
+The API deliberately supports multiple concurrent sessions. Each successful login creates a separate opaque Bearer token/session. Session tracking can retain non-security-critical client information when available, including `x-client-name`, user agent and client IP.
+
+Authenticated session endpoints are:
+
+```text
+GET  /api/v1/auth/me
+GET  /api/v1/auth/sessions
+POST /api/v1/auth/logout
+POST /api/v1/auth/logout-all
+PUT  /api/v1/auth/password
+```
+
+`GET /sessions` lists the current user's active API sessions. `POST /logout` revokes only the current session. `POST /logout-all` revokes every active API session for that user, including the session making the request.
+
+API access-token sessions are separate from Express/EJS browser sessions and are not business data.
+
+## Authentication response convention
+
+Registration, login, logout, logout-all and password changes are commands, so successful responses include a root `message` alongside `success` and `data`. Read endpoints such as `/me` and `/sessions` return `success + data` without a success message. Failures expose the user-facing message at the root and inside the `error` object.

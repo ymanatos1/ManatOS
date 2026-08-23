@@ -1,0 +1,35 @@
+
+digraph G {
+  size="11.69,8.27!"; ratio=fill; margin=0.25;
+
+graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", labeljust="c"];
+node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"];
+edge [fontname="Arial", fontsize=8, arrowsize=0.7];
+
+  rankdir=TB;
+  label="ManatOS - Runtime Architecture";
+
+  browser [label="Web Browser\nExpress/EJS UI client", fillcolor="#e8f4e5"];
+  apiClient [label="API Clients\nPostman / Mobile / Integrations", fillcolor="#e8f4e5"];
+  monitor [label="Health / Monitoring\n/health  /ready", fillcolor="#e8f4e5"];
+  ui [label="UI Process\nExpress + EJS\nPort 3001", fillcolor="#dcecff"];
+  api [label="API Process\nExpress 5 + TypeScript\nPort 3000", fillcolor="#dcecff"];
+  routes [label="HTTP Boundary\nRouters + Auth Middleware + Response Envelopes", fillcolor="#e9f2ff"];
+  services [label="Application / Domain Services\nSysUserService / SysPrincipalService\nSysApplicationService / SysLicenseService\nAuthorizationService", fillcolor="#fff3d6"];
+  infra [label="Cross-cutting Infrastructure\nOperationContext + Audit + Error Handling\nConfig + AccessTokenStore", fillcolor="#f2e9fb"];
+  store [label="Active Data Store Adapter\nCurrent: InMemoryDataStore", fillcolor="#fff0d9"];
+  repo [label="Generic InMemoryRepository<T>\nGUID-keyed Maps\nmetadata-driven CRUD/query rules", fillcolor="#fff0d9"];
+  json [label="JsonFilePersistence\ndata/database.json", fillcolor="#fff4e3"];
+
+  browser -> ui [label="HTTP / HTML"];
+  ui -> api [label="HTTP / JSON"];
+  apiClient -> api [label="HTTP / JSON\nBearer token"];
+  monitor -> api [label="HTTP"];
+  api -> routes;
+  routes -> services;
+  routes -> infra [style=dashed, label="cross-cutting"];
+  services -> store;
+  services -> infra [style=dashed];
+  store -> repo;
+  store -> json [label="load / save / flush"];
+}

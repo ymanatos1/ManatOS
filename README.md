@@ -28,7 +28,7 @@ npm run dev
 Open:
 
 - UI: `http://localhost:3001/`
-- Swagger: `http://localhost:3000/api/`
+- Swagger: `http://localhost:3000/api-docs/`
 - OpenAPI JSON: `http://localhost:3000/api/openapi.json`
 
 The bootstrap administrator is configured in `api/.env`. Change the example password before using the project outside local development.
@@ -90,7 +90,7 @@ GET /api/v1/SysApplications/$metadata
 GET /api/v1/SysLicenses/$metadata
 ```
 
-Normal list calls return data/paging. `includeMetadata=true` adds BO metadata when convenient.
+Normal list calls return `success + data`, with collection entries under `data.items` and pagination under `data.paging`. `includeMetadata=true` adds BO metadata to `data` when convenient.
 
 ## Data rules
 
@@ -127,9 +127,25 @@ The combined welcome/verification email and password reset/change emails current
 
 The **Forgot or set password** flow uses one-time hashed transient tokens and deliberately returns a generic public response to avoid account enumeration.
 
-## Sessions
+## API authentication sessions
 
-Sessions are **never** persisted to `data/database.json`.
+The API supports opaque Bearer access tokens and deliberately allows multiple concurrent sessions per user. A successful API login creates a separate tracked session and records non-security-critical client information when available, including client name, user agent and IP address.
+
+Authenticated API session operations include:
+
+```text
+GET  /api/v1/auth/me
+GET  /api/v1/auth/sessions
+POST /api/v1/auth/logout
+POST /api/v1/auth/logout-all
+PUT  /api/v1/auth/password
+```
+
+API login requires a verified email address. `logout` revokes the current API session; `logout-all` revokes all active API sessions for the authenticated user.
+
+## UI sessions
+
+UI/browser sessions are **never** persisted to `data/database.json`.
 
 Their rolling idle timeout is configured in minutes:
 
@@ -195,7 +211,7 @@ Selected context values may be attached to operations. Sensitive names (`passwor
 ********
 ```
 
-The same canonical error can be projected to API JSON, the UI error popup and a bounded session error log. API error detail is configurable (`none`, `basic`, `operations`, `full`).
+The same canonical error can be projected to API JSON, the UI error popup and a bounded session error log. API failures always expose the user-facing message at root level as well as in `error.message`. API error detail is configurable (`normal`, `operations`, `full`).
 
 ## Storage
 
@@ -208,7 +224,21 @@ Services
   -> data/database.json
 ```
 
-JSON writes use temporary-file + rename. In-memory transactions snapshot the Maps and roll back on failure. Future SQL/database adapters can replace this implementation without changing services or presentation layers.
+JSON writes use temporary-file + rename. In-memory transactions snapshot the Maps and roll back on failure.
+
+The active storage adapter also exposes an explicit `flush()` capability. For the current in-memory adapter, `POST /flush-db` persists the complete current state to `data/database.json`. For a transactional SQL adapter, explicit flush may legitimately be a no-op because committed writes are already durable.
+
+Server operations are:
+
+```text
+GET  /health
+GET  /ready
+POST /flush-db
+```
+
+The flush operation is restricted to authenticated Admin users.
+
+Future SQL/database adapters can replace the current implementation without changing services or presentation layers.
 
 ## Documentation
 
@@ -225,7 +255,6 @@ Detailed architectural comments are also kept next to important interfaces/class
 
 This is a baseline rather than a completed production system. In particular:
 
-- API bearer-token/third-party-client authorization is intentionally not implemented yet.
 - UI sessions and verification/reset tokens are memory-only.
 - Real SMTP is not configured.
 - Google/Facebook require real provider credentials/callback URLs.

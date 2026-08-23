@@ -1,2 +1,442 @@
-import {describe,expect,it} from 'vitest';import request from 'supertest';import {mkdtemp} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {JsonFilePersistence} from '../src/storage/json-file-persistence.js';import {InMemoryDataStore} from '../src/storage/in-memory-data-store.js';import {SysUserService} from '../src/services/sys-user-service.js';import {ExternalIdentityService,SysApplicationService,SysLicenseService,SysPrincipalService,UserPrincipalService} from '../src/services/domain-services.js';import {createApp} from '../src/app.js';
-describe('API',()=>{it('creates and lists SysApplications',async()=>{const dir=await mkdtemp(join(tmpdir(),'manatos-api-')),store=new InMemoryDataStore(new JsonFilePersistence(join(dir,'db.json')));await store.initialize();const users=new SysUserService(store),app=createApp(store,{users,principals:new SysPrincipalService(store),applications:new SysApplicationService(store),licenses:new SysLicenseService(store),externalIdentities:new ExternalIdentityService(store),userPrincipals:new UserPrincipalService(store,users)});expect((await request(app).post('/api/v1/SysApplications').send({name:'Accounts',appName:'accounts',fullName:'Accounts Application',enabled:true})).status).toBe(201);const r=await request(app).get('/api/v1/SysApplications');expect(r.status).toBe(200);expect(r.body.data).toHaveLength(1);});});
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
+
+import request from 'supertest';
+
+import {
+  createTestApi,
+  bearer,
+  expectCommandSuccess,
+  expectFailure,
+  expectQuerySuccess,
+  loginAdmin,
+  seedAdmin,
+} from './test-helpers.js';
+
+describe('API integration - server and generic SysBO behavior', () => {
+  let context: Awaited<
+    ReturnType<typeof createTestApi>
+  >;
+
+  beforeEach(async () => {
+    context = await createTestApi();
+
+    await seedAdmin(
+      context.services.users,
+    );
+  });
+
+  describe('server endpoints', () => {
+    it('returns public liveness and readiness using query envelopes', async () => {
+      const health = await request(
+        context.app,
+      ).get('/health');
+
+      expect(health.status).toBe(200);
+      expectQuerySuccess(health.body);
+      expect(health.body.data.status).toBe('ok');
+
+      const ready = await request(
+        context.app,
+      ).get('/ready');
+
+      expect(ready.status).toBe(200);
+      expectQuerySuccess(ready.body);
+      expect(ready.body.data.status).toBe('ok');
+      expect(ready.body.data.storage).toBeDefined();
+    });
+
+    it('requires an authenticated Admin to flush the datastore', async () => {
+      const anonymous = await request(
+        context.app,
+      ).post('/flush-db');
+
+      expect(anonymous.status).toBe(401);
+      expectFailure(anonymous.body);
+
+      const token = await loginAdmin(
+        context.app,
+      );
+
+      const response = await request(
+        context.app,
+      )
+        .post('/flush-db')
+        .set(
+          'Authorization',
+          bearer(token),
+        );
+
+      expect(response.status).toBe(200);
+      expectCommandSuccess(response.body);
+
+      expect(response.body.message).toBe(
+        'Database flushed successfully.',
+      );
+
+      expect(response.body.data).toMatchObject({
+        provider: 'InMemory',
+        persistence: 'JSON',
+        flushed: true,
+      });
+    });
+  });
+
+  describe('generic SysApplication REST contract', () => {
+    it('rejects anonymous access with the global failure envelope', async () => {
+      const response = await request(
+        context.app,
+      ).get('/api/v1/SysApplications');
+
+      expect(response.status).toBe(401);
+      expectFailure(response.body);
+
+      expect(response.body.error.code).toBe(
+        'AUTHENTICATION_REQUIRED',
+      );
+    });
+
+
+    it('allows a Guest to read SysBOs but blocks generic creation', async () => {
+      const registration = await request(
+        context.app,
+      )
+        .post('/api/v1/auth/register')
+        .send({
+          name: 'ReadOnlyGuest',
+          email: 'readonly@example.test',
+          password: 'GuestPass!123',
+        });
+
+      expect(registration.status).toBe(201);
+
+      const guestId =
+        registration.body.data.id as string;
+
+      const {
+        SYSTEM_AUDIT_ACTOR,
+      } = await import(
+        '../src/audit/audit-service.js'
+      );
+
+      await context.services.users.setEmailVerified(
+        guestId,
+        SYSTEM_AUDIT_ACTOR,
+      );
+
+      const signedIn = await request(
+        context.app,
+      )
+        .post('/api/v1/auth/login')
+        .send({
+          identity: 'ReadOnlyGuest',
+          password: 'GuestPass!123',
+        });
+
+      expect(signedIn.status).toBe(200);
+
+      const guestToken =
+        signedIn.body.data.accessToken as string;
+
+      const read = await request(
+        context.app,
+      )
+        .get('/api/v1/SysApplications')
+        .set(
+          'Authorization',
+          bearer(guestToken),
+        );
+
+      expect(read.status).toBe(200);
+      expectQuerySuccess(read.body);
+
+      const create = await request(
+        context.app,
+      )
+        .post('/api/v1/SysApplications')
+        .set(
+          'Authorization',
+          bearer(guestToken),
+        )
+        .send({
+          name: 'Forbidden Guest App',
+          appName: 'forbidden-guest-app',
+          fullName: 'Forbidden Guest Application',
+          enabled: true,
+        });
+
+      expect(create.status).toBe(403);
+      expectFailure(create.body);
+    });
+
+    it('supports metadata, CRUD, audit fields and the global response envelopes', async () => {
+      const token = await loginAdmin(
+        context.app,
+      );
+
+      const metadata = await request(
+        context.app,
+      )
+        .get('/api/v1/SysApplications/$metadata')
+        .set(
+          'Authorization',
+          bearer(token),
+        );
+
+      expect(metadata.status).toBe(200);
+      expectQuerySuccess(metadata.body);
+
+      expect(metadata.body.data.metadata).toMatchObject({
+        key: 'sys-applications',
+        name: 'SysApplication',
+      });
+
+      const create = await request(
+        context.app,
+      )
+        .post('/api/v1/SysApplications')
+        .set(
+          'Authorization',
+          bearer(token),
+        )
+        .send({
+          name: 'Accounts',
+          appName: 'accounts',
+          fullName: 'Accounts Application',
+          enabled: true,
+        });
+
+      expect(create.status).toBe(201);
+      expectCommandSuccess(create.body);
+
+      expect(create.body.message).toContain(
+        'Accounts',
+      );
+
+      expect(create.body.data).toMatchObject({
+        name: 'Accounts',
+        appName: 'accounts',
+        createdBy: 'Admin',
+        updatedBy: 'Admin',
+      });
+
+      const applicationId =
+        create.body.data.id as string;
+
+      const read = await request(
+        context.app,
+      )
+        .get(
+          `/api/v1/SysApplications/${applicationId}`,
+        )
+        .set(
+          'Authorization',
+          bearer(token),
+        );
+
+      expect(read.status).toBe(200);
+      expectQuerySuccess(read.body);
+
+      expect(read.body.data.id).toBe(
+        applicationId,
+      );
+
+      const update = await request(
+        context.app,
+      )
+        .patch(
+          `/api/v1/SysApplications/${applicationId}`,
+        )
+        .set(
+          'Authorization',
+          bearer(token),
+        )
+        .send({
+          description:
+            'Updated by integration test',
+
+          /**
+           * Runtime audit-field tampering attempt.
+           * The repository must discard these caller-supplied values.
+           */
+          createdBy:
+            'Attacker',
+
+          updatedBy:
+            'Attacker',
+        });
+
+      expect(update.status).toBe(200);
+      expectCommandSuccess(update.body);
+
+      expect(update.body.data.description).toBe(
+        'Updated by integration test',
+      );
+
+      expect(update.body.data.createdBy).toBe(
+        'Admin',
+      );
+
+      expect(update.body.data.updatedBy).toBe(
+        'Admin',
+      );
+
+      const remove = await request(
+        context.app,
+      )
+        .delete(
+          `/api/v1/SysApplications/${applicationId}`,
+        )
+        .set(
+          'Authorization',
+          bearer(token),
+        );
+
+      expect(remove.status).toBe(200);
+      expectCommandSuccess(remove.body);
+
+      expect(remove.body.data.id).toBe(
+        applicationId,
+      );
+
+      const missing = await request(
+        context.app,
+      )
+        .get(
+          `/api/v1/SysApplications/${applicationId}`,
+        )
+        .set(
+          'Authorization',
+          bearer(token),
+        );
+
+      expect(missing.status).toBe(404);
+      expectFailure(missing.body);
+    });
+
+    it('returns items, paging and optional metadata for filtered/paged lists', async () => {
+      const token = await loginAdmin(
+        context.app,
+      );
+
+      for (
+        const [name, appName]
+        of [
+          ['Accounts', 'accounts'],
+          ['Billing', 'billing'],
+          ['Accounts Reports', 'accounts-reports'],
+        ] as const
+      ) {
+        const response = await request(
+          context.app,
+        )
+          .post('/api/v1/SysApplications')
+          .set(
+            'Authorization',
+            bearer(token),
+          )
+          .send({
+            name,
+            appName,
+            fullName: `${name} Application`,
+            enabled: true,
+          });
+
+        expect(response.status).toBe(201);
+      }
+
+      const response = await request(
+        context.app,
+      )
+        .get('/api/v1/SysApplications')
+        .query({
+          page: 1,
+          pageSize: 1,
+
+          sort: 'name',
+          direction: 'desc',
+
+          'filter.name':
+            'accounts',
+
+          includeMetadata:
+            'true',
+        })
+        .set(
+          'Authorization',
+          bearer(token),
+        );
+
+      expect(response.status).toBe(200);
+      expectQuerySuccess(response.body);
+
+      expect(response.body.data.items).toHaveLength(1);
+
+      expect(response.body.data.items[0].name).toBe(
+        'Accounts Reports',
+      );
+
+      expect(response.body.data.paging).toMatchObject({
+        total: 2,
+        page: 1,
+        pageSize: 1,
+        totalPages: 2,
+      });
+
+      expect(response.body.data.metadata.key).toBe(
+        'sys-applications',
+      );
+    });
+  });
+
+  describe('OpenAPI and fallback contract', () => {
+    it('exposes the current server/auth/SysBO paths in OpenAPI', async () => {
+      const response = await request(
+        context.app,
+      ).get('/api/openapi.json');
+
+      expect(response.status).toBe(200);
+
+      expect(response.body.paths).toHaveProperty(
+        '/health',
+      );
+
+      expect(response.body.paths).toHaveProperty(
+        '/ready',
+      );
+
+      expect(response.body.paths).toHaveProperty(
+        '/flush-db',
+      );
+
+      expect(response.body.paths).toHaveProperty(
+        '/api/v1/auth/login',
+      );
+
+      expect(response.body.paths).toHaveProperty(
+        '/api/v1/auth/sessions',
+      );
+
+      expect(response.body.paths).toHaveProperty(
+        '/api/v1/SysApplications',
+      );
+    });
+
+    it('returns the global failure envelope for an unknown API route', async () => {
+      const response = await request(
+        context.app,
+      ).get('/this-route-does-not-exist');
+
+      expect(response.status).toBe(404);
+      expectFailure(response.body);
+
+      expect(response.body.error.code).toBe(
+        'HTTP_NOT_FOUND',
+      );
+    });
+  });
+});

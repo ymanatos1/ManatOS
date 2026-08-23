@@ -1,0 +1,28 @@
+
+digraph G {
+  size="11.69,8.27!"; ratio=fill; margin=0.25;
+
+graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", labeljust="c"];
+node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"];
+edge [fontname="Arial", fontsize=8, arrowsize=0.7];
+
+  rankdir=TB;
+  label="ManatOS - Storage Abstraction and Future Database Adapters";
+
+  service [label="Business / Service Layer\nNo JSON / SQL-engine knowledge", fillcolor="#e8f4e5"];
+  contract [label="Future DataStore Contract\ninitialize()\nexecuteTransaction<T>()\nhealthCheck()\nflush()\nrepository properties", fillcolor="#e9f2ff"];
+  repoContract [label="Future SysBORepository<T> Contract\nget / list / create / update / delete", fillcolor="#e9f2ff"];
+  mem [label="InMemoryDataStore (Current)\nGUID Maps\nInMemoryRepository<T>\nsnapshot rollback transaction\nJSON persistence\nflush() writes database.json", fillcolor="#fff1da"];
+  json [label="JsonFilePersistence\nload() / save()\ntemp-file + rename\ndata/database.json", fillcolor="#fff7e8"];
+  sqlite [label="SQLite Adapter (Future)\nreal DB transactions\nUNIQUE constraints\nquery translation\nschema + migrations\nflush no-op/checkpoint", fillcolor="#f1eafb"];
+  mysql [label="MySQL Adapter (Future)\nconnection pool\nreal DB transactions\nUNIQUE constraints\nparameterized SQL\nschema + migrations\nflush normally no-op", fillcolor="#f1eafb"];
+  note [shape=note, fillcolor="#eef6ff", label="Rule:\nBusiness services depend on contracts,\nnot on a concrete datastore or DB driver.\nAdapter-specific behavior stays inside adapters."];
+
+  service -> contract;
+  contract -> repoContract [label="exposes"];
+  contract -> mem [style=dashed, label="implements"];
+  mem -> json;
+  contract -> sqlite [style=dashed, label="implements"];
+  contract -> mysql [style=dashed, label="implements"];
+  repoContract -> note [style=dotted, arrowhead=none];
+}

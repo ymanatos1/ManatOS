@@ -1,0 +1,39 @@
+
+digraph G {
+  size="11.69,8.27!"; ratio=fill; margin=0.25;
+
+graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", labeljust="c"];
+node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"];
+edge [fontname="Arial", fontsize=8, arrowsize=0.7];
+
+  label="ManatOS - API Endpoints and Main Development Operations";
+  node [shape=plain, style=""];
+
+  table [label=<
+  <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+    <TR><TD BGCOLOR="#dcecff"><B>Endpoint</B></TD><TD BGCOLOR="#dcecff"><B>HTTP</B></TD><TD BGCOLOR="#dcecff"><B>Auth</B></TD><TD BGCOLOR="#dcecff"><B>Root Operation</B></TD><TD BGCOLOR="#dcecff"><B>Main Service / Store Work</B></TD></TR>
+
+    <TR><TD COLSPAN="5" BGCOLOR="#e8f4e5"><B>Authentication</B></TD></TR>
+    <TR><TD>/api/v1/auth/register</TD><TD>POST</TD><TD>Public</TD><TD>Register Guest SysUser</TD><TD>registerGuest -&gt; createUser -&gt; repository create</TD></TR>
+    <TR><TD>/api/v1/auth/login</TD><TD>POST</TD><TD>Public</TD><TD>Login SysUser</TD><TD>verifyLocalCredentials -&gt; verified-email check -&gt; token create</TD></TR>
+    <TR><TD>/api/v1/auth/me</TD><TD>GET</TD><TD>User</TD><TD>Read current user</TD><TD>SysUserService.get</TD></TR>
+    <TR><TD>/api/v1/auth/sessions</TD><TD>GET</TD><TD>User</TD><TD>List sessions</TD><TD>AccessTokenStore.listUserSessions</TD></TR>
+    <TR><TD>/api/v1/auth/logout</TD><TD>POST</TD><TD>User</TD><TD>Logout current session</TD><TD>AccessTokenStore.revoke</TD></TR>
+    <TR><TD>/api/v1/auth/logout-all</TD><TD>POST</TD><TD>User</TD><TD>Logout all sessions</TD><TD>AccessTokenStore.revokeAllForUser</TD></TR>
+    <TR><TD>/api/v1/auth/password</TD><TD>PUT</TD><TD>User</TD><TD>Change current SysUser password</TD><TD>changePassword -&gt; repository update</TD></TR>
+
+    <TR><TD COLSPAN="5" BGCOLOR="#fff3d6"><B>Generic SysBO CRUD</B></TD></TR>
+    <TR><TD>/api/v1/&lt;SysBO&gt;/$metadata</TD><TD>GET</TD><TD>User</TD><TD>Metadata query</TD><TD>hard-coded SysBOMetadata -&gt; sendQuery</TD></TR>
+    <TR><TD>/api/v1/&lt;SysBO&gt;</TD><TD>GET</TD><TD>User</TD><TD>List &lt;plural&gt;</TD><TD>authorize -&gt; list(filter/sort/page) -&gt; sanitize</TD></TR>
+    <TR><TD>/api/v1/&lt;SysBO&gt;/:id</TD><TD>GET</TD><TD>User</TD><TD>Read &lt;SysBO&gt;</TD><TD>get -&gt; authorize -&gt; sanitize</TD></TR>
+    <TR><TD>/api/v1/&lt;SysBO&gt;</TD><TD>POST</TD><TD>Admin</TD><TD>Create &lt;SysBO&gt;</TD><TD>authorize -&gt; AuditActor -&gt; create</TD></TR>
+    <TR><TD>/api/v1/&lt;SysBO&gt;/:id</TD><TD>PUT/PATCH</TD><TD>User/Admin</TD><TD>Update &lt;SysBO&gt;</TD><TD>get existing -&gt; authorize -&gt; AuditActor -&gt; update</TD></TR>
+    <TR><TD>/api/v1/&lt;SysBO&gt;/:id</TD><TD>DELETE</TD><TD>User/Admin</TD><TD>Delete &lt;SysBO&gt;</TD><TD>get existing -&gt; authorize -&gt; AuditActor -&gt; delete</TD></TR>
+
+    <TR><TD COLSPAN="5" BGCOLOR="#f1eafb"><B>Server Operations</B></TD></TR>
+    <TR><TD>/health</TD><TD>GET</TD><TD>Public</TD><TD>Liveness query</TD><TD>HealthService.checkHealth</TD></TR>
+    <TR><TD>/ready</TD><TD>GET</TD><TD>Public</TD><TD>Readiness query</TD><TD>checkReadiness -&gt; store.healthCheck</TD></TR>
+    <TR><TD>/flush-db</TD><TD>POST</TD><TD>Admin</TD><TD>Flush database</TD><TD>store.flush() -&gt; adapter-specific persistence</TD></TR>
+  </TABLE>
+  >];
+}

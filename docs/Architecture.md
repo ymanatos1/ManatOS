@@ -31,3 +31,32 @@ Scope state is runtime context, not business persistence.
 - SysLicense: owned by a principal for a SysApplication.
 
 This avoids making customer type/hierarchy and website authentication the same concept.
+
+
+## API response boundary
+
+The HTTP layer applies a consistent envelope independently of business services:
+
+```text
+GET/query success       -> success + data
+command success         -> success + message + data
+failure                 -> success:false + message + error [+ optional data]
+```
+
+The root failure `message` mirrors `error.message`. Generic SysBO collection responses use `data.items` plus `data.paging`; metadata remains separate through `/$metadata` and optional `includeMetadata=true`.
+
+## Server operations
+
+Operational routes are grouped in `createServerRouter()` and remain outside `/api/v1` because they describe or manage the running API service rather than versioned business resources:
+
+```text
+GET  /health
+GET  /ready
+POST /flush-db
+```
+
+Health is liveness-oriented. Readiness evaluates required dependencies, currently the datastore. Database flush is authenticated/Admin-only and delegates to the storage adapter.
+
+## Storage adapter boundary
+
+The current `InMemoryDataStore` is an adapter rather than a business-service dependency on JSON. Its explicit `flush()` writes the current in-memory state to JSON. A future transactional database adapter can implement the same capability according to its engine, including reporting that no explicit flush is required when commits are already durable.

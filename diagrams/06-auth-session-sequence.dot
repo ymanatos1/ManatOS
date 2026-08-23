@@ -1,0 +1,41 @@
+
+digraph G {
+  size="11.69,8.27!"; ratio=fill; margin=0.25;
+
+graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", labeljust="c"];
+node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"];
+edge [fontname="Arial", fontsize=8, arrowsize=0.7];
+
+  rankdir=LR;
+  label="ManatOS - Authentication and Multi-Session Flow";
+
+  client [label="Client\nPostman / UI", fillcolor="#e8f4e5"];
+  login [label="POST /api/v1/auth/login\nNo Auth", fillcolor="#dcecff"];
+  userSvc [label="SysUserService\nverifyLocalCredentials", fillcolor="#fff3d6"];
+  token [label="AccessTokenStore\ncreate / validate / list / revoke", fillcolor="#f1eafb"];
+  sessions [label="GET /auth/sessions\nBearer token", fillcolor="#dcecff"];
+  logout [label="POST /auth/logout\nrevoke current", fillcolor="#dcecff"];
+  logoutAll [label="POST /auth/logout-all\nrevoke all user sessions", fillcolor="#dcecff"];
+
+  client -> login [label="identity + password"];
+  login -> userSvc [label="verify"];
+  userSvc -> login [label="SysUser + emailVerified"];
+  login -> token [label="create session A"];
+  token -> client [label="opaque Bearer token A"];
+
+  client -> login [label="login again"];
+  login -> token [label="create independent session B"];
+  token -> client [label="opaque Bearer token B"];
+
+  client -> sessions [label="Bearer A"];
+  sessions -> token [label="list sessions"];
+  token -> client [label="A current=true; B current=false"];
+
+  client -> logout [label="Bearer A"];
+  logout -> token [label="revoke(A)"];
+  token -> client [label="200 success + message"];
+
+  client -> logoutAll [label="Bearer B"];
+  logoutAll -> token [label="revokeAllForUser"];
+  token -> client [label="200 success + revokedSessions"];
+}
