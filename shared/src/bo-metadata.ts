@@ -237,6 +237,26 @@ export const sysUsersMetadata: SysBOMetadata<SysUser> = {
       required: true,
     },
 
+    emailVerifiedAt: {
+      key: 'emailVerifiedAt',
+      label: 'Email verified at',
+      type: 'date',
+      order: 31,
+
+      nullable: true,
+      readOnly: true,
+    },
+
+    emailVerificationSource: {
+      key: 'emailVerificationSource',
+      label: 'Email verification source',
+      type: 'string',
+      order: 32,
+
+      nullable: true,
+      readOnly: true,
+    },
+
     /**
      * Stored internally only.
      *

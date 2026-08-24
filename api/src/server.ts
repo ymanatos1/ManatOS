@@ -48,7 +48,7 @@ const services = {
 
   licenses: new SysLicenseService(store),
 
-  externalIdentities: new ExternalIdentityService(store),
+  externalIdentities: new ExternalIdentityService(store, users),
 
   userPrincipals: new UserPrincipalService(store, users),
 };

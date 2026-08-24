@@ -48,6 +48,15 @@ export enum SysUserRole {
 }
 
 /**
+ * Source that established trust in a SysUser email address.
+ *
+ * `internal` means ManatOS verified the email itself (verification link or
+ * an explicitly authorized administrative/internal action). External
+ * providers are recorded by their stable provider key.
+ */
+export type EmailVerificationSource = 'internal' | 'google' | 'facebook' | 'github';
+
+/**
  * Supported customer/commercial principal types.
  */
 export enum SysPrincipalType {
@@ -91,6 +100,10 @@ export enum SysUserPrincipalRelationship {
 export interface SysUser extends SysBOEntity {
   email: string;
   emailVerified: boolean;
+
+  /** When and how the current email address became verified. */
+  emailVerifiedAt?: string | null;
+  emailVerificationSource?: EmailVerificationSource | null;
 
   /**
    * Contains the securely hashed password when the user has

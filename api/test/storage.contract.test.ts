@@ -227,6 +227,65 @@ describe('storage contract', () => {
     );
   });
 
+  it('keeps existing service/repository references valid after transaction rollback', async () => {
+    const created = await applications.create(
+      applicationInput(
+        'Survives Rollback',
+        'survives-rollback',
+      ),
+      SYSTEM_AUDIT_ACTOR,
+    );
+
+    /**
+     * Force a transaction failure after mutating the same datastore.
+     *
+     * Before the fix, executeTransaction() replaced DatabaseState and rebuilt
+     * store repositories. `applications` retained its old repository reference
+     * and subsequent reads/writes could observe detached state.
+     */
+    await expect(
+      store.executeTransaction(async () => {
+        await store.sysApplications.create(
+          applicationInput(
+            'Rolled Back',
+            'rolled-back',
+          ),
+          SYSTEM_AUDIT_ACTOR,
+        );
+
+        throw new Error('force rollback');
+      }),
+    ).rejects.toThrow('force rollback');
+
+    /** The long-lived service must still see the original record. */
+    await expect(
+      applications.get(created.id),
+    ).resolves.toMatchObject({
+      id: created.id,
+      name: 'Survives Rollback',
+    });
+
+    /** The failed transaction must not leak its temporary record. */
+    const afterRollback = await applications.list(
+      defaultListQuery(),
+    );
+
+    expect(
+      afterRollback.items.some((item) => item.appName === 'rolled-back'),
+    ).toBe(false);
+
+    /** A subsequent mutation through the pre-existing service must also work. */
+    const updated = await applications.update(
+      created.id,
+      {
+        fullName: 'Updated After Rollback',
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+
+    expect(updated.fullName).toBe('Updated After Rollback');
+  });
+
   it('flushes current in-memory state to durable JSON persistence', async () => {
     /**
      * Create directly through the repository so this change exists only

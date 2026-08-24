@@ -5,6 +5,7 @@ import {
   NotFoundError,
   SysUserRole,
   operationContext,
+  type EmailVerificationSource,
   type SysUser,
   type SysUserPrincipalRelationship,
 } from '@manatos/shared';
@@ -134,11 +135,16 @@ export function createInternalRouter(
 
           const emailVerified = Boolean(req.body?.emailVerified);
 
+          const emailVerificationSource = emailVerified
+            ? parseEmailVerificationSource(req.body?.emailVerificationSource)
+            : undefined;
+
           scope.addContext({
             name,
             email,
             password: req.body?.password,
             emailVerified,
+            emailVerificationSource,
           });
 
           const user = await users.createUser(
@@ -154,6 +160,12 @@ export function createInternalRouter(
               role: SysUserRole.Guest,
 
               emailVerified,
+
+              ...(emailVerificationSource
+                ? {
+                    emailVerificationSource,
+                  }
+                : {}),
 
               enabled: true,
 
@@ -367,9 +379,15 @@ export function createInternalRouter(
     async (req, res) => {
       const userId = String(req.params.userId ?? '');
 
-      const user = await users.setEmailVerified(userId, actor);
+      const source = parseEmailVerificationSource(req.body?.source);
 
-      sendCommand(res, `Email verified successfully for user '${user.name}'.`, publicUser(user));
+      const user = await users.setEmailVerified(userId, actor, source);
+
+      sendCommand(
+        res,
+        `Email verified successfully for user '${user.name}' via ${source}.`,
+        publicUser(user),
+      );
     },
   );
 
@@ -449,6 +467,19 @@ function trustedSessionClientInfo(req: Request): SessionClientInfo {
         }
       : {}),
   };
+}
+
+/**
+ * Restrict persisted verification provenance to the supported stable keys.
+ */
+function parseEmailVerificationSource(value: unknown): EmailVerificationSource {
+  const source = String(value ?? 'internal').toLowerCase();
+
+  if (source === 'google' || source === 'facebook' || source === 'github') {
+    return source;
+  }
+
+  return 'internal';
 }
 
 /**

@@ -26,6 +26,8 @@ interface PublicSysUser {
   name: string;
   email: string;
   emailVerified: boolean;
+  emailVerifiedAt?: string | null;
+  emailVerificationSource?: string | null;
   role: string;
   enabled: boolean;
   hasPassword: boolean;
@@ -487,6 +489,34 @@ describe('API integration - authentication and sessions', () => {
     expect(newLoginData.user.id).toBe(userId);
   });
 
+  it('allows trusted local credential verification before email verification without creating a login session', async () => {
+    const registration = await registerGuest(context.app, {
+      name: 'LinkCandidate',
+      email: 'link.candidate@example.test',
+      password: 'LinkCandidate!123',
+    });
+
+    expect(registration.status).toBe(201);
+
+    const registeredUser = commandData<PublicSysUser>(registration.body);
+    expect(registeredUser.emailVerified).toBe(false);
+
+    const verification = await request(context.app)
+      .post('/api/v1/internal/auth/verify-local')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({
+        identity: 'LinkCandidate',
+        password: 'LinkCandidate!123',
+      });
+
+    expect(verification.status).toBe(200);
+    expectCommandSuccess(verification.body);
+
+    const verifiedUser = commandData<PublicSysUser>(verification.body);
+    expect(verifiedUser.id).toBe(registeredUser.id);
+    expect(verifiedUser.emailVerified).toBe(false);
+  });
+
   it('creates an API session for a trusted externally authenticated verified Guest', async () => {
     /**
      * Create a Guest through the trusted external-registration endpoint.
@@ -506,6 +536,7 @@ describe('API integration - authentication and sessions', () => {
         email: 'external.guest@example.test',
 
         emailVerified: true,
+        emailVerificationSource: 'github',
 
         firstName: 'External',
       });
@@ -522,6 +553,7 @@ describe('API integration - authentication and sessions', () => {
       role: 'Guest',
 
       emailVerified: true,
+      emailVerificationSource: 'github',
 
       enabled: true,
 

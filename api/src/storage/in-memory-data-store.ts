@@ -101,9 +101,26 @@ export class InMemoryDataStore implements StorageAdapter {
 
       return result;
     } catch (error) {
-      this.state = snapshot;
-
-      this.rebuild();
+      /**
+       * IMPORTANT:
+       *
+       * Do not replace `this.state` or rebuild repository wrapper objects here.
+       * Long-lived domain services keep references to the repositories created
+       * during application startup. Replacing those wrappers after a rollback
+       * leaves the services pointing at detached Maps and can make an existing
+       * SysUser appear to disappear in a later request.
+       *
+       * Restore every collection IN PLACE instead. This preserves the identity
+       * of both the DatabaseState Maps and the repository wrappers while still
+       * returning the datastore to its pre-transaction contents.
+       */
+      restoreMap(this.state.sysUsers, snapshot.sysUsers);
+      restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
+      restoreMap(this.state.sysApplications, snapshot.sysApplications);
+      restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
+      restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
+      restoreMap(this.state.sysUserPrincipals, snapshot.sysUserPrincipals);
+      restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
 
       throw error;
     }
@@ -167,8 +184,9 @@ export class InMemoryDataStore implements StorageAdapter {
   /**
    * Recreate generic repositories over the current state.
    *
-   * This is required after initialization and after a transaction
-   * rollback replaces the DatabaseState instance.
+   * This is required after initialization. Transaction rollback deliberately
+   * restores collections in place so long-lived services never lose their
+   * repository references.
    */
   private rebuild(): void {
     this.sysUsers = new InMemoryRepository(this.state.sysUsers, sysUsersMetadata);
@@ -181,5 +199,19 @@ export class InMemoryDataStore implements StorageAdapter {
     );
 
     this.sysLicenses = new InMemoryRepository(this.state.sysLicenses, sysLicensesMetadata);
+  }
+}
+
+
+/**
+ * Restore a Map to a previously cloned snapshot without changing the Map
+ * object's identity. Repository wrappers and domain services may safely keep
+ * references to the target Map across failed transactions.
+ */
+function restoreMap<K, V>(target: Map<K, V>, snapshot: Map<K, V>): void {
+  target.clear();
+
+  for (const [key, value] of snapshot) {
+    target.set(key, value);
   }
 }

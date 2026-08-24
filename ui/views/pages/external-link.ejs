@@ -1,0 +1,206 @@
+<%
+  const providerDisplayNames = {
+    google: 'Google',
+    facebook: 'Facebook',
+    github: 'GitHub'
+  };
+
+  const providerIcons = {
+    google: 'bi-google',
+    facebook: 'bi-facebook',
+    github: 'bi-github'
+  };
+
+  const providerDisplayName =
+    providerDisplayNames[profile.provider] || profile.provider;
+
+  const providerIcon =
+    providerIcons[profile.provider] || 'bi-box-arrow-in-right';
+%>
+
+<div
+  class="modal fade external-link-modal"
+  id="externalLinkModal"
+  tabindex="-1"
+  aria-labelledby="externalLinkModalLabel"
+  aria-hidden="true"
+  data-auto-show="true"
+>
+  <div class="modal-dialog modal-lg modal-dialog-centered external-link-modal-dialog">
+    <form
+      class="modal-content"
+      method="post"
+      action="/auth/link/external"
+      data-busy-submit
+      data-busy-title="Linking <%= providerDisplayName %>…"
+      data-busy-message="Please wait while ManatOS verifies your account and securely links <%= providerDisplayName %>."
+      data-busy-icon="<%= providerIcon %>"
+    >
+      <input
+        type="hidden"
+        name="_csrf"
+        value="<%= csrfToken %>"
+      >
+
+      <div class="modal-header">
+        <div>
+          <h2
+            class="modal-title h4 mb-1"
+            id="externalLinkModalLabel"
+          >
+            <i class="bi bi-link-45deg me-2" aria-hidden="true"></i>
+            Link external account
+          </h2>
+
+          <p class="modal-subtitle mb-0">
+            Confirm the existing account that should be connected.
+          </p>
+        </div>
+
+        <a
+          class="btn-close"
+          href="/"
+          aria-label="Cancel external account linking"
+          title="Cancel"
+        ></a>
+      </div>
+
+      <div class="modal-body external-link-modal-body">
+        <div class="external-link-intro">
+          <div class="external-link-illustration" aria-hidden="true">
+            <div class="external-link-provider-tile">
+              <i class="bi <%= providerIcon %>"></i>
+            </div>
+
+            <div class="external-link-manatos-tile">
+              <img
+                src="/assets/m1/favicon-96x96.png"
+                alt=""
+              >
+            </div>
+
+            <div class="external-link-connector">
+              <i class="bi bi-link-45deg"></i>
+            </div>
+
+            <div class="external-link-shield">
+              <i class="bi bi-shield-check"></i>
+            </div>
+          </div>
+
+          <div class="external-link-copy">
+            <p class="mb-2">
+              <strong><%= providerDisplayName %></strong> authenticated the email address
+              <strong><%= profile.email %></strong>. That email already belongs to the existing
+              account <strong><%= profile.existingUserName %></strong>.
+            </p>
+
+            <p class="text-secondary mb-0">
+              For security, we do not link accounts automatically just because their email
+              addresses match. Sign in to the existing account once to confirm that you own it and
+              authorize this connection.
+            </p>
+          </div>
+        </div>
+
+        <div class="external-link-fields">
+          <div class="external-link-field-row">
+            <label
+              class="form-label mb-0"
+              for="externalLinkProvider"
+            >
+              <i class="bi <%= providerIcon %> external-link-field-icon" aria-hidden="true"></i>
+              External provider
+            </label>
+
+            <div class="input-group">
+              <span class="input-group-text" aria-hidden="true">
+                <i class="bi <%= providerIcon %>"></i>
+              </span>
+              <input
+                id="externalLinkProvider"
+                class="form-control"
+                value="<%= providerDisplayName %>"
+                readonly
+              >
+            </div>
+          </div>
+
+          <div class="external-link-field-row">
+            <label
+              class="form-label mb-0"
+              for="externalLinkEmail"
+            >
+              <i class="bi bi-envelope external-link-field-icon" aria-hidden="true"></i>
+              External email
+            </label>
+
+            <input
+              id="externalLinkEmail"
+              class="form-control"
+              value="<%= profile.email %>"
+              readonly
+            >
+          </div>
+
+          <div class="external-link-field-row">
+            <label
+              class="form-label mb-0"
+              for="externalLinkIdentity"
+            >
+              <i class="bi bi-person external-link-field-icon" aria-hidden="true"></i>
+              Existing account user-name/email
+            </label>
+
+            <input
+              id="externalLinkIdentity"
+              class="form-control"
+              name="identity"
+              type="text"
+              value="<%= profile.existingUserName || profile.email %>"
+              autocomplete="username"
+              required
+            >
+          </div>
+
+          <div class="external-link-field-row">
+            <label
+              class="form-label mb-0"
+              for="externalLinkPassword"
+            >
+              <i class="bi bi-lock external-link-field-icon" aria-hidden="true"></i>
+              Existing account password
+            </label>
+
+            <input
+              id="externalLinkPassword"
+              class="form-control"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              autofocus
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer justify-content-end">
+        <a
+          class="btn btn-outline-secondary"
+          href="/"
+        >
+          Cancel
+        </a>
+
+        <button
+          class="btn btn-primary"
+          type="submit"
+        >
+          <i class="bi bi-link-45deg me-1" aria-hidden="true"></i>
+          Sign in and link <%= providerDisplayName %>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

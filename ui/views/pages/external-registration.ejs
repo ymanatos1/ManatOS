@@ -10,7 +10,13 @@
     ><input class="form-control mb-3" value="<%= profile.email %>" readonly /><label
       class="form-label"
       >User name</label
-    ><input class="form-control mb-3" name="name" required minlength="2" /><label class="form-label"
+    ><input
+      class="form-control mb-3"
+      name="name"
+      value="<%= profile.userName || '' %>"
+      required
+      minlength="2"
+    /><label class="form-label"
       >Local password (optional)</label
     ><input class="form-control password-policy-input" name="password" type="password" /><label
       class="form-label mt-3"

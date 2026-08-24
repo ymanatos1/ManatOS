@@ -6,6 +6,7 @@ export const csrfTokenMiddleware: RequestHandler = (q, r, n) => {
   r.locals.csrfToken = q.session.csrfToken;
   n();
 };
+
 export const requireCsrf: RequestHandler = (q, _r, n) => {
   if (q.body?._csrf !== q.session.csrfToken) {
     n(createError(403, 'The form security token is invalid or expired.'));

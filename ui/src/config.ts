@@ -52,16 +52,16 @@ const schema = z.object({
     .transform((value) => value === 'true'),
 
   GOOGLE_CLIENT_ID: optionalString,
-
   GOOGLE_CLIENT_SECRET: optionalString,
-
   GOOGLE_CALLBACK_URL: optionalString,
 
   FACEBOOK_CLIENT_ID: optionalString,
-
   FACEBOOK_CLIENT_SECRET: optionalString,
-
   FACEBOOK_CALLBACK_URL: optionalString,
+
+  GITHUB_CLIENT_ID: optionalString,
+  GITHUB_CLIENT_SECRET: optionalString,
+  GITHUB_CALLBACK_URL: optionalString,
 });
 
 export const config = schema.parse(process.env);

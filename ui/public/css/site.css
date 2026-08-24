@@ -1941,3 +1941,307 @@ body[data-ui-theme='lighter'] .version-badge {
   vertical-align: middle;
   margin-right: 0.35rem;
 }
+
+/* =========================================================================
+   External account linking modal
+   ========================================================================= */
+
+.external-link-modal-dialog {
+  --bs-modal-width: 900px;
+}
+
+.external-link-modal .modal-content {
+  overflow: hidden;
+}
+
+.external-link-modal .modal-header {
+  padding: 1.1rem 1.35rem;
+}
+
+.external-link-modal .modal-subtitle {
+  color: #62748a;
+  font-size: 0.86rem;
+}
+
+.external-link-modal-body {
+  padding: 1.25rem 1.4rem 1.15rem;
+}
+
+.external-link-intro {
+  display: grid;
+  grid-template-columns: minmax(235px, 0.82fr) minmax(0, 1.18fr);
+  align-items: center;
+  gap: 1.45rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--manatos-border);
+}
+
+.external-link-copy {
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.external-link-illustration {
+  position: relative;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  overflow: hidden;
+}
+
+.external-link-illustration::before,
+.external-link-illustration::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(0.2px);
+}
+
+.external-link-illustration::before {
+  width: 190px;
+  height: 100px;
+  background: #edf5ff;
+  transform: rotate(-7deg);
+}
+
+.external-link-illustration::after {
+  width: 150px;
+  height: 78px;
+  background: #eef9f2;
+  transform: translate(45px, 23px) rotate(8deg);
+}
+
+.external-link-provider-tile,
+.external-link-manatos-tile {
+  position: relative;
+  z-index: 2;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 24px rgba(15, 53, 96, 0.16);
+}
+
+.external-link-provider-tile {
+  margin-right: -0.35rem;
+  background: linear-gradient(145deg, #2f7fd7, #1559a6);
+  color: #fff;
+  font-size: 2.8rem;
+  transform: rotate(-2deg);
+}
+
+.external-link-manatos-tile {
+  margin-left: -0.35rem;
+  background: linear-gradient(145deg, #bce9c8, #73c78f);
+  transform: rotate(2deg);
+}
+
+.external-link-manatos-tile img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(12, 56, 110, 0.16);
+}
+
+.external-link-connector {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 25px;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--manatos-blue);
+  border: 1px solid #cedceb;
+  box-shadow: 0 5px 12px rgba(7, 26, 61, 0.12);
+  font-size: 1.1rem;
+}
+
+.external-link-shield {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 3px;
+  transform: translateX(-50%);
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  background: #ffffff;
+  color: #27965a;
+  border: 1px solid #d7e5dc;
+  box-shadow: 0 7px 18px rgba(7, 26, 61, 0.14);
+  font-size: 1.85rem;
+}
+
+.external-link-fields {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1.15rem;
+}
+
+.external-link-field-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+}
+
+.external-link-field-row .form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 500;
+  color: #24364d;
+}
+
+.external-link-field-icon {
+  width: 1.1rem;
+  flex: 0 0 1.1rem;
+  text-align: center;
+  color: var(--manatos-blue);
+}
+
+.external-link-field-row .form-control,
+.external-link-field-row .input-group {
+  min-width: 0;
+}
+
+.external-link-field-row .form-control[readonly] {
+  background: #f8fafc;
+}
+
+.external-link-modal .modal-footer {
+  padding: 0.95rem 1.35rem 1.05rem;
+}
+
+@media (max-width: 767.98px) {
+  .external-link-modal-dialog {
+    --bs-modal-width: 680px;
+  }
+
+  .external-link-intro {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .external-link-illustration {
+    min-height: 125px;
+  }
+
+  .external-link-provider-tile,
+  .external-link-manatos-tile {
+    width: 76px;
+    height: 76px;
+  }
+
+  .external-link-provider-tile {
+    font-size: 2.2rem;
+  }
+
+  .external-link-manatos-tile img {
+    width: 48px;
+    height: 48px;
+  }
+
+  .external-link-field-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+}
+
+/* ========================================================================
+   Global locked busy overlay
+   ======================================================================== */
+
+.manatos-busy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(7, 26, 61, 0.52);
+  backdrop-filter: blur(1.5px);
+}
+
+.manatos-busy-overlay.is-visible {
+  display: flex;
+}
+
+.manatos-busy-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: min(92vw, 470px);
+  padding: 1.2rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 22px 55px rgba(7, 26, 61, 0.28);
+}
+
+.manatos-busy-animation {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+}
+
+.manatos-busy-provider {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #eef5ff, #dceaff);
+  color: var(--manatos-blue);
+  font-size: 1.65rem;
+  box-shadow: 0 5px 14px rgba(7, 26, 61, 0.14);
+}
+
+.manatos-busy-pulse {
+  position: absolute;
+  inset: 0;
+  border: 3px solid rgba(13, 110, 253, 0.22);
+  border-top-color: var(--manatos-blue);
+  border-radius: 50%;
+  animation: manatos-busy-spin 0.9s linear infinite;
+}
+
+.manatos-busy-copy {
+  min-width: 0;
+}
+
+.manatos-busy-copy h2 {
+  color: #10294d;
+  font-weight: 700;
+}
+
+@keyframes manatos-busy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manatos-busy-pulse {
+    animation-duration: 1.8s;
+  }
+}
+
+body.manatos-busy {
+  overflow: hidden;
+}

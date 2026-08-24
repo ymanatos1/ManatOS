@@ -9,7 +9,7 @@ import {
   sysLicensesMetadata,
   sysPrincipalsMetadata,
   type SysApplication,
-  type SysBOCreateInput,
+  //type SysBOCreateInput,
   type SysBOUpdateInput,
   type SysExternalIdentity,
   type SysLicense,
@@ -123,7 +123,10 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
  * External identities belong to SysUser rather than SysPrincipal.
  */
 export class ExternalIdentityService {
-  constructor(private readonly store: InMemoryDataStore) {}
+  constructor(
+    private readonly store: InMemoryDataStore,
+    private readonly users: SysUserService,
+  ) {}
 
   /**
    * Find an external identity by provider + provider subject.
@@ -161,47 +164,74 @@ export class ExternalIdentityService {
 
     actor: AuditActor,
   ): Promise<SysExternalIdentity> {
-    const existing = await this.find(input.provider, input.providerSubject);
+    return operationContext.run(
+      'Link external identity to SysUser',
 
-    if (existing) {
-      throw new ConflictError(
-        'EXTERNAL_IDENTITY_EXISTS',
+      async (scope) => {
+        scope.addContext({
+          userId,
+          provider: input.provider,
+          providerSubject: input.providerSubject,
+          email: input.email,
+        });
 
-        'External identity already linked.',
+        /**
+         * Resolve the target user through SysUserService rather than directly
+         * through store.sysUsers.  Domain services are constructed over the
+         * active repository instance, while the in-memory store may rebuild its
+         * repository wrappers after a transaction rollback.  Using the user
+         * service keeps credential verification, lookup and linking on the same
+         * repository abstraction.
+         */
+        const user = await this.users.get(userId);
 
-        'This external account is already linked.',
-      );
-    }
+        if (!user) {
+          throw new NotFoundError('SysUser', userId);
+        }
 
-    return this.store.executeTransaction(async () => {
-      const audit = auditService.createStamp(actor, 'sys-external-identities');
+        const existing = await this.find(input.provider, input.providerSubject);
 
-      const identity: SysExternalIdentity = {
-        id: randomUUID(),
+        if (existing) {
+          throw new ConflictError(
+            'EXTERNAL_IDENTITY_EXISTS',
 
-        name: `${input.provider}:${input.providerSubject}`,
+            'External identity already linked.',
 
-        userId,
+            'This external account is already linked.',
+          );
+        }
 
-        provider: input.provider,
+        return this.store.executeTransaction(async () => {
+          const audit = auditService.createStamp(actor, 'sys-external-identities');
 
-        providerSubject: input.providerSubject,
+          const identity: SysExternalIdentity = {
+            id: randomUUID(),
 
-        ...(input.email ? { email: input.email } : {}),
+            name: `${input.provider}:${input.providerSubject}`,
 
-        ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
+            userId: user.id,
 
-        ...(input.displayName ? { displayName: input.displayName } : {}),
+            provider: input.provider,
 
-        enabled: true,
+            providerSubject: input.providerSubject,
 
-        ...audit,
-      };
+            ...(input.email ? { email: input.email } : {}),
 
-      this.store.externalIdentities().set(identity.id, identity);
+            ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
 
-      return identity;
-    });
+            ...(input.displayName ? { displayName: input.displayName } : {}),
+
+            enabled: true,
+
+            ...audit,
+          };
+
+          this.store.externalIdentities().set(identity.id, identity);
+
+          return identity;
+        });
+      },
+    );
   }
 }
 

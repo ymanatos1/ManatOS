@@ -7,6 +7,7 @@ import {
   operationContext,
   sysUsersMetadata,
   validatePassword,
+  type EmailVerificationSource,
   type SysUser,
 } from '@manatos/shared';
 
@@ -44,6 +45,7 @@ export interface CreateSysUserInput {
   description?: string;
 
   emailVerified?: boolean;
+  emailVerificationSource?: EmailVerificationSource;
   enabled?: boolean;
 }
 
@@ -96,6 +98,16 @@ export class SysUserService extends GenericSysBOService<SysUser> {
 
             emailVerified: input.emailVerified ?? false,
 
+            ...((input.emailVerified ?? false)
+              ? {
+                  emailVerifiedAt: new Date().toISOString(),
+                  emailVerificationSource: input.emailVerificationSource ?? 'internal',
+                }
+              : {
+                  emailVerifiedAt: null,
+                  emailVerificationSource: null,
+                }),
+
             passwordHash,
             passwordChangedAt,
 
@@ -140,7 +152,6 @@ export class SysUserService extends GenericSysBOService<SysUser> {
         role: SysUserRole.Guest,
 
         emailVerified: false,
-
         enabled: true,
       },
 
@@ -268,12 +279,18 @@ export class SysUserService extends GenericSysBOService<SysUser> {
   /**
    * Mark the user's email address as verified.
    */
-  async setEmailVerified(id: string, actor: AuditActor): Promise<SysUser> {
+  async setEmailVerified(
+    id: string,
+    actor: AuditActor,
+    source: EmailVerificationSource = 'internal',
+  ): Promise<SysUser> {
     return this.update(
       id,
 
       {
         emailVerified: true,
+        emailVerifiedAt: new Date().toISOString(),
+        emailVerificationSource: source,
       },
       actor,
     );
@@ -303,6 +320,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
         password,
 
         emailVerified: true,
+        emailVerificationSource: 'internal',
 
         role: SysUserRole.Admin,
 

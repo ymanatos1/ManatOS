@@ -1,6 +1,12 @@
 import { Router, type Request } from 'express';
 
-import { AppError, operationContext, validatePassword, type SysUser } from '@manatos/shared';
+import {
+  AppError,
+  operationContext,
+  validatePassword,
+  type EmailVerificationSource,
+  type SysUser,
+} from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
 
@@ -219,13 +225,22 @@ export function createAuthRouter() {
 
     async (req, res, next) => {
       try {
-        const userId = securityTokenStore.consume(
+        const verification = securityTokenStore.consumeDetailed(
           String(req.query.token ?? ''),
 
           'verify-email',
         );
 
-        if (!userId) {
+        if (verification.status === 'already-verified') {
+          await renderPage(res, 'pages/home', {
+            title: 'Home',
+            informationMessage: `Your email address has already been verified by ${verificationSourceLabel(verification.source)}.`,
+          });
+
+          return;
+        }
+
+        if (verification.status !== 'valid') {
           throw new AppError(
             'INVALID_TOKEN',
 
@@ -235,10 +250,12 @@ export function createAuthRouter() {
           );
         }
 
+        const userId = verification.userId;
+
         await apiClient.put(
           `/api/v1/internal/SysUsers/${userId}/email-verified`,
 
-          {},
+          { source: 'internal' },
 
           {
             internal: true,
@@ -474,6 +491,12 @@ export function createAuthRouter() {
 
         {
           session: false,
+
+          ...(provider.scope?.length
+            ? {
+                scope: provider.scope,
+              }
+            : {}),
         },
       ),
     );
@@ -507,15 +530,72 @@ export function createAuthRouter() {
           const linkedUserId = await resolveExternalUserId(profile);
 
           if (linkedUserId) {
-            const login = await createTrustedApiSession(
-              req,
-              linkedUserId,
-              `ManatOS Web UI / ${profile.provider}`,
-            );
+            const matchingUser = await lookup(profile.email);
 
-            await establishUiSession(req, login, profile.provider);
+            /**
+             * A linked provider may verify the account's exact email after the
+             * original link was created. Accept that verification only when the
+             * provider email resolves to this same SysUser.
+             */
+            if (
+              profile.emailVerified &&
+              matchingUser?.id === linkedUserId &&
+              !matchingUser.emailVerified
+            ) {
+              const source = externalVerificationSource(profile.provider);
 
-            res.redirect('/account');
+              await apiClient.put(
+                `/api/v1/internal/SysUsers/${linkedUserId}/email-verified`,
+                { source },
+                { internal: true },
+              );
+
+              securityTokenStore.invalidateEmailVerificationTokens(linkedUserId, source);
+            }
+
+            if (
+              !profile.emailVerified &&
+              matchingUser?.id === linkedUserId &&
+              !matchingUser.emailVerified
+            ) {
+              const verificationToken = securityTokenStore.create(
+                linkedUserId,
+                'verify-email',
+                1440,
+              );
+
+              await emailService.sendWelcomeAndVerificationEmail(
+                matchingUser,
+                absoluteUrl(
+                  req,
+                  `/auth/verify-email?token=${encodeURIComponent(verificationToken)}`,
+                ),
+              );
+
+              res.redirect('/?message=verification-sent');
+
+              return;
+            }
+
+            try {
+              const login = await createTrustedApiSession(
+                req,
+                linkedUserId,
+                `ManatOS Web UI / ${profile.provider}`,
+              );
+
+              await establishUiSession(req, login, profile.provider);
+
+              res.redirect('/account');
+            } catch (error) {
+              if (error instanceof AppError && error.code === 'FORBIDDEN') {
+                res.redirect('/?message=verification-sent');
+
+                return;
+              }
+
+              throw error;
+            }
 
             return;
           }
@@ -527,13 +607,29 @@ export function createAuthRouter() {
           const existing = await lookup(profile.email);
 
           if (existing) {
-            throw new AppError(
-              'SYSUSER_EMAIL_ALREADY_EXISTS',
+            /**
+             * The provider authenticated successfully, but its identity has not
+             * previously been linked to a ManatOS account.
+             *
+             * The provider supplied an email already owned by an existing SysUser.
+             *
+             * IMPORTANT:
+             *
+             * Email equality alone MUST NOT silently link the provider identity.
+             * Preserve the provider profile temporarily and require the owner of
+             * the existing ManatOS account to authenticate explicitly.
+             */
+            req.session.pendingExternalLink = {
+              ...sessionExternalProfile(profile),
 
-              `Email ${profile.email} is already registered.`,
+              existingUserId: existing.id,
 
-              'This email is already registered. Please sign in to the existing account or use account recovery.',
-            );
+              existingUserName: existing.name,
+            };
+
+            res.redirect('/auth/link/external');
+
+            return;
           }
 
           req.session.pendingExternalRegistration = sessionExternalProfile(profile);
@@ -547,13 +643,24 @@ export function createAuthRouter() {
   }
 
   /**
-   * Display external-provider registration completion page.
+   * Display explicit external-account linking confirmation.
+   *
+   * Reaching this page means:
+   *
+   * 1. an external provider authenticated successfully;
+   * 2. that provider identity is not currently linked;
+   * 3. its verified/usable email belongs to an existing ManatOS account.
+   *
+   * The email match identifies a possible account but does not authorize
+   * the link.  The existing ManatOS credentials must still be supplied.
    */
   router.get(
-    '/register/external',
+    '/link/external',
 
     async (req, res) => {
-      if (!req.session.pendingExternalRegistration) {
+      const pending = req.session.pendingExternalLink;
+
+      if (!pending) {
         res.redirect('/');
 
         return;
@@ -561,14 +668,214 @@ export function createAuthRouter() {
 
       await renderPage(
         res,
-        'pages/external-registration',
+        'pages/external-link',
 
         {
-          title: 'Complete registration',
+          title: 'Link external account',
+          titleIcon: 'bi-link-45deg',
 
-          profile: req.session.pendingExternalRegistration,
+          profile: pending,
         },
       );
+    },
+  );
+
+  /**
+   * Authenticate the existing ManatOS account and explicitly attach the
+   * pending external-provider identity to it.
+   */
+  router.post(
+    '/link/external',
+
+    requireCsrf,
+
+    async (req, res, next) => {
+      try {
+        const pending = req.session.pendingExternalLink;
+
+        if (!pending) {
+          throw new AppError(
+            'EXTERNAL_LINK_SESSION_EXPIRED',
+
+            'External account linking session expired.',
+
+            'The external account linking request has expired. Please start again.',
+          );
+        }
+
+        const identity = String(req.body.identity ?? '').trim();
+
+        const password = String(req.body.password ?? '');
+
+        if (!identity || !password) {
+          throw new AppError(
+            'EXTERNAL_LINK_CREDENTIALS_REQUIRED',
+
+            'Existing account credentials are required.',
+
+            'Enter your existing ManatOS user name or email and password.',
+          );
+        }
+
+        /**
+         * Verify ownership of the existing ManatOS account through the trusted
+         * internal credential verifier. Unlike normal login this intentionally
+         * does not require email verification and does not create a session.
+         */
+        console.log('[external-link] STAGE 1 - verify-local starting', {
+          identity,
+          pendingUserId: pending.existingUserId,
+          pendingUserName: pending.existingUserName,
+          provider: pending.provider,
+          providerEmail: pending.email,
+          providerEmailVerified: pending.emailVerified,
+        });
+
+        const verifiedUser = (
+          await apiClient.post<SysUser>(
+            '/api/v1/internal/auth/verify-local',
+
+            {
+              identity,
+              password,
+            },
+
+            {
+              internal: true,
+            },
+          )
+        ).data;
+
+        console.log('[external-link] STAGE 1 - verify-local succeeded', {
+          verifiedUserId: verifiedUser.id,
+          verifiedUserName: verifiedUser.name,
+          verifiedUserEmail: verifiedUser.email,
+          verifiedUserEmailVerified: verifiedUser.emailVerified,
+        });
+
+        /**
+         * The credentials must authenticate the SAME account that owns the
+         * email returned by the external provider.
+         */
+        if (verifiedUser.id !== pending.existingUserId) {
+          throw new AppError(
+            'EXTERNAL_LINK_ACCOUNT_MISMATCH',
+
+            `Authenticated SysUser ${verifiedUser.id} does not match pending external-link SysUser ${pending.existingUserId}.`,
+
+            `Please sign in to the existing account "${pending.existingUserName}" to link this external account.`,
+          );
+        }
+
+        /**
+         * Persist the normalized provider identity.
+         *
+         * The API service already enforces uniqueness of:
+         *
+         *     provider + providerSubject
+         */
+        console.log('[external-link] STAGE 2 - external identity link starting', {
+          userId: verifiedUser.id,
+          provider: pending.provider,
+          providerSubject: pending.providerSubject,
+        });
+
+        await apiClient.post(
+          `/api/v1/internal/SysUsers/${verifiedUser.id}/external-identities`,
+          {
+            provider: pending.provider,
+
+            providerSubject: pending.providerSubject,
+
+            email: pending.email,
+
+            emailVerified: pending.emailVerified,
+
+            ...(pending.displayName
+              ? {
+                  displayName: pending.displayName,
+                }
+              : {}),
+          },
+
+          {
+            internal: true,
+          },
+        );
+
+        console.log('[external-link] STAGE 2 - external identity link succeeded');
+
+        /**
+         * External authentication and external email verification are separate
+         * facts. If the provider explicitly verified this exact email, accept
+         * that as verification provenance for the matching ManatOS account and
+         * invalidate outstanding internal verification links.
+         */
+        if (pending.emailVerified) {
+          const source = externalVerificationSource(pending.provider);
+
+          console.log('[external-link] STAGE 3 - email verification starting', {
+            userId: verifiedUser.id,
+            source,
+          });
+
+          await apiClient.put(
+            `/api/v1/internal/SysUsers/${verifiedUser.id}/email-verified`,
+            { source },
+            { internal: true },
+          );
+
+          console.log('[external-link] STAGE 3 - email verification succeeded');
+
+          securityTokenStore.invalidateEmailVerificationTokens(verifiedUser.id, source);
+        }
+
+        if (!verifiedUser.emailVerified && !pending.emailVerified) {
+          /**
+           * The external identity is now safely linked, but neither ManatOS nor
+           * the provider has verified the email. Keep email verification as a
+           * separate requirement and issue a fresh link without invalidating
+           * any older still-valid link.
+           */
+          const verificationToken = securityTokenStore.create(
+            verifiedUser.id,
+            'verify-email',
+            1440,
+          );
+
+          await emailService.sendWelcomeAndVerificationEmail(
+            verifiedUser,
+            absoluteUrl(req, `/auth/verify-email?token=${encodeURIComponent(verificationToken)}`),
+          );
+
+          delete req.session.pendingExternalLink;
+
+          res.redirect('/?message=verification-sent');
+
+          return;
+        }
+
+        console.log('[external-link] STAGE 4 - trusted API session starting', {
+          userId: verifiedUser.id,
+        });
+
+        const login = await createTrustedApiSession(
+          req,
+          verifiedUser.id,
+          `ManatOS Web UI / ${pending.provider}`,
+        );
+
+        console.log('[external-link] STAGE 4 - trusted API session succeeded', {
+          sessionUserId: login.user.id,
+          sessionUserName: login.user.name,
+        });
+
+        await establishUiSession(req, login, pending.provider);
+
+        res.redirect('/account?message=external-account-linked');
+      } catch (error) {
+        next(error);
+      }
     },
   );
 
@@ -632,6 +939,12 @@ export function createAuthRouter() {
               email: profile.email,
 
               emailVerified: profile.emailVerified,
+
+              ...(profile.emailVerified
+                ? {
+                    emailVerificationSource: externalVerificationSource(profile.provider),
+                  }
+                : {}),
 
               ...(password
                 ? {
@@ -726,6 +1039,29 @@ export function createAuthRouter() {
   );
 
   return router;
+}
+
+function externalVerificationSource(provider: string): EmailVerificationSource {
+  const normalized = provider.toLowerCase();
+
+  if (normalized === 'google' || normalized === 'facebook' || normalized === 'github') {
+    return normalized;
+  }
+
+  return 'internal';
+}
+
+function verificationSourceLabel(source: EmailVerificationSource): string {
+  switch (source) {
+    case 'google':
+      return 'Google';
+    case 'facebook':
+      return 'Facebook';
+    case 'github':
+      return 'GitHub';
+    default:
+      return 'ManatOS';
+  }
 }
 
 /**
@@ -877,6 +1213,12 @@ function sessionExternalProfile(profile: ExternalProfile) {
     ...(profile.displayName
       ? {
           displayName: profile.displayName,
+        }
+      : {}),
+
+    ...(profile.userName
+      ? {
+          userName: profile.userName,
         }
       : {}),
 

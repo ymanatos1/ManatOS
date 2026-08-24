@@ -32,6 +32,10 @@
                 <a
                   class="btn btn-outline-secondary auth-provider-button"
                   href="/auth/<%= provider.key %>"
+                  data-busy
+                  data-busy-title="Connecting to <%= provider.label %>…"
+                  data-busy-message="Please wait while <%= provider.label %> authenticates your account."
+                  data-busy-icon="<%= provider.icon %>"
                 >
                   <i class="bi <%= provider.icon %>"></i>
                   <span>Register with <%= provider.label %></span>
@@ -202,6 +206,10 @@
                 <a
                   class="btn btn-outline-secondary auth-provider-button"
                   href="/auth/<%= provider.key %>"
+                  data-busy
+                  data-busy-title="Connecting to <%= provider.label %>…"
+                  data-busy-message="Please wait while <%= provider.label %> authenticates your account."
+                  data-busy-icon="<%= provider.icon %>"
                 >
                   <i class="bi <%= provider.icon %>"></i>
                   <span>Continue with <%= provider.label %></span>
