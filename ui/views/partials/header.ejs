@@ -1,22 +1,46 @@
 <header class="top-header">
-  <a
-    href="/"
-    class="brand-link"
-    title="ManatOS home"
-    aria-label="ManatOS home"
-  >
-    <img
-      src="/assets/manatos-logo-middle-1.png"
-      alt="ManatOS Software Solutions"
-      class="brand-logo"
+  <div class="header-brand-area">
+    <a
+      href="/"
+      class="brand-link"
+      title="ManatOS home"
+      aria-label="ManatOS home"
     >
-  </a>
+      <!--
+        One physical logo element is used for both themes. This prevents
+        duplicate branding if theme-specific CSS is stale/cached and makes
+        the active asset unambiguous at runtime.
+      -->
+      <img
+        id="themeBrandLogo"
+        src="/assets/manatos-logo-middle-1.png"
+        data-darker-src="/assets/manatos-logo-middle-1.png"
+        data-lighter-src="/assets/manatos-logo-middle-2.png"
+        alt="ManatOS Software Solutions"
+        class="brand-logo1 theme-brand-logo"
+      >
 
-  <div class="header-actions">
+      <!-- Apply the already-restored <html> theme immediately, before paint. -->
+      <script>
+        (() => {
+          const logo = document.getElementById('themeBrandLogo');
+          const lighter = document.documentElement.dataset.uiTheme === 'lighter';
+
+          if (logo) {
+            logo.src = lighter ? logo.dataset.lighterSrc : logo.dataset.darkerSrc;
+            logo.classList.toggle('brand-logo1', !lighter);
+            logo.classList.toggle('brand-logo2', lighter);
+          }
+        })();
+      </script>
+    </a>
+
     <span class="version-badge d-none d-sm-inline">
       v<%= app.version %>
     </span>
+  </div>
 
+  <div class="header-actions">
     <% if (!currentUser) { %>
       <button
         type="button"
@@ -38,12 +62,7 @@
         Sign up
       </button>
     <% } else { %>
-      <!--
-        Notifications placeholder.
-
-        The control is intentionally present before notifications are
-        implemented so that the header layout does not need to change later.
-      -->
+      <!-- Future notifications entry point. -->
       <button
         type="button"
         class="btn btn-sm btn-outline-light header-notifications-button"

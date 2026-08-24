@@ -56,6 +56,54 @@
 
 
   <!-- =========================================================
+       Current website user identity for early UI preference restoration.
+
+       Keeping the EJS expression in HTML metadata avoids embedding EJS
+       directly inside JavaScript syntax, which keeps editors/parsers happy.
+       ========================================================= -->
+  <meta
+    name="manatos-user-id"
+    content="<%= currentUser?.id || 'anonymous' %>"
+  >
+
+
+  <!-- =========================================================
+       Restore the user's theme before styles paint.
+
+       Theme preference is browser-local and keyed per website user.
+       Applying it to <html> here prevents a darker-theme flash after a
+       restart/navigation and also selects the correct header logo immediately.
+       ========================================================= -->
+  <script>
+    (() => {
+      try {
+        const userId =
+          document
+            .querySelector('meta[name="manatos-user-id"]')
+            ?.getAttribute('content') ||
+          'anonymous';
+
+        const themeKey = `manatos.ui.theme.${userId}`;
+        const storedTheme = localStorage.getItem(themeKey);
+        const theme = storedTheme === 'lighter' ? 'lighter' : 'darker';
+
+        const languageKey = `manatos.ui.language.${userId}`;
+        const storedLanguage = localStorage.getItem(languageKey);
+        const language = storedLanguage === 'el' ? 'el' : 'en';
+
+        document.documentElement.dataset.uiTheme = theme;
+        document.documentElement.dataset.uiLanguage = language;
+        document.documentElement.lang = language;
+      } catch {
+        document.documentElement.dataset.uiTheme = 'darker';
+        document.documentElement.dataset.uiLanguage = 'en';
+        document.documentElement.lang = 'en';
+      }
+    })();
+  </script>
+
+
+  <!-- =========================================================
        Styles
        ========================================================= -->
 
@@ -76,7 +124,10 @@
 </head>
 
 
-<body class="<%= currentUser ? 'authenticated' : 'anonymous' %>">
+<body
+  class="<%= currentUser ? 'authenticated' : 'anonymous' %>"
+  data-user-id="<%= currentUser?.id || 'anonymous' %>"
+>
 
   <div class="site-frame">
 
@@ -125,20 +176,11 @@
           aria-label="Application navigation"
         >
 
-          <div class="left-navigation-header">
-
-            <div class="left-navigation-heading">
-              <span>Workspace</span>
-            </div>
-
-
-            <!--
-              Collapse only the left navigation.
-
-              The center workspace immediately expands into the
-              released area because JavaScript removes has-left-nav
-              from #appShell.
-            -->
+          <!--
+            Keep the collapse control outside/above the Workspace caption.
+            It is a shell control, not a navigation entry.
+          -->
+          <div class="left-navigation-controls">
             <button
               type="button"
               class="btn btn-sm btn-outline-secondary navigation-collapse-button"
@@ -150,17 +192,31 @@
             >
               <i class="bi bi-chevron-left"></i>
             </button>
-
           </div>
 
+          <div class="left-navigation-heading">
+            <span>Workspace</span>
+          </div>
 
-          <%- include(
-            '../partials/vertical-nav',
-            {
-              items: app.navigation.vertical,
-              level: 0
-            }
-          ) %>
+          <div class="left-navigation-main">
+            <%- include(
+              '../partials/vertical-nav',
+              {
+                items: app.navigation.vertical.filter((item) => !item.dockBottom),
+                level: 0
+              }
+            ) %>
+          </div>
+
+          <div class="left-navigation-bottom">
+            <%- include(
+              '../partials/vertical-nav',
+              {
+                items: app.navigation.vertical.filter((item) => item.dockBottom),
+                level: 0
+              }
+            ) %>
+          </div>
 
         </aside>
 
@@ -193,36 +249,35 @@
 
       <section class="workspace">
 
-        <div class="workspace-titlebar">
+        <!--
+          Breadcrumbs and workspace actions form the context/action row above
+          the coloured page-title surface. The Details control therefore sits
+          outside the caption panel and remains aligned to the workspace's
+          far-right edge.
+        -->
+        <div class="workspace-heading-row">
 
-          <div>
+          <nav
+            class="page-breadcrumb workspace-breadcrumb"
+            aria-label="Breadcrumb"
+          >
+            <a href="/">
+              ManatOS
+            </a>
 
-            <nav
-              class="page-breadcrumb"
-              aria-label="Breadcrumb"
-            >
-              <a href="/">
-                ManatOS
-              </a>
+            <i class="bi bi-chevron-right"></i>
 
-              <i class="bi bi-chevron-right"></i>
-
-              <span>
-                <%= title || 'Home' %>
-              </span>
-            </nav>
-
-
-            <h1>
-              <%= title || 'Home' %>
-            </h1>
-
-          </div>
+            <span>
+              <%= (typeof breadcrumbTitle === 'string' && breadcrumbTitle)
+                  ? breadcrumbTitle
+                  : (title || 'Home') %>
+            </span>
+          </nav>
 
 
           <% if (currentUser) { %>
 
-            <div class="workspace-title-actions">
+            <div class="workspace-heading-actions">
 
               <!--
                 Opens/closes the optional right Details panel.
@@ -245,6 +300,18 @@
             </div>
 
           <% } %>
+
+        </div>
+
+
+        <div class="workspace-titlebar">
+
+          <h1>
+            <% if (typeof titleIcon === 'string' && titleIcon) { %>
+              <i class="bi <%= titleIcon %> workspace-title-icon me-2" aria-hidden="true"></i>
+            <% } %>
+            <%= title || 'Home' %>
+          </h1>
 
         </div>
 
@@ -333,6 +400,8 @@
   <%- include('../partials/auth-modals') %>
 
   <%- include('../partials/message-modals') %>
+
+  <%- include('../partials/preferences-modal') %>
 
 
   <script

@@ -1,12 +1,16 @@
 import { Router, type Request } from 'express';
 
-import { AppError, operationContext } from '@manatos/shared';
+import createError from 'http-errors';
+
+import { AppError, operationContext, SysUserRole, type SysUser } from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
 
+import { config } from '../config.js';
+
 import { apiSessionOptions } from '../auth/api-session.js';
 
-import { requireAdmin, requireSignedIn } from '../middleware/auth.js';
+import { requireSignedIn } from '../middleware/auth.js';
 
 import { requireCsrf } from '../middleware/csrf.js';
 
@@ -54,11 +58,10 @@ export function createSysBORoutes() {
   const router = Router();
 
   /**
-   * Current administration UI is Admin-only.
-   *
-   * The API remains the ultimate authorization boundary.
+   * SysBO pages require authentication. Role/action permission is checked
+   * per route below. The API remains the ultimate authorization boundary.
    */
-  router.use(requireSignedIn, requireAdmin);
+  router.use(requireSignedIn);
 
   /**
    * List one SysBO.
@@ -71,6 +74,8 @@ export function createSysBORoutes() {
         const key = routeParam(req.params.key);
 
         const definition = getSysBODefinition(key);
+        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        requirePermission(permissions.view, 'Read access is required for this entity.');
 
         const apiPath = apiPathFor(definition.key);
 
@@ -82,14 +87,31 @@ export function createSysBORoutes() {
           apiSessionOptions(req),
         );
 
+        let hasAnyEntries = response.data.paging.total > 0;
+        const filtersActive = hasActiveFilters(req, definition);
+
+        // If a filtered result is empty, distinguish "entity is empty" from
+        // "entries exist but none match the current filters".
+        if (!hasAnyEntries && filtersActive) {
+          const unfiltered = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+            `/api/v1/${apiPath}?page=1&pageSize=1`,
+            apiSessionOptions(req),
+          );
+
+          hasAnyEntries = unfiltered.data.paging.total > 0;
+        }
+
         await renderPage(
           res,
           'pages/bo-list',
 
           {
             title: definition.uiMetadata.listViewModel.title,
+            titleIcon: definition.uiMetadata.icon,
 
             definition,
+            permissions,
+            hasAnyEntries,
 
             items: response.data.items,
 
@@ -113,6 +135,8 @@ export function createSysBORoutes() {
     async (req, res, next) => {
       try {
         const definition = getSysBODefinition(routeParam(req.params.key));
+        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        requirePermission(permissions.create, 'Create access is required for this entity.');
 
         await renderPage(
           res,
@@ -120,8 +144,10 @@ export function createSysBORoutes() {
 
           {
             title: definition.uiMetadata.editViewModel.createTitle,
+            titleIcon: definition.uiMetadata.icon,
 
             definition,
+            permissions,
 
             item: {},
 
@@ -149,6 +175,8 @@ export function createSysBORoutes() {
         const id = routeParam(req.params.id);
 
         const definition = getSysBODefinition(key);
+        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        requirePermission(permissions.view, 'Read access is required for this entity.');
 
         const apiPath = apiPathFor(definition.key);
 
@@ -165,9 +193,13 @@ export function createSysBORoutes() {
           'pages/bo-edit',
 
           {
-            title: definition.uiMetadata.editViewModel.editTitle,
+            title: permissions.edit
+              ? definition.uiMetadata.editViewModel.editTitle
+              : definition.uiMetadata.editViewModel.editTitle.replace(/^Edit\b/, 'View'),
+            titleIcon: definition.uiMetadata.icon,
 
             definition,
+            permissions,
 
             item,
 
@@ -176,6 +208,73 @@ export function createSysBORoutes() {
             referenceData: await references(req, definition),
           },
         );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  /**
+   * Allow an Admin to explicitly verify another SysUser email address.
+   *
+   * This is intentionally a dedicated command instead of being folded into
+   * the generic SysUser edit payload. It prevents an ordinary edit/save from
+   * silently changing verification state.
+   */
+  router.post(
+    '/sys-users/:id/verify-email',
+
+    requireCsrf,
+
+    async (req, res, next) => {
+      try {
+        if (!config.ALLOW_ADMIN_EMAIL_VERIFICATION) {
+          throw new AppError(
+            'FORBIDDEN',
+            'Administrative email verification is disabled by UI configuration.',
+            'Administrative email verification is disabled.',
+            false,
+          );
+        }
+
+        const id = routeParam(req.params.id);
+
+        const currentUser = res.locals.currentUser as
+          | import('@manatos/shared').SysUser
+          | null;
+
+        if (!currentUser || currentUser.role !== SysUserRole.Admin || currentUser.id === id) {
+          throw new AppError(
+            'FORBIDDEN',
+            'An Admin may use this command only for another SysUser.',
+            'You can verify another user account only.',
+            false,
+          );
+        }
+
+        await operationContext.runRoot(
+          'Verify SysUser email administratively',
+
+          async (scope) => {
+            scope.addContext({
+              userId: id,
+
+              actorUserId: currentUser.id,
+            });
+
+            await apiClient.put(
+              `/api/v1/internal/SysUsers/${id}/email-verified`,
+
+              undefined,
+
+              {
+                internal: true,
+              },
+            );
+          },
+        );
+
+        res.redirect(`/bo/sys-users/${id}?message=email-verified`);
       } catch (error) {
         next(error);
       }
@@ -196,8 +295,13 @@ export function createSysBORoutes() {
       const apiPath = apiPathFor(definition.key);
 
       const id = String(req.body.id ?? '');
+      const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
 
       try {
+        requirePermission(
+          id ? permissions.edit : permissions.create,
+          id ? 'Edit access is required for this entity.' : 'Create access is required for this entity.',
+        );
         await operationContext.runRoot(
           `${id ? 'Update' : 'Create'} ${definition.boMetadata.name}`,
 
@@ -267,8 +371,10 @@ export function createSysBORoutes() {
             title: id
               ? definition.uiMetadata.editViewModel.editTitle
               : definition.uiMetadata.editViewModel.createTitle,
+            titleIcon: definition.uiMetadata.icon,
 
             definition,
+            permissions,
 
             item: {
               ...req.body,
@@ -301,6 +407,8 @@ export function createSysBORoutes() {
         const id = routeParam(req.params.id);
 
         const definition = getSysBODefinition(key);
+        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        requirePermission(permissions.delete, 'Delete access is required for this entity.');
 
         const apiPath = apiPathFor(definition.key);
 
@@ -333,6 +441,10 @@ export function createSysBORoutes() {
       try {
         const id = routeParam(req.params.id);
 
+        const definition = getSysBODefinition('sys-applications');
+        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        requirePermission(permissions.view, 'Read access is required for applications.');
+
         req.session.activeApplicationId = id;
 
         const application = (
@@ -360,6 +472,38 @@ export function createSysBORoutes() {
   );
 
   return router;
+}
+
+interface UIEntityPermissions {
+  view: boolean;
+  create: boolean;
+  edit: boolean;
+  delete: boolean;
+}
+
+function uiPermissions(user: SysUser | null, definition: SysBODefinition): UIEntityPermissions {
+  const role = user?.role;
+  const allowed = (roles: SysUserRole[]) => Boolean(role && roles.includes(role));
+
+  return {
+    view: allowed(definition.permissions.view),
+    create: allowed(definition.permissions.create),
+    edit: allowed(definition.permissions.edit),
+    delete: allowed(definition.permissions.delete),
+  };
+}
+
+function requirePermission(allowed: boolean, message: string): void {
+  if (!allowed) {
+    throw createError(403, message);
+  }
+}
+
+function hasActiveFilters(req: Request, definition: SysBODefinition): boolean {
+  return definition.uiMetadata.filterDefinition.fields.some((field) => {
+    const value = req.query[`filter.${field}`];
+    return typeof value === 'string' && value.length > 0;
+  });
 }
 
 /**
@@ -415,6 +559,15 @@ function formPayload(
 
   for (const field of Object.values(definition.boMetadata.fieldDefinition)) {
     if (field.generated || field.readOnly || field.sensitive) {
+      continue;
+    }
+
+    /**
+     * SysUser email verification is an explicit security command in the UI,
+     * not a normal editable boolean. Omitting it here prevents an ordinary
+     * Save from accidentally verifying or un-verifying an account.
+     */
+    if (definition.key === 'sys-users' && field.key === 'emailVerified') {
       continue;
     }
 

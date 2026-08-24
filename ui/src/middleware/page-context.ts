@@ -98,6 +98,8 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
        */
       ui: Object.freeze({
         navigationStatePersistence: config.UI_NAVIGATION_STATE_PERSISTENCE,
+
+        allowAdminEmailVerification: config.ALLOW_ADMIN_EMAIL_VERIFICATION,
       }),
     });
 

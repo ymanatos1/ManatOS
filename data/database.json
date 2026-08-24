@@ -29,7 +29,7 @@
       "updatedBy": "Yiannis"
     },
     "b165dee7-ae0f-4945-a19b-aee77e8a76cb": {
-      "name": "Yiannakis",
+      "name": "Yiannakis1",
       "email": "yiannis@manatos.online",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$Q26c1LN9kfkGWEUEZuHnuA$grD/eZK5/mdIZVmrEtN0AO5e9Z7zYOKSznbyv+HaXNc",
@@ -43,7 +43,7 @@
       "updatedBy": "Yiannakis"
     },
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33s": {
-      "name": "Yiannis",
+      "name": "Yiannis2",
       "email": "yiannis@manatos.eu",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$GYZ1NzhVEUjkFt3cHNOG4Q$+lb9rR7H0rrCCj7JBzbpFsT3vo1QwyeAylJQaiaQhPQ",
@@ -57,7 +57,7 @@
       "updatedBy": "Yiannis"
     },
     "b165dee7-ae0f-4945-a19b-aee77e8a76ce": {
-      "name": "Yiannakis",
+      "name": "Yiannakis2",
       "email": "yiannis@manatos.online",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$Q26c1LN9kfkGWEUEZuHnuA$grD/eZK5/mdIZVmrEtN0AO5e9Z7zYOKSznbyv+HaXNc",
@@ -71,7 +71,7 @@
       "updatedBy": "Yiannakis"
     },
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33f": {
-      "name": "Yiannis",
+      "name": "Yiannis3",
       "email": "yiannis@manatos.eu",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$GYZ1NzhVEUjkFt3cHNOG4Q$+lb9rR7H0rrCCj7JBzbpFsT3vo1QwyeAylJQaiaQhPQ",
@@ -85,7 +85,7 @@
       "updatedBy": "Yiannis"
     },
     "b165dee7-ae0f-4945-a19b-aee77e8a76cg": {
-      "name": "Yiannakis",
+      "name": "Yiannakis3",
       "email": "yiannis@manatos.online",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$Q26c1LN9kfkGWEUEZuHnuA$grD/eZK5/mdIZVmrEtN0AO5e9Z7zYOKSznbyv+HaXNc",
@@ -99,7 +99,7 @@
       "updatedBy": "Yiannakis"
     },
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33h": {
-      "name": "Yiannis",
+      "name": "Yiannis4",
       "email": "yiannis@manatos.eu",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$GYZ1NzhVEUjkFt3cHNOG4Q$+lb9rR7H0rrCCj7JBzbpFsT3vo1QwyeAylJQaiaQhPQ",
@@ -113,7 +113,7 @@
       "updatedBy": "Yiannis"
     },
     "b165dee7-ae0f-4945-a19b-aee77e8a76cy": {
-      "name": "Yiannakis",
+      "name": "Yiannakis4",
       "email": "yiannis@manatos.online",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$Q26c1LN9kfkGWEUEZuHnuA$grD/eZK5/mdIZVmrEtN0AO5e9Z7zYOKSznbyv+HaXNc",
@@ -127,7 +127,7 @@
       "updatedBy": "Yiannakis"
     },
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33q": {
-      "name": "Yiannis",
+      "name": "Yiannis5",
       "email": "yiannis@manatos.eu",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$GYZ1NzhVEUjkFt3cHNOG4Q$+lb9rR7H0rrCCj7JBzbpFsT3vo1QwyeAylJQaiaQhPQ",
@@ -141,7 +141,7 @@
       "updatedBy": "Yiannis"
     },
     "b165dee7-ae0f-4945-a19b-aee77e8a76cn": {
-      "name": "Yiannakis",
+      "name": "Yiannakis5",
       "email": "yiannis@manatos.online",
       "emailVerified": false,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$Q26c1LN9kfkGWEUEZuHnuA$grD/eZK5/mdIZVmrEtN0AO5e9Z7zYOKSznbyv+HaXNc",
@@ -153,34 +153,23 @@
       "createdBy": "Yiannakis",
       "updatedAt": "2026-08-23T07:49:01.579Z",
       "updatedBy": "Yiannakis"
-    },
-    "8cd7dbd9-5b00-4e27-b061-53b6d725c33b": {
-      "name": "Yiannis",
-      "email": "yiannis@manatos.eu",
-      "emailVerified": false,
-      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$GYZ1NzhVEUjkFt3cHNOG4Q$+lb9rR7H0rrCCj7JBzbpFsT3vo1QwyeAylJQaiaQhPQ",
-      "passwordChangedAt": "2026-08-23T07:28:35.158Z",
-      "role": "Guest",
-      "enabled": true,
-      "id": "8cd7dbd9-5b00-4e27-b061-53b6d725c33b",
-      "createdAt": "2026-08-23T07:28:35.159Z",
-      "createdBy": "Yiannis",
-      "updatedAt": "2026-08-23T07:28:35.159Z",
-      "updatedBy": "Yiannis"
     },
     "b165dee7-ae0f-4945-a19b-aee77e8a76ca": {
       "name": "Yiannakis",
       "email": "yiannis@manatos.online",
-      "emailVerified": false,
+      "emailVerified": true,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$Q26c1LN9kfkGWEUEZuHnuA$grD/eZK5/mdIZVmrEtN0AO5e9Z7zYOKSznbyv+HaXNc",
       "passwordChangedAt": "2026-08-23T07:49:01.577Z",
-      "role": "Guest",
+      "role": "User",
       "enabled": true,
       "id": "b165dee7-ae0f-4945-a19b-aee77e8a76ca",
       "createdAt": "2026-08-23T07:49:01.579Z",
       "createdBy": "Yiannakis",
-      "updatedAt": "2026-08-23T07:49:01.579Z",
-      "updatedBy": "Yiannakis"
+      "updatedAt": "2026-08-23T22:46:47.740Z",
+      "updatedBy": "Admin",
+      "firstName": "Yiannis",
+      "lastName": "Manatos",
+      "description": "Simply the best."
     }
   },
   "sysPrincipals": {},

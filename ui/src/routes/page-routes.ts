@@ -65,7 +65,8 @@ export function createPageRoutes() {
         'pages/app-playground',
 
         {
-          title: 'App Playground',
+          title: 'Apps Playground',
+          titleIcon: 'bi-play-circle-fill',
         },
       ),
   );
@@ -90,7 +91,9 @@ export function createPageRoutes() {
         'pages/account',
 
         {
-          title: 'Account details',
+          title: `Account details - [${res.locals.currentUser.name}]`,
+          breadcrumbTitle: 'Account details',
+          titleIcon: 'bi-person-vcard',
         },
       ),
   );

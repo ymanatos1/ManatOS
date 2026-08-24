@@ -26,11 +26,22 @@
             }
           ) %>
         </details>
-      <% } else { %>
-        <a
-          href="<%= item.url || '#' %>"
-          class="<%= item.id === 'logout' ? 'vertical-menu-logout' : '' %>"
+      <% } else if (item.action === 'open-preferences') { %>
+        <button
+          type="button"
+          class="vertical-menu-action"
+          data-bs-toggle="modal"
+          data-bs-target="#preferencesModal"
         >
+          <span class="vertical-menu-caption">
+            <% if (item.icon) { %>
+              <i class="bi <%= item.icon %> me-2"></i>
+            <% } %>
+            <span><%= item.text %></span>
+          </span>
+        </button>
+      <% } else { %>
+        <a href="<%= item.url || '#' %>">
           <span class="vertical-menu-caption">
             <% if (item.icon) { %>
               <i class="bi <%= item.icon %> me-2"></i>

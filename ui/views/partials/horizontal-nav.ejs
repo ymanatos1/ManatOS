@@ -1,7 +1,15 @@
 <% if (app.navigation.horizontal?.length) { %>
 <nav class="horizontal-nav navbar navbar-expand-lg" aria-label="Main navigation">
   <div class="container-fluid px-3 px-lg-4">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#horizontalMenu" aria-controls="horizontalMenu" aria-expanded="false" aria-label="Toggle navigation">
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#horizontalMenu"
+      aria-controls="horizontalMenu"
+      aria-expanded="false"
+      aria-label="Toggle navigation"
+    >
       <span class="navbar-toggler-icon"></span>
     </button>
 
@@ -10,6 +18,59 @@
         <% for (const item of app.navigation.horizontal) { %>
           <%- include('horizontal-nav-item', { item, level: 0 }) %>
         <% } %>
+      </ul>
+
+      <!--
+        UI-language selector foundation.
+
+        The selected locale is browser-persisted per signed-in website user
+        (or per anonymous visitor) and updates document.lang. Full translation
+        of metadata/page content can build on this locale in the i18n pass.
+      -->
+      <ul class="navbar-nav ms-lg-auto mb-2 mb-lg-0 horizontal-language-nav">
+        <li class="nav-item dropdown">
+          <button
+            class="nav-link dropdown-toggle horizontal-language-toggle"
+            id="languageMenuButton"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            aria-label="Select language"
+          >
+            <img
+              id="languageMenuFlag"
+              class="language-flag"
+              src="/assets/flags/en.svg"
+              alt=""
+              aria-hidden="true"
+            >
+            <span id="languageMenuLabel">EN</span>
+          </button>
+
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="languageMenuButton">
+            <li>
+              <button
+                class="dropdown-item language-option"
+                type="button"
+                data-ui-language="en"
+              >
+                <img src="/assets/flags/en.svg" class="language-flag me-2" alt="" aria-hidden="true" >
+                EN — English
+              </button>
+            </li>
+
+            <li>
+              <button
+                class="dropdown-item language-option"
+                type="button"
+                data-ui-language="el"
+              >
+                <img src="/assets/flags/el.svg" class="language-flag me-2" alt="" aria-hidden="true" >
+                EL — Ελληνικά
+              </button>
+            </li>
+          </ul>
+        </li>
       </ul>
     </div>
   </div>

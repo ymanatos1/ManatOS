@@ -1,0 +1,91 @@
+<% if (currentUser) { %>
+  <div
+    class="modal fade"
+    id="preferencesModal"
+    tabindex="-1"
+    aria-labelledby="preferencesModalLabel"
+    aria-hidden="true"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+  >
+    <div class="modal-dialog preferences-modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title h5" id="preferencesModalLabel">
+              <i class="bi bi-sliders me-2"></i>
+              Website user preferences
+            </h2>
+            <div class="modal-subtitle">
+              Personalize the ManatOS website experience for this browser.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+
+        <div class="modal-body">
+          <fieldset>
+            <legend class="h6 mb-3">UI Theme</legend>
+
+            <div class="preferences-theme-options">
+              <label class="preferences-theme-option">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="uiTheme"
+                  value="lighter"
+                  data-ui-theme-option
+                >
+
+                <span>
+                  <strong>Lighter</strong>
+                  <small>Light blue header and title surfaces.</small>
+                </span>
+              </label>
+
+              <label class="preferences-theme-option">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="uiTheme"
+                  value="darker"
+                  data-ui-theme-option
+                >
+
+                <span>
+                  <strong>Darker</strong>
+                  <small>Current navy header and stronger title surfaces.</small>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="savePreferencesButton"
+          >
+            <i class="bi bi-check-circle me-1"></i>
+            Save preferences
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+<% } %>

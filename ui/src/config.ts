@@ -41,6 +41,16 @@ const schema = z.object({
    */
   UI_NAVIGATION_STATE_PERSISTENCE: z.enum(['none', 'browser']).default('browser'),
 
+  /**
+   * Allows an authenticated Admin to mark another SysUser's email as verified
+   * from the administration UI. The API/internal route remains the final
+   * server-side mutation boundary.
+   */
+  ALLOW_ADMIN_EMAIL_VERIFICATION: z
+    .string()
+    .default('true')
+    .transform((value) => value === 'true'),
+
   GOOGLE_CLIENT_ID: optionalString,
 
   GOOGLE_CLIENT_SECRET: optionalString,

@@ -9,16 +9,14 @@ import {
 import type { SysBODefinition, SysBOPaginationConfiguration, SysBOPermissions } from './types.js';
 
 /**
- * System-business-object administration is currently restricted to
- * Admin users.
- *
- * The permissions structure is already separated so it can become
- * more granular later.
+ * System-business-object permissions are role/action specific.
+ * Users may read/view current SysBOs; mutations remain Admin-only.
  */
 const adminRoles = [SysUserRole.Admin];
+const readRoles = [SysUserRole.Admin, SysUserRole.User];
 
 const permissions: SysBOPermissions = {
-  view: adminRoles,
+  view: readRoles,
 
   create: adminRoles,
 
@@ -33,7 +31,7 @@ const permissions: SysBOPermissions = {
 const pagination: SysBOPaginationConfiguration = {
   enabled: true,
 
-  defaultPageSize: 20,
+  defaultPageSize: 10,
 
   allowedPageSizes: [10, 20, 50, 100],
 
@@ -58,7 +56,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
     boMetadata: sysUsersMetadata,
 
     uiMetadata: {
-      icon: 'bi-person-circle',
+      icon: 'bi-people-fill',
 
       listViewModel: {
         title: 'Users',
@@ -108,7 +106,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
     boMetadata: sysPrincipalsMetadata,
 
     uiMetadata: {
-      icon: 'bi-person-circle',
+      icon: 'bi-diagram-3-fill',
 
       listViewModel: {
         title: 'Principals / Customers',

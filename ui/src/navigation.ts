@@ -9,6 +9,16 @@ export interface AppNavMenuItem {
   separatorBefore?: boolean;
   requiresAuthentication?: boolean;
   roles?: SysUserRole[];
+
+  /**
+   * Optional client-side UI action instead of normal navigation.
+   */
+  action?: 'open-preferences';
+
+  /**
+   * Dock this top-level item to the bottom of the left navigation area.
+   */
+  dockBottom?: boolean;
 }
 
 export const appHorizontalNavMenu: AppNavMenuItem[] = [
@@ -52,7 +62,7 @@ export const appHorizontalNavMenu: AppNavMenuItem[] = [
   },
   {
     id: 'app-playground',
-    text: 'App Playground',
+    text: 'Apps Playground',
     icon: 'bi-play-circle-fill',
     url: '/app-playground',
   },
@@ -67,22 +77,29 @@ export const appVerticalNavMenu: AppNavMenuItem[] = [
     requiresAuthentication: true,
   },
   {
+    id: 'app-playground',
+    text: 'Apps Playground',
+    icon: 'bi-play-circle-fill',
+    url: '/app-playground',
+    requiresAuthentication: true,
+  },
+  {
     id: 'administration',
     text: 'Administration',
     icon: 'bi-gear',
     requiresAuthentication: true,
-    roles: [SysUserRole.Admin],
+    roles: [SysUserRole.Admin, SysUserRole.User],
     children: [
       {
         id: 'users',
         text: 'Users',
-        icon: 'bi-person-circle',
+        icon: 'bi-people-fill',
         url: '/bo/sys-users',
       },
       {
         id: 'principals',
         text: 'Principals',
-        icon: 'bi-person-circle',
+        icon: 'bi-diagram-3-fill',
         url: '/bo/sys-principals',
       },
       {
@@ -100,22 +117,26 @@ export const appVerticalNavMenu: AppNavMenuItem[] = [
     ],
   },
   {
+    id: 'preferences',
+    text: 'Preferences',
+    icon: 'bi-sliders',
+    action: 'open-preferences',
+    separatorBefore: true,
+    dockBottom: !true,
+    requiresAuthentication: true,
+  },
+  {
     id: 'logout',
     text: 'Logout',
     icon: 'bi-box-arrow-right',
     url: '/auth/logout',
-    separatorBefore: true,
+    dockBottom: !true,
     requiresAuthentication: true,
   },
 ];
 
-export function navigationFor(
-  role: SysUserRole | null,
-  auth: boolean,
-) {
-  const filter = (
-    items: AppNavMenuItem[],
-  ): AppNavMenuItem[] =>
+export function navigationFor(role: SysUserRole | null, auth: boolean) {
+  const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {
       if (item.requiresAuthentication && !auth) {
         return [];
@@ -125,9 +146,7 @@ export function navigationFor(
         return [];
       }
 
-      const children = item.children
-        ? filter(item.children)
-        : undefined;
+      const children = item.children ? filter(item.children) : undefined;
 
       return [
         {
@@ -139,8 +158,6 @@ export function navigationFor(
 
   return {
     horizontal: filter(appHorizontalNavMenu),
-    vertical: auth
-      ? filter(appVerticalNavMenu)
-      : [],
+    vertical: auth ? filter(appVerticalNavMenu) : [],
   };
 }
