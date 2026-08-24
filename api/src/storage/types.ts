@@ -30,25 +30,43 @@ export interface DatabaseState {
 }
 
 /**
+ * JSON-serializable representation of an entity whose ID is stored
+ * exclusively as the containing JSON object's property name.
+ *
+ * The runtime entity ID is reconstructed from that property name
+ * when the JSON database is loaded.
+ */
+export type PersistedEntity<T extends { id: string }> = Omit<T, 'id'>;
+
+/**
  * JSON-serializable representation of DatabaseState.
  *
- * Maps are converted into objects before persistence because native
- * JavaScript Map instances are not directly represented by JSON.
+ * Runtime Maps are persisted as JSON objects keyed by entity GUID.
+ *
+ * The GUID exists only once in the JSON representation:
+ *
+ * {
+ *   "entity-guid": {
+ *     ...entity fields except id
+ *   }
+ * }
+ *
+ * On load, the JSON property name is restored as entity.id.
  */
 export interface PersistedDatabaseState {
-  sysUsers: Record<string, SysUser>;
+  sysUsers: Record<string, PersistedEntity<SysUser>>;
 
-  sysPrincipals: Record<string, SysPrincipal>;
+  sysPrincipals: Record<string, PersistedEntity<SysPrincipal>>;
 
-  sysApplications: Record<string, SysApplication>;
+  sysApplications: Record<string, PersistedEntity<SysApplication>>;
 
-  sysLicenses: Record<string, SysLicense>;
+  sysLicenses: Record<string, PersistedEntity<SysLicense>>;
 
-  sysExternalIdentities: Record<string, SysExternalIdentity>;
+  sysExternalIdentities: Record<string, PersistedEntity<SysExternalIdentity>>;
 
-  sysUserPrincipals: Record<string, SysUserPrincipal>;
+  sysUserPrincipals: Record<string, PersistedEntity<SysUserPrincipal>>;
 
-  sysUserInvitations: Record<string, SysUserInvitation>;
+  sysUserInvitations: Record<string, PersistedEntity<SysUserInvitation>>;
 }
 
 /**

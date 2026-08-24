@@ -1,7 +1,6 @@
 {
   "sysUsers": {
     "66ad5e12-aee2-4ab9-809e-97fb60526247": {
-      "id": "66ad5e12-aee2-4ab9-809e-97fb60526247",
       "name": "Admin",
       "email": "yiannis@manatos.gr",
       "emailVerified": true,
@@ -17,16 +16,17 @@
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33c": {
       "name": "Yiannis",
       "email": "yiannis@manatos.eu",
-      "emailVerified": false,
+      "emailVerified": true,
       "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$GYZ1NzhVEUjkFt3cHNOG4Q$+lb9rR7H0rrCCj7JBzbpFsT3vo1QwyeAylJQaiaQhPQ",
       "passwordChangedAt": "2026-08-23T07:28:35.158Z",
       "role": "Guest",
       "enabled": true,
-      "id": "8cd7dbd9-5b00-4e27-b061-53b6d725c33b",
       "createdAt": "2026-08-23T07:28:35.159Z",
       "createdBy": "Yiannis",
-      "updatedAt": "2026-08-23T07:28:35.159Z",
-      "updatedBy": "Yiannis"
+      "updatedAt": "2026-08-24T22:29:15.604Z",
+      "updatedBy": "InternalApi",
+      "emailVerifiedAt": "2026-08-24T22:29:15.603Z",
+      "emailVerificationSource": "github"
     },
     "b165dee7-ae0f-4945-a19b-aee77e8a76ca": {
       "name": "Yiannakis",
@@ -36,7 +36,6 @@
       "passwordChangedAt": "2026-08-23T07:49:01.577Z",
       "role": "User",
       "enabled": true,
-      "id": "b165dee7-ae0f-4945-a19b-aee77e8a76ca",
       "createdAt": "2026-08-23T07:49:01.579Z",
       "createdBy": "Yiannakis",
       "updatedAt": "2026-08-23T22:46:47.740Z",
@@ -49,7 +48,22 @@
   "sysPrincipals": {},
   "sysApplications": {},
   "sysLicenses": {},
-  "sysExternalIdentities": {},
+  "sysExternalIdentities": {
+    "480146af-869b-4652-bb08-d2e26c4a63d6": {
+      "name": "github:11259081",
+      "userId": "8cd7dbd9-5b00-4e27-b061-53b6d725c33c",
+      "provider": "github",
+      "providerSubject": "11259081",
+      "email": "yiannis@manatos.eu",
+      "emailVerified": true,
+      "displayName": "Yiannis Manatos",
+      "enabled": true,
+      "createdAt": "2026-08-24T22:28:40.291Z",
+      "createdBy": "InternalApi",
+      "updatedAt": "2026-08-24T22:28:40.291Z",
+      "updatedBy": "InternalApi"
+    }
+  },
   "sysUserPrincipals": {},
   "sysUserInvitations": {}
 }

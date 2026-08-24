@@ -27,19 +27,19 @@ export class JsonFilePersistence {
       const raw = JSON.parse(await readFile(this.filePath, 'utf8')) as PersistedDatabaseState;
 
       return {
-        sysUsers: new Map(Object.entries(raw.sysUsers ?? {})),
+        sysUsers: fromPersistedRecords(raw.sysUsers),
 
-        sysPrincipals: new Map(Object.entries(raw.sysPrincipals ?? {})),
+        sysPrincipals: fromPersistedRecords(raw.sysPrincipals),
 
-        sysApplications: new Map(Object.entries(raw.sysApplications ?? {})),
+        sysApplications: fromPersistedRecords(raw.sysApplications),
 
-        sysLicenses: new Map(Object.entries(raw.sysLicenses ?? {})),
+        sysLicenses: fromPersistedRecords(raw.sysLicenses),
 
-        sysExternalIdentities: new Map(Object.entries(raw.sysExternalIdentities ?? {})),
+        sysExternalIdentities: fromPersistedRecords(raw.sysExternalIdentities),
 
-        sysUserPrincipals: new Map(Object.entries(raw.sysUserPrincipals ?? {})),
+        sysUserPrincipals: fromPersistedRecords(raw.sysUserPrincipals),
 
-        sysUserInvitations: new Map(Object.entries(raw.sysUserInvitations ?? {})),
+        sysUserInvitations: fromPersistedRecords(raw.sysUserInvitations),
       };
     } catch (error) {
       /*
@@ -63,19 +63,19 @@ export class JsonFilePersistence {
    */
   async save(state: DatabaseState): Promise<void> {
     const persisted: PersistedDatabaseState = {
-      sysUsers: Object.fromEntries(state.sysUsers),
+      sysUsers: toPersistedRecords(state.sysUsers),
 
-      sysPrincipals: Object.fromEntries(state.sysPrincipals),
+      sysPrincipals: toPersistedRecords(state.sysPrincipals),
 
-      sysApplications: Object.fromEntries(state.sysApplications),
+      sysApplications: toPersistedRecords(state.sysApplications),
 
-      sysLicenses: Object.fromEntries(state.sysLicenses),
+      sysLicenses: toPersistedRecords(state.sysLicenses),
 
-      sysExternalIdentities: Object.fromEntries(state.sysExternalIdentities),
+      sysExternalIdentities: toPersistedRecords(state.sysExternalIdentities),
 
-      sysUserPrincipals: Object.fromEntries(state.sysUserPrincipals),
+      sysUserPrincipals: toPersistedRecords(state.sysUserPrincipals),
 
-      sysUserInvitations: Object.fromEntries(state.sysUserInvitations),
+      sysUserInvitations: toPersistedRecords(state.sysUserInvitations),
     };
 
     const temporaryFilePath = `${this.filePath}.tmp`;
@@ -98,6 +98,44 @@ export class JsonFilePersistence {
       throw new StorageAppError(`Failed to persist '${this.filePath}'.`, error);
     }
   }
+}
+
+/**
+ * Reconstruct runtime entities from their persisted JSON representation.
+ *
+ * The JSON object's property name is the single persisted source of truth
+ * for the entity ID.
+ */
+function fromPersistedRecords<T extends { id: string }>(
+  records: Record<string, Omit<T, 'id'>> | undefined,
+): Map<string, T> {
+  return new Map(
+    Object.entries(records ?? {}).map(([id, record]) => [
+      id,
+      {
+        ...record,
+        id,
+      } as T,
+    ]),
+  );
+}
+
+/**
+ * Convert runtime entities into their JSON representation.
+ *
+ * entity.id becomes the JSON object's property name and is deliberately
+ * omitted from the persisted value, avoiding duplicate ID storage.
+ */
+function toPersistedRecords<T extends { id: string }>(
+  records: Map<string, T>,
+): Record<string, Omit<T, 'id'>> {
+  return Object.fromEntries(
+    [...records.values()].map((record) => {
+      const { id, ...persistedRecord } = record;
+
+      return [id, persistedRecord];
+    }),
+  ) as Record<string, Omit<T, 'id'>>;
 }
 
 /**
