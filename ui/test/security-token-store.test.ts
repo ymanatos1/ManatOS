@@ -24,4 +24,14 @@ describe('SecurityTokenStore email verification invalidation', () => {
 
     expect(store.consume(token, 'reset-password')).toBe('user-1');
   });
+  it('can inspect a password-reset token without consuming it', () => {
+    const store = new SecurityTokenStore();
+    const token = store.create('user-1', 'reset-password', 30);
+
+    expect(store.isUsable(token, 'reset-password')).toBe(true);
+    expect(store.isUsable(token, 'verify-email')).toBe(false);
+    expect(store.consume(token, 'reset-password')).toBe('user-1');
+    expect(store.isUsable(token, 'reset-password')).toBe(false);
+  });
+
 });

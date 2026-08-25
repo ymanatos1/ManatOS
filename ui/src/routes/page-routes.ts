@@ -227,6 +227,9 @@ export function createPageRoutes() {
         }
 
         const currentPassword = String(req.body.currentPassword ?? '');
+        const changingPassword = Boolean(
+          (res.locals.currentUser as SysUser & { hasPassword?: boolean }).hasPassword,
+        );
 
         const updated = (
           await apiClient.put<SysUser>(
@@ -246,9 +249,46 @@ export function createPageRoutes() {
           )
         ).data;
 
-        await emailService.sendPasswordChangedEmail(updated);
+        const authenticationIdentities = await externalIdentitiesForUser(updated.id);
 
-        res.redirect('/account?message=password-changed');
+        try {
+          await emailService.sendPasswordChangedEmail(updated);
+        } catch (error) {
+          /**
+           * Password persistence succeeded before the notification attempt.
+           * Report that primary success accurately even when SMTP delivery is
+           * temporarily unavailable.
+           */
+          if (error instanceof AppError && error.code === 'EMAIL_DELIVERY_FAILED') {
+            await renderPage(res, 'pages/account', {
+              title: `Account details - [${updated.name}]`,
+              breadcrumbTitle: 'Account details',
+              titleIcon: 'bi-person-vcard',
+              authenticationIdentities,
+              warningTitle: changingPassword
+                ? 'Password changed with a warning'
+                : 'Password set with a warning',
+              warningMessage: changingPassword
+                ? 'Your password was changed successfully, but the confirmation email could not be sent.'
+                : 'Your password was set successfully, but the confirmation email could not be sent.',
+            });
+
+            return;
+          }
+
+          throw error;
+        }
+
+        await renderPage(res, 'pages/account', {
+          title: `Account details - [${updated.name}]`,
+          breadcrumbTitle: 'Account details',
+          titleIcon: 'bi-person-vcard',
+          authenticationIdentities,
+          informationTitle: changingPassword ? 'Password changed' : 'Password set',
+          informationMessage: changingPassword
+            ? 'Your password was changed successfully. A confirmation email was sent to your registered email address.'
+            : 'Your password was set successfully. A confirmation email was sent to your registered email address.',
+        });
       } catch (error) {
         next(error);
       }

@@ -373,6 +373,10 @@ export function createAuthRouter() {
           title: 'Set or reset password',
 
           token: String(req.query.token ?? ''),
+          tokenUsable: securityTokenStore.isUsable(
+            String(req.query.token ?? ''),
+            'reset-password',
+          ),
         },
       );
     },
@@ -445,9 +449,38 @@ export function createAuthRouter() {
           )
         ).data;
 
-        await emailService.sendPasswordChangedEmail(user);
+        try {
+          await emailService.sendPasswordChangedEmail(user);
+        } catch (error) {
+          /**
+           * The password has already been changed successfully. Notification
+           * delivery is a secondary outcome and must not make the user believe
+           * the password update itself failed.
+           */
+          if (error instanceof AppError && error.code === 'EMAIL_DELIVERY_FAILED') {
+            await renderPage(res, 'pages/home', {
+              title: 'Home',
+              warningTitle: 'Password updated with a warning',
+              warningMessage:
+                'Your password was updated successfully, but the confirmation email could not be sent. You can sign in with the new password.',
+              warningActionLabel: 'Sign in',
+              warningActionUrl: '/?auth=signin',
+            });
 
-        res.redirect('/?message=password-changed');
+            return;
+          }
+
+          throw error;
+        }
+
+        await renderPage(res, 'pages/home', {
+          title: 'Home',
+          informationTitle: 'Password updated',
+          informationMessage:
+            'Your password was updated successfully. A confirmation email was sent to your registered email address.',
+          informationActionLabel: 'Sign in',
+          informationActionUrl: '/?auth=signin',
+        });
       } catch (error) {
         next(error);
       }

@@ -1002,8 +1002,15 @@ body.anonymous .workspace {
   gap: 1rem;
 }
 
-.auth-password-current-field {
-  max-width: calc(50% - 0.5rem);
+.auth-password-current-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.auth-password-current-fields input[readonly] {
+  background: #f4f7fa;
+  color: #536579;
 }
 
 .auth-password-modal-footer {
@@ -1015,7 +1022,52 @@ body.anonymous .workspace {
     grid-template-columns: 1fr;
   }
 
-  .auth-password-current-field {
-    max-width: none;
+  .auth-password-current-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ==========================================================================
+ * Password recovery / reset presentation
+ * ========================================================================== */
+.auth-password-fields > .auth-password-guidance {
+  margin-top: 0;
+}
+
+.auth-password-request-dialog {
+  max-width: 760px;
+}
+
+.auth-password-request-body {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-password-request-intro {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--manatos-border);
+}
+
+.auth-password-request-card {
+  margin-top: 0;
+}
+
+.auth-password-request-field {
+  margin-top: 0.85rem;
+}
+
+.auth-password-request-field .form-text {
+  margin-top: 0.5rem;
+}
+
+.auth-password-reset-modal .auth-password-form-dialog {
+  max-width: 820px;
+}
+
+@media (max-width: 767.98px) {
+  .auth-password-request-dialog,
+  .auth-password-reset-modal .auth-password-form-dialog {
+    max-width: calc(100% - 1rem);
   }
 }

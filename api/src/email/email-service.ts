@@ -98,9 +98,9 @@ class SmtpEmailService implements IEmailService {
   async sendPasswordResetEmail(user: SysUser, resetUrl: string): Promise<void> {
     await this.send(
       user.email,
-      'Set or reset your ManatOS password',
-      `A request was made to set or reset your ManatOS password.\n\nContinue here:\n${resetUrl}\n\nIf you did not request this, you can ignore this message.`,
-      `<p>A request was made to set or reset your ManatOS password.</p><p><a href="${escapeHtml(resetUrl)}">Set or reset password</a></p><p>If you did not request this, you can ignore this message.</p>`,
+      'Set or reset your password',
+      `A request was made to set or reset your password.\n\nContinue here:\n${resetUrl}\n\nIf you did not request this, you can ignore this message.`,
+      `<p>A request was made to set or reset your password.</p><p><a href="${escapeHtml(resetUrl)}">Set or reset password</a></p><p>If you did not request this, you can ignore this message.</p>`,
       'password-reset',
       user.id,
     );
@@ -109,9 +109,9 @@ class SmtpEmailService implements IEmailService {
   async sendPasswordChangedEmail(user: SysUser): Promise<void> {
     await this.send(
       user.email,
-      'Your ManatOS password was changed',
-      'Your ManatOS password was changed. If this was not you, use account recovery immediately.',
-      '<p>Your ManatOS password was changed.</p><p>If this was not you, use account recovery immediately.</p>',
+      'Your password was changed',
+      'Your password was changed. If this was not you, use account recovery immediately.',
+      '<p>Your password was changed.</p><p>If this was not you, use account recovery immediately.</p>',
       'password-changed',
       user.id,
     );

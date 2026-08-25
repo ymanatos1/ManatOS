@@ -141,6 +141,23 @@ describe('authentication presentation', () => {
     ).toBe('/auth/github?intent=signin');
   });
 
+  it('renders password recovery as a polished second-step modal with a Back path', async () => {
+    const html = await ejs.renderFile(authModalsView, {
+      currentUser: null,
+      csrfToken: 'test-csrf',
+      authProviders: availableProviders(),
+    });
+    const $ = load(html);
+    const modal = $('#passwordRequestModal');
+
+    expect(modal.hasClass('auth-primary-modal')).toBe(true);
+    expect(modal.find('.auth-entry-illustration.is-password').length).toBe(1);
+    expect(modal.find('.auth-entry-copy h3').text().trim()).toBe('Recover access');
+    expect(modal.find('#passwordRequestIdentity').length).toBe(1);
+    expect(modal.find('form').attr('data-busy-submit')).not.toBeUndefined();
+    expect(modal.find('.auth-back-button').attr('data-bs-target')).toBe('#signInModal');
+  });
+
   it('renders email registration as identity and security columns with live-submit hooks', async () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,

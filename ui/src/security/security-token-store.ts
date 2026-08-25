@@ -55,6 +55,29 @@ export class SecurityTokenStore {
   }
 
   /**
+   * Check whether a one-time token is currently usable without consuming it.
+   *
+   * This is used only to choose the appropriate recovery presentation. The
+   * mutating POST still consumes the token atomically before changing data.
+   */
+  isUsable(compound: string, purpose: Purpose): boolean {
+    const [id, raw] = compound.split('.', 2);
+
+    if (!id || !raw) return false;
+
+    const token = this.tokens.get(id);
+
+    return Boolean(
+      token
+      && token.purpose === purpose
+      && token.tokenHash === hash(raw)
+      && !token.usedAt
+      && !token.invalidatedAt
+      && token.expiresAt >= Date.now(),
+    );
+  }
+
+  /**
    * Consume a token while preserving a friendly outcome for verification
    * links that became redundant because an external provider verified the
    * same email first.

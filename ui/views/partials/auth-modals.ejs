@@ -107,7 +107,7 @@
         action="/auth/register/email"
         data-busy-submit
         data-busy-title="Creating your account…"
-        data-busy-message="Please wait while ManatOS creates your account and sends the verification email."
+        data-busy-message="Please wait while your account is created and the verification email is sent."
         data-busy-icon="bi-person-plus"
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -355,27 +355,32 @@
 
 
   <div
-    class="modal fade"
+    class="modal fade auth-primary-modal auth-password-request-modal"
     id="passwordRequestModal"
     tabindex="-1"
     aria-labelledby="passwordRequestModalLabel"
     aria-hidden="true"
   >
-    <div class="modal-dialog modal-dialog-centered auth-modal-dialog auth-form-modal-dialog">
+    <div class="modal-dialog modal-dialog-centered auth-modal-dialog auth-password-request-dialog">
       <form
         class="modal-content"
         method="post"
         action="/auth/password/request"
+        data-busy-submit
+        data-busy-title="Preparing password instructions…"
+        data-busy-message="Please wait while we securely process your request."
+        data-busy-icon="bi-key"
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <div class="modal-header">
           <div>
-            <h2 class="modal-title h5 mb-1" id="passwordRequestModalLabel">
+            <h2 class="modal-title h4 mb-1" id="passwordRequestModalLabel">
+              <i class="bi bi-key me-2" aria-hidden="true"></i>
               Forgot or set password
             </h2>
             <p class="modal-subtitle mb-0">
-              We will send instructions when the account can be identified.
+              Recover access to your account.
             </p>
           </div>
           <button
@@ -386,24 +391,58 @@
           ></button>
         </div>
 
-        <div class="modal-body">
-          <label class="form-label" for="passwordRequestIdentity">
-            Email or user name
-          </label>
-          <input
-            class="form-control"
-            id="passwordRequestIdentity"
-            name="identity"
-            autocomplete="username"
-            required
-          >
+        <div class="modal-body auth-primary-modal-body auth-password-request-body">
+          <div class="auth-entry-intro auth-password-request-intro">
+            <%- include('auth/auth-entry-illustration', { mode: 'password' }) %>
+
+            <div class="auth-entry-copy">
+              <h3>Recover access</h3>
+              <p class="mb-0">
+                Enter your email address or user name. If an eligible account matches,
+                password instructions will be sent to its registered email address.
+              </p>
+            </div>
+          </div>
+
+          <section class="auth-registration-form-card auth-password-request-card" aria-labelledby="passwordRequestDetailsHeading">
+            <div class="auth-modal-section-heading" id="passwordRequestDetailsHeading">
+              <i class="bi bi-person-lock" aria-hidden="true"></i>
+              Account identification
+            </div>
+
+            <div class="auth-password-request-field">
+              <label class="form-label" for="passwordRequestIdentity">
+                Email or user name
+              </label>
+              <input
+                class="form-control"
+                id="passwordRequestIdentity"
+                name="identity"
+                autocomplete="username"
+                required
+                autofocus
+              >
+              <div class="form-text">
+                For privacy, the confirmation message does not reveal whether an account exists.
+              </div>
+            </div>
+          </section>
         </div>
 
-        <div class="modal-footer">
-          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">
-            Cancel
+        <div class="modal-footer auth-step-footer">
+          <button
+            class="btn btn-outline-secondary auth-back-button"
+            type="button"
+            data-bs-dismiss="modal"
+            data-bs-toggle="modal"
+            data-bs-target="#signInModal"
+          >
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+            Back
           </button>
+
           <button class="btn btn-primary" type="submit">
+            <i class="bi bi-send me-1" aria-hidden="true"></i>
             Send instructions
           </button>
         </div>
