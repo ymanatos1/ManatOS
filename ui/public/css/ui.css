@@ -288,6 +288,21 @@
   border-color: #aeb9c6;
 }
 
+.auth-provider-button:hover,
+.auth-provider-button:focus {
+  background: #f3f7fc;
+  color: #24364d;
+  border-color: #b8c7d9;
+}
+
+.auth-provider-button:hover i,
+.auth-provider-button:focus i,
+.auth-provider-button:hover .auth-provider-label,
+.auth-provider-button:focus .auth-provider-label {
+  color: inherit;
+  opacity: 1;
+}
+
 .auth-provider-button:not(:disabled):hover {
   background: #f3f7fc;
   border-color: #7f94ab;
@@ -348,7 +363,10 @@
   background: linear-gradient(135deg, #1d78ef, #1264d5);
   text-align: left;
   box-shadow: 0 7px 18px rgba(20, 100, 213, 0.16);
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
 }
 
 .auth-email-registration-button:hover,
@@ -956,4 +974,3 @@ body.anonymous .workspace {
   background: #edf4fc;
   outline: none;
 }
-

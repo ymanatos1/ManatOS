@@ -90,6 +90,20 @@
       "createdBy": "InternalApi",
       "updatedAt": "2026-08-25T08:48:52.853Z",
       "updatedBy": "InternalApi"
+    },
+    "71071fee-ef2a-4577-9ab1-fb66e9c1544f": {
+      "name": "facebook:10242767900875685",
+      "userId": "66ad5e12-aee2-4ab9-809e-97fb60526247",
+      "provider": "facebook",
+      "providerSubject": "10242767900875685",
+      "email": "yiannis@manatos.gr",
+      "emailVerified": false,
+      "displayName": "Yiannis Manatos",
+      "enabled": true,
+      "createdAt": "2026-08-25T09:28:14.522Z",
+      "createdBy": "InternalApi",
+      "updatedAt": "2026-08-25T09:28:14.522Z",
+      "updatedBy": "InternalApi"
     }
   },
   "sysUserPrincipals": {},
