@@ -7,10 +7,15 @@
 %>
 
 <section class="content-card col-xl-7">
-  <h2>Complete external registration</h2>
+  <h2><%= startedAsSignIn ? 'No ManatOS account is connected yet' : 'Complete external registration' %></h2>
   <p class="text-secondary">
-    <strong><%= provider.label %></strong> authenticated this email address. Choose a unique user name. A local
-    password is optional.
+    <strong><%= provider.label %></strong> authenticated <strong><%= profile.email %></strong>, but no ManatOS account
+    is connected to this external identity yet.
+    <% if (startedAsSignIn) { %>
+      If you want to create one, choose a unique user name below. A local password is optional.
+    <% } else { %>
+      Choose a unique user name. A local password is optional.
+    <% } %>
   </p>
   <form method="post" action="/auth/register/external">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" /><label class="form-label"

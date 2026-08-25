@@ -1,6 +1,6 @@
-import { config } from '../config.js';
+import type { ExternalProviderKey, EmailVerificationSource } from '@manatos/shared';
 
-export type ExternalProviderKey = 'google' | 'facebook' | 'github' | 'microsoft';
+import { config } from '../config.js';
 
 /**
  * Provider metadata shared by authentication routes and EJS presentation.
@@ -72,4 +72,9 @@ export function externalProviderOption(provider: string): AuthProviderOption | u
   const normalized = provider.trim().toLowerCase();
 
   return providerOptions().find((option) => option.key === normalized);
+}
+
+/** Verification provenance key for a normalized external provider. */
+export function externalVerificationSource(provider: ExternalProviderKey): EmailVerificationSource {
+  return provider;
 }

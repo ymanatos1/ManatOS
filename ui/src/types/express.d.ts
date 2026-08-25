@@ -1,6 +1,6 @@
 import 'express-session';
 
-import type { SysUser } from '@manatos/shared';
+import type { ExternalProviderKey, SysUser } from '@manatos/shared';
 
 import type { SessionErrorEntry } from '../errors/session-error-log.js';
 
@@ -91,14 +91,16 @@ declare module 'express-session' {
      * the identity, but the user must explicitly choose to sign in.
      */
     pendingExternalExistingAccount?: {
-      provider: string;
+      provider: ExternalProviderKey;
       email: string;
       existingUserId: string;
       existingUserName: string;
     };
 
+    pendingExternalRegistrationIntent?: 'signin' | 'register';
+
     pendingExternalRegistration?: {
-      provider: string;
+      provider: ExternalProviderKey;
 
       providerSubject: string;
 
@@ -132,7 +134,7 @@ declare module 'express-session' {
      *                                  EXISTING authenticated SysUser
      */
     pendingExternalLink?: {
-      provider: string;
+      provider: ExternalProviderKey;
 
       providerSubject: string;
 
@@ -176,7 +178,7 @@ declare global {
      * whether the provider is Google, Facebook, GitHub, etc.
      */
     interface AuthInfo {
-      externalProfile?: import('../auth/passport.js').ExternalProfile;
+      externalProfile?: import('../auth/external-profile.js').ExternalProfile;
     }
   }
 }

@@ -54,7 +54,15 @@ export enum SysUserRole {
  * an explicitly authorized administrative/internal action). External
  * providers are recorded by their stable provider key.
  */
-export type EmailVerificationSource = 'internal' | 'google' | 'facebook' | 'github';
+export const EXTERNAL_PROVIDER_KEYS = ['google', 'facebook', 'github', 'microsoft'] as const;
+
+export type ExternalProviderKey = (typeof EXTERNAL_PROVIDER_KEYS)[number];
+
+export type EmailVerificationSource = 'internal' | ExternalProviderKey;
+
+export function isExternalProviderKey(value: string): value is ExternalProviderKey {
+  return (EXTERNAL_PROVIDER_KEYS as readonly string[]).includes(value);
+}
 
 /**
  * Supported customer/commercial principal types.

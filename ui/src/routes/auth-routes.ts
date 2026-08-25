@@ -14,9 +14,15 @@ import { emailService } from '../email/email-service.js';
 
 import { securityTokenStore } from '../security/security-token-store.js';
 
-import { passport, type ExternalProfile } from '../auth/passport.js';
+import { passport } from '../auth/passport.js';
 
-import { configuredProviders } from '../auth/external-providers.js';
+import type { ExternalProfile } from '../auth/external-profile.js';
+
+import {
+  configuredProviders,
+  externalProviderOption,
+  externalVerificationSource,
+} from '../auth/external-providers.js';
 
 import { requireCsrf } from '../middleware/csrf.js';
 
@@ -665,6 +671,7 @@ export function createAuthRouter() {
           }
 
           req.session.pendingExternalRegistration = sessionExternalProfile(profile);
+          req.session.pendingExternalRegistrationIntent = authIntent;
 
           res.redirect('/auth/register/external');
         } catch (error) {
@@ -977,6 +984,28 @@ export function createAuthRouter() {
   /**
    * Complete registration begun through Google/Facebook/etc.
    */
+  router.get(
+    '/register/external',
+
+    async (req, res) => {
+      const profile = req.session.pendingExternalRegistration;
+
+      if (!profile) {
+        res.redirect('/');
+        return;
+      }
+
+      await renderPage(res, 'pages/external-registration', {
+        title: req.session.pendingExternalRegistrationIntent === 'signin'
+          ? 'Create account'
+          : 'Complete registration',
+        titleIcon: 'bi-person-plus',
+        profile,
+        startedAsSignIn: req.session.pendingExternalRegistrationIntent === 'signin',
+      });
+    },
+  );
+
   router.post(
     '/register/external',
 
@@ -1119,12 +1148,16 @@ export function createAuthRouter() {
 
           await establishUiSession(req, login, profile.provider);
 
+          delete req.session.pendingExternalRegistration;
+          delete req.session.pendingExternalRegistrationIntent;
+
           res.redirect('/account');
 
           return;
         }
 
         delete req.session.pendingExternalRegistration;
+        delete req.session.pendingExternalRegistrationIntent;
 
         res.redirect('/?message=verification-sent');
       } catch (error) {
@@ -1136,27 +1169,12 @@ export function createAuthRouter() {
   return router;
 }
 
-function externalVerificationSource(provider: string): EmailVerificationSource {
-  const normalized = provider.toLowerCase();
-
-  if (normalized === 'google' || normalized === 'facebook' || normalized === 'github') {
-    return normalized;
-  }
-
-  return 'internal';
-}
-
 function verificationSourceLabel(source: EmailVerificationSource): string {
-  switch (source) {
-    case 'google':
-      return 'Google';
-    case 'facebook':
-      return 'Facebook';
-    case 'github':
-      return 'GitHub';
-    default:
-      return 'ManatOS';
+  if (source === 'internal') {
+    return 'ManatOS';
   }
+
+  return externalProviderOption(source)?.label ?? source;
 }
 
 /**

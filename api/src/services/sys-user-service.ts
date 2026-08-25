@@ -2,6 +2,7 @@ import argon2 from 'argon2';
 
 import {
   AuthenticationError,
+  NotFoundError,
   SysUserRole,
   ValidationAppError,
   operationContext,
@@ -284,6 +285,21 @@ export class SysUserService extends GenericSysBOService<SysUser> {
     actor: AuditActor,
     source: EmailVerificationSource = 'internal',
   ): Promise<SysUser> {
+    const user = await this.get(id);
+
+    if (!user) {
+      throw new NotFoundError('SysUser', id);
+    }
+
+    /*
+     * Verification provenance records how the CURRENT ManatOS email first
+     * became trusted. Linking/authenticating another provider later must not
+     * rewrite that history.
+     */
+    if (user.emailVerified) {
+      return user;
+    }
+
     return this.update(
       id,
 

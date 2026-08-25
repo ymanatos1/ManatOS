@@ -652,6 +652,77 @@ describe('API integration - authentication and sessions', () => {
 
     expect(session.body.error.code).toBe('FORBIDDEN');
   });
+
+  it('allows one SysUser to own identities from multiple external providers', async () => {
+    const registration = await request(context.app)
+      .post('/api/v1/internal/auth/register-external')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({
+        name: 'MultiProviderUser',
+        email: 'multi.provider@example.test',
+        emailVerified: true,
+        emailVerificationSource: 'github',
+      });
+
+    expect(registration.status).toBe(201);
+    const user = commandData<PublicSysUser>(registration.body);
+
+    for (const [provider, providerSubject] of [
+      ['github', 'github-subject-1'],
+      ['google', 'google-subject-1'],
+    ] as const) {
+      const link = await request(context.app)
+        .post(`/api/v1/internal/SysUsers/${user.id}/external-identities`)
+        .set('x-internal-api-key', config.INTERNAL_API_KEY)
+        .send({
+          provider,
+          providerSubject,
+          email: user.email,
+          emailVerified: true,
+        });
+
+      expect(link.status).toBe(201);
+    }
+
+    const identities = await request(context.app)
+      .get(`/api/v1/internal/SysUsers/${user.id}/external-identities`)
+      .set('x-internal-api-key', config.INTERNAL_API_KEY);
+
+    expect(identities.status).toBe(200);
+    expect(queryData<Array<{ provider: string; userId: string }>>(identities.body)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provider: 'github', userId: user.id }),
+        expect.objectContaining({ provider: 'google', userId: user.id }),
+      ]),
+    );
+  });
+
+  it('preserves the original email verification provenance when another provider verifies later', async () => {
+    const registration = await request(context.app)
+      .post('/api/v1/internal/auth/register-external')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({
+        name: 'VerificationProvenanceUser',
+        email: 'verification.provenance@example.test',
+        emailVerified: true,
+        emailVerificationSource: 'github',
+      });
+
+    expect(registration.status).toBe(201);
+    const user = commandData<PublicSysUser>(registration.body);
+    const originalVerifiedAt = user.emailVerifiedAt;
+
+    const verification = await request(context.app)
+      .put(`/api/v1/internal/SysUsers/${user.id}/email-verified`)
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({ source: 'google' });
+
+    expect(verification.status).toBe(200);
+    const unchanged = commandData<PublicSysUser>(verification.body);
+
+    expect(unchanged.emailVerificationSource).toBe('github');
+    expect(unchanged.emailVerifiedAt).toBe(originalVerifiedAt);
+  });
 });
 
 /**

@@ -10,6 +10,7 @@ import { availableProviders } from '../src/auth/external-providers.js';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const authModalsView = resolve(testDirectory, '../views/partials/auth-modals.ejs');
 const externalLinkView = resolve(testDirectory, '../views/pages/external-link.ejs');
+const externalRegistrationView = resolve(testDirectory, '../views/pages/external-registration.ejs');
 const externalExistingAccountView = resolve(
   testDirectory,
   '../views/pages/external-existing-account.ejs',
@@ -160,6 +161,28 @@ describe('authentication presentation', () => {
     expect(modal.find('[data-rule="match"]').length).toBe(1);
     expect(modal.find('[data-password-confirmation]').length).toBe(1);
     expect(modal.find('[data-password-submit]').is('[disabled]')).toBe(true);
+  });
+
+  it('explains that external sign-in never silently creates a new ManatOS account', async () => {
+    const html = await ejs.renderFile(externalRegistrationView, {
+      csrfToken: 'test-csrf',
+      authProviders: availableProviders(),
+      startedAsSignIn: true,
+      profile: {
+        provider: 'github',
+        providerSubject: 'github-user-1',
+        email: 'new.user@example.test',
+        emailVerified: true,
+      },
+    });
+    const $ = load(html);
+
+    expect($('h2').text()).toContain('No ManatOS account is connected yet');
+    expect($('.text-secondary').text().replace(/\s+/g, ' ').trim()).toContain(
+      'If you want to create one, choose a unique user name below.',
+    );
+    expect($('form').attr('action')).toBe('/auth/register/external');
+    expect($('button').text()).toContain('Create account');
   });
 
   it('renders a polite existing-account message for registration with an already-linked provider', async () => {

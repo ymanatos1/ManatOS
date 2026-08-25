@@ -5,6 +5,7 @@ import {
   NotFoundError,
   SysUserRole,
   operationContext,
+  isExternalProviderKey,
   type EmailVerificationSource,
   type SysUser,
   type SysUserPrincipalRelationship,
@@ -492,7 +493,7 @@ function trustedSessionClientInfo(req: Request): SessionClientInfo {
 function parseEmailVerificationSource(value: unknown): EmailVerificationSource {
   const source = String(value ?? 'internal').toLowerCase();
 
-  if (source === 'google' || source === 'facebook' || source === 'github') {
+  if (isExternalProviderKey(source)) {
     return source;
   }
 
