@@ -80,7 +80,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
 
   const httpStatus = httpStatusByErrorCode[appError.code] ?? 500;
 
-  logger.error('API request failed', {
+  const logFields = {
     method: req.method,
     path: req.originalUrl,
     statusCode: httpStatus,
@@ -90,7 +90,13 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     ...(appError.operationTrace?.[0]?.id
       ? { operationId: appError.operationTrace[0].id }
       : {}),
-  });
+  };
+
+  // Expected client/business/security rejections are warnings. Operational
+  // server/infrastructure failures remain errors. The full operationTrace is
+  // still returned in API responses according to API_ERROR_DETAIL_LEVEL.
+  if (httpStatus >= 500) logger.error('API request failed', logFields);
+  else logger.warn('API request rejected', logFields);
 
   res.status(httpStatus).json({
     success: false,

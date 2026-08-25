@@ -1,13 +1,12 @@
 /**
  * Structured log entry produced by the ManatOS server logger.
  *
- * Sinks deliberately receive an already-sanitized entry. This keeps secret
- * redaction in one place and makes it safe to add additional persistence
- * targets later (for example a database-backed Admin diagnostics store).
+ * Sinks receive an already-sanitized entry so secret redaction remains
+ * centralized and every destination gets the same safe payload.
  */
 export interface LogEntry {
   timestamp: string;
-  level: 'debug' | 'info' | 'warn' | 'error';
+  level: 'debug' | 'info' | 'warn' | 'error' | 'fatal';
   requestId: string;
   message: string;
   [key: string]: unknown;

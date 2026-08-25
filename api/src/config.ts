@@ -59,24 +59,30 @@ const schema = z.object({
   /**
    * Central server logging configuration.
    *
-   * `pretty` is convenient during local development, while `json` is
-   * intended for structured log collectors in hosted environments.
+   * Each persistence destination is enabled by providing its location.
+   * Empty/omitted locations disable that sink, avoiding separate ENABLED flags.
    */
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   LOG_FORMAT: z.enum(['pretty', 'json']).default('pretty'),
+  LOG_CONSOLE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).optional(),
 
   /**
-   * Persistent file logging. Paths are resolved from the API process working
-   * directory; ../data/logs therefore places runtime logs beside the current
-   * data/database.json file in the project data area.
+   * Persistent file logging. Relative paths are resolved from the API process
+   * working directory. Empty values disable the corresponding file sink.
    */
-  LOG_FILE_ENABLED: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((value) => value === 'true'),
-  LOG_DIR: z.string().trim().min(1).default('../data/logs'),
-  LOG_FILE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  LOG_FILE_PATH: z.string().trim().optional().transform((value) => value || undefined),
+  LOG_FILE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  LOG_ERROR_FILE_PATH: z.string().trim().optional().transform((value) => value || undefined),
+  LOG_ERROR_FILE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('error'),
   LOG_FILE_MAX_BYTES: z.coerce.number().int().positive().default(5_242_880),
+
+  /**
+   * Reserved database logging configuration.
+   *
+   * The database sink is intentionally not coupled to the primary datastore.
+   * A non-empty URL will enable it once the dedicated sink/provider is added.
+   */
+  LOG_DATABASE_URL: z.string().trim().optional().transform((value) => value || undefined),
+  LOG_DATABASE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('error'),
 
   /** Server-side SMTP delivery. SMTP secrets must never be exposed to the UI/browser. */
   MAIL_ENABLED: z

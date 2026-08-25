@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
 
 import { config } from '../config.js';
 import type { LogEntry, LogSink } from './log-sink.js';
@@ -9,53 +9,53 @@ const priorities: Record<LogEntry['level'], number> = {
   info: 20,
   warn: 30,
   error: 40,
+  fatal: 50,
 };
 
+function resolveConfiguredPath(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return isAbsolute(value) ? value : resolve(process.cwd(), value);
+}
+
 /**
- * Persist structured JSON-lines logs under the runtime data area.
+ * JSON-lines file sink.
  *
- * Two files are maintained intentionally:
- *
- *   manatos-api.log       configured minimum level and above;
- *   manatos-api-error.log ERROR entries only.
- *
- * A simple size rotation keeps one previous generation. This is deliberately
- * dependency-free for now and can later be replaced by a richer rolling-file
- * sink without changing callers.
+ * File storage is enabled purely by configured path presence. This keeps the
+ * configuration symmetric with future sinks (for example a database URL).
+ * Any file-system failure is best-effort and never terminates the API.
  */
 export class FileLogSink implements LogSink {
-  private readonly directory: string;
-  private readonly normalFile: string;
-  private readonly errorFile: string;
+  private readonly normalFile = resolveConfiguredPath(config.LOG_FILE_PATH);
+  private readonly errorFile = resolveConfiguredPath(config.LOG_ERROR_FILE_PATH);
   private failureReported = false;
 
   constructor() {
-    this.directory = isAbsolute(config.LOG_DIR)
-      ? config.LOG_DIR
-      : resolve(process.cwd(), config.LOG_DIR);
-
-    this.normalFile = resolve(this.directory, 'manatos-api.log');
-    this.errorFile = resolve(this.directory, 'manatos-api-error.log');
-
-    try {
-      mkdirSync(this.directory, { recursive: true });
-    } catch (error) {
-      this.reportFailure('Unable to create log directory', error);
+    for (const file of [this.normalFile, this.errorFile]) {
+      if (!file) continue;
+      try {
+        mkdirSync(dirname(file), { recursive: true });
+      } catch (error) {
+        this.reportFailure(`Unable to create log directory for ${file}`, error);
+      }
     }
   }
 
   write(entry: LogEntry): void {
-    if (!config.LOG_FILE_ENABLED) return;
-
     try {
       const line = `${JSON.stringify(entry)}\n`;
 
-      if (priorities[entry.level] >= priorities[config.LOG_FILE_MIN_LEVEL]) {
+      if (
+        this.normalFile &&
+        priorities[entry.level] >= priorities[config.LOG_FILE_MIN_LEVEL]
+      ) {
         this.rotateIfNeeded(this.normalFile, Buffer.byteLength(line));
         appendFileSync(this.normalFile, line, 'utf8');
       }
 
-      if (entry.level === 'error') {
+      if (
+        this.errorFile &&
+        priorities[entry.level] >= priorities[config.LOG_ERROR_FILE_MIN_LEVEL]
+      ) {
         this.rotateIfNeeded(this.errorFile, Buffer.byteLength(line));
         appendFileSync(this.errorFile, line, 'utf8');
       }
@@ -79,8 +79,7 @@ export class FileLogSink implements LogSink {
     if (this.failureReported) return;
     this.failureReported = true;
 
-    // This fallback intentionally bypasses the logger to avoid recursion when
-    // the logging infrastructure itself is the failing component.
+    // Intentionally bypass the logger to avoid recursion when logging itself fails.
     console.error(`[ManatOS logging] ${message}:`, error);
   }
 }

@@ -974,3 +974,48 @@ body.anonymous .workspace {
   background: #edf4fc;
   outline: none;
 }
+
+/* ========================================================================== 
+ * Account password modal
+ * ========================================================================== */
+.auth-password-form-dialog {
+  max-width: 820px;
+}
+
+.auth-password-modal-body {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-password-intro {
+  margin-bottom: 0;
+}
+
+.auth-password-fields {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-password-new-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.auth-password-current-field {
+  max-width: calc(50% - 0.5rem);
+}
+
+.auth-password-modal-footer {
+  justify-content: space-between;
+}
+
+@media (max-width: 767.98px) {
+  .auth-password-new-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-password-current-field {
+    max-width: none;
+  }
+}

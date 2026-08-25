@@ -12,18 +12,10 @@ const priorities: Record<LogLevel, number> = {
   info: 20,
   warn: 30,
   error: 40,
+  fatal: 50,
 };
 
 const sensitiveKey = /(password|secret|token|authorization|cookie|api[-_]?key|client[-_]?secret)/i;
-
-/**
- * Fields intentionally excluded from server logs.
- *
- * The semantic operation trace remains available in API error responses for
- * permitted power-user diagnostics, but serializing the complete tree into
- * normal server logs produces very large, repetitive entries. The requestId
- * and operationId are enough to correlate routine logs.
- */
 const excludedLogKey = /^operationTrace$/i;
 
 function sanitize(value: unknown, key?: string): unknown {
@@ -48,9 +40,7 @@ function sanitize(value: unknown, key?: string): unknown {
     };
   }
 
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitize(item));
-  }
+  if (Array.isArray(value)) return value.map((item) => sanitize(item));
 
   if (value && typeof value === 'object') {
     return Object.fromEntries(
@@ -74,35 +64,36 @@ function sanitizeFields(fields: LogFields): LogFields {
 }
 
 /**
- * Logging destinations are intentionally pluggable.
- *
- * File logging is the first persistence sink. A database sink can later be
- * added to this array (with its own minimum severity/configuration) so a log
- * entry can be written to console + files + database independently. A broken
- * database sink must never prevent the file/console sinks from succeeding.
+ * Persistence sinks are independent. A failing sink must never prevent the
+ * remaining destinations from receiving a log entry.
  */
 const sinks: LogSink[] = [new FileLogSink()];
 
-function write(level: LogLevel, message: string, fields: LogFields = {}): void {
-  if (priorities[level] < priorities[config.LOG_LEVEL]) return;
+function effectiveConsoleMinLevel(): LogLevel {
+  if (config.LOG_CONSOLE_MIN_LEVEL) return config.LOG_CONSOLE_MIN_LEVEL;
 
-  const sanitizedFields = sanitizeFields(fields);
+  // Integration tests intentionally generate many 4xx responses. Keep their
+  // console readable unless a test explicitly opts into more logging.
+  return config.NODE_ENV === 'test' ? 'fatal' : 'info';
+}
+
+function write(level: LogLevel, message: string, fields: LogFields = {}): void {
   const entry: LogEntry = {
     timestamp: new Date().toISOString(),
     level,
     requestId: operationContext.getRequestId(),
     message,
-    ...sanitizedFields,
+    ...sanitizeFields(fields),
   };
 
-  writeConsole(entry);
+  if (priorities[level] >= priorities[effectiveConsoleMinLevel()]) {
+    writeConsole(entry);
+  }
 
   for (const sink of sinks) {
     try {
       sink.write(entry);
     } catch (error) {
-      // A custom/future sink is not allowed to break application execution or
-      // prevent the remaining destinations from receiving the entry.
       console.error('[ManatOS logging] Log sink failed:', error);
     }
   }
@@ -111,7 +102,7 @@ function write(level: LogLevel, message: string, fields: LogFields = {}): void {
 function writeConsole(entry: LogEntry): void {
   if (config.LOG_FORMAT === 'json') {
     const line = JSON.stringify(entry);
-    if (entry.level === 'error') console.error(line);
+    if (entry.level === 'fatal' || entry.level === 'error') console.error(line);
     else if (entry.level === 'warn') console.warn(line);
     else console.log(line);
     return;
@@ -120,10 +111,11 @@ function writeConsole(entry: LogEntry): void {
   const { timestamp, level, requestId, message, ...details } = entry;
   const serializedDetails = Object.keys(details).length ? ` ${JSON.stringify(details)}` : '';
   const prefix = `[${timestamp}] [${level.toUpperCase()}] [${requestId}]`;
+  const line = `${prefix} ${message}${serializedDetails}`;
 
-  if (level === 'error') console.error(`${prefix} ${message}${serializedDetails}`);
-  else if (level === 'warn') console.warn(`${prefix} ${message}${serializedDetails}`);
-  else console.log(`${prefix} ${message}${serializedDetails}`);
+  if (level === 'fatal' || level === 'error') console.error(line);
+  else if (level === 'warn') console.warn(line);
+  else console.log(line);
 }
 
 export const logger = {
@@ -131,4 +123,5 @@ export const logger = {
   info: (message: string, fields?: LogFields) => write('info', message, fields),
   warn: (message: string, fields?: LogFields) => write('warn', message, fields),
   error: (message: string, fields?: LogFields) => write('error', message, fields),
+  fatal: (message: string, fields?: LogFields) => write('fatal', message, fields),
 };

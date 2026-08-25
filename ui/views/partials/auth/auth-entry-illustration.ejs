@@ -1,10 +1,16 @@
 <%
   const isRegister = mode === 'register';
-  const actionIcon = isRegister ? 'bi-person-plus' : 'bi-box-arrow-in-right';
+  const isPassword = mode === 'password';
+  const actionIcon = isRegister
+    ? 'bi-person-plus'
+    : isPassword
+      ? 'bi-key'
+      : 'bi-box-arrow-in-right';
   const badgeIcon = isRegister ? 'bi-stars' : 'bi-shield-check';
+  const modeClass = isRegister ? 'is-register' : isPassword ? 'is-password' : 'is-signin';
 %>
 
-<div class="auth-entry-illustration <%= isRegister ? 'is-register' : 'is-signin' %>" aria-hidden="true">
+<div class="auth-entry-illustration <%= modeClass %>" aria-hidden="true">
   <div class="auth-entry-action-tile">
     <i class="bi <%= actionIcon %>"></i>
   </div>

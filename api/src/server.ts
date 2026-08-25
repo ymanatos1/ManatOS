@@ -43,7 +43,7 @@ try {
    * persistence/connection failures can still be diagnosed even when the
    * primary database itself is unavailable.
    */
-  logger.error('Primary datastore initialization failed', {
+  logger.fatal('Primary datastore initialization failed', {
     dataFile: config.DATA_FILE,
     error,
   });
