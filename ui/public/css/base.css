@@ -1,0 +1,138 @@
+:root {
+  --manatos-navy: #071a3d;
+  --manatos-navy-2: #0c2857;
+  --manatos-blue: #1559a6;
+  --manatos-surface: #ffffff;
+  --manatos-bg: #f4f7fb;
+  --manatos-border: #dce3ed;
+  --manatos-muted: #657286;
+  --manatos-text: #202a38;
+  --manatos-footer: #eef2f7;
+  --manatos-shadow: 0 8px 24px rgba(17, 39, 73, 0.07);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--manatos-bg);
+  color: var(--manatos-text);
+  font-family: var(--bs-font-sans-serif);
+}
+
+.site-frame {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-header {
+  min-height: 74px;
+  background: linear-gradient(100deg, var(--manatos-navy), var(--manatos-navy-2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.5rem;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(7, 26, 61, 0.18);
+  position: relative;
+  z-index: 1030;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.brand-link img {
+  display: block;
+  height: 50px;
+  width: auto;
+  max-width: min(330px, 52vw);
+  object-fit: contain;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.version-badge,
+.footer-version {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.user-summary {
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.user-summary-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.user-summary-role {
+  margin-top: 0.18rem;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.horizontal-nav {
+  min-height: 50px;
+  padding: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--manatos-border);
+  box-shadow: 0 1px 4px rgba(17, 39, 73, 0.03);
+  position: relative;
+  z-index: 1020;
+}
+
+.horizontal-nav .nav-link {
+  color: #344258;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.85rem 0.85rem;
+  border-bottom: 2px solid transparent;
+}
+
+.horizontal-nav .nav-link:hover,
+.horizontal-nav .nav-link:focus {
+  color: var(--manatos-blue);
+  border-bottom-color: var(--manatos-blue);
+}
+
+.horizontal-nav .dropdown-menu {
+  border-color: var(--manatos-border);
+  border-radius: 0.55rem;
+}
+
+.horizontal-nav .dropdown-item {
+  font-size: 0.9rem;
+  padding: 0.55rem 0.85rem;
+}
+
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu > .dropdown-menu {
+  top: -0.4rem;
+  left: 100%;
+  margin-left: 0.1rem;
+}
+
+.dropdown-submenu:hover > .dropdown-menu,
+.dropdown-submenu:focus-within > .dropdown-menu {
+  display: block;
+}
+

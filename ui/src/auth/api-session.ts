@@ -73,6 +73,12 @@ export function clearApiSession(req: Request): void {
   delete req.session.apiExpiresAt;
 
   /**
+   * SysBO Rows selection is intentionally scoped to the authenticated
+   * ManatOS session and must not leak into the next user session.
+   */
+  delete req.session.uiPageSize;
+
+  /**
    * Application workspace selection belongs to the authenticated user
    * context and should not survive logout/session expiration.
    */

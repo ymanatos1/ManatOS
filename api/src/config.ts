@@ -27,6 +27,16 @@ const schema = z.object({
    */
   API_ACCESS_TOKEN_MINUTES: z.coerce.number().int().positive().default(60),
 
+
+  /**
+   * Default and upper-bound page sizes for generic API list queries.
+   * The API accepts any positive requested page size up to this maximum;
+   * the UI independently controls which choices it presents to users.
+   */
+  API_DEFAULT_PAGE_SIZE: z.coerce.number().int().positive().default(10),
+
+  API_MAX_PAGE_SIZE: z.coerce.number().int().positive().default(500),
+
   /**
    * JSON persistence file used by the current in-memory datastore.
    */
@@ -75,4 +85,13 @@ const schema = z.object({
  *
  * Importers receive typed values rather than raw process.env strings.
  */
-export const config = schema.parse(process.env);
+const parsedConfig = schema.parse(process.env);
+
+if (parsedConfig.API_DEFAULT_PAGE_SIZE > parsedConfig.API_MAX_PAGE_SIZE) {
+  throw new Error(
+    `API_DEFAULT_PAGE_SIZE (${parsedConfig.API_DEFAULT_PAGE_SIZE}) cannot exceed API_MAX_PAGE_SIZE (${parsedConfig.API_MAX_PAGE_SIZE}).`,
+  );
+}
+
+export const config = parsedConfig;
+

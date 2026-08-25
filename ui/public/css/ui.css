@@ -1,0 +1,493 @@
+/* -------------------------------------------------------------------------
+ * Visual refinement pass: branding, authentication, account forms and grids
+ * ---------------------------------------------------------------------- */
+
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 58px;
+  max-width: 360px;
+  object-fit: contain;
+  border-radius: 4px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.14)) drop-shadow(0 4px 7px rgba(0, 0, 0, 0.28));
+}
+.brand-logo1 {
+  display: block;
+  width: auto;
+  height: 58px;
+  max-width: 360px;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.brand-logo2 {
+  display: block;
+  width: auto;
+  height: 66px;
+  max-width: 390px;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.brand-logo3 {
+  display: block;
+  width: auto;
+  height: 66px;
+  max-width: 390px;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.brand-link:hover .brand-logo,
+.brand-link:focus .brand-logo {
+  filter: brightness(1.45) contrast(1.25) drop-shadow(0 0 6px rgba(255, 255, 255, 0.22));
+}
+
+.account-menu {
+  min-width: 235px;
+}
+
+.account-menu-name {
+  margin-bottom: 0.3rem;
+  color: var(--manatos-text);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.account-role-badge {
+  color: #4e5e73 !important;
+  font-size: 0.69rem;
+  font-weight: 600;
+}
+
+.modal-subtitle {
+  color: var(--manatos-muted);
+  font-size: 0.83rem;
+  font-weight: 400;
+}
+
+.auth-modal-dialog {
+  max-width: 520px;
+}
+
+.auth-provider-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.auth-provider-button {
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding-inline: 0.9rem;
+  text-align: left;
+}
+
+.auth-provider-button > .bi:first-child {
+  justify-self: center;
+  font-size: 1.05rem;
+}
+
+.auth-provider-button > span:not(.badge) {
+  justify-self: start;
+}
+
+.auth-provider-button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.auth-provider-chevron {
+  color: var(--manatos-muted);
+  font-size: 0.78rem;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 1rem 0;
+  color: var(--manatos-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1 1 auto;
+  background: var(--manatos-border);
+}
+
+.form-narrow {
+  width: min(100%, 620px);
+}
+
+.form-medium {
+  width: min(100%, 820px);
+}
+
+.account-card {
+  max-width: 1180px;
+}
+
+.account-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+  gap: 0.8rem 1.25rem;
+  align-items: center;
+}
+
+.account-summary-label {
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.account-summary-value {
+  min-width: 0;
+  font-size: 0.92rem;
+}
+
+.form-section-header {
+  max-width: 720px;
+}
+
+.status-value,
+.boolean-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  white-space: nowrap;
+}
+
+.status-positive,
+.boolean-true {
+  color: #147a4c;
+}
+
+.status-neutral,
+.boolean-false {
+  color: #758195;
+}
+
+.boolean-badge {
+  padding: 0.24rem 0.48rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.boolean-true {
+  background: #effaf4;
+  border-color: #b9e1ca;
+}
+
+.boolean-false {
+  background: #f7f8fa;
+  border-color: #d8dde5;
+}
+
+.table-sort-muted {
+  margin-left: 0.25rem;
+  color: #a8b1bf;
+  font-size: 0.68rem;
+}
+
+.empty-table-state {
+  height: 155px;
+  text-align: center;
+  color: var(--manatos-muted);
+  vertical-align: middle;
+}
+
+.empty-table-state > i,
+.empty-table-state > strong,
+.empty-table-state > span {
+  display: block;
+}
+
+.empty-table-state > i {
+  margin-bottom: 0.45rem;
+  color: #93a1b4;
+  font-size: 1.65rem;
+}
+
+.empty-table-state > strong {
+  margin-bottom: 0.2rem;
+  color: #455267;
+  font-size: 0.88rem;
+}
+
+.empty-table-state > span {
+  font-size: 0.8rem;
+}
+
+.page-size-select {
+  width: 76px;
+}
+
+.password-rules {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--manatos-muted);
+}
+
+.password-rules .rule-ok {
+  color: #147a4c;
+}
+
+@media (max-width: 767.98px) {
+  .brand-logo {
+    height: 46px !important;
+    max-width: 180px !important;
+  }
+
+  .account-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .account-summary-value {
+    margin-bottom: 0.75rem;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * header buttons and site header button styles
+ * ---------------------------------------------------------------------- */
+
+.header-auth-button {
+  min-width: 88px;
+  font-weight: 600;
+  border-radius: 0.45rem;
+}
+
+.site-header .btn-info {
+  color: #06234a;
+  background-color: #63d8f5;
+  border-color: #63d8f5;
+}
+
+.site-header .btn-info:hover,
+.site-header .btn-info:focus {
+  color: #06234a;
+  background-color: #8ce4f8;
+  border-color: #8ce4f8;
+}
+
+.site-header .btn-success {
+  color: #fff;
+  background-color: #198754;
+  border-color: #198754;
+}
+
+.site-header .btn-success:hover,
+.site-header .btn-success:focus {
+  background-color: #157347;
+  border-color: #146c43;
+}
+
+/* =========================================================================
+   Fluid workspace + dedicated account/password pages
+   ========================================================================= */
+
+/* The workspace is the primary working surface; do not artificially cap it. */
+body.anonymous .workspace {
+  max-width: none;
+}
+
+/* Account information belongs directly to the workspace, not to a bounded
+   generic card. */
+.account-page,
+.password-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.account-summary-grid {
+  max-width: 1180px;
+}
+
+.account-password-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.password-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.password-rules [data-rule] {
+  color: var(--manatos-muted);
+}
+
+.password-rules [data-rule].rule-ok {
+  color: #147a4c;
+}
+
+/* These separators exist only when their panel exists/is visible because
+   they are borders of the side panels themselves, never standalone columns. */
+.app-shell.has-left-nav .left-navigation {
+  border-right: 1px solid #cbd6e4;
+}
+
+.app-shell.has-details .details-panel {
+  border-left: 1px solid #cbd6e4;
+}
+
+/* =========================================================================
+   UI refinement: notifications, title surfaces and navigation alignment
+   ========================================================================= */
+
+.header-notifications-button {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 0.45rem;
+}
+
+.header-notifications-button .bi {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/*
+ * Normal page titles use a very light navy-derived surface. Modal titles are
+ * deliberately a little stronger so that popup boundaries remain obvious.
+ */
+.workspace-titlebar {
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border: 1px solid #d7e3f2;
+  border-radius: 0.65rem 0.65rem 0 0;
+  background: #eef4fb;
+}
+/*
+ * Join the page title visually with the first normal content card.
+ */
+.workspace-titlebar + .workspace-content > .content-card:first-child {
+  border-top: 0;
+  border-radius: 0 0 0.8rem 0.8rem;
+}
+/*
+ * SysBO empty pages use .empty-entity-state instead of .content-card.
+ */
+.workspace-titlebar + .workspace-content > .empty-entity-state:first-child {
+  border-top: 0;
+  border-radius: 0 0 0.85rem 0.85rem;
+}
+
+.modal-header {
+  background: #dce8f6;
+  color: var(--manatos-navy);
+  border-bottom-color: #c9d8eb;
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+.modal-header .modal-title {
+  color: var(--manatos-navy);
+  font-weight: 650;
+}
+
+/*
+ * Left navigation captions are aligned consistently from a fixed icon edge.
+ * Logout intentionally keeps its separate/end-aligned treatment.
+ */
+.vertical-menu a,
+.vertical-menu summary {
+  text-align: left;
+}
+
+.vertical-menu a:not(.vertical-menu-logout) {
+  justify-content: flex-start;
+}
+
+.vertical-menu-caption {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  text-align: left;
+}
+
+.vertical-menu-caption > .bi {
+  width: 1.15rem;
+  flex: 0 0 1.15rem;
+  text-align: center;
+}
+
+.vertical-menu summary > .vertical-menu-caption {
+  flex: 1 1 auto;
+}
+
+.vertical-menu-logout {
+  justify-content: flex-end !important;
+  text-align: right !important;
+}
+
+.vertical-menu-logout .vertical-menu-caption {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+/* =========================================================================
+   Company and Apps Playground pages
+   ========================================================================= */
+
+.company-hero-image {
+  display: block;
+  width: min(760px, 100%);
+  height: auto;
+  border-radius: 0.65rem;
+  box-shadow: var(--manatos-shadow);
+}
+
+.app-playground-welcome {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  width: 100%;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border: 1px solid #d7e3f2;
+  border-radius: 0.8rem;
+  background: linear-gradient(145deg, #ffffff, #f1f6fc);
+  box-shadow: var(--manatos-shadow);
+}
+
+.app-playground-welcome-icon {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 0.9rem;
+  background: var(--manatos-navy);
+  color: #fff;
+  font-size: 1.8rem;
+}
+
+@media (max-width: 575.98px) {
+  .app-playground-welcome {
+    flex-direction: column;
+  }
+}

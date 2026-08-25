@@ -2,6 +2,8 @@ import type { Request } from 'express';
 
 import type { ListQuery } from '../storage/in-memory-repository.js';
 
+import { config } from '../config.js';
+
 /**
  * Converts the standard SysBO HTTP query-string parameters into
  * the storage-neutral ListQuery structure.
@@ -9,7 +11,7 @@ import type { ListQuery } from '../storage/in-memory-repository.js';
  * Supported parameters:
  *
  *   ?page=1
- *   ?pageSize=20
+ *   ?pageSize=10
  *   ?sort=name
  *   ?direction=asc
  *   ?filter.name=test
@@ -33,14 +35,13 @@ export function parseListQuery(req: Request): ListQuery {
   const page = positiveInteger(req.query.page, 1);
 
   /*
-   * Protect the API from excessively large page requests.
-   *
-   * The current hard maximum is 500 records per page.
+   * Protect the API from excessively large page requests while keeping
+   * both the default and maximum independently configurable.
    */
   const pageSize = Math.min(
-    positiveInteger(req.query.pageSize, 20),
+    positiveInteger(req.query.pageSize, config.API_DEFAULT_PAGE_SIZE),
 
-    500,
+    config.API_MAX_PAGE_SIZE,
   );
 
   /**

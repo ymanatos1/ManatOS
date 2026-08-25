@@ -1,0 +1,695 @@
+/* =========================================================================
+   Adaptive application shell
+   ========================================================================= */
+
+/**
+ * The shell defaults to one column only.
+ *
+ * Optional side columns are enabled exclusively through state classes:
+ *
+ *   has-left-nav
+ *   has-details
+ *
+ * Therefore a hidden panel never leaves an empty reserved column.
+ */
+.app-shell {
+  position: relative;
+  flex: 1 0 auto;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'workspace';
+  transition: grid-template-columns 0.18s ease;
+}
+
+/* -------------------------------------------------------------------------
+ * Left navigation visible
+ * ---------------------------------------------------------------------- */
+.app-shell.has-left-nav {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr);
+
+  grid-template-areas: 'left workspace';
+}
+
+/* -------------------------------------------------------------------------
+ * Details visible
+ * ---------------------------------------------------------------------- */
+.app-shell.has-details {
+  grid-template-columns:
+    minmax(0, 1fr)
+    320px;
+
+  grid-template-areas: 'workspace details';
+}
+
+/* -------------------------------------------------------------------------
+ * Both side areas visible
+ * ---------------------------------------------------------------------- */
+.app-shell.has-left-nav.has-details {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    320px;
+
+  grid-template-areas: 'left workspace details';
+}
+
+/* =========================================================================
+   Left navigation
+   ========================================================================= */
+
+.left-navigation {
+  grid-area: left;
+  min-width: 0;
+  background: #fff;
+  border-right: 1px solid var(--manatos-border);
+  padding: 1.1rem 0.8rem;
+  overflow-y: auto;
+}
+
+/**
+ * Header containing:
+ *
+ *   Workspace       [collapse]
+ */
+.left-navigation-header {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 0.5rem;
+
+  margin-bottom: 0.45rem;
+}
+
+.left-navigation-heading {
+  padding: 0 0.65rem;
+
+  color: var(--manatos-muted);
+
+  font-size: 0.68rem;
+
+  font-weight: 700;
+
+  letter-spacing: 0.1em;
+
+  text-transform: uppercase;
+}
+
+.navigation-collapse-button {
+  width: 30px;
+  height: 30px;
+
+  display: inline-grid;
+
+  place-items: center;
+
+  padding: 0;
+
+  border-color: var(--manatos-border);
+
+  color: var(--manatos-muted);
+}
+
+.navigation-collapse-button:hover,
+.navigation-collapse-button:focus {
+  color: var(--manatos-blue);
+
+  border-color: #b9cbe1;
+
+  background: #edf4fc;
+}
+
+/**
+ * Restore control after the complete navigation column has disappeared.
+ *
+ * It floats over the workspace edge rather than occupying another
+ * permanent grid column.
+ */
+.left-navigation-restore {
+  position: absolute;
+
+  z-index: 10;
+
+  top: 1rem;
+  left: 0.45rem;
+
+  width: 34px;
+  height: 34px;
+
+  display: grid;
+
+  place-items: center;
+
+  padding: 0;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border-color: var(--manatos-border);
+
+  box-shadow: 0 3px 10px rgba(17, 39, 73, 0.1);
+}
+
+.left-navigation-restore:hover,
+.left-navigation-restore:focus {
+  color: var(--manatos-blue);
+
+  background: #fff;
+
+  border-color: #b9cbe1;
+}
+
+/* =========================================================================
+   Workspace
+   ========================================================================= */
+
+.workspace {
+  grid-area: workspace;
+
+  min-width: 0;
+
+  padding: 1.35rem 1.5rem 2rem;
+}
+
+body.anonymous .workspace {
+  width: 100%;
+
+  max-width: 1500px;
+
+  margin: 0 auto;
+
+  padding: 1.5rem 2rem 2.5rem;
+}
+
+/**
+ * When the left navigation is collapsed, reserve just enough visual room
+ * for the small floating restore button.
+ *
+ * This is intentionally NOT a grid column.
+ */
+body.authenticated .app-shell:not(.has-left-nav) .workspace {
+  padding-left: 3.25rem;
+}
+
+/* =========================================================================
+   Details panel
+   ========================================================================= */
+
+.details-panel {
+  grid-area: details;
+
+  min-width: 0;
+
+  background: #fff;
+
+  border-left: 1px solid var(--manatos-border);
+
+  padding: 1.25rem;
+
+  overflow-y: auto;
+}
+
+.vertical-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vertical-menu li {
+  margin: 0.1rem 0;
+}
+
+.vertical-menu a,
+.vertical-menu summary {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #344258;
+  text-decoration: none;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.vertical-menu summary {
+  list-style: none;
+}
+
+.vertical-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.vertical-menu a:hover,
+.vertical-menu summary:hover {
+  background: #edf4fc;
+  color: var(--manatos-blue);
+}
+
+.vertical-menu.level-1 {
+  padding-left: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.vertical-menu.level-1 a {
+  font-size: 0.86rem;
+}
+
+.menu-chevron {
+  font-size: 0.72rem;
+  transition: transform 0.15s ease;
+}
+
+details[open] > summary .menu-chevron {
+  transform: rotate(180deg);
+}
+
+.vertical-separator hr {
+  margin: 0.75rem 0.5rem;
+  border-color: var(--manatos-border);
+}
+
+.workspace {
+  min-width: 0;
+  padding: 1.35rem 1.5rem 2rem;
+}
+
+body.anonymous .workspace {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 2.5rem;
+}
+
+.workspace-titlebar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+.workspace-titlebar h1 {
+  margin: 0.25rem 0 0;
+  font-size: 1.65rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--manatos-muted);
+  font-size: 0.78rem;
+}
+
+.page-breadcrumb a {
+  color: var(--manatos-blue);
+  text-decoration: none;
+}
+
+.page-breadcrumb .bi {
+  font-size: 0.6rem;
+}
+
+.workspace-content {
+  min-width: 0;
+}
+
+.details-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.details-panel-heading h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+}
+
+.details-card {
+  padding: 0.9rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.55rem;
+  background: #f8fafc;
+  font-size: 0.86rem;
+}
+
+.details-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--manatos-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.content-card {
+  background: var(--manatos-surface);
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.8rem;
+  box-shadow: var(--manatos-shadow);
+  padding: 1.35rem;
+}
+
+.home-hero {
+  padding: clamp(1.5rem, 3vw, 3.25rem);
+  overflow: hidden;
+}
+
+.eyebrow {
+  color: var(--manatos-blue);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.platform-summary {
+  padding: 1.5rem;
+  border: 1px solid #d9e5f4;
+  border-radius: 0.8rem;
+  background: linear-gradient(145deg, #f8fbff, #eef5fd);
+}
+
+.summary-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+  background: var(--manatos-navy);
+  color: #fff;
+  font-size: 1.35rem;
+}
+
+.platform-summary h3 {
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.platform-summary p {
+  color: var(--manatos-muted);
+  font-size: 0.9rem;
+}
+
+.summary-features {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.summary-features i {
+  width: 1.25rem;
+  color: var(--manatos-blue);
+}
+
+.welcome-panel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid #cfe3d8;
+  border-radius: 0.6rem;
+  background: #f3faf6;
+}
+
+.welcome-panel > i {
+  color: #198754;
+  font-size: 1.6rem;
+}
+
+.welcome-panel span,
+.welcome-panel small,
+.welcome-panel strong {
+  display: block;
+}
+
+.welcome-panel span,
+.welcome-panel small {
+  color: var(--manatos-muted);
+  font-size: 0.76rem;
+}
+
+.company-logo {
+  max-width: min(520px, 100%);
+  background: var(--manatos-navy);
+  padding: 0.7rem;
+  border-radius: 0.5rem;
+}
+
+.filter-panel {
+  background: #f8fafc;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.6rem;
+  padding: 0.9rem;
+}
+
+.table-responsive {
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.6rem;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.78rem 0.8rem;
+}
+
+.table thead th {
+  background: #f6f8fb;
+  color: #4a576a;
+  border-bottom-width: 1px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table-sort-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.table-sort-link:hover {
+  color: var(--manatos-blue);
+}
+
+.operation-trace {
+  max-height: 360px;
+  overflow: auto;
+  background: #111827;
+  color: #e5e7eb;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+}
+
+.password-rules .rule-ok {
+  color: #198754;
+}
+
+.modal-content {
+  border: 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 60px rgba(7, 26, 61, 0.18);
+}
+
+.modal-header,
+.modal-footer {
+  border-color: var(--manatos-border);
+}
+
+.corporate-footer {
+  min-height: 72px;
+  padding: 1rem 1.5rem;
+  background: var(--manatos-footer);
+  border-top: 1px solid var(--manatos-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  color: #5c6879;
+  font-size: 0.8rem;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.footer-brand strong {
+  color: var(--manatos-navy);
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.footer-links a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--manatos-blue);
+}
+
+@media (max-width: 991.98px) {
+  /**
+   * At tablet widths:
+   *
+   * - left navigation may remain part of the grid;
+   * - Details becomes an overlay drawer instead of reducing
+   *   the center workspace width.
+   */
+
+  .app-shell,
+  .app-shell.has-details {
+    grid-template-columns: minmax(0, 1fr);
+
+    grid-template-areas: 'workspace';
+  }
+
+  .app-shell.has-left-nav,
+  .app-shell.has-left-nav.has-details {
+    grid-template-columns:
+      220px
+      minmax(0, 1fr);
+
+    grid-template-areas: 'left workspace';
+  }
+
+  .details-panel {
+    position: fixed;
+
+    z-index: 1040;
+
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    width: min(360px, 90vw);
+
+    border-left: 1px solid var(--manatos-border);
+
+    box-shadow: -8px 0 28px rgba(7, 26, 61, 0.15);
+  }
+
+  .dropdown-submenu > .dropdown-menu {
+    position: static;
+
+    margin-left: 1rem;
+
+    border: 0;
+
+    box-shadow: none !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .top-header {
+    min-height: 64px;
+
+    padding: 0.55rem 0.85rem;
+  }
+
+  .brand-link img {
+    height: 40px;
+
+    max-width: 45vw;
+  }
+
+  /**
+   * Phone layout:
+   *
+   * Everything is one main column.
+   *
+   * If navigation is visible, it appears above the workspace rather
+   * than consuming narrow horizontal space.
+   */
+  .app-shell,
+  .app-shell.has-details {
+    grid-template-columns: minmax(0, 1fr);
+
+    grid-template-areas: 'workspace';
+  }
+
+  .app-shell.has-left-nav,
+  .app-shell.has-left-nav.has-details {
+    grid-template-columns: minmax(0, 1fr);
+
+    grid-template-areas:
+      'left'
+      'workspace';
+  }
+
+  .left-navigation {
+    border-right: 0;
+
+    border-bottom: 1px solid var(--manatos-border);
+  }
+
+  body.authenticated .app-shell:not(.has-left-nav) .workspace {
+    padding-left: 1rem;
+  }
+
+  .left-navigation-restore {
+    position: fixed;
+
+    z-index: 1035;
+
+    left: 0.6rem;
+
+    top: 132px;
+  }
+
+  .workspace,
+  body.anonymous .workspace {
+    padding: 1rem;
+  }
+
+  .workspace-titlebar {
+    align-items: center;
+  }
+
+  .workspace-titlebar h1 {
+    font-size: 1.4rem;
+  }
+
+  .corporate-footer,
+  .footer-brand,
+  .footer-links {
+    align-items: flex-start;
+  }
+
+  .corporate-footer {
+    flex-direction: column;
+  }
+
+  .footer-brand,
+  .footer-links {
+    flex-wrap: wrap;
+  }
+}

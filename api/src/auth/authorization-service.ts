@@ -113,7 +113,18 @@ export class AuthorizationService {
     record?: SysBOEntity,
   ): Promise<boolean> {
     /**
-     * Administrators may perform every action.
+     * SysUser deletion is intentionally stricter than the generic
+     * relationship-based authorization rules:
+     *
+     * - only Administrators may delete SysUsers;
+     * - an Administrator may never delete their own SysUser record.
+     */
+    if (action === 'delete' && sysBOKey === 'sys-users') {
+      return subject.role === SysUserRole.Admin && record !== undefined && record.id !== subject.userId;
+    }
+
+    /**
+     * Administrators may perform every other action.
      */
     if (subject.role === SysUserRole.Admin) {
       return true;

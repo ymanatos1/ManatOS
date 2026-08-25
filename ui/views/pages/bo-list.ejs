@@ -16,7 +16,15 @@
     class="content-card sysbo-list-page"
     data-entity-key="<%= definition.key %>"
     data-default-page-size="<%= definition.uiMetadata.paginationConfiguration.defaultPageSize %>"
+    data-allowed-page-sizes="<%= definition.uiMetadata.paginationConfiguration.allowedPageSizes.join(',') %>"
   >
+    <%
+      const filterFields = definition.uiMetadata.filterDefinition.fields;
+      const activeFilterCount = filterFields.filter((key) => String(query[`filter.${key}`] || '').trim() !== '').length;
+      const hasActiveFilters = activeFilterCount > 0;
+      const filterCollapseId = `filters-${definition.key}`;
+    %>
+
     <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
       <div>
         <% if (definition.uiMetadata.listViewModel.showResultCount && paging) { %>
@@ -27,16 +35,37 @@
         <% } %>
       </div>
 
-      <% if (permissions.create) { %>
-        <a class="btn btn-success" href="/bo/<%= definition.key %>/new">
-          <i class="bi bi-plus-circle me-1"></i>
-          <%= definition.uiMetadata.listViewModel.addButtonText %>
-        </a>
-      <% } %>
+      <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
+        <% if (filterFields.length) { %>
+          <button
+            class="btn <%= hasActiveFilters ? 'btn-outline-primary' : 'btn-outline-secondary' %>"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#<%= filterCollapseId %>"
+            aria-expanded="<%= hasActiveFilters ? 'true' : 'false' %>"
+            aria-controls="<%= filterCollapseId %>"
+          >
+            <i class="bi bi-funnel me-1" aria-hidden="true"></i>
+            Filters
+            <% if (activeFilterCount) { %>
+              <span class="badge text-bg-primary ms-1"><%= activeFilterCount %></span>
+            <% } %>
+          </button>
+        <% } %>
+
+        <% if (permissions.create) { %>
+          <a class="btn btn-success" href="/bo/<%= definition.key %>/new">
+            <i class="bi bi-plus-circle me-1"></i>
+            <%= definition.uiMetadata.listViewModel.addButtonText %>
+          </a>
+        <% } %>
+      </div>
     </div>
 
-    <form class="filter-panel row g-2 mb-3" method="get">
-      <% for (const key of definition.uiMetadata.filterDefinition.fields) { %>
+    <% if (filterFields.length) { %>
+      <div class="collapse <%= hasActiveFilters ? 'show' : '' %>" id="<%= filterCollapseId %>">
+        <form class="filter-panel row g-2 mb-3" method="get">
+      <% for (const key of filterFields) { %>
         <% const field = definition.boMetadata.fieldDefinition[key]; %>
 
         <div class="col-xl-3 col-md-4">
@@ -58,11 +87,13 @@
         </div>
       <% } %>
 
-      <div class="col-xl-3 col-md-4 d-flex align-items-end gap-2">
-        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
-        <a class="btn btn-outline-secondary" href="/bo/<%= definition.key %>"><i class="bi bi-x-circle me-1"></i>Clear</a>
+          <div class="col-xl-3 col-md-4 d-flex align-items-end gap-2">
+            <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+            <a class="btn btn-outline-secondary" href="/bo/<%= definition.key %>"><i class="bi bi-x-circle me-1"></i>Clear</a>
+          </div>
+        </form>
       </div>
-    </form>
+    <% } %>
 
     <div class="table-responsive">
       <table class="table table-hover align-middle">
@@ -132,44 +163,75 @@
 
     <% if (paging && definition.uiMetadata.paginationConfiguration.enabled) { %>
       <% const pc = definition.uiMetadata.paginationConfiguration; %>
-      <% const half = Math.floor(pc.maxVisiblePageButtons / 2); %>
-      <% let firstPage = Math.max(1, paging.page - half); %>
-      <% let lastPage = Math.min(paging.totalPages, firstPage + pc.maxVisiblePageButtons - 1); %>
-      <% firstPage = Math.max(1, lastPage - pc.maxVisiblePageButtons + 1); %>
+      <% const allowedPageSizes = pc.allowedPageSizes || []; %>
+      <% const minimumPageSize = allowedPageSizes.length ? Math.min(...allowedPageSizes) : pc.defaultPageSize; %>
+      <% const showPagingControls = paging.totalPages > 1; %>
+      <% const showPageSizeSelector = pc.showPageSizeSelector && paging.total >= minimumPageSize; %>
 
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-2">
-        <div class="small text-secondary">Page <%= paging.page %> of <%= paging.totalPages %></div>
+      <% if (showPagingControls || showPageSizeSelector) { %>
+        <% const half = Math.floor(pc.maxVisiblePageButtons / 2); %>
+        <% let firstPage = Math.max(1, paging.page - half); %>
+        <% let lastPage = Math.min(paging.totalPages, firstPage + pc.maxVisiblePageButtons - 1); %>
+        <% firstPage = Math.max(1, lastPage - pc.maxVisiblePageButtons + 1); %>
 
-        <nav aria-label="Result pages">
-          <ul class="pagination pagination-sm mb-0">
-            <% if (pc.showFirstLastButtons) { %>
-              <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>"><a class="page-link" href="?<%= new URLSearchParams({...query, page: '1'}).toString() %>">First</a></li>
-            <% } %>
-            <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>"><a class="page-link" href="?<%= new URLSearchParams({...query, page: String(Math.max(1, paging.page - 1))}).toString() %>">Previous</a></li>
-            <% for (let pageNo = firstPage; pageNo <= lastPage; pageNo++) { %>
-              <li class="page-item <%= pageNo === paging.page ? 'active' : '' %>"><a class="page-link" href="?<%= new URLSearchParams({...query, page: String(pageNo)}).toString() %>"><%= pageNo %></a></li>
-            <% } %>
-            <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>"><a class="page-link" href="?<%= new URLSearchParams({...query, page: String(Math.min(paging.totalPages, paging.page + 1))}).toString() %>">Next</a></li>
-            <% if (pc.showFirstLastButtons) { %>
-              <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>"><a class="page-link" href="?<%= new URLSearchParams({...query, page: String(paging.totalPages)}).toString() %>">Last</a></li>
-            <% } %>
-          </ul>
-        </nav>
+        <div class="sysbo-paging-row mt-2">
+          <% if (showPagingControls) { %>
+            <div class="small text-secondary me-auto">Page <%= paging.page %> of <%= paging.totalPages %></div>
+          <% } else { %>
+            <div class="me-auto"></div>
+          <% } %>
 
-        <% if (pc.showPageSizeSelector) { %>
-          <form method="get" class="d-flex align-items-center gap-2">
-            <% for (const [key, value] of Object.entries(query)) { %>
-              <% if (key !== 'pageSize' && key !== 'page') { %><input type="hidden" name="<%= key %>" value="<%= value %>"><% } %>
+          <div class="sysbo-paging-actions">
+            <% if (showPagingControls) { %>
+              <nav aria-label="Result pages">
+                <ul class="pagination pagination-sm mb-0">
+                  <% if (pc.showFirstLastButtons) { %>
+                    <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
+                      <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: '1'}).toString() %>" title="First page" aria-label="First page">
+                        <i class="bi bi-chevron-bar-left" aria-hidden="true"></i>
+                      </a>
+                    </li>
+                  <% } %>
+                  <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
+                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.max(1, paging.page - 1))}).toString() %>" title="Previous page" aria-label="Previous page">
+                      <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                    </a>
+                  </li>
+                  <% for (let pageNo = firstPage; pageNo <= lastPage; pageNo++) { %>
+                    <li class="page-item <%= pageNo === paging.page ? 'active' : '' %>"><a class="page-link" href="?<%= new URLSearchParams({...query, page: String(pageNo)}).toString() %>"><%= pageNo %></a></li>
+                  <% } %>
+                  <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
+                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.min(paging.totalPages, paging.page + 1))}).toString() %>" title="Next page" aria-label="Next page">
+                      <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    </a>
+                  </li>
+                  <% if (pc.showFirstLastButtons) { %>
+                    <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
+                      <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(paging.totalPages)}).toString() %>" title="Last page" aria-label="Last page">
+                        <i class="bi bi-chevron-bar-right" aria-hidden="true"></i>
+                      </a>
+                    </li>
+                  <% } %>
+                </ul>
+              </nav>
             <% } %>
-            <label class="small" for="pageSize-<%= definition.key %>">Rows</label>
-            <select class="form-select form-select-sm page-size-select" id="pageSize-<%= definition.key %>" name="pageSize" data-page-size-select>
-              <% for (const size of pc.allowedPageSizes) { %>
-                <option value="<%= size %>" <%= Number(query.pageSize || pc.defaultPageSize) === size ? 'selected' : '' %>><%= size %></option>
-              <% } %>
-            </select>
-          </form>
-        <% } %>
-      </div>
+
+            <% if (showPageSizeSelector) { %>
+              <form method="get" class="d-flex align-items-center gap-2">
+                <% for (const [key, value] of Object.entries(query)) { %>
+                  <% if (key !== 'pageSize' && key !== 'page') { %><input type="hidden" name="<%= key %>" value="<%= value %>"><% } %>
+                <% } %>
+                <label class="small text-secondary" for="pageSize-<%= definition.key %>">Rows</label>
+                <select class="form-select form-select-sm page-size-select" id="pageSize-<%= definition.key %>" name="pageSize" data-page-size-select>
+                  <% for (const size of allowedPageSizes) { %>
+                    <option value="<%= size %>" <%= Number(query.pageSize || pc.defaultPageSize) === size ? 'selected' : '' %>><%= size %></option>
+                  <% } %>
+                </select>
+              </form>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
     <% } %>
   </section>
 <% } %>

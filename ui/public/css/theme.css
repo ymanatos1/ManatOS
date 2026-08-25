@@ -1,0 +1,394 @@
+/* =========================================================================
+   User themes, left-navigation docking, and workspace-centered modals
+   ========================================================================= */
+
+:root {
+  --manatos-header-start: #071a3d;
+  --manatos-header-end: #0c2857;
+  --manatos-header-text: #ffffff;
+  --manatos-title-bg: #eef4fb;
+  --manatos-title-border: #d7e3f2;
+  --manatos-modal-title-bg: #dce8f6;
+  --manatos-modal-title-border: #c9d8eb;
+}
+
+body[data-ui-theme='lighter'] {
+  --manatos-header-start: #c8dcf4;
+  --manatos-header-end: #e4eef9;
+  --manatos-header-text: #102b50;
+  --manatos-title-bg: #f7faff;
+  --manatos-title-border: #e2ebf5;
+  --manatos-modal-title-bg: #edf4fb;
+  --manatos-modal-title-border: #dce7f3;
+}
+
+.top-header {
+  background: linear-gradient(100deg, var(--manatos-header-start), var(--manatos-header-end));
+  color: var(--manatos-header-text);
+}
+
+body[data-ui-theme='lighter'] .top-header .btn-outline-light {
+  color: #102b50;
+  border-color: #7696bd;
+}
+
+body[data-ui-theme='lighter'] .top-header .btn-outline-light:hover,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light:focus,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light.show {
+  color: #071a3d;
+  background: #ffffff;
+  border-color: #587da9;
+}
+
+body[data-ui-theme='lighter'] .version-badge {
+  color: #284b75;
+  opacity: 1;
+}
+
+.workspace-titlebar {
+  background: var(--manatos-title-bg);
+  border-color: var(--manatos-title-border);
+}
+
+.modal-header:not(.bg-danger-subtle):not(.bg-warning-subtle) {
+  background: var(--manatos-modal-title-bg);
+  border-bottom-color: var(--manatos-modal-title-border);
+}
+
+/* The collapse control is a shell control and sits above the Workspace label. */
+.left-navigation {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.left-navigation-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 30px;
+  margin-bottom: 0.35rem;
+}
+
+.left-navigation-heading {
+  margin-bottom: 0.35rem;
+}
+
+.left-navigation-main {
+  flex: 0 0 auto;
+}
+
+.left-navigation-bottom {
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+/* Links and action buttons share exactly the same navigation geometry. */
+.vertical-menu a,
+.vertical-menu summary,
+.vertical-menu-action {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  color: #344258;
+  text-decoration: none;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.vertical-menu a:hover,
+.vertical-menu summary:hover,
+.vertical-menu-action:hover,
+.vertical-menu-action:focus {
+  background: #edf4fc;
+  color: var(--manatos-blue);
+}
+
+.vertical-menu-caption {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* Explicitly remove the previous end-alignment exception for Logout. */
+.vertical-menu-logout,
+.vertical-menu-logout .vertical-menu-caption {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+/* Preferences and Logout live together at the bottom of the left rail. */
+.left-navigation-bottom .vertical-menu {
+  width: 100%;
+}
+
+.left-navigation-bottom .vertical-separator hr {
+  margin-top: 0;
+}
+
+/* -------------------------------------------------------------------------
+   Center every Bootstrap popup in the CURRENT CENTER WORKSPACE, rather than
+   in the whole browser viewport. site.js supplies the dynamic coordinates.
+   ---------------------------------------------------------------------- */
+.modal.workspace-centered-modal .modal-dialog {
+  position: fixed;
+  left: var(--workspace-modal-center-x, 50vw);
+  top: var(--workspace-modal-center-y, 50vh);
+  width: min(calc(100vw - 2rem), var(--bs-modal-width, 500px));
+  max-width: calc(100vw - 2rem);
+  margin: 0;
+  transform: translate(-50%, -50%) !important;
+}
+
+.modal.workspace-centered-modal.fade .modal-dialog {
+  transition:
+    opacity 0.15s linear,
+    transform 0.15s ease-out;
+}
+
+/* -------------------------------------------------------------------------
+   Website user preferences
+   ---------------------------------------------------------------------- */
+.preferences-modal-dialog {
+  --bs-modal-width: 560px;
+}
+
+.preferences-theme-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.preferences-theme-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.65rem;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.preferences-theme-option:has(input:checked) {
+  border-color: #7ba8d9;
+  box-shadow: 0 0 0 2px rgba(21, 89, 166, 0.08);
+  background: #f4f8fd;
+}
+
+.preferences-theme-option strong,
+.preferences-theme-option small {
+  display: block;
+}
+
+.preferences-theme-option small {
+  margin-top: 0.2rem;
+  color: var(--manatos-muted);
+  line-height: 1.35;
+}
+
+@media (max-width: 575.98px) {
+  .preferences-theme-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================================
+   Breadcrumb placement
+   ========================================================================= */
+
+/*
+ * Breadcrumbs are navigation context rather than part of the page caption.
+ * Keep them above/outside the coloured workspace-titlebar.
+ */
+.workspace-breadcrumb {
+  margin: 0 0 0.45rem 0.15rem;
+}
+
+.workspace-titlebar h1 {
+  margin: 0;
+}
+
+/* =========================================================================
+   Theme persistence + theme-specific header branding refinements
+   ========================================================================= */
+
+/*
+ * The preferred theme is applied to <html> before CSS paints. This avoids
+ * a darker-theme flash and guarantees the correct top-bar palette/logo after
+ * page navigation or an application/server restart.
+ */
+html[data-ui-theme='lighter'] {
+  /* Intermediate palette: darker than the previous very-light header while
+     remaining substantially lighter than the Darker theme navy. */
+  --manatos-header-start: #6f91bb;
+  --manatos-header-end: #9fb9d7;
+  --manatos-header-text: #0b2446;
+  --manatos-title-bg: #f4f8fd;
+  --manatos-title-border: #dce7f3;
+  --manatos-modal-title-bg: #e7f0fa;
+  --manatos-modal-title-border: #d3e1f0;
+}
+
+/* Keep runtime body marking compatible with the earlier implementation. */
+body[data-ui-theme='lighter'] {
+  --manatos-header-start: #6f91bb;
+  --manatos-header-end: #9fb9d7;
+  --manatos-header-text: #0b2446;
+  --manatos-title-bg: #f4f8fd;
+  --manatos-title-border: #dce7f3;
+  --manatos-modal-title-bg: #e7f0fa;
+  --manatos-modal-title-border: #d3e1f0;
+}
+
+.header-brand-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.header-brand-area .version-badge {
+  flex: 0 0 auto;
+  color: var(--manatos-header-text);
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
+/*
+ * Theme-selectable company logo.
+ * Darker  -> middle-1 / brand-logo1
+ * Lighter -> middle-2 / brand-logo2
+ */
+.theme-brand-logo {
+  flex: 0 0 auto;
+}
+
+.theme-brand-logo-lighter {
+  display: none;
+}
+
+html[data-ui-theme='lighter'] .theme-brand-logo-darker,
+body[data-ui-theme='lighter'] .theme-brand-logo-darker {
+  display: none;
+}
+
+html[data-ui-theme='lighter'] .theme-brand-logo-lighter,
+body[data-ui-theme='lighter'] .theme-brand-logo-lighter {
+  display: block;
+}
+
+html[data-ui-theme='lighter'] .top-header .btn-outline-light,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light {
+  color: #0b2446;
+  border-color: #456b98;
+}
+
+html[data-ui-theme='lighter'] .top-header .btn-outline-light:hover,
+html[data-ui-theme='lighter'] .top-header .btn-outline-light:focus,
+html[data-ui-theme='lighter'] .top-header .btn-outline-light.show,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light:hover,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light:focus,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light.show {
+  color: #071a3d;
+  background: rgba(255, 255, 255, 0.88);
+  border-color: #355b88;
+}
+
+@media (max-width: 575.98px) {
+  .header-brand-area {
+    gap: 0.45rem;
+  }
+}
+
+/* =========================================================================
+   Final theme/header/language refinements
+   ========================================================================= */
+
+/*
+ * Theme variables live on <html> as well as <body> so the preference restored
+ * in shell.ejs is effective before the first paint.
+ */
+html[data-ui-theme='lighter'],
+body[data-ui-theme='lighter'] {
+  --manatos-header-start: #557da9;
+  --manatos-header-end: #86a9cf;
+  --manatos-header-text: #ffffff;
+  --manatos-title-bg: #f3f7fc;
+  --manatos-title-border: #dbe6f2;
+  --manatos-modal-title-bg: #e7eff8;
+  --manatos-modal-title-border: #d3dfed;
+}
+
+html[data-ui-theme='darker'],
+body[data-ui-theme='darker'] {
+  --manatos-header-start: #071a3d;
+  --manatos-header-end: #0c2857;
+  --manatos-header-text: #ffffff;
+}
+
+/* One active header logo only. */
+.theme-brand-logo {
+  flex: 0 0 auto;
+}
+
+/* The medium-blue lighter header still uses light controls/text. */
+html[data-ui-theme='lighter'] .top-header .btn-outline-light,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.72);
+}
+
+html[data-ui-theme='lighter'] .top-header .btn-outline-light:hover,
+html[data-ui-theme='lighter'] .top-header .btn-outline-light:focus,
+html[data-ui-theme='lighter'] .top-header .btn-outline-light.show,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light:hover,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light:focus,
+body[data-ui-theme='lighter'] .top-header .btn-outline-light.show {
+  color: #17375f;
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+html[data-ui-theme='lighter'] .version-badge,
+body[data-ui-theme='lighter'] .version-badge {
+  color: #ffffff;
+  opacity: 0.9;
+}
+
+/* Language selector occupies the far-right side of the horizontal menu. */
+.horizontal-language-nav {
+  flex-shrink: 0;
+}
+
+.horizontal-language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  border: 0;
+  background: transparent;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.language-flag {
+  width: 1.4rem;
+  text-align: center;
+  font-size: 1rem;
+}
+

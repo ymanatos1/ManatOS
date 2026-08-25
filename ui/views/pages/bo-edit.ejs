@@ -1,4 +1,6 @@
 <% const readOnly = !isNew && !permissions.edit; %>
+<% const isOwnSysUser = !isNew && definition.key === 'sys-users' && currentUser && item.id === currentUser.id; %>
+
 <section class="content-card">
   <form
     id="boEditForm"
@@ -84,8 +86,14 @@
           <button
             class="btn btn-danger"
             type="button"
-            data-bs-toggle="modal"
-            data-bs-target="#deleteEntryModal"
+            <%= isOwnSysUser ? 'disabled' : '' %>
+            <% if (!isOwnSysUser) { %>
+              data-bs-toggle="modal"
+              data-bs-target="#deleteEntryModal"
+            <% } %>
+            <% if (isOwnSysUser) { %>
+              title="You cannot delete your own user account."
+            <% } %>
           >
             <i class="bi bi-trash me-1"></i>
             Delete entry
@@ -131,7 +139,7 @@
   </form>
 <% } %>
 
-<% if (!isNew && permissions.delete) { %>
+<% if (!isNew && permissions.delete && !isOwnSysUser) { %>
   <div
     class="modal fade"
     id="deleteEntryModal"

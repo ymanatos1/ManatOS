@@ -1,0 +1,659 @@
+/* ==========================================================================
+   SysBO refinements and Apps Playground illustration
+   ========================================================================== */
+
+.workspace-title-icon {
+  color: #174f91;
+  vertical-align: -0.05em;
+}
+
+.empty-entity-state {
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  text-align: center;
+  border: 1px dashed #b9cbe1;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.72);
+  color: #50657d;
+}
+
+.empty-entity-state > i {
+  font-size: 2.6rem;
+  color: #7e99b9;
+}
+
+.empty-entity-state > strong {
+  font-size: 1.1rem;
+  color: #132a47;
+}
+
+.app-playground-welcome {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(340px, 1.1fr);
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: center;
+}
+
+.app-playground-illustration-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.app-playground-illustration {
+  display: block;
+  width: min(100%, 520px);
+  height: auto;
+  border-radius: 1rem;
+}
+
+.app-playground-capabilities {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1.15rem;
+}
+
+.app-playground-capabilities span {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.app-playground-capabilities i {
+  color: #0d6efd;
+}
+
+@media (max-width: 900px) {
+  .app-playground-welcome {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================================
+   Workspace context/action row
+   ========================================================================= */
+
+/*
+ * Breadcrumbs and workspace-level actions sit outside the coloured title
+ * surface. This keeps the page caption visually clean while leaving actions
+ * such as Details anchored to the far-right edge of the current workspace.
+ */
+.workspace-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  margin: 0 0 0.45rem 0;
+}
+
+.workspace-heading-row .workspace-breadcrumb {
+  min-width: 0;
+  margin: 0 0 0 0.15rem;
+}
+
+.workspace-heading-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.workspace-titlebar {
+  align-items: center;
+}
+
+@media (max-width: 575.98px) {
+  .workspace-heading-row {
+    align-items: flex-start;
+  }
+
+  .workspace-heading-actions .details-toggle {
+    white-space: nowrap;
+  }
+}
+
+/* ========================================================================
+   App Playground launch area
+   ======================================================================== */
+
+.playground-launch-area {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+
+  border-top: 1px solid var(--manatos-border, #d7e0ea);
+}
+
+.playground-run-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 76px;
+  height: 76px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: linear-gradient(145deg, #28a745, #15803d);
+
+  color: #fff;
+
+  font-size: 3rem;
+  line-height: 1;
+
+  box-shadow: 0 6px 16px rgba(22, 101, 52, 0.22);
+}
+
+/*
+ * Deliberately disabled for the current App Playground baseline.
+ *
+ * We retain the strong Run/Play visual because this will later become
+ * the primary application execution action.
+ */
+.playground-run-button:disabled {
+  opacity: 0.48;
+
+  cursor: not-allowed;
+
+  filter: grayscale(0.15);
+}
+
+.playground-run-button .bi {
+  /*
+   * Bootstrap's play triangle has some intrinsic visual imbalance,
+   * so move it slightly right to look optically centered.
+   */
+  transform: translateX(2px);
+}
+
+.playground-launch-message {
+  min-width: 0;
+}
+
+.playground-launch-message h3 {
+  margin: 0 0 0.35rem;
+
+  font-size: 1.15rem;
+  font-weight: 650;
+
+  color: var(--manatos-heading-color, #10294d);
+}
+
+.playground-launch-message p {
+  max-width: 720px;
+
+  margin: 0;
+
+  color: var(--manatos-muted-text, #5e6f84);
+
+  line-height: 1.55;
+}
+
+.playground-launch-message .btn {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .playground-launch-area {
+    align-items: flex-start;
+
+    gap: 1rem;
+  }
+
+  .playground-run-button {
+    width: 62px;
+    height: 62px;
+
+    font-size: 2.35rem;
+  }
+}
+
+/* =========================================================================
+   Language selector
+   ========================================================================= */
+
+.language-flag {
+  width: 20px;
+  height: 14px;
+  /* height: auto; */
+  object-fit: cover;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 0.35rem;
+}
+
+/* =========================================================================
+   External account linking modal
+   ========================================================================= */
+
+.external-link-modal-dialog {
+  --bs-modal-width: 900px;
+}
+
+.external-link-modal .modal-content {
+  overflow: hidden;
+}
+
+.external-link-modal .modal-header {
+  padding: 1.1rem 1.35rem;
+}
+
+.external-link-modal .modal-subtitle {
+  color: #62748a;
+  font-size: 0.86rem;
+}
+
+.external-link-modal-body {
+  padding: 1.25rem 1.4rem 1.15rem;
+}
+
+.external-link-intro {
+  display: grid;
+  grid-template-columns: minmax(235px, 0.82fr) minmax(0, 1.18fr);
+  align-items: center;
+  gap: 1.45rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--manatos-border);
+}
+
+.external-link-copy {
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.external-link-illustration {
+  position: relative;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  overflow: hidden;
+}
+
+.external-link-illustration::before,
+.external-link-illustration::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(0.2px);
+}
+
+.external-link-illustration::before {
+  width: 190px;
+  height: 100px;
+  background: #edf5ff;
+  transform: rotate(-7deg);
+}
+
+.external-link-illustration::after {
+  width: 150px;
+  height: 78px;
+  background: #eef9f2;
+  transform: translate(45px, 23px) rotate(8deg);
+}
+
+.external-link-provider-tile,
+.external-link-manatos-tile {
+  position: relative;
+  z-index: 2;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 24px rgba(15, 53, 96, 0.16);
+}
+
+.external-link-provider-tile {
+  margin-right: -0.35rem;
+  background: linear-gradient(145deg, #2f7fd7, #1559a6);
+  color: #fff;
+  font-size: 2.8rem;
+  transform: rotate(-2deg);
+}
+
+.external-link-manatos-tile {
+  margin-left: -0.35rem;
+  background: linear-gradient(145deg, #bce9c8, #73c78f);
+  transform: rotate(2deg);
+}
+
+.external-link-manatos-tile img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(12, 56, 110, 0.16);
+}
+
+.external-link-connector {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 25px;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--manatos-blue);
+  border: 1px solid #cedceb;
+  box-shadow: 0 5px 12px rgba(7, 26, 61, 0.12);
+  font-size: 1.1rem;
+}
+
+.external-link-shield {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 3px;
+  transform: translateX(-50%);
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  background: #ffffff;
+  color: #27965a;
+  border: 1px solid #d7e5dc;
+  box-shadow: 0 7px 18px rgba(7, 26, 61, 0.14);
+  font-size: 1.85rem;
+}
+
+.external-link-fields {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1.15rem;
+}
+
+.external-link-field-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+}
+
+.external-link-field-row .form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 500;
+  color: #24364d;
+}
+
+.external-link-field-icon {
+  width: 1.1rem;
+  flex: 0 0 1.1rem;
+  text-align: center;
+  color: var(--manatos-blue);
+}
+
+.external-link-field-row .form-control,
+.external-link-field-row .input-group {
+  min-width: 0;
+}
+
+.external-link-field-row .form-control[readonly] {
+  background: #f8fafc;
+}
+
+.external-link-modal .modal-footer {
+  padding: 0.95rem 1.35rem 1.05rem;
+}
+
+@media (max-width: 767.98px) {
+  .external-link-modal-dialog {
+    --bs-modal-width: 680px;
+  }
+
+  .external-link-intro {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .external-link-illustration {
+    min-height: 125px;
+  }
+
+  .external-link-provider-tile,
+  .external-link-manatos-tile {
+    width: 76px;
+    height: 76px;
+  }
+
+  .external-link-provider-tile {
+    font-size: 2.2rem;
+  }
+
+  .external-link-manatos-tile img {
+    width: 48px;
+    height: 48px;
+  }
+
+  .external-link-field-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+}
+
+/* ========================================================================
+   Global locked busy overlay
+   ======================================================================== */
+
+.manatos-busy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(7, 26, 61, 0.52);
+  backdrop-filter: blur(1.5px);
+}
+
+.manatos-busy-overlay.is-visible {
+  display: flex;
+}
+
+.manatos-busy-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: min(92vw, 470px);
+  padding: 1.2rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 22px 55px rgba(7, 26, 61, 0.28);
+}
+
+.manatos-busy-animation {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+}
+
+.manatos-busy-provider {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #eef5ff, #dceaff);
+  color: var(--manatos-blue);
+  font-size: 1.65rem;
+  box-shadow: 0 5px 14px rgba(7, 26, 61, 0.14);
+}
+
+.manatos-busy-pulse {
+  position: absolute;
+  inset: 0;
+  border: 3px solid rgba(13, 110, 253, 0.22);
+  border-top-color: var(--manatos-blue);
+  border-radius: 50%;
+  animation: manatos-busy-spin 0.9s linear infinite;
+}
+
+.manatos-busy-copy {
+  min-width: 0;
+}
+
+.manatos-busy-copy h2 {
+  color: #10294d;
+  font-weight: 700;
+}
+
+@keyframes manatos-busy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manatos-busy-pulse {
+    animation-duration: 1.8s;
+  }
+}
+
+body.manatos-busy {
+  overflow: hidden;
+}
+
+/* =========================================================================
+   Entity/account tabbed detail pages
+   ========================================================================= */
+
+.entity-tabbed-page,
+.content-card > form {
+  min-width: 0;
+}
+
+.entity-tabs {
+  margin-bottom: 1.25rem;
+}
+
+.entity-tabs .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--manatos-muted);
+  font-weight: 600;
+}
+
+.entity-tabs .nav-link.active {
+  color: var(--manatos-blue);
+}
+
+.entity-tab-content {
+  min-width: 0;
+}
+
+.authentication-summary-grid {
+  max-width: 900px;
+}
+
+.authentication-identity-list {
+  display: grid;
+  gap: 0.65rem;
+  max-width: 1000px;
+}
+
+.authentication-identity-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.3fr) auto;
+  gap: 0.8rem 1rem;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.65rem;
+  background: var(--manatos-surface);
+}
+
+.authentication-provider {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.authentication-provider .bi {
+  color: var(--manatos-blue);
+  font-size: 1.05rem;
+}
+
+.authentication-identity-email {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767.98px) {
+  .authentication-identity-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================================
+   SysBO pagination controls
+   ========================================================================= */
+
+.pagination .page-link.pagination-nav {
+  min-width: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.55rem;
+}
+
+.pagination .page-link.pagination-nav .bi {
+  margin: 0;
+  line-height: 1;
+}
+
+/* =========================================================================
+   SysBO list filtering and paging layout
+   ========================================================================= */
+
+.sysbo-paging-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 2rem;
+}
+
+.sysbo-paging-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+@media (max-width: 575.98px) {
+  .sysbo-paging-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sysbo-paging-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,13 @@
+ManatOS UI list refinements
+
+Changed files:
+- views/pages/bo-list.ejs
+- public/css/pages.css
+
+Changes:
+- Pagination controls are hidden when only one page exists.
+- Rows-per-page selector is hidden when total entries are below the smallest configured page size.
+- Pagination is right-aligned and appears immediately before the rows-per-page selector.
+- Filters are collapsed by default behind a compact Filters button in the list header.
+- Active filters automatically expand the filter panel and show an active-filter count badge.
+- Existing filtering, sorting, pagination URLs, page-size preference behavior and Add New behavior are preserved.

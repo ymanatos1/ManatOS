@@ -76,7 +76,10 @@ export function createSysBORoutes() {
         const key = routeParam(req.params.key);
 
         const definition = getSysBODefinition(key);
-        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+
+        const currentUser = res.locals.currentUser as SysUser | null;
+
+        const permissions = uiPermissions(currentUser, definition);
         requirePermission(permissions.view, 'Read access is required for this entity.');
 
         const apiPath = apiPathFor(definition.key);
@@ -119,7 +122,19 @@ export function createSysBORoutes() {
 
             paging: response.data.paging,
 
-            query: req.query,
+            query: {
+              ...req.query,
+
+              /**
+               * Keep the effective page size in the rendered query model even
+               * when it came from the current ManatOS UI session rather than
+               * explicitly from this request URL.
+               *
+               * This makes paging/sorting links and the Rows selector preserve
+               * the same session-wide selection consistently.
+               */
+              pageSize: String(response.data.paging.pageSize),
+            },
           },
         );
       } catch (error) {
@@ -249,9 +264,7 @@ export function createSysBORoutes() {
 
         const id = routeParam(req.params.id);
 
-        const currentUser = res.locals.currentUser as
-          | import('@manatos/shared').SysUser
-          | null;
+        const currentUser = res.locals.currentUser as import('@manatos/shared').SysUser | null;
 
         if (!currentUser || currentUser.role !== SysUserRole.Admin || currentUser.id === id) {
           throw new AppError(
@@ -310,7 +323,9 @@ export function createSysBORoutes() {
       try {
         requirePermission(
           id ? permissions.edit : permissions.create,
-          id ? 'Edit access is required for this entity.' : 'Create access is required for this entity.',
+          id
+            ? 'Edit access is required for this entity.'
+            : 'Create access is required for this entity.',
         );
         await operationContext.runRoot(
           `${id ? 'Update' : 'Create'} ${definition.boMetadata.name}`,
@@ -426,8 +441,19 @@ export function createSysBORoutes() {
         const id = routeParam(req.params.id);
 
         const definition = getSysBODefinition(key);
-        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+
+        const currentUser = res.locals.currentUser as SysUser | null;
+        const permissions = uiPermissions(currentUser, definition);
         requirePermission(permissions.delete, 'Delete access is required for this entity.');
+
+        if (definition.key === 'sys-users' && currentUser && id === currentUser.id) {
+          throw new AppError(
+            'FORBIDDEN',
+            'A SysUser cannot delete its own account.',
+            'You cannot delete your own user account.',
+            false,
+          );
+        }
 
         const apiPath = apiPathFor(definition.key);
 
@@ -615,10 +641,33 @@ function listQuery(
     String(req.query.page ?? 1),
   );
 
+  const pagination = definition.uiMetadata.paginationConfiguration;
+  const requestedPageSize = Number(req.query.pageSize);
+
+  /**
+   * Page size is a UI-session preference shared by every SysBO list.
+   *
+   * An explicit valid pageSize in the current request updates the session
+   * preference. Requests that omit pageSize (for example Filter/Clear or
+   * opening another entity list) reuse the current session preference.
+   *
+   * A newly authenticated ManatOS session has no stored value, so it starts
+   * from the configured default page size.
+   */
+  if (pagination.allowedPageSizes.includes(requestedPageSize)) {
+    req.session.uiPageSize = requestedPageSize;
+  }
+
+  const sessionPageSize = req.session.uiPageSize;
+  const pageSize =
+    typeof sessionPageSize === 'number' && pagination.allowedPageSizes.includes(sessionPageSize)
+      ? sessionPageSize
+      : pagination.defaultPageSize;
+
   params.set(
     'pageSize',
 
-    String(req.query.pageSize ?? definition.uiMetadata.paginationConfiguration.defaultPageSize),
+    String(pageSize),
   );
 
   if (typeof req.query.sort === 'string') {

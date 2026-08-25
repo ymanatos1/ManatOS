@@ -51,6 +51,17 @@ declare module 'express-session' {
     apiExpiresAt?: string;
 
     /**
+     * Session-wide SysBO list page size selected by the user.
+     *
+     * This is deliberately server-side Express-session state:
+     *
+     * - shared by all listed SysBO entities;
+     * - preserved while the same ManatOS user session remains active;
+     * - discarded when that authenticated session ends or is regenerated.
+     */
+    uiPageSize?: number;
+
+    /**
      * Anti-CSRF token for browser form commands.
      */
     csrfToken?: string;

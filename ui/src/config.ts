@@ -8,6 +8,30 @@ const optionalString = z
   .transform((value) => value || undefined)
   .optional();
 
+
+const positiveIntegerList = z
+  .string()
+  .default('2,5,10,20,50,100')
+  .transform((value, ctx) => {
+    const values = value
+      .split(',')
+      .map((part) => Number(part.trim()))
+      .filter((part) => Number.isInteger(part) && part > 0);
+
+    const uniqueSorted = [...new Set(values)].sort((a, b) => a - b);
+
+    if (!uniqueSorted.length) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'At least one positive page-size option is required.',
+      });
+
+      return z.NEVER;
+    }
+
+    return uniqueSorted;
+  });
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
@@ -27,6 +51,15 @@ const schema = z.object({
     .string()
     .default('false')
     .transform((value) => value === 'true'),
+
+
+  /**
+   * Default SysBO pagination settings used by the UI definition registry.
+   * Individual SysBO definitions may still override these values later.
+   */
+  UI_PAGE_SIZE_OPTIONS: positiveIntegerList,
+
+  UI_DEFAULT_PAGE_SIZE: z.coerce.number().int().positive().default(10),
 
   /**
    * Controls whether collapsible UI shell state survives navigation.
@@ -64,4 +97,13 @@ const schema = z.object({
   GITHUB_CALLBACK_URL: optionalString,
 });
 
-export const config = schema.parse(process.env);
+const parsedConfig = schema.parse(process.env);
+
+if (!parsedConfig.UI_PAGE_SIZE_OPTIONS.includes(parsedConfig.UI_DEFAULT_PAGE_SIZE)) {
+  throw new Error(
+    `UI_DEFAULT_PAGE_SIZE (${parsedConfig.UI_DEFAULT_PAGE_SIZE}) must be included in UI_PAGE_SIZE_OPTIONS (${parsedConfig.UI_PAGE_SIZE_OPTIONS.join(',')}).`,
+  );
+}
+
+export const config = parsedConfig;
+

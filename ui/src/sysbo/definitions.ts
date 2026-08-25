@@ -6,6 +6,8 @@ import {
   sysUsersMetadata,
 } from '@manatos/shared';
 
+import { config } from '../config.js';
+
 import type {
   SysBODefinition,
   SysBOEditTabDefinition,
@@ -36,11 +38,11 @@ const permissions: SysBOPermissions = {
 const pagination: SysBOPaginationConfiguration = {
   enabled: true,
 
-  defaultPageSize: 10,
+  defaultPageSize: config.UI_DEFAULT_PAGE_SIZE,
 
-  allowedPageSizes: [10, 20, 50, 100],
+  allowedPageSizes: config.UI_PAGE_SIZE_OPTIONS,
 
-  maxPageSize: 100,
+  maxPageSize: Math.max(...config.UI_PAGE_SIZE_OPTIONS),
 
   showPageSizeSelector: true,
 
