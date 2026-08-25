@@ -410,6 +410,7 @@ body.anonymous .workspace {
 .home-hero-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.65rem;
 }
 
@@ -431,12 +432,25 @@ body.anonymous .workspace {
 .home-benefit-icon {
   width: 38px;
   height: 38px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   background: #f1f6fb;
   color: var(--manatos-blue);
   font-size: 1.05rem;
+  line-height: 1;
+}
+
+.home-benefit-icon > i {
+  display: block;
+  line-height: 1;
+}
+
+.home-benefit-icon .bi::before {
+  display: block;
+  line-height: 1;
+  vertical-align: 0;
 }
 
 .home-benefit-icon.is-security {
@@ -495,12 +509,30 @@ body.anonymous .workspace {
   width: 44px;
   height: 44px;
   flex: 0 0 44px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 0.65rem;
   color: #fff;
   background: linear-gradient(145deg, #3c8ae4, #1c68c6);
   font-size: 1.15rem;
+}
+
+.home-platform-node-icon > i {
+  display: block;
+  line-height: 1;
+}
+
+.home-platform-node-icon .bi::before {
+  display: block;
+  line-height: 1;
+  vertical-align: 0;
+}
+
+.home-platform-app .home-platform-node-icon {
+  background: linear-gradient(145deg, #2f80ed, #1769d2);
+  color: #fff;
+  box-shadow: 0 5px 12px rgba(23, 105, 210, 0.18);
 }
 
 .home-platform-node strong,
@@ -532,8 +564,9 @@ body.anonymous .workspace {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 155px;
-  padding: 0.9rem 0.65rem;
+  justify-content: center;
+  height: 108px;
+  padding: 0.45rem 0.55rem;
   border: 1px solid #d5e1ef;
   border-radius: 0.75rem;
   background: rgba(255, 255, 255, 0.95);
@@ -542,12 +575,25 @@ body.anonymous .workspace {
 }
 
 .home-platform-service > span {
-  min-height: 42px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 0.45rem;
+  height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.3rem;
   color: var(--manatos-blue);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.home-platform-service > span > i {
+  display: block;
+  line-height: 1;
+}
+
+.home-platform-service > span .bi::before {
+  display: block;
+  line-height: 1;
+  vertical-align: 0;
 }
 
 .home-platform-service.is-auth > span,
@@ -566,7 +612,7 @@ body.anonymous .workspace {
 }
 
 .home-platform-service small {
-  margin-top: 0.38rem;
+  margin-top: 0.24rem;
   color: var(--manatos-muted);
   font-size: 0.68rem;
   line-height: 1.4;
@@ -576,49 +622,66 @@ body.anonymous .workspace {
   position: relative;
   z-index: 1;
   width: 68%;
-  height: 32px;
+  height: 24px;
   margin-inline: auto;
-  border-color: #8bb7e7;
   opacity: 0.9;
 }
 
-.home-platform-connector-top {
-  border-bottom: 1px dashed #8bb7e7;
-}
-
-.home-platform-connector-top::before,
-.home-platform-connector-top::after,
-.home-platform-connector-bottom::before,
-.home-platform-connector-bottom::after {
+/*
+ * Connectors occupy the empty space BETWEEN rows.
+ * The horizontal rail sits in the middle of that gap, while the vertical
+ * branches reach both adjacent rows without running behind either card.
+ */
+.home-platform-connector::before {
   content: '';
   position: absolute;
-  width: 1px;
-  height: 16px;
-  border-left: 1px dashed #8bb7e7;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed #8bb7e7;
+  transform: translateY(-0.5px);
 }
 
-.home-platform-connector-top::before {
-  left: 0;
-  bottom: 0;
+.home-platform-connector::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 50%;
+  border-left: 1px dashed #8bb7e7;
+  transform: translateX(-0.5px);
+}
+
+.home-platform-connector-top {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .home-platform-connector-top::after {
-  right: 0;
+  top: 0;
+  bottom: 50%;
+}
+
+.home-platform-connector-top > span,
+.home-platform-connector-bottom > span {
+  display: none;
+}
+
+.home-platform-connector-top {
+  background:
+    linear-gradient(#8bb7e7, #8bb7e7) left 50% / 1px 50% no-repeat,
+    linear-gradient(#8bb7e7, #8bb7e7) right 50% / 1px 50% no-repeat;
+}
+
+.home-platform-connector-bottom::after {
+  top: 50%;
   bottom: 0;
 }
 
 .home-platform-connector-bottom {
-  border-top: 1px dashed #8bb7e7;
-}
-
-.home-platform-connector-bottom::before {
-  left: 0;
-  top: 0;
-}
-
-.home-platform-connector-bottom::after {
-  right: 0;
-  top: 0;
+  background:
+    linear-gradient(#8bb7e7, #8bb7e7) left 0 / 1px 50% no-repeat,
+    linear-gradient(#8bb7e7, #8bb7e7) right 0 / 1px 50% no-repeat;
 }
 
 .home-platform-foundation {

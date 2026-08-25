@@ -14,8 +14,12 @@ describe('home presentation', () => {
     const $ = load(html);
 
     expect($('.home-hero-grid').length).toBe(1);
+    expect($('.home-hero-copy h2').text().trim()).toBe(
+      'A metadata-driven platform for designing and testing business applications',
+    );
     expect($('.home-platform-map').length).toBe(1);
     expect($('.home-platform-app').text()).toContain('Business Application');
+    expect($('.home-platform-app .bi-boxes').length).toBe(1);
     expect($('.home-platform-service').length).toBe(3);
     expect($('.home-platform-foundation').text()).toContain('Metadata Foundation');
     expect($('.home-benefit').length).toBe(3);

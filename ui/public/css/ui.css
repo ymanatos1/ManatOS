@@ -890,9 +890,8 @@ body.anonymous .workspace {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--manatos-border);
+  width: min(100%, 620px);
+  margin: 1rem auto 0;
 }
 
 .external-existing-account-summary > div {

@@ -10,7 +10,10 @@ import { availableProviders } from '../src/auth/external-providers.js';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const authModalsView = resolve(testDirectory, '../views/partials/auth-modals.ejs');
 const externalLinkView = resolve(testDirectory, '../views/pages/external-link.ejs');
-const externalExistingAccountView = resolve(testDirectory, '../views/pages/external-existing-account.ejs');
+const externalExistingAccountView = resolve(
+  testDirectory,
+  '../views/pages/external-existing-account.ejs',
+);
 
 describe('authentication presentation', () => {
   it('renders Microsoft as a visible unavailable provider in sign-in and registration', async () => {
@@ -106,7 +109,7 @@ describe('authentication presentation', () => {
     const backButton = modal.find('.auth-back-button');
     expect(modal.hasClass('auth-primary-modal')).toBe(true);
     expect(modal.find('.auth-email-registration-intro').length).toBe(1);
-    expect(modal.find('.auth-entry-copy h3').text().trim()).toBe('Create your ManatOS account');
+    expect(modal.find('.auth-entry-copy h3').text().trim()).toBe('Create your account');
     expect(modal.find('.auth-registration-form-card').length).toBe(1);
     expect(modal.find('.auth-password-guidance').length).toBe(1);
     expect(backButton.length).toBe(1);
@@ -124,13 +127,17 @@ describe('authentication presentation', () => {
     });
     const $ = load(html);
 
-    expect($('#signUpMethodModal a.auth-provider-button').filter((_index, element) =>
-      $(element).text().includes('GitHub'),
-    ).attr('href')).toBe('/auth/github?intent=register');
+    expect(
+      $('#signUpMethodModal a.auth-provider-button')
+        .filter((_index, element) => $(element).text().includes('GitHub'))
+        .attr('href'),
+    ).toBe('/auth/github?intent=register');
 
-    expect($('#signInModal a.auth-provider-button').filter((_index, element) =>
-      $(element).text().includes('GitHub'),
-    ).attr('href')).toBe('/auth/github?intent=signin');
+    expect(
+      $('#signInModal a.auth-provider-button')
+        .filter((_index, element) => $(element).text().includes('GitHub'))
+        .attr('href'),
+    ).toBe('/auth/github?intent=signin');
   });
 
   it('renders email registration as identity and security columns with live-submit hooks', async () => {
@@ -145,7 +152,9 @@ describe('authentication presentation', () => {
     expect(modal.find('.auth-registration-identity-column #registrationName').length).toBe(1);
     expect(modal.find('.auth-registration-identity-column #registrationEmail').length).toBe(1);
     expect(modal.find('.auth-registration-security-column #registrationPassword').length).toBe(1);
-    expect(modal.find('.auth-registration-security-column #registrationPasswordConfirm').length).toBe(1);
+    expect(
+      modal.find('.auth-registration-security-column #registrationPasswordConfirm').length,
+    ).toBe(1);
     expect(modal.find('.auth-registration-security-column .auth-password-guidance').length).toBe(0);
     expect(modal.find('.auth-registration-fields + .auth-password-guidance').length).toBe(1);
     expect(modal.find('[data-rule="match"]').length).toBe(1);
@@ -166,11 +175,15 @@ describe('authentication presentation', () => {
     });
     const $ = load(html);
 
-    expect($('#externalExistingAccountModalLabel').text()).toContain('already have a ManatOS account');
-    expect($('.external-link-copy').text()).toContain('Welcome back, Yiannis');
-    expect($('.external-link-copy').text()).toContain('do not need to create another account');
+    expect($('#externalExistingAccountModalLabel').text()).toContain('already have an account');
+    const existingAccountCopy = $('.external-link-copy').text().replace(/\s+/g, ' ').trim();
+
+    expect(existingAccountCopy).toContain('Welcome back, Yiannis');
+    expect(existingAccountCopy).toContain(
+      'This external account is already connected to your Yiannis account.',
+    );
+    expect(existingAccountCopy).toContain('do not need to create another account');
     expect($('form').attr('action')).toBe('/auth/register/existing-external/signin');
     expect($('button[type="submit"]').text()).toContain('Sign in with GitHub');
   });
-
 });

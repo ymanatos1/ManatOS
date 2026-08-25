@@ -261,7 +261,7 @@
 
 .external-link-intro {
   display: grid;
-  grid-template-columns: minmax(235px, 0.82fr) minmax(0, 1.18fr);
+  grid-template-columns: minmax(205px, 0.7fr) minmax(0, 1.3fr);
   align-items: center;
   gap: 1.45rem;
   padding-bottom: 1.2rem;

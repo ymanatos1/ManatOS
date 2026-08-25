@@ -32,7 +32,7 @@
         <div>
           <h2 class="modal-title h4 mb-1" id="externalExistingAccountModalLabel">
             <i class="bi bi-person-check me-2" aria-hidden="true"></i>
-            You already have a ManatOS account
+            You already have an account
           </h2>
           <p class="modal-subtitle mb-0">
             No need to register again — your <%= provider.label %> account is already connected.
@@ -47,11 +47,11 @@
           <%- include('../partials/auth/external-link-illustration', { provider }) %>
 
           <div class="external-link-copy">
-            <h3 class="h5 mb-2">Welcome back, <%= profile.existingUserName %></h3>
+            <h3 class="h5 mb-4">Welcome back, <%= profile.existingUserName %></h3>
             <p class="mb-2">
               <strong><%= provider.label %></strong> successfully authenticated
               <strong><%= profile.email %></strong>. This external account is already connected
-              to your ManatOS account <strong><%= profile.existingUserName %></strong>.
+              to your <strong><%= profile.existingUserName %></strong> account.
             </p>
             <p class="text-secondary mb-0">
               You do not need to create another account. Continue below to sign in securely with
@@ -67,7 +67,7 @@
             <strong><i class="bi <%= provider.icon %> me-2" aria-hidden="true"></i><%= provider.label %></strong>
           </div>
           <div>
-            <span class="external-existing-account-label">Connected ManatOS account</span>
+            <span class="external-existing-account-label">Connected account</span>
             <strong><i class="bi bi-person-check me-2" aria-hidden="true"></i><%= profile.existingUserName %></strong>
           </div>
         </div>
