@@ -297,7 +297,7 @@ function sessionClientInfo(req: Request): SessionClientInfo {
  */
 function publicUser(user: SysUser) {
   const {
-    passwordHash: _passwordHash,
+    passwordHash,
 
     ...safe
   } = user;
@@ -305,6 +305,6 @@ function publicUser(user: SysUser) {
   return {
     ...safe,
 
-    hasPassword: Boolean(user.passwordHash),
+    hasPassword: Boolean(passwordHash),
   };
 }

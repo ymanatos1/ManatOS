@@ -3,6 +3,7 @@ import type { ErrorRequestHandler } from 'express';
 import { AppError } from '@manatos/shared';
 
 import { config } from '../config.js';
+import { logger } from '../logging/logger.js';
 
 /**
  * Maps application-level error codes to their HTTP representation.
@@ -30,6 +31,7 @@ const httpStatusByErrorCode: Record<string, number> = {
   EXTERNAL_IDENTITY_EXISTS: 409,
 
   STORAGE_ERROR: 503,
+  EMAIL_DELIVERY_FAILED: 503,
 };
 
 /**
@@ -53,7 +55,7 @@ const httpStatusByErrorCode: Record<string, number> = {
  *     Full development diagnostics including developer message,
  *     JavaScript stack and semantic operation trace.
  */
-export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   /**
    * Convert unexpected/native exceptions into our standard AppError.
    */
@@ -78,6 +80,18 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
 
   const httpStatus = httpStatusByErrorCode[appError.code] ?? 500;
 
+  logger.error('API request failed', {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode: httpStatus,
+    errorCode: appError.code,
+    retryable: appError.retryable,
+    developerMessage: appError.message,
+    ...(appError.operationTrace?.[0]?.id
+      ? { operationId: appError.operationTrace[0].id }
+      : {}),
+  });
+
   res.status(httpStatus).json({
     success: false,
 
@@ -87,6 +101,8 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
      * This mirrors error.message and is deliberately distinct from the
      * success-only command property named message.
      */
+    errorCode: appError.code,
+
     errorMessage: appError.userMessage,
 
     error: {

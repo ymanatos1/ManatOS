@@ -17,13 +17,13 @@
       "name": "Yiannis",
       "email": "yiannis@manatos.eu",
       "emailVerified": true,
-      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$GYZ1NzhVEUjkFt3cHNOG4Q$+lb9rR7H0rrCCj7JBzbpFsT3vo1QwyeAylJQaiaQhPQ",
-      "passwordChangedAt": "2026-08-23T07:28:35.158Z",
+      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$Wcrb96LYNIuFxRXjpEsbQg$8mvo+EpiIc6O+RYpGgxvpCV2ZD8hgLE9Zch/VJUZi7M",
+      "passwordChangedAt": "2026-08-25T12:42:36.194Z",
       "role": "Guest",
       "enabled": true,
       "createdAt": "2026-08-23T07:28:35.159Z",
       "createdBy": "Yiannis",
-      "updatedAt": "2026-08-25T03:10:21.372Z",
+      "updatedAt": "2026-08-25T12:42:36.195Z",
       "updatedBy": "InternalApi",
       "emailVerifiedAt": "2026-08-25T03:10:21.371Z",
       "emailVerificationSource": "github"
@@ -43,6 +43,21 @@
       "firstName": "Yiannis",
       "lastName": "Manatos",
       "description": "Simply the best."
+    },
+    "5443a9a3-9ef3-4c75-812a-a951ec758959": {
+      "name": "YiannisTop3",
+      "email": "yiannis@manatos.top",
+      "emailVerified": false,
+      "emailVerifiedAt": null,
+      "emailVerificationSource": null,
+      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$SdxzbNhSySMPSPdvL+eYbQ$9PZrD7PLw5bBMZQDh1C13YHif9YUdz3Lx+qycr9rkOg",
+      "passwordChangedAt": "2026-08-25T15:51:00.405Z",
+      "role": "Guest",
+      "enabled": true,
+      "createdAt": "2026-08-25T15:51:00.406Z",
+      "createdBy": "YiannisTop3",
+      "updatedAt": "2026-08-25T15:51:00.406Z",
+      "updatedBy": "YiannisTop3"
     }
   },
   "sysPrincipals": {},

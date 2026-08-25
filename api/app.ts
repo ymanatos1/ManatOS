@@ -19,6 +19,7 @@ import { errorHandler } from './http/error-handler.js';
 import { requireInternalApiKey } from './http/internal-api-key.js';
 
 import { requestContextMiddleware } from './http/request-context.js';
+import { requestLoggingMiddleware } from './http/request-logging.js';
 
 import { createServerRouter } from './http/server-router.js';
 import { createSysUserCommandRouter } from './http/sys-user-command-router.js';
@@ -96,6 +97,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    * Establish request/correlation context before API processing.
    */
   app.use(requestContextMiddleware);
+  app.use(requestLoggingMiddleware);
 
   /**
    * Build the OpenAPI specification once during application startup.

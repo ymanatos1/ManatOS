@@ -66,6 +66,8 @@ export function sendCommand<T>(res: Response, message: string, data: T, status =
 export interface ApiFailureResponse<T = undefined> {
   success: false;
 
+  errorCode: string;
+
   errorMessage: string;
 
   error: {
@@ -92,6 +94,8 @@ export function sendFailure<T = undefined>(
 ) {
   return res.status(status).json({
     success: false,
+
+    errorCode: code,
 
     errorMessage,
 

@@ -1,21 +1,46 @@
 import type { SysUser } from '@manatos/shared';
+
+import { apiClient } from '../api-client.js';
+
+/**
+ * UI-side mail gateway.
+ *
+ * This class does NOT send mail and contains no SMTP configuration.
+ * It asks the trusted API to perform server-side delivery.
+ */
 export interface IEmailService {
-  sendWelcomeAndVerificationEmail(u: SysUser, url?: string): Promise<void>;
-  sendPasswordChangedEmail(u: SysUser): Promise<void>;
-  sendPasswordResetEmail(u: SysUser, url: string): Promise<void>;
+  sendWelcomeAndVerificationEmail(user: SysUser, url?: string): Promise<void>;
+  sendPasswordChangedEmail(user: SysUser): Promise<void>;
+  sendPasswordResetEmail(user: SysUser, url: string): Promise<void>;
 }
-/** Development adapter: prints mail to terminal. Replace later with SMTP/Nodemailer/etc. */
-export class ConsoleEmailService implements IEmailService {
-  async sendWelcomeAndVerificationEmail(u: SysUser, url?: string) {
-    console.log(`\n[MAIL] To ${u.email}: Welcome to ManatOS${url ? ` - verify: ${url}` : ''}\n`);
-  }
-  async sendPasswordChangedEmail(u: SysUser) {
-    console.log(
-      `\n[MAIL] To ${u.email}: Your password was changed. If this was not you, recover your account.\n`,
+
+class ApiEmailService implements IEmailService {
+  async sendWelcomeAndVerificationEmail(user: SysUser, url?: string): Promise<void> {
+    await apiClient.post(
+      '/api/v1/internal/email/verification',
+      {
+        userId: user.id,
+        ...(url ? { verificationUrl: url } : {}),
+      },
+      { internal: true },
     );
   }
-  async sendPasswordResetEmail(u: SysUser, url: string) {
-    console.log(`\n[MAIL] To ${u.email}: Set/reset password: ${url}\n`);
+
+  async sendPasswordResetEmail(user: SysUser, url: string): Promise<void> {
+    await apiClient.post(
+      '/api/v1/internal/email/password-reset',
+      { userId: user.id, resetUrl: url },
+      { internal: true },
+    );
+  }
+
+  async sendPasswordChangedEmail(user: SysUser): Promise<void> {
+    await apiClient.post(
+      '/api/v1/internal/email/password-changed',
+      { userId: user.id },
+      { internal: true },
+    );
   }
 }
-export const emailService = new ConsoleEmailService();
+
+export const emailService: IEmailService = new ApiEmailService();

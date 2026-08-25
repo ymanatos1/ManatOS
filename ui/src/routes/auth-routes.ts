@@ -198,15 +198,43 @@ export function createAuthRouter() {
 
             const token = securityTokenStore.create(user.id, 'verify-email', 1440);
 
-            await emailService.sendWelcomeAndVerificationEmail(
-              user,
+            try {
+              await emailService.sendWelcomeAndVerificationEmail(
+                user,
 
-              absoluteUrl(
-                req,
+                absoluteUrl(
+                  req,
 
-                `/auth/verify-email?token=${encodeURIComponent(token)}`,
-              ),
-            );
+                  `/auth/verify-email?token=${encodeURIComponent(token)}`,
+                ),
+              );
+            } catch (error) {
+              /**
+               * Registration and notification delivery are separate outcomes.
+               *
+               * The SysUser has already been created successfully at this
+               * point. An SMTP/provider failure must therefore NOT report that
+               * account creation itself failed, and must not encourage a Retry
+               * that would immediately collide with the newly-created account.
+               *
+               * The account intentionally remains enabled + unverified. An
+               * administrator can manually verify the address when the user
+               * establishes ownership through an appropriate support channel.
+               * A persistent Admin notification will be added by the generic
+               * notifications subsystem rather than by this mail-specific flow.
+               */
+              if (error instanceof AppError && error.code === 'EMAIL_DELIVERY_FAILED') {
+                await renderPage(res, 'pages/home', {
+                  title: 'Home',
+                  warningMessage:
+                    'Your account was created, but ManatOS could not send the verification email. Your account remains unverified and cannot sign in yet. Please contact a ManatOS administrator, who can verify the email address manually after confirming ownership.',
+                });
+
+                return;
+              }
+
+              throw error;
+            }
 
             /**
              * No userId/apiAccessToken is stored here.

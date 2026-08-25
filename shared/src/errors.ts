@@ -204,3 +204,23 @@ export class StorageAppError extends AppError {
     );
   }
 }
+
+
+/**
+ * Transactional email could not be delivered.
+ *
+ * The business operation that requested the email may already have completed;
+ * callers must therefore decide whether this is fatal or a partial-success
+ * warning.
+ */
+export class EmailDeliveryError extends AppError {
+  constructor(message: string, cause?: unknown) {
+    super(
+      'EMAIL_DELIVERY_FAILED',
+      message,
+      'The requested email could not be sent. Please try again later or contact an administrator.',
+      true,
+      { cause },
+    );
+  }
+}

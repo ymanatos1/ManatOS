@@ -34,21 +34,7 @@ import { logger } from './logging/logger.js';
  */
 const store = new InMemoryDataStore(new JsonFilePersistence(config.DATA_FILE));
 
-try {
-  await store.initialize();
-  logger.info('Primary datastore initialized', { dataFile: config.DATA_FILE });
-} catch (error) {
-  /**
-   * File logging is deliberately independent from the business datastore, so
-   * persistence/connection failures can still be diagnosed even when the
-   * primary database itself is unavailable.
-   */
-  logger.error('Primary datastore initialization failed', {
-    dataFile: config.DATA_FILE,
-    error,
-  });
-  throw error;
-}
+await store.initialize();
 
 /**
  * Construct domain/application services.
@@ -99,8 +85,7 @@ createApp(store, services).listen(
   config.API_PORT,
 
   () => {
-    logger.info('ManatOS API listening', { url: `http://localhost:${config.API_PORT}` });
-
-    logger.info('Swagger available', { url: `http://localhost:${config.API_PORT}/api-docs/` });
+    logger.info('ManatOS API started', { url: `http://localhost:${config.API_PORT}` });
+    logger.info('Swagger UI available', { url: `http://localhost:${config.API_PORT}/api-docs/` });
   },
 );

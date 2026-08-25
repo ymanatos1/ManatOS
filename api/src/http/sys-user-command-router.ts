@@ -1,11 +1,6 @@
 import { Router } from 'express';
 
-import {
-  AppError,
-  NotFoundError,
-  operationContext,
-  type SysUser,
-} from '@manatos/shared';
+import { AppError, NotFoundError, operationContext, type SysUser } from '@manatos/shared';
 
 import { authenticatedAuditActor } from '../audit/audit-service.js';
 import { requireAdmin } from '../auth/auth-middleware.js';
@@ -84,10 +79,7 @@ export function createSysUserCommandRouter(users: SysUserService): Router {
             return;
           }
 
-          const actor = authenticatedAuditActor(
-            req.auth!.userId,
-            req.auth!.userName,
-          );
+          const actor = authenticatedAuditActor(req.auth!.userId, req.auth!.userName);
 
           const updated = await users.setEmailVerified(userId, actor);
 
@@ -110,6 +102,7 @@ export function createSysUserCommandRouter(users: SysUserService): Router {
 function publicUser(user: SysUser) {
   const {
     passwordHash: _passwordHash,
+    //passwordHash,
     ...safe
   } = user;
 

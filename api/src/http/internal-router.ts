@@ -23,6 +23,8 @@ import { config } from '../config.js';
 
 import { sendCommand, sendQuery } from './api-response.js';
 
+import type { IEmailService } from '../email/email-service.js';
+
 /**
  * Creates API endpoints intended for trusted internal use.
  *
@@ -46,10 +48,46 @@ export function createInternalRouter(
   users: SysUserService,
   ext: ExternalIdentityService,
   links: UserPrincipalService,
+  email: IEmailService,
 ) {
   const router = Router();
 
   const actor = internalAuditActor();
+
+
+  /**
+   * Trusted UI -> API mail commands.
+   *
+   * The UI owns presentation/navigation URLs, while the API owns the
+   * delivery infrastructure, templates and SMTP credentials.
+   */
+  router.post('/email/verification', async (req, res) => {
+    const user = await users.get(String(req.body?.userId ?? ''));
+    if (!user) throw new NotFoundError('SysUser', String(req.body?.userId ?? ''));
+
+    const verificationUrl = req.body?.verificationUrl
+      ? String(req.body.verificationUrl)
+      : undefined;
+
+    await email.sendWelcomeAndVerificationEmail(user, verificationUrl);
+    sendCommand(res, 'Verification email sent successfully.', null);
+  });
+
+  router.post('/email/password-reset', async (req, res) => {
+    const user = await users.get(String(req.body?.userId ?? ''));
+    if (!user) throw new NotFoundError('SysUser', String(req.body?.userId ?? ''));
+
+    await email.sendPasswordResetEmail(user, String(req.body?.resetUrl ?? ''));
+    sendCommand(res, 'Password reset email sent successfully.', null);
+  });
+
+  router.post('/email/password-changed', async (req, res) => {
+    const user = await users.get(String(req.body?.userId ?? ''));
+    if (!user) throw new NotFoundError('SysUser', String(req.body?.userId ?? ''));
+
+    await email.sendPasswordChangedEmail(user);
+    sendCommand(res, 'Password change notification sent successfully.', null);
+  });
 
   /**
    * Verify local credentials.

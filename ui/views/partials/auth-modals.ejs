@@ -105,6 +105,10 @@
         class="modal-content"
         method="post"
         action="/auth/register/email"
+        data-busy-submit
+        data-busy-title="Creating your account…"
+        data-busy-message="Please wait while ManatOS creates your account and sends the verification email."
+        data-busy-icon="bi-person-plus"
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 

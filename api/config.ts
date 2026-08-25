@@ -56,27 +56,9 @@ const schema = z.object({
    */
   API_ERROR_DETAIL_LEVEL: z.enum(['none', 'basic', 'operations', 'full']).default('basic'),
 
-  /**
-   * Central server logging configuration.
-   *
-   * `pretty` is convenient during local development, while `json` is
-   * intended for structured log collectors in hosted environments.
-   */
+  /** Central server logging. */
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   LOG_FORMAT: z.enum(['pretty', 'json']).default('pretty'),
-
-  /**
-   * Persistent file logging. Paths are resolved from the API process working
-   * directory; ../data/logs therefore places runtime logs beside the current
-   * data/database.json file in the project data area.
-   */
-  LOG_FILE_ENABLED: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((value) => value === 'true'),
-  LOG_DIR: z.string().trim().min(1).default('../data/logs'),
-  LOG_FILE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  LOG_FILE_MAX_BYTES: z.coerce.number().int().positive().default(5_242_880),
 
   /** Server-side SMTP delivery. SMTP secrets must never be exposed to the UI/browser. */
   MAIL_ENABLED: z
