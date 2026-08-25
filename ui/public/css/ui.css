@@ -913,3 +913,47 @@ body.anonymous .workspace {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================================
+   Password visibility controls
+   ========================================================================= */
+
+/*
+ * Password inputs are enhanced client-side by forms.js. Keeping the input as
+ * the original form element preserves native validation, autofill and password
+ * manager behavior while the adjacent button controls visibility only.
+ */
+.password-visibility-field {
+  position: relative;
+}
+
+.password-visibility-field > .form-control {
+  padding-right: 2.75rem;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--manatos-muted);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.password-visibility-toggle:hover,
+.password-visibility-toggle:focus-visible {
+  color: var(--manatos-blue);
+  background: #edf4fc;
+  outline: none;
+}
+

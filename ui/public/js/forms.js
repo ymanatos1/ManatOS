@@ -2,6 +2,64 @@
 
 (() => {
   /* =======================================================================
+   * Password visibility toggle
+   *
+   * Applied dynamically to every password input so all current and future
+   * password fields get the same Show/Hide behaviour without duplicating
+   * markup in individual EJS views.
+   * ===================================================================== */
+
+  document.querySelectorAll('input[type="password"]').forEach((input) => {
+    const wrapper = document.createElement('div');
+
+    wrapper.className = 'password-visibility-field';
+
+    /*
+     * Preserve Bootstrap bottom-margin utilities on the wrapper. Otherwise
+     * an absolutely positioned toggle would not participate correctly in
+     * the spacing of fields such as the sign-in password.
+     */
+    ['mb-1', 'mb-2', 'mb-3', 'mb-4', 'mb-5'].forEach((marginClass) => {
+      if (input.classList.contains(marginClass)) {
+        input.classList.remove(marginClass);
+        wrapper.classList.add(marginClass);
+      }
+    });
+
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    const toggle = document.createElement('button');
+
+    toggle.type = 'button';
+    toggle.className = 'password-visibility-toggle';
+    toggle.setAttribute('aria-label', 'Show password');
+    toggle.setAttribute('title', 'Show password');
+
+    toggle.innerHTML = '<i class="bi bi-eye" aria-hidden="true"></i>';
+
+    toggle.addEventListener('click', () => {
+      const showPassword = input.type === 'password';
+
+      input.type = showPassword ? 'text' : 'password';
+
+      toggle.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
+
+      toggle.setAttribute('title', showPassword ? 'Hide password' : 'Show password');
+
+      const icon = toggle.querySelector('i');
+
+      if (icon) {
+        icon.className = `bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`;
+      }
+
+      input.focus();
+    });
+
+    wrapper.appendChild(toggle);
+  });
+
+  /* =======================================================================
    * Password-policy live validation
    * ===================================================================== */
 
