@@ -4,13 +4,13 @@
       "name": "Admin",
       "email": "yiannis@manatos.gr",
       "emailVerified": true,
-      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$t+49iVGHO/bxwogJ8sucrQ$Z+W1EZTC+pDe0dAy4iKrHfcR0z4LDCo2yoM2pOxjI+M",
-      "passwordChangedAt": "2026-08-22T04:54:43.872Z",
+      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$M8rfViZ0+IhFI+oKqgMdwQ$9paUUIJsflhkIyqW+kPTkjBQ9qwJka5K59MIXiMYGTs",
+      "passwordChangedAt": "2026-08-25T08:50:05.708Z",
       "role": "Admin",
       "enabled": true,
       "createdAt": "2026-08-22T04:54:43.873Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-22T04:54:43.873Z",
+      "updatedAt": "2026-08-25T08:50:05.708Z",
       "updatedBy": "Admin"
     },
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33c": {
@@ -75,6 +75,20 @@
       "createdAt": "2026-08-25T07:32:16.545Z",
       "createdBy": "InternalApi",
       "updatedAt": "2026-08-25T07:32:16.545Z",
+      "updatedBy": "InternalApi"
+    },
+    "e14f49ec-6484-4035-90f6-24cdae5ae950": {
+      "name": "google:103654559719695535031",
+      "userId": "66ad5e12-aee2-4ab9-809e-97fb60526247",
+      "provider": "google",
+      "providerSubject": "103654559719695535031",
+      "email": "yiannis@manatos.gr",
+      "emailVerified": true,
+      "displayName": "Yiannis Manatos",
+      "enabled": true,
+      "createdAt": "2026-08-25T08:48:52.853Z",
+      "createdBy": "InternalApi",
+      "updatedAt": "2026-08-25T08:48:52.853Z",
       "updatedBy": "InternalApi"
     }
   },
