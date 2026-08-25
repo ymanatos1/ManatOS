@@ -1,21 +1,13 @@
 <%
-  const providerDisplayNames = {
-    google: 'Google',
-    facebook: 'Facebook',
-    github: 'GitHub'
-  };
+  const providerFor = (providerKey) =>
+    authProviders.find((candidate) => candidate.key === providerKey);
 
-  const providerIcons = {
-    google: 'bi-google',
-    facebook: 'bi-facebook',
-    github: 'bi-github'
-  };
+  const verificationSourceDisplayName = (source) => {
+    if (source === 'internal') {
+      return 'ManatOS';
+    }
 
-  const verificationSourceDisplayNames = {
-    internal: 'ManatOS',
-    google: 'Google',
-    facebook: 'Facebook',
-    github: 'GitHub'
+    return providerFor(source)?.label || source;
   };
 %>
 
@@ -30,7 +22,7 @@
   <div class="account-summary-label">Verification source</div>
   <div class="account-summary-value">
     <% if (authenticationUser.emailVerified && authenticationUser.emailVerificationSource) { %>
-      <%= verificationSourceDisplayNames[authenticationUser.emailVerificationSource] || authenticationUser.emailVerificationSource %>
+      <%= verificationSourceDisplayName(authenticationUser.emailVerificationSource) %>
     <% } else { %>
       <span class="text-secondary">—</span>
     <% } %>
@@ -76,11 +68,12 @@
       <% for (const identity of authenticationIdentities) { %>
         <div class="authentication-identity-row">
           <div class="authentication-provider">
+            <% const identityProvider = providerFor(identity.provider); %>
             <i
-              class="bi <%= providerIcons[identity.provider] || 'bi-box-arrow-in-right' %>"
+              class="bi <%= identityProvider?.icon || 'bi-box-arrow-in-right' %>"
               aria-hidden="true"
             ></i>
-            <strong><%= providerDisplayNames[identity.provider] || identity.provider %></strong>
+            <strong><%= identityProvider?.label || identity.provider %></strong>
           </div>
 
           <div class="authentication-identity-email">

@@ -1,7 +1,15 @@
+<%
+  const provider =
+    authProviders.find((candidate) => candidate.key === profile.provider) || {
+      label: profile.provider,
+      icon: 'bi-box-arrow-in-right'
+    };
+%>
+
 <section class="content-card col-xl-7">
   <h2>Complete external registration</h2>
   <p class="text-secondary">
-    <%= profile.provider %> authenticated this email address. Choose a unique user name. A local
+    <strong><%= provider.label %></strong> authenticated this email address. Choose a unique user name. A local
     password is optional.
   </p>
   <form method="post" action="/auth/register/external">

@@ -1,0 +1,85 @@
+<%
+  const provider =
+    authProviders.find((candidate) => candidate.key === profile.provider) || {
+      key: profile.provider,
+      label: profile.provider,
+      icon: 'bi-box-arrow-in-right',
+      configured: false
+    };
+%>
+
+<div
+  class="modal fade external-link-modal external-existing-account-modal"
+  id="externalExistingAccountModal"
+  tabindex="-1"
+  aria-labelledby="externalExistingAccountModalLabel"
+  aria-hidden="true"
+  data-auto-show="true"
+>
+  <div class="modal-dialog modal-lg modal-dialog-centered external-link-modal-dialog">
+    <form
+      class="modal-content"
+      method="post"
+      action="/auth/register/existing-external/signin"
+      data-busy-submit
+      data-busy-title="Signing in with <%= provider.label %>…"
+      data-busy-message="Please wait while ManatOS opens your existing account."
+      data-busy-icon="<%= provider.icon %>"
+    >
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title h4 mb-1" id="externalExistingAccountModalLabel">
+            <i class="bi bi-person-check me-2" aria-hidden="true"></i>
+            You already have a ManatOS account
+          </h2>
+          <p class="modal-subtitle mb-0">
+            No need to register again — your <%= provider.label %> account is already connected.
+          </p>
+        </div>
+
+        <a class="btn-close" href="/" aria-label="Close" title="Close"></a>
+      </div>
+
+      <div class="modal-body external-link-modal-body">
+        <div class="external-link-intro">
+          <%- include('../partials/auth/external-link-illustration', { provider }) %>
+
+          <div class="external-link-copy">
+            <h3 class="h5 mb-2">Welcome back, <%= profile.existingUserName %></h3>
+            <p class="mb-2">
+              <strong><%= provider.label %></strong> successfully authenticated
+              <strong><%= profile.email %></strong>. This external account is already connected
+              to your ManatOS account <strong><%= profile.existingUserName %></strong>.
+            </p>
+            <p class="text-secondary mb-0">
+              You do not need to create another account. Continue below to sign in securely with
+              <%= provider.label %>, or cancel if you intended to use a different account or
+              registration method.
+            </p>
+          </div>
+        </div>
+
+        <div class="external-existing-account-summary">
+          <div>
+            <span class="external-existing-account-label">External provider</span>
+            <strong><i class="bi <%= provider.icon %> me-2" aria-hidden="true"></i><%= provider.label %></strong>
+          </div>
+          <div>
+            <span class="external-existing-account-label">Connected ManatOS account</span>
+            <strong><i class="bi bi-person-check me-2" aria-hidden="true"></i><%= profile.existingUserName %></strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer justify-content-end">
+        <a class="btn btn-outline-secondary" href="/">Cancel</a>
+        <button class="btn btn-primary" type="submit">
+          <i class="bi <%= provider.icon %> me-1" aria-hidden="true"></i>
+          Sign in with <%= provider.label %>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

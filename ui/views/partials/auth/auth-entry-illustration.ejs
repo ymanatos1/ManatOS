@@ -1,0 +1,26 @@
+<%
+  const isRegister = mode === 'register';
+  const actionIcon = isRegister ? 'bi-person-plus' : 'bi-box-arrow-in-right';
+  const badgeIcon = isRegister ? 'bi-stars' : 'bi-shield-check';
+%>
+
+<div class="auth-entry-illustration <%= isRegister ? 'is-register' : 'is-signin' %>" aria-hidden="true">
+  <div class="auth-entry-action-tile">
+    <i class="bi <%= actionIcon %>"></i>
+  </div>
+
+  <div class="auth-entry-manatos-tile">
+    <img
+      src="/assets/m1/favicon-96x96.png"
+      alt=""
+    >
+  </div>
+
+  <div class="auth-entry-connector">
+    <i class="bi bi-arrow-right"></i>
+  </div>
+
+  <div class="auth-entry-badge">
+    <i class="bi <%= badgeIcon %>"></i>
+  </div>
+</div>

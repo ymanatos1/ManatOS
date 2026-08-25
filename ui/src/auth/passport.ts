@@ -22,55 +22,6 @@ export interface ExternalProfile {
 }
 
 /**
- * Authentication-provider information exposed to the UI.
- *
- * All supported providers are returned so the sign-in/register dialogs
- * remain visually stable and make provider capability discoverable.
- *
- * configured=false means the application administrator still needs to
- * provide that provider's OAuth client ID/secret in the environment.
- */
-export interface AuthProviderOption {
-  key: string;
-  label: string;
-  icon: string;
-  configured: boolean;
-
-  /** OAuth scopes requested when beginning the provider flow. */
-  scope?: string[];
-}
-
-const providerOptions = (): AuthProviderOption[] => [
-  {
-    key: 'google',
-    label: 'Google',
-    icon: 'bi-google',
-    configured: Boolean(
-      config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET && config.GOOGLE_CALLBACK_URL,
-    ),
-    scope: ['profile', 'email'],
-  },
-  {
-    key: 'facebook',
-    label: 'Facebook',
-    icon: 'bi-facebook',
-    configured: Boolean(
-      config.FACEBOOK_CLIENT_ID && config.FACEBOOK_CLIENT_SECRET && config.FACEBOOK_CALLBACK_URL,
-    ),
-    scope: ['email'],
-  },
-  {
-    key: 'github',
-    label: 'GitHub',
-    icon: 'bi-github',
-    configured: Boolean(
-      config.GITHUB_CLIENT_ID && config.GITHUB_CLIENT_SECRET && config.GITHUB_CALLBACK_URL,
-    ),
-    scope: ['read:user', 'user:email'],
-  },
-];
-
-/**
  * Passport handles only the external-provider protocol.
  *
  * SysUser lookup/linking/creation remains ManatOS domain logic.
@@ -192,24 +143,6 @@ export function configurePassport() {
       ),
     );
   }
-}
-
-/**
- * Provider list used by route registration.
- *
- * Only configured providers may have live Passport routes.
- */
-export function configuredProviders(): AuthProviderOption[] {
-  return providerOptions().filter((provider) => provider.configured);
-}
-
-/**
- * Provider list used by the sign-in/register UI.
- *
- * Unsupported-by-configuration providers remain visible but disabled.
- */
-export function availableProviders(): AuthProviderOption[] {
-  return providerOptions();
 }
 
 export { passport };

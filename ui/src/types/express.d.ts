@@ -82,6 +82,21 @@ declare module 'express-session' {
      * This exists only between successful Passport authentication and
      * completion of a NEW SysUser account.
      */
+    /** Intent selected before redirecting to an external OAuth provider. */
+    externalAuthIntent?: 'signin' | 'register';
+
+    /**
+     * A registration attempt made with an external identity that is already
+     * linked to an existing ManatOS account. The provider has authenticated
+     * the identity, but the user must explicitly choose to sign in.
+     */
+    pendingExternalExistingAccount?: {
+      provider: string;
+      email: string;
+      existingUserId: string;
+      existingUserName: string;
+    };
+
     pendingExternalRegistration?: {
       provider: string;
 

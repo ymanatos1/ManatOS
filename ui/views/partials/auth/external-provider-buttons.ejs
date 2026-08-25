@@ -1,0 +1,33 @@
+<%
+  const actionLabel = mode === 'register' ? 'Register with' : 'Continue with';
+%>
+
+<div class="auth-provider-list">
+  <% for (const provider of authProviders) { %>
+    <% if (provider.configured) { %>
+      <a
+        class="btn btn-outline-secondary auth-provider-button"
+        href="/auth/<%= provider.key %>?intent=<%= mode %>"
+        data-busy
+        data-busy-title="Connecting to <%= provider.label %>…"
+        data-busy-message="Please wait while <%= provider.label %> authenticates your account."
+        data-busy-icon="<%= provider.icon %>"
+      >
+        <i class="bi <%= provider.icon %> auth-provider-icon" aria-hidden="true"></i>
+        <span><%= actionLabel %> <%= provider.label %></span>
+        <i class="bi bi-chevron-right auth-provider-chevron" aria-hidden="true"></i>
+      </a>
+    <% } else { %>
+      <button
+        class="btn btn-outline-secondary auth-provider-button is-unavailable"
+        type="button"
+        disabled
+        title="<%= provider.label %> authentication is not configured yet."
+      >
+        <i class="bi <%= provider.icon %> auth-provider-icon" aria-hidden="true"></i>
+        <span><%= actionLabel %> <%= provider.label %></span>
+        <span class="badge auth-provider-status ms-auto">Not configured</span>
+      </button>
+    <% } %>
+  <% } %>
+</div>

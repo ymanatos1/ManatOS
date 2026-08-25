@@ -1,21 +1,11 @@
 <%
-  const providerDisplayNames = {
-    google: 'Google',
-    facebook: 'Facebook',
-    github: 'GitHub'
-  };
-
-  const providerIcons = {
-    google: 'bi-google',
-    facebook: 'bi-facebook',
-    github: 'bi-github'
-  };
-
-  const providerDisplayName =
-    providerDisplayNames[profile.provider] || profile.provider;
-
-  const providerIcon =
-    providerIcons[profile.provider] || 'bi-box-arrow-in-right';
+  const provider =
+    authProviders.find((candidate) => candidate.key === profile.provider) || {
+      key: profile.provider,
+      label: profile.provider,
+      icon: 'bi-box-arrow-in-right',
+      configured: false
+    };
 %>
 
 <div
@@ -32,9 +22,9 @@
       method="post"
       action="/auth/link/external"
       data-busy-submit
-      data-busy-title="Linking <%= providerDisplayName %>…"
-      data-busy-message="Please wait while ManatOS verifies your account and securely links <%= providerDisplayName %>."
-      data-busy-icon="<%= providerIcon %>"
+      data-busy-title="Linking <%= provider.label %>…"
+      data-busy-message="Please wait while ManatOS verifies your account and securely links <%= provider.label %>."
+      data-busy-icon="<%= provider.icon %>"
     >
       <input
         type="hidden"
@@ -67,30 +57,11 @@
 
       <div class="modal-body external-link-modal-body">
         <div class="external-link-intro">
-          <div class="external-link-illustration" aria-hidden="true">
-            <div class="external-link-provider-tile">
-              <i class="bi <%= providerIcon %>"></i>
-            </div>
-
-            <div class="external-link-manatos-tile">
-              <img
-                src="/assets/m1/favicon-96x96.png"
-                alt=""
-              >
-            </div>
-
-            <div class="external-link-connector">
-              <i class="bi bi-link-45deg"></i>
-            </div>
-
-            <div class="external-link-shield">
-              <i class="bi bi-shield-check"></i>
-            </div>
-          </div>
+          <%- include('../partials/auth/external-link-illustration', { provider }) %>
 
           <div class="external-link-copy">
             <p class="mb-2">
-              <strong><%= providerDisplayName %></strong> authenticated the email address
+              <strong><%= provider.label %></strong> authenticated the email address
               <strong><%= profile.email %></strong>. That email already belongs to the existing
               account <strong><%= profile.existingUserName %></strong>.
             </p>
@@ -109,18 +80,18 @@
               class="form-label mb-0"
               for="externalLinkProvider"
             >
-              <i class="bi <%= providerIcon %> external-link-field-icon" aria-hidden="true"></i>
+              <i class="bi <%= provider.icon %> external-link-field-icon" aria-hidden="true"></i>
               External provider
             </label>
 
             <div class="input-group">
               <span class="input-group-text" aria-hidden="true">
-                <i class="bi <%= providerIcon %>"></i>
+                <i class="bi <%= provider.icon %>"></i>
               </span>
               <input
                 id="externalLinkProvider"
                 class="form-control"
-                value="<%= providerDisplayName %>"
+                value="<%= provider.label %>"
                 readonly
               >
             </div>
@@ -198,7 +169,7 @@
           type="submit"
         >
           <i class="bi bi-link-45deg me-1" aria-hidden="true"></i>
-          Sign in and link <%= providerDisplayName %>
+          Sign in and link <%= provider.label %>
         </button>
       </div>
     </form>

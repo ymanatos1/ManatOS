@@ -14,7 +14,7 @@ import { buildRootScope } from '../scopes.js';
 
 import { sysBODefinitions } from '../sysbo/definitions.js';
 
-import { availableProviders } from '../auth/passport.js';
+import { availableProviders } from '../auth/external-providers.js';
 
 /**
  * Supplies the complete SysBO definitions and scope tree to every EJS page

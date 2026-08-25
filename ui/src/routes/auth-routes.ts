@@ -14,7 +14,9 @@ import { emailService } from '../email/email-service.js';
 
 import { securityTokenStore } from '../security/security-token-store.js';
 
-import { passport, configuredProviders, type ExternalProfile } from '../auth/passport.js';
+import { passport, type ExternalProfile } from '../auth/passport.js';
+
+import { configuredProviders } from '../auth/external-providers.js';
 
 import { requireCsrf } from '../middleware/csrf.js';
 
@@ -486,6 +488,13 @@ export function createAuthRouter() {
     router.get(
       `/${provider.key}`,
 
+      (req, _res, next) => {
+        req.session.externalAuthIntent =
+          req.query.intent === 'register' ? 'register' : 'signin';
+
+        next();
+      },
+
       passport.authenticate(
         provider.key,
 
@@ -517,6 +526,9 @@ export function createAuthRouter() {
       async (req, res, next) => {
         try {
           const profile = req.authInfo?.externalProfile;
+          const authIntent = req.session.externalAuthIntent ?? 'signin';
+
+          delete req.session.externalAuthIntent;
 
           if (!profile) {
             throw new Error('External profile not supplied.');
@@ -531,6 +543,26 @@ export function createAuthRouter() {
 
           if (linkedUserId) {
             const matchingUser = await lookup(profile.email);
+
+            /**
+             * Registration is an explicit request to create an account. If the
+             * authenticated provider identity is already linked, do not silently
+             * reinterpret that action as Sign in. Explain that the account already
+             * exists and let the user explicitly continue into it.
+             */
+            if (authIntent === 'register') {
+              req.session.pendingExternalExistingAccount = {
+                provider: profile.provider,
+                email: profile.email,
+                existingUserId: linkedUserId,
+                existingUserName:
+                  matchingUser?.name ?? profile.displayName ?? profile.email,
+              };
+
+              res.redirect('/auth/register/existing-external');
+
+              return;
+            }
 
             /**
              * A linked provider may verify the account's exact email after the
@@ -641,6 +673,67 @@ export function createAuthRouter() {
       },
     );
   }
+
+  /**
+   * Explain that a provider selected for registration is already linked to
+   * an existing ManatOS account. The provider authentication succeeded, but
+   * signing in remains an explicit user choice.
+   */
+  router.get(
+    '/register/existing-external',
+
+    async (req, res) => {
+      const pending = req.session.pendingExternalExistingAccount;
+
+      if (!pending) {
+        res.redirect('/');
+
+        return;
+      }
+
+      await renderPage(
+        res,
+        'pages/external-existing-account',
+        {
+          title: 'Account already connected',
+          titleIcon: 'bi-person-check',
+          profile: pending,
+        },
+      );
+    },
+  );
+
+  router.post(
+    '/register/existing-external/signin',
+
+    requireCsrf,
+
+    async (req, res, next) => {
+      try {
+        const pending = req.session.pendingExternalExistingAccount;
+
+        if (!pending) {
+          res.redirect('/');
+
+          return;
+        }
+
+        const login = await createTrustedApiSession(
+          req,
+          pending.existingUserId,
+          `ManatOS Web UI / ${pending.provider}`,
+        );
+
+        await establishUiSession(req, login, pending.provider);
+
+        delete req.session.pendingExternalExistingAccount;
+
+        res.redirect('/account');
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   /**
    * Display explicit external-account linking confirmation.

@@ -1,6 +1,6 @@
 <% if (!currentUser) { %>
   <div
-    class="modal fade"
+    class="modal fade auth-primary-modal"
     id="signUpMethodModal"
     tabindex="-1"
     aria-labelledby="signUpMethodModalLabel"
@@ -10,11 +10,12 @@
       <div class="modal-content">
         <div class="modal-header">
           <div>
-            <h2 class="modal-title h5 mb-1" id="signUpMethodModalLabel">
+            <h2 class="modal-title h4 mb-1" id="signUpMethodModalLabel">
+              <i class="bi bi-person-plus me-2" aria-hidden="true"></i>
               Create your account
             </h2>
             <p class="modal-subtitle mb-0">
-              Choose how you want to register.
+              Choose how you want to join ManatOS.
             </p>
           </div>
           <button
@@ -25,52 +26,64 @@
           ></button>
         </div>
 
-        <div class="modal-body">
-          <div class="auth-provider-list">
-            <% for (const provider of authProviders) { %>
-              <% if (provider.configured) { %>
-                <a
-                  class="btn btn-outline-secondary auth-provider-button"
-                  href="/auth/<%= provider.key %>"
-                  data-busy
-                  data-busy-title="Connecting to <%= provider.label %>…"
-                  data-busy-message="Please wait while <%= provider.label %> authenticates your account."
-                  data-busy-icon="<%= provider.icon %>"
-                >
-                  <i class="bi <%= provider.icon %>"></i>
-                  <span>Register with <%= provider.label %></span>
-                  <i class="bi bi-chevron-right auth-provider-chevron"></i>
-                </a>
-              <% } else { %>
-                <button
-                  class="btn btn-outline-secondary auth-provider-button"
-                  type="button"
-                  disabled
-                  title="<%= provider.label %> authentication is not configured yet."
-                >
-                  <i class="bi <%= provider.icon %>"></i>
-                  <span>Register with <%= provider.label %></span>
-                  <span class="badge text-bg-light border ms-auto">Not configured</span>
-                </button>
-              <% } %>
-            <% } %>
+        <div class="modal-body auth-primary-modal-body">
+          <div class="auth-entry-intro">
+            <%- include('auth/auth-entry-illustration', { mode: 'register' }) %>
+
+            <div class="auth-entry-copy">
+              <h3>Welcome to ManatOS</h3>
+              <p class="mb-0">
+                Create a new account using a supported external provider or register directly
+                with your email and password. You can securely connect additional providers to
+                the same ManatOS account later.
+              </p>
+            </div>
           </div>
 
-          <div class="auth-divider" aria-hidden="true">
-            <span>or</span>
-          </div>
+          <div class="auth-methods-grid auth-register-methods">
+            <section class="auth-method-card" aria-labelledby="registerExternalProviderHeading">
+              <div class="auth-modal-section-heading" id="registerExternalProviderHeading">
+                <i class="bi bi-globe2" aria-hidden="true"></i>
+                External provider
+              </div>
+              <p class="auth-method-description">
+                Register with an available account you already use.
+              </p>
+              <%- include('auth/external-provider-buttons', { mode: 'register' }) %>
+            </section>
 
-          <button
-            class="btn btn-primary auth-provider-button"
-            type="button"
-            data-bs-dismiss="modal"
-            data-bs-toggle="modal"
-            data-bs-target="#emailRegistrationModal"
-          >
-            <i class="bi bi-envelope"></i>
-            <span>Register with Email</span>
-            <i class="bi bi-chevron-right auth-provider-chevron"></i>
-          </button>
+            <section class="auth-method-card auth-email-method" aria-labelledby="registerEmailHeading">
+              <div class="auth-modal-section-heading" id="registerEmailHeading">
+                <i class="bi bi-envelope" aria-hidden="true"></i>
+                ManatOS account
+              </div>
+              <p class="auth-method-description">
+                Prefer a traditional account? Create one with your email and a ManatOS password.
+              </p>
+
+              <button
+                class="auth-email-registration-button"
+                type="button"
+                data-bs-dismiss="modal"
+                data-bs-toggle="modal"
+                data-bs-target="#emailRegistrationModal"
+              >
+                <span class="auth-email-registration-icon" aria-hidden="true">
+                  <i class="bi bi-envelope"></i>
+                </span>
+                <span class="auth-email-registration-copy">
+                  <strong>Register with Email</strong>
+                  <small>Email and password</small>
+                </span>
+                <i class="bi bi-chevron-right auth-provider-chevron" aria-hidden="true"></i>
+              </button>
+
+              <div class="auth-method-note">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                <span>Your credentials stay with ManatOS and can be complemented by external providers later.</span>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>
@@ -78,13 +91,13 @@
 
 
   <div
-    class="modal fade"
+    class="modal fade auth-primary-modal auth-email-registration-modal"
     id="emailRegistrationModal"
     tabindex="-1"
     aria-labelledby="emailRegistrationModalLabel"
     aria-hidden="true"
   >
-    <div class="modal-dialog modal-dialog-centered auth-modal-dialog">
+    <div class="modal-dialog modal-dialog-centered auth-modal-dialog auth-email-form-dialog">
       <form
         class="modal-content"
         method="post"
@@ -94,11 +107,12 @@
 
         <div class="modal-header">
           <div>
-            <h2 class="modal-title h5 mb-1" id="emailRegistrationModalLabel">
+            <h2 class="modal-title h4 mb-1" id="emailRegistrationModalLabel">
+              <i class="bi bi-envelope-plus me-2" aria-hidden="true"></i>
               Register with Email
             </h2>
             <p class="modal-subtitle mb-0">
-              Create a Guest website account. You can add customer licenses later.
+              Create your ManatOS account with an email address and password.
             </p>
           </div>
           <button
@@ -109,60 +123,111 @@
           ></button>
         </div>
 
-        <div class="modal-body">
-          <label class="form-label" for="registrationName">User name</label>
-          <input
-            class="form-control mb-3"
-            id="registrationName"
-            name="name"
-            autocomplete="username"
-            required
-            minlength="2"
-          >
+        <div class="modal-body auth-primary-modal-body auth-email-registration-body">
+          <div class="auth-email-registration-intro">
+            <%- include('auth/auth-entry-illustration', { mode: 'register' }) %>
 
-          <label class="form-label" for="registrationEmail">Email</label>
-          <input
-            class="form-control mb-3"
-            id="registrationEmail"
-            name="email"
-            type="email"
-            autocomplete="email"
-            required
-          >
+            <div class="auth-entry-copy">
+              <h3>Create your ManatOS account</h3>
+              <p class="mb-0">
+                Choose a user name and secure your account with your email and password.
+                You can connect GitHub or another supported external provider later.
+              </p>
+            </div>
+          </div>
 
-          <label class="form-label" for="registrationPassword">Password</label>
-          <input
-            class="form-control password-policy-input"
-            id="registrationPassword"
-            name="password"
-            type="password"
-            autocomplete="new-password"
-            required
-          >
+          <section class="auth-registration-form-card" aria-labelledby="emailRegistrationDetailsHeading">
+            <div class="auth-modal-section-heading" id="emailRegistrationDetailsHeading">
+              <i class="bi bi-person-vcard" aria-hidden="true"></i>
+              Account details
+            </div>
 
-          <label class="form-label mt-3" for="registrationPasswordConfirm">
-            Confirm password
-          </label>
-          <input
-            class="form-control"
-            id="registrationPasswordConfirm"
-            name="confirmPassword"
-            type="password"
-            autocomplete="new-password"
-            required
-          >
+            <div class="auth-registration-fields">
+              <div class="auth-registration-identity-column">
+                <div>
+                  <label class="form-label" for="registrationName">User name</label>
+                <input
+                  class="form-control"
+                  id="registrationName"
+                  name="name"
+                  autocomplete="username"
+                  required
+                  minlength="2"
+                >
+                </div>
 
-          <%- include('password-rules') %>
+                <div>
+                  <label class="form-label" for="registrationEmail">Email</label>
+                <input
+                  class="form-control"
+                  id="registrationEmail"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                >
+                </div>
+              </div>
+
+              <div class="auth-registration-security-column">
+                <div>
+                  <label class="form-label" for="registrationPassword">Password</label>
+                  <input
+                    class="form-control password-policy-input"
+                    id="registrationPassword"
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    required
+                  >
+                </div>
+
+                <div>
+                  <label class="form-label" for="registrationPasswordConfirm">Confirm password</label>
+                  <input
+                    class="form-control"
+                    id="registrationPasswordConfirm"
+                    name="confirmPassword"
+                    type="password"
+                    autocomplete="new-password"
+                    required
+                    data-password-confirmation
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="auth-password-guidance">
+              <div class="auth-password-guidance-title">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                Choose a secure password
+              </div>
+              <%- include('password-rules', { includeMatchRule: true }) %>
+            </div>
+          </section>
         </div>
 
-        <div class="modal-footer">
-          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">
-            Cancel
+        <div class="modal-footer auth-step-footer">
+          <button
+            class="btn btn-outline-secondary auth-back-button"
+            type="button"
+            data-bs-dismiss="modal"
+            data-bs-toggle="modal"
+            data-bs-target="#signUpMethodModal"
+          >
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+            Back
           </button>
-          <button class="btn btn-primary" type="submit">
-            <i class="bi bi-person-plus me-1"></i>
-            Create account
-          </button>
+
+          <div class="auth-step-footer-actions">
+            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button class="btn btn-primary" type="submit" data-password-submit disabled>
+              <i class="bi bi-person-plus me-1"></i>
+              Create account
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -170,7 +235,7 @@
 
 
   <div
-    class="modal fade"
+    class="modal fade auth-primary-modal"
     id="signInModal"
     tabindex="-1"
     aria-labelledby="signInModalLabel"
@@ -186,9 +251,12 @@
 
         <div class="modal-header">
           <div>
-            <h2 class="modal-title h5 mb-1" id="signInModalLabel">Sign in</h2>
+            <h2 class="modal-title h4 mb-1" id="signInModalLabel">
+              <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>
+              Sign in
+            </h2>
             <p class="modal-subtitle mb-0">
-              Use a connected provider or your ManatOS credentials.
+              Choose how you want to access ManatOS.
             </p>
           </div>
           <button
@@ -199,69 +267,70 @@
           ></button>
         </div>
 
-        <div class="modal-body">
-          <div class="auth-provider-list">
-            <% for (const provider of authProviders) { %>
-              <% if (provider.configured) { %>
-                <a
-                  class="btn btn-outline-secondary auth-provider-button"
-                  href="/auth/<%= provider.key %>"
-                  data-busy
-                  data-busy-title="Connecting to <%= provider.label %>…"
-                  data-busy-message="Please wait while <%= provider.label %> authenticates your account."
-                  data-busy-icon="<%= provider.icon %>"
-                >
-                  <i class="bi <%= provider.icon %>"></i>
-                  <span>Continue with <%= provider.label %></span>
-                  <i class="bi bi-chevron-right auth-provider-chevron"></i>
-                </a>
-              <% } else { %>
-                <button
-                  class="btn btn-outline-secondary auth-provider-button"
-                  type="button"
-                  disabled
-                  title="<%= provider.label %> authentication is not configured yet."
-                >
-                  <i class="bi <%= provider.icon %>"></i>
-                  <span>Continue with <%= provider.label %></span>
-                  <span class="badge text-bg-light border ms-auto">Not configured</span>
-                </button>
-              <% } %>
-            <% } %>
+        <div class="modal-body auth-primary-modal-body">
+          <div class="auth-entry-intro">
+            <%- include('auth/auth-entry-illustration', { mode: 'signin' }) %>
+
+            <div class="auth-entry-copy">
+              <h3>Welcome back</h3>
+              <p class="mb-0">
+                Continue with a connected external provider or use your ManatOS user name/email
+                and password. Either option brings you securely back to the same account.
+              </p>
+            </div>
           </div>
 
-          <div class="auth-divider" aria-hidden="true">
-            <span>or</span>
+          <div class="auth-methods-grid">
+            <section class="auth-method-card" aria-labelledby="signInExternalProviderHeading">
+              <div class="auth-modal-section-heading" id="signInExternalProviderHeading">
+                <i class="bi bi-globe2" aria-hidden="true"></i>
+                External provider
+              </div>
+              <p class="auth-method-description">
+                Use a provider already connected to your account.
+              </p>
+              <%- include('auth/external-provider-buttons', { mode: 'signin' }) %>
+            </section>
+
+            <section class="auth-method-card" aria-labelledby="signInCredentialsHeading">
+              <div class="auth-modal-section-heading" id="signInCredentialsHeading">
+                <i class="bi bi-person-lock" aria-hidden="true"></i>
+                ManatOS credentials
+              </div>
+              <p class="auth-method-description">
+                Sign in directly with your ManatOS credentials.
+              </p>
+
+              <label class="form-label" for="signInIdentity">Email or user name</label>
+              <input
+                class="form-control mb-3"
+                id="signInIdentity"
+                name="identity"
+                autocomplete="username"
+                required
+              >
+
+              <label class="form-label" for="signInPassword">Password</label>
+              <input
+                class="form-control mb-2"
+                id="signInPassword"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+              >
+
+              <button
+                class="btn btn-link px-0"
+                type="button"
+                data-bs-dismiss="modal"
+                data-bs-toggle="modal"
+                data-bs-target="#passwordRequestModal"
+              >
+                Forgot or set password?
+              </button>
+            </section>
           </div>
-
-          <label class="form-label" for="signInIdentity">Email or user name</label>
-          <input
-            class="form-control mb-3"
-            id="signInIdentity"
-            name="identity"
-            autocomplete="username"
-            required
-          >
-
-          <label class="form-label" for="signInPassword">Password</label>
-          <input
-            class="form-control mb-2"
-            id="signInPassword"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            required
-          >
-
-          <button
-            class="btn btn-link px-0"
-            type="button"
-            data-bs-dismiss="modal"
-            data-bs-toggle="modal"
-            data-bs-target="#passwordRequestModal"
-          >
-            Forgot or set password?
-          </button>
         </div>
 
         <div class="modal-footer">
@@ -285,7 +354,7 @@
     aria-labelledby="passwordRequestModalLabel"
     aria-hidden="true"
   >
-    <div class="modal-dialog modal-dialog-centered auth-modal-dialog">
+    <div class="modal-dialog modal-dialog-centered auth-modal-dialog auth-form-modal-dialog">
       <form
         class="modal-content"
         method="post"
