@@ -2245,3 +2245,75 @@ body[data-ui-theme='lighter'] .version-badge {
 body.manatos-busy {
   overflow: hidden;
 }
+
+/* =========================================================================
+   Entity/account tabbed detail pages
+   ========================================================================= */
+
+.entity-tabbed-page,
+.content-card > form {
+  min-width: 0;
+}
+
+.entity-tabs {
+  margin-bottom: 1.25rem;
+}
+
+.entity-tabs .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--manatos-muted);
+  font-weight: 600;
+}
+
+.entity-tabs .nav-link.active {
+  color: var(--manatos-blue);
+}
+
+.entity-tab-content {
+  min-width: 0;
+}
+
+.authentication-summary-grid {
+  max-width: 900px;
+}
+
+.authentication-identity-list {
+  display: grid;
+  gap: 0.65rem;
+  max-width: 1000px;
+}
+
+.authentication-identity-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.3fr) auto;
+  gap: 0.8rem 1rem;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.65rem;
+  background: var(--manatos-surface);
+}
+
+.authentication-provider {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.authentication-provider .bi {
+  color: var(--manatos-blue);
+  font-size: 1.05rem;
+}
+
+.authentication-identity-email {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767.98px) {
+  .authentication-identity-row {
+    grid-template-columns: 1fr;
+  }
+}

@@ -146,6 +146,21 @@ export class ExternalIdentityService {
   }
 
   /**
+   * Return every external authentication identity linked to one SysUser.
+   */
+  async listForUser(userId: string): Promise<SysExternalIdentity[]> {
+    const user = await this.users.get(userId);
+
+    if (!user) {
+      throw new NotFoundError('SysUser', userId);
+    }
+
+    return [...this.store.externalIdentities().values()]
+      .filter((identity) => identity.userId === userId)
+      .sort((left, right) => left.provider.localeCompare(right.provider));
+  }
+
+  /**
    * Attach an external identity to a SysUser.
    *
    * Provider + providerSubject must be unique.

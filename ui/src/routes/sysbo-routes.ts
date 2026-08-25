@@ -20,7 +20,9 @@ import { addSessionError } from '../errors/session-error-log.js';
 
 import { getSysBODefinition } from '../sysbo/definitions.js';
 
-import type { SysBODefinition } from '../sysbo/types.js';
+import type { SysBODefinition, SysBOEditTabDefinition } from '../sysbo/types.js';
+
+import { externalIdentitiesForUser } from '../auth/user-authentication.js';
 
 const pathByKey: Record<string, string> = {
   'sys-users': 'SysUsers',
@@ -153,7 +155,13 @@ export function createSysBORoutes() {
 
             isNew: true,
 
-            referenceData: await references(req, definition),
+            ...(await editPageSupplementalData(
+              req,
+              definition,
+              res.locals.currentUser as SysUser | null,
+              {},
+              true,
+            )),
           },
         );
       } catch (error) {
@@ -188,6 +196,8 @@ export function createSysBORoutes() {
           )
         ).data;
 
+        const currentUser = res.locals.currentUser as SysUser | null;
+
         await renderPage(
           res,
           'pages/bo-edit',
@@ -205,7 +215,7 @@ export function createSysBORoutes() {
 
             isNew: false,
 
-            referenceData: await references(req, definition),
+            ...(await editPageSupplementalData(req, definition, currentUser, item, false)),
           },
         );
       } catch (error) {
@@ -383,7 +393,16 @@ export function createSysBORoutes() {
 
             isNew: !id,
 
-            referenceData: await references(req, definition),
+            ...(await editPageSupplementalData(
+              req,
+              definition,
+              res.locals.currentUser as SysUser | null,
+              {
+                ...req.body,
+                id,
+              },
+              !id,
+            )),
 
             applicationError: appError,
           },
@@ -472,6 +491,80 @@ export function createSysBORoutes() {
   );
 
   return router;
+}
+
+/**
+ * Build the shared data required by the generic SysBO edit/review page.
+ *
+ * Keeping this in one place is important because bo-edit.ejs is rendered
+ * from several paths: create, edit/view, and save-error redisplay. Every
+ * path must receive the same tab, authentication, and reference-data
+ * contract.
+ */
+async function editPageSupplementalData(
+  req: Request,
+  definition: SysBODefinition,
+  currentUser: SysUser | null,
+  item: Record<string, unknown>,
+  isNew: boolean,
+) {
+  const tabs = visibleEditTabs(definition, currentUser, isNew);
+
+  const showAuthenticationTab = tabs.some((tab) => tab.id === 'authentication');
+
+  const itemId = typeof item.id === 'string' ? item.id : '';
+
+  const authenticationIdentities =
+    definition.key === 'sys-users' && !isNew && showAuthenticationTab && itemId
+      ? await externalIdentitiesForUser(itemId)
+      : [];
+
+  return {
+    tabs,
+    authenticationIdentities,
+    referenceData: await references(req, definition),
+  };
+}
+
+/**
+ * Resolve the tabs visible to the current website role.
+ *
+ * visible:
+ *   omitted/true  -> visible (default)
+ *   false         -> hidden
+ *   { roles: [] } -> visible only to one of the listed roles
+ *
+ * Authentication is meaningful only for an existing SysUser, so it is
+ * suppressed automatically on the create page.
+ */
+function visibleEditTabs(
+  definition: SysBODefinition,
+  user: SysUser | null,
+  isNew: boolean,
+): SysBOEditTabDefinition[] {
+  const configuredTabs = definition.uiMetadata.editViewModel.tabs ?? [
+    {
+      id: 'general',
+      title: 'General info',
+      icon: 'bi-info-circle',
+    },
+  ];
+
+  return configuredTabs.filter((tab) => {
+    if (isNew && tab.id === 'authentication') {
+      return false;
+    }
+
+    if (tab.visible === false) {
+      return false;
+    }
+
+    if (tab.visible === undefined || tab.visible === true) {
+      return true;
+    }
+
+    return Boolean(user && tab.visible.roles.includes(user.role));
+  });
 }
 
 interface UIEntityPermissions {

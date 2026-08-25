@@ -6,7 +6,12 @@ import {
   sysUsersMetadata,
 } from '@manatos/shared';
 
-import type { SysBODefinition, SysBOPaginationConfiguration, SysBOPermissions } from './types.js';
+import type {
+  SysBODefinition,
+  SysBOEditTabDefinition,
+  SysBOPaginationConfiguration,
+  SysBOPermissions,
+} from './types.js';
 
 /**
  * System-business-object permissions are role/action specific.
@@ -45,6 +50,16 @@ const pagination: SysBOPaginationConfiguration = {
 };
 
 /**
+ * Standard first tab used by every entity edit/review page.
+ * Visibility is omitted deliberately: visible is the default.
+ */
+const generalInfoTab: SysBOEditTabDefinition = {
+  id: 'general',
+  title: 'General info',
+  icon: 'bi-info-circle',
+};
+
+/**
  * Registry of all UI-visible system business objects.
  *
  * The registry key is the stable hard-coded SysBO key, not an entity GUID.
@@ -74,6 +89,18 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
         showDeleteButton: true,
 
         confirmUnsavedChanges: true,
+
+        tabs: [
+          generalInfoTab,
+          {
+            id: 'authentication',
+            title: 'Authentication',
+            icon: 'bi-shield-lock',
+            visible: {
+              roles: [SysUserRole.Admin],
+            },
+          },
+        ],
       },
 
       gridConfiguration: {
@@ -124,6 +151,8 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
         showDeleteButton: true,
 
         confirmUnsavedChanges: true,
+
+        tabs: [generalInfoTab],
       },
 
       gridConfiguration: {
@@ -174,6 +203,8 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
         showDeleteButton: true,
 
         confirmUnsavedChanges: true,
+
+        tabs: [generalInfoTab],
       },
 
       gridConfiguration: {
@@ -226,6 +257,8 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
         showDeleteButton: true,
 
         confirmUnsavedChanges: true,
+
+        tabs: [generalInfoTab],
       },
 
       gridConfiguration: {

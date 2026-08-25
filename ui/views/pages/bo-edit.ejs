@@ -9,87 +9,51 @@
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" name="id" value="<%= item.id || '' %>">
 
-    <div class="row g-3">
-      <% for (
-        const field of Object.values(definition.boMetadata.fieldDefinition)
-          .sort((a, b) => a.order - b.order)
-      ) { %>
-        <% if (field.generated || field.readOnly || field.sensitive) continue; %>
+    <ul class="nav nav-tabs entity-tabs" role="tablist">
+      <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
+        <% const tab = tabs[tabIndex]; %>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link <%= tabIndex === 0 ? 'active' : '' %>"
+            id="bo-<%= tab.id %>-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#bo-<%= tab.id %>-pane"
+            type="button"
+            role="tab"
+            aria-controls="bo-<%= tab.id %>-pane"
+            aria-selected="<%= tabIndex === 0 ? 'true' : 'false' %>"
+          >
+            <% if (tab.icon) { %>
+              <i class="bi <%= tab.icon %> me-1" aria-hidden="true"></i>
+            <% } %>
+            <%= tab.title %>
+          </button>
+        </li>
+      <% } %>
+    </ul>
 
-        <div class="col-md-6">
-          <label class="form-label"><%= field.label %></label>
-
-          <% if (definition.key === 'sys-users' && field.key === 'emailVerified') { %>
-            <div class="form-control-plaintext">
-              <% if (item.emailVerified === true) { %>
-                <span class="badge text-bg-success">Verified</span>
-              <% } else { %>
-                <span class="badge text-bg-secondary">Not verified</span>
-              <% } %>
-            </div>
-          <% } else if (field.type === 'boolean') { %>
-            <div class="form-check form-switch">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                name="<%= field.key %>"
-                <%= item[field.key] !== false ? 'checked' : '' %>
-                <%= readOnly ? 'disabled' : '' %>
-              >
-            </div>
-          <% } else if (field.type === 'enum') { %>
-            <select
-              class="form-select"
-              name="<%= field.key %>"
-              <%= field.required ? 'required' : '' %>
-              <%= readOnly ? 'disabled' : '' %>
-            >
-              <option value="">Choose...</option>
-
-              <% for (const option of field.enumValues || []) { %>
-                <option
-                  value="<%= option %>"
-                  <%= item[field.key] === option ? 'selected' : '' %>
-                >
-                  <%= option %>
-                </option>
-              <% } %>
-            </select>
-          <% } else if (field.type === 'reference') { %>
-            <select
-              class="form-select"
-              name="<%= field.key %>"
-              <%= field.required ? 'required' : '' %>
-              <%= readOnly ? 'disabled' : '' %>
-            >
-              <option value="">None</option>
-
-              <% for (const reference of referenceData[field.key] || []) { %>
-                <option
-                  value="<%= reference.id %>"
-                  <%= item[field.key] === reference.id ? 'selected' : '' %>
-                >
-                  <%= reference.name %>
-                </option>
-              <% } %>
-            </select>
+    <div class="tab-content entity-tab-content">
+      <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
+        <% const tab = tabs[tabIndex]; %>
+        <div
+          class="tab-pane fade <%= tabIndex === 0 ? 'show active' : '' %>"
+          id="bo-<%= tab.id %>-pane"
+          role="tabpanel"
+          aria-labelledby="bo-<%= tab.id %>-tab"
+          tabindex="0"
+        >
+          <% if (tab.id === 'general') { %>
+            <%- include('../partials/sysbo-general-fields', { readOnly }) %>
+          <% } else if (tab.id === 'authentication' && definition.key === 'sys-users') { %>
+            <%- include('../partials/authentication-summary', {
+              authenticationUser: item,
+              authenticationIdentities: authenticationIdentities || [],
+              showPasswordAction: false
+            }) %>
+          <% } else if (tab.partial) { %>
+            <%- include(tab.partial) %>
           <% } else { %>
-            <input
-              class="form-control"
-              name="<%= field.key %>"
-              type="<%=
-                field.type === 'email'
-                  ? 'email'
-                  : field.type === 'number'
-                    ? 'number'
-                    : field.type === 'date'
-                      ? 'datetime-local'
-                      : 'text'
-              %>"
-              value="<%= item[field.key] ?? '' %>"
-              <%= field.required ? 'required' : '' %>
-              <%= readOnly ? 'disabled' : '' %>
-            >
+            <div class="text-secondary small">No content is configured for this tab yet.</div>
           <% } %>
         </div>
       <% } %>

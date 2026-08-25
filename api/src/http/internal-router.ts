@@ -309,6 +309,23 @@ export function createInternalRouter(
   );
 
   /**
+   * List external authentication identities linked to a SysUser.
+   *
+   * This trusted endpoint is used by the server-rendered UI to present
+   * read-only authentication information on Account/User pages.
+   */
+  router.get(
+    '/SysUsers/:userId/external-identities',
+
+    async (req, res) => {
+      const userId = String(req.params.userId ?? '');
+      const identities = await ext.listForUser(userId);
+
+      sendQuery(res, identities);
+    },
+  );
+
+  /**
    * Attach an external authentication identity to a SysUser.
    */
   router.post(

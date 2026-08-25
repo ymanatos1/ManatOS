@@ -25,7 +25,14 @@ import { renderPage } from './render.js';
  * - unexpected errors:
  *     normalize and render a 500 page.
  */
-export const uiErrorHandler: ErrorRequestHandler = async (error, req, res, _next) => {
+export const uiErrorHandler: ErrorRequestHandler = async (error, req, res, next) => {
+  /*
+   * Express identifies error-handling middleware by its four-argument
+   * signature. `next` is intentionally retained even though this handler
+   * terminates every error path itself.
+   */
+  void next;
+
   /**
    * API Bearer token expired/revoked/invalid.
    *
@@ -85,15 +92,22 @@ export const uiErrorHandler: ErrorRequestHandler = async (error, req, res, _next
   /**
    * Unexpected exception.
    */
+  console.error(
+    '[ManatOS UI] Unexpected error:',
+    error instanceof Error
+      ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        }
+      : error,
+  );
+
   const unexpected = new AppError(
     'UNEXPECTED_ERROR',
-
     error instanceof Error ? error.message : String(error),
-
     'An unexpected application error occurred.',
-
     true,
-
     {
       cause: error,
     },

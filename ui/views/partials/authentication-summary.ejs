@@ -1,0 +1,101 @@
+<%
+  const providerDisplayNames = {
+    google: 'Google',
+    facebook: 'Facebook',
+    github: 'GitHub'
+  };
+
+  const providerIcons = {
+    google: 'bi-google',
+    facebook: 'bi-facebook',
+    github: 'bi-github'
+  };
+
+  const verificationSourceDisplayNames = {
+    internal: 'ManatOS',
+    google: 'Google',
+    facebook: 'Facebook',
+    github: 'GitHub'
+  };
+%>
+
+<div class="account-summary-grid authentication-summary-grid">
+  <div class="account-summary-label">Email verification</div>
+  <div class="account-summary-value">
+    <span class="badge text-bg-<%= authenticationUser.emailVerified ? 'success' : 'secondary' %>">
+      <%= authenticationUser.emailVerified ? 'Verified' : 'Not verified' %>
+    </span>
+  </div>
+
+  <div class="account-summary-label">Verification source</div>
+  <div class="account-summary-value">
+    <% if (authenticationUser.emailVerified && authenticationUser.emailVerificationSource) { %>
+      <%= verificationSourceDisplayNames[authenticationUser.emailVerificationSource] || authenticationUser.emailVerificationSource %>
+    <% } else { %>
+      <span class="text-secondary">—</span>
+    <% } %>
+  </div>
+
+  <div class="account-summary-label">Verified at</div>
+  <div class="account-summary-value">
+    <% if (authenticationUser.emailVerifiedAt) { %>
+      <%= new Date(authenticationUser.emailVerifiedAt).toLocaleString() %>
+    <% } else { %>
+      <span class="text-secondary">—</span>
+    <% } %>
+  </div>
+
+  <div class="account-summary-label">Local password</div>
+  <div class="account-summary-value account-password-status">
+    <span
+      class="status-value <%= authenticationUser.hasPassword ? 'status-positive' : 'status-neutral' %>"
+    >
+      <i
+        class="bi <%= authenticationUser.hasPassword ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"
+      ></i>
+      <%= authenticationUser.hasPassword ? 'Configured' : 'Not configured' %>
+    </span>
+
+    <% if (showPasswordAction === true) { %>
+      <a class="btn btn-outline-primary btn-sm" href="/account/password">
+        <i class="bi bi-key me-1"></i>
+        <%= authenticationUser.hasPassword ? 'Change password' : 'Set password' %>
+      </a>
+    <% } %>
+  </div>
+</div>
+
+<div class="authentication-identities mt-4">
+  <h3 class="h6 mb-3">
+    <i class="bi bi-person-badge me-1"></i>
+    External identities
+  </h3>
+
+  <% if (authenticationIdentities && authenticationIdentities.length > 0) { %>
+    <div class="authentication-identity-list">
+      <% for (const identity of authenticationIdentities) { %>
+        <div class="authentication-identity-row">
+          <div class="authentication-provider">
+            <i
+              class="bi <%= providerIcons[identity.provider] || 'bi-box-arrow-in-right' %>"
+              aria-hidden="true"
+            ></i>
+            <strong><%= providerDisplayNames[identity.provider] || identity.provider %></strong>
+          </div>
+
+          <div class="authentication-identity-email">
+            <%= identity.email || 'No email supplied' %>
+          </div>
+
+          <div>
+            <span class="badge text-bg-<%= identity.emailVerified ? 'success' : 'secondary' %>">
+              <%= identity.emailVerified ? 'Provider email verified' : 'Provider email not verified' %>
+            </span>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } else { %>
+    <div class="text-secondary small">No external authentication providers are linked.</div>
+  <% } %>
+</div>

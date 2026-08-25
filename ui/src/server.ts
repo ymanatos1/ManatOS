@@ -1,1 +1,7 @@
-import {config} from './config.js';import {createUiApp} from './app.js';createUiApp().listen(config.UI_PORT,()=>{console.log(`ManatOS UI: http://localhost:${config.UI_PORT}`);console.log(`API: ${config.API_BASE_URL}`);});
+import { config } from './config.js';
+import { createUiApp } from './app.js';
+
+createUiApp().listen(config.UI_PORT, () => {
+  console.log(`ManatOS UI: http://localhost:${config.UI_PORT}`);
+  console.log(`API: ${config.API_BASE_URL}`);
+});

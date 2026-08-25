@@ -722,14 +722,15 @@ export function createAuthRouter() {
          * internal credential verifier. Unlike normal login this intentionally
          * does not require email verification and does not create a session.
          */
-        console.log('[external-link] STAGE 1 - verify-local starting', {
+
+        /* console.log('[external-link] STAGE 1 - verify-local starting', {
           identity,
           pendingUserId: pending.existingUserId,
           pendingUserName: pending.existingUserName,
           provider: pending.provider,
           providerEmail: pending.email,
           providerEmailVerified: pending.emailVerified,
-        });
+        }); */
 
         const verifiedUser = (
           await apiClient.post<SysUser>(
@@ -746,12 +747,12 @@ export function createAuthRouter() {
           )
         ).data;
 
-        console.log('[external-link] STAGE 1 - verify-local succeeded', {
+        /* console.log('[external-link] STAGE 1 - verify-local succeeded', {
           verifiedUserId: verifiedUser.id,
           verifiedUserName: verifiedUser.name,
           verifiedUserEmail: verifiedUser.email,
           verifiedUserEmailVerified: verifiedUser.emailVerified,
-        });
+        }); */
 
         /**
          * The credentials must authenticate the SAME account that owns the
@@ -774,11 +775,12 @@ export function createAuthRouter() {
          *
          *     provider + providerSubject
          */
-        console.log('[external-link] STAGE 2 - external identity link starting', {
+
+        /* console.log('[external-link] STAGE 2 - external identity link starting', {
           userId: verifiedUser.id,
           provider: pending.provider,
           providerSubject: pending.providerSubject,
-        });
+        }); */
 
         await apiClient.post(
           `/api/v1/internal/SysUsers/${verifiedUser.id}/external-identities`,
@@ -803,7 +805,7 @@ export function createAuthRouter() {
           },
         );
 
-        console.log('[external-link] STAGE 2 - external identity link succeeded');
+        /* console.log('[external-link] STAGE 2 - external identity link succeeded'); */
 
         /**
          * External authentication and external email verification are separate
@@ -814,10 +816,10 @@ export function createAuthRouter() {
         if (pending.emailVerified) {
           const source = externalVerificationSource(pending.provider);
 
-          console.log('[external-link] STAGE 3 - email verification starting', {
+          /* console.log('[external-link] STAGE 3 - email verification starting', {
             userId: verifiedUser.id,
             source,
-          });
+          }); */
 
           await apiClient.put(
             `/api/v1/internal/SysUsers/${verifiedUser.id}/email-verified`,
@@ -825,7 +827,7 @@ export function createAuthRouter() {
             { internal: true },
           );
 
-          console.log('[external-link] STAGE 3 - email verification succeeded');
+          /* console.log('[external-link] STAGE 3 - email verification succeeded'); */
 
           securityTokenStore.invalidateEmailVerificationTokens(verifiedUser.id, source);
         }
@@ -855,9 +857,9 @@ export function createAuthRouter() {
           return;
         }
 
-        console.log('[external-link] STAGE 4 - trusted API session starting', {
+        /* console.log('[external-link] STAGE 4 - trusted API session starting', {
           userId: verifiedUser.id,
-        });
+        }); */
 
         const login = await createTrustedApiSession(
           req,
@@ -865,10 +867,10 @@ export function createAuthRouter() {
           `ManatOS Web UI / ${pending.provider}`,
         );
 
-        console.log('[external-link] STAGE 4 - trusted API session succeeded', {
+        /* console.log('[external-link] STAGE 4 - trusted API session succeeded', {
           sessionUserId: login.user.id,
           sessionUserName: login.user.name,
-        });
+        }); */
 
         await establishUiSession(req, login, pending.provider);
 

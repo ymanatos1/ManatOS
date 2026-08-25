@@ -19,8 +19,33 @@ export interface SysBOListViewModel {
 }
 
 /**
- * Edit/create page UI configuration.
+ * Tab visibility can be unconditional or restricted to website roles.
+ *
+ * Omitting the property means visible (the default).
  */
+export type SysBOEditTabVisibility = boolean | {
+  roles: SysUserRole[];
+};
+
+/**
+ * One tab available on an entity edit/review page.
+ */
+export interface SysBOEditTabDefinition {
+  id: string;
+
+  title: string;
+
+  icon?: string;
+
+  visible?: SysBOEditTabVisibility;
+
+  /**
+   * Optional EJS partial rendered inside this tab. General info is the
+   * built-in metadata-driven tab and therefore needs no partial.
+   */
+  partial?: string;
+}
+
 export interface SysBOEditViewModel {
   createTitle: string;
 
@@ -29,6 +54,12 @@ export interface SysBOEditViewModel {
   showDeleteButton: boolean;
 
   confirmUnsavedChanges: boolean;
+
+  /**
+   * Entity-page tabs. When omitted, the UI supplies one visible
+   * "General info" tab so older definitions remain valid.
+   */
+  tabs?: SysBOEditTabDefinition[];
 }
 
 /**

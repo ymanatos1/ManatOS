@@ -1,36 +1,87 @@
-<section class="account-page">
-  <div class="account-summary-grid">
-    <div class="account-summary-label">User name</div>
-    <div class="account-summary-value"><%= currentUser.name %></div>
-
-    <div class="account-summary-label">Email</div>
-    <div class="account-summary-value">
-      <%= currentUser.email %>
-      <span class="badge text-bg-<%= currentUser.emailVerified ? 'success' : 'warning' %> ms-1">
-        <%= currentUser.emailVerified ? 'Verified' : 'Not verified' %>
-      </span>
-    </div>
-
-    <div class="account-summary-label">Website role</div>
-    <div class="account-summary-value">
-      <span class="badge rounded-pill text-bg-light border"><%= currentUser.role %></span>
-    </div>
-
-    <div class="account-summary-label">Local password</div>
-    <div class="account-summary-value account-password-status">
-      <span
-        class="status-value <%= currentUser.hasPassword ? 'status-positive' : 'status-neutral' %>"
+<section class="account-page entity-tabbed-page">
+  <ul class="nav nav-tabs entity-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link active"
+        id="account-general-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#account-general-pane"
+        type="button"
+        role="tab"
+        aria-controls="account-general-pane"
+        aria-selected="true"
       >
-        <i
-          class="bi <%= currentUser.hasPassword ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"
-        ></i>
-        <%= currentUser.hasPassword ? 'Configured' : 'Not configured' %>
-      </span>
+        <i class="bi bi-info-circle me-1"></i>
+        General info
+      </button>
+    </li>
 
-      <a class="btn btn-outline-primary btn-sm" href="/account/password">
-        <i class="bi bi-key me-1"></i>
-        <%= currentUser.hasPassword ? 'Change password' : 'Set password' %>
-      </a>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="account-authentication-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#account-authentication-pane"
+        type="button"
+        role="tab"
+        aria-controls="account-authentication-pane"
+        aria-selected="false"
+      >
+        <i class="bi bi-shield-lock me-1"></i>
+        Authentication
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content entity-tab-content">
+    <div
+      class="tab-pane fade show active"
+      id="account-general-pane"
+      role="tabpanel"
+      aria-labelledby="account-general-tab"
+      tabindex="0"
+    >
+      <div class="account-summary-grid">
+        <div class="account-summary-label">User name</div>
+        <div class="account-summary-value"><%= currentUser.name %></div>
+
+        <div class="account-summary-label">Email</div>
+        <div class="account-summary-value"><%= currentUser.email %></div>
+
+        <div class="account-summary-label">Website role</div>
+        <div class="account-summary-value">
+          <span class="badge rounded-pill text-bg-light border"><%= currentUser.role %></span>
+        </div>
+
+        <% if (currentUser.firstName) { %>
+          <div class="account-summary-label">First name</div>
+          <div class="account-summary-value"><%= currentUser.firstName %></div>
+        <% } %>
+
+        <% if (currentUser.lastName) { %>
+          <div class="account-summary-label">Last name</div>
+          <div class="account-summary-value"><%= currentUser.lastName %></div>
+        <% } %>
+
+        <% if (currentUser.description) { %>
+          <div class="account-summary-label">Description</div>
+          <div class="account-summary-value"><%= currentUser.description %></div>
+        <% } %>
+      </div>
+    </div>
+
+    <div
+      class="tab-pane fade"
+      id="account-authentication-pane"
+      role="tabpanel"
+      aria-labelledby="account-authentication-tab"
+      tabindex="0"
+    >
+      <%- include('../partials/authentication-summary', {
+        authenticationUser: currentUser,
+        authenticationIdentities,
+        showPasswordAction: true
+      }) %>
     </div>
   </div>
 </section>

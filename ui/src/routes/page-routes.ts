@@ -18,6 +18,8 @@ import { emailService } from '../email/email-service.js';
 
 import { renderPage } from '../render.js';
 
+import { externalIdentitiesForUser } from '../auth/user-authentication.js';
+
 export function createPageRoutes() {
   const router = Router();
 
@@ -85,17 +87,26 @@ export function createPageRoutes() {
 
     requireSignedIn,
 
-    async (_req, res) =>
-      renderPage(
-        res,
-        'pages/account',
+    async (_req, res, next) => {
+      try {
+        const user = res.locals.currentUser as SysUser;
+        const authenticationIdentities = await externalIdentitiesForUser(user.id);
 
-        {
-          title: `Account details - [${res.locals.currentUser.name}]`,
-          breadcrumbTitle: 'Account details',
-          titleIcon: 'bi-person-vcard',
-        },
-      ),
+        await renderPage(
+          res,
+          'pages/account',
+
+          {
+            title: `Account details - [${user.name}]`,
+            breadcrumbTitle: 'Account details',
+            titleIcon: 'bi-person-vcard',
+            authenticationIdentities,
+          },
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
   );
 
   router.get(
