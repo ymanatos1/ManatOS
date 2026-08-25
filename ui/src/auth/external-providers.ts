@@ -8,8 +8,8 @@ import { config } from '../config.js';
  * Keeping provider labels/icons/configuration in one place avoids repeating
  * provider-specific presentation logic throughout templates.
  *
- * Microsoft is intentionally visible but not yet implemented. It therefore
- * remains configured=false until its OAuth strategy/configuration is added.
+ * A provider becomes live only when all credentials required by its adapter
+ * are configured. Unconfigured providers remain visible in the UI.
  */
 export interface AuthProviderOption {
   key: ExternalProviderKey;
@@ -26,7 +26,12 @@ const providerOptions = (): AuthProviderOption[] => [
     key: 'microsoft',
     label: 'Microsoft',
     icon: 'bi-microsoft',
-    configured: false,
+    configured: Boolean(
+      config.MICROSOFT_CLIENT_ID &&
+        config.MICROSOFT_CLIENT_SECRET &&
+        config.MICROSOFT_CALLBACK_URL,
+    ),
+    scope: ['openid', 'profile', 'email', 'User.Read'],
   },
   {
     key: 'google',

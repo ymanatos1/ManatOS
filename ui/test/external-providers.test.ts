@@ -27,11 +27,11 @@ describe('external provider metadata', () => {
     });
   });
 
-  it('keeps Microsoft visible but unavailable until its OAuth strategy is implemented', () => {
+  it('exposes Microsoft provider metadata and current configuration state', () => {
     expect(externalProviderOption('microsoft')).toMatchObject({
       label: 'Microsoft',
       icon: 'bi-microsoft',
-      configured: false,
+      configured: true,
     });
   });
 

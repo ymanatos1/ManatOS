@@ -17,7 +17,7 @@ const externalExistingAccountView = resolve(
 );
 
 describe('authentication presentation', () => {
-  it('renders Microsoft as a visible unavailable provider in sign-in and registration', async () => {
+  it('renders configured Microsoft provider in sign-in and registration', async () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
@@ -33,8 +33,8 @@ describe('authentication presentation', () => {
     expect(microsoftButtons.length).toBe(2);
     expect(microsoftButtons.eq(0).text()).toContain('Register with Microsoft');
     expect(microsoftButtons.eq(1).text()).toContain('Continue with Microsoft');
-    expect(microsoftButtons.eq(0).is('[disabled]')).toBe(true);
-    expect(microsoftButtons.eq(1).is('[disabled]')).toBe(true);
+    expect(microsoftButtons.eq(0).is('[disabled]')).toBe(false);
+    expect(microsoftButtons.eq(1).is('[disabled]')).toBe(false);
     expect(microsoftButtons.eq(0).find('.bi-microsoft').length).toBe(1);
     expect(microsoftButtons.eq(1).find('.bi-microsoft').length).toBe(1);
   });

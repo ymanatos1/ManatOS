@@ -95,6 +95,11 @@ const schema = z.object({
   GITHUB_CLIENT_ID: optionalString,
   GITHUB_CLIENT_SECRET: optionalString,
   GITHUB_CALLBACK_URL: optionalString,
+
+  MICROSOFT_CLIENT_ID: optionalString,
+  MICROSOFT_CLIENT_SECRET: optionalString,
+  MICROSOFT_CALLBACK_URL: optionalString,
+  MICROSOFT_TENANT: z.string().trim().min(1).default('common'),
 });
 
 const parsedConfig = schema.parse(process.env);

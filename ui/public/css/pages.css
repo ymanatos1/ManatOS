@@ -384,8 +384,8 @@
 
 .external-link-field-row {
   display: grid;
-  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: start;
   gap: 1rem;
 }
 
@@ -393,7 +393,9 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  white-space: nowrap;
   font-weight: 500;
+  min-height: 38px;
   color: #24364d;
 }
 
