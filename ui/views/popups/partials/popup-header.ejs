@@ -1,0 +1,47 @@
+<%#
+  Shared popup header.
+
+  The popup architecture distinguishes the modal-level title/subtitle rendered here from
+  the contentTitle/contentParagraphs rendered inside a rich popup hero. This partial also
+  centralizes close behavior so normal Bootstrap dismissal and navigation-style close links
+  remain visually identical. Callers should pass semantic values, not presentation markup.
+%>
+<%
+  const popupHeaderClass = typeof headerClass !== 'undefined' && headerClass ? headerClass : '';
+  const popupTitleClass = typeof titleClass !== 'undefined' && titleClass ? titleClass : 'h4 mb-1';
+  const popupCloseLabel = typeof closeLabel !== 'undefined' && closeLabel ? closeLabel : 'Close';
+  const popupCloseTitle = typeof closeTitle !== 'undefined' && closeTitle ? closeTitle : '';
+  const popupCloseHref = typeof closeHref !== 'undefined' && closeHref ? closeHref : null;
+  const popupDismissible = typeof dismissible === 'undefined' ? true : Boolean(dismissible);
+%>
+<div class="modal-header <%= popupHeaderClass %>">
+  <div>
+    <h2 class="modal-title <%= popupTitleClass %>" id="<%= labelId %>">
+      <% if (typeof icon !== 'undefined' && icon) { %>
+        <i class="bi <%= icon %> me-2" aria-hidden="true"></i>
+      <% } %>
+      <%= modalTitle %>
+    </h2>
+
+    <% if (typeof modalSubtitle !== 'undefined' && modalSubtitle) { %>
+      <p class="modal-subtitle mb-0"><%= modalSubtitle %></p>
+    <% } %>
+  </div>
+
+  <% if (popupCloseHref) { %>
+    <a
+      class="btn-close"
+      href="<%= popupCloseHref %>"
+      aria-label="<%= popupCloseLabel %>"
+      <% if (popupCloseTitle) { %>title="<%= popupCloseTitle %>"<% } %>
+    ></a>
+  <% } else if (popupDismissible) { %>
+    <button
+      class="btn-close"
+      type="button"
+      data-bs-dismiss="modal"
+      aria-label="<%= popupCloseLabel %>"
+      <% if (popupCloseTitle) { %>title="<%= popupCloseTitle %>"<% } %>
+    ></button>
+  <% } %>
+</div>

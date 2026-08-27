@@ -1,0 +1,49 @@
+<%#
+  Reusable rich-popup hero: optional illustration + content title + contentParagraphs[].
+
+  Illustrations are polymorphic. Static modes cover generic auth purposes such as sign-in,
+  registration and passwords; provider mode delegates to a provider-aware illustration so
+  Microsoft/Google/Facebook/GitHub (and future providers) can reuse the same popup layout.
+  A content paragraph may be a plain string or a structured prefix/emphasis/suffix object.
+
+  Spacing is intentionally not supplied by individual callers. Semantic popup spacing tokens in
+  ui.css control the title-to-first-paragraph gap, paragraph rhythm, illustration/copy gap and
+  hero-to-content distance consistently across the rich-popup family.
+%>
+<%
+  const popupIntroClass = typeof introClass !== 'undefined' && introClass
+    ? introClass
+    : 'auth-entry-intro';
+  const popupCopyClass = typeof copyClass !== 'undefined' && copyClass
+    ? copyClass
+    : 'auth-entry-copy';
+  const popupContentParagraphs = Array.isArray(contentParagraphs) ? contentParagraphs : [];
+  const popupIllustration = typeof illustration !== 'undefined' ? illustration : null;
+%>
+<div class="<%= popupIntroClass %>">
+  <% if (popupIllustration?.kind === 'provider') { %>
+    <%- include('../illustrations/external-link-illustration', {
+      provider: popupIllustration.provider,
+      context: popupIllustration.context
+    }) %>
+  <% } else if (popupIllustration?.kind === 'static') { %>
+    <%- include('../illustrations/auth-entry-illustration', { mode: popupIllustration.name }) %>
+  <% } %>
+
+  <div class="<%= popupCopyClass %>">
+    <% if (typeof contentTitle !== 'undefined' && contentTitle) { %>
+      <h3 class="popup-content-title"><%= contentTitle %></h3>
+    <% } %>
+
+    <% for (let paragraphIndex = 0; paragraphIndex < popupContentParagraphs.length; paragraphIndex += 1) { %>
+      <% const paragraph = popupContentParagraphs[paragraphIndex]; %>
+      <p class="popup-content-paragraph<%= paragraphIndex === popupContentParagraphs.length - 1 ? ' mb-0' : '' %>">
+        <% if (typeof paragraph === 'string') { %>
+          <%= paragraph %>
+        <% } else { %>
+          <%= paragraph.prefix || '' %><% if (paragraph.emphasis) { %><strong><%= paragraph.emphasis %></strong><% } %><%= paragraph.suffix || '' %>
+        <% } %>
+      </p>
+    <% } %>
+  </div>
+</div>

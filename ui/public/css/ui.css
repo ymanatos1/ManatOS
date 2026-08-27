@@ -83,6 +83,28 @@
   --bs-modal-width: 560px;
 }
 
+/*
+ * Popup presentation tokens.
+ *
+ * Recurring distances belong to the popup architecture rather than to individual dialogs.
+ * Keeping the values semantic and centralized prevents auth/form popups from drifting apart
+ * and gives future themes or density variants one controlled place to adjust popup rhythm.
+ */
+.auth-primary-modal {
+  --popup-header-padding-y: 1.1rem;
+  --popup-header-padding-x: 1.35rem;
+  --popup-body-padding-top: 1.2rem;
+  --popup-body-padding-x: 1.35rem;
+  --popup-body-padding-bottom: 1.3rem;
+  --popup-footer-padding-top: 0.95rem;
+  --popup-footer-padding-x: 1.35rem;
+  --popup-footer-padding-bottom: 1.05rem;
+  --popup-hero-columns-gap: 1.45rem;
+  --popup-hero-to-content-gap: 1.15rem;
+  --popup-content-title-to-first-paragraph-gap: 0.65rem;
+  --popup-content-paragraph-gap: 0.35rem;
+}
+
 .auth-primary-modal .modal-content {
   overflow: hidden;
   border-color: #cbd8e8;
@@ -90,23 +112,29 @@
 }
 
 .auth-primary-modal .modal-header {
-  padding: 1.1rem 1.35rem;
+  padding: var(--popup-header-padding-y) var(--popup-header-padding-x);
 }
 
 .auth-primary-modal-body {
-  padding: 1.2rem 1.35rem 1.3rem;
+  padding:
+    var(--popup-body-padding-top)
+    var(--popup-body-padding-x)
+    var(--popup-body-padding-bottom);
 }
 
 .auth-primary-modal .modal-footer {
-  padding: 0.95rem 1.35rem 1.05rem;
+  padding:
+    var(--popup-footer-padding-top)
+    var(--popup-footer-padding-x)
+    var(--popup-footer-padding-bottom);
 }
 
 .auth-entry-intro {
   display: grid;
   grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.22fr);
   align-items: center;
-  gap: 1.45rem;
-  padding-bottom: 1.15rem;
+  gap: var(--popup-hero-columns-gap);
+  padding-bottom: var(--popup-hero-to-content-gap);
   border-bottom: 1px solid var(--manatos-border);
 }
 
@@ -116,16 +144,32 @@
   line-height: 1.5;
 }
 
-.auth-entry-copy h3 {
-  margin: 0 0 0.35rem;
+.auth-entry-copy h3,
+.popup-content-title {
+  margin: 0;
   color: var(--manatos-navy);
   font-size: 1.08rem;
   font-weight: 700;
 }
 
-.auth-entry-copy p {
+.auth-entry-copy p,
+.popup-content-paragraph {
+  margin: 0;
   color: #63758b;
   font-size: 0.92rem;
+}
+
+/*
+ * Rich-popup copy rhythm is shared by every popup using rich-popup-hero.ejs.
+ * The larger first gap separates the semantic content title from its explanatory copy;
+ * subsequent paragraphs remain closer together so they read as one coherent message.
+ */
+.popup-content-title + .popup-content-paragraph {
+  margin-top: var(--popup-content-title-to-first-paragraph-gap);
+}
+
+.popup-content-paragraph + .popup-content-paragraph {
+  margin-top: var(--popup-content-paragraph-gap);
 }
 
 .auth-entry-illustration {
@@ -1069,5 +1113,48 @@ body.anonymous .workspace {
   .auth-password-request-dialog,
   .auth-password-reset-modal .auth-password-form-dialog {
     max-width: calc(100% - 1rem);
+  }
+}
+
+/* =========================================================
+   Shared popup infrastructure
+   ========================================================= */
+
+.popup-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.popup-footer-left,
+.popup-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.popup-footer-right {
+  margin-left: auto;
+}
+
+/*
+ * The unavailable-link popup has no form/content section between its hero and
+ * footer. Keep only the footer separator so the two adjacent dividers do not
+ * render as a visual double line.
+ */
+.auth-password-link-unavailable-body .auth-password-request-intro {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 575.98px) {
+  .popup-footer {
+    align-items: stretch;
+  }
+
+  .popup-footer-left,
+  .popup-footer-right {
+    flex-wrap: wrap;
   }
 }

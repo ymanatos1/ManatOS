@@ -1,0 +1,38 @@
+<%#
+  Render one semantic popup action as either a link or a button.
+
+  The action model deliberately carries behavior (dismiss/toggle/target/data attributes)
+  separately from popup content. This keeps caller templates concise and avoids subtly
+  different Bootstrap wiring being copied into every footer.
+%>
+<%
+  const popupAction = action || {};
+  const popupActionClass = `btn ${popupAction.variant || 'btn-secondary'}${popupAction.className ? ` ${popupAction.className}` : ''}`;
+%>
+<% if (popupAction.href) { %>
+  <a
+    class="<%= popupActionClass %>"
+    href="<%= popupAction.href %>"
+    <% if (popupAction.id) { %>id="<%= popupAction.id %>"<% } %>
+  >
+    <% if (popupAction.icon) { %><i class="bi <%= popupAction.icon %> me-1" aria-hidden="true"></i><% } %>
+    <%= popupAction.label %>
+  </a>
+<% } else { %>
+  <button
+    class="<%= popupActionClass %>"
+    type="<%= popupAction.type || 'button' %>"
+    <% if (popupAction.id) { %>id="<%= popupAction.id %>"<% } %>
+    <% if (popupAction.dismiss) { %>data-bs-dismiss="modal"<% } %>
+    <% if (popupAction.toggle) { %>data-bs-toggle="<%= popupAction.toggle %>"<% } %>
+    <% if (popupAction.target) { %>data-bs-target="<%= popupAction.target %>"<% } %>
+    <% if (popupAction.disabled) { %>disabled<% } %>
+    <% if (popupAction.onclick) { %>onclick="<%= popupAction.onclick %>"<% } %>
+    <% if (popupAction.data) { for (const [dataName, dataValue] of Object.entries(popupAction.data)) { %>
+      data-<%= dataName %>="<%= dataValue %>"
+    <% }} %>
+  >
+    <% if (popupAction.icon) { %><i class="bi <%= popupAction.icon %> me-1" aria-hidden="true"></i><% } %>
+    <%= popupAction.label %>
+  </button>
+<% } %>

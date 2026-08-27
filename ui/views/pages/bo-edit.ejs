@@ -139,96 +139,11 @@
   </form>
 <% } %>
 
-<% if (!isNew && permissions.delete && !isOwnSysUser) { %>
-  <div
-    class="modal fade"
-    id="deleteEntryModal"
-    tabindex="-1"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false"
-  >
-    <div class="modal-dialog">
-      <form
-        class="modal-content"
-        method="post"
-        action="/bo/<%= definition.key %>/<%= item.id %>/delete"
-      >
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-        <div class="modal-header bg-danger-subtle">
-          <h2 class="modal-title h5">
-            <i class="bi bi-trash me-2"></i>
-            Delete <%= definition.boMetadata.name %>
-          </h2>
-
-          <button
-            class="btn-close"
-            type="button"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
-        </div>
-
-        <div class="modal-body">
-          Are you sure you want to permanently delete
-          <strong><%= item[definition.boMetadata.primaryField] %></strong>?
-
-          <p class="text-danger mt-2 mb-0">
-            This action cannot be undone.
-          </p>
-        </div>
-
-        <div class="modal-footer">
-          <button
-            class="btn btn-secondary"
-            type="button"
-            data-bs-dismiss="modal"
-          >
-            Cancel
-          </button>
-
-          <button class="btn btn-danger" type="submit">
-            Delete
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-<% } %>
-
-<div
-  class="modal fade"
-  id="unsavedChangesModal"
-  tabindex="-1"
-  data-bs-backdrop="static"
-  data-bs-keyboard="false"
->
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-warning-subtle">
-        <h2 class="modal-title h5">
-          <i class="bi bi-exclamation-triangle me-2"></i>
-          Unsaved changes
-        </h2>
-      </div>
-
-      <div class="modal-body">
-        You have changes that have not been saved.
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-unsaved-action="cancel">
-          Cancel
-        </button>
-
-        <button class="btn btn-outline-danger" data-unsaved-action="discard">
-          Discard
-        </button>
-
-        <button class="btn btn-primary" data-unsaved-action="save">
-          Save
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+<%- include('../popups/messages/bo-edit-confirmations', {
+  isNew,
+  permissions,
+  isOwnSysUser,
+  definition,
+  item,
+  csrfToken
+}) %>

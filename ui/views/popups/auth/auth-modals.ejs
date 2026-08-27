@@ -1,4 +1,14 @@
+<%#
+  Authentication popup family.
+
+  These dialogs intentionally share the popup infrastructure under views/popups/partials:
+  popup-header owns the modal-level title/subtitle, rich-popup-hero owns the illustration
+  plus contentTitle/contentParagraphs, and popup-footer owns the Back-left/actions-right
+  convention. Keeping the structural chrome here declarative prevents individual auth
+  flows from drifting visually while still allowing each flow to provide its own fields.
+%>
 <% if (!currentUser) { %>
+  <%# Entry-point dialog: choose external-provider registration or local email registration. %>
   <div
     class="modal fade auth-primary-modal"
     id="signUpMethodModal"
@@ -8,37 +18,19 @@
   >
     <div class="modal-dialog modal-dialog-centered auth-modal-dialog">
       <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <h2 class="modal-title h4 mb-1" id="signUpMethodModalLabel">
-              <i class="bi bi-person-plus me-2" aria-hidden="true"></i>
-              Create your account
-            </h2>
-            <p class="modal-subtitle mb-0">
-              Choose how you want to join ManatOS.
-            </p>
-          </div>
-          <button
-            class="btn-close"
-            type="button"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
-        </div>
+        <%- include('../partials/popup-header', {
+          labelId: 'signUpMethodModalLabel',
+          icon: 'bi-person-plus',
+          modalTitle: popupContent.auth.createAccount.modalTitle,
+          modalSubtitle: popupContent.auth.createAccount.modalSubtitle
+        }) %>
 
         <div class="modal-body auth-primary-modal-body">
-          <div class="auth-entry-intro">
-            <%- include('auth/auth-entry-illustration', { mode: 'register' }) %>
-
-            <div class="auth-entry-copy">
-              <h3>Welcome to ManatOS</h3>
-              <p class="mb-0">
-                Create a new account using a supported external provider or register directly
-                with your email and password. You can securely connect additional providers to
-                the same account later.
-              </p>
-            </div>
-          </div>
+          <%- include('../partials/rich-popup-hero', {
+            illustration: { kind: 'static', name: 'register' },
+            contentTitle: popupContent.auth.createAccount.contentTitle,
+            contentParagraphs: popupContent.auth.createAccount.contentParagraphs
+          }) %>
 
           <div class="auth-methods-grid auth-register-methods">
             <section class="auth-method-card" aria-labelledby="registerExternalProviderHeading">
@@ -49,13 +41,13 @@
               <p class="auth-method-description">
                 Register with an available account you already use.
               </p>
-              <%- include('auth/external-provider-buttons', { mode: 'register' }) %>
+              <%- include('../partials/external-provider-buttons', { mode: 'register' }) %>
             </section>
 
             <section class="auth-method-card auth-email-method" aria-labelledby="registerEmailHeading">
               <div class="auth-modal-section-heading" id="registerEmailHeading">
                 <i class="bi bi-envelope" aria-hidden="true"></i>
-                ManatOS account
+                Your account
               </div>
               <p class="auth-method-description">
                 Prefer a traditional account?<br>
@@ -93,6 +85,7 @@
   </div>
 
 
+  <%# Local registration form. Password-policy UI is shared with the other password flows. %>
   <div
     class="modal fade auth-primary-modal auth-email-registration-modal"
     id="emailRegistrationModal"
@@ -112,36 +105,20 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <div class="modal-header">
-          <div>
-            <h2 class="modal-title h4 mb-1" id="emailRegistrationModalLabel">
-              <i class="bi bi-envelope-plus me-2" aria-hidden="true"></i>
-              Register with Email
-            </h2>
-            <p class="modal-subtitle mb-0">
-              Create your account with an email address and password.
-            </p>
-          </div>
-          <button
-            class="btn-close"
-            type="button"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
-        </div>
+        <%- include('../partials/popup-header', {
+          labelId: 'emailRegistrationModalLabel',
+          icon: 'bi-envelope-plus',
+          modalTitle: popupContent.auth.registerEmail.modalTitle,
+          modalSubtitle: popupContent.auth.registerEmail.modalSubtitle
+        }) %>
 
         <div class="modal-body auth-primary-modal-body auth-email-registration-body">
-          <div class="auth-email-registration-intro">
-            <%- include('auth/auth-entry-illustration', { mode: 'register' }) %>
-
-            <div class="auth-entry-copy">
-              <h3>Create your account</h3>
-              <p class="mb-0">
-                Choose a user name and secure your account with your email and password.
-                You can connect supported external providers later.
-              </p>
-            </div>
-          </div>
+          <%- include('../partials/rich-popup-hero', {
+            introClass: 'auth-email-registration-intro',
+            illustration: { kind: 'static', name: 'register' },
+            contentTitle: popupContent.auth.registerEmail.contentTitle,
+            contentParagraphs: popupContent.auth.registerEmail.contentParagraphs
+          }) %>
 
           <section class="auth-registration-form-card" aria-labelledby="emailRegistrationDetailsHeading">
             <div class="auth-modal-section-heading" id="emailRegistrationDetailsHeading">
@@ -209,38 +186,28 @@
                 <i class="bi bi-shield-check" aria-hidden="true"></i>
                 Choose a secure password
               </div>
-              <%- include('password-rules', { includeMatchRule: true }) %>
+              <%- include('../../partials/password-rules', { includeMatchRule: true }) %>
             </div>
           </section>
         </div>
 
-        <div class="modal-footer auth-step-footer">
-          <button
-            class="btn btn-outline-secondary auth-back-button"
-            type="button"
-            data-bs-dismiss="modal"
-            data-bs-toggle="modal"
-            data-bs-target="#signUpMethodModal"
-          >
-            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
-            Back
-          </button>
-
-          <div class="auth-step-footer-actions">
-            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">
-              Cancel
-            </button>
-            <button class="btn btn-primary" type="submit" data-password-submit disabled>
-              <i class="bi bi-person-plus me-1"></i>
-              Create account
-            </button>
-          </div>
-        </div>
+        <%- include('../partials/popup-footer', {
+          footerClass: 'auth-step-footer',
+          leftActions: [{
+            label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary',
+            className: 'auth-back-button', dismiss: true, toggle: 'modal', target: '#signUpMethodModal'
+          }],
+          rightActions: [
+            { label: 'Cancel', variant: 'btn-outline-secondary', dismiss: true },
+            { label: 'Create account', icon: 'bi-person-plus', variant: 'btn-primary', type: 'submit', disabled: true, data: { 'password-submit': '' } }
+          ]
+        }) %>
       </form>
     </div>
   </div>
 
 
+  <%# Sign-in dialog: provider choices and local credentials coexist in one consistent shell. %>
   <div
     class="modal fade auth-primary-modal"
     id="signInModal"
@@ -256,36 +223,19 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <div class="modal-header">
-          <div>
-            <h2 class="modal-title h4 mb-1" id="signInModalLabel">
-              <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>
-              Sign in
-            </h2>
-            <p class="modal-subtitle mb-0">
-              Choose how you want to access ManatOS.
-            </p>
-          </div>
-          <button
-            class="btn-close"
-            type="button"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
-        </div>
+        <%- include('../partials/popup-header', {
+          labelId: 'signInModalLabel',
+          icon: 'bi-box-arrow-in-right',
+          modalTitle: popupContent.auth.signIn.modalTitle,
+          modalSubtitle: popupContent.auth.signIn.modalSubtitle
+        }) %>
 
         <div class="modal-body auth-primary-modal-body">
-          <div class="auth-entry-intro">
-            <%- include('auth/auth-entry-illustration', { mode: 'signin' }) %>
-
-            <div class="auth-entry-copy">
-              <h3>Welcome back</h3>
-              <p class="mb-0">
-                Continue with a connected external provider or use your ManatOS user name/email
-                and password. Either option brings you securely back to the same account.
-              </p>
-            </div>
-          </div>
+          <%- include('../partials/rich-popup-hero', {
+            illustration: { kind: 'static', name: 'signin' },
+            contentTitle: popupContent.auth.signIn.contentTitle,
+            contentParagraphs: popupContent.auth.signIn.contentParagraphs
+          }) %>
 
           <div class="auth-methods-grid">
             <section class="auth-method-card" aria-labelledby="signInExternalProviderHeading">
@@ -296,16 +246,16 @@
               <p class="auth-method-description">
                 Use a configured provider already connected to your account.
               </p>
-              <%- include('auth/external-provider-buttons', { mode: 'signin' }) %>
+              <%- include('../partials/external-provider-buttons', { mode: 'signin' }) %>
             </section>
 
             <section class="auth-method-card" aria-labelledby="signInCredentialsHeading">
               <div class="auth-modal-section-heading" id="signInCredentialsHeading">
                 <i class="bi bi-person-lock" aria-hidden="true"></i>
-                ManatOS credentials
+                Your credentials
               </div>
               <p class="auth-method-description">
-                Sign in directly with your ManatOS credentials.
+                Sign in directly with your credentials.
               </p>
 
               <label class="form-label" for="signInIdentity">Email or user name</label>
@@ -340,20 +290,23 @@
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">
-            Cancel
-          </button>
-          <button class="btn btn-primary" type="submit">
-            <i class="bi bi-box-arrow-in-right me-1"></i>
-            Sign in
-          </button>
-        </div>
+        <%- include('../partials/popup-footer', {
+          leftActions: [],
+          rightActions: [
+            { label: 'Cancel', variant: 'btn-outline-secondary', dismiss: true },
+            { label: 'Sign in', icon: 'bi-box-arrow-in-right', variant: 'btn-primary', type: 'submit' }
+          ]
+        }) %>
       </form>
     </div>
   </div>
 
 
+  <%#
+    Password-recovery request. The public response is intentionally privacy-neutral:
+    the UI accepts an eligible identity shape, while the server does not reveal whether
+    that identity actually maps to an account.
+  %>
   <div
     class="modal fade auth-primary-modal auth-password-request-modal"
     id="passwordRequestModal"
@@ -373,36 +326,20 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <div class="modal-header">
-          <div>
-            <h2 class="modal-title h4 mb-1" id="passwordRequestModalLabel">
-              <i class="bi bi-key me-2" aria-hidden="true"></i>
-              Forgot or set password
-            </h2>
-            <p class="modal-subtitle mb-0">
-              Recover access to your account.
-            </p>
-          </div>
-          <button
-            class="btn-close"
-            type="button"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
-        </div>
+        <%- include('../partials/popup-header', {
+          labelId: 'passwordRequestModalLabel',
+          icon: 'bi-key',
+          modalTitle: popupContent.auth.passwordRequest.modalTitle,
+          modalSubtitle: popupContent.auth.passwordRequest.modalSubtitle
+        }) %>
 
         <div class="modal-body auth-primary-modal-body auth-password-request-body">
-          <div class="auth-entry-intro auth-password-request-intro">
-            <%- include('auth/auth-entry-illustration', { mode: 'password' }) %>
-
-            <div class="auth-entry-copy">
-              <h3>Recover access</h3>
-              <p class="mb-0">
-                Enter your email address or user name. If an eligible account matches,
-                password instructions will be sent to its registered email address.
-              </p>
-            </div>
-          </div>
+          <%- include('../partials/rich-popup-hero', {
+            introClass: 'auth-entry-intro auth-password-request-intro',
+            illustration: { kind: 'static', name: 'password' },
+            contentTitle: popupContent.auth.passwordRequest.contentTitle,
+            contentParagraphs: popupContent.auth.passwordRequest.contentParagraphs
+          }) %>
 
           <section class="auth-registration-form-card auth-password-request-card" aria-labelledby="passwordRequestDetailsHeading">
             <div class="auth-modal-section-heading" id="passwordRequestDetailsHeading">
@@ -434,23 +371,17 @@
           </section>
         </div>
 
-        <div class="modal-footer auth-step-footer">
-          <button
-            class="btn btn-outline-secondary auth-back-button"
-            type="button"
-            data-bs-dismiss="modal"
-            data-bs-toggle="modal"
-            data-bs-target="#signInModal"
-          >
-            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
-            Back
-          </button>
-
-          <button class="btn btn-primary" type="submit" data-recovery-submit disabled>
-            <i class="bi bi-send me-1" aria-hidden="true"></i>
-            Send instructions
-          </button>
-        </div>
+        <%- include('../partials/popup-footer', {
+          footerClass: 'auth-step-footer',
+          leftActions: [{
+            label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary',
+            className: 'auth-back-button', dismiss: true, toggle: 'modal', target: '#signInModal'
+          }],
+          rightActions: [{
+            label: 'Send instructions', icon: 'bi-send', variant: 'btn-primary',
+            type: 'submit', disabled: true, data: { 'recovery-submit': '' }
+          }]
+        }) %>
       </form>
     </div>
   </div>

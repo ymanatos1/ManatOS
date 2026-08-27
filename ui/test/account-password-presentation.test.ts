@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { popupContent } from '../src/presentation/popup-content.js';
+
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const view = resolve(testDirectory, '../views/pages/account-password.ejs');
 
@@ -12,6 +14,7 @@ describe('account password presentation', () => {
   it('shows the signed-in user beside current password and uses busy-submit protection', async () => {
     const html = await ejs.renderFile(view, {
       csrfToken: 'test-csrf',
+      popupContent,
       currentUser: {
         id: 'user-1',
         name: 'Admin',

@@ -102,11 +102,13 @@ Normal list calls return `success + data`, with collection entries under `data.i
 
 ## Registration and sign-in
 
-The website registration popup can offer:
+The website registration/sign-in UI can offer:
 
+- Microsoft (when configured)
 - Google (when configured)
 - Facebook (when configured)
-- Email
+- GitHub (when configured)
+- local email/user-name + password
 
 Email registration asks for unique user-name, unique email and password.
 
@@ -121,11 +123,11 @@ Passwords require:
 
 Passwords are Argon2id hashes. API/UI projections expose `hasPassword`, never the hash.
 
-Local sign-in accepts **email or user-name + password**. Google/Facebook sign-in never asks for a local password. An externally registered user can later set one.
+Local sign-in accepts **email or user-name + password**. External-provider sign-in never asks for a local password. An externally registered user can later set one.
 
-The combined welcome/verification email and password reset/change emails currently use a console email adapter. Real SMTP can be added behind `IEmailService`.
+The UI contains no SMTP credentials. Its email gateway delegates verification, password-reset and password-change delivery to trusted internal API endpoints. The API supports real SMTP delivery through Nodemailer when mail configuration is enabled.
 
-The **Forgot or set password** flow uses one-time hashed transient tokens and deliberately returns a generic public response to avoid account enumeration.
+The **Forgot or set password** flow uses one-time hashed transient tokens, keeps only the newest outstanding reset token usable per user, and deliberately returns a privacy-neutral public response to avoid account enumeration. Detailed flow/storage semantics are documented in `docs/authentication-flows.md`.
 
 ## API authentication sessions
 
@@ -157,19 +159,21 @@ The baseline uses Express MemoryStore for development/single-process use only. A
 
 ## UI
 
-The supplied ManatOS logo/favicon are included.
+The UI is an independently runnable Express/EJS website with an adaptive application shell, metadata-driven SysBO pages and reusable popup/modal infrastructure. See **[UI Architecture](docs/UI.md)** for the complete UI reference.
 
 The responsive shell provides:
 
-- navy top bar with clickable company logo;
-- version at the right;
-- sign-in/sign-up icons or logged-user profile menu;
-- Account details, Personal details and Logout menu items;
+- theme-aware clickable company logo and version;
+- anonymous sign-in/sign-up or authenticated notifications/account controls;
 - metadata-driven nested horizontal navigation;
-- authenticated-only nested vertical navigation;
-- central workspace;
-- optional right details panel;
-- corporate footer.
+- compact signed-in identity and language selector on the horizontal navigation;
+- authenticated nested/collapsible left navigation;
+- central workspace with breadcrumb, page actions, title and content;
+- optional contextual right Details panel;
+- corporate footer;
+- global popup layer and locked/busy operation overlay.
+
+Popup presentation is centralized under `ui/views/popups/` with shared header/footer/action/hero primitives and three practical families: **rich/auth**, **message/confirmation**, and **other/form** dialogs. Static and provider-dependent illustrations are reusable rather than duplicated.
 
 Generic SysBO CRUD pages provide:
 
@@ -180,7 +184,7 @@ Generic SysBO CRUD pages provide:
 - fully configurable pagination;
 - green **Add new**;
 - edit by clicking the primary/name field;
-- red **Delete entry** + confirmation popup;
+- authorization-aware **Delete entry** + confirmation popup;
 - unsaved-changes **Cancel / Discard / Save** popup;
 - blue Play button on SysApplication, opening the initial playground placeholder.
 
@@ -198,6 +202,8 @@ app
 ├── sysBO
 └── navigation
 ```
+
+The UI test suite combines deterministic TypeScript tests, EJS/Cheerio presentation tests and Supertest route/integration tests. Real-browser Playwright E2E coverage remains a planned complementary layer.
 
 ## Error handling and semantic operation traces
 
@@ -246,6 +252,8 @@ Future SQL/database adapters can replace the current implementation without chan
 - [Architecture](docs/Architecture.md)
 - [Storage](docs/Storage.md)
 - [Authentication](docs/Authentication.md)
+- [Authentication Flows](docs/authentication-flows.md)
+- [UI Architecture](docs/UI.md)
 - [Error Handling](docs/Error-Handling.md)
 - [Testing](docs/Testing.md)
 
@@ -256,7 +264,7 @@ Detailed architectural comments are also kept next to important interfaces/class
 This is a baseline rather than a completed production system. In particular:
 
 - UI sessions and verification/reset tokens are memory-only.
-- Real SMTP is not configured.
-- Google/Facebook require real provider credentials/callback URLs.
-- UI integration tests are scaffolded; broaden them as pages stabilize.
+- SMTP delivery is available but remains environment/configuration dependent.
+- Microsoft/Google/Facebook/GitHub require real provider credentials and callback URLs.
+- Real-browser Playwright E2E tests are not yet part of the automated suite.
 - SysApplication playground internals are intentionally deferred.

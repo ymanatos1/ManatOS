@@ -35,15 +35,14 @@ describe('home presentation', () => {
     expect(createButton.text()).not.toContain('Guest');
   });
 
-  it('keeps the signed-in welcome state instead of registration actions', async () => {
+  it('keeps signed-in session identity out of the Home hero', async () => {
     const html = await ejs.renderFile(homeView, {
       currentUser: { name: 'Yiannis', role: 'Admin' },
     });
     const $ = load(html);
 
-    expect($('.welcome-panel').text()).toContain('Yiannis');
-    expect($('.welcome-panel').text()).toContain('Admin');
-    expect($('.home-hero-heading-row').hasClass('is-signed-in')).toBe(true);
+    expect($('.welcome-panel').length).toBe(0);
+    expect($('.home-hero-heading-row').hasClass('is-signed-in')).toBe(false);
     expect($('[data-bs-target="#signUpMethodModal"]').length).toBe(0);
   });
 });

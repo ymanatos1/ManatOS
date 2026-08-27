@@ -368,6 +368,39 @@ body[data-ui-theme='lighter'] .version-badge {
 }
 
 /* Language selector occupies the far-right side of the horizontal menu. */
+.horizontal-user-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  margin-left: auto;
+  margin-right: 1.35rem;
+  color: var(--manatos-text);
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.horizontal-user-identity > i {
+  color: var(--manatos-blue);
+  font-size: 1rem;
+}
+
+.horizontal-user-name {
+  font-weight: 700;
+}
+
+.horizontal-user-role {
+  padding-left: 0.42rem;
+  border-left: 1px solid var(--manatos-border);
+  color: var(--manatos-muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 991.98px) {
+  .horizontal-user-identity {
+    margin: 0.45rem 0 0.3rem;
+  }
+}
+
 .horizontal-language-nav {
   flex-shrink: 0;
 }

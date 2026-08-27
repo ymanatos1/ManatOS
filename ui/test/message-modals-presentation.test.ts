@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const view = resolve(testDirectory, '../views/partials/message-modals.ejs');
+const view = resolve(testDirectory, '../views/popups/messages/message-modals.ejs');
 
 describe('message modal presentation', () => {
   it('supports a success title, message and explicit follow-up action', async () => {

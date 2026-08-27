@@ -1,0 +1,89 @@
+<%#
+  SysBO edit-page confirmation dialogs.
+
+  These remain in the message popup family because they ask for confirmation rather than
+  collecting domain input. Required bo-edit state is passed explicitly by the caller; do not
+  rely on undeclared ambient EJS variables, which makes partial dependencies hard to test.
+%>
+<% if (!isNew && permissions.delete && !isOwnSysUser) { %>
+  <div
+    class="modal fade"
+    id="deleteEntryModal"
+    tabindex="-1"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+    aria-labelledby="deleteEntryModalLabel"
+  >
+    <div class="modal-dialog">
+      <form
+        class="modal-content"
+        method="post"
+        action="/bo/<%= definition.key %>/<%= item.id %>/delete"
+      >
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <%- include('../partials/popup-header', {
+          labelId: 'deleteEntryModalLabel',
+          icon: 'bi-trash',
+          titleClass: 'h5',
+          headerClass: 'bg-danger-subtle',
+          modalTitle: `Delete ${definition.boMetadata.name}`,
+          modalSubtitle: null
+        }) %>
+
+        <div class="modal-body">
+          Are you sure you want to permanently delete
+          <strong><%= item[definition.boMetadata.primaryField] %></strong>?
+
+          <p class="text-danger mt-2 mb-0">
+            This action cannot be undone.
+          </p>
+        </div>
+
+        <%- include('../partials/popup-footer', {
+          leftActions: [],
+          rightActions: [
+            { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
+            { label: 'Delete', variant: 'btn-danger', type: 'submit' }
+          ]
+        }) %>
+      </form>
+    </div>
+  </div>
+<% } %>
+
+<div
+  class="modal fade"
+  id="unsavedChangesModal"
+  tabindex="-1"
+  aria-labelledby="unsavedChangesModalLabel"
+  data-bs-backdrop="static"
+  data-bs-keyboard="false"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <%- include('../partials/popup-header', {
+        labelId: 'unsavedChangesModalLabel',
+        icon: 'bi-exclamation-triangle',
+        titleClass: 'h5',
+        headerClass: 'bg-warning-subtle',
+        modalTitle: 'Unsaved changes',
+        modalSubtitle: null,
+        dismissible: false
+      }) %>
+
+      <div class="modal-body">
+        You have changes that have not been saved.
+      </div>
+
+      <%- include('../partials/popup-footer', {
+        leftActions: [],
+        rightActions: [
+          { label: 'Cancel', variant: 'btn-secondary', data: { 'unsaved-action': 'cancel' } },
+          { label: 'Discard', variant: 'btn-outline-danger', data: { 'unsaved-action': 'discard' } },
+          { label: 'Save', variant: 'btn-primary', data: { 'unsaved-action': 'save' } }
+        ]
+      }) %>
+    </div>
+  </div>
+</div>

@@ -1,3 +1,9 @@
+<%#
+  Provider-aware illustration used when an external identity is being linked or resolved.
+  Unlike static auth illustrations, this component derives its provider tile from metadata,
+  allowing the same rich-popup structure to represent Microsoft, Google, Facebook, GitHub
+  and future authentication providers without provider-specific popup templates.
+%>
 <div class="external-link-illustration" aria-hidden="true">
   <div class="external-link-provider-tile">
     <i class="bi <%= provider.icon %>"></i>

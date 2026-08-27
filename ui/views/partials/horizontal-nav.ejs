@@ -20,6 +20,14 @@
         <% } %>
       </ul>
 
+      <% if (currentUser) { %>
+        <div class="horizontal-user-identity" aria-label="Signed-in account">
+          <i class="bi bi-person-check" aria-hidden="true"></i>
+          <span class="horizontal-user-name"><%= currentUser.name %></span>
+          <span class="horizontal-user-role"><%= currentUser.role %></span>
+        </div>
+      <% } %>
+
       <!--
         UI-language selector foundation.
 

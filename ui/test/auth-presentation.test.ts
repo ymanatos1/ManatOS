@@ -5,10 +5,12 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { popupContent } from '../src/presentation/popup-content.js';
+
 import { availableProviders } from '../src/auth/external-providers.js';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const authModalsView = resolve(testDirectory, '../views/partials/auth-modals.ejs');
+const authModalsView = resolve(testDirectory, '../views/popups/auth/auth-modals.ejs');
 const externalLinkView = resolve(testDirectory, '../views/pages/external-link.ejs');
 const externalRegistrationView = resolve(testDirectory, '../views/pages/external-registration.ejs');
 const externalExistingAccountView = resolve(
@@ -22,6 +24,7 @@ describe('authentication presentation', () => {
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
     });
 
     const $ = load(html);
@@ -44,6 +47,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(externalLinkView, {
       csrfToken: 'test-csrf',
       authProviders,
+      popupContent,
       profile: {
         provider: 'microsoft',
         providerSubject: 'microsoft-subject',
@@ -67,16 +71,33 @@ describe('authentication presentation', () => {
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
     });
 
     const $ = load(html);
 
     expect($('#signInModal .auth-entry-copy h3').text().trim()).toBe('Welcome back');
     expect($('#signInModal .auth-entry-illustration.is-signin').length).toBe(1);
+    expect($('#signInModal .modal-subtitle').text().trim()).toBe('Choose how you want to login.');
+    expect($('#signInCredentialsHeading').text().trim()).toContain('Your credentials');
+    const signInParagraphs = $('#signInModal .auth-entry-copy p').map((_index, element) => $(element).text().trim()).get();
+    expect(signInParagraphs).toEqual([
+      'Continue with a connected external provider or use your user name/email and password.',
+      'Either option brings you securely back to the same account.',
+    ]);
     expect($('#signInModal .auth-entry-action-tile .bi-box-arrow-in-right').length).toBe(1);
 
-    expect($('#signUpMethodModal .auth-entry-copy h3').text().trim()).toBe('Welcome to ManatOS');
+    expect($('#signUpMethodModal .auth-entry-copy h3').text().trim()).toBe('Welcome!');
     expect($('#signUpMethodModal .auth-entry-illustration.is-register').length).toBe(1);
+    expect($('#signUpMethodModal .modal-subtitle').text().trim()).toBe('Choose how you want to join us.');
+    expect($('#registerEmailHeading').text().trim()).toContain('Your account');
+    const createAccountParagraphs = $('#signUpMethodModal .auth-entry-copy p')
+      .map((_index, element) => $(element).text().trim())
+      .get();
+    expect(createAccountParagraphs).toEqual([
+      'Create a new account using a supported external provider or register directly with your email and password.',
+      'You can securely connect additional providers to the same account later.',
+    ]);
     expect($('#signUpMethodModal .auth-entry-action-tile .bi-person-plus').length).toBe(1);
 
     expect($('#signInModal .auth-method-card').length).toBe(2);
@@ -88,6 +109,7 @@ describe('authentication presentation', () => {
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
     });
 
     const $ = load(html);
@@ -104,6 +126,7 @@ describe('authentication presentation', () => {
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
     });
     const $ = load(html);
     const modal = $('#emailRegistrationModal');
@@ -125,6 +148,7 @@ describe('authentication presentation', () => {
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
     });
     const $ = load(html);
 
@@ -146,13 +170,16 @@ describe('authentication presentation', () => {
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
     });
     const $ = load(html);
     const modal = $('#passwordRequestModal');
 
     expect(modal.hasClass('auth-primary-modal')).toBe(true);
     expect(modal.find('.auth-entry-illustration.is-password').length).toBe(1);
-    expect(modal.find('.auth-entry-copy h3').text().trim()).toBe('Recover access');
+    expect(modal.find('.auth-entry-copy h3').text().trim()).toBe('Recover access to your account');
+    expect(modal.find('.auth-entry-copy p').length).toBe(2);
+    expect(modal.find('.auth-entry-copy p').eq(0).text().trim()).toBe('Enter your email address or user name.');
     expect(modal.find('#passwordRequestIdentity').length).toBe(1);
     expect(modal.find('#passwordRequestIdentity').is('[data-recovery-identity]')).toBe(true);
     expect(modal.find('[data-recovery-submit]').is('[disabled]')).toBe(true);
@@ -165,6 +192,7 @@ describe('authentication presentation', () => {
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
     });
     const $ = load(html);
     const modal = $('#emailRegistrationModal');
@@ -186,6 +214,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(externalRegistrationView, {
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
       startedAsSignIn: true,
       profile: {
         provider: 'github',
@@ -208,6 +237,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(externalExistingAccountView, {
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
+      popupContent,
       profile: {
         provider: 'github',
         email: 'yiannis@manatos.eu',

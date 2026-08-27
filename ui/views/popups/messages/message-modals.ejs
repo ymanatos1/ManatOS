@@ -1,0 +1,65 @@
+<%#
+  Application-level information and error messages projected through MessagePopupLayout.
+  Callers provide semantic status/message data; this template chooses the appropriate title,
+  icon, severity surface and action set while preserving one consistent compact appearance.
+%>
+<% if (typeof warningMessage !== 'undefined' && warningMessage) { %>
+  <%- include('../layouts/message-popup', {
+    modalId: 'warningMessageModal',
+    labelId: 'warningMessageModalLabel',
+    dialogClass: 'modal-md',
+    icon: 'bi-exclamation-triangle',
+    headerClass: 'bg-warning-subtle',
+    modalTitle: typeof warningTitle !== 'undefined' && warningTitle
+      ? warningTitle
+      : 'Operation completed with a warning',
+    message: warningMessage,
+    actions: typeof warningActionUrl !== 'undefined' && warningActionUrl
+      ? [{
+          label: typeof warningActionLabel !== 'undefined' && warningActionLabel ? warningActionLabel : 'Continue',
+          variant: 'btn-primary',
+          href: warningActionUrl
+        }]
+      : [{ label: 'OK', variant: 'btn-primary', dismiss: true }]
+  }) %>
+<% } %>
+
+<% if (typeof informationMessage !== 'undefined' && informationMessage) { %>
+  <%- include('../layouts/message-popup', {
+    modalId: 'informationMessageModal',
+    labelId: 'informationMessageModalLabel',
+    dialogClass: 'modal-md',
+    icon: 'bi-check-circle',
+    headerClass: 'bg-primary-subtle',
+    modalTitle: typeof informationTitle !== 'undefined' && informationTitle
+      ? informationTitle
+      : 'Information',
+    message: informationMessage,
+    actions: typeof informationActionUrl !== 'undefined' && informationActionUrl
+      ? [{
+          label: typeof informationActionLabel !== 'undefined' && informationActionLabel ? informationActionLabel : 'Continue',
+          variant: 'btn-primary',
+          href: informationActionUrl
+        }]
+      : [{ label: 'OK', variant: 'btn-primary', dismiss: true }]
+  }) %>
+<% } %>
+
+<% if (typeof applicationError !== 'undefined' && applicationError) { %>
+  <%- include('../layouts/message-popup', {
+    modalId: 'applicationErrorModal',
+    labelId: 'applicationErrorModalLabel',
+    dialogClass: 'modal-lg',
+    icon: 'bi-exclamation-triangle',
+    headerClass: 'bg-danger-subtle',
+    modalTitle: 'Operation failed',
+    message: applicationError.userMessage,
+    operationTrace: applicationError.operationTrace || [],
+    actions: [
+      { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
+      ...(applicationError.retryable
+        ? [{ label: 'Retry', variant: 'btn-primary', onclick: "window.manatosRetry?.() || history.go(0)" }]
+        : [])
+    ]
+  }) %>
+<% } %>

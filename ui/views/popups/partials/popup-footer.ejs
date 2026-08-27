@@ -1,0 +1,24 @@
+<%#
+  Shared popup footer implementing the application's action-placement convention:
+  navigation/back actions stay leftmost while cancel/primary actions stay rightmost.
+  Actions are data objects rendered through popup-action.ejs so button/link behavior remains
+  consistent across rich, form and message popup families.
+%>
+<%
+  const popupLeftActions = Array.isArray(leftActions) ? leftActions : [];
+  const popupRightActions = Array.isArray(rightActions) ? rightActions : [];
+  const popupFooterClass = typeof footerClass !== 'undefined' && footerClass ? footerClass : '';
+%>
+<div class="modal-footer popup-footer <%= popupFooterClass %>">
+  <div class="popup-footer-left">
+    <% for (const action of popupLeftActions) { %>
+      <%- include('popup-action', { action }) %>
+    <% } %>
+  </div>
+
+  <div class="popup-footer-right">
+    <% for (const action of popupRightActions) { %>
+      <%- include('popup-action', { action }) %>
+    <% } %>
+  </div>
+</div>

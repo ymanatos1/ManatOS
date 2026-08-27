@@ -1,3 +1,9 @@
+<%#
+  Parameterized illustration for the common authentication entry flows.
+  The visual composition is shared, while mode selects the semantic action/badge icon and
+  CSS modifier. Keeping the illustration independent from popup text allows either side to
+  evolve without duplicating SVG/HTML structures across dialogs.
+%>
 <%
   const isRegister = mode === 'register';
   const isPassword = mode === 'password';

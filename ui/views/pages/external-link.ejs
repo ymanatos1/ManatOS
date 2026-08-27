@@ -32,32 +32,19 @@
         value="<%= csrfToken %>"
       >
 
-      <div class="modal-header">
-        <div>
-          <h2
-            class="modal-title h4 mb-1"
-            id="externalLinkModalLabel"
-          >
-            <i class="bi bi-link-45deg me-2" aria-hidden="true"></i>
-            Link external account
-          </h2>
-
-          <p class="modal-subtitle mb-0">
-            Confirm the existing account that should be connected.
-          </p>
-        </div>
-
-        <a
-          class="btn-close"
-          href="/"
-          aria-label="Cancel external account linking"
-          title="Cancel"
-        ></a>
-      </div>
+      <%- include('../popups/partials/popup-header', {
+        labelId: 'externalLinkModalLabel',
+        icon: 'bi-link-45deg',
+        modalTitle: 'Link external account',
+        modalSubtitle: 'Confirm the existing account that should be connected.',
+        closeHref: '/',
+        closeLabel: 'Cancel external account linking',
+        closeTitle: 'Cancel'
+      }) %>
 
       <div class="modal-body external-link-modal-body">
         <div class="external-link-intro">
-          <%- include('../partials/auth/external-link-illustration', { provider }) %>
+          <%- include('../popups/illustrations/external-link-illustration', { provider }) %>
 
           <div class="external-link-copy">
             <p class="mb-2">
@@ -161,22 +148,13 @@
           </div>
       </div>
 
-      <div class="modal-footer justify-content-end">
-        <a
-          class="btn btn-outline-secondary"
-          href="/"
-        >
-          Cancel
-        </a>
-
-        <button
-          class="btn btn-primary"
-          type="submit"
-        >
-          <i class="bi bi-link-45deg me-1" aria-hidden="true"></i>
-          Sign in and link <%= provider.label %>
-        </button>
-      </div>
+      <%- include('../popups/partials/popup-footer', {
+        leftActions: [],
+        rightActions: [
+          { label: 'Cancel', variant: 'btn-outline-secondary', href: '/' },
+          { label: `Sign in and link ${provider.label}`, icon: 'bi-link-45deg', variant: 'btn-primary', type: 'submit' }
+        ]
+      }) %>
     </form>
   </div>
 </div>

@@ -3,19 +3,8 @@
     <div class="home-hero-copy">
       <span class="eyebrow">ManatOS platform</span>
 
-      <div class="home-hero-heading-row<%= currentUser ? ' is-signed-in' : '' %>">
+      <div class="home-hero-heading-row">
         <h2>A data-driven platform to design and test real applications</h2>
-
-        <% if (currentUser) { %>
-          <div class="welcome-panel">
-            <i class="bi bi-person-check-fill" aria-hidden="true"></i>
-            <div>
-              <span>Signed in as</span>
-              <strong><%= currentUser.name %></strong>
-              <small><%= currentUser.role %></small>
-            </div>
-          </div>
-        <% } %>
       </div>
 
       <p class="home-hero-lead">
