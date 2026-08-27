@@ -1,21 +1,15 @@
 import passport from 'passport';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
 
-import { config } from '../../config.js';
-
 import type { ExternalProfile } from '../external-profile.js';
 
-export function configureFacebookProvider(): void {
-  if (!config.FACEBOOK_CLIENT_ID || !config.FACEBOOK_CLIENT_SECRET || !config.FACEBOOK_CALLBACK_URL) {
-    return;
-  }
-
+export function configureFacebookProvider(options: { clientId: string; clientSecret: string; callbackUrl: string }): void {
   passport.use(
     new FacebookStrategy(
       {
-        clientID: config.FACEBOOK_CLIENT_ID,
-        clientSecret: config.FACEBOOK_CLIENT_SECRET,
-        callbackURL: config.FACEBOOK_CALLBACK_URL,
+        clientID: options.clientId,
+        clientSecret: options.clientSecret,
+        callbackURL: options.callbackUrl,
         profileFields: ['id', 'displayName', 'name', 'emails'],
       },
       (_accessToken, _refreshToken, profile, done) => {

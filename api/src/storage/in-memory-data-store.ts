@@ -1,10 +1,12 @@
 import {
   sysApplicationsMetadata,
+  sysExtAuthProvidersMetadata,
   sysLicensesMetadata,
   sysPrincipalsMetadata,
   sysUsersMetadata,
   type SysApplication,
   type SysExternalIdentity,
+  type SysExtAuthProvider,
   type SysLicense,
   type SysPrincipal,
   type SysUser,
@@ -39,6 +41,8 @@ export class InMemoryDataStore implements StorageAdapter {
   public sysApplications!: InMemoryRepository<SysApplication>;
 
   public sysLicenses!: InMemoryRepository<SysLicense>;
+
+  public sysExtAuthProviders!: InMemoryRepository<SysExtAuthProvider>;
 
   constructor(private readonly persistence: JsonFilePersistence) {}
 
@@ -118,6 +122,7 @@ export class InMemoryDataStore implements StorageAdapter {
       restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
       restoreMap(this.state.sysApplications, snapshot.sysApplications);
       restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
+      restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
       restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
       restoreMap(this.state.sysUserPrincipals, snapshot.sysUserPrincipals);
       restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
@@ -199,6 +204,11 @@ export class InMemoryDataStore implements StorageAdapter {
     );
 
     this.sysLicenses = new InMemoryRepository(this.state.sysLicenses, sysLicensesMetadata);
+
+    this.sysExtAuthProviders = new InMemoryRepository(
+      this.state.sysExtAuthProviders,
+      sysExtAuthProvidersMetadata,
+    );
   }
 }
 

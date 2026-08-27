@@ -41,6 +41,33 @@ export type SysBOUpdateInput<T extends SysBOEntity> = Partial<
 /**
  * Website user security roles.
  */
+export enum SysExtAuthProviderType {
+  Microsoft = 'microsoft',
+  Google = 'google',
+  Facebook = 'facebook',
+  GitHub = 'github',
+}
+
+/** Company-owned configuration for one supported external authentication provider. */
+export interface SysExtAuthProvider extends SysBOEntity {
+  provider: SysExtAuthProviderType;
+  clientId: string;
+  /** Encrypted persistence-only OAuth client secret. Never expose through API/UI. */
+  clientSecretEncrypted?: string | null;
+  callbackPath: string;
+  tenant?: string;
+  secretUpdatedAt?: string | null;
+
+  /**
+   * Timestamp of the most recent successful end-to-end OAuth credential test.
+   *
+   * This is cleared whenever the stored Client ID/secret pair changes or is
+   * removed. A provider is runtime-configured only while this verification is
+   * present together with both credential values.
+   */
+  credentialsVerifiedAt?: string | null;
+}
+
 export enum SysUserRole {
   Admin = 'Admin',
   Superuser = 'Superuser',

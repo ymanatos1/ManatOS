@@ -25,7 +25,8 @@ export interface ThemedImageRef {
  *
  * Contributions are intentionally flat. `parentId` lets the UI composition
  * layer merge contributions from different owners into the same container
- * (for example Company and mCRM both contribute children to Administration).
+ * (for example Company and mCRM can both contribute children to
+ * Administration or Configuration).
  */
 export interface NavigationContribution {
   id: string;
@@ -145,6 +146,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
     { sysBOKey: 'sys-users', description: 'Website/security users.' },
     { sysBOKey: 'sys-principals', description: 'Customer/commercial identities.' },
     { sysBOKey: 'sys-licenses', description: 'Company-managed platform licenses.' },
+    { sysBOKey: 'sys-ext-auth-providers', description: 'External authentication providers.' },
   ],
   navigation: [
     {
@@ -183,6 +185,26 @@ export const MANATOS_COMPANY: CompanyInfo = {
       requiresEntityKeys: ['sys-principals'],
     },
     {
+      id: 'configuration',
+      text: 'Configuration',
+      icon: 'bi-sliders2',
+      order: 890,
+      separatorBefore: true,
+      requiresAuthentication: true,
+      roles: [SysUserRole.Admin],
+    },
+    {
+      id: 'external-authentication',
+      parentId: 'configuration',
+      text: 'External authentication',
+      icon: 'bi-globe2',
+      url: '/bo/sys-ext-auth-providers',
+      order: 410,
+      requiresAuthentication: true,
+      roles: [SysUserRole.Admin],
+      requiresEntityKeys: ['sys-ext-auth-providers'],
+    },
+    {
       id: 'licenses',
       parentId: 'administration',
       text: 'Licenses',
@@ -197,7 +219,6 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-sliders',
       action: 'open-preferences',
       order: 900,
-      separatorBefore: true,
       requiresAuthentication: true,
     },
     {

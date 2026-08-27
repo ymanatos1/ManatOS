@@ -4,6 +4,8 @@ import { MANATOS_COMPANY, resolvePlatform, type SysApplication, type SysUser } f
 
 import { config } from '../config.js';
 
+import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
+
 import { apiClient } from '../api-client.js';
 
 import { apiSessionOptions, clearApiSession, isApiSessionExpired } from '../auth/api-session.js';
@@ -14,7 +16,6 @@ import { buildRootScope } from '../scopes.js';
 
 import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
 
-import { availableProviders } from '../auth/external-providers.js';
 
 /**
  * Supplies the complete SysBO definitions and scope tree to every EJS page
@@ -76,7 +77,9 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
 
     res.locals.currentUser = user;
 
-    res.locals.authProviders = availableProviders();
+    // Anonymous/auth-entry presentation starts from the safe local default: no providers.
+    // Sign in/Register refresh current provider state on demand.
+    res.locals.authProviders = [];
 
     res.locals.app = Object.freeze({
       version: '0.1.0',
@@ -108,6 +111,8 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         navigationStatePersistence: config.UI_NAVIGATION_STATE_PERSISTENCE,
 
         allowAdminEmailVerification: config.ALLOW_ADMIN_EMAIL_VERIFICATION,
+
+        bootstrap: uiBootstrapState(),
       }),
     });
 

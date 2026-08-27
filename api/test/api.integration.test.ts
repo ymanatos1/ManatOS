@@ -20,6 +20,21 @@ import {
 } from './test-helpers.js';
 
 describe('API integration - server and generic SysBO behavior', () => {
+
+  it('public UI bootstrap reports server/API versions without authentication', async () => {
+    const context = await createTestApi();
+
+    const response = await request(context.app).get('/api/v1/public/ui-bootstrap');
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({
+      server: { alive: true, implementationVersion: '0.1.0' },
+      api: { version: 'v1' },
+    });
+    expect(response.headers['cache-control']).toBe('no-store');
+  });
+
+
   let context: Awaited<
     ReturnType<typeof createTestApi>
   >;

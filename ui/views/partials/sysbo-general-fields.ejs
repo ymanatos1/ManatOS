@@ -70,6 +70,8 @@
           %>"
           value="<%= item[field.key] ?? '' %>"
           <%= field.required ? 'required' : '' %>
+          <% if (field.minLength !== undefined) { %>minlength="<%= field.minLength %>"<% } %>
+          <% if (field.maxLength !== undefined) { %>maxlength="<%= field.maxLength %>"<% } %>
           <%= readOnly ? 'disabled' : '' %>
         >
       <% } %>

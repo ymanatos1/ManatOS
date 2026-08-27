@@ -1,21 +1,15 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
-import { config } from '../../config.js';
-
 import type { ExternalProfile } from '../external-profile.js';
 
-export function configureGoogleProvider(): void {
-  if (!config.GOOGLE_CLIENT_ID || !config.GOOGLE_CLIENT_SECRET || !config.GOOGLE_CALLBACK_URL) {
-    return;
-  }
-
+export function configureGoogleProvider(options: { clientId: string; clientSecret: string; callbackUrl: string }): void {
   passport.use(
     new GoogleStrategy(
       {
-        clientID: config.GOOGLE_CLIENT_ID,
-        clientSecret: config.GOOGLE_CLIENT_SECRET,
-        callbackURL: config.GOOGLE_CALLBACK_URL,
+        clientID: options.clientId,
+        clientSecret: options.clientSecret,
+        callbackURL: options.callbackUrl,
       },
       (_accessToken, _refreshToken, profile, done) => {
         const email = profile.emails?.[0]?.value;

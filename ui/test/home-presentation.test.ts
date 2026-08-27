@@ -4,13 +4,15 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { MANATOS_COMPANY } from '@manatos/shared';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const homeView = resolve(testDirectory, '../views/pages/home.ejs');
+const homeLocals = (currentUser: unknown) => ({ currentUser, app: { company: MANATOS_COMPANY } });
 
 describe('home presentation', () => {
   it('presents the platform visually without reusing ManatOS imagery', async () => {
-    const html = await ejs.renderFile(homeView, { currentUser: null });
+    const html = await ejs.renderFile(homeView, homeLocals(null));
     const $ = load(html);
 
     expect($('.home-hero-grid').length).toBe(1);
@@ -27,7 +29,7 @@ describe('home presentation', () => {
   });
 
   it('uses visitor-facing account language for the registration action', async () => {
-    const html = await ejs.renderFile(homeView, { currentUser: null });
+    const html = await ejs.renderFile(homeView, homeLocals(null));
     const $ = load(html);
 
     const createButton = $('[data-bs-target="#signUpMethodModal"]');
@@ -36,9 +38,7 @@ describe('home presentation', () => {
   });
 
   it('keeps signed-in session identity out of the Home hero', async () => {
-    const html = await ejs.renderFile(homeView, {
-      currentUser: { name: 'Yiannis', role: 'Admin' },
-    });
+    const html = await ejs.renderFile(homeView, homeLocals({ name: 'Yiannis', role: 'Admin' }));
     const $ = load(html);
 
     expect($('.welcome-panel').length).toBe(0);

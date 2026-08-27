@@ -1,6 +1,7 @@
 import type {
   SysApplication,
   SysExternalIdentity,
+  SysExtAuthProvider,
   SysLicense,
   SysPrincipal,
   SysUser,
@@ -21,6 +22,8 @@ export interface DatabaseState {
   sysApplications: Map<string, SysApplication>;
 
   sysLicenses: Map<string, SysLicense>;
+
+  sysExtAuthProviders: Map<string, SysExtAuthProvider>;
 
   sysExternalIdentities: Map<string, SysExternalIdentity>;
 
@@ -62,6 +65,8 @@ export interface PersistedDatabaseState {
 
   sysLicenses: Record<string, PersistedEntity<SysLicense>>;
 
+  sysExtAuthProviders: Record<string, PersistedEntity<SysExtAuthProvider>>;
+
   sysExternalIdentities: Record<string, PersistedEntity<SysExternalIdentity>>;
 
   sysUserPrincipals: Record<string, PersistedEntity<SysUserPrincipal>>;
@@ -80,6 +85,8 @@ export const emptyDatabaseState = (): DatabaseState => ({
   sysApplications: new Map(),
 
   sysLicenses: new Map(),
+
+  sysExtAuthProviders: new Map(),
 
   sysExternalIdentities: new Map(),
 

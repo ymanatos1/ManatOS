@@ -51,40 +51,47 @@
 
   window.manatosBusy = { show: showBusy, hide: hideBusy };
 
-  document.querySelectorAll('[data-busy]').forEach((link) => {
-    link.addEventListener('click', (event) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        event.altKey ||
-        link.getAttribute('aria-disabled') === 'true'
-      ) {
-        return;
-      }
+  // Delegate link handling so provider buttons and other remote-operation
+  // links inserted after page load receive the same busy-state behavior.
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    const link = target instanceof Element ? target.closest('a[data-busy]') : null;
 
-      const href = link.href;
+    if (!(link instanceof HTMLAnchorElement)) {
+      return;
+    }
 
-      if (!href) {
-        return;
-      }
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey ||
+      link.getAttribute('aria-disabled') === 'true'
+    ) {
+      return;
+    }
 
-      event.preventDefault();
+    const href = link.href;
 
-      showBusy({
-        title: link.dataset.busyTitle,
-        message: link.dataset.busyMessage,
-        icon: link.dataset.busyIcon,
-      });
+    if (!href) {
+      return;
+    }
 
-      // Give the browser one paint opportunity so the user sees the locked
-      // transition state before navigation leaves ManatOS for the provider.
-      window.setTimeout(() => {
-        location.assign(href);
-      }, 90);
+    event.preventDefault();
+
+    showBusy({
+      title: link.dataset.busyTitle,
+      message: link.dataset.busyMessage,
+      icon: link.dataset.busyIcon,
     });
+
+    // Give the browser one paint opportunity so the user sees the locked
+    // transition state before navigation leaves ManatOS for the provider.
+    window.setTimeout(() => {
+      location.assign(href);
+    }, 90);
   });
 
   document.querySelectorAll('form[data-busy-submit]').forEach((busyForm) => {

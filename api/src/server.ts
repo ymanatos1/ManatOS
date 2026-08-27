@@ -17,6 +17,8 @@ import {
 import { createApp } from './app.js';
 import { createEmailService } from './email/email-service.js';
 import { logger } from './logging/logger.js';
+import { SecretsEncryptionService } from './security/secrets-encryption-service.js';
+import { SysExtAuthProviderService } from './services/sys-ext-auth-provider-service.js';
 
 /**
  * Application composition root.
@@ -57,6 +59,11 @@ const users = new SysUserService(store);
 
 const email = createEmailService();
 
+const secretsEncryption = new SecretsEncryptionService(
+  config.SECRETS_ENCRYPTION_ACTIVE_KEY_ID,
+  config.SECRETS_ENCRYPTION_KEY,
+);
+
 const services = {
   users,
 
@@ -67,6 +74,8 @@ const services = {
   applications: new SysApplicationService(store),
 
   licenses: new SysLicenseService(store),
+
+  extAuthProviders: new SysExtAuthProviderService(store, secretsEncryption),
 
   externalIdentities: new ExternalIdentityService(store, users),
 

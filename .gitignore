@@ -7,3 +7,5 @@ ui/.env
 data/database.json.tmp
 .DS_Store
 Thumbs.db
+
+*.zip

@@ -1,13 +1,16 @@
 <%#
-  Shared provider-action list used by both registration and sign-in popups.
-  Provider metadata is authoritative for label, icon and configured state; unavailable
-  providers remain visible but disabled so users can understand supported capabilities.
+  Shared external-provider action list used by Sign in and Register.
+
+  The initial server-side value is deliberately allowed to be empty. The browser
+  refreshes this list from /auth/external-providers whenever either authentication
+  dialog opens, so provider availability reflects current API/database state rather
+  than UI startup state.
 %>
 <%
   const actionLabel = mode === 'register' ? 'Register with' : 'Continue with';
 %>
 
-<div class="auth-provider-list">
+<div class="auth-provider-list" data-auth-provider-list data-auth-provider-mode="<%= mode %>">
   <% for (const provider of authProviders) { %>
     <% if (provider.configured) { %>
       <a
@@ -34,5 +37,11 @@
         <span class="badge auth-provider-status ms-auto">Not configured</span>
       </button>
     <% } %>
+  <% } %>
+
+  <% if (!authProviders.length) { %>
+    <div class="small text-secondary py-2" data-auth-provider-placeholder>
+      Checking external provider availability…
+    </div>
   <% } %>
 </div>

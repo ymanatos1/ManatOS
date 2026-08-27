@@ -1,5 +1,6 @@
 import type {
   SysApplication,
+  SysExtAuthProvider,
   SysBOMetadata,
   SysLicense,
   SysPrincipal,
@@ -54,6 +55,9 @@ export interface SysBOEditViewModel {
   showDeleteButton: boolean;
 
   confirmUnsavedChanges: boolean;
+
+  /** Friendly singular entity label used by generic destructive confirmations. */
+  deleteEntityLabel?: string;
 
   /**
    * Entity-page tabs. When omitted, the UI supplies one visible
@@ -173,4 +177,5 @@ export type SysBODefinition =
   | SysBODefinitionFor<SysUser>
   | SysBODefinitionFor<SysPrincipal>
   | SysBODefinitionFor<SysApplication>
+  | SysBODefinitionFor<SysExtAuthProvider>
   | SysBODefinitionFor<SysLicense>;

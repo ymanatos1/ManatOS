@@ -19,6 +19,7 @@
         class="modal-content"
         method="post"
         action="/bo/<%= definition.key %>/<%= item.id %>/delete"
+        data-allow-dirty-page-exit="true"
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
@@ -27,13 +28,13 @@
           icon: 'bi-trash',
           titleClass: 'h5',
           headerClass: 'bg-danger-subtle',
-          modalTitle: `Delete ${definition.boMetadata.name}`,
+          modalTitle: `Delete ${deletePresentation.displayValue} ${deletePresentation.entityLabel}`,
           modalSubtitle: null
         }) %>
 
         <div class="modal-body">
           Are you sure you want to permanently delete
-          <strong><%= item[definition.boMetadata.primaryField] %></strong>?
+          <strong><%= deletePresentation.displayValue %></strong>?
 
           <p class="text-danger mt-2 mb-0">
             This action cannot be undone.
@@ -45,6 +46,50 @@
           rightActions: [
             { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
             { label: 'Delete', variant: 'btn-danger', type: 'submit' }
+          ]
+        }) %>
+      </form>
+    </div>
+  </div>
+<% } %>
+
+<% if (!isNew && definition.key === 'sys-ext-auth-providers' && permissions.edit) { %>
+  <div
+    class="modal fade"
+    id="removeProviderCredentialsModal"
+    tabindex="-1"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+    aria-labelledby="removeProviderCredentialsModalLabel"
+  >
+    <div class="modal-dialog">
+      <form
+        class="modal-content"
+        method="post"
+        action="/bo/sys-ext-auth-providers/<%= item.id %>/remove-credentials"
+      >
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <%- include('../partials/popup-header', {
+          labelId: 'removeProviderCredentialsModalLabel',
+          icon: 'bi-key',
+          titleClass: 'h5',
+          headerClass: 'bg-danger-subtle',
+          modalTitle: 'Remove provider credentials',
+          modalSubtitle: null
+        }) %>
+
+        <div class="modal-body">
+          Remove the stored Client ID and Client secret for
+          <strong><%= deletePresentation.displayValue %></strong>?
+          <p class="text-danger mt-2 mb-0">The provider will also be disabled. New credentials must be tested successfully before it can be enabled again.</p>
+        </div>
+
+        <%- include('../partials/popup-footer', {
+          leftActions: [],
+          rightActions: [
+            { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
+            { label: 'Remove credentials', variant: 'btn-danger', type: 'submit' }
           ]
         }) %>
       </form>

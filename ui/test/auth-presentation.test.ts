@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import ejs from 'ejs';
 import { load } from 'cheerio';
 import { dirname, resolve } from 'node:path';
@@ -7,7 +8,6 @@ import { describe, expect, it } from 'vitest';
 
 import { popupContent } from '../src/presentation/popup-content.js';
 
-import { availableProviders } from '../src/auth/external-providers.js';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const authModalsView = resolve(testDirectory, '../views/popups/auth/auth-modals.ejs');
@@ -18,12 +18,21 @@ const externalExistingAccountView = resolve(
   '../views/pages/external-existing-account.ejs',
 );
 
+const providerFixtures = [
+  { key: 'microsoft', label: 'Microsoft', icon: 'bi-microsoft', configured: false },
+  { key: 'google', label: 'Google', icon: 'bi-google', configured: false },
+  { key: 'facebook', label: 'Facebook', icon: 'bi-facebook', configured: false },
+  { key: 'github', label: 'GitHub', icon: 'bi-github', configured: false },
+] as const;
+
 describe('authentication presentation', () => {
   it('renders configured Microsoft provider in sign-in and registration', async () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures.map((provider) =>
+        provider.key === 'microsoft' ? { ...provider, configured: true } : provider,
+      ),
       popupContent,
     });
 
@@ -43,7 +52,7 @@ describe('authentication presentation', () => {
   });
 
   it('uses provider metadata to render the external-link illustration and labels', async () => {
-    const authProviders = availableProviders();
+    const authProviders = providerFixtures;
     const html = await ejs.renderFile(externalLinkView, {
       csrfToken: 'test-csrf',
       authProviders,
@@ -70,7 +79,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures,
       popupContent,
     });
 
@@ -108,7 +117,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures,
       popupContent,
     });
 
@@ -125,7 +134,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures,
       popupContent,
     });
     const $ = load(html);
@@ -147,7 +156,9 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures.map((provider) =>
+        provider.key === 'github' ? { ...provider, configured: true } : provider,
+      ),
       popupContent,
     });
     const $ = load(html);
@@ -169,7 +180,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures,
       popupContent,
     });
     const $ = load(html);
@@ -191,7 +202,7 @@ describe('authentication presentation', () => {
     const html = await ejs.renderFile(authModalsView, {
       currentUser: null,
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures,
       popupContent,
     });
     const $ = load(html);
@@ -213,7 +224,7 @@ describe('authentication presentation', () => {
   it('renders unmatched external sign-in as the shared rich account-creation popup', async () => {
     const html = await ejs.renderFile(externalRegistrationView, {
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures,
       popupContent,
       startedAsSignIn: true,
       profile: {
@@ -247,7 +258,7 @@ describe('authentication presentation', () => {
   it('renders a polite existing-account message for registration with an already-linked provider', async () => {
     const html = await ejs.renderFile(externalExistingAccountView, {
       csrfToken: 'test-csrf',
-      authProviders: availableProviders(),
+      authProviders: providerFixtures,
       popupContent,
       profile: {
         provider: 'github',
@@ -268,5 +279,18 @@ describe('authentication presentation', () => {
     expect(existingAccountCopy).toContain('do not need to create another account');
     expect($('form').attr('action')).toBe('/auth/register/existing-external/signin');
     expect($('button[type="submit"]').text()).toContain('Sign in with GitHub');
+  });
+});
+
+
+describe('external registration user-name suggestion', () => {
+  it('uses a provider display name as a normalized, uniqueness-checked suggestion', async () => {
+    const routeSource = await readFile(resolve(testDirectory, '../src/routes/auth-routes.ts'), 'utf8');
+    const viewSource = await readFile(resolve(testDirectory, '../views/pages/external-registration.ejs'), 'utf8');
+
+    expect(routeSource).toContain('suggestedUserName: await suggestExternalUserName(profile)');
+    expect(routeSource).toContain('profile.displayName');
+    expect(routeSource).toContain('if (!(await lookup(candidate))) return candidate');
+    expect(viewSource).toContain("profile.userName || (typeof suggestedUserName !== 'undefined' ? suggestedUserName : '')");
   });
 });

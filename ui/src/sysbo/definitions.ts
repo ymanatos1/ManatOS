@@ -6,6 +6,7 @@ import {
   type CompanyInfo,
   type PlatformInfo,
   sysApplicationsMetadata,
+  sysExtAuthProvidersMetadata,
   sysLicensesMetadata,
   sysPrincipalsMetadata,
   sysUsersMetadata,
@@ -97,6 +98,8 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
         confirmUnsavedChanges: true,
 
+        deleteEntityLabel: 'User',
+
         tabs: [
           generalInfoTab,
           {
@@ -159,6 +162,8 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
         confirmUnsavedChanges: true,
 
+        deleteEntityLabel: 'Principal',
+
         tabs: [generalInfoTab],
       },
 
@@ -211,6 +216,8 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
         confirmUnsavedChanges: true,
 
+        deleteEntityLabel: 'Application',
+
         tabs: [generalInfoTab],
       },
 
@@ -240,6 +247,36 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
     permissions,
   },
 
+
+  'sys-ext-auth-providers': {
+    key: 'sys-ext-auth-providers',
+    boMetadata: sysExtAuthProvidersMetadata,
+    uiMetadata: {
+      icon: 'bi-globe2',
+      listViewModel: { title: 'External authentication', addButtonText: 'Add provider', showResultCount: true },
+      editViewModel: {
+        createTitle: 'Add external authentication provider',
+        editTitle: 'Edit external authentication provider',
+        showDeleteButton: true,
+        confirmUnsavedChanges: true,
+        deleteEntityLabel: 'External Provider',
+        tabs: [
+          generalInfoTab,
+          {
+            id: 'secrets',
+            title: 'Secrets',
+            icon: 'bi-key-fill',
+            partial: '../partials/ext-auth-provider-secrets',
+          },
+        ],
+      },
+      gridConfiguration: { allowSorting: true, allowFiltering: true, responsive: true, visibleFields: ['provider','enabled','callbackPath','credentialsConfigured'] },
+      filterDefinition: { mode: 'and', allowMultipleFilters: true, fields: ['provider'] },
+      paginationConfiguration: pagination,
+    },
+    permissions: { view: adminRoles, create: adminRoles, edit: adminRoles, delete: adminRoles },
+  },
+
   'sys-licenses': {
     key: 'sys-licenses',
 
@@ -264,6 +301,8 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
         showDeleteButton: true,
 
         confirmUnsavedChanges: true,
+
+        deleteEntityLabel: 'License',
 
         tabs: [generalInfoTab],
       },

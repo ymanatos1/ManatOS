@@ -51,8 +51,9 @@ export const appHorizontalNavMenu: AppNavMenuItem[] = [
 /**
  * Compose the left navigation from Company contributions plus the selected
  * Platform contributions. Parent containers with the same id are merged, so
- * both owners can contribute entries to Administration without hard-coding
- * the final menu in the UI project.
+ * both owners can contribute entries to shared collections such as
+ * Administration and Configuration without hard-coding the final menu in the
+ * UI project.
  */
 export function composeVerticalNavigation(
   company: CompanyInfo = MANATOS_COMPANY,

@@ -1,8 +1,10 @@
 import {
+  SysExtAuthProviderType,
   SysLicenseStatus,
   SysPrincipalType,
   SysUserRole,
   type SysApplication,
+  type SysExtAuthProvider,
   type SysLicense,
   type SysPrincipal,
   type SysUser,
@@ -533,6 +535,27 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
   },
 };
 
+/** Company-owned external OAuth/OIDC provider configuration metadata. */
+export const sysExtAuthProvidersMetadata: SysBOMetadata<SysExtAuthProvider> = {
+  key: 'sys-ext-auth-providers',
+  name: 'SysExtAuthProvider',
+  pluralName: 'SysExtAuthProviders',
+  primaryField: 'name',
+  fieldDefinition: {
+    ...common,
+    name: { ...common.name!, label: 'Provider name', readOnly: true },
+    provider: { key: 'provider', label: 'Provider', type: 'enum', order: 20, required: true, unique: true, enumValues: Object.values(SysExtAuthProviderType) },
+    clientId: { key: 'clientId', label: 'Client ID', type: 'string', order: 30, maxLength: 500 },
+    clientSecretEncrypted: { key: 'clientSecretEncrypted', label: 'Client secret', type: 'string', order: 40, sensitive: true, readOnly: true, nullable: true },
+    callbackPath: { key: 'callbackPath', label: 'Callback path', type: 'string', order: 50, required: true, maxLength: 300, generated: true, readOnly: true },
+    tenant: { key: 'tenant', label: 'Tenant', type: 'string', order: 60, nullable: true, maxLength: 100 },
+    secretUpdatedAt: { key: 'secretUpdatedAt', label: 'Secret updated', type: 'date', order: 70, nullable: true, readOnly: true },
+    credentialsVerifiedAt: { key: 'credentialsVerifiedAt', label: 'Credentials verified', type: 'date', order: 75, nullable: true, readOnly: true },
+    hasClientSecret: { key: 'hasClientSecret', label: 'Secret stored', type: 'boolean', order: 80, generated: true, readOnly: true },
+    credentialsConfigured: { key: 'credentialsConfigured', label: 'Credentials verified', type: 'boolean', order: 85, generated: true, readOnly: true },
+  },
+};
+
 /**
  * Central registry of all currently defined first-class SysBO metadata.
  *
@@ -543,4 +566,5 @@ export const allSysBOMetadata = {
   [sysPrincipalsMetadata.key]: sysPrincipalsMetadata,
   [sysApplicationsMetadata.key]: sysApplicationsMetadata,
   [sysLicensesMetadata.key]: sysLicensesMetadata,
+  [sysExtAuthProvidersMetadata.key]: sysExtAuthProvidersMetadata,
 } as const;

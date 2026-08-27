@@ -17,6 +17,8 @@ import {
   SysPrincipalService,
   UserPrincipalService,
 } from '../src/services/domain-services.js';
+import { SecretsEncryptionService } from '../src/security/secrets-encryption-service.js';
+import { SysExtAuthProviderService } from '../src/services/sys-ext-auth-provider-service.js';
 
 /**
  * Standard credentials used by integration tests.
@@ -57,6 +59,18 @@ export async function createTestApi() {
 
   const services = {
     users,
+
+    email: {
+      async verifyConnection() {},
+      async sendWelcomeAndVerificationEmail() {},
+      async sendPasswordResetEmail() {},
+      async sendPasswordChangedEmail() {},
+    },
+
+    extAuthProviders: new SysExtAuthProviderService(
+      store,
+      new SecretsEncryptionService('test', Buffer.alloc(32, 7).toString('base64')),
+    ),
 
     principals: new SysPrincipalService(store),
 

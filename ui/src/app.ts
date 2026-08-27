@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
 import { config } from './config.js';
-import { configurePassport, passport } from './auth/passport.js';
+import { passport } from './auth/passport.js';
 import { requestContextMiddleware } from './middleware/request-context.js';
 import { csrfTokenMiddleware } from './middleware/csrf.js';
 import { pageContextMiddleware } from './middleware/page-context.js';
@@ -16,7 +16,6 @@ import { createPageRoutes } from './routes/page-routes.js';
 import { createSysBORoutes } from './routes/sysbo-routes.js';
 import { uiErrorHandler } from './error-handler.js';
 
-configurePassport();
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const uiRoot = resolve(moduleDirectory, '..');

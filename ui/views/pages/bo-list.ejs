@@ -23,6 +23,12 @@
       const activeFilterCount = filterFields.filter((key) => String(query[`filter.${key}`] || '').trim() !== '').length;
       const hasActiveFilters = activeFilterCount > 0;
       const filterCollapseId = `filters-${definition.key}`;
+      const externalAuthProviderLabels = {
+        microsoft: 'Microsoft',
+        google: 'Google',
+        facebook: 'Facebook',
+        github: 'GitHub'
+      };
     %>
 
     <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
@@ -132,7 +138,10 @@
               <% for (const key of definition.uiMetadata.gridConfiguration.visibleFields) { %>
                 <% const field = definition.boMetadata.fieldDefinition[key]; %>
                 <td>
-                  <% if (key === definition.boMetadata.primaryField) { %>
+                  <% if (definition.key === 'sys-ext-auth-providers' && key === 'provider') { %>
+                    <% const providerKey = String(item[key] || '').toLowerCase(); %>
+                    <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= externalAuthProviderLabels[providerKey] || item[key] || '' %></a>
+                  <% } else if (key === definition.boMetadata.primaryField) { %>
                     <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= item[key] %></a>
                   <% } else if (field.type === 'boolean') { %>
                     <% const positive = Boolean(item[key]); %>

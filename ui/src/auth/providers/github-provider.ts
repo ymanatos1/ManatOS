@@ -1,22 +1,16 @@
 import passport from 'passport';
 import { Strategy as GitHubStrategy, type Profile as GitHubProfile } from 'passport-github2';
 
-import { config } from '../../config.js';
-
 import type { ExternalProfile } from '../external-profile.js';
 import { resolveGitHubEmail } from '../github-profile.js';
 
-export function configureGitHubProvider(): void {
-  if (!config.GITHUB_CLIENT_ID || !config.GITHUB_CLIENT_SECRET || !config.GITHUB_CALLBACK_URL) {
-    return;
-  }
-
+export function configureGitHubProvider(options: { clientId: string; clientSecret: string; callbackUrl: string }): void {
   passport.use(
     new GitHubStrategy(
       {
-        clientID: config.GITHUB_CLIENT_ID,
-        clientSecret: config.GITHUB_CLIENT_SECRET,
-        callbackURL: config.GITHUB_CALLBACK_URL,
+        clientID: options.clientId,
+        clientSecret: options.clientSecret,
+        callbackURL: options.callbackUrl,
       },
       async (
         accessToken: string,

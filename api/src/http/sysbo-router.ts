@@ -55,6 +55,7 @@ export function createSysBORouter<T extends SysBOEntity>(
    */
 
   customCreate?: (body: Record<string, unknown>, actor: AuditActor) => Promise<T>,
+  customUpdate?: (id: string, body: Record<string, unknown>, actor: AuditActor) => Promise<T>,
 ): Router {
   const router = Router();
 
@@ -217,7 +218,9 @@ export function createSysBORouter<T extends SysBOEntity>(
           name: req.body?.name,
         });
 
-        const item = await service.update(id, req.body, actor);
+        const item = customUpdate
+          ? await customUpdate(id, req.body ?? {}, actor)
+          : await service.update(id, req.body, actor);
 
         sendCommand(
           res,
@@ -311,6 +314,18 @@ function sanitize<T extends SysBOEntity>(
    */
   if (metadata.key === 'sys-users') {
     result.hasPassword = Boolean(source.passwordHash);
+  }
+
+  if (metadata.key === 'sys-ext-auth-providers') {
+    const hasClientSecret = Boolean(source.clientSecretEncrypted);
+    const clientId = typeof source.clientId === 'string' ? source.clientId.trim() : '';
+    const credentialsVerifiedAt =
+      typeof source.credentialsVerifiedAt === 'string' && source.credentialsVerifiedAt.length > 0
+        ? source.credentialsVerifiedAt
+        : undefined;
+
+    result.hasClientSecret = hasClientSecret;
+    result.credentialsConfigured = Boolean(clientId && hasClientSecret && credentialsVerifiedAt);
   }
 
   return result;

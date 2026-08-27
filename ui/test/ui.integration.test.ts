@@ -157,6 +157,10 @@ async function renderSysUserEdit(
     tabs: [],
     authenticationIdentities: [],
     referenceData: {},
+    deletePresentation: {
+      displayValue: String(item.name ?? 'entry'),
+      entityLabel: 'User',
+    },
     csrfToken: 'test-csrf',
     app: {
       ui: {

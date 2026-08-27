@@ -84,6 +84,13 @@ const schema = z.object({
   LOG_DATABASE_URL: z.string().trim().optional().transform((value) => value || undefined),
   LOG_DATABASE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('error'),
 
+  /**
+   * Master key used to encrypt reversible application secrets at rest.
+   * The key itself must remain outside the database.
+   */
+  SECRETS_ENCRYPTION_ACTIVE_KEY_ID: z.string().trim().min(1).default('v1'),
+  SECRETS_ENCRYPTION_KEY: z.string().trim().optional().transform((value) => value || undefined),
+
   /** Server-side SMTP delivery. SMTP secrets must never be exposed to the UI/browser. */
   MAIL_ENABLED: z
     .enum(['true', 'false'])

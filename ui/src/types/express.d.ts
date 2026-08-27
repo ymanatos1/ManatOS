@@ -86,6 +86,30 @@ declare module 'express-session' {
     externalAuthIntent?: 'signin' | 'register';
 
     /**
+     * Proposed provider credential pair being tested before persistence.
+     *
+     * Client secret stays in the server-side Express session only. It is never
+     * rendered into HTML or browser JavaScript after submission. The verified
+     * pair is consumed exactly once by the SysBO Save command.
+     */
+    pendingExtAuthCredentialTest?: {
+      testId: string;
+      recordId?: string;
+      provider: ExternalProviderKey;
+      enabled: boolean;
+      clientId: string;
+      clientSecret?: string;
+      scope: string[];
+      callbackPath: string;
+      tenant?: string;
+      returnPath: string;
+      status: 'pending' | 'verified' | 'failed';
+      verifiedAt?: string;
+      errorMessage?: string;
+      createdAt: string;
+    };
+
+    /**
      * A registration attempt made with an external identity that is already
      * linked to an existing ManatOS account. The provider has authenticated
      * the identity, but the user must explicitly choose to sign in.

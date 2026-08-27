@@ -1,8 +1,6 @@
 import passport from 'passport';
 import { Strategy as MicrosoftStrategy } from 'passport-microsoft';
 
-import { config } from '../../config.js';
-
 import { normalizeMicrosoftProfile, type MicrosoftGraphProfile } from '../microsoft-profile.js';
 
 /**
@@ -13,22 +11,14 @@ import { normalizeMicrosoftProfile, type MicrosoftGraphProfile } from '../micros
  * scopes are requested as part of the authorization request, while ManatOS
  * normalizes the resulting provider profile into its provider-neutral shape.
  */
-export function configureMicrosoftProvider(): void {
-  if (
-    !config.MICROSOFT_CLIENT_ID ||
-    !config.MICROSOFT_CLIENT_SECRET ||
-    !config.MICROSOFT_CALLBACK_URL
-  ) {
-    return;
-  }
-
+export function configureMicrosoftProvider(options: { clientId: string; clientSecret: string; callbackUrl: string; tenant?: string }): void {
   passport.use(
     new MicrosoftStrategy(
       {
-        clientID: config.MICROSOFT_CLIENT_ID,
-        clientSecret: config.MICROSOFT_CLIENT_SECRET,
-        callbackURL: config.MICROSOFT_CALLBACK_URL,
-        tenant: config.MICROSOFT_TENANT,
+        clientID: options.clientId,
+        clientSecret: options.clientSecret,
+        callbackURL: options.callbackUrl,
+        tenant: options.tenant ?? 'common',
       },
       (
         _accessToken: string,

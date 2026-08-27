@@ -2,13 +2,6 @@ import 'dotenv/config';
 
 import { z } from 'zod';
 
-const optionalString = z
-  .string()
-  .trim()
-  .transform((value) => value || undefined)
-  .optional();
-
-
 const positiveIntegerList = z
   .string()
   .default('2,5,10,20,50,100')
@@ -84,22 +77,8 @@ const schema = z.object({
     .default('true')
     .transform((value) => value === 'true'),
 
-  GOOGLE_CLIENT_ID: optionalString,
-  GOOGLE_CLIENT_SECRET: optionalString,
-  GOOGLE_CALLBACK_URL: optionalString,
-
-  FACEBOOK_CLIENT_ID: optionalString,
-  FACEBOOK_CLIENT_SECRET: optionalString,
-  FACEBOOK_CALLBACK_URL: optionalString,
-
-  GITHUB_CLIENT_ID: optionalString,
-  GITHUB_CLIENT_SECRET: optionalString,
-  GITHUB_CALLBACK_URL: optionalString,
-
-  MICROSOFT_CLIENT_ID: optionalString,
-  MICROSOFT_CLIENT_SECRET: optionalString,
-  MICROSOFT_CALLBACK_URL: optionalString,
-  MICROSOFT_TENANT: z.string().trim().min(1).default('common'),
+  /** Public origin used to turn persisted relative OAuth callback paths into absolute URLs. */
+  PUBLIC_BASE_URL: z.string().url().default('http://localhost:3001'),
 });
 
 const parsedConfig = schema.parse(process.env);

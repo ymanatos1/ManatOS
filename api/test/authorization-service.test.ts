@@ -77,6 +77,19 @@ describe('AuthorizationService', () => {
     ).resolves.toBe(false);
   });
 
+  it.each([SysUserRole.Superuser, SysUserRole.User, SysUserRole.Guest])(
+    'blocks external-authentication configuration from %s',
+    async (role) => {
+      await expect(authorization.can('read', subject(role), 'sys-ext-auth-providers')).resolves.toBe(false);
+      await expect(authorization.can('update', subject(role), 'sys-ext-auth-providers', entity('provider'))).resolves.toBe(false);
+    },
+  );
+
+  it('allows Admin access to external-authentication configuration', async () => {
+    await expect(authorization.can('read', subject(SysUserRole.Admin), 'sys-ext-auth-providers')).resolves.toBe(true);
+    await expect(authorization.can('create', subject(SysUserRole.Admin), 'sys-ext-auth-providers')).resolves.toBe(true);
+  });
+
   it('blocks SysUser deletion when the target record was not resolved', async () => {
     const admin = subject(SysUserRole.Admin, 'admin-id', 'Admin');
 

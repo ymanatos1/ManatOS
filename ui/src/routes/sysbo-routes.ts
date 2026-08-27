@@ -1,8 +1,16 @@
+import { randomUUID } from 'node:crypto';
+
 import { Router, type Request } from 'express';
 
 import createError from 'http-errors';
 
-import { AppError, operationContext, SysUserRole, type SysUser } from '@manatos/shared';
+import {
+  AppError,
+  operationContext,
+  SysUserRole,
+  type ExternalProviderKey,
+  type SysUser,
+} from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
 
@@ -23,6 +31,29 @@ import { getSysBODefinition } from '../sysbo/definitions.js';
 import type { SysBODefinition, SysBOEditTabDefinition } from '../sysbo/types.js';
 
 import { externalIdentitiesForUser } from '../auth/user-authentication.js';
+import { refreshExternalProviderRegistry } from '../auth/external-providers.js';
+import { configurePassport } from '../auth/passport.js';
+
+interface ExternalAuthProviderDefinition {
+  provider: string;
+  label: string;
+  icon: string;
+  scope: string[];
+  callbackPath: string;
+  tenant?: string;
+  generalHelp: {
+    title: string;
+    steps: string[];
+    configuredRule: string;
+  };
+  secretsHelp: {
+    title: string;
+    introduction: string;
+    clientId: string[];
+    clientSecret: string[];
+    warning?: string;
+  };
+}
 
 const pathByKey: Record<string, string> = {
   'sys-users': 'SysUsers',
@@ -32,6 +63,8 @@ const pathByKey: Record<string, string> = {
   'sys-applications': 'SysApplications',
 
   'sys-licenses': 'SysLicenses',
+
+  'sys-ext-auth-providers': 'SysExtAuthProviders',
 };
 
 /**
@@ -74,6 +107,10 @@ export function createSysBORoutes() {
     async (req, res, next) => {
       try {
         const key = routeParam(req.params.key);
+
+        if (key === 'sys-ext-auth-providers') {
+          delete req.session.pendingExtAuthCredentialTest;
+        }
 
         const definition = getSysBODefinition(key);
 
@@ -177,6 +214,7 @@ export function createSysBORoutes() {
               {},
               true,
             )),
+            ...credentialTestResultPresentation(req),
           },
         );
       } catch (error) {
@@ -231,6 +269,7 @@ export function createSysBORoutes() {
             isNew: false,
 
             ...(await editPageSupplementalData(req, definition, currentUser, item, false)),
+            ...credentialTestResultPresentation(req),
           },
         );
       } catch (error) {
@@ -305,6 +344,144 @@ export function createSysBORoutes() {
   );
 
   /**
+   * Start an end-to-end OAuth test for a proposed Client ID + Client secret.
+   * The plaintext secret remains only in the server-side Express session until
+   * the provider callback either verifies it or rejects it.
+   */
+  router.post('/sys-ext-auth-providers/test-credentials', requireCsrf, async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition('sys-ext-auth-providers');
+      const currentUser = res.locals.currentUser as SysUser | null;
+      const permissions = uiPermissions(currentUser, definition);
+      requirePermission(permissions.edit || permissions.create, 'Admin access is required to test provider credentials.');
+
+      const provider = String(req.body.provider ?? '').trim().toLowerCase() as ExternalProviderKey;
+      const clientId = String(req.body.clientId ?? '').trim();
+      const clientSecret = String(req.body.clientSecret ?? '').trim();
+      const recordId = String(req.body.id ?? '').trim();
+
+      if (!clientId || !clientSecret) {
+        res.status(400).json({
+          success: false,
+          errorMessage: 'Enter both Client ID and Client secret before testing.',
+        });
+        return;
+      }
+
+      const definitions = (
+        await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>(
+          '/api/v1/SysExtAuthProviders/definitions',
+          apiSessionOptions(req),
+        )
+      ).data.providers;
+      const providerDefinition = definitions.find((item) => item.provider === provider);
+
+      if (!providerDefinition) {
+        throw new AppError('VALIDATION_ERROR', 'Unsupported external authentication provider.', 'Choose a supported provider.');
+      }
+
+      req.session.pendingExtAuthCredentialTest = {
+        testId: randomUUID(),
+        ...(recordId ? { recordId } : {}),
+        provider,
+        enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
+        clientId,
+        clientSecret,
+        scope: providerDefinition.scope,
+        callbackPath: providerDefinition.callbackPath,
+        ...(providerDefinition.tenant ? { tenant: providerDefinition.tenant } : {}),
+        returnPath: recordId
+          ? `/bo/sys-ext-auth-providers/${encodeURIComponent(recordId)}`
+          : '/bo/sys-ext-auth-providers/new',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+
+      // The browser starts the OAuth navigation only after the draft has
+      // been captured successfully in the server-side session. Returning JSON
+      // keeps validation/API failures on the edit page instead of throwing the
+      // Admin back to Home and losing the unsaved form.
+      res.json({
+        success: true,
+        testId: req.session.pendingExtAuthCredentialTest.testId,
+        redirectUrl: `/auth/${provider}/test-credentials`,
+        statusUrl: `/bo/sys-ext-auth-providers/test-credentials/status?testId=${encodeURIComponent(req.session.pendingExtAuthCredentialTest.testId)}`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  /**
+   * Report the authoritative state of the current provider credential test.
+   *
+   * The main Admin editor polls this same-session endpoint while the provider
+   * OAuth popup is open. Correctness therefore does not depend on
+   * window.opener/postMessage surviving a cross-origin OAuth round trip.
+   */
+  router.get('/sys-ext-auth-providers/test-credentials/status', async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition('sys-ext-auth-providers');
+      const currentUser = res.locals.currentUser as SysUser | null;
+      const permissions = uiPermissions(currentUser, definition);
+      requirePermission(permissions.edit || permissions.create, 'Admin access is required to inspect provider credential tests.');
+
+      const requestedTestId = String(req.query.testId ?? '');
+      const pending = req.session.pendingExtAuthCredentialTest;
+
+      if (!pending || pending.testId !== requestedTestId) {
+        res.status(404).json({ success: false, status: 'missing', message: 'The provider credential test is no longer available.' });
+        return;
+      }
+
+      const expired = Date.now() - Date.parse(pending.createdAt) > 10 * 60 * 1000;
+      if (expired && pending.status === 'pending') {
+        pending.status = 'failed';
+        pending.errorMessage = 'The provider credential test expired before completion.';
+        delete pending.clientSecret;
+      }
+
+      res.set('Cache-Control', 'no-store');
+      res.json({
+        success: true,
+        testId: pending.testId,
+        provider: pending.provider,
+        status: pending.status,
+        message: pending.status === 'verified'
+          ? 'Provider credentials tested successfully. They are ready to save.'
+          : pending.status === 'failed'
+            ? (pending.errorMessage ?? 'The provider rejected the proposed credentials.')
+            : 'Waiting for the provider credential test to complete.',
+        ...(pending.verifiedAt ? { verifiedAt: pending.verifiedAt } : {}),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  /** Remove the complete provider credential pair and disable the provider. */
+  router.post('/sys-ext-auth-providers/:id/remove-credentials', requireCsrf, async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition('sys-ext-auth-providers');
+      const currentUser = res.locals.currentUser as SysUser | null;
+      const permissions = uiPermissions(currentUser, definition);
+      requirePermission(permissions.edit, 'Edit access is required for external authentication providers.');
+      const id = routeParam(req.params.id);
+
+      await apiClient.delete(
+        `/api/v1/internal/external-auth-providers/${id}/credentials`,
+        { ...apiSessionOptions(req), internal: true },
+      );
+
+      delete req.session.pendingExtAuthCredentialTest;
+      await refreshExternalProviderRegistry();
+      configurePassport();
+      res.redirect(`/bo/sys-ext-auth-providers/${id}`);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  /**
    * Create or update one SysBO entry.
    */
   router.post(
@@ -327,6 +504,40 @@ export function createSysBORoutes() {
             ? 'Edit access is required for this entity.'
             : 'Create access is required for this entity.',
         );
+
+        if (definition.key === 'sys-ext-auth-providers') {
+          const pending = req.session.pendingExtAuthCredentialTest;
+          const provider = String(req.body.provider ?? '').trim().toLowerCase();
+          const pendingMatches =
+            pending?.status === 'verified' &&
+            pending.provider === provider &&
+            (pending.recordId ?? '') === id &&
+            Boolean(pending.clientSecret) &&
+            Date.now() - Date.parse(pending.createdAt) <= 10 * 60 * 1000;
+
+          if (pendingMatches) {
+            await apiClient.post(
+              '/api/v1/internal/external-auth-providers/verified-credentials',
+              {
+                ...(id ? { id } : {}),
+                provider,
+                enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
+                clientId: pending.clientId,
+                clientSecret: pending.clientSecret,
+                callbackPath: req.body.callbackPath,
+                ...(req.body.tenant ? { tenant: req.body.tenant } : {}),
+              },
+              { ...apiSessionOptions(req), internal: true },
+            );
+
+            delete req.session.pendingExtAuthCredentialTest;
+            await refreshExternalProviderRegistry();
+            configurePassport();
+            res.redirect('/bo/sys-ext-auth-providers');
+            return;
+          }
+        }
+
         await operationContext.runRoot(
           `${id ? 'Update' : 'Create'} ${definition.boMetadata.name}`,
 
@@ -355,6 +566,11 @@ export function createSysBORoutes() {
 
                 apiSessionOptions(req),
               );
+            }
+
+            if (definition.key === 'sys-ext-auth-providers') {
+              await refreshExternalProviderRegistry();
+              configurePassport();
             }
 
             res.redirect(`/bo/${definition.key}`);
@@ -466,6 +682,11 @@ export function createSysBORoutes() {
 
               apiSessionOptions(req),
             );
+
+            if (definition.key === 'sys-ext-auth-providers') {
+              await refreshExternalProviderRegistry();
+              configurePassport();
+            }
           },
         );
 
@@ -545,11 +766,65 @@ async function editPageSupplementalData(
       ? await externalIdentitiesForUser(itemId)
       : [];
 
+  const externalAuthProviderDefinitions = definition.key === 'sys-ext-auth-providers'
+    ? (
+        await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>(
+          '/api/v1/SysExtAuthProviders/definitions',
+          apiSessionOptions(req),
+        )
+      ).data.providers
+    : [];
+
+  const rawPrimaryValue = item[definition.boMetadata.primaryField];
+  let displayValue = String(rawPrimaryValue ?? 'entry');
+  if (definition.key === 'sys-ext-auth-providers') {
+    const providerDefinition = externalAuthProviderDefinitions.find(
+      (candidate) => candidate.provider === String(rawPrimaryValue ?? '').toLowerCase(),
+    );
+    displayValue = providerDefinition?.label ?? displayValue.replace(/^./, (character) => character.toUpperCase());
+  }
+
   return {
     tabs,
     authenticationIdentities,
     referenceData: await references(req, definition),
+    deletePresentation: {
+      displayValue,
+      entityLabel:
+        definition.uiMetadata.editViewModel.deleteEntityLabel ??
+        definition.uiMetadata.editViewModel.editTitle.replace(/^Edit\s+/i, ''),
+    },
+
+    // Provider defaults/help are API-owned reference metadata. Admin pages
+    // request them through the authenticated API so create, edit/view and
+    // save-error redisplay all use the same provider definitions.
+    ...(definition.key === 'sys-ext-auth-providers'
+      ? {
+          externalAuthProviderDefinitions,
+          credentialTest: credentialTestForPage(req, item, isNew),
+        }
+      : {}),
   };
+}
+
+/** Present the completed credential test through the standard ManatOS message popup. */
+function credentialTestResultPresentation(req: Request) {
+  const result = String(req.query.credentialsTest ?? '');
+  if (result === 'verified') {
+    return {
+      informationTitle: 'Credentials verified',
+      informationMessage: 'The provider accepted the Client ID and Client secret. The verified credential pair is ready to save.',
+    };
+  }
+  if (result === 'failed') {
+    return {
+      warningTitle: 'Credential verification failed',
+      warningMessage:
+        req.session.pendingExtAuthCredentialTest?.errorMessage ??
+        'The provider rejected the proposed credentials. Review the values on the Secrets tab and test them again.',
+    };
+  }
+  return {};
 }
 
 /**
@@ -563,6 +838,28 @@ async function editPageSupplementalData(
  * Authentication is meaningful only for an existing SysUser, so it is
  * suppressed automatically on the create page.
  */
+function credentialTestForPage(
+  req: Request,
+  item: Record<string, unknown>,
+  isNew: boolean,
+) {
+  const pending = req.session.pendingExtAuthCredentialTest;
+  if (!pending) return null;
+
+  const itemId = typeof item.id === 'string' ? item.id : '';
+  if ((pending.recordId ?? '') !== (isNew ? '' : itemId)) return null;
+
+  return {
+    provider: pending.provider,
+    enabled: pending.enabled,
+    clientId: pending.clientId,
+    status: pending.status,
+    verifiedAt: pending.verifiedAt,
+    errorMessage: pending.errorMessage,
+    hasPendingSecret: Boolean(pending.clientSecret),
+  };
+}
+
 function visibleEditTabs(
   definition: SysBODefinition,
   user: SysUser | null,
@@ -724,6 +1021,11 @@ function formPayload(
     } else if (field.nullable) {
       output[field.key] = null;
     }
+  }
+
+  if (definition.key === 'sys-ext-auth-providers') {
+    const clientSecret = String(body.clientSecret ?? '').trim();
+    if (clientSecret) output.clientSecret = clientSecret;
   }
 
   return output;

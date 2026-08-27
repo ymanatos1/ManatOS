@@ -63,7 +63,10 @@ const businessObjectSchema = (metadata: SysBOMetadata<unknown>) => {
       continue;
     }
 
-    properties[field.key] = fieldSchema(field);
+    properties[field.key] = {
+      ...fieldSchema(field),
+      ...(field.readOnly || field.generated ? { readOnly: true } : {}),
+    };
 
     if (field.required && !field.generated) {
       required.push(field.key);
@@ -151,6 +154,13 @@ export function buildOpenApiSpec() {
       '/api/v1/auth/password': passwordOperation(),
 
       /**
+       * Anonymous UI/bootstrap configuration.
+       */
+      '/api/v1/public/ui-bootstrap': uiBootstrapOperation(),
+
+      '/api/v1/public/external-auth-providers': publicExternalAuthProvidersOperation(),
+
+      /**
        * Protected SysBO resources.
        */
       '/api/v1/SysUsers': genericOperations('SysUser'),
@@ -162,6 +172,113 @@ export function buildOpenApiSpec() {
       '/api/v1/SysApplications': genericOperations('SysApplication'),
 
       '/api/v1/SysLicenses': genericOperations('SysLicense'),
+
+      '/api/v1/SysExtAuthProviders': externalAuthProviderOperations(),
+
+      '/api/v1/SysExtAuthProviders/definitions': externalAuthProviderDefinitionsOperation(),
+
+      '/api/v1/internal/external-auth-providers/verified-credentials': verifiedExternalAuthCredentialsOperation(),
+
+      '/api/v1/internal/external-auth-providers/{id}/credentials': removeExternalAuthCredentialsOperation(),
+    },
+  };
+}
+
+function uiBootstrapOperation() {
+  return {
+    get: {
+      summary: 'Get anonymous-safe UI bootstrap configuration',
+      tags: ['Public UI'],
+      responses: {
+        '200': {
+          description: 'Current public UI bootstrap data, including server availability and API/implementation versions. The UI may safely fall back to local defaults and retry when unavailable.',
+        },
+      },
+    },
+  };
+}
+
+function publicExternalAuthProvidersOperation() {
+  return {
+    get: {
+      summary: 'Get current public external-authentication provider state',
+      description:
+        'Returns only anonymous-safe provider availability metadata. Client IDs, client secrets, encrypted values and Admin/audit fields are never included.',
+      tags: ['Public UI', 'External Authentication'],
+      responses: {
+        '200': {
+          description: 'Current provider enabled/configured state.',
+        },
+      },
+    },
+  };
+}
+
+function externalAuthProviderDefinitionsOperation() {
+  return {
+    get: {
+      summary: 'Get external-authentication provider definitions',
+      description:
+        'Admin-only provider metadata including fixed callback paths, provider icons, scopes and setup guidance. Contains no persisted credentials.',
+      tags: ['External Authentication'],
+      security: [{ bearerAuth: [] }],
+      responses: {
+        '200': { description: 'Provider definitions returned.' },
+        '401': failureResponse('Authentication required.'),
+        '403': failureResponse('Administrator role required.'),
+      },
+    },
+  };
+}
+
+function verifiedExternalAuthCredentialsOperation() {
+  return {
+    post: {
+      summary: 'Persist an externally tested Client ID + Client secret pair',
+      description: 'Trusted UI command. Requires both the internal API key and an authenticated Admin Bearer token. The UI calls this only after the real provider OAuth flow succeeds.',
+      tags: ['External Authentication', 'Internal'],
+      security: [{ bearerAuth: [], internalApiKey: [] }],
+      responses: {
+        '200': { description: 'Verified credential pair stored atomically.' },
+        '400': failureResponse('Credential/configuration validation failure.'),
+        '401': failureResponse('Authentication/internal key required.'),
+        '403': failureResponse('Administrator role required.'),
+      },
+    },
+  };
+}
+
+function removeExternalAuthCredentialsOperation() {
+  return {
+    delete: {
+      summary: 'Remove external-provider credentials and disable provider',
+      tags: ['External Authentication', 'Internal'],
+      security: [{ bearerAuth: [], internalApiKey: [] }],
+      responses: {
+        '200': { description: 'Client ID and Client secret removed; provider disabled.' },
+        '401': failureResponse('Authentication/internal key required.'),
+        '403': failureResponse('Administrator role required.'),
+      },
+    },
+  };
+}
+
+function externalAuthProviderOperations() {
+  return {
+    get: genericOperations('SysExtAuthProvider').get,
+    post: {
+      summary: 'Create SysExtAuthProvider',
+      description:
+        'Creates one provider configuration. callbackPath is generated from the provider definition and any non-default override is rejected.',
+      tags: ['System Business Objects', 'External Authentication'],
+      security: [{ bearerAuth: [] }],
+      responses: {
+        '201': { description: 'Created with the provider-defined callback path.' },
+        '400': failureResponse('Validation failure, including an attempted callback-path override.'),
+        '401': failureResponse('Authentication required.'),
+        '403': failureResponse('Administrator role required.'),
+        '409': failureResponse('That provider already has a configuration record.'),
+      },
     },
   };
 }

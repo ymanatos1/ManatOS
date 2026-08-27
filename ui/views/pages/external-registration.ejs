@@ -89,7 +89,7 @@
                   class="form-control"
                   id="externalRegistrationName"
                   name="name"
-                  value="<%= profile.userName || '' %>"
+                  value="<%= profile.userName || (typeof suggestedUserName !== 'undefined' ? suggestedUserName : '') %>"
                   autocomplete="username"
                   required
                   minlength="2"

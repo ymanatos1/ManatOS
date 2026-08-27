@@ -44,7 +44,9 @@
           aria-labelledby="bo-<%= tab.id %>-tab"
           tabindex="0"
         >
-          <% if (tab.id === 'general') { %>
+          <% if (tab.id === 'general' && definition.key === 'sys-ext-auth-providers') { %>
+            <%- include('../partials/ext-auth-provider-fields', { readOnly }) %>
+          <% } else if (tab.id === 'general') { %>
             <%- include('../partials/sysbo-general-fields', { readOnly }) %>
           <% } else if (tab.id === 'authentication' && definition.key === 'sys-users') { %>
             <%- include('../partials/authentication-summary', {
@@ -53,7 +55,7 @@
               showPasswordAction: false
             }) %>
           <% } else if (tab.partial) { %>
-            <%- include(tab.partial) %>
+            <%- include(tab.partial, { readOnly }) %>
           <% } else { %>
             <div class="text-secondary small">No content is configured for this tab yet.</div>
           <% } %>
@@ -111,7 +113,7 @@
         </a>
 
         <% if (!readOnly) { %>
-        <button class="btn btn-primary" type="submit">
+        <button class="btn btn-primary" type="submit" data-form-save disabled>
           <i class="bi bi-check-circle me-1"></i>
           Save
         </button>

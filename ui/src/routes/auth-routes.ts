@@ -1,27 +1,33 @@
-import { Router, type Request } from 'express';
+import { Router, type Request, type Response } from 'express';
 
 import {
   AppError,
   operationContext,
+  EXTERNAL_PROVIDER_KEYS,
   validatePassword,
   type EmailVerificationSource,
+  type ExternalProviderKey,
   type SysUser,
 } from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
+import { config } from '../config.js';
 
 import { emailService } from '../email/email-service.js';
 
 import { securityTokenStore } from '../security/security-token-store.js';
 
-import { passport } from '../auth/passport.js';
+import { configurePassport, passport } from '../auth/passport.js';
+import { configureProviderCredentialTest, removeProviderCredentialTest } from '../auth/provider-credential-test.js';
 
 import { isRecoveryIdentitySyntaxValid } from '../auth/recovery-identity.js';
 
 import type { ExternalProfile } from '../auth/external-profile.js';
 
 import {
-  configuredProviders,
+  availableProviders,
+  refreshExternalProviderRegistry,
+  runtimeProvider,
   externalProviderOption,
   externalVerificationSource,
 } from '../auth/external-providers.js';
@@ -568,46 +574,179 @@ export function createAuthRouter() {
   );
 
   /**
-   * Register configured external authentication providers.
+   * Current public provider state for the Sign in/Register popups.
+   *
+   * The browser calls this same-origin UI endpoint only when one of the
+   * authentication dialogs is opened. The UI then proxies the API's dedicated
+   * anonymous-safe projection; no Client ID or secret material is returned.
    */
-  for (const provider of configuredProviders()) {
+  router.get('/external-providers', async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+
+    try {
+      const response = await apiClient.get<{
+        providers: Array<{
+          provider: ExternalProviderKey;
+          label: string;
+          icon: string;
+          enabled: boolean;
+          configured: boolean;
+        }>;
+      }>('/api/v1/public/external-auth-providers');
+
+      res.json({ providers: response.data.providers, unavailable: false });
+    } catch {
+      // API absence is an expected degraded mode. The browser distinguishes
+      // this from a reachable API reporting an unconfigured provider.
+      res.status(503).json({ providers: [], unavailable: true });
+    }
+  });
+
+  /**
+   * Register stable routes for every supported provider key. The provider's
+   * current credentials/scopes are loaded from the API immediately before the
+   * authentication flow starts, so Admin changes from another client are not
+   * hidden behind UI startup state or a TTL cache.
+   */
+  router.get('/:provider/test-credentials', (req, res, next) => {
+    const providerKey = String(req.params.provider ?? '').toLowerCase() as ExternalProviderKey;
+    const pending = req.session.pendingExtAuthCredentialTest;
+    if (!pending || pending.provider !== providerKey || pending.status !== 'pending' || Date.now() - Date.parse(pending.createdAt) > 10 * 60 * 1000) {
+      sendProviderCredentialTestResult(res, 'failed', 'The provider credential test expired. Return to the ManatOS editor and test the credentials again.');
+      return;
+    }
+    try {
+      const strategyName = configureProviderCredentialTest({
+        testId: pending.testId, provider: pending.provider, clientId: pending.clientId,
+        clientSecret: pending.clientSecret ?? '',
+        callbackUrl: new URL(pending.callbackPath, config.PUBLIC_BASE_URL).toString(),
+        ...(pending.tenant ? { tenant: pending.tenant } : {}),
+      });
+      passport.authenticate(strategyName, {
+        session: false,
+        ...(pending.scope.length ? { scope: pending.scope } : {}),
+        state: `manatos-credential-test:${pending.testId}`,
+      })(req, res, next);
+    } catch (error) {
+      const pending = req.session.pendingExtAuthCredentialTest;
+      if (pending) {
+        pending.status = 'failed';
+        pending.errorMessage = providerCredentialTestError(error);
+        delete pending.clientSecret;
+        console.warn(
+          `[AUTH] ${pending.provider} credential test could not start: ${pending.errorMessage}`,
+        );
+        sendProviderCredentialTestResult(res, 'failed', pending.errorMessage);
+        return;
+      }
+      next(error);
+    }
+  });
+
+  for (const providerKey of EXTERNAL_PROVIDER_KEYS) {
     router.get(
-      `/${provider.key}`,
+      `/${providerKey}`,
 
-      (req, _res, next) => {
-        req.session.externalAuthIntent =
-          req.query.intent === 'register' ? 'register' : 'signin';
+      async (req, res, next) => {
+        try {
+          await refreshExternalProviderRegistry();
+          configurePassport();
 
-        next();
+          const provider = runtimeProvider(providerKey);
+
+          if (!provider) {
+            res.redirect('/?auth=signin&message=provider-not-configured');
+            return;
+          }
+
+          req.session.externalAuthIntent =
+            req.query.intent === 'register' ? 'register' : 'signin';
+
+          passport.authenticate(providerKey, {
+            session: false,
+            ...(provider.scope.length ? { scope: provider.scope } : {}),
+          })(req, res, next);
+        } catch {
+          res.redirect('/?auth=signin&message=provider-temporarily-unavailable');
+        }
       },
-
-      passport.authenticate(
-        provider.key,
-
-        {
-          session: false,
-
-          ...(provider.scope?.length
-            ? {
-                scope: provider.scope,
-              }
-            : {}),
-        },
-      ),
     );
 
     router.get(
-      `/${provider.key}/callback`,
+      `/${providerKey}/callback`,
 
-      passport.authenticate(
-        provider.key,
+      async (req, res, next) => {
+        const pendingTest = req.session.pendingExtAuthCredentialTest;
+        const credentialTestState = String(req.query.state ?? '');
+        const credentialTestPrefix = 'manatos-credential-test:';
+        const callbackTestId = credentialTestState.startsWith(credentialTestPrefix)
+          ? credentialTestState.slice(credentialTestPrefix.length)
+          : null;
 
-        {
-          session: false,
+        if (callbackTestId) {
+          if (
+            !pendingTest ||
+            pendingTest.provider !== providerKey ||
+            pendingTest.testId !== callbackTestId ||
+            pendingTest.status !== 'pending'
+          ) {
+            sendProviderCredentialTestResult(
+              res,
+              'failed',
+              'This provider credential test is no longer active. Return to the ManatOS editor and test the current credentials again.',
+            );
+            return;
+          }
+          const strategyName = configureProviderCredentialTest({
+            testId: pendingTest.testId, provider: pendingTest.provider, clientId: pendingTest.clientId,
+            clientSecret: pendingTest.clientSecret ?? '',
+            callbackUrl: new URL(pendingTest.callbackPath, config.PUBLIC_BASE_URL).toString(),
+            ...(pendingTest.tenant ? { tenant: pendingTest.tenant } : {}),
+          });
+          passport.authenticate(strategyName, { session: false }, (error: unknown, user: Express.User | false | null) => {
+            removeProviderCredentialTest(strategyName);
+            if (error || !user) {
+              pendingTest.status = 'failed';
+              pendingTest.errorMessage = providerCredentialTestError(error);
+              delete pendingTest.clientSecret;
+              console.warn(
+                `[AUTH] ${pendingTest.provider} credential test failed: ${pendingTest.errorMessage}`,
+              );
+            } else {
+              pendingTest.status = 'verified';
+              pendingTest.verifiedAt = new Date().toISOString();
+              delete pendingTest.errorMessage;
+            }
+            sendProviderCredentialTestResult(
+              res,
+              pendingTest.status,
+              pendingTest.status === 'verified'
+                ? 'Provider credentials tested successfully. They are ready to save.'
+                : (pendingTest.errorMessage ?? 'The provider rejected the proposed credentials.'),
+            );
+          })(req, res, next);
+          return;
+        }
+        try {
+          // Re-read current state at the callback boundary as well. If an Admin
+          // disabled/deleted the provider while the user was at the third party,
+          // do not continue from stale Passport configuration.
+          await refreshExternalProviderRegistry();
+          configurePassport();
 
-          failureRedirect: '/?auth=failed',
-        },
-      ),
+          if (!runtimeProvider(providerKey)) {
+            res.redirect('/?auth=signin&message=provider-not-configured');
+            return;
+          }
+
+          passport.authenticate(providerKey, {
+            session: false,
+            failureRedirect: '/?auth=failed',
+          })(req, res, next);
+        } catch {
+          res.redirect('/?auth=signin&message=provider-temporarily-unavailable');
+        }
+      },
 
       async (req, res, next) => {
         try {
@@ -784,6 +923,7 @@ export function createAuthRouter() {
         {
           title: 'Account already connected',
           titleIcon: 'bi-person-check',
+          authProviders: availableProviders(),
           profile: pending,
         },
       );
@@ -853,6 +993,7 @@ export function createAuthRouter() {
         {
           title: 'Link external account',
           titleIcon: 'bi-link-45deg',
+          authProviders: availableProviders(),
 
           profile: pending,
         },
@@ -1080,7 +1221,9 @@ export function createAuthRouter() {
           ? 'Create account'
           : 'Complete registration',
         titleIcon: 'bi-person-plus',
+        authProviders: availableProviders(),
         profile,
+        suggestedUserName: await suggestExternalUserName(profile),
         startedAsSignIn: req.session.pendingExternalRegistrationIntent === 'signin',
       });
     },
@@ -1265,6 +1408,43 @@ function verificationSourceLabel(source: EmailVerificationSource): string {
  * - password recovery;
  * - external-registration duplicate checks.
  */
+
+/**
+ * Build a friendly, provider-derived user-name suggestion for a new external
+ * account. The suggestion is presentation only: the normal API uniqueness
+ * validation remains authoritative when the account is created.
+ */
+async function suggestExternalUserName(profile: ExternalProfile): Promise<string> {
+  const sources = [
+    profile.userName,
+    profile.displayName,
+    [profile.firstName, profile.lastName].filter(Boolean).join(' '),
+    profile.email.split('@')[0],
+  ];
+
+  const base = sources
+    .map((value) => normalizeSuggestedUserName(value ?? ''))
+    .find((value) => value.length >= 2) ?? 'User';
+
+  for (let suffix = 0; suffix < 100; suffix += 1) {
+    const candidate = suffix === 0 ? base : `${base}${suffix + 1}`;
+    if (!(await lookup(candidate))) return candidate;
+  }
+
+  return `${base}${Date.now().toString().slice(-6)}`;
+}
+
+function normalizeSuggestedUserName(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('')
+    .slice(0, 80);
+}
+
 async function lookup(identity: string): Promise<SysUser | null> {
   return (
     await apiClient.get<SysUser | null>(
@@ -1380,6 +1560,50 @@ function regenerateSession(req: Request): Promise<void> {
 /**
  * Build an absolute website URL.
  */
+/**
+ * Complete an Admin credential-test popup without navigating the dirty editor.
+ * Only a status/message cross the window boundary; secret material never does.
+ */
+function sendProviderCredentialTestResult(
+  res: Response,
+  status: 'verified' | 'failed',
+  message: string,
+): void {
+  const payload = JSON.stringify({
+    type: 'manatos:provider-credential-test-result',
+    status,
+    message,
+  }).replace(/</g, '\\u003c');
+  const origin = JSON.stringify(new URL(config.PUBLIC_BASE_URL).origin);
+
+  res.type('html').send(`<!doctype html>
+<html><head><meta charset="utf-8"><title>Credential test</title></head>
+<body>
+  <p style="font-family:system-ui,sans-serif;padding:1.5rem">${status === 'verified' ? 'Credentials verified. Returning to ManatOS…' : 'Credential test failed. Returning to ManatOS…'}</p>
+  <script>
+    // postMessage is only a fast-path. The Admin editor independently polls
+    // the server-side test state, because OAuth/browser opener isolation can
+    // sever window.opener during a cross-origin provider round trip.
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(${payload}, ${origin});
+    }
+    window.setTimeout(() => window.close(), 250);
+    window.setTimeout(() => {
+      const paragraph = document.querySelector('p');
+      if (paragraph) paragraph.textContent = 'Credential test completed. You may close this window and return to ManatOS.';
+    }, 1200);
+  </script>
+</body></html>`);
+}
+
+function providerCredentialTestError(error: unknown): string {
+  if (!(error instanceof Error)) return 'The provider rejected the proposed credentials or OAuth configuration.';
+  const normalized = error.message.replace(/\s+/g, ' ').trim();
+  if (/AADSTS7000215|invalid client secret/i.test(normalized)) return 'Microsoft rejected the Client secret. Confirm that you entered the secret Value, not the Secret ID.';
+  if (/invalid_client|client credential|client secret/i.test(normalized)) return 'The provider rejected the Client ID / Client secret pair.';
+  return normalized.slice(0, 300) || 'The provider rejected the proposed credentials or OAuth configuration.';
+}
+
 function absoluteUrl(
   req: Request,
 

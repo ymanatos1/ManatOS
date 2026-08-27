@@ -5,12 +5,14 @@ import swaggerUi from 'swagger-ui-express';
 import {
   SysUserRole,
   sysApplicationsMetadata,
+  sysExtAuthProvidersMetadata,
   sysLicensesMetadata,
   sysPrincipalsMetadata,
   sysUsersMetadata,
 } from '@manatos/shared';
 
 import { createSysBORouter } from './http/sysbo-router.js';
+import { API_IMPLEMENTATION_VERSION, API_VERSION } from './version.js';
 
 import { createInternalRouter } from './http/internal-router.js';
 
@@ -37,12 +39,18 @@ import type {
   UserPrincipalService,
 } from './services/domain-services.js';
 
-import { requireAuthenticated } from './auth/auth-middleware.js';
+import { requireAdmin, requireAuthenticated } from './auth/auth-middleware.js';
 import { AuthorizationService } from './auth/authorization-service.js';
 import { createAuthRouter } from './auth/auth-router.js';
 
-import { sendFailure } from './http/api-response.js';
+import { sendCommand, sendFailure, sendQuery } from './http/api-response.js';
+import { authenticatedAuditActor } from './audit/audit-service.js';
 import type { IEmailService } from './email/email-service.js';
+import type {
+  SysExtAuthProviderService,
+  SaveSysExtAuthProviderInput,
+  SaveVerifiedSysExtAuthProviderInput,
+} from './services/sys-ext-auth-provider-service.js';
 
 /**
  * Application services required by the HTTP/API layer.
@@ -57,6 +65,8 @@ export interface ApiServices {
   applications: SysApplicationService;
 
   licenses: SysLicenseService;
+
+  extAuthProviders: SysExtAuthProviderService;
 
   externalIdentities: ExternalIdentityService;
 
@@ -228,6 +238,55 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   );
 
   /**
+   * Anonymous-safe UI bootstrap contract.
+   *
+   * The UI starts from local defaults and refreshes this data opportunistically.
+   * Keep this payload intentionally small and limited to information that is both
+   * useful before sign-in and safe to expose publicly. External authentication
+   * provider state has its own on-demand endpoint because freshness matters when
+   * Sign in/Register is opened.
+   */
+  app.get('/api/v1/public/ui-bootstrap', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    sendQuery(res, {
+      server: {
+        alive: true,
+        implementationVersion: API_IMPLEMENTATION_VERSION,
+      },
+      api: {
+        version: API_VERSION,
+      },
+    });
+  });
+
+  /**
+   * Current anonymous-safe external-authentication state.
+   *
+   * This projection deliberately excludes Client ID, Client secret, encrypted
+   * secret material and persisted Admin/audit fields.
+   */
+  app.get('/api/v1/public/external-auth-providers', async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    sendQuery(res, { providers: await services.extAuthProviders.publicProviderState() });
+  });
+
+  /**
+   * API-owned provider definitions used by the Admin editor.
+   * Authentication + Admin role are required even though the definitions contain
+   * no secrets, because this is administration/reference material rather than an
+   * anonymous UI concern.
+   */
+  app.get(
+    '/api/v1/SysExtAuthProviders/definitions',
+    requireAuthenticated,
+    requireAdmin,
+    (_req, res) => {
+      res.set('Cache-Control', 'no-store');
+      sendQuery(res, { providers: services.extAuthProviders.providerDefinitions() });
+    },
+  );
+
+  /**
    * Standard metadata-driven SysBO CRUD endpoints.
    */
   app.use(
@@ -249,6 +308,73 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     requireAuthenticated,
 
     createSysBORouter(services.licenses, sysLicensesMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysExtAuthProviders',
+    requireAuthenticated,
+    createSysBORouter(
+      services.extAuthProviders,
+      sysExtAuthProvidersMetadata,
+      authorization,
+      (body, actor) => services.extAuthProviders.createProvider(body as unknown as SaveSysExtAuthProviderInput, actor),
+      (id, body, actor) => services.extAuthProviders.updateProvider(id, body as unknown as SaveSysExtAuthProviderInput, actor),
+    ),
+  );
+
+  app.get(
+    '/api/v1/internal/external-auth-providers/runtime',
+    requireInternalApiKey,
+    async (_req, res) => {
+      const items = await services.extAuthProviders.resolveConfiguredProviders();
+      res.json({ success: true, data: { items } });
+    },
+  );
+
+  /**
+   * Trusted UI command used only after a successful end-to-end provider OAuth
+   * credential test. Both the internal key and the authenticated Admin Bearer
+   * session are required so a direct public/Admin CRUD request cannot falsely
+   * mark credentials as verified.
+   */
+  app.post(
+    '/api/v1/internal/external-auth-providers/verified-credentials',
+    requireInternalApiKey,
+    requireAuthenticated,
+    requireAdmin,
+    async (req, res) => {
+      const subject = req.auth!;
+      const actor = authenticatedAuditActor(subject.userId, subject.userName);
+      const item = await services.extAuthProviders.saveVerifiedCredentials(
+        req.body as SaveVerifiedSysExtAuthProviderInput,
+        actor,
+      );
+
+      sendCommand(
+        res,
+        `External authentication credentials for '${item.name}' verified and saved successfully.`,
+        { id: item.id, provider: item.provider, credentialsVerifiedAt: item.credentialsVerifiedAt },
+      );
+    },
+  );
+
+  /** Remove both provider credentials and disable the provider atomically. */
+  app.delete(
+    '/api/v1/internal/external-auth-providers/:id/credentials',
+    requireInternalApiKey,
+    requireAuthenticated,
+    requireAdmin,
+    async (req, res) => {
+      const subject = req.auth!;
+      const actor = authenticatedAuditActor(subject.userId, subject.userName);
+      const item = await services.extAuthProviders.removeCredentials(String(req.params.id ?? ''), actor);
+
+      sendCommand(
+        res,
+        `External authentication credentials for '${item.name}' removed; provider disabled.`,
+        { id: item.id, provider: item.provider, enabled: item.enabled },
+      );
+    },
   );
 
   /**

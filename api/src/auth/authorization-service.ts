@@ -113,6 +113,11 @@ export class AuthorizationService {
     sysBOKey: string,
     record?: SysBOEntity,
   ): Promise<boolean> {
+    /** External authentication configuration contains security-sensitive settings. */
+    if (sysBOKey === 'sys-ext-auth-providers') {
+      return subject.role === SysUserRole.Admin;
+    }
+
     /**
      * SysUser deletion is intentionally stricter than the generic
      * relationship-based authorization rules:

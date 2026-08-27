@@ -26,6 +26,7 @@ const httpStatusByErrorCode: Record<string, number> = {
   NOT_FOUND: 404,
 
   DUPLICATE_BO_VALUE: 409,
+  EXT_AUTH_PROVIDER_EXISTS: 409,
 
   SELF_PARENT_NOT_ALLOWED: 409,
   EXTERNAL_IDENTITY_EXISTS: 409,
