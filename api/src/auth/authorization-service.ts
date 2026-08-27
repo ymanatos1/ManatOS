@@ -1,5 +1,6 @@
 import {
   ForbiddenAppError,
+  MCRM_PLATFORM_ID,
   SysLicenseStatus,
   SysUserRole,
   type SysApplication,
@@ -75,14 +76,14 @@ export class DefaultSysApplicationPermissionPolicy implements SysApplicationPerm
  * Central authorization service for SysBO access.
  *
  * Read:
- *   Every authenticated Guest/User/Admin may read every current SysBO.
+ *   Every authenticated Guest/User/Superuser/Admin may read every current SysBO.
  *
  * Create:
  *   Generic creation is Admin-only.
  *
  * Update/Delete:
  *   Admin may modify everything.
- *   Guest/User may modify only related records.
+ *   Guest/User/Superuser may modify only related records.
  */
 export class AuthorizationService {
   constructor(
@@ -131,7 +132,7 @@ export class AuthorizationService {
     }
 
     /**
-     * Every authenticated Guest/User can read all current SysBOs.
+     * Every authenticated Guest/User/Superuser can read all current SysBOs.
      */
     if (action === 'read') {
       return true;
@@ -248,7 +249,14 @@ export class AuthorizationService {
     const result: SysLicense[] = [];
 
     for (const license of this.store.sysLicenses.values()) {
-      if (license.applicationId !== applicationId) {
+      if (license.platformId !== MCRM_PLATFORM_ID) {
+        continue;
+      }
+
+      // A platform-wide mCRM license (no applicationId) relates to every
+      // SysApplication. A restricted legacy/current license relates only to
+      // its named application.
+      if (license.applicationId && license.applicationId !== applicationId) {
         continue;
       }
 

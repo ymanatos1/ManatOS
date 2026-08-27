@@ -20,6 +20,16 @@ export const popupContent = {
         'You can securely connect additional providers to the same account later.',
       ],
     },
+    externalRegistration: {
+      modalTitle: 'Create account',
+      modalSubtitlePrefix: 'Complete registration with ',
+      modalSubtitleSuffix: '.',
+      contentTitle: 'Create your account',
+      signInContinuationParagraph:
+        'Choose a unique user name to create the account, or continue without a password.',
+      registrationContinuationParagraph:
+        'Choose a unique user name to finish registration. A local password is optional.',
+    },
     registerEmail: {
       modalTitle: 'Register with Email',
       modalSubtitle: 'Create your account with an email address and password.',

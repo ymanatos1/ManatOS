@@ -1,5 +1,10 @@
 import {
+  MANATOS_COMPANY,
+  effectiveEntityKeys,
+  resolvePlatform,
   SysUserRole,
+  type CompanyInfo,
+  type PlatformInfo,
   sysApplicationsMetadata,
   sysLicensesMetadata,
   sysPrincipalsMetadata,
@@ -20,7 +25,7 @@ import type {
  * Users may read/view current SysBOs; mutations remain Admin-only.
  */
 const adminRoles = [SysUserRole.Admin];
-const readRoles = [SysUserRole.Admin, SysUserRole.User];
+const readRoles = [SysUserRole.Admin, SysUserRole.Superuser, SysUserRole.User];
 
 const permissions: SysBOPermissions = {
   view: readRoles,
@@ -270,7 +275,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
         responsive: true,
 
-        visibleFields: ['name', 'principalId', 'applicationId', 'status', 'validUntil', 'enabled'],
+        visibleFields: ['name', 'principalId', 'platformId', 'applicationId', 'status', 'validUntil', 'enabled'],
       },
 
       filterDefinition: {
@@ -299,4 +304,24 @@ export function getSysBODefinition(key: string): SysBODefinition {
   }
 
   return definition;
+}
+
+
+/**
+ * Compose the SysBO registry exposed by the UI from Company-owned entities
+ * plus the selected Platform's entity contributions.
+ *
+ * Keeping the full definition catalogue in this module preserves strongly
+ * typed UI metadata, while ownership decides which subset is effective for a
+ * given platform context.
+ */
+export function effectiveSysBODefinitions(
+  company: CompanyInfo = MANATOS_COMPANY,
+  platform: PlatformInfo = resolvePlatform(company),
+): Record<string, SysBODefinition> {
+  const keys = effectiveEntityKeys(company, platform);
+
+  return Object.fromEntries(
+    Object.entries(sysBODefinitions).filter(([key]) => keys.has(key)),
+  );
 }

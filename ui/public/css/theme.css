@@ -425,3 +425,25 @@ body[data-ui-theme='lighter'] .version-badge {
   font-size: 1rem;
 }
 
+
+/* Current-platform badge theme treatment. Geometry remains in ui.css. */
+.current-platform-badge {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 1px 2px rgba(0, 0, 0, 0.16);
+}
+
+html[data-ui-theme='lighter'] .current-platform-badge,
+body[data-ui-theme='lighter'] .current-platform-badge {
+  color: #12365d;
+  background: rgba(255, 255, 255, 0.48);
+  border-color: rgba(18, 54, 93, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(18, 54, 93, 0.08),
+    0 1px 2px rgba(18, 54, 93, 0.08);
+}

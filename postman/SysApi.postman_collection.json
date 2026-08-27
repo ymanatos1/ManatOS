@@ -1390,7 +1390,8 @@
                   "const json = pm.response.json();",
                   "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                   "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "if (json.data && json.data.id) pm.environment.set('testLicenseId', json.data.id);"
+                  "if (json.data && json.data.id) pm.environment.set('testLicenseId', json.data.id);",
+                  "pm.test('License targets current platform', () => pm.expect(json.data.platformId).to.eql(pm.environment.get('currentPlatformId')));"
                 ]
               }
             }
@@ -1405,7 +1406,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman License\",\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"applicationId\": \"{{testApplicationId}}\",\n  \"licenseKey\": \"POSTMAN-TEST\",\n  \"status\": \"Active\",\n  \"quantity\": 1,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+              "raw": "{\n  \"name\": \"Postman License\",\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"platformId\": \"{{currentPlatformId}}\",\n  \"licenseKey\": \"POSTMAN-TEST\",\n  \"status\": \"Active\",\n  \"quantity\": 1,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1976,6 +1977,10 @@
     {
       "key": "testLicenseId",
       "value": ""
+    },
+    {
+      "key": "currentPlatformId",
+      "value": "mcrm"
     }
   ]
 }

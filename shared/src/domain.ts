@@ -43,6 +43,7 @@ export type SysBOUpdateInput<T extends SysBOEntity> = Partial<
  */
 export enum SysUserRole {
   Admin = 'Admin',
+  Superuser = 'Superuser',
   User = 'User',
   Guest = 'Guest',
 }
@@ -174,8 +175,20 @@ export interface SysApplication extends SysBOEntity {
  * with an application.
  */
 export interface SysLicense extends SysBOEntity {
+  /** Company-owned principal receiving the entitlement. */
   principalId: string;
-  applicationId: string;
+
+  /** Exactly one platform is licensed by each SysLicense. */
+  platformId: string;
+
+  /**
+   * Optional single-application restriction retained for backward compatibility.
+   *
+   * A null/omitted value represents a platform-wide license. A future richer
+   * entitlement model can represent one-or-many applications and design rights
+   * without changing the principal -> license -> platform ownership model.
+   */
+  applicationId?: string | null;
 
   licenseKey?: string;
 

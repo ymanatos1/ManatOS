@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 
 import { dirname, resolve } from 'node:path';
 
-import { StorageAppError } from '@manatos/shared';
+import { MCRM_PLATFORM_ID, StorageAppError, type SysLicense } from '@manatos/shared';
 
 import { emptyDatabaseState, type DatabaseState, type PersistedDatabaseState } from './types.js';
 
@@ -33,7 +33,7 @@ export class JsonFilePersistence {
 
         sysApplications: fromPersistedRecords(raw.sysApplications),
 
-        sysLicenses: fromPersistedRecords(raw.sysLicenses),
+        sysLicenses: normalizeLegacyLicenses(fromPersistedRecords(raw.sysLicenses)),
 
         sysExternalIdentities: fromPersistedRecords(raw.sysExternalIdentities),
 
@@ -143,4 +143,24 @@ function toPersistedRecords<T extends { id: string }>(
  */
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
+}
+
+
+/**
+ * Backward-compatible normalization for databases written before platform
+ * ownership was introduced. Existing licenses necessarily referred to mCRM
+ * SysApplications, so the migration is deterministic and does not require a
+ * destructive database rebuild.
+ */
+function normalizeLegacyLicenses(records: Map<string, SysLicense>): Map<string, SysLicense> {
+  for (const [id, license] of records) {
+    if (!license.platformId) {
+      records.set(id, {
+        ...license,
+        platformId: MCRM_PLATFORM_ID,
+      });
+    }
+  }
+
+  return records;
 }

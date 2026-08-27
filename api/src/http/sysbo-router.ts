@@ -2,6 +2,8 @@ import { Router, type Request, type RequestHandler } from 'express';
 
 import {
   AuthenticationError,
+  ForbiddenAppError,
+  SysUserRole,
   NotFoundError,
   operationContext,
   type SysBOEntity,
@@ -192,6 +194,22 @@ export function createSysBORouter<T extends SysBOEntity>(
         }
 
         await authorization.assertCan('update', subject, metadata.key, existing);
+
+        /**
+         * Role assignment is an administrator capability, independent from a
+         * user's ability to update other fields on their own SysUser record.
+         * This also guarantees that the new Superuser role cannot be granted
+         * by a User/Superuser through a direct API PATCH.
+         */
+        if (
+          metadata.key === 'sys-users' &&
+          req.body?.role !== undefined &&
+          req.body.role !== (existing as { role?: unknown }).role &&
+          subject.role !== SysUserRole.Admin
+        ) {
+          throw new ForbiddenAppError('Only an Admin may change a user role.');
+        }
+
         const actor = authenticatedAuditActor(subject.userId, subject.userName);
 
         scope.addContext({

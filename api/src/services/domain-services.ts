@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import {
   ConflictError,
+  MANATOS_COMPANY,
+  resolvePlatform,
   NotFoundError,
   SysUserRole,
   operationContext,
@@ -9,7 +11,7 @@ import {
   sysLicensesMetadata,
   sysPrincipalsMetadata,
   type SysApplication,
-  //type SysBOCreateInput,
+  type SysBOCreateInput,
   type SysBOUpdateInput,
   type SysExternalIdentity,
   type SysLicense,
@@ -89,10 +91,14 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
   }
 
   /**
-   * Create a license only when both referenced entities exist.
+   * Create a Company-owned license for exactly one known platform.
+   *
+   * `applicationId` is deliberately optional: omitting it creates a
+   * platform-wide entitlement. When supplied today it is valid only for a
+   * platform that contributes SysApplication (currently mCRM).
    */
   override async create(
-    input: Omit<SysLicense, 'id' | 'createdAt' | 'updatedAt'>,
+    input: SysBOCreateInput<SysLicense>,
     actor: AuditActor,
   ): Promise<SysLicense> {
     const principal = await this.store.sysPrincipals.getById(input.principalId);
@@ -101,13 +107,70 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
       throw new NotFoundError('SysPrincipal', input.principalId);
     }
 
-    const application = await this.store.sysApplications.getById(input.applicationId);
+    const platform = resolvePlatform(MANATOS_COMPANY, input.platformId);
+    if (platform.id !== input.platformId) {
+      throw new NotFoundError('Platform', input.platformId);
+    }
 
-    if (!application) {
-      throw new NotFoundError('SysApplication', input.applicationId);
+    if (input.applicationId) {
+      if (!platform.entities.some((entity) => entity.sysBOKey === 'sys-applications')) {
+        throw new ConflictError(
+          'PLATFORM_APPLICATIONS_UNAVAILABLE',
+          'Application restriction is unavailable for this platform.',
+          `Platform '${platform.name}' does not provide applications.`,
+        );
+      }
+
+      const application = await this.store.sysApplications.getById(input.applicationId);
+      if (!application) {
+        throw new NotFoundError('SysApplication', input.applicationId);
+      }
     }
 
     return super.create(input, actor);
+  }
+
+  /**
+   * Revalidate platform/application references when either side of the
+   * license scope changes. This keeps PATCH/PUT behavior consistent with
+   * creation and prevents an invalid cross-platform restriction.
+   */
+  override async update(
+    id: string,
+    changes: SysBOUpdateInput<SysLicense>,
+    actor: AuditActor,
+  ): Promise<SysLicense> {
+    const existing = await this.get(id);
+    if (!existing) {
+      throw new NotFoundError('SysLicense', id);
+    }
+
+    const platformId = changes.platformId ?? existing.platformId;
+    const applicationId = changes.applicationId !== undefined
+      ? changes.applicationId
+      : existing.applicationId;
+
+    const platform = resolvePlatform(MANATOS_COMPANY, platformId);
+    if (platform.id !== platformId) {
+      throw new NotFoundError('Platform', platformId);
+    }
+
+    if (applicationId) {
+      if (!platform.entities.some((entity) => entity.sysBOKey === 'sys-applications')) {
+        throw new ConflictError(
+          'PLATFORM_APPLICATIONS_UNAVAILABLE',
+          'Application restriction is unavailable for this platform.',
+          `Platform '${platform.name}' does not provide applications.`,
+        );
+      }
+
+      const application = await this.store.sysApplications.getById(applicationId);
+      if (!application) {
+        throw new NotFoundError('SysApplication', applicationId);
+      }
+    }
+
+    return super.update(id, changes, actor);
   }
 }
 

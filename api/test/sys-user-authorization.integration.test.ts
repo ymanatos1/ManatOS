@@ -98,6 +98,38 @@ describe('API integration - SysUser delete authorization', () => {
     expect(preserved?.id).toBe(target.id);
   });
 
+
+  it('prevents a Superuser from assigning roles through a direct SysUser PATCH', async () => {
+    const superuser = await createUser(
+      'SuperUser',
+      'superuser@example.test',
+      SysUserRole.Superuser,
+      'SuperUser!123',
+    );
+
+    const login = await request(context.app)
+      .post('/api/v1/auth/login')
+      .set('x-client-name', 'Vitest Superuser')
+      .send({
+        identity: superuser.name,
+        password: 'SuperUser!123',
+      });
+
+    expect(login.status).toBe(200);
+    const token = login.body.data.accessToken as string;
+
+    const response = await request(context.app)
+      .patch(`/api/v1/SysUsers/${superuser.id}`)
+      .set('Authorization', bearer(token))
+      .send({ role: SysUserRole.Admin });
+
+    expect(response.status).toBe(403);
+    expectFailure(response.body);
+
+    const preserved = await context.services.users.get(superuser.id);
+    expect(preserved?.role).toBe(SysUserRole.Superuser);
+  });
+
   async function createUser(
     name: string,
     email: string,

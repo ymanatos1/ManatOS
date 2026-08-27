@@ -7,6 +7,7 @@ import {
   type SysPrincipal,
   type SysUser,
 } from './domain.js';
+import { MANATOS_COMPANY } from './company-platform.js';
 
 /**
  * Supported canonical business-object field types.
@@ -316,7 +317,7 @@ export const sysUsersMetadata: SysBOMetadata<SysUser> = {
       key: 'description',
       label: 'Description',
       type: 'string',
-      order: 90,
+      order: 100,
 
       maxLength: 2000,
     },
@@ -433,8 +434,9 @@ export const sysApplicationsMetadata: SysBOMetadata<SysApplication> = {
 /**
  * License metadata.
  *
- * A license belongs to a SysPrincipal (customer identity) and refers to
- * a SysApplication. It does not belong directly to the website SysUser.
+ * A Company-owned license belongs to a SysPrincipal (customer identity) and
+ * targets exactly one platform. An optional SysApplication restriction is
+ * currently meaningful for mCRM; omitting it represents platform-wide scope.
  */
 export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
   key: 'sys-licenses',
@@ -456,13 +458,23 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
       referenceBOKey: 'sys-principals',
     },
 
-    applicationId: {
-      key: 'applicationId',
-      label: 'Application',
-      type: 'reference',
+    platformId: {
+      key: 'platformId',
+      label: 'Platform',
+      type: 'enum',
       order: 30,
 
       required: true,
+      enumValues: MANATOS_COMPANY.platforms.filter((platform) => platform.enabled).map((platform) => platform.id),
+    },
+
+    applicationId: {
+      key: 'applicationId',
+      label: 'Application restriction',
+      type: 'reference',
+      order: 40,
+
+      nullable: true,
       referenceBOKey: 'sys-applications',
     },
 
@@ -470,7 +482,7 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
       key: 'licenseKey',
       label: 'License key',
       type: 'string',
-      order: 40,
+      order: 50,
 
       maxLength: 250,
     },
@@ -479,7 +491,7 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
       key: 'status',
       label: 'Status',
       type: 'enum',
-      order: 50,
+      order: 60,
 
       required: true,
       enumValues: Object.values(SysLicenseStatus),
@@ -489,14 +501,14 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
       key: 'validFrom',
       label: 'Valid from',
       type: 'date',
-      order: 60,
+      order: 70,
     },
 
     validUntil: {
       key: 'validUntil',
       label: 'Valid until',
       type: 'date',
-      order: 70,
+      order: 80,
 
       nullable: true,
     },
@@ -505,7 +517,7 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
       key: 'quantity',
       label: 'Quantity',
       type: 'number',
-      order: 80,
+      order: 90,
 
       required: true,
     },
@@ -514,7 +526,7 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
       key: 'description',
       label: 'Description',
       type: 'string',
-      order: 90,
+      order: 100,
 
       maxLength: 2000,
     },

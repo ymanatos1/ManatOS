@@ -1,14 +1,14 @@
 <section class="home-hero content-card">
   <div class="home-hero-grid">
     <div class="home-hero-copy">
-      <span class="eyebrow">ManatOS platform</span>
+      <span class="eyebrow"><%= app.company.home.eyebrow %></span>
 
       <div class="home-hero-heading-row">
-        <h2>A data-driven platform to design and test real applications</h2>
+        <h2><%= app.company.home.title %></h2>
       </div>
 
       <p class="home-hero-lead">
-        Reusable metadata provides a clean baseline for secure, maintainable application development.
+        <%= app.company.home.description %>
       </p>
 
       <% if (!currentUser) { %>

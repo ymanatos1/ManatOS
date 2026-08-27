@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import type { SysApplication, SysUser } from '@manatos/shared';
+import { MANATOS_COMPANY, resolvePlatform, type SysApplication, type SysUser } from '@manatos/shared';
 
 import { config } from '../config.js';
 
@@ -12,7 +12,7 @@ import { navigationFor } from '../navigation.js';
 
 import { buildRootScope } from '../scopes.js';
 
-import { sysBODefinitions } from '../sysbo/definitions.js';
+import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
 
 import { availableProviders } from '../auth/external-providers.js';
 
@@ -72,6 +72,8 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       }
     }
 
+    const currentPlatform = resolvePlatform(MANATOS_COMPANY);
+
     res.locals.currentUser = user;
 
     res.locals.authProviders = availableProviders();
@@ -79,14 +81,20 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     res.locals.app = Object.freeze({
       version: '0.1.0',
 
+      /** Shared, UI-neutral company/platform catalogue. */
+      company: MANATOS_COMPANY,
+      currentPlatform,
+
       scopes: buildRootScope(req, user, activeApplication, config.SESSION_IDLE_TIMEOUT_MINUTES),
 
-      sysBO: sysBODefinitions,
+      sysBO: effectiveSysBODefinitions(MANATOS_COMPANY, currentPlatform),
 
       navigation: navigationFor(
         user?.role ?? null,
 
         Boolean(user),
+        MANATOS_COMPANY,
+        currentPlatform,
       ),
 
       /**

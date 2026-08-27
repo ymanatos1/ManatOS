@@ -1,4 +1,12 @@
-import { SysUserRole } from '@manatos/shared';
+import {
+  MANATOS_COMPANY,
+  effectiveEntityKeys,
+  resolvePlatform,
+  type CompanyInfo,
+  type NavigationContribution,
+  type PlatformInfo,
+  type SysUserRole,
+} from '@manatos/shared';
 
 export interface AppNavMenuItem {
   id: string;
@@ -9,155 +17,106 @@ export interface AppNavMenuItem {
   separatorBefore?: boolean;
   requiresAuthentication?: boolean;
   roles?: SysUserRole[];
-
-  /**
-   * Optional client-side UI action instead of normal navigation.
-   */
   action?: 'open-preferences';
-
-  /**
-   * Dock this top-level item to the bottom of the left navigation area.
-   */
   dockBottom?: boolean;
 }
 
+/**
+ * Horizontal navigation is still shell-global. Platform composition currently
+ * applies to the authenticated left navigation, where platform capabilities
+ * are operationally exposed. This can be generalized later if required.
+ */
 export const appHorizontalNavMenu: AppNavMenuItem[] = [
-  {
-    id: 'home',
-    text: 'Home',
-    icon: 'bi-house',
-    url: '/',
-  },
-  {
-    id: 'company',
-    text: 'Company',
-    icon: 'bi-building',
-    url: '/company',
-  },
+  { id: 'home', text: 'Home', icon: 'bi-house', url: '/' },
+  { id: 'company', text: 'Company', icon: 'bi-building', url: '/company' },
   {
     id: 'resources',
     text: 'Resources',
     icon: 'bi-grid',
     children: [
-      {
-        id: 'api',
-        text: 'API / Swagger',
-        icon: 'bi-braces',
-        url: '/api-link',
-      },
+      { id: 'api', text: 'API / Swagger', icon: 'bi-braces', url: '/api-link' },
       {
         id: 'help',
         text: 'Help',
         icon: 'bi-question-circle',
         children: [
-          {
-            id: 'about',
-            text: 'About this site',
-            icon: 'bi-info-circle',
-            url: '/company',
-          },
+          { id: 'about', text: 'About this site', icon: 'bi-info-circle', url: '/company' },
         ],
       },
     ],
   },
-  {
-    id: 'app-playground',
-    text: 'Apps Playground',
-    icon: 'bi-play-circle-fill',
-    url: '/app-playground',
-  },
+  { id: 'app-playground', text: 'Apps Playground', icon: 'bi-play-circle-fill', url: '/app-playground' },
 ];
 
-export const appVerticalNavMenu: AppNavMenuItem[] = [
-  {
-    id: 'account',
-    text: 'Account',
-    icon: 'bi-person-vcard',
-    url: '/account',
-    requiresAuthentication: true,
-  },
-  {
-    id: 'app-playground',
-    text: 'Apps Playground',
-    icon: 'bi-play-circle-fill',
-    url: '/app-playground',
-    requiresAuthentication: true,
-  },
-  {
-    id: 'administration',
-    text: 'Administration',
-    icon: 'bi-gear',
-    requiresAuthentication: true,
-    roles: [SysUserRole.Admin, SysUserRole.User],
-    children: [
-      {
-        id: 'users',
-        text: 'Users',
-        icon: 'bi-people-fill',
-        url: '/bo/sys-users',
-      },
-      {
-        id: 'principals',
-        text: 'Principals',
-        icon: 'bi-diagram-3-fill',
-        url: '/bo/sys-principals',
-      },
-      {
-        id: 'applications',
-        text: 'Applications',
-        icon: 'bi-window-stack',
-        url: '/bo/sys-applications',
-      },
-      {
-        id: 'licenses',
-        text: 'Licenses',
-        icon: 'bi-key',
-        url: '/bo/sys-licenses',
-      },
-    ],
-  },
-  {
-    id: 'preferences',
-    text: 'Preferences',
-    icon: 'bi-sliders',
-    action: 'open-preferences',
-    separatorBefore: true,
-    dockBottom: !true,
-    requiresAuthentication: true,
-  },
-  {
-    id: 'logout',
-    text: 'Logout',
-    icon: 'bi-box-arrow-right',
-    url: '/auth/logout',
-    dockBottom: !true,
-    requiresAuthentication: true,
-  },
-];
+/**
+ * Compose the left navigation from Company contributions plus the selected
+ * Platform contributions. Parent containers with the same id are merged, so
+ * both owners can contribute entries to Administration without hard-coding
+ * the final menu in the UI project.
+ */
+export function composeVerticalNavigation(
+  company: CompanyInfo = MANATOS_COMPANY,
+  platform: PlatformInfo = resolvePlatform(company),
+): AppNavMenuItem[] {
+  const entityKeys = effectiveEntityKeys(company, platform);
+  const contributions = [...company.navigation, ...platform.navigation]
+    .filter((item) => (item.requiresEntityKeys ?? []).every((key) => entityKeys.has(key)))
+    .sort((a, b) => a.order - b.order);
 
-export function navigationFor(role: SysUserRole | null, auth: boolean) {
+  const roots = new Map<string, AppNavMenuItem>();
+  const children = new Map<string, NavigationContribution[]>();
+
+  for (const contribution of contributions) {
+    if (contribution.parentId) {
+      const bucket = children.get(contribution.parentId) ?? [];
+      bucket.push(contribution);
+      children.set(contribution.parentId, bucket);
+      continue;
+    }
+
+    roots.set(contribution.id, toMenuItem(contribution));
+  }
+
+  for (const [parentId, entries] of children) {
+    const parent = roots.get(parentId);
+    if (!parent) continue;
+    parent.children = entries.sort((a, b) => a.order - b.order).map(toMenuItem);
+  }
+
+  return [...roots.values()];
+}
+
+function toMenuItem(item: NavigationContribution): AppNavMenuItem {
+  return {
+    id: item.id,
+    text: item.text,
+    ...(item.icon ? { icon: item.icon } : {}),
+    ...(item.url ? { url: item.url } : {}),
+    ...(item.separatorBefore ? { separatorBefore: true } : {}),
+    ...(item.requiresAuthentication ? { requiresAuthentication: true } : {}),
+    ...(item.roles ? { roles: item.roles } : {}),
+    ...(item.action === 'open-preferences' ? { action: 'open-preferences' as const } : {}),
+    ...(item.dockBottom ? { dockBottom: true } : {}),
+  };
+}
+
+export function navigationFor(
+  role: SysUserRole | null,
+  auth: boolean,
+  company: CompanyInfo = MANATOS_COMPANY,
+  platform: PlatformInfo = resolvePlatform(company),
+) {
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {
-      if (item.requiresAuthentication && !auth) {
-        return [];
-      }
+      if (item.requiresAuthentication && !auth) return [];
+      if (item.roles && (!role || !item.roles.includes(role))) return [];
 
-      if (item.roles && (!role || !item.roles.includes(role))) {
-        return [];
-      }
-
-      const children = item.children ? filter(item.children) : undefined;
-
-      return [
-        {
-          ...item,
-          ...(children ? { children } : {}),
-        },
-      ];
+      const childItems = item.children ? filter(item.children) : undefined;
+      return [{ ...item, ...(childItems ? { children: childItems } : {}) }];
     });
 
   return {
     horizontal: filter(appHorizontalNavMenu),
-    vertical: auth ? filter(appVerticalNavMenu) : [],
+    vertical: auth ? filter(composeVerticalNavigation(company, platform)) : [],
   };
 }

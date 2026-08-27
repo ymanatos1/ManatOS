@@ -3,24 +3,23 @@
     <a
       href="/"
       class="brand-link"
-      title="ManatOS home"
-      aria-label="ManatOS home"
+      title="<%= app.company.shortName %> home"
+      aria-label="<%= app.company.shortName %> home"
     >
       <!--
-        One physical logo element is used for both themes. This prevents
-        duplicate branding if theme-specific CSS is stale/cached and makes
-        the active asset unambiguous at runtime.
+        Company branding is driven by the shared CompanyInfo model. The same
+        element swaps theme-specific assets before paint, avoiding duplicate
+        logo markup and keeping the darker/lighter choice centralized.
       -->
       <img
         id="themeBrandLogo"
-        src="/assets/manatos-logo-middle-1.png"
-        data-darker-src="/assets/manatos-logo-middle-1.png"
-        data-lighter-src="/assets/manatos-logo-middle-2.png"
-        alt="ManatOS Software Solutions"
+        src="<%= app.company.branding.headerLogo.darker.src %>"
+        data-darker-src="<%= app.company.branding.headerLogo.darker.src %>"
+        data-lighter-src="<%= app.company.branding.headerLogo.lighter.src %>"
+        alt="<%= app.company.branding.headerLogo.darker.alt %>"
         class="brand-logo1 theme-brand-logo"
       >
 
-      <!-- Apply the already-restored <html> theme immediately, before paint. -->
       <script>
         (() => {
           const logo = document.getElementById('themeBrandLogo');
@@ -34,6 +33,20 @@
         })();
       </script>
     </a>
+
+    <!--
+      The platform badge is deliberately separate from the Company logo.
+      CompanyInfo answers who owns the product catalogue, while
+      currentPlatform identifies the selected major platform. Its embossed
+      treatment is theme-owned CSS rather than platform-specific hardcoding.
+    -->
+    <div
+      class="current-platform-badge"
+      title="<%= app.currentPlatform.name %>"
+      aria-label="Current platform: <%= app.currentPlatform.name %>"
+    >
+      <span class="current-platform-code"><%= app.currentPlatform.shortName %></span>
+    </div>
 
     <span class="version-badge d-none d-sm-inline">
       v<%= app.version %>
@@ -62,7 +75,6 @@
         Sign up
       </button>
     <% } else { %>
-      <!-- Future notifications entry point. -->
       <button
         type="button"
         class="btn btn-sm btn-outline-light header-notifications-button"

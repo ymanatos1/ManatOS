@@ -1158,3 +1158,85 @@ body.anonymous .workspace {
     flex-wrap: wrap;
   }
 }
+
+/* -------------------------------------------------------------------------
+ * Company / current-platform identity
+ * -------------------------------------------------------------------------
+ *
+ * The platform identity sits beside the Company brand but remains visually
+ * distinct from it. Theme files own the actual surface/text/shadow colors;
+ * these rules define only reusable geometry and typography.
+ */
+.current-platform-badge {
+  /*
+   * Keep the active-platform control visually balanced with the Company logo.
+   * The full platform description remains available through title/aria-label;
+   * the top bar intentionally shows only the concise platform name.
+   */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 92px;
+  height: 50px;
+  padding: 0 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.42rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.current-platform-code {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+}
+
+.company-platform-catalogue {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.company-platform-card {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  background: var(--bs-body-bg);
+}
+
+.company-platform-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+
+/* Optional password branch used by provider-based account registration. */
+.auth-optional-password-section {
+  padding-top: 0.2rem;
+  border-top: 1px solid #e2e9f2;
+}
+
+.auth-optional-password-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-optional-password-toggle .form-check-input {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.auth-registration-security-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 767.98px) {
+  .auth-registration-security-fields {
+    grid-template-columns: 1fr;
+  }
+}

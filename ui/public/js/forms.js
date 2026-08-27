@@ -60,6 +60,51 @@
   });
 
   /* =======================================================================
+   * Optional local-password sections
+   *
+   * External-provider registration can create an account without local
+   * credentials. The checkbox keeps that optional branch explicit and avoids
+   * showing inactive password controls. Disabled inputs are also omitted from
+   * form submission, so the existing server-side "no local password" path is
+   * preserved without a second form or endpoint.
+   * ===================================================================== */
+
+  document.querySelectorAll('[data-optional-password-section]').forEach((section) => {
+    const toggle = section.querySelector('[data-optional-password-toggle]');
+    const content = section.querySelector('[data-optional-password-content]');
+
+    if (!toggle || !content) {
+      return;
+    }
+
+    const passwordFields = content.querySelectorAll('input');
+
+    const updateOptionalPasswordSection = () => {
+      const enabled = toggle.checked;
+
+      content.hidden = !enabled;
+
+      passwordFields.forEach((field) => {
+        field.disabled = !enabled;
+
+        // Returning to provider-only authentication must not leave a hidden
+        // password value that could accidentally be submitted later.
+        if (!enabled) {
+          field.value = '';
+          field.setCustomValidity('');
+        }
+      });
+
+      // Re-run the shared password-policy state after the branch changes.
+      const passwordInput = content.querySelector('.password-policy-input');
+      passwordInput?.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    toggle.addEventListener('change', updateOptionalPasswordSection);
+    updateOptionalPasswordSection();
+  });
+
+  /* =======================================================================
    * Password-policy live validation
    * ===================================================================== */
 
@@ -91,6 +136,9 @@
 
     const update = () => {
       const value = input.value;
+      const passwordOptional = input.hasAttribute('data-password-optional');
+      const confirmationValue = confirmation?.value ?? '';
+      const passwordSupplied = value.length > 0 || confirmationValue.length > 0;
       const policy = {
         length: value.length >= 9,
         alpha: /[A-Za-z]/.test(value),
@@ -100,24 +148,35 @@
 
       Object.entries(policy).forEach(([rule, valid]) => setRule(rule, valid));
 
-      const policyValid = Object.values(policy).every(Boolean);
+      /*
+       * Some provider-based registrations allow no local password at all. In
+       * that mode an entirely empty password pair is valid; as soon as either
+       * field is used, the normal password policy and confirmation rules apply
+       * in full. This keeps optional-password flows on the same validator rather
+       * than creating a second, subtly different implementation.
+       */
+      const policyValid = passwordOptional && !passwordSupplied
+        ? true
+        : Object.values(policy).every(Boolean);
       let confirmationValid = true;
 
       if (confirmation) {
-        confirmationValid = confirmation.value.length > 0 && confirmation.value === value;
-        setRule('match', confirmationValid);
+        confirmationValid = passwordOptional && !passwordSupplied
+          ? true
+          : confirmationValue.length > 0 && confirmationValue === value;
+        setRule('match', passwordSupplied && confirmationValid);
 
         // Keep native browser validation consistent with the visible rule.
         confirmation.setCustomValidity(
-          confirmation.value.length > 0 && !confirmationValid
+          passwordSupplied && !confirmationValid
             ? 'The two password values do not match.'
             : '',
         );
       }
 
       if (submit) {
-        // form.checkValidity() also covers currentPassword when an existing
-        // local password must be supplied.
+        // form.checkValidity() also covers required account fields and, in
+        // other flows, currentPassword when an existing password is required.
         submit.disabled = !(policyValid && confirmationValid && form.checkValidity());
       }
     };

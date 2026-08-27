@@ -1,16 +1,34 @@
 <section class="content-card company-page">
-  <img
-    class="company-hero-image"
-    src="/assets/company/company-2.jpg"
-    alt="ManatOS Software Solutions"
-  >
+  <% if (app.company.branding.companyPageImage) { %>
+    <img
+      class="company-hero-image"
+      src="<%= app.company.branding.companyPageImage.src %>"
+      alt="<%= app.company.branding.companyPageImage.alt %>"
+    >
+  <% } %>
 
-  <h2 class="mt-4">
-    ManatOS Software Solutions
-  </h2>
+  <h2 class="mt-4"><%= app.company.name %></h2>
 
-  <p>
-    This is the initial corporate content page. Company profile, services,
-    contact information and legal text can be finalized later.
-  </p>
+  <% if (app.company.description) { %>
+    <p><%= app.company.description %></p>
+  <% } %>
+
+  <!--
+    The catalogue is intentionally data-driven even though mCRM is currently
+    the only platform. Adding another SysPlatform should therefore make it
+    visible here without introducing another hard-coded Company-page block.
+  -->
+  <div class="company-platform-catalogue mt-4">
+    <% for (const platform of app.company.platforms.filter((entry) => entry.enabled)) { %>
+      <article class="company-platform-card">
+        <div class="company-platform-card-title">
+          <strong><%= platform.shortName %></strong>
+          <span><%= platform.name %></span>
+        </div>
+        <% if (platform.description) { %>
+          <p class="mb-0"><%= platform.description %></p>
+        <% } %>
+      </article>
+    <% } %>
+  </div>
 </section>

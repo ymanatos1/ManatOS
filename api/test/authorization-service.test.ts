@@ -29,6 +29,8 @@ describe('AuthorizationService', () => {
   });
 
   it.each([
+    SysUserRole.Superuser,
+    SysUserRole.Superuser,
     SysUserRole.User,
     SysUserRole.Guest,
   ])('allows an authenticated %s to read SysBOs', async (role) => {
@@ -38,6 +40,8 @@ describe('AuthorizationService', () => {
   });
 
   it.each([
+    SysUserRole.Superuser,
+    SysUserRole.Superuser,
     SysUserRole.User,
     SysUserRole.Guest,
   ])('blocks generic SysBO creation for %s', async (role) => {

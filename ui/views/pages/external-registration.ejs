@@ -1,44 +1,168 @@
 <%
+  /*
+   * External-provider registration is a continuation of authentication, not a
+   * standalone application page. Render it as an auto-opened rich popup so it
+   * follows the same visual, validation and busy-state conventions as every
+   * other account-creation flow.
+   */
   const provider =
     authProviders.find((candidate) => candidate.key === profile.provider) || {
+      key: profile.provider,
       label: profile.provider,
-      icon: 'bi-box-arrow-in-right'
+      icon: 'bi-box-arrow-in-right',
+      configured: false
     };
+
+  const externalRegistrationCopy = popupContent.auth.externalRegistration;
+  const contentParagraphs = [
+    {
+      prefix: `${provider.label} authenticated `,
+      emphasis: profile.email,
+      suffix: startedAsSignIn
+        ? ', but no account is connected to this external identity yet.'
+        : '. Complete the account details below to finish registration.'
+    },
+    startedAsSignIn
+      ? externalRegistrationCopy.signInContinuationParagraph
+      : externalRegistrationCopy.registrationContinuationParagraph
+  ];
 %>
 
-<section class="content-card col-xl-7">
-  <h2><%= startedAsSignIn ? 'No ManatOS account is connected yet' : 'Complete external registration' %></h2>
-  <p class="text-secondary">
-    <strong><%= provider.label %></strong> authenticated <strong><%= profile.email %></strong>, but no ManatOS account
-    is connected to this external identity yet.
-    <% if (startedAsSignIn) { %>
-      If you want to create one, choose a unique user name below. A local password is optional.
-    <% } else { %>
-      Choose a unique user name. A local password is optional.
-    <% } %>
-  </p>
-  <form method="post" action="/auth/register/external">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>" /><label class="form-label"
-      >Email</label
-    ><input class="form-control mb-3" value="<%= profile.email %>" readonly /><label
-      class="form-label"
-      >User name</label
-    ><input
-      class="form-control mb-3"
-      name="name"
-      value="<%= profile.userName || '' %>"
-      required
-      minlength="2"
-    /><label class="form-label"
-      >Local password (optional)</label
-    ><input class="form-control password-policy-input" name="password" type="password" /><label
-      class="form-label mt-3"
-      >Confirm password</label
-    ><input class="form-control" name="confirmPassword" type="password" /><%-
-    include('../partials/password-rules') %>
-    <div class="mt-4 d-flex gap-2">
-      <a class="btn btn-secondary" href="/">Cancel</a
-      ><button class="btn btn-primary">Create account</button>
-    </div>
-  </form>
-</section>
+<div
+  class="modal fade auth-primary-modal external-registration-modal"
+  id="externalRegistrationModal"
+  tabindex="-1"
+  aria-labelledby="externalRegistrationModalLabel"
+  aria-hidden="true"
+  data-auto-show="true"
+>
+  <div class="modal-dialog modal-dialog-centered auth-modal-dialog auth-email-form-dialog">
+    <form
+      class="modal-content"
+      method="post"
+      action="/auth/register/external"
+      data-busy-submit
+      data-busy-title="Creating your account…"
+      data-busy-message="Please wait while your account and external identity are securely connected."
+      data-busy-icon="<%= provider.icon %>"
+    >
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <%- include('../popups/partials/popup-header', {
+        labelId: 'externalRegistrationModalLabel',
+        icon: 'bi-person-plus',
+        modalTitle: externalRegistrationCopy.modalTitle,
+        modalSubtitle: `${externalRegistrationCopy.modalSubtitlePrefix}${provider.label}${externalRegistrationCopy.modalSubtitleSuffix}`,
+        closeHref: '/',
+        closeLabel: 'Cancel external registration',
+        closeTitle: 'Cancel'
+      }) %>
+
+      <div class="modal-body auth-primary-modal-body auth-email-registration-body">
+        <%- include('../popups/partials/rich-popup-hero', {
+          introClass: 'auth-email-registration-intro',
+          illustration: { kind: 'provider', provider, context: 'register' },
+          contentTitle: externalRegistrationCopy.contentTitle,
+          contentParagraphs
+        }) %>
+
+        <section class="auth-registration-form-card" aria-labelledby="externalRegistrationDetailsHeading">
+          <div class="auth-modal-section-heading" id="externalRegistrationDetailsHeading">
+            <i class="bi bi-person-vcard" aria-hidden="true"></i>
+            Account details
+          </div>
+
+          <div class="auth-registration-fields">
+              <div>
+                <label class="form-label" for="externalRegistrationEmail">Email</label>
+                <input
+                  class="form-control"
+                  id="externalRegistrationEmail"
+                  value="<%= profile.email %>"
+                  readonly
+                >
+              </div>
+
+              <div>
+                <label class="form-label" for="externalRegistrationName">User name</label>
+                <input
+                  class="form-control"
+                  id="externalRegistrationName"
+                  name="name"
+                  value="<%= profile.userName || '' %>"
+                  autocomplete="username"
+                  required
+                  minlength="2"
+                >
+              </div>
+          </div>
+
+          <!--
+            A provider-authenticated account does not require a local password.
+            Keep password setup explicitly opt-in: the checkbox is the single
+            presentation state controlling both password inputs and their live
+            policy feedback. The server remains authoritative and continues to
+            accept an empty password pair or validate a supplied pair.
+          -->
+          <div class="auth-optional-password-section mt-3" data-optional-password-section>
+            <label class="auth-modal-section-heading auth-optional-password-toggle" for="externalRegistrationUsePassword">
+              <input
+                class="form-check-input"
+                id="externalRegistrationUsePassword"
+                type="checkbox"
+                data-optional-password-toggle
+              >
+              <span>Password details (optional)</span>
+            </label>
+
+            <div class="auth-optional-password-content" data-optional-password-content hidden>
+              <div class="auth-registration-security-fields">
+                <div>
+                  <label class="form-label" for="externalRegistrationPassword">Local password</label>
+                  <input
+                    class="form-control password-policy-input"
+                    id="externalRegistrationPassword"
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    data-password-optional
+                    disabled
+                  >
+                </div>
+
+                <div>
+                  <label class="form-label" for="externalRegistrationPasswordConfirm">Confirm password</label>
+                  <input
+                    class="form-control"
+                    id="externalRegistrationPasswordConfirm"
+                    name="confirmPassword"
+                    type="password"
+                    autocomplete="new-password"
+                    data-password-confirmation
+                    disabled
+                  >
+                </div>
+              </div>
+
+              <div class="auth-password-guidance mt-3">
+                <p class="small mb-2 text-secondary">
+                  Leave both password fields empty to use the external provider only, or the passwords must satisfy all rules below.
+                </p>
+                <%- include('../partials/password-rules', { includeMatchRule: true }) %>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <%- include('../popups/partials/popup-footer', {
+        footerClass: 'auth-step-footer',
+        leftActions: [{ label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary', href: '/' }],
+        rightActions: [
+          { label: 'Cancel', variant: 'btn-outline-secondary', href: '/' },
+          { label: 'Create account', icon: 'bi-person-plus', variant: 'btn-primary', type: 'submit', disabled: true, data: { 'password-submit': '' } }
+        ]
+      }) %>
+    </form>
+  </div>
+</div>

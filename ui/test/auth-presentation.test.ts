@@ -210,7 +210,7 @@ describe('authentication presentation', () => {
     expect(modal.find('[data-password-submit]').is('[disabled]')).toBe(true);
   });
 
-  it('explains that external sign-in never silently creates a new ManatOS account', async () => {
+  it('renders unmatched external sign-in as the shared rich account-creation popup', async () => {
     const html = await ejs.renderFile(externalRegistrationView, {
       csrfToken: 'test-csrf',
       authProviders: availableProviders(),
@@ -224,13 +224,24 @@ describe('authentication presentation', () => {
       },
     });
     const $ = load(html);
+    const modal = $('#externalRegistrationModal');
 
-    expect($('h2').text()).toContain('No ManatOS account is connected yet');
-    expect($('.text-secondary').text().replace(/\s+/g, ' ').trim()).toContain(
-      'If you want to create one, choose a unique user name below.',
+    expect(modal.length).toBe(1);
+    expect(modal.attr('data-auto-show')).toBe('true');
+    expect(modal.hasClass('auth-primary-modal')).toBe(true);
+    expect(modal.find('.external-link-provider-tile .bi-github').length).toBe(1);
+    expect(modal.find('.popup-content-title').text().trim()).toBe('Create your account');
+    expect(modal.find('.popup-content-paragraph').text()).toContain(
+      'no account is connected to this external identity yet',
     );
-    expect($('form').attr('action')).toBe('/auth/register/external');
-    expect($('button').text()).toContain('Create account');
+    expect(modal.find('form').attr('action')).toBe('/auth/register/external');
+    expect(modal.find('#externalRegistrationEmail').attr('readonly')).not.toBeUndefined();
+    expect(modal.find('#externalRegistrationPassword').is('[data-password-optional]')).toBe(true);
+    expect(modal.find('[data-password-confirmation]').length).toBe(1);
+    expect(modal.find('[data-rule="match"]').length).toBe(1);
+    expect(modal.find('[data-password-submit]').is('[disabled]')).toBe(true);
+    expect(modal.find('form').attr('data-busy-submit')).not.toBeUndefined();
+    expect(modal.find('button[type="submit"]').text()).toContain('Create account');
   });
 
   it('renders a polite existing-account message for registration with an already-linked provider', async () => {
