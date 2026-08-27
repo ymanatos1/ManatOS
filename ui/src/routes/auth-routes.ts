@@ -16,6 +16,8 @@ import { securityTokenStore } from '../security/security-token-store.js';
 
 import { passport } from '../auth/passport.js';
 
+import { isRecoveryIdentitySyntaxValid } from '../auth/recovery-identity.js';
+
 import type { ExternalProfile } from '../auth/external-profile.js';
 
 import {
@@ -333,10 +335,15 @@ export function createAuthRouter() {
 
     async (req, res) => {
       try {
-        const user = await lookup(String(req.body.identity ?? ''));
+        const identity = String(req.body.identity ?? '').trim();
+        const user = isRecoveryIdentitySyntaxValid(identity)
+          ? await lookup(identity)
+          : null;
 
         if (user) {
-          const token = securityTokenStore.create(user.id, 'reset-password', 30);
+          const token = securityTokenStore.create(user.id, 'reset-password', 30, {
+            subjectLabel: user.name,
+          });
 
           await emailService.sendPasswordResetEmail(
             user,
@@ -354,7 +361,14 @@ export function createAuthRouter() {
          */
       }
 
-      res.redirect('/?message=password-instructions');
+      await renderPage(res, 'pages/home', {
+        title: 'Home',
+        informationTitle: 'Password instructions requested',
+        informationMessage:
+          'If an eligible account matches the information provided, password instructions have been sent to its registered email address.',
+        informationActionLabel: 'Back to sign in',
+        informationActionUrl: '/?auth=signin',
+      });
     },
   );
 
@@ -373,7 +387,7 @@ export function createAuthRouter() {
           title: 'Set or reset password',
 
           token: String(req.query.token ?? ''),
-          tokenUsable: securityTokenStore.isUsable(
+          tokenInfo: securityTokenStore.inspectUsable(
             String(req.query.token ?? ''),
             'reset-password',
           ),
@@ -448,6 +462,11 @@ export function createAuthRouter() {
             },
           )
         ).data;
+
+        // A successful recovery invalidates every other outstanding reset link
+        // for this account. This protects against older reset emails remaining
+        // usable after the password has already been replaced.
+        securityTokenStore.invalidatePasswordResetTokens(userId);
 
         try {
           await emailService.sendPasswordChangedEmail(user);

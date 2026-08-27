@@ -4,14 +4,14 @@
       "name": "Admin",
       "email": "yiannis@manatos.gr",
       "emailVerified": true,
-      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$5ArGKHjtOIumnAC7Nh6VUw$OyBsZxV8vNVZQwwVMLSzaT5gjnwF6B3d1caC3rTA6kQ",
-      "passwordChangedAt": "2026-08-25T20:53:03.840Z",
+      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$SAkFQwl11yvcywl4cjQoPA$jpkRAwnyvZxzNXjANEtUcEDhwbb9BG2OU9kAsjWeJzU",
+      "passwordChangedAt": "2026-08-27T01:48:17.016Z",
       "role": "Admin",
       "enabled": true,
       "createdAt": "2026-08-22T04:54:43.873Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-25T20:53:03.840Z",
-      "updatedBy": "InternalApi"
+      "updatedAt": "2026-08-27T01:48:17.016Z",
+      "updatedBy": "Admin"
     },
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33c": {
       "name": "Yiannis",

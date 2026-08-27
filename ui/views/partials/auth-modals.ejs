@@ -421,8 +421,13 @@
                 autocomplete="username"
                 required
                 autofocus
+                data-recovery-identity
+                aria-describedby="passwordRequestIdentityHelp passwordRequestIdentityFeedback"
               >
-              <div class="form-text">
+              <div class="invalid-feedback" id="passwordRequestIdentityFeedback">
+                Enter a valid email address or a user name of at least 2 characters.
+              </div>
+              <div class="form-text" id="passwordRequestIdentityHelp">
                 For privacy, the confirmation message does not reveal whether an account exists.
               </div>
             </div>
@@ -441,7 +446,7 @@
             Back
           </button>
 
-          <button class="btn btn-primary" type="submit">
+          <button class="btn btn-primary" type="submit" data-recovery-submit disabled>
             <i class="bi bi-send me-1" aria-hidden="true"></i>
             Send instructions
           </button>

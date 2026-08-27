@@ -13,7 +13,7 @@ describe('password reset presentation', () => {
     const html = await ejs.renderFile(resetView, {
       csrfToken: 'test-csrf',
       token: 'token-value',
-      tokenUsable: true,
+      tokenInfo: { userId: 'user-1', subjectLabel: 'Admin' },
     });
     const $ = load(html);
 
@@ -22,13 +22,14 @@ describe('password reset presentation', () => {
     expect($('#resetPasswordConfirm').is('[data-password-confirmation]')).toBe(true);
     expect($('[data-rule="match"]').length).toBe(1);
     expect($('[data-password-submit]').is('[disabled]')).toBe(true);
+    expect($('.auth-entry-copy strong').text()).toBe('Admin');
   });
 
   it('offers a new recovery request when the link is unusable', async () => {
     const html = await ejs.renderFile(resetView, {
       csrfToken: 'test-csrf',
       token: 'expired-token',
-      tokenUsable: false,
+      tokenInfo: null,
     });
     const $ = load(html);
 

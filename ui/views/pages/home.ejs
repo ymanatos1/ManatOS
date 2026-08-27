@@ -2,10 +2,24 @@
   <div class="home-hero-grid">
     <div class="home-hero-copy">
       <span class="eyebrow">ManatOS platform</span>
-      <h2>A metadata-driven platform for designing and testing business applications</h2>
+
+      <div class="home-hero-heading-row<%= currentUser ? ' is-signed-in' : '' %>">
+        <h2>A data-driven platform to design and test real applications</h2>
+
+        <% if (currentUser) { %>
+          <div class="welcome-panel">
+            <i class="bi bi-person-check-fill" aria-hidden="true"></i>
+            <div>
+              <span>Signed in as</span>
+              <strong><%= currentUser.name %></strong>
+              <small><%= currentUser.role %></small>
+            </div>
+          </div>
+        <% } %>
+      </div>
+
       <p class="home-hero-lead">
-        Express 5, TypeScript and reusable SysBO metadata provide a clean baseline for secure,
-        maintainable application development.
+        Reusable metadata provides a clean baseline for secure, maintainable application development.
       </p>
 
       <% if (!currentUser) { %>
@@ -16,15 +30,6 @@
           <button class="btn btn-outline-primary btn-lg" type="button" data-bs-toggle="modal" data-bs-target="#signUpMethodModal">
             <i class="bi bi-person-plus me-2" aria-hidden="true"></i>Create account
           </button>
-        </div>
-      <% } else { %>
-        <div class="welcome-panel">
-          <i class="bi bi-person-check-fill" aria-hidden="true"></i>
-          <div>
-            <span>Signed in as</span>
-            <strong><%= currentUser.name %></strong>
-            <small><%= currentUser.role %></small>
-          </div>
         </div>
       <% } %>
 

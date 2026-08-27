@@ -133,6 +133,51 @@
   });
 
   /* =======================================================================
+   * Password-recovery identity validation
+   *
+   * The recovery field accepts either a user name or an email address. Once
+   * an @ character is present, the value is treated strictly as email input;
+   * otherwise it follows the existing registration user-name minimum length.
+   * This validates syntax only and deliberately reveals nothing about whether
+   * the supplied identity exists.
+   * ===================================================================== */
+
+  document.querySelectorAll('[data-recovery-identity]').forEach((input) => {
+    const form = input.closest('form');
+    const submit = form?.querySelector('[data-recovery-submit]');
+    const emailProbe = document.createElement('input');
+
+    emailProbe.type = 'email';
+    emailProbe.required = true;
+
+    const isValid = () => {
+      const value = input.value.trim();
+
+      if (value.includes('@')) {
+        emailProbe.value = value;
+        return emailProbe.checkValidity();
+      }
+
+      return value.length >= 2;
+    };
+
+    const update = () => {
+      const valid = isValid();
+      const hasValue = input.value.trim().length > 0;
+
+      input.setCustomValidity(valid || !hasValue ? '' : 'Enter a valid email address or user name.');
+      input.classList.toggle('is-invalid', hasValue && !valid);
+
+      if (submit) {
+        submit.disabled = !valid;
+      }
+    };
+
+    input.addEventListener('input', update);
+    update();
+  });
+
+  /* =======================================================================
    * Dirty-form navigation protection
    * ===================================================================== */
 

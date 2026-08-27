@@ -15,7 +15,7 @@ describe('home presentation', () => {
 
     expect($('.home-hero-grid').length).toBe(1);
     expect($('.home-hero-copy h2').text().trim()).toBe(
-      'A metadata-driven platform for designing and testing business applications',
+      'A data-driven platform to design and test real applications',
     );
     expect($('.home-platform-map').length).toBe(1);
     expect($('.home-platform-app').text()).toContain('Business Application');
@@ -43,6 +43,7 @@ describe('home presentation', () => {
 
     expect($('.welcome-panel').text()).toContain('Yiannis');
     expect($('.welcome-panel').text()).toContain('Admin');
+    expect($('.home-hero-heading-row').hasClass('is-signed-in')).toBe(true);
     expect($('[data-bs-target="#signUpMethodModal"]').length).toBe(0);
   });
 });

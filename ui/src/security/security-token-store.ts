@@ -13,6 +13,12 @@ interface Token {
   usedAt?: number;
   invalidatedAt?: number;
   invalidatedVerificationSource?: EmailVerificationSource;
+  subjectLabel?: string;
+}
+
+export interface UsableTokenInfo {
+  userId: string;
+  subjectLabel?: string;
 }
 
 export type TokenConsumeResult =
@@ -33,7 +39,20 @@ export type TokenConsumeResult =
 export class SecurityTokenStore {
   private readonly tokens = new Map<string, Token>();
 
-  create(userId: string, purpose: Purpose, minutes = 30) {
+  constructor(private readonly now: () => number = Date.now) {}
+
+  create(
+    userId: string,
+    purpose: Purpose,
+    minutes = 30,
+    options: { subjectLabel?: string } = {},
+  ) {
+    if (purpose === 'reset-password') {
+      // A newly requested recovery link supersedes every older outstanding
+      // reset link for the same account. Only one recovery credential may be
+      // usable for a user at any point in time.
+      this.invalidatePasswordResetTokens(userId);
+    }
     const raw = randomBytes(32).toString('base64url');
     const id = randomUUID();
 
@@ -42,7 +61,8 @@ export class SecurityTokenStore {
       userId,
       purpose,
       tokenHash: hash(raw),
-      expiresAt: Date.now() + minutes * 60_000,
+      expiresAt: this.now() + minutes * 60_000,
+      ...(options.subjectLabel ? { subjectLabel: options.subjectLabel } : {}),
     });
 
     return `${id}.${raw}`;
@@ -61,20 +81,35 @@ export class SecurityTokenStore {
    * mutating POST still consumes the token atomically before changing data.
    */
   isUsable(compound: string, purpose: Purpose): boolean {
+    return this.inspectUsable(compound, purpose) !== null;
+  }
+
+  /**
+   * Inspect a valid token without consuming it. Only non-sensitive metadata
+   * required for presentation is returned; the raw token is never stored.
+   */
+  inspectUsable(compound: string, purpose: Purpose): UsableTokenInfo | null {
     const [id, raw] = compound.split('.', 2);
 
-    if (!id || !raw) return false;
+    if (!id || !raw) return null;
 
     const token = this.tokens.get(id);
 
-    return Boolean(
-      token
-      && token.purpose === purpose
-      && token.tokenHash === hash(raw)
-      && !token.usedAt
-      && !token.invalidatedAt
-      && token.expiresAt >= Date.now(),
-    );
+    if (
+      !token
+      || token.purpose !== purpose
+      || token.tokenHash !== hash(raw)
+      || token.usedAt
+      || token.invalidatedAt
+      || token.expiresAt < this.now()
+    ) {
+      return null;
+    }
+
+    return {
+      userId: token.userId,
+      ...(token.subjectLabel ? { subjectLabel: token.subjectLabel } : {}),
+    };
   }
 
   /**
@@ -103,16 +138,42 @@ export class SecurityTokenStore {
       };
     }
 
-    if (token.usedAt || token.expiresAt < Date.now()) {
+    // Reset-token supersession uses generic invalidation without an email
+    // verification source. It must be enforced by the authoritative consume
+    // path as well as by the non-consuming presentation check.
+    if (token.invalidatedAt) {
       return { status: 'invalid' };
     }
 
-    token.usedAt = Date.now();
+    if (token.usedAt || token.expiresAt < this.now()) {
+      return { status: 'invalid' };
+    }
+
+    token.usedAt = this.now();
 
     return {
       status: 'valid',
       userId: token.userId,
     };
+  }
+
+  /**
+   * Revoke every outstanding password-recovery link for a user.
+   *
+   * This is called both when a newer link is issued and after a password
+   * reset completes, so stale emails can never remain valid credentials.
+   */
+  invalidatePasswordResetTokens(userId: string): void {
+    for (const token of this.tokens.values()) {
+      if (
+        token.userId === userId
+        && token.purpose === 'reset-password'
+        && !token.usedAt
+        && !token.invalidatedAt
+      ) {
+        token.invalidatedAt = this.now();
+      }
+    }
   }
 
   /**
@@ -130,7 +191,7 @@ export class SecurityTokenStore {
         !token.usedAt &&
         !token.invalidatedAt
       ) {
-        token.invalidatedAt = Date.now();
+        token.invalidatedAt = this.now();
         token.invalidatedVerificationSource = source;
       }
     }

@@ -154,6 +154,8 @@ describe('authentication presentation', () => {
     expect(modal.find('.auth-entry-illustration.is-password').length).toBe(1);
     expect(modal.find('.auth-entry-copy h3').text().trim()).toBe('Recover access');
     expect(modal.find('#passwordRequestIdentity').length).toBe(1);
+    expect(modal.find('#passwordRequestIdentity').is('[data-recovery-identity]')).toBe(true);
+    expect(modal.find('[data-recovery-submit]').is('[disabled]')).toBe(true);
     expect(modal.find('form').attr('data-busy-submit')).not.toBeUndefined();
     expect(modal.find('.auth-back-button').attr('data-bs-target')).toBe('#signInModal');
   });
