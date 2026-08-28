@@ -12,6 +12,7 @@ import {
 
 import { apiClient } from '../api-client.js';
 import { config } from '../config.js';
+import { apiSessionOptions } from '../auth/api-session.js';
 
 import { emailService } from '../email/email-service.js';
 
@@ -632,7 +633,6 @@ export function createAuthRouter() {
       if (pending) {
         pending.status = 'failed';
         pending.errorMessage = providerCredentialTestError(error);
-        delete pending.clientSecret;
         console.warn(
           `[AUTH] ${pending.provider} credential test could not start: ${pending.errorMessage}`,
         );
@@ -697,31 +697,82 @@ export function createAuthRouter() {
             );
             return;
           }
+
+          /*
+           * OAuth providers may return a standards-based error directly to the
+           * registered callback instead of invoking Passport's token exchange.
+           * Capture that provider response in the authoritative pending-test
+           * state so the Admin editor can display it immediately through its
+           * normal polling channel.
+           */
+          const callbackError = String(req.query.error ?? '').trim();
+          if (callbackError) {
+            pendingTest.status = 'failed';
+            pendingTest.errorMessage = providerCredentialTestCallbackError(
+              providerKey,
+              callbackError,
+              String(req.query.error_description ?? '').trim(),
+            );
+            console.warn(
+              `[AUTH] ${pendingTest.provider} credential test callback rejected: ${pendingTest.errorMessage}`,
+            );
+            sendProviderCredentialTestResult(res, 'failed', pendingTest.errorMessage);
+            return;
+          }
+
           const strategyName = configureProviderCredentialTest({
             testId: pendingTest.testId, provider: pendingTest.provider, clientId: pendingTest.clientId,
             clientSecret: pendingTest.clientSecret ?? '',
             callbackUrl: new URL(pendingTest.callbackPath, config.PUBLIC_BASE_URL).toString(),
             ...(pendingTest.tenant ? { tenant: pendingTest.tenant } : {}),
           });
-          passport.authenticate(strategyName, { session: false }, (error: unknown, user: Express.User | false | null) => {
+          passport.authenticate(strategyName, { session: false }, async (error: unknown, user: Express.User | false | null) => {
             removeProviderCredentialTest(strategyName);
             if (error || !user) {
               pendingTest.status = 'failed';
               pendingTest.errorMessage = providerCredentialTestError(error);
-              delete pendingTest.clientSecret;
               console.warn(
                 `[AUTH] ${pendingTest.provider} credential test failed: ${pendingTest.errorMessage}`,
               );
             } else {
-              pendingTest.status = 'verified';
-              pendingTest.verifiedAt = new Date().toISOString();
-              delete pendingTest.errorMessage;
+              try {
+                if (
+                  pendingTest.usesStoredCredentials &&
+                  pendingTest.recordId &&
+                  pendingTest.storedSecretUpdatedAt
+                ) {
+                  const verified = await apiClient.post<{ credentialsVerifiedAt?: string }>(
+                    `/api/v1/internal/external-auth-providers/${encodeURIComponent(pendingTest.recordId)}/credentials-verified`,
+                    {
+                      clientId: pendingTest.clientId,
+                      secretUpdatedAt: pendingTest.storedSecretUpdatedAt,
+                    },
+                    { ...apiSessionOptions(req), internal: true },
+                  );
+                  pendingTest.verifiedAt = String(verified.data.credentialsVerifiedAt ?? new Date().toISOString());
+                  // The persisted pair is now verified; no pending plaintext
+                  // secret needs to survive until a separate Save action.
+                  delete pendingTest.clientSecret;
+                } else {
+                  pendingTest.verifiedAt = new Date().toISOString();
+                }
+                pendingTest.status = 'verified';
+                delete pendingTest.errorMessage;
+              } catch (verificationCommitError) {
+                pendingTest.status = 'failed';
+                pendingTest.errorMessage =
+                  verificationCommitError instanceof Error
+                    ? verificationCommitError.message
+                    : 'The stored credentials passed the provider test but could not be marked verified.';
+              }
             }
             sendProviderCredentialTestResult(
               res,
               pendingTest.status,
               pendingTest.status === 'verified'
-                ? 'Provider credentials tested successfully. They are ready to save.'
+                ? (pendingTest.usesStoredCredentials
+                    ? 'Stored provider credentials tested successfully and are now verified.'
+                    : 'Provider credentials tested successfully. They are ready to save.')
                 : (pendingTest.errorMessage ?? 'The provider rejected the proposed credentials.'),
             );
           })(req, res, next);
@@ -1594,6 +1645,26 @@ function sendProviderCredentialTestResult(
     }, 1200);
   </script>
 </body></html>`);
+}
+
+function providerCredentialTestCallbackError(
+  provider: ExternalProviderKey,
+  error: string,
+  description: string,
+): string {
+  const normalizedDescription = description.replace(/\s+/g, ' ').trim().slice(0, 300);
+  const normalizedError = error.replace(/\s+/g, ' ').trim().slice(0, 100);
+  const providerLabel = provider.charAt(0).toUpperCase() + provider.slice(1);
+
+  if (normalizedError === 'access_denied') {
+    return normalizedDescription
+      ? `${providerLabel} denied the credential-test authorization: ${normalizedDescription}`
+      : `${providerLabel} denied or cancelled the credential-test authorization.`;
+  }
+
+  return normalizedDescription
+    ? `${providerLabel} rejected the credential test: ${normalizedDescription}`
+    : `${providerLabel} rejected the credential test (${normalizedError || 'OAuth error'}).`;
 }
 
 function providerCredentialTestError(error: unknown): string {

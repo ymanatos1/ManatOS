@@ -22,7 +22,7 @@ describe('generic SysBO form state presentation', () => {
     expect(source).toContain("form.addEventListener('change', update)");
   });
 
-  it('requires an external-provider credential pair to be tested before Save', async () => {
+  it('allows a complete external-provider credential pair to be stored before verification and supports later testing', async () => {
     const source = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
     expect(source).toContain("credentialState.value = 'required'");
     expect(source).toContain('data-provider-test-credentials');
@@ -30,6 +30,8 @@ describe('generic SysBO form state presentation', () => {
     expect(source).toContain('body.set(\'clientId\', clientId.value.trim())');
     expect(source).toContain('body.set(\'clientSecret\', clientSecret.value)');
     expect(source).toContain('providerEnabled || anyCredentialValue');
+    expect(source).toContain('Credential verification is deliberately not a prerequisite for');
+    expect(source).toContain("testCredentials.dataset.providerTestStored === 'true'");
     expect(source).toContain("window.open('', 'manatos-provider-credential-test'");
     expect(source).toContain("result.type !== 'manatos:provider-credential-test-result'");
     expect(source).toContain('payload.statusUrl');
@@ -37,5 +39,8 @@ describe('generic SysBO form state presentation', () => {
     expect(source).toContain('window.manatosBusy?.show');
     expect(source).toContain("url.searchParams.set('tab', 'secrets')");
     expect(source).toContain('window.manatosAllowDirtyPageExit?.()');
+    expect(source).toContain('const noReturnMessage = () =>');
+    expect(source).toContain('If it shows “App not active”');
+    expect(source).toContain('activate the Meta app or use an account that has an app role');
   });
 });

@@ -79,11 +79,15 @@ export interface SysExtAuthProvider extends SysBOEntity {
   secretUpdatedAt?: string | null;
 
   /**
+   * Persisted, application-managed verification state for the currently
+   * stored Client ID + Client secret pair. Admin/API callers cannot set this
+   * directly; credential lifecycle commands maintain it atomically.
+   */
+  credentialsVerified: boolean;
+
+  /**
    * Timestamp of the most recent successful end-to-end OAuth credential test.
-   *
-   * This is cleared whenever the stored Client ID/secret pair changes or is
-   * removed. A provider is runtime-configured only while this verification is
-   * present together with both credential values.
+   * Cleared whenever the stored credential pair changes or is removed.
    */
   credentialsVerifiedAt?: string | null;
 }

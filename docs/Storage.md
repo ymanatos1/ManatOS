@@ -38,3 +38,13 @@ This design keeps persistence behavior inside the storage adapter, where future 
 ## Health and readiness
 
 The current in-memory adapter exposes a lightweight, non-mutating health check. Server liveness is available at `GET /health`; readiness is available at `GET /ready` and currently includes datastore readiness.
+
+## Backward-compatible JSON loader normalization
+
+The JSON adapter can evolve persisted records without requiring a separate migration command for additive model changes. `JsonFilePersistence.load()` normalizes older records while reconstructing the in-memory Maps.
+
+For `SysExtAuthProvider`, databases written before the persisted `credentialsVerified` field existed are upgraded in memory during API startup. If the field is absent, the loader infers it from the legacy authoritative facts: a Client ID, encrypted Client Secret and `credentialsVerifiedAt` timestamp mean the stored pair was previously verified; otherwise the flag becomes `false`.
+
+This normalization is automatic whenever the API initializes the datastore. It does **not** immediately rewrite `data/database.json`; the normalized property is written on the next normal persistence/flush operation. No `.env` flag or manual JSON edit activates it.
+
+This mechanism is intentionally specific to the current JSON adapter. Future relational adapters should use explicit schema/data migrations for equivalent changes.

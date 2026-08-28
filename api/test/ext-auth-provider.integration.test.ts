@@ -16,8 +16,86 @@ async function saveVerified(
     .send(body);
 }
 
+async function saveStored(
+  context: Awaited<ReturnType<typeof createTestApi>>,
+  token: string,
+  body: Record<string, unknown>,
+) {
+  return request(context.app)
+    .post('/api/v1/internal/external-auth-providers/stored-credentials')
+    .set('Authorization', bearer(token))
+    .set('x-internal-api-key', config.INTERNAL_API_KEY)
+    .send(body);
+}
+
 describe('SysExtAuthProvider API', () => {
-  it('stores only an internally verified credential pair and never returns secret material', async () => {
+  it('stores an unverified credential pair securely and keeps it unavailable to runtime until verified', async () => {
+    const context = await createTestApi();
+    await seedAdmin(context.services.users);
+    const token = await loginAdmin(context.app);
+
+    const created = await saveStored(context, token, {
+      provider: 'facebook',
+      enabled: true,
+      clientId: 'facebook-client',
+      clientSecret: 'facebook-secret',
+    });
+
+    expect(created.status).toBe(200);
+    const id = created.body.data.id as string;
+
+    let read = await request(context.app)
+      .get(`/api/v1/SysExtAuthProviders/${id}`)
+      .set('Authorization', bearer(token));
+    expect(read.body.data).toMatchObject({
+      provider: 'facebook',
+      enabled: true,
+      clientId: 'facebook-client',
+      hasClientSecret: true,
+      credentialsVerified: false,
+      credentialsVerifiedAt: null,
+    });
+    expect(JSON.stringify(read.body)).not.toContain('facebook-secret');
+
+    let runtime = await request(context.app)
+      .get('/api/v1/internal/external-auth-providers/runtime')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY);
+    expect(runtime.body.data.items).toHaveLength(0);
+
+    const material = await request(context.app)
+      .get(`/api/v1/internal/external-auth-providers/${id}/credentials-for-test`)
+      .set('Authorization', bearer(token))
+      .set('x-internal-api-key', config.INTERNAL_API_KEY);
+    expect(material.body.data).toMatchObject({
+      id,
+      provider: 'facebook',
+      clientId: 'facebook-client',
+      clientSecret: 'facebook-secret',
+    });
+
+    const marked = await request(context.app)
+      .post(`/api/v1/internal/external-auth-providers/${id}/credentials-verified`)
+      .set('Authorization', bearer(token))
+      .set('x-internal-api-key', config.INTERNAL_API_KEY)
+      .send({
+        clientId: material.body.data.clientId,
+        secretUpdatedAt: material.body.data.secretUpdatedAt,
+      });
+    expect(marked.status).toBe(200);
+
+    read = await request(context.app)
+      .get(`/api/v1/SysExtAuthProviders/${id}`)
+      .set('Authorization', bearer(token));
+    expect(read.body.data.credentialsVerified).toBe(true);
+    expect(read.body.data.credentialsVerifiedAt).toBeTruthy();
+
+    runtime = await request(context.app)
+      .get('/api/v1/internal/external-auth-providers/runtime')
+      .set('x-internal-api-key', config.INTERNAL_API_KEY);
+    expect(runtime.body.data.items).toHaveLength(1);
+  });
+
+  it('keeps credential writes on trusted internal commands and never returns secret material through normal CRUD', async () => {
     const context = await createTestApi();
     await seedAdmin(context.services.users);
     const token = await loginAdmin(context.app);
@@ -49,7 +127,7 @@ describe('SysExtAuthProvider API', () => {
       provider: 'microsoft',
       clientId: 'microsoft-client',
       hasClientSecret: true,
-      credentialsConfigured: true,
+      credentialsVerified: true,
     });
     expect(read.body.data.credentialsVerifiedAt).toBeTruthy();
     expect(JSON.stringify(read.body)).not.toContain('plain-secret');
@@ -83,6 +161,7 @@ describe('SysExtAuthProvider API', () => {
     const after = (await context.services.extAuthProviders.list({ page: 1, pageSize: 10, direction: 'asc', filters: {} })).items[0]!;
     expect(after.clientId).toBe(before.clientId);
     expect(after.clientSecretEncrypted).toBe(before.clientSecretEncrypted);
+    expect(after.credentialsVerified).toBe(true);
     expect(after.credentialsVerifiedAt).toBe(before.credentialsVerifiedAt);
 
     const rejectedCredentialChange = await request(context.app)
@@ -92,7 +171,7 @@ describe('SysExtAuthProvider API', () => {
     expect(rejectedCredentialChange.status).toBe(400);
   });
 
-  it('requires Client ID and Client secret to be replaced together through the verified command', async () => {
+  it('requires Client ID and Client secret to be replaced together through a trusted credential command', async () => {
     const context = await createTestApi();
     await seedAdmin(context.services.users);
     const token = await loginAdmin(context.app);
@@ -115,7 +194,7 @@ describe('SysExtAuthProvider API', () => {
     const read = await request(context.app)
       .get(`/api/v1/SysExtAuthProviders/${id}`)
       .set('Authorization', bearer(token));
-    expect(read.body.data).toMatchObject({ clientId: 'new-id', credentialsConfigured: true });
+    expect(read.body.data).toMatchObject({ clientId: 'new-id', credentialsVerified: true });
   });
 
   it('removes both credentials and disables the provider atomically', async () => {
@@ -136,7 +215,8 @@ describe('SysExtAuthProvider API', () => {
     const read = await request(context.app)
       .get(`/api/v1/SysExtAuthProviders/${id}`)
       .set('Authorization', bearer(token));
-    expect(read.body.data).toMatchObject({ enabled: false, clientId: '', hasClientSecret: false, credentialsConfigured: false });
+    expect(read.body.data).toMatchObject({ enabled: false, clientId: '', hasClientSecret: false, credentialsVerified: false });
+    expect(read.body.data.credentialsVerified).toBe(false);
     expect(read.body.data.credentialsVerifiedAt).toBeNull();
   });
 

@@ -47,6 +47,13 @@ export interface SysBOFieldMetadata {
   generated?: boolean;
   readOnly?: boolean;
 
+  /**
+   * Persisted field maintained by application/domain logic rather than by a
+   * normal CRUD caller. Unlike generated fields, the value is stored and can
+   * therefore be filtered, indexed and audited by future storage providers.
+   */
+  applicationManaged?: boolean;
+
   unique?: boolean;
   sensitive?: boolean;
 
@@ -573,9 +580,9 @@ export const sysExtAuthProvidersMetadata: SysBOMetadata<SysExtAuthProvider> = {
     callbackPath: { key: 'callbackPath', label: 'Callback path', type: 'string', order: 50, required: true, maxLength: 300, generated: true, readOnly: true },
     tenant: { key: 'tenant', label: 'Tenant', type: 'string', order: 60, nullable: true, maxLength: 100 },
     secretUpdatedAt: { key: 'secretUpdatedAt', label: 'Secret updated', type: 'date', order: 70, nullable: true, readOnly: true },
-    credentialsVerifiedAt: { key: 'credentialsVerifiedAt', label: 'Credentials verified', type: 'date', order: 75, nullable: true, readOnly: true },
+    credentialsVerified: { key: 'credentialsVerified', label: 'Credentials verified', type: 'boolean', order: 75, required: true, readOnly: true, applicationManaged: true },
+    credentialsVerifiedAt: { key: 'credentialsVerifiedAt', label: 'Credentials verified at', type: 'date', order: 76, nullable: true, readOnly: true, applicationManaged: true },
     hasClientSecret: { key: 'hasClientSecret', label: 'Secret stored', type: 'boolean', order: 80, generated: true, readOnly: true },
-    credentialsConfigured: { key: 'credentialsConfigured', label: 'Credentials verified', type: 'boolean', order: 85, generated: true, readOnly: true },
   },
 };
 

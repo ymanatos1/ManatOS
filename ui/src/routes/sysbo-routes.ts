@@ -362,9 +362,50 @@ export function createSysBORoutes() {
       requirePermission(permissions.edit || permissions.create, 'Admin access is required to test provider credentials.');
 
       const provider = String(req.body.provider ?? '').trim().toLowerCase() as ExternalProviderKey;
-      const clientId = String(req.body.clientId ?? '').trim();
-      const clientSecret = String(req.body.clientSecret ?? '').trim();
+      let clientId = String(req.body.clientId ?? '').trim();
+      let clientSecret = String(req.body.clientSecret ?? '').trim();
       const recordId = String(req.body.id ?? '').trim();
+      let usesStoredCredentials = false;
+      let storedSecretUpdatedAt: string | undefined;
+
+      if (Boolean(clientId) !== Boolean(clientSecret)) {
+        res.status(400).json({
+          success: false,
+          errorMessage: 'Client ID and Client secret must be tested together.',
+        });
+        return;
+      }
+
+      /*
+       * Existing unverified records can be tested without asking the Admin to
+       * re-enter a secret that ManatOS already stores encrypted. Only the
+       * trusted UI server receives the decrypted pair from the internal API;
+       * it is never sent to browser JavaScript.
+       */
+      if (!clientId && !clientSecret && recordId) {
+        const stored = (
+          await apiClient.get<{
+            id: string;
+            provider: ExternalProviderKey;
+            clientId: string;
+            clientSecret: string;
+            secretUpdatedAt: string;
+          }>(
+            `/api/v1/internal/external-auth-providers/${encodeURIComponent(recordId)}/credentials-for-test`,
+            { ...apiSessionOptions(req), internal: true },
+          )
+        ).data;
+
+        if (stored.provider !== provider) {
+          res.status(400).json({ success: false, errorMessage: 'The stored credentials do not match this provider.' });
+          return;
+        }
+
+        clientId = stored.clientId;
+        clientSecret = stored.clientSecret;
+        usesStoredCredentials = true;
+        storedSecretUpdatedAt = stored.secretUpdatedAt;
+      }
 
       if (!clientId || !clientSecret) {
         res.status(400).json({
@@ -386,13 +427,21 @@ export function createSysBORoutes() {
         throw new AppError('VALIDATION_ERROR', 'Unsupported external authentication provider.', 'Choose a supported provider.');
       }
 
-      req.session.pendingExtAuthCredentialTest = {
+      /*
+       * Build the pending test as a local, fully typed value before assigning it
+       * to the Express session. Besides avoiding optional-session narrowing
+       * problems, this keeps exactOptionalPropertyTypes happy: optional values
+       * are omitted rather than explicitly written as undefined.
+       */
+      const pendingCredentialTest: NonNullable<typeof req.session.pendingExtAuthCredentialTest> = {
         testId: randomUUID(),
         ...(recordId ? { recordId } : {}),
         provider,
         enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
         clientId,
         clientSecret,
+        ...(usesStoredCredentials ? { usesStoredCredentials: true } : {}),
+        ...(usesStoredCredentials && storedSecretUpdatedAt ? { storedSecretUpdatedAt } : {}),
         scope: providerDefinition.scope,
         callbackPath: providerDefinition.callbackPath,
         ...(providerDefinition.tenant ? { tenant: providerDefinition.tenant } : {}),
@@ -403,15 +452,17 @@ export function createSysBORoutes() {
         createdAt: new Date().toISOString(),
       };
 
+      req.session.pendingExtAuthCredentialTest = pendingCredentialTest;
+
       // The browser starts the OAuth navigation only after the draft has
       // been captured successfully in the server-side session. Returning JSON
       // keeps validation/API failures on the edit page instead of throwing the
       // Admin back to Home and losing the unsaved form.
       res.json({
         success: true,
-        testId: req.session.pendingExtAuthCredentialTest.testId,
+        testId: pendingCredentialTest.testId,
         redirectUrl: `/auth/${provider}/test-credentials`,
-        statusUrl: `/bo/sys-ext-auth-providers/test-credentials/status?testId=${encodeURIComponent(req.session.pendingExtAuthCredentialTest.testId)}`,
+        statusUrl: `/bo/sys-ext-auth-providers/test-credentials/status?testId=${encodeURIComponent(pendingCredentialTest.testId)}`,
         cancelUrl: '/bo/sys-ext-auth-providers/test-credentials/cancel',
       });
     } catch (error) {
@@ -455,7 +506,9 @@ export function createSysBORoutes() {
         provider: pending.provider,
         status: pending.status,
         message: pending.status === 'verified'
-          ? 'Provider credentials tested successfully. They are ready to save.'
+          ? (pending.usesStoredCredentials
+              ? 'Stored provider credentials tested successfully and are now verified.'
+              : 'Provider credentials tested successfully. They are ready to save.')
           : pending.status === 'failed'
             ? (pending.errorMessage ?? 'The provider rejected the proposed credentials.')
             : 'Waiting for the provider credential test to complete.',
@@ -540,6 +593,61 @@ export function createSysBORoutes() {
                 enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
                 clientId: pending.clientId,
                 clientSecret: pending.clientSecret,
+                callbackPath: req.body.callbackPath,
+                ...(req.body.tenant ? { tenant: req.body.tenant } : {}),
+              },
+              { ...apiSessionOptions(req), internal: true },
+            );
+
+            delete req.session.pendingExtAuthCredentialTest;
+            await refreshExternalProviderRegistry();
+            configurePassport();
+            res.redirect('/bo/sys-ext-auth-providers');
+            return;
+          }
+
+          let proposedClientId = String(req.body.clientId ?? '').trim();
+          let proposedClientSecret = String(req.body.clientSecret ?? '').trim();
+
+          /*
+           * A failed provider test must not force the Admin to re-enter the
+           * credential pair merely to store it unverified. Keep the exact
+           * proposed pair in the short-lived server session and use it as a
+           * fallback if a browser/password-manager omits either field on the
+           * subsequent Save. The pair is still committed only through the
+           * trusted stored-credentials API command and encrypted immediately.
+           */
+          const unverifiedPendingMatches =
+            (pending?.status === 'failed' || pending?.status === 'pending') &&
+            pending.provider === provider &&
+            (pending.recordId ?? '') === id &&
+            Boolean(pending.clientId) &&
+            Boolean(pending.clientSecret) &&
+            Date.now() - Date.parse(pending.createdAt) <= 10 * 60 * 1000;
+
+          if (unverifiedPendingMatches) {
+            proposedClientId ||= pending.clientId;
+            proposedClientSecret ||= pending.clientSecret ?? '';
+          }
+
+          if (Boolean(proposedClientId) !== Boolean(proposedClientSecret)) {
+            throw new AppError(
+              'VALIDATION_ERROR',
+              'Client ID and Client secret must be stored together.',
+              'Enter both Client ID and Client secret, or leave both unchanged.',
+              false,
+            );
+          }
+
+          if (proposedClientId && proposedClientSecret) {
+            await apiClient.post(
+              '/api/v1/internal/external-auth-providers/stored-credentials',
+              {
+                ...(id ? { id } : {}),
+                provider,
+                enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
+                clientId: proposedClientId,
+                clientSecret: proposedClientSecret,
                 callbackPath: req.body.callbackPath,
                 ...(req.body.tenant ? { tenant: req.body.tenant } : {}),
               },
@@ -830,9 +938,12 @@ async function editPageSupplementalData(
 function credentialTestResultPresentation(req: Request) {
   const result = String(req.query.credentialsTest ?? '');
   if (result === 'verified') {
+    const storedPairVerified = req.session.pendingExtAuthCredentialTest?.usesStoredCredentials === true;
     return {
       informationTitle: 'Credentials verified',
-      informationMessage: 'The provider accepted the Client ID and Client secret. The verified credential pair is ready to save.',
+      informationMessage: storedPairVerified
+        ? 'The provider accepted the stored Client ID and Client secret. The saved credential pair is now verified.'
+        : 'The provider accepted the Client ID and Client secret. The verified credential pair is ready to save.',
     };
   }
   if (result === 'failed') {

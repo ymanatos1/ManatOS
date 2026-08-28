@@ -51,6 +51,7 @@ import type { SysConfigurationService } from './services/sys-configuration-servi
 import type {
   SysExtAuthProviderService,
   SaveSysExtAuthProviderInput,
+  SaveStoredSysExtAuthProviderInput,
   SaveVerifiedSysExtAuthProviderInput,
 } from './services/sys-ext-auth-provider-service.js';
 
@@ -373,7 +374,70 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       sendCommand(
         res,
         `External authentication credentials for '${item.name}' verified and saved successfully.`,
-        { id: item.id, provider: item.provider, credentialsVerifiedAt: item.credentialsVerifiedAt },
+        { id: item.id, provider: item.provider, credentialsVerified: item.credentialsVerified, credentialsVerifiedAt: item.credentialsVerifiedAt },
+      );
+    },
+  );
+
+  /**
+   * Store a complete provider credential pair securely without asserting that
+   * the provider has accepted it. This supports Admin draft/configuration work
+   * while keeping the provider unavailable to sign-in until it is verified.
+   */
+  app.post(
+    '/api/v1/internal/external-auth-providers/stored-credentials',
+    requireInternalApiKey,
+    requireAuthenticated,
+    requireAdmin,
+    async (req, res) => {
+      const subject = req.auth!;
+      const actor = authenticatedAuditActor(subject.userId, subject.userName);
+      const item = await services.extAuthProviders.saveStoredCredentials(
+        req.body as SaveStoredSysExtAuthProviderInput,
+        actor,
+      );
+
+      sendCommand(
+        res,
+        `External authentication credentials for '${item.name}' stored securely; verification is still required.`,
+        { id: item.id, provider: item.provider, credentialsVerified: item.credentialsVerified, credentialsVerifiedAt: item.credentialsVerifiedAt },
+      );
+    },
+  );
+
+  /** Trusted UI-only access to one encrypted-at-rest pair for provider testing. */
+  app.get(
+    '/api/v1/internal/external-auth-providers/:id/credentials-for-test',
+    requireInternalApiKey,
+    requireAuthenticated,
+    requireAdmin,
+    async (req, res) => {
+      const data = await services.extAuthProviders.storedCredentialMaterial(String(req.params.id ?? ''));
+      res.set('Cache-Control', 'no-store');
+      res.json({ success: true, data });
+    },
+  );
+
+  /** Mark the exact stored credential version that successfully completed OAuth testing. */
+  app.post(
+    '/api/v1/internal/external-auth-providers/:id/credentials-verified',
+    requireInternalApiKey,
+    requireAuthenticated,
+    requireAdmin,
+    async (req, res) => {
+      const subject = req.auth!;
+      const actor = authenticatedAuditActor(subject.userId, subject.userName);
+      const item = await services.extAuthProviders.markStoredCredentialsVerified(
+        String(req.params.id ?? ''),
+        String(req.body.clientId ?? ''),
+        String(req.body.secretUpdatedAt ?? ''),
+        actor,
+      );
+
+      sendCommand(
+        res,
+        `External authentication credentials for '${item.name}' verified successfully.`,
+        { id: item.id, provider: item.provider, credentialsVerified: item.credentialsVerified, credentialsVerifiedAt: item.credentialsVerifiedAt },
       );
     },
   );

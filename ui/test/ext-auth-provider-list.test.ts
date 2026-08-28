@@ -18,7 +18,7 @@ describe('external authentication provider list presentation', () => {
       'provider',
       'enabled',
       'callbackPath',
-      'credentialsConfigured',
+      'credentialsVerified',
     ]);
   });
 
@@ -35,7 +35,7 @@ describe('external authentication provider list presentation', () => {
           enabled: true,
           callbackPath: '/auth/microsoft/callback',
           clientId: 'client-id',
-          credentialsConfigured: true,
+          credentialsVerified: true,
         },
         {
           id: 'provider-github',
@@ -43,7 +43,7 @@ describe('external authentication provider list presentation', () => {
           enabled: true,
           callbackPath: '/auth/github/callback',
           clientId: 'github-client-id',
-          credentialsConfigured: true,
+          credentialsVerified: true,
         },
       ],
       paging: { total: 2, page: 1, pageSize: 10, totalPages: 1 },

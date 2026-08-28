@@ -331,6 +331,7 @@
   const testCredentials = form?.querySelector('[data-provider-test-credentials]');
   const credentialState = form?.querySelector('[data-provider-credential-test-state]');
   const pendingCredentialSave = form?.querySelector('[data-provider-pending-credential-save]');
+  const verificationIndicator = form?.querySelector('[data-provider-credentials-verified-indicator]');
 
   if (!(provider instanceof HTMLSelectElement) || !(callback instanceof HTMLInputElement)) return;
 
@@ -362,6 +363,10 @@
   const updateTestButton = () => {
     updateCredentialRequirements();
     if (!(testCredentials instanceof HTMLButtonElement)) return;
+    if (testCredentials.dataset.providerTestStored === 'true') {
+      testCredentials.disabled = false;
+      return;
+    }
     testCredentials.disabled = !(
       clientId instanceof HTMLInputElement &&
       clientSecret instanceof HTMLInputElement &&
@@ -384,8 +389,20 @@
     if (secretEditor instanceof HTMLElement) secretEditor.hidden = false;
     if (secretDisplay instanceof HTMLElement) secretDisplay.hidden = true;
     if (changeCredentials instanceof HTMLElement) changeCredentials.hidden = true;
+    if (testCredentials instanceof HTMLButtonElement) {
+      testCredentials.hidden = false;
+      testCredentials.dataset.providerTestStored = 'false';
+    }
     if (credentialState instanceof HTMLInputElement) credentialState.value = 'required';
     if (pendingCredentialSave instanceof HTMLInputElement) pendingCredentialSave.value = 'false';
+    if (verificationIndicator instanceof HTMLElement) {
+      const badge = verificationIndicator.querySelector('.badge');
+      if (badge instanceof HTMLElement) {
+        badge.classList.remove('text-bg-success');
+        badge.classList.add('text-bg-secondary');
+        badge.innerHTML = '<i class="bi bi-x-circle me-1"></i>No';
+      }
+    }
     updateTestButton();
     notifyFormState();
     clientId.focus();
@@ -411,6 +428,14 @@
     ) return;
 
     const feedback = form.querySelector('[data-provider-credential-test-feedback]');
+    const testStoredCredentials = testCredentials.dataset.providerTestStored === 'true';
+    const providerLabel = () => provider.options[provider.selectedIndex]?.text || provider.value || 'Provider';
+    const noReturnMessage = () => {
+      if (provider.value === 'facebook') {
+        return 'Facebook did not return a credential-test result to ManatOS. Check the Facebook window for the provider error. If it shows “App not active”, activate the Meta app or use an account that has an app role (Administrator, Developer or Tester), then retry. Your values were not changed.';
+      }
+      return providerLabel() + ' did not return a credential-test result to ManatOS. Check the provider window for an error, confirm the provider application is active and available to this account, then retry. Your values were not changed.';
+    };
     const showFeedback = (message, success = false) => {
       if (!(feedback instanceof HTMLElement)) return;
       feedback.classList.remove('alert-danger', 'alert-success');
@@ -419,7 +444,7 @@
       feedback.hidden = false;
     };
 
-    if (!clientId.value.trim() || !clientSecret.value.trim()) {
+    if (!testStoredCredentials && (!clientId.value.trim() || !clientSecret.value.trim())) {
       showFeedback('Enter both Client ID and Client secret before testing.');
       return;
     }
@@ -444,8 +469,13 @@
     testWindow.document.body.innerHTML = '<p style="font-family:sans-serif;padding:1.5rem">Preparing secure provider credential test…</p>';
 
     const body = new URLSearchParams(new FormData(form));
-    body.set('clientId', clientId.value.trim());
-    body.set('clientSecret', clientSecret.value);
+    if (!testStoredCredentials) {
+      body.set('clientId', clientId.value.trim());
+      body.set('clientSecret', clientSecret.value);
+    } else {
+      body.delete('clientId');
+      body.delete('clientSecret');
+    }
     body.set('provider', provider.value);
     if (enabled instanceof HTMLInputElement) body.set('enabled', enabled.checked ? 'true' : 'false');
 
@@ -479,7 +509,7 @@
       }
 
       window.manatosBusy?.show({
-        title: 'Testing ' + (provider.options[provider.selectedIndex]?.text || provider.value) + ' credentials…',
+        title: 'Testing ' + providerLabel() + ' credentials…',
         message: 'Complete authentication in the provider window. We will continue automatically when verification finishes.',
         icon: providerIcons[provider.value] || 'bi-shield-check',
         actionLabel: 'Cancel test',
@@ -535,7 +565,7 @@
         if (testWindow.closed) {
           // One final server check has just completed. If still pending, the Admin closed the provider window.
           finishWaiting();
-          showFeedback('Credential test interrupted because the provider window was closed. Your values were not changed.');
+          showFeedback(noReturnMessage());
           updateTestButton();
           return;
         }
@@ -546,7 +576,7 @@
       window.setTimeout(() => {
         if (completed) return;
         finishWaiting();
-        showFeedback('Credential testing is taking longer than expected. You can retry without losing the values entered in this form.');
+        showFeedback(noReturnMessage());
         updateTestButton();
       }, 2 * 60 * 1000);
     } catch {
@@ -637,22 +667,13 @@
     const sharedState = window.manatosSysBOFormState || { baseline: snapshot(), snapshot };
 
     const update = () => {
-      const credentialState = form.querySelector('[data-provider-credential-test-state]');
       const pendingCredentialSave = form.querySelector('[data-provider-pending-credential-save]');
-      const providerEnabled = form.querySelector('#enabled');
-      const clientId = form.querySelector('[data-provider-client-id]');
-      const clientSecret = form.querySelector('[data-provider-client-secret]');
-      const isNew = !form.querySelector('input[name="id"]')?.value;
-      const state = credentialState instanceof HTMLInputElement ? credentialState.value : '';
       const hasPendingCredentialSave = pendingCredentialSave instanceof HTMLInputElement && pendingCredentialSave.value === 'true';
-      const enabled = providerEnabled instanceof HTMLInputElement && providerEnabled.checked;
-      const proposedCredentials =
-        (clientId instanceof HTMLInputElement && !clientId.readOnly && clientId.value.trim().length > 0) ||
-        (clientSecret instanceof HTMLInputElement && !clientSecret.disabled && clientSecret.value.trim().length > 0);
 
-      let credentialStateAllowsSave = true;
-      if (state === 'required') credentialStateAllowsSave = isNew && !enabled && !proposedCredentials;
-      else if (state === 'stored-unverified') credentialStateAllowsSave = !enabled;
+      // Credential verification is deliberately not a prerequisite for
+      // persistence. A complete pair may be stored encrypted with verification
+      // state = No, while only verified pairs are exposed to sign-in/runtime.
+      const credentialStateAllowsSave = true;
 
       const changed = hasPendingCredentialSave || (sharedState.baseline !== null && snapshot() !== sharedState.baseline);
       save.disabled = !(changed && form.checkValidity() && credentialStateAllowsSave);

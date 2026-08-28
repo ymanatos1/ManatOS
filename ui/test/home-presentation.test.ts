@@ -17,7 +17,7 @@ describe('home presentation', () => {
 
     expect($('.home-hero-grid').length).toBe(1);
     expect($('.home-hero-copy h2').text().trim()).toBe(
-      'A data-driven platform to design and test real applications',
+      'The data-driven platform to design and instantly test real applications',
     );
     expect($('.home-platform-map').length).toBe(1);
     expect($('.home-platform-app').text()).toContain('Business Application');

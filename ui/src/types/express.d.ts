@@ -99,6 +99,10 @@ declare module 'express-session' {
       enabled: boolean;
       clientId: string;
       clientSecret?: string;
+      /** True when the credential test is using the pair already persisted for this record. */
+      usesStoredCredentials?: boolean;
+      /** Version/timestamp of the persisted encrypted secret used by the test. */
+      storedSecretUpdatedAt?: string;
       scope: string[];
       callbackPath: string;
       tenant?: string;

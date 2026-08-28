@@ -69,7 +69,7 @@ describe('external authentication provider editor presentation', () => {
         callbackPath: '/auth/github/callback',
         clientId: 'github-client-id',
         hasClientSecret: true,
-        credentialsConfigured: true,
+        credentialsVerified: true,
         credentialsVerifiedAt: '2026-08-27T12:00:00.000Z',
       },
       isNew: false,
@@ -99,10 +99,38 @@ describe('external authentication provider editor presentation', () => {
     expect(secrets('#clientSecret').is('[data-provider-client-secret]')).toBe(true);
     expect(secrets('[data-provider-secret-display]').text()).toContain('Secret stored securely');
     expect(secrets('[data-provider-change-credentials]').length).toBe(1);
+    expect(secrets('[data-provider-credentials-verified-indicator]').text()).toContain('Yes');
     expect(secrets('#clientId').is('[readonly]')).toBe(true);
     expect(secrets('[data-provider-secrets-help="github"]').text()).toContain(
       'GitHub OAuth App credentials',
     );
+  });
+
+  it('shows stored-but-unverified credentials and allows testing them without re-entering the secret', async () => {
+    const locals = {
+      item: {
+        id: 'facebook-record',
+        provider: 'github',
+        callbackPath: '/auth/github/callback',
+        clientId: 'stored-client-id',
+        hasClientSecret: true,
+        credentialsVerified: false,
+        credentialsVerifiedAt: null,
+      },
+      isNew: false,
+      readOnly: false,
+      credentialTest: null,
+      externalAuthProviderDefinitions,
+    };
+
+    const secrets = load(await ejs.renderFile(secretsView, locals));
+    expect(secrets.text()).toContain('Credentials stored, not verified');
+    expect(secrets.text()).toContain('treated as not configured for sign-in');
+    expect(secrets('[data-provider-credentials-verified-indicator]').text()).toContain('No');
+    expect(secrets('[data-provider-test-credentials]').attr('data-provider-test-stored')).toBe('true');
+    expect(secrets('[data-provider-test-credentials]').is('[disabled]')).toBe(false);
+    expect(secrets('#clientId').is('[readonly]')).toBe(true);
+    expect(secrets('[data-provider-secret-display]').text()).toContain('Secret stored securely');
   });
 
   it('renders provider-specific help for existing Microsoft records', async () => {
@@ -112,7 +140,7 @@ describe('external authentication provider editor presentation', () => {
         callbackPath: '/auth/microsoft/callback',
         tenant: 'common',
         hasClientSecret: true,
-        credentialsConfigured: true,
+        credentialsVerified: true,
         credentialsVerifiedAt: '2026-08-27T12:00:00.000Z',
       },
       isNew: false,

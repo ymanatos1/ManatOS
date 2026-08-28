@@ -419,7 +419,7 @@ Long-running form operations use `data-busy-submit` plus semantic busy title/mes
 
 This avoids duplicate submissions and gives explicit feedback during operations such as registration, password reset/change and external-account linking.
 
-External-provider credential testing uses the same locked-form principle but keeps provider authentication in a temporary browser window. The Admin page polls authoritative server-side test state, offers **Cancel test**, detects a manually closed provider window, and preserves the entered credential pair after cancellation/failure so the Admin can correct and retry it.
+External-provider credential testing uses the same locked-form principle but keeps provider authentication in a temporary browser window. The Admin page polls authoritative server-side test state, offers **Cancel test**, detects a manually closed provider window, and preserves the entered credential pair after cancellation/failure so the Admin can correct, retry, or save the pair securely as unverified. Existing stored-but-unverified credentials can be retested without re-entering the secret.
 
 ## 8.9 Popup architecture extension rules
 
@@ -439,7 +439,7 @@ This avoids both markup duplication and premature “universal component” abst
 
 ## 9. Authentication UI boundaries
 
-Authentication presentation is split across server routes, provider metadata and popup/page templates. Current external provider choices are Microsoft, Google, Facebook and GitHub. Providers remain visible even when not configured; configured state determines whether the live Passport route is available.
+Authentication presentation is split across server routes, provider metadata and popup/page templates. Current external provider choices are Microsoft, Google, Facebook and GitHub. Providers remain visible even when not configured. The UI may store an Admin-supplied credential pair before verification, but the provider is treated as not configured for sign-in until it is enabled and the current stored pair has `credentialsVerified=true`.
 
 Password recovery deliberately uses a privacy-neutral public confirmation so the UI does not disclose whether an entered identity exists. Password/reset links use transient one-time tokens; the detailed token/storage semantics are documented in `docs/authentication-flows.md`.
 

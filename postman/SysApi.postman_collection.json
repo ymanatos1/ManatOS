@@ -9,7 +9,7 @@
   },
   "item": [
     {
-      "name": "00 - Server",
+      "name": "Server",
       "item": [
         {
           "name": "Health",
@@ -114,7 +114,7 @@
       ]
     },
     {
-      "name": "01 - Authentication",
+      "name": "Authentication",
       "item": [
         {
           "name": "Register Guest",
@@ -582,973 +582,1235 @@
             }
           },
           "response": []
-        }
-      ]
-    },
-    {
-      "name": "SysUsers",
-      "item": [
-        {
-          "name": "List SysUsers",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysUsers"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
-                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
         },
         {
-          "name": "SysUsers metadata",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysUsers",
-                "$metadata"
+          "name": "Trusted Internal Authentication Commands",
+          "item": [
+            {
+              "name": "Verify Local Credentials",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identity\": \"Admin\",\n  \"password\": \"admin\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/auth/verify-local",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "internal",
+                    "auth",
+                    "verify-local"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
               ]
-            }
-          },
-          "response": [],
-          "event": [
+            },
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create SysUser",
-          "event": [
+              "name": "Resolve External Identity",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-identities/resolve?provider=Google&subject=test-subject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "internal",
+                    "external-identities",
+                    "resolve"
+                  ],
+                  "query": [
+                    {
+                      "key": "provider",
+                      "value": "Google"
+                    },
+                    {
+                      "key": "subject",
+                      "value": "test-subject"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                    ]
+                  }
+                }
+              ]
+            },
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "if (json.data && json.data.id) pm.environment.set('testUserId', json.data.id);"
-                ]
-              }
+              "name": "Set User Password",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"Testing!123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "internal",
+                    "SysUsers",
+                    "{{testUserId}}",
+                    "password"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Verify User Email",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/email-verified",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "internal",
+                    "SysUsers",
+                    "{{testUserId}}",
+                    "email-verified"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Link User to Principal",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"relationship\": \"Owner\",\n  \"isDefault\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/principals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "internal",
+                    "SysUsers",
+                    "{{testUserId}}",
+                    "principals"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
             }
           ],
-          "request": {
-            "method": "POST",
-            "header": [
+          "auth": {
+            "type": "apikey",
+            "apikey": [
               {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"PostmanUser\",\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"Testing!123\",\n  \"role\": \"Guest\",\n  \"enabled\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysUsers"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get SysUser by Id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysUsers",
-                "{{testUserId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Patch SysUser",
-          "request": {
-            "method": "PATCH",
-            "header": [
+                "key": "key",
+                "value": "x-internal-api-key",
+                "type": "string"
+              },
               {
-                "key": "Content-Type",
-                "value": "application/json"
+                "key": "value",
+                "value": "{{internalApiKey}}",
+                "type": "string"
+              },
+              {
+                "key": "in",
+                "value": "header",
+                "type": "string"
               }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysUsers",
-                "{{testUserId}}"
-              ]
-            }
+            ]
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Delete SysUser",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysUsers",
-                "{{testUserId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
+          "description": "Trusted internal authentication/account commands used by ManatOS services; not routine public client operations."
         }
       ]
     },
     {
-      "name": "SysPrincipals",
+      "name": "System Business Objects",
+      "description": "Metadata-driven system business-object APIs. Authorization is enforced per business object and operation.",
       "item": [
         {
-          "name": "List SysPrincipals",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysPrincipals"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
+          "name": "SysUsers",
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
-                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "SysPrincipals metadata",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysPrincipals",
-                "$metadata"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create SysPrincipal",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "if (json.data && json.data.id) pm.environment.set('testPrincipalId', json.data.id);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Principal\",\n  \"principalType\": \"Person\",\n  \"parentId\": null,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "name": "List SysUsers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers"
+                  ]
                 }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysPrincipals"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get SysPrincipal by Id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysPrincipals",
-                "{{testPrincipalId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Patch SysPrincipal",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                      "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                    ]
+                  }
                 }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysPrincipals",
-                "{{testPrincipalId}}"
               ]
-            }
-          },
-          "response": [],
-          "event": [
+            },
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
-                ]
-              }
+              "name": "SysUsers metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "$metadata"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create SysUser",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "if (json.data && json.data.id) pm.environment.set('testUserId', json.data.id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"PostmanUser\",\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"Testing!123\",\n  \"role\": \"Guest\",\n  \"enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get SysUser by Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "{{testUserId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Patch SysUser",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "{{testUserId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete SysUser",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "{{testUserId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
         {
-          "name": "Delete SysPrincipal",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
-              "host": [
-                "{{baseUrl}}"
+          "name": "SysPrincipals",
+          "item": [
+            {
+              "name": "List SysPrincipals",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                      "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysPrincipals metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "$metadata"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create SysPrincipal",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "if (json.data && json.data.id) pm.environment.set('testPrincipalId', json.data.id);"
+                    ]
+                  }
+                }
               ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysPrincipals",
-                "{{testPrincipalId}}"
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman Principal\",\n  \"principalType\": \"Person\",\n  \"parentId\": null,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get SysPrincipal by Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "{{testPrincipalId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Patch SysPrincipal",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "{{testPrincipalId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete SysPrincipal",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "{{testPrincipalId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
               ]
             }
-          },
-          "response": [],
-          "event": [
+          ]
+        },
+        {
+          "name": "SysApplications",
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
-                ]
-              }
+              "name": "List SysApplications",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                      "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysApplications metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "$metadata"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create SysApplication",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "if (json.data && json.data.id) pm.environment.set('testApplicationId', json.data.id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman Application\",\n  \"appName\": \"postman-app\",\n  \"fullName\": \"Postman Test Application\",\n  \"version\": \"0.1.0\",\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get SysApplication by Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "{{testApplicationId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Patch SysApplication",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "{{testApplicationId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete SysApplication",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "{{testApplicationId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "SysLicenses",
+          "item": [
+            {
+              "name": "List SysLicenses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
+                      "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysLicenses metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "$metadata"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create SysLicense",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "if (json.data && json.data.id) pm.environment.set('testLicenseId', json.data.id);",
+                      "pm.test('License targets current platform', () => pm.expect(json.data.platformId).to.eql(pm.environment.get('currentPlatformId')));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman License\",\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"platformId\": \"{{currentPlatformId}}\",\n  \"licenseKey\": \"POSTMAN-TEST\",\n  \"status\": \"Active\",\n  \"quantity\": 1,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get SysLicense by Id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "{{testLicenseId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Patch SysLicense",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "{{testLicenseId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete SysLicense",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "{{testLicenseId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         }
       ]
     },
     {
-      "name": "SysApplications",
-      "item": [
-        {
-          "name": "List SysApplications",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysApplications"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
-                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "SysApplications metadata",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysApplications",
-                "$metadata"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create SysApplication",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "if (json.data && json.data.id) pm.environment.set('testApplicationId', json.data.id);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Application\",\n  \"appName\": \"postman-app\",\n  \"fullName\": \"Postman Test Application\",\n  \"version\": \"0.1.0\",\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysApplications"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get SysApplication by Id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysApplications",
-                "{{testApplicationId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Patch SysApplication",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysApplications",
-                "{{testApplicationId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Delete SysApplication",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysApplications",
-                "{{testApplicationId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "SysLicenses",
-      "item": [
-        {
-          "name": "List SysLicenses",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysLicenses"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
-                  "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "SysLicenses metadata",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysLicenses",
-                "$metadata"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                  "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create SysLicense",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "if (json.data && json.data.id) pm.environment.set('testLicenseId', json.data.id);",
-                  "pm.test('License targets current platform', () => pm.expect(json.data.platformId).to.eql(pm.environment.get('currentPlatformId')));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman License\",\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"platformId\": \"{{currentPlatformId}}\",\n  \"licenseKey\": \"POSTMAN-TEST\",\n  \"status\": \"Active\",\n  \"quantity\": 1,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysLicenses"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get SysLicense by Id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysLicenses",
-                "{{testLicenseId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Patch SysLicense",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated from Postman\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysLicenses",
-                "{{testLicenseId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Delete SysLicense",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysLicenses",
-                "{{testLicenseId}}"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
-                  "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "SysConfigurations",
-      "description": "Admin-only runtime configuration. Sensitive values such as SMTP_PASSWORD are encrypted at rest and never returned in plaintext.",
+      "name": "System Configuration",
+      "description": "Admin-only persisted runtime configuration. Sensitive values are stored securely and are never returned as plaintext.",
       "item": [
         {
           "name": "List SysConfigurations",
@@ -1607,169 +1869,50 @@
       ]
     },
     {
-      "name": "06 - Internal",
+      "name": "Public UI",
+      "description": "Anonymous-safe API state used before sign-in.",
       "item": [
         {
-          "name": "Verify Local Credentials",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"identity\": \"Admin\",\n  \"password\": \"admin\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/auth/verify-local",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "internal",
-                "auth",
-                "verify-local"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Resolve External Identity",
+          "name": "UI Bootstrap",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-identities/resolve?provider=Google&subject=test-subject",
+              "raw": "{{baseUrl}}/api/v1/public/ui-bootstrap",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "{{apiVersion}}",
-                "internal",
-                "external-identities",
-                "resolve"
-              ],
-              "query": [
-                {
-                  "key": "provider",
-                  "value": "Google"
-                },
-                {
-                  "key": "subject",
-                  "value": "test-subject"
-                }
+                "v1",
+                "public",
+                "ui-bootstrap"
               ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Set User Password",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"password\": \"Testing!123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "internal",
-                "SysUsers",
-                "{{testUserId}}",
-                "password"
-              ]
-            }
+            "description": "Public/anonymous-safe UI bootstrap state. The UI may fall back to local defaults and retry if the API is unavailable."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ]
-        },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "External Authentication",
+      "description": "External Authentication API presented by responsibility rather than by implementation detail.\n\nAccess model:\n- Provider configuration and definitions: Admin Bearer token.\n- Credential store/remove: trusted Admin/BFF; BOTH Admin Bearer token and x-internal-api-key.\n- Runtime provider state: public/anonymous-safe.\n- OAuth credential-test mechanics are internal UI workflow and are intentionally not modeled here as routine Postman client operations.\n\nStored credentials may exist with credentialsVerified=false. Such a provider is treated as not configured for sign-in until the real OAuth test succeeds.",
+      "item": [
         {
-          "name": "Verify User Email",
+          "name": "List SysExtAuthProviders",
           "request": {
-            "method": "PUT",
+            "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/email-verified",
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "{{apiVersion}}",
-                "internal",
-                "SysUsers",
-                "{{testUserId}}",
-                "email-verified"
+                "SysExtAuthProviders"
               ]
             }
           },
@@ -1783,44 +1926,66 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
                   "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                  "pm.test('No secret material is returned', () => pm.expect(JSON.stringify(json)).to.not.include('clientSecretEncrypted'));",
+                  "pm.test('Persisted verification state is projected', () => { const item = json.data.items?.[0]; if (item) pm.expect(item).to.have.property('credentialsVerified'); });"
                 ]
               }
             }
-          ]
+          ],
+          "description": "Access: Admin only (Bearer token). Lists persisted provider configuration and verification state. Secret material is never returned."
         },
         {
-          "name": "Link User to Principal",
+          "name": "External provider definitions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/definitions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysExtAuthProviders",
+                "definitions"
+              ]
+            }
+          },
+          "response": [],
+          "description": "Access: Admin only (Bearer token). Returns the code-defined supported-provider catalogue, fixed callback paths, icons/scopes and setup guidance. Contains no persisted credential material."
+        },
+        {
+          "name": "Create SysExtAuthProvider (Configuration Only)",
+          "description": "Access: Admin only (Bearer token). Creates the provider configuration record without credential material. Client ID/Client Secret are managed separately through the trusted credential-management commands.",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"relationship\": \"Owner\",\n  \"isDefault\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/principals",
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "{{apiVersion}}",
-                "internal",
-                "SysUsers",
-                "{{testUserId}}",
-                "principals"
+                "SysExtAuthProviders"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"{{testExtAuthProvider}}\",\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": [],
@@ -1832,34 +1997,212 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
+                  "if (json.data && json.data.id) pm.environment.set('testExtAuthProviderId', json.data.id);",
+                  "pm.test('Provider starts unverified', () => pm.expect(json.data.credentialsVerified).to.eql(false));"
                 ]
               }
             }
           ]
+        },
+        {
+          "name": "Update SysExtAuthProvider Settings",
+          "description": "Access: Admin only (Bearer token). Updates ordinary provider settings only. Credential fields and application-managed verification state are intentionally rejected by generic CRUD.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysExtAuthProviders",
+                "{{testExtAuthProviderId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get SysExtAuthProvider by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysExtAuthProviders",
+                "{{testExtAuthProviderId}}"
+              ]
+            }
+          },
+          "response": [],
+          "description": "Access: Admin only (Bearer token). Reads one persisted provider configuration record. Secret material is never returned."
+        },
+        {
+          "name": "Delete SysExtAuthProvider",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysExtAuthProviders",
+                "{{testExtAuthProviderId}}"
+              ]
+            }
+          },
+          "response": [],
+          "description": "Access: Admin only (Bearer token). Deletes the provider configuration record."
         }
-      ],
-      "auth": {
-        "type": "apikey",
-        "apikey": [
-          {
-            "key": "key",
-            "value": "x-internal-api-key",
-            "type": "string"
+      ]
+    },
+    {
+      "name": "External Authentication Credentials",
+      "description": "Trusted Admin/BFF credential lifecycle. Requires Admin Bearer authentication plus x-internal-api-key. Client secrets are encrypted at rest and never returned by normal CRUD.",
+      "item": [
+        {
+          "name": "Store External Provider Credentials (Unverified)",
+          "description": "Access: Trusted Admin/BFF only. Requires BOTH an Admin Bearer token and x-internal-api-key. Encrypts and persists the complete credential pair with credentialsVerified=false and credentialsVerifiedAt=null. This does not simulate verification; use the ManatOS Admin UI real OAuth credential-test flow.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-api-key",
+                "value": "{{internalApiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"{{testExtAuthProvider}}\",\n  \"enabled\": true,\n  \"clientId\": \"{{testExtAuthClientId}}\",\n  \"clientSecret\": \"{{testExtAuthClientSecret}}\",\n  \"callbackPath\": \"{{testExtAuthCallbackPath}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/stored-credentials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "external-auth-providers",
+                "stored-credentials"
+              ]
+            }
           },
-          {
-            "key": "value",
-            "value": "{{internalApiKey}}",
-            "type": "string"
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Stored pair remains unverified', () => pm.expect(json.data.credentialsVerified).to.eql(false));",
+                  "pm.test('Verification timestamp is null', () => pm.expect(json.data.credentialsVerifiedAt).to.eql(null));",
+                  "if (json.data && json.data.id) pm.environment.set('testExtAuthProviderId', json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove External Provider Credentials",
+          "description": "Access: Trusted Admin/BFF only. Requires BOTH an Admin Bearer token and x-internal-api-key. Removes Client ID and Client Secret, clears verification state and disables the provider atomically.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-internal-api-key",
+                "value": "{{internalApiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/{{testExtAuthProviderId}}/credentials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "external-auth-providers",
+                "{{testExtAuthProviderId}}",
+                "credentials"
+              ]
+            }
           },
-          {
-            "key": "in",
-            "value": "header",
-            "type": "string"
-          }
-        ]
-      }
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Internal External Authentication Workflow",
+      "description": "Internal ManatOS UI/BFF OAuth credential-test mechanics. Not a routine client API. Kept visible here for architecture/diagnostic reference; use the Admin UI for normal credential verification.",
+      "item": []
     },
     {
       "name": "90 - Security Tests",
@@ -2047,6 +2390,24 @@
       "value": "",
       "type": "string",
       "description": "SysConfiguration id selected from List SysConfigurations."
+    },
+    {
+      "key": "testExtAuthProviderId",
+      "value": "",
+      "type": "string",
+      "description": "SysExtAuthProvider id selected/created during manual external-provider API testing."
+    },
+    {
+      "key": "testExtAuthProvider",
+      "value": "github",
+      "type": "string",
+      "description": "Provider used by manual SysExtAuthProvider examples."
+    },
+    {
+      "key": "testExtAuthCallbackPath",
+      "value": "/auth/github/callback",
+      "type": "string",
+      "description": "Code-defined callback path for testExtAuthProvider; update together when changing provider."
     }
   ]
 }

@@ -134,8 +134,9 @@ export const MANATOS_COMPANY: CompanyInfo = {
   description: 'Software platforms and reusable application foundations.',
   home: {
     eyebrow: 'ManatOS platform',
-    title: 'A data-driven platform to design and test real applications',
-    description: 'Reusable metadata provides a clean baseline for secure, maintainable application development.',
+    title: 'The data-driven platform to design and instantly test real applications',
+    description:
+      'Reusable metadata provides a clean foundation for secure, maintainable, rich and dynamic application development.',
   },
   branding: {
     headerLogo: {
@@ -260,7 +261,8 @@ export const MANATOS_COMPANY: CompanyInfo = {
       code: 'mCRM',
       name: 'ManatOS CRM Platform',
       shortName: 'mCRM',
-      description: 'CRM platform for managing customer relationships, business activity and connected applications.',
+      description:
+        'CRM platform for managing customer relationships, business activity and connected applications.',
       enabled: true,
       headerImage: {
         src: '/assets/platforms/mcrm/mcrm-customer-network.png',
@@ -344,7 +346,9 @@ export function resolvePlatform(
   company: CompanyInfo,
   platformId: string | null | undefined = company.defaultPlatformId,
 ): SysPlatform {
-  const requested = company.platforms.find((platform) => platform.enabled && platform.id === platformId);
+  const requested = company.platforms.find(
+    (platform) => platform.enabled && platform.id === platformId,
+  );
   const fallback = company.platforms.find(
     (platform) => platform.enabled && platform.id === company.defaultPlatformId,
   );

@@ -97,7 +97,9 @@ This is a rolling inactivity timeout. The value is intentionally specified in mi
 
 ## External authentication providers
 
-Microsoft, Google, Facebook and GitHub provider definitions are code-defined, while Admin-supplied Client ID/Client Secret pairs are stored by the API. Secrets are encrypted at rest. New/replaced credential pairs must complete the real provider OAuth flow before they can be persisted as verified and exposed to sign-in/registration. The UI owns Passport/browser redirects; the API owns provider configuration and normalized external-identity persistence.
+Microsoft, Google, Facebook and GitHub provider definitions are code-defined, while Admin-supplied Client ID/Client Secret pairs are stored by the API. Secrets are encrypted at rest. New or replacement credential pairs may be persisted securely without successful verification. They are marked `credentialsVerified=false` and remain unavailable to sign-in/registration until the stored pair successfully completes the real provider OAuth flow. Successful verification persists `credentialsVerified=true` together with `credentialsVerifiedAt`. The UI owns Passport/browser redirects; the API owns provider configuration and normalized external-identity persistence.
+
+For API consumers, keep the surface mentally separated into **Admin provider configuration**, **trusted Admin/BFF credential management**, **internal UI verification workflow**, and the **public runtime provider projection**. The Swagger descriptions state the required access for each operation. Endpoints requiring `x-internal-api-key` are server-to-server/BFF operations and are not intended for browser or third-party clients; where bearer authentication is also required, the bearer subject must be an Admin.
 
 ## VS Code
 
@@ -146,3 +148,9 @@ api/test/api.auth.integration.test.ts
 Each integration test constructs the real Express application with a temporary in-memory datastore and temporary JSON persistence file; it does not require a listening server and never touches the development database.
 
 See `docs/Testing.md` for the coverage policy and detailed test responsibilities.
+
+## API presentation and access groups
+
+Swagger and Postman use the same responsibility order: **Server**, **Authentication**, **System Business Objects**, **System Configuration**, **Public UI**, **External Authentication**, **External Authentication Credentials**, then **Internal External Authentication Workflow**. The former untagged/default SysConfiguration operations are explicitly presented as **System Configuration**.
+
+Access remains operation-specific: public endpoints explicitly say so; Admin-only operations require an Admin Bearer token; trusted external-provider credential commands require both Admin Bearer authentication and `x-internal-api-key`; credential-test workflow endpoints are internal UI/BFF mechanics rather than routine client operations.

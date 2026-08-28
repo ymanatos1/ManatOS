@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 
 import { dirname, resolve } from 'node:path';
 
-import { MCRM_PLATFORM_ID, StorageAppError, type SysLicense } from '@manatos/shared';
+import { MCRM_PLATFORM_ID, StorageAppError, type SysExtAuthProvider, type SysLicense } from '@manatos/shared';
 
 import { emptyDatabaseState, type DatabaseState, type PersistedDatabaseState } from './types.js';
 
@@ -37,7 +37,7 @@ export class JsonFilePersistence {
 
         sysLicenses: normalizeLegacyLicenses(fromPersistedRecords(raw.sysLicenses)),
 
-        sysExtAuthProviders: fromPersistedRecords(raw.sysExtAuthProviders),
+        sysExtAuthProviders: normalizeLegacyExternalAuthProviders(fromPersistedRecords(raw.sysExtAuthProviders)),
 
         sysExternalIdentities: fromPersistedRecords(raw.sysExternalIdentities),
 
@@ -166,6 +166,27 @@ function normalizeLegacyLicenses(records: Map<string, SysLicense>): Map<string, 
       records.set(id, {
         ...license,
         platformId: MCRM_PLATFORM_ID,
+      });
+    }
+  }
+
+  return records;
+}
+
+/**
+ * Backward-compatible normalization for provider records written before the
+ * persisted credentialsVerified flag was introduced. The previous
+ * credentialsVerifiedAt timestamp was already authoritative, so infer the new
+ * flag once on load without requiring a destructive database migration.
+ */
+function normalizeLegacyExternalAuthProviders(records: Map<string, SysExtAuthProvider>): Map<string, SysExtAuthProvider> {
+  for (const [id, provider] of records) {
+    if (typeof provider.credentialsVerified !== 'boolean') {
+      records.set(id, {
+        ...provider,
+        credentialsVerified: Boolean(
+          provider.clientId?.trim() && provider.clientSecretEncrypted && provider.credentialsVerifiedAt,
+        ),
       });
     }
   }

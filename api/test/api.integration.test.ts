@@ -497,6 +497,50 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(response.body.paths).toHaveProperty(
         '/api/v1/SysUsers/{id}/verify-email',
       );
+
+      expect(response.body.components.securitySchemes).toHaveProperty(
+        'internalApiKey',
+      );
+
+      expect(response.body.tags.map((tag: { name: string }) => tag.name)).toEqual([
+        'Server',
+        'Authentication',
+        'System Business Objects',
+        'System Configuration',
+        'Public UI',
+        'External Authentication',
+        'External Authentication Credentials',
+        'Internal External Authentication Workflow',
+      ]);
+
+      expect(response.body.paths['/api/v1/SysConfigurations'].get).toMatchObject({
+        tags: ['System Configuration'],
+        description: expect.stringContaining('Admin only'),
+      });
+
+      expect(response.body.paths['/api/v1/SysExtAuthProviders'].get).toMatchObject({
+        tags: ['External Authentication'],
+        description: expect.stringContaining('Admin only'),
+      });
+
+      expect(response.body.paths['/api/v1/SysExtAuthProviders/{id}'].patch).toMatchObject({
+        tags: ['External Authentication'],
+        description: expect.stringContaining('Admin only'),
+      });
+
+      expect(
+        response.body.paths['/api/v1/internal/external-auth-providers/stored-credentials'].post,
+      ).toMatchObject({
+        tags: ['External Authentication Credentials'],
+        'x-manatos-access': expect.stringContaining('Admin Bearer'),
+      });
+
+      expect(
+        response.body.paths['/api/v1/internal/external-auth-providers/{id}/credentials-for-test'].get,
+      ).toMatchObject({
+        tags: ['Internal External Authentication Workflow'],
+        'x-manatos-access': expect.stringContaining('Internal UI/BFF'),
+      });
     });
 
     it('returns the global failure envelope for an unknown API route', async () => {

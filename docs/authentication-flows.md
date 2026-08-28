@@ -164,7 +164,7 @@ Password-history/reuse prevention is **not currently implemented**. Older passwo
 
 Microsoft, Google, Facebook and GitHub are handled by the UI/Passport layer. Provider identity is resolved by provider + provider subject. Matching email alone never silently links an external identity to an existing account; ownership confirmation is required according to the linking flow.
 
-Provider configuration is Admin-managed. A Client ID/Client Secret pair is kept as one credential unit and must complete a provider OAuth credential-test flow before it is marked verified and offered to end users. During testing the original Admin form remains locked while the provider interaction happens in a temporary browser window; server-side pending state/polling is authoritative so popup lifecycle quirks cannot silently activate unverified credentials.
+Provider configuration is Admin-managed. A Client ID/Client Secret pair is kept as one credential unit and may be stored securely before provider verification. Stored-but-unverified credentials persist with `credentialsVerified=false` and are treated as not configured for sign-in. A successful OAuth credential-test marks the exact stored credential version verified and records `credentialsVerifiedAt`; only enabled and verified providers are offered to end users. During testing the original Admin form remains locked while the provider interaction happens in a temporary browser window; server-side pending state/polling is authoritative so popup lifecycle quirks cannot silently activate unverified credentials.
 
 After provider authentication resolves a ManatOS account, the trusted UI asks the API to mint an ordinary API access-token session. Multiple external identities may belong to one `SysUser`.
 

@@ -285,7 +285,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
           },
         ],
       },
-      gridConfiguration: { allowSorting: true, allowFiltering: true, responsive: true, visibleFields: ['provider','enabled','callbackPath','credentialsConfigured'] },
+      gridConfiguration: { allowSorting: true, allowFiltering: true, responsive: true, visibleFields: ['provider','enabled','callbackPath','credentialsVerified'] },
       filterDefinition: { mode: 'and', allowMultipleFilters: true, fields: ['provider'] },
       paginationConfiguration: pagination,
     },

@@ -14,7 +14,20 @@ Provider subject + provider name identifies the external identity. Matching emai
 
 ## External-provider configuration
 
-Provider definitions and callback paths are code-defined. Admins configure one record per supported provider through **Configuration > External authentication**. Client ID and Client Secret are treated as one credential pair; new or replacement credentials must successfully complete the provider's real OAuth flow before Save is allowed. Client secrets are encrypted at rest and never returned in plaintext after storage.
+Provider definitions and callback paths are code-defined. Admins configure one record per supported provider through **Configuration > External authentication**. Client ID and Client Secret are treated as one credential pair. Admins may save the pair before successful provider verification; it is encrypted at rest and persisted with `credentialsVerified=false`. The provider is treated as not configured for sign-in until the stored pair successfully completes the real OAuth test, which persists `credentialsVerified=true` and `credentialsVerifiedAt`. Client secrets are never returned in plaintext by normal provider reads after storage.
+
+### External-provider API presentation and access
+
+The implementation keeps the full provider/credential/verification domain model, but presents it in four clear layers:
+
+| Layer | Typical operations | Access | Intended caller |
+| --- | --- | --- | --- |
+| Provider configuration | list/create/update/delete provider records; provider definitions | **Admin only** with API Bearer token | Admin tools / ManatOS UI |
+| Credential management | store/replace an encrypted credential pair; remove credentials | **Trusted Admin/BFF**: Admin Bearer token **and** `x-internal-api-key` | ManatOS UI server/BFF |
+| Verification workflow | obtain a stored pair for testing; persist successful verification; temporary OAuth test state/callback/status | **Internal UI workflow only** | ManatOS UI server and OAuth callback flow |
+| Runtime availability | anonymous-safe providers currently usable for sign-in | **Public/anonymous** | Sign-in / registration UI |
+
+The internal verification workflow is deliberately not a general-purpose client API. In particular, API clients must not mark `credentialsVerified` directly: it is persisted, read-only, application-managed state and becomes `true` only after the real provider OAuth test succeeds. Swagger groups these operations separately and Postman places routine provider/credential-management examples with the provider collection while keeping verification mechanics documented as internal infrastructure.
 
 ## Password
 

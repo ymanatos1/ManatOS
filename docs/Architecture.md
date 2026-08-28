@@ -70,3 +70,35 @@ Health is liveness-oriented. Readiness evaluates required dependencies, currentl
 ## Storage adapter boundary
 
 The current `InMemoryDataStore` is an adapter rather than a business-service dependency on JSON. Its explicit `flush()` writes the current in-memory state to JSON. A future transactional database adapter can implement the same capability according to its engine, including reporting that no explicit flush is required when commits are already durable.
+
+### Persisted application-managed fields
+
+Field metadata can mark a property `readOnly: true` and `applicationManaged: true`. Such a field is genuine persisted business state, but normal generic Admin CRUD must not accept client-supplied changes to it. Application/service commands own its transitions.
+
+`SysExtAuthProvider.credentialsVerified` is the first example. It is persisted and queryable, while only the credential-verification lifecycle may change it. This differs from a generated field, whose value is derived only when a response/view is produced and is not stored.
+
+### External-authentication API layering
+
+External authentication deliberately keeps its rich internal lifecycle while exposing a simpler conceptual API:
+
+1. **Provider configuration** — Admin-only SysBO configuration and provider definitions.
+2. **Credential management** — trusted Admin/BFF commands for encrypted credential storage/removal.
+3. **Verification workflow** — internal UI/BFF OAuth-test mechanics; not a general client contract.
+4. **Runtime projection** — anonymous-safe provider availability used by sign-in/registration.
+
+This is a presentation/ownership boundary, not a reduction of domain behavior. It keeps secret handling and verification invariants intact while making Swagger, Postman and documentation easier to understand.
+
+## API presentation order
+
+Swagger, Postman and the developer documentation present API responsibilities in one consistent top-to-bottom order:
+
+1. **Server** — liveness/readiness are public; datastore flush is Admin-only.
+2. **Authentication** — registration, sign-in, sessions and related trusted authentication commands; access is documented per operation.
+3. **System Business Objects** — metadata-driven SysBO resources; authorization depends on the BO and operation.
+4. **System Configuration** — Admin-only persisted runtime configuration; sensitive values are never returned as plaintext.
+5. **Public UI** — anonymous-safe bootstrap/runtime projections used before sign-in.
+6. **External Authentication** — Admin provider configuration and supported-provider metadata.
+7. **External Authentication Credentials** — trusted Admin/BFF secret lifecycle; requires Admin Bearer authentication plus `x-internal-api-key`.
+8. **Internal External Authentication Workflow** — UI/BFF-only OAuth credential-test mechanics, not a general client API.
+
+The ordering is presentation-only: it does not collapse domain boundaries or weaken authorization rules.

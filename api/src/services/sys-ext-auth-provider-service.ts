@@ -36,6 +36,26 @@ export interface SaveVerifiedSysExtAuthProviderInput {
   tenant?: unknown;
 }
 
+/**
+ * A complete provider credential pair that an Admin wants to persist even
+ * though it has not yet passed the provider OAuth verification flow.
+ *
+ * Stored and verified are deliberately separate states: the pair is encrypted
+ * at rest in both cases, while credentialsVerifiedAt is populated only after a
+ * successful provider test.
+ */
+export interface SaveStoredSysExtAuthProviderInput extends SaveVerifiedSysExtAuthProviderInput {}
+
+export interface StoredExternalAuthCredentialMaterial {
+  id: string;
+  provider: SysExtAuthProviderType;
+  clientId: string;
+  clientSecret: string;
+  secretUpdatedAt: string;
+  callbackPath: string;
+  tenant?: string;
+}
+
 export interface RuntimeExternalAuthProvider {
   provider: SysExtAuthProviderType;
   label: string;
@@ -65,8 +85,9 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
 
   /**
    * Generic creation deliberately cannot accept provider credentials.
-   * Credentials are committed only by saveVerifiedCredentials(), after the
-   * trusted UI has completed the provider's real OAuth authorization flow.
+   * Plaintext credentials are committed only through the trusted internal
+   * stored/verified commands so the secret can be encrypted immediately and
+   * never appear in normal SysBO CRUD responses.
    */
   async createProvider(input: SaveSysExtAuthProviderInput, actor: AuditActor): Promise<SysExtAuthProvider> {
     const provider = parseProvider(input.provider);
@@ -84,19 +105,14 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
     const definition = externalAuthProviderDefinitionFor(provider);
     const enabled = input.enabled === true;
 
-    if (enabled) {
-      throw new ValidationAppError(
-        'A new enabled external authentication provider must have successfully tested credentials.',
-        'Test the provider credentials successfully before saving an enabled provider, or save it disabled as a draft.',
-      );
-    }
-
     return this.create(
       {
         name: provider,
         provider,
-        enabled: false,
+        enabled,
         clientId: '',
+        credentialsVerified: false,
+        credentialsVerifiedAt: null,
         callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
         ...(provider === SysExtAuthProviderType.Microsoft
           ? { tenant: normalizeMicrosoftTenant(input.tenant) }
@@ -109,7 +125,8 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
   /**
    * Generic edits may change ordinary provider settings only. Client ID and
    * Client secret are a single credential pair and cannot be altered through
-   * the generic CRUD path; doing so would bypass end-to-end verification.
+   * generic CRUD; the trusted internal credential commands own encryption and
+   * verification-state transitions.
    */
   async updateProvider(id: string, input: SaveSysExtAuthProviderInput, actor: AuditActor): Promise<SysExtAuthProvider> {
     const existing = await this.get(id);
@@ -128,13 +145,6 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
 
     const definition = externalAuthProviderDefinitionFor(provider);
     const enabled = input.enabled !== undefined ? Boolean(input.enabled) : existing.enabled;
-
-    if (enabled && !credentialsConfigured(existing)) {
-      throw new ValidationAppError(
-        'This provider does not have successfully verified credentials.',
-        'Test and save the Client ID and Client secret before enabling this provider.',
-      );
-    }
 
     return this.update(
       id,
@@ -189,7 +199,8 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
           clientId,
           clientSecretEncrypted: this.encryption.encrypt(clientSecret),
           secretUpdatedAt: verifiedAt,
-          credentialsVerifiedAt: verifiedAt,
+          credentialsVerified: true,
+        credentialsVerifiedAt: verifiedAt,
           callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
           ...(provider === SysExtAuthProviderType.Microsoft
             ? { tenant: normalizeMicrosoftTenant(input.tenant ?? existing.tenant) }
@@ -215,12 +226,148 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
         clientId,
         clientSecretEncrypted: this.encryption.encrypt(clientSecret),
         secretUpdatedAt: verifiedAt,
-        credentialsVerifiedAt: verifiedAt,
+        credentialsVerified: true,
+          credentialsVerifiedAt: verifiedAt,
         callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
         ...(provider === SysExtAuthProviderType.Microsoft
           ? { tenant: normalizeMicrosoftTenant(input.tenant) }
           : {}),
       },
+      actor,
+    );
+  }
+
+  /**
+   * Persist a complete Client ID + Client secret pair without asserting that
+   * the provider has accepted it yet.
+   *
+   * This is intentionally an internal/Admin command rather than generic CRUD:
+   * the plaintext secret crosses only the trusted UI -> API boundary and is
+   * encrypted immediately. Any previous verification stamp is cleared because
+   * changing either credential creates a new, unverified pair.
+   */
+  async saveStoredCredentials(
+    input: SaveStoredSysExtAuthProviderInput,
+    actor: AuditActor,
+  ): Promise<SysExtAuthProvider> {
+    const provider = parseProvider(input.provider);
+    const clientId = requiredText(input.clientId, 'Client ID');
+    const clientSecret = requiredText(input.clientSecret, 'Client secret');
+    const definition = externalAuthProviderDefinitionFor(provider);
+    const updatedAt = new Date().toISOString();
+    const requestedId = optionalText(input.id);
+
+    if (requestedId) {
+      const existing = await this.get(requestedId);
+
+      if (!existing) {
+        throw new ValidationAppError(`SysExtAuthProvider '${requestedId}' was not found.`);
+      }
+
+      if (existing.provider !== provider) {
+        throw new ValidationAppError('The provider does not match the existing provider record.');
+      }
+
+      return this.update(
+        requestedId,
+        {
+          name: provider,
+          provider,
+          enabled: input.enabled !== false,
+          clientId,
+          clientSecretEncrypted: this.encryption.encrypt(clientSecret),
+          secretUpdatedAt: updatedAt,
+          credentialsVerified: false,
+        credentialsVerifiedAt: null,
+          callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
+          ...(provider === SysExtAuthProviderType.Microsoft
+            ? { tenant: normalizeMicrosoftTenant(input.tenant ?? existing.tenant) }
+            : {}),
+        },
+        actor,
+      );
+    }
+
+    if (await this.repository.findByUnique('provider', provider)) {
+      throw new ConflictError(
+        'EXT_AUTH_PROVIDER_EXISTS',
+        `External provider '${provider}' already exists.`,
+        'That external authentication provider is already configured.',
+      );
+    }
+
+    return this.create(
+      {
+        name: provider,
+        provider,
+        enabled: input.enabled !== false,
+        clientId,
+        clientSecretEncrypted: this.encryption.encrypt(clientSecret),
+        secretUpdatedAt: updatedAt,
+        credentialsVerified: false,
+          credentialsVerifiedAt: null,
+        callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
+        ...(provider === SysExtAuthProviderType.Microsoft
+          ? { tenant: normalizeMicrosoftTenant(input.tenant) }
+          : {}),
+      },
+      actor,
+    );
+  }
+
+  /**
+   * Decrypt one already-stored pair for the trusted UI server to run the real
+   * provider test. The plaintext is never exposed by normal Admin CRUD or sent
+   * to browser JavaScript.
+   */
+  async storedCredentialMaterial(id: string): Promise<StoredExternalAuthCredentialMaterial> {
+    const existing = await this.get(id);
+
+    if (!existing || !existing.clientId.trim() || !existing.clientSecretEncrypted || !existing.secretUpdatedAt) {
+      throw new ValidationAppError('This provider does not have a complete stored credential pair.');
+    }
+
+    return {
+      id: existing.id,
+      provider: existing.provider,
+      clientId: existing.clientId,
+      clientSecret: this.encryption.decrypt(existing.clientSecretEncrypted),
+      secretUpdatedAt: existing.secretUpdatedAt,
+      callbackPath: externalAuthProviderDefinitionFor(existing.provider).callbackPath,
+      ...(existing.provider === SysExtAuthProviderType.Microsoft
+        ? { tenant: normalizeMicrosoftTenant(existing.tenant) }
+        : {}),
+    };
+  }
+
+  /**
+   * Mark the exact stored credential version that just passed OAuth testing as
+   * verified. The optimistic version checks prevent an older popup from
+   * verifying credentials that another Admin replaced while the test ran.
+   */
+  async markStoredCredentialsVerified(
+    id: string,
+    expectedClientId: string,
+    expectedSecretUpdatedAt: string,
+    actor: AuditActor,
+  ): Promise<SysExtAuthProvider> {
+    const existing = await this.get(id);
+
+    if (!existing || !existing.clientSecretEncrypted) {
+      throw new ValidationAppError('The stored provider credentials are no longer available.');
+    }
+
+    if (existing.clientId !== expectedClientId || existing.secretUpdatedAt !== expectedSecretUpdatedAt) {
+      throw new ConflictError(
+        'EXT_AUTH_PROVIDER_CREDENTIALS_CHANGED',
+        'The provider credentials changed while verification was in progress.',
+        'The stored credentials changed during testing. Test the current pair again.',
+      );
+    }
+
+    return this.update(
+      id,
+      { credentialsVerified: true, credentialsVerifiedAt: new Date().toISOString() },
       actor,
     );
   }
@@ -240,7 +387,8 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
         clientId: '',
         clientSecretEncrypted: null,
         secretUpdatedAt: null,
-        credentialsVerifiedAt: null,
+        credentialsVerified: false,
+          credentialsVerifiedAt: null,
       },
       actor,
     );
@@ -270,7 +418,7 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
         label: definition.label,
         icon: definition.icon,
         enabled,
-        configured: Boolean(enabled && item && credentialsConfigured(item)),
+        configured: Boolean(enabled && item && credentialsReadyForRuntime(item)),
       };
     });
   }
@@ -285,7 +433,7 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
     });
 
     return result.items.flatMap((item) => {
-      if (!item.enabled || !credentialsConfigured(item) || !item.clientSecretEncrypted) {
+      if (!item.enabled || !credentialsReadyForRuntime(item) || !item.clientSecretEncrypted) {
         return [];
       }
 
@@ -307,8 +455,8 @@ export class SysExtAuthProviderService extends GenericSysBOService<SysExtAuthPro
   }
 }
 
-function credentialsConfigured(item: SysExtAuthProvider): boolean {
-  if (!item.clientId.trim() || !item.clientSecretEncrypted || !item.credentialsVerifiedAt) {
+function credentialsReadyForRuntime(item: SysExtAuthProvider): boolean {
+  if (!item.credentialsVerified || !item.clientId.trim() || !item.clientSecretEncrypted || !item.credentialsVerifiedAt) {
     return false;
   }
 
@@ -319,8 +467,8 @@ function credentialsConfigured(item: SysExtAuthProvider): boolean {
 function rejectDirectCredentialMutation(input: SaveSysExtAuthProviderInput): void {
   if (optionalText(input.clientId) || optionalText(input.clientSecret)) {
     throw new ValidationAppError(
-      'Provider credentials must be tested before they can be stored.',
-      'Use Test credentials before saving Client ID and Client secret.',
+      'Provider credentials cannot be changed through generic CRUD.',
+      'Use the External authentication Secrets tab to store or test the Client ID and Client secret pair.',
     );
   }
 }

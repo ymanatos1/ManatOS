@@ -80,7 +80,7 @@ Covers the security-sensitive public authentication contract:
 
 ### External-provider and configuration integration tests
 
-`ext-auth-provider.integration.test.ts` protects the verified-credential lifecycle: pairwise Client ID/secret replacement, encrypted secret storage, unrelated edits preserving credentials, atomic credential removal, callback-path ownership and public/runtime exposure only after verification.
+`ext-auth-provider.integration.test.ts` protects the complete credential lifecycle: secure storage of unverified pairs, persisted application-managed verification state, pairwise Client ID/secret replacement, encrypted secret storage, unrelated edits preserving credentials and verification state, atomic credential removal, callback-path ownership and public/runtime exposure only after verification.
 
 `sys-configuration.integration.test.ts` protects Admin-only configuration updates, typed values and the rule that encrypted secret material is never returned through normal API projections.
 

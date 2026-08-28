@@ -318,14 +318,7 @@ function sanitize<T extends SysBOEntity>(
 
   if (metadata.key === 'sys-ext-auth-providers') {
     const hasClientSecret = Boolean(source.clientSecretEncrypted);
-    const clientId = typeof source.clientId === 'string' ? source.clientId.trim() : '';
-    const credentialsVerifiedAt =
-      typeof source.credentialsVerifiedAt === 'string' && source.credentialsVerifiedAt.length > 0
-        ? source.credentialsVerifiedAt
-        : undefined;
-
     result.hasClientSecret = hasClientSecret;
-    result.credentialsConfigured = Boolean(clientId && hasClientSecret && credentialsVerifiedAt);
   }
 
   return result;

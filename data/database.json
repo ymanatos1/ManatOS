@@ -371,7 +371,8 @@
       "createdAt": "2026-08-27T13:26:38.496Z",
       "createdBy": "Admin",
       "updatedAt": "2026-08-27T13:26:38.496Z",
-      "updatedBy": "Admin"
+      "updatedBy": "Admin",
+      "credentialsVerified": true
     },
     "cb144707-6133-4719-a7d6-6a546f0053f1": {
       "name": "google",
@@ -385,7 +386,8 @@
       "createdAt": "2026-08-27T14:56:15.403Z",
       "createdBy": "Admin",
       "updatedAt": "2026-08-27T14:56:15.403Z",
-      "updatedBy": "Admin"
+      "updatedBy": "Admin",
+      "credentialsVerified": true
     },
     "34bc58d2-df7e-4007-a997-2e8ef2b4d0d6": {
       "name": "github",
@@ -399,6 +401,22 @@
       "createdAt": "2026-08-27T20:38:32.967Z",
       "createdBy": "Admin",
       "updatedAt": "2026-08-27T20:38:32.967Z",
+      "updatedBy": "Admin",
+      "credentialsVerified": true
+    },
+    "fd0a0ecc-791f-4650-94d4-0fa33f774053": {
+      "name": "facebook",
+      "provider": "facebook",
+      "enabled": true,
+      "clientId": "1056989580528954",
+      "clientSecretEncrypted": "v1:v1:4g0xs1wrxmVPXr4x:2+ZL38BnqgrGOwjB5RXUZw==:KiuJFsfAXyJ/eaIahbQgingii3LmtvGwBpm6jzq29BM=",
+      "secretUpdatedAt": "2026-08-28T12:28:43.435Z",
+      "credentialsVerified": false,
+      "credentialsVerifiedAt": null,
+      "callbackPath": "/auth/facebook/callback",
+      "createdAt": "2026-08-28T12:28:43.437Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-28T12:28:43.437Z",
       "updatedBy": "Admin"
     }
   },

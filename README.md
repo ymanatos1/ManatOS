@@ -57,7 +57,7 @@ The current first-class SysBOs are:
 - **SysPrincipal** (`sys-principals`) — customer/commercial identity.
 - **SysApplication** (`sys-applications`) — managed/licensed application.
 - **SysLicense** (`sys-licenses`) — customer license for an application.
-- **SysExtAuthProvider** (`sys-ext-auth-providers`) — Admin-managed external OAuth provider configuration with verified encrypted credentials.
+- **SysExtAuthProvider** (`sys-ext-auth-providers`) — Admin-managed external OAuth provider configuration with encrypted credentials and persisted verification state.
 - **SysConfiguration** (`sys-configurations`) — typed/grouped runtime application configuration; sensitive values are encrypted at rest.
 
 Supporting entities are `SysExternalIdentity`, `SysUserPrincipal`, and a `SysUserInvitation` scaffold for customer-first onboarding.
@@ -112,7 +112,9 @@ The website registration/sign-in UI can offer the external providers currently c
 - GitHub (when configured)
 - local email/user-name + password
 
-External-provider Client ID/Client Secret pairs are configured through **Configuration > External authentication**. A new or replaced pair must complete the provider's real OAuth flow before it can be saved as verified. The plaintext Client Secret is never returned after storage.
+External-provider Client ID/Client Secret pairs are configured through **Configuration > External authentication**. A new or replaced Client ID/Client Secret pair may be stored securely before verification. Stored credentials remain unavailable to sign-in until the current pair successfully completes the provider's real OAuth test. The plaintext Client Secret is never returned by normal provider reads after storage.
+
+The External Authentication API is intentionally presented in layers rather than flattening every verification endpoint into the normal business API: provider configuration is **Admin-only**; credential store/remove commands are **trusted Admin/BFF** operations requiring both an Admin Bearer token and `x-internal-api-key`; OAuth verification mechanics are **internal UI workflow**; and the sign-in availability projection is anonymous-safe/public.
 
 Email registration asks for unique user-name, unique email and password.
 
@@ -273,6 +275,10 @@ This is a baseline rather than a completed production system. In particular:
 
 - UI sessions and verification/reset tokens are memory-only.
 - SMTP delivery is available and can be configured through Admin `SysConfiguration`; root encryption/trust secrets remain deployment-managed.
-- Microsoft/Google/Facebook/GitHub require real provider applications, credentials and callback URLs; configured credential pairs must pass the ManatOS provider test before becoming active.
+- Microsoft/Google/Facebook/GitHub require real provider applications, credentials and callback URLs; credential pairs may be stored unverified, but must pass the ManatOS provider test before becoming available for sign-in.
 - Real-browser Playwright E2E tests are not yet part of the automated suite.
 - SysApplication playground internals are intentionally deferred.
+
+### API presentation groups
+
+Swagger, Postman and the technical documentation use a consistent API order: **Server → Authentication → System Business Objects → System Configuration → Public UI → External Authentication → External Authentication Credentials → Internal External Authentication Workflow**. Each operation documents its intended access level (public, authenticated/role-controlled, Admin-only, trusted Admin/BFF, or internal UI/BFF). `SysConfiguration` is therefore no longer shown under Swagger's generic `default` group.

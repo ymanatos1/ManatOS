@@ -1,10 +1,10 @@
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { sysApplicationsMetadata } from '@manatos/shared';
+import { sysApplicationsMetadata, sysExtAuthProvidersMetadata } from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 
@@ -20,6 +20,11 @@ import { JsonFilePersistence } from '../src/storage/json-file-persistence.js';
  * implementation details of Maps or JSON.
  */
 describe('storage contract', () => {
+  it('defines credentialsVerified as persisted application-managed metadata', () => {
+    const field = sysExtAuthProvidersMetadata.fieldDefinition.credentialsVerified;
+    expect(field).toMatchObject({ readOnly: true, applicationManaged: true });
+    expect(field).not.toHaveProperty('generated');
+  });
   let databasePath: string;
   let store: InMemoryDataStore;
   let applications: GenericSysBOService<import('@manatos/shared').SysApplication>;
@@ -34,6 +39,35 @@ describe('storage contract', () => {
     await store.initialize();
 
     applications = new GenericSysBOService(store, store.sysApplications, sysApplicationsMetadata);
+  });
+
+  it('normalizes legacy external-provider verification timestamps into the persisted verification flag', async () => {
+    const legacyId = '11111111-1111-4111-8111-111111111111';
+    await writeFile(
+      databasePath,
+      JSON.stringify({
+        sysExtAuthProviders: {
+          [legacyId]: {
+            name: 'google', provider: 'google', enabled: true,
+            clientId: 'legacy-client', clientSecretEncrypted: 'encrypted-envelope',
+            callbackPath: '/auth/google/callback',
+            secretUpdatedAt: '2026-08-27T10:00:00.000Z',
+            credentialsVerifiedAt: '2026-08-27T10:01:00.000Z',
+            createdAt: '2026-08-27T09:00:00.000Z', createdBy: 'Admin',
+            updatedAt: '2026-08-27T10:01:00.000Z', updatedBy: 'Admin'
+          }
+        }
+      }),
+      'utf8',
+    );
+
+    const legacyStore = new InMemoryDataStore(new JsonFilePersistence(databasePath));
+    await legacyStore.initialize();
+
+    await expect(legacyStore.sysExtAuthProviders.getById(legacyId)).resolves.toMatchObject({
+      credentialsVerified: true,
+      credentialsVerifiedAt: '2026-08-27T10:01:00.000Z',
+    });
   });
 
   it('creates GUID-keyed records and server-owned audit fields', async () => {

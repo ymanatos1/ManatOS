@@ -107,8 +107,43 @@ export function buildOpenApiSpec() {
 
       version: '0.1.0',
 
-      description: 'Metadata-driven versioned REST API.',
+      description: 'Metadata-driven versioned REST API. External-authentication operations are grouped by public/business use, trusted credential management, and internal UI verification workflow.',
     },
+
+    tags: [
+      {
+        name: 'Server',
+        description: 'Public service health/readiness operations and Admin-only datastore flush operation.',
+      },
+      {
+        name: 'Authentication',
+        description: 'Registration, sign-in, account/session operations and trusted authentication commands. Access requirements are documented per operation.',
+      },
+      {
+        name: 'System Business Objects',
+        description: 'Metadata-driven SysBO endpoints. Authorization depends on the business object.',
+      },
+      {
+        name: 'System Configuration',
+        description: 'Admin-only persisted runtime configuration. Sensitive values are never returned as plaintext.',
+      },
+      {
+        name: 'Public UI',
+        description: 'Anonymous-safe data used by the ManatOS UI before sign-in.',
+      },
+      {
+        name: 'External Authentication',
+        description: 'Provider configuration and supported-provider metadata. Administrative provider configuration is Admin-only; anonymous runtime availability is exposed separately under Public UI.',
+      },
+      {
+        name: 'External Authentication Credentials',
+        description: 'Trusted Admin/BFF credential-management operations. Requires an authenticated Admin Bearer token and x-internal-api-key. Secrets are encrypted at rest and never returned through normal provider CRUD.',
+      },
+      {
+        name: 'Internal External Authentication Workflow',
+        description: 'Internal UI/BFF verification mechanics used by the ManatOS credential-test OAuth flow. Not intended as a general client API.',
+      },
+    ],
 
     components: {
       schemas: {
@@ -122,6 +157,13 @@ export function buildOpenApiSpec() {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'Opaque',
+          description: 'Opaque API access token returned by ManatOS authentication. Role-based authorization still applies to each operation.',
+        },
+        internalApiKey: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-internal-api-key',
+          description: 'Trusted UI/BFF key. Internal endpoints that also require bearerAuth require BOTH credentials; for external-provider credential operations the Bearer subject must be an Admin.',
         },
       },
     },
@@ -175,6 +217,8 @@ export function buildOpenApiSpec() {
 
       '/api/v1/SysExtAuthProviders': externalAuthProviderOperations(),
 
+      '/api/v1/SysExtAuthProviders/{id}': externalAuthProviderItemOperations(),
+
       '/api/v1/SysExtAuthProviders/definitions': externalAuthProviderDefinitionsOperation(),
 
       '/api/v1/SysConfigurations': sysConfigurationsOperation(),
@@ -182,6 +226,12 @@ export function buildOpenApiSpec() {
       '/api/v1/SysConfigurations/{id}/value': sysConfigurationValueOperation(),
 
       '/api/v1/internal/external-auth-providers/verified-credentials': verifiedExternalAuthCredentialsOperation(),
+
+      '/api/v1/internal/external-auth-providers/stored-credentials': storedExternalAuthCredentialsOperation(),
+
+      '/api/v1/internal/external-auth-providers/{id}/credentials-for-test': storedExternalAuthCredentialsForTestOperation(),
+
+      '/api/v1/internal/external-auth-providers/{id}/credentials-verified': markStoredExternalAuthCredentialsVerifiedOperation(),
 
       '/api/v1/internal/external-auth-providers/{id}/credentials': removeExternalAuthCredentialsOperation(),
     },
@@ -207,7 +257,7 @@ function publicExternalAuthProvidersOperation() {
     get: {
       summary: 'Get current public external-authentication provider state',
       description:
-        'Returns only anonymous-safe provider availability metadata. Client IDs, client secrets, encrypted values and Admin/audit fields are never included.',
+        'Access: Public/anonymous. Returns only providers that are currently usable for sign-in plus anonymous-safe provider metadata. Client IDs, client secrets, encrypted values and Admin/audit fields are never included.',
       tags: ['Public UI', 'External Authentication'],
       responses: {
         '200': {
@@ -223,7 +273,7 @@ function externalAuthProviderDefinitionsOperation() {
     get: {
       summary: 'Get external-authentication provider definitions',
       description:
-        'Admin-only provider metadata including fixed callback paths, provider icons, scopes and setup guidance. Contains no persisted credentials.',
+        'Access: Admin only (Bearer token). Returns code-defined provider metadata including fixed callback paths, provider icons, scopes and setup guidance. Contains no persisted credentials.',
       tags: ['External Authentication'],
       security: [{ bearerAuth: [] }],
       responses: {
@@ -239,8 +289,9 @@ function verifiedExternalAuthCredentialsOperation() {
   return {
     post: {
       summary: 'Persist an externally tested Client ID + Client secret pair',
-      description: 'Trusted UI command. Requires both the internal API key and an authenticated Admin Bearer token. The UI calls this only after the real provider OAuth flow succeeds.',
-      tags: ['External Authentication', 'Internal'],
+      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used only after the real provider OAuth flow succeeds for credentials that have not yet been persisted.',
+      tags: ['Internal External Authentication Workflow'],
+      'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
       responses: {
         '200': { description: 'Verified credential pair stored atomically.' },
@@ -252,11 +303,68 @@ function verifiedExternalAuthCredentialsOperation() {
   };
 }
 
+function storedExternalAuthCredentialsOperation() {
+  return {
+    post: {
+      summary: 'Persist an unverified Client ID + Client secret pair securely',
+      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Stores the complete pair encrypted at rest, sets credentialsVerified=false and clears credentialsVerifiedAt. The provider remains unavailable to sign-in until verification succeeds.',
+      tags: ['External Authentication Credentials'],
+      'x-manatos-access': 'Trusted Admin/BFF; Admin Bearer + x-internal-api-key',
+      security: [{ bearerAuth: [], internalApiKey: [] }],
+      responses: {
+        '200': { description: 'Credential pair stored securely with verification state cleared.' },
+        '400': failureResponse('Credential/configuration validation failure.'),
+        '401': failureResponse('Authentication/internal key required.'),
+        '403': failureResponse('Administrator role required.'),
+      },
+    },
+  };
+}
+
+function storedExternalAuthCredentialsForTestOperation() {
+  return {
+    get: {
+      summary: 'Get one stored credential pair for trusted UI provider testing',
+      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Decrypts one stored pair only for the trusted UI server while running the OAuth credential test; normal Admin CRUD and browser responses never expose the secret.',
+      tags: ['Internal External Authentication Workflow'],
+      'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
+      security: [{ bearerAuth: [], internalApiKey: [] }],
+      responses: {
+        '200': { description: 'Stored credential material returned to the trusted UI server.' },
+        '400': failureResponse('No complete stored credential pair exists.'),
+        '401': failureResponse('Authentication/internal key required.'),
+        '403': failureResponse('Administrator role required.'),
+      },
+    },
+  };
+}
+
+function markStoredExternalAuthCredentialsVerifiedOperation() {
+  return {
+    post: {
+      summary: 'Mark the exact tested stored credential version as verified',
+      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used after OAuth succeeds for an already-stored pair. Client ID and secret update timestamp are checked so a stale test cannot verify credentials replaced by another Admin.',
+      tags: ['Internal External Authentication Workflow'],
+      'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
+      security: [{ bearerAuth: [], internalApiKey: [] }],
+      responses: {
+        '200': { description: 'Stored credential pair marked verified.' },
+        '400': failureResponse('Credential/configuration validation failure.'),
+        '409': failureResponse('Credentials changed while the test was in progress.'),
+        '401': failureResponse('Authentication/internal key required.'),
+        '403': failureResponse('Administrator role required.'),
+      },
+    },
+  };
+}
+
 function removeExternalAuthCredentialsOperation() {
   return {
     delete: {
       summary: 'Remove external-provider credentials and disable provider',
-      tags: ['External Authentication', 'Internal'],
+      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Removes Client ID and encrypted Client Secret, clears verification state and disables the provider atomically.',
+      tags: ['External Authentication Credentials'],
+      'x-manatos-access': 'Trusted Admin/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
       responses: {
         '200': { description: 'Client ID and Client secret removed; provider disabled.' },
@@ -268,13 +376,24 @@ function removeExternalAuthCredentialsOperation() {
 }
 
 function externalAuthProviderOperations() {
+  const generic = genericOperations('SysExtAuthProvider');
+
   return {
-    get: genericOperations('SysExtAuthProvider').get,
+    get: {
+      ...generic.get,
+      summary: 'List configured external-authentication providers',
+      description: 'Access: Admin only (Bearer token). Lists persisted provider configuration and verification state. Secret material is never returned.',
+      tags: ['External Authentication'],
+      responses: {
+        ...generic.get.responses,
+        '403': failureResponse('Administrator role required.'),
+      },
+    },
     post: {
       summary: 'Create SysExtAuthProvider',
       description:
-        'Creates one provider configuration. callbackPath is generated from the provider definition and any non-default override is rejected.',
-      tags: ['System Business Objects', 'External Authentication'],
+        'Access: Admin only (Bearer token). Creates one provider configuration. callbackPath is generated from the provider definition and any non-default override is rejected. Credential material is managed separately through trusted credential-management operations.',
+      tags: ['External Authentication'],
       security: [{ bearerAuth: [] }],
       responses: {
         '201': { description: 'Created with the provider-defined callback path.' },
@@ -282,6 +401,51 @@ function externalAuthProviderOperations() {
         '401': failureResponse('Authentication required.'),
         '403': failureResponse('Administrator role required.'),
         '409': failureResponse('That provider already has a configuration record.'),
+      },
+    },
+  };
+}
+
+function externalAuthProviderItemOperations() {
+  return {
+    get: {
+      summary: 'Get configured external-authentication provider',
+      description: 'Access: Admin only (Bearer token). Returns one persisted provider configuration and verification state. Client Secret and encrypted secret material are never returned.',
+      tags: ['External Authentication'],
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      responses: {
+        '200': { description: 'Provider configuration returned.' },
+        '401': failureResponse('Authentication required.'),
+        '403': failureResponse('Administrator role required.'),
+        '404': failureResponse('Provider configuration not found.'),
+      },
+    },
+    patch: {
+      summary: 'Update external-authentication provider settings',
+      description: 'Access: Admin only (Bearer token). Updates ordinary provider settings such as enabled/tenant. Provider type, Client ID, Client Secret and application-managed verification state cannot be changed through generic CRUD.',
+      tags: ['External Authentication'],
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      responses: {
+        '200': { description: 'Provider configuration updated.' },
+        '400': failureResponse('Validation failure or attempted credential/application-managed mutation.'),
+        '401': failureResponse('Authentication required.'),
+        '403': failureResponse('Administrator role required.'),
+        '404': failureResponse('Provider configuration not found.'),
+      },
+    },
+    delete: {
+      summary: 'Delete external-authentication provider',
+      description: 'Access: Admin only (Bearer token). Deletes the provider configuration record.',
+      tags: ['External Authentication'],
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      responses: {
+        '200': { description: 'Provider configuration deleted.' },
+        '401': failureResponse('Authentication required.'),
+        '403': failureResponse('Administrator role required.'),
+        '404': failureResponse('Provider configuration not found.'),
       },
     },
   };
@@ -729,8 +893,8 @@ function passwordOperation() {
 }
 
 function sysConfigurationsOperation() {
-  return { get: { summary:'List application configuration (Admin)', security:[{bearerAuth:[]}], responses:{ '200':{description:'Safe configuration values; encrypted material is never returned.'}, '403':{description:'Admin access required.'} } } };
+  return { get: { summary:'List application configuration (Admin)', tags:['System Configuration'], description:'Access: Admin only (Bearer token). Returns persisted runtime configuration using safe projections; encrypted secret material is never returned.', security:[{bearerAuth:[]}], responses:{ '200':{description:'Safe configuration values; encrypted material is never returned.'}, '403':{description:'Admin access required.'} } } };
 }
 function sysConfigurationValueOperation() {
-  return { patch: { summary:'Update one application configuration value (Admin)', security:[{bearerAuth:[]}], parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}], requestBody:{required:true,content:{'application/json':{schema:{type:'object',properties:{value:{type:['string','null']}}}}}}, responses:{'200':{description:'Configuration updated.'},'403':{description:'Admin access required.'}} } };
+  return { patch: { summary:'Update one application configuration value (Admin)', tags:['System Configuration'], description:'Access: Admin only (Bearer token). Updates one Admin-maintainable runtime setting. Sensitive values are accepted for secure storage but never returned as plaintext.', security:[{bearerAuth:[]}], parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}], requestBody:{required:true,content:{'application/json':{schema:{type:'object',properties:{value:{type:['string','null']}}}}}}, responses:{'200':{description:'Configuration updated.'},'403':{description:'Admin access required.'}} } };
 }
