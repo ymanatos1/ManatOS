@@ -2,7 +2,7 @@
 
 **Status:** Under Development / Under Testing
 
-A modern Express 5 + TypeScript baseline with independently runnable **API** and **Express/EJS UI** projects, common metadata contracts, in-memory/JSON persistence, registration/sign-in, sessions, Swagger, Postman and automated-test scaffolding.
+A metadata-driven Express 5 + TypeScript application platform with independently runnable **API** and **Express/EJS UI** projects, common domain/metadata contracts, pluggable persistence boundaries, authentication and identity management, runtime configuration, Swagger, Postman and layered automated testing.
 
 ## Quick start
 
@@ -32,6 +32,8 @@ Open:
 - OpenAPI JSON: `http://localhost:3000/api/openapi.json`
 
 The bootstrap administrator is configured in `api/.env`. Change the example password before using the project outside local development.
+
+Before committing significant changes, run `npm run verify`. It builds all three workspaces, runs the API and UI suites, and ends with a compact numeric PASS/FAIL summary. Run `npm run lint` separately as a code-quality diagnostic.
 
 ## Repository layout
 

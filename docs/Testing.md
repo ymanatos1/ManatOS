@@ -2,9 +2,9 @@
 
 The test suite is intentionally layered. The goal is strong coverage of architectural contracts and security-sensitive behavior without duplicating every endpoint permutation.
 
-## API test stack
+## Test stack
 
-- **Vitest** is the test runner and assertion library.
+- **Vitest** is the test runner and assertion library for both API and UI workspaces.
 - **Supertest** executes the real Express application without opening a TCP port.
 - Every integration test uses a temporary `InMemoryDataStore` and a unique temporary JSON file.
 - Tests never read or overwrite the development `data/database.json`.
@@ -84,6 +84,12 @@ Covers the security-sensitive public authentication contract:
 
 `sys-configuration.integration.test.ts` protects Admin-only configuration updates, typed values and the rule that encrypted secret material is never returned through normal API projections.
 
+## UI test coverage
+
+The UI suite is a first-class part of normal verification. It combines deterministic TypeScript tests, EJS/Cheerio presentation tests and Supertest route/integration tests. It covers authentication, session handling, external-provider presentation, configuration pages, operation/error presentation and generic SysBO UI behavior.
+
+These tests deliberately stop short of pretending to be a real browser. Playwright remains the planned complementary layer for a small number of high-value end-to-end browser workflows.
+
 ## Global API response contract
 
 Tests use common assertions for the API envelope.
@@ -150,13 +156,21 @@ Avoid excessive tests for:
 - implementation-private Maps or token hashes;
 - live third-party identity-provider availability.
 
-## Running tests
+## Running tests and verification
 
-From the repository root:
+Run both API and UI test suites from the repository root:
 
 ```bash
 npm run test
 ```
+
+For the preferred full pre-commit validation pass:
+
+```bash
+npm run verify
+```
+
+`npm run verify` builds `shared`, `api` and `ui`, runs both test suites, and finishes with a compact PASS/FAIL summary containing API, UI and total test counts. `npm run lint` remains separate and is used as a code-quality diagnostic rather than a target to satisfy by suppression.
 
 For the API workspace only, if the workspace package exposes the normal test script:
 
@@ -178,11 +192,9 @@ The exact Vitest filter syntax can also be used directly through the API workspa
 
 Add tests when the corresponding functionality becomes real rather than pre-building a large speculative suite. Likely next additions are:
 
-- reusable datastore-contract runner for SQLite/MySQL adapters;
+- reusable datastore-contract execution against future SQL adapters;
 - license/relationship authorization scenarios;
-- email verification/reset token one-time/expiry behavior;
 - broader external-identity/provider browser flows using fake provider adapters;
 - operation-trace pruning/masking tests;
 - readiness failure tests using a deliberately unhealthy adapter;
-- UI Supertest + Cheerio tests;
 - a small Playwright E2E suite for only the most important browser workflows.

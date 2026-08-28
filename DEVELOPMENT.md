@@ -20,10 +20,17 @@ npm run dev:api
 npm run dev:ui
 npm run build
 npm run test
+npm run verify
 npm run lint
 npm run format
 npm run reset:data
 ```
+
+### Verification and lint policy
+
+`npm run verify` is the preferred full validation command before committing significant work. It builds `shared`, `api` and `ui`, runs both automated test suites, and prints a compact final summary with API, UI and total passed-test counts. A failed build or test step makes verification fail and identifies the failed stage.
+
+`npm run lint` remains deliberately separate. ESLint is a development diagnostic, not a target to satisfy by suppression. Fix findings when they expose a genuine code-quality improvement. If an intentional construct is currently preferable and no rational improvement is at hand, keep the finding visible (and, where useful, leave a future-improvement comment) rather than weakening the rule or adding a cosmetic bypass.
 
 ## Package guide
 

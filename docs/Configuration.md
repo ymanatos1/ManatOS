@@ -22,6 +22,14 @@ runtime cache / service-specific consumer
 
 Environment files therefore remain useful for first-run defaults and deployment bootstrap, but they are no longer the only source of application configuration.
 
+## Configuration precedence and exceptions
+
+The resolution model above applies only to settings represented by `SysConfiguration`. Deployment trust roots, process/bootstrap settings and test-only controls remain environment-managed.
+
+- `LOG_CONSOLE_MIN_LEVEL` is the bootstrap/default value for the persisted **Logging** setting. Once its `SysConfiguration` record exists, the persisted value is authoritative for normal API runtime logging. Allowed levels are `debug | info | warn | error | fatal`; the environment example defaults to `info`.
+- `LOG_CONSOLE_TESTS_MIN_LEVEL` is a **test-only environment setting**. It controls the minimum API console severity emitted during automated tests and is intentionally independent of persisted Admin configuration. Allowed levels are `debug | info | warn | error | fatal`; the environment example uses `error`, keeping expected warning-level rejection cases out of normal verification output. It does not change normal runtime logging.
+- Root trust values such as `SECRETS_ENCRYPTION_KEY`, `INTERNAL_API_KEY` and `SESSION_SECRET` never become ordinary `SysConfiguration` values.
+
 ## Sensitive values
 
 `SysConfiguration` supports sensitive values. `SMTP_PASSWORD` is the current example.
