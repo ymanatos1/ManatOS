@@ -6,6 +6,7 @@ import {
   type CompanyInfo,
   type PlatformInfo,
   sysApplicationsMetadata,
+  sysConfigurationsMetadata,
   sysExtAuthProvidersMetadata,
   sysLicensesMetadata,
   sysPrincipalsMetadata,
@@ -248,6 +249,20 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
   },
 
 
+  'sys-configurations': {
+    key: 'sys-configurations',
+    boMetadata: sysConfigurationsMetadata,
+    uiMetadata: {
+      icon: 'bi-sliders2',
+      listViewModel: { title: 'Configuration', addButtonText: 'Add setting', showResultCount: true },
+      editViewModel: { createTitle: 'Add Configuration', editTitle: 'Edit Configuration', showDeleteButton: false, confirmUnsavedChanges: true, deleteEntityLabel: 'Configuration', tabs:[generalInfoTab] },
+      gridConfiguration: { allowSorting:true, allowFiltering:true, responsive:true, visibleFields:['name','group','valueType','restartRequired','enabled'] },
+      filterDefinition: { mode:'and', allowMultipleFilters:true, fields:['name','group'] },
+      paginationConfiguration: pagination,
+    },
+    permissions: { view:adminRoles, create:[], edit:adminRoles, delete:[] },
+  },
+
   'sys-ext-auth-providers': {
     key: 'sys-ext-auth-providers',
     boMetadata: sysExtAuthProvidersMetadata,
@@ -363,4 +378,14 @@ export function effectiveSysBODefinitions(
   return Object.fromEntries(
     Object.entries(sysBODefinitions).filter(([key]) => keys.has(key)),
   );
+}
+
+/** Apply safe runtime UI settings refreshed through the public bootstrap contract. */
+export function applyRuntimeUiConfiguration(settings: { pageSizeOptions:number[]; defaultPageSize:number }) {
+  const options = settings.pageSizeOptions.filter((n) => Number.isInteger(n) && n > 0);
+  if (options.length) {
+    pagination.allowedPageSizes = [...new Set(options)].sort((a,b)=>a-b);
+    pagination.maxPageSize = Math.max(...pagination.allowedPageSizes);
+  }
+  if (pagination.allowedPageSizes.includes(settings.defaultPageSize)) pagination.defaultPageSize = settings.defaultPageSize;
 }

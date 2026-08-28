@@ -1,0 +1,28 @@
+<section class="content-card platform-page">
+  <% if (platform.headerImage) { %>
+    <img
+      class="platform-hero-image"
+      src="<%= platform.headerImage.src %>"
+      alt="<%= platform.headerImage.alt %>"
+    >
+  <% } %>
+
+  <% if (platform.presentation?.intro || platform.description) { %>
+    <p class="platform-intro mt-4 mb-0"><%= platform.presentation?.intro || platform.description %></p>
+  <% } %>
+
+  <% const features = platform.presentation?.features || []; %>
+  <% if (features.length) { %>
+    <div class="platform-feature-grid mt-4">
+      <% for (const feature of features) { %>
+        <article class="platform-feature-card">
+          <div class="platform-feature-icon" aria-hidden="true">
+            <i class="bi <%= feature.icon || 'bi-boxes' %>"></i>
+          </div>
+          <h2 class="h5"><%= feature.title %></h2>
+          <p class="mb-0"><%= feature.description %></p>
+        </article>
+      <% } %>
+    </div>
+  <% } %>
+</section>

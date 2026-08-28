@@ -33,7 +33,8 @@ The browser never receives SMTP credentials, password hashes, the internal API k
 | CSRF token | UI/BFF | UI session | Random session value; copied into forms | Session lifetime |
 | Email-verification token | UI/BFF | `SecurityTokenStore` in UI memory | Token id + SHA-256 hash; raw secret only in URL/email | One-time, expiry, invalidation, or UI restart |
 | Password-reset token | UI/BFF | `SecurityTokenStore` in UI memory | Token id + SHA-256 hash + user id + display label | One active reset token per user; one-time; 30 min; UI restart |
-| SMTP credentials | API | API environment/configuration | Secret configuration | Deployment-managed; never returned to UI |
+| SMTP credentials | API | `SysConfiguration` + deployment bootstrap defaults | Host/user settings as configuration; password encrypted at rest | Persistent configuration; never returned to UI |
+| External-provider Client Secret | API | `SysExtAuthProvider` in business datastore | AES-GCM encrypted | Replaced/removed by Admin; never returned to UI |
 
 ### Password hashing
 
@@ -162,6 +163,8 @@ Password-history/reuse prevention is **not currently implemented**. Older passwo
 ## 9. External-provider authentication
 
 Microsoft, Google, Facebook and GitHub are handled by the UI/Passport layer. Provider identity is resolved by provider + provider subject. Matching email alone never silently links an external identity to an existing account; ownership confirmation is required according to the linking flow.
+
+Provider configuration is Admin-managed. A Client ID/Client Secret pair is kept as one credential unit and must complete a provider OAuth credential-test flow before it is marked verified and offered to end users. During testing the original Admin form remains locked while the provider interaction happens in a temporary browser window; server-side pending state/polling is authoritative so popup lifecycle quirks cannot silently activate unverified credentials.
 
 After provider authentication resolves a ManatOS account, the trusted UI asks the API to mint an ordinary API access-token session. Multiple external identities may belong to one `SysUser`.
 

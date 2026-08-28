@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import createError from 'http-errors';
 
-import { AppError, validatePassword, type SysUser } from '@manatos/shared';
+import { AppError, MANATOS_COMPANY, resolvePlatform, validatePassword, type SysUser } from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
 
@@ -10,7 +10,7 @@ import { apiSessionOptions } from '../auth/api-session.js';
 
 import { config } from '../config.js';
 
-import { requireSignedIn } from '../middleware/auth.js';
+import { requireAdmin, requireSignedIn } from '../middleware/auth.js';
 
 import { requireCsrf } from '../middleware/csrf.js';
 
@@ -37,6 +37,28 @@ export function createPageRoutes() {
       ),
   );
 
+
+  router.get('/configuration', requireSignedIn, requireAdmin, async (req, res, next) => {
+    try {
+      const response = await apiClient.get<{ items: Array<Record<string, unknown>> }>('/api/v1/SysConfigurations', apiSessionOptions(req));
+      const groups: Record<string, Array<Record<string, unknown>>> = {};
+      for (const item of response.data.items) { const group=String(item.group ?? 'General'); (groups[group] ??= []).push(item); }
+      await renderPage(res, 'pages/configuration', {
+        title:'Configuration',
+        titleIcon:'bi-sliders2',
+        titleSubtitle:'Runtime application settings. Changes marked restart-required take effect after the corresponding service restarts.',
+        configurationGroups:groups,
+      });
+    } catch (error) { next(error); }
+  });
+
+  router.post('/configuration/:id', requireSignedIn, requireAdmin, requireCsrf, async (req, res, next) => {
+    try {
+      await apiClient.patch('/api/v1/SysConfigurations/' + encodeURIComponent(String(req.params.id ?? '')) + '/value', { value:req.body.value ?? null }, apiSessionOptions(req));
+      res.redirect('/configuration?message=saved');
+    } catch (error) { next(error); }
+  });
+
   router.get(
     '/company',
 
@@ -50,6 +72,38 @@ export function createPageRoutes() {
         },
       ),
   );
+
+  /**
+   * Generic platform landing page.
+   *
+   * The route is keyed by the shared SysPlatform catalogue rather than by
+   * mCRM-specific literals so future platforms automatically gain the same
+   * page structure and navigation behavior.
+   */
+  router.get(['/platform', '/platform/:platformId'], async (req, res, next) => {
+    try {
+      const requestedId = typeof req.params.platformId === 'string' && req.params.platformId
+        ? req.params.platformId
+        : MANATOS_COMPANY.defaultPlatformId;
+      const platform = MANATOS_COMPANY.platforms.find(
+        (entry) => entry.enabled && entry.id === requestedId,
+      );
+
+      if (!platform) {
+        throw createError(404, 'Platform not found.');
+      }
+
+      await renderPage(res, 'pages/platform', {
+        title: platform.shortName,
+        titleIcon: 'bi-boxes',
+        titleSubtitle: platform.presentation?.subtitle ?? platform.name,
+        breadcrumbTitle: `Platform · ${platform.shortName}`,
+        platform,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   /**
    * Application design/runtime playground landing page.

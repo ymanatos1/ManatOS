@@ -22,7 +22,7 @@
     <% for (const platform of app.company.platforms.filter((entry) => entry.enabled)) { %>
       <article class="company-platform-card">
         <div class="company-platform-card-title">
-          <strong><%= platform.shortName %></strong>
+          <strong><a href="/platform/<%= encodeURIComponent(platform.id) %>"><%= platform.shortName %></a></strong>
           <span><%= platform.name %></span>
         </div>
         <% if (platform.description) { %>

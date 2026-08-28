@@ -1,5 +1,6 @@
 import type {
   SysApplication,
+  SysConfiguration,
   SysExtAuthProvider,
   SysBOMetadata,
   SysLicense,
@@ -177,5 +178,6 @@ export type SysBODefinition =
   | SysBODefinitionFor<SysUser>
   | SysBODefinitionFor<SysPrincipal>
   | SysBODefinitionFor<SysApplication>
+  | SysBODefinitionFor<SysConfiguration>
   | SysBODefinitionFor<SysExtAuthProvider>
   | SysBODefinitionFor<SysLicense>;

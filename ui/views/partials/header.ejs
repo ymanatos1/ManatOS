@@ -40,13 +40,14 @@
       currentPlatform identifies the selected major platform. Its embossed
       treatment is theme-owned CSS rather than platform-specific hardcoding.
     -->
-    <div
+    <a
       class="current-platform-badge"
+      href="/platform/<%= encodeURIComponent(app.currentPlatform.id) %>"
       title="<%= app.currentPlatform.name %>"
       aria-label="Current platform: <%= app.currentPlatform.name %>"
     >
       <span class="current-platform-code"><%= app.currentPlatform.shortName %></span>
-    </div>
+    </a>
 
     <span class="version-badge d-none d-sm-inline">
       v<%= app.version %>
@@ -54,6 +55,24 @@
   </div>
 
   <div class="header-actions">
+    <% if (app.ui?.bootstrap?.ui?.donationsShow) { %>
+      <!--
+        Donations are a ManatOS-level concern rather than a platform or
+        SysApplication action. Visibility is runtime-configured through
+        DONATIONS_SHOW; the control intentionally remains disabled until a
+        donation provider/target is configured in a later implementation.
+      -->
+      <button
+        type="button"
+        class="btn btn-sm header-donate-button"
+        disabled
+        title="Donations will be available soon."
+        aria-label="Donate - donations will be available soon"
+      >
+        <i class="bi bi-heart-fill me-1"></i>
+        Donate
+      </button>
+    <% } %>
     <% if (!currentUser) { %>
       <button
         type="button"

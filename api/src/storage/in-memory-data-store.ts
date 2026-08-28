@@ -1,10 +1,12 @@
 import {
   sysApplicationsMetadata,
+  sysConfigurationsMetadata,
   sysExtAuthProvidersMetadata,
   sysLicensesMetadata,
   sysPrincipalsMetadata,
   sysUsersMetadata,
   type SysApplication,
+  type SysConfiguration,
   type SysExternalIdentity,
   type SysExtAuthProvider,
   type SysLicense,
@@ -39,6 +41,8 @@ export class InMemoryDataStore implements StorageAdapter {
   public sysPrincipals!: InMemoryRepository<SysPrincipal>;
 
   public sysApplications!: InMemoryRepository<SysApplication>;
+
+  public sysConfigurations!: InMemoryRepository<SysConfiguration>;
 
   public sysLicenses!: InMemoryRepository<SysLicense>;
 
@@ -121,6 +125,7 @@ export class InMemoryDataStore implements StorageAdapter {
       restoreMap(this.state.sysUsers, snapshot.sysUsers);
       restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
       restoreMap(this.state.sysApplications, snapshot.sysApplications);
+      restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
       restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
       restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
       restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
@@ -202,6 +207,8 @@ export class InMemoryDataStore implements StorageAdapter {
       this.state.sysApplications,
       sysApplicationsMetadata,
     );
+
+    this.sysConfigurations = new InMemoryRepository(this.state.sysConfigurations, sysConfigurationsMetadata);
 
     this.sysLicenses = new InMemoryRepository(this.state.sysLicenses, sysLicensesMetadata);
 

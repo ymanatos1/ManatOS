@@ -430,7 +430,11 @@
     }
     testCredentials.disabled = true;
 
-    const testWindow = window.open('', 'manatos-provider-credential-test', 'popup,width=720,height=760,resizable=yes,scrollbars=yes');
+    const popupWidth = 720;
+    const popupHeight = 760;
+    const popupLeft = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
+    const popupTop = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
+    const testWindow = window.open('', 'manatos-provider-credential-test', 'popup,width=' + popupWidth + ',height=' + popupHeight + ',left=' + popupLeft + ',top=' + popupTop + ',resizable=yes,scrollbars=yes');
     if (!testWindow) {
       showFeedback('Allow popups for ManatOS to test provider credentials without leaving this form.');
       updateTestButton();
@@ -476,8 +480,21 @@
 
       window.manatosBusy?.show({
         title: 'Testing ' + (provider.options[provider.selectedIndex]?.text || provider.value) + ' credentials…',
-        message: 'Complete authentication in the provider window. ManatOS will continue automatically when verification finishes.',
+        message: 'Complete authentication in the provider window. We will continue automatically when verification finishes.',
         icon: providerIcons[provider.value] || 'bi-shield-check',
+        actionLabel: 'Cancel test',
+        onAction: async () => {
+          try {
+            const cancelBody = new URLSearchParams();
+            cancelBody.set('_csrf', body.get('_csrf') || '');
+            cancelBody.set('testId', payload.testId);
+            await fetch(payload.cancelUrl, { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8', Accept:'application/json' }, body:cancelBody.toString() });
+          } catch {}
+          finishWaiting();
+          try { testWindow.close(); } catch {}
+          showFeedback('Credential test cancelled. Your values were not changed.');
+          updateTestButton();
+        },
       });
 
       testWindow.location.replace(payload.redirectUrl);
@@ -515,6 +532,13 @@
           // Transient polling failures do not destroy the provider flow.
         }
 
+        if (testWindow.closed) {
+          // One final server check has just completed. If still pending, the Admin closed the provider window.
+          finishWaiting();
+          showFeedback('Credential test interrupted because the provider window was closed. Your values were not changed.');
+          updateTestButton();
+          return;
+        }
         pollTimer = window.setTimeout(pollStatus, 750);
       };
 

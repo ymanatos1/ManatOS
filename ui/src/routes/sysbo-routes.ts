@@ -130,6 +130,11 @@ export function createSysBORoutes() {
         );
 
         let hasAnyEntries = response.data.paging.total > 0;
+        let allExternalProvidersConfigured = false;
+        if (definition.key === 'sys-ext-auth-providers') {
+          const defs = (await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>('/api/v1/SysExtAuthProviders/definitions', apiSessionOptions(req))).data.providers;
+          allExternalProvidersConfigured = response.data.paging.total >= defs.length;
+        }
         const filtersActive = hasActiveFilters(req, definition);
 
         // If a filtered result is empty, distinguish "entity is empty" from
@@ -154,6 +159,7 @@ export function createSysBORoutes() {
             definition,
             permissions,
             hasAnyEntries,
+            allExternalProvidersConfigured,
 
             items: response.data.items,
 
@@ -406,6 +412,7 @@ export function createSysBORoutes() {
         testId: req.session.pendingExtAuthCredentialTest.testId,
         redirectUrl: `/auth/${provider}/test-credentials`,
         statusUrl: `/bo/sys-ext-auth-providers/test-credentials/status?testId=${encodeURIComponent(req.session.pendingExtAuthCredentialTest.testId)}`,
+        cancelUrl: '/bo/sys-ext-auth-providers/test-credentials/cancel',
       });
     } catch (error) {
       next(error);
@@ -458,6 +465,15 @@ export function createSysBORoutes() {
       next(error);
     }
   });
+  router.post('/sys-ext-auth-providers/test-credentials/cancel', requireCsrf, async (req, res) => {
+    const requestedTestId = String(req.body.testId ?? '');
+    const pending = req.session.pendingExtAuthCredentialTest;
+    if (pending && pending.testId === requestedTestId) {
+      delete req.session.pendingExtAuthCredentialTest;
+    }
+    res.json({ success:true, status:'cancelled' });
+  });
+
   /** Remove the complete provider credential pair and disable the provider. */
   router.post('/sys-ext-auth-providers/:id/remove-credentials', requireCsrf, async (req, res, next) => {
     try {
@@ -766,14 +782,16 @@ async function editPageSupplementalData(
       ? await externalIdentitiesForUser(itemId)
       : [];
 
-  const externalAuthProviderDefinitions = definition.key === 'sys-ext-auth-providers'
-    ? (
-        await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>(
-          '/api/v1/SysExtAuthProviders/definitions',
-          apiSessionOptions(req),
-        )
-      ).data.providers
+  let externalAuthProviderDefinitions = definition.key === 'sys-ext-auth-providers'
+    ? (await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>('/api/v1/SysExtAuthProviders/definitions', apiSessionOptions(req))).data.providers
     : [];
+  let suggestedProvider = '';
+  if (definition.key === 'sys-ext-auth-providers' && isNew) {
+    const configured = (await apiClient.get<SysBOListData<Record<string, unknown>>>('/api/v1/SysExtAuthProviders?page=1&pageSize=100', apiSessionOptions(req))).data.items;
+    const configuredKeys = new Set(configured.map((entry) => String(entry.provider ?? '').toLowerCase()));
+    externalAuthProviderDefinitions = externalAuthProviderDefinitions.filter((entry) => !configuredKeys.has(entry.provider));
+    suggestedProvider = externalAuthProviderDefinitions[0]?.provider ?? '';
+  }
 
   const rawPrimaryValue = item[definition.boMetadata.primaryField];
   let displayValue = String(rawPrimaryValue ?? 'entry');
@@ -801,6 +819,7 @@ async function editPageSupplementalData(
     ...(definition.key === 'sys-ext-auth-providers'
       ? {
           externalAuthProviderDefinitions,
+          suggestedProvider,
           credentialTest: credentialTestForPage(req, item, isNew),
         }
       : {}),

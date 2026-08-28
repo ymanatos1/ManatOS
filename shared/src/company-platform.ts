@@ -77,6 +77,17 @@ export interface SysPlatform {
   enabled: boolean;
   logo?: ImageRef;
   headerImage?: ImageRef;
+  /** Optional platform landing-page presentation consumed by UI clients. */
+  presentation?: {
+    subtitle?: string;
+    intro?: string;
+    features?: Array<{
+      id: string;
+      title: string;
+      description: string;
+      icon?: string;
+    }>;
+  };
   entities: EntityContribution[];
   navigation: NavigationContribution[];
 }
@@ -147,6 +158,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
     { sysBOKey: 'sys-principals', description: 'Customer/commercial identities.' },
     { sysBOKey: 'sys-licenses', description: 'Company-managed platform licenses.' },
     { sysBOKey: 'sys-ext-auth-providers', description: 'External authentication providers.' },
+    { sysBOKey: 'sys-configurations', description: 'Runtime application configuration.' },
   ],
   navigation: [
     {
@@ -194,6 +206,17 @@ export const MANATOS_COMPANY: CompanyInfo = {
       roles: [SysUserRole.Admin],
     },
     {
+      id: 'system-configuration',
+      parentId: 'configuration',
+      text: 'Configuration',
+      icon: 'bi-sliders',
+      url: '/configuration',
+      order: 400,
+      requiresAuthentication: true,
+      roles: [SysUserRole.Admin],
+      requiresEntityKeys: ['sys-configurations'],
+    },
+    {
       id: 'external-authentication',
       parentId: 'configuration',
       text: 'External authentication',
@@ -237,8 +260,55 @@ export const MANATOS_COMPANY: CompanyInfo = {
       code: 'mCRM',
       name: 'ManatOS CRM Platform',
       shortName: 'mCRM',
-      description: 'CRM platform for designing, operating and testing business applications.',
+      description: 'CRM platform for managing customer relationships, business activity and connected applications.',
       enabled: true,
+      headerImage: {
+        src: '/assets/platforms/mcrm/mcrm-customer-network.png',
+        alt: 'mCRM connected customer relationship network',
+      },
+      presentation: {
+        subtitle: 'ManatOS Dynamic Customer Relationship Management Platform',
+        intro:
+          'mCRM is the ManatOS platform for building dynamic customer relationship management applications. Define and evolve CRM applications with configurable business models, relationships and processes; control access through licensing; test and explore them in the Playground; and prepare applications for independent delivery as they mature.',
+        features: [
+          {
+            id: 'customer-360',
+            title: 'Customer 360°',
+            description: 'Unified customer view across contacts, organizations and interactions.',
+            icon: 'bi-people-fill',
+          },
+          {
+            id: 'opportunities',
+            title: 'Opportunities',
+            description: 'Track pipeline, manage opportunities and support business growth.',
+            icon: 'bi-bullseye',
+          },
+          {
+            id: 'activities',
+            title: 'Activities',
+            description: 'Plan tasks, meetings, follow-ups and reminders in one place.',
+            icon: 'bi-calendar-check',
+          },
+          {
+            id: 'communications',
+            title: 'Communications',
+            description: 'Keep emails, calls and messages connected to the customer context.',
+            icon: 'bi-envelope-fill',
+          },
+          {
+            id: 'documents',
+            title: 'Documents',
+            description: 'Store and manage documents and files related to your customers.',
+            icon: 'bi-folder-fill',
+          },
+          {
+            id: 'analytics',
+            title: 'Analytics',
+            description: 'Turn relationship and activity data into useful reports and insights.',
+            icon: 'bi-bar-chart-fill',
+          },
+        ],
+      },
       entities: [
         {
           sysBOKey: 'sys-applications',

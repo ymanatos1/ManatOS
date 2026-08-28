@@ -1,4 +1,7 @@
 import { apiClient } from '../api-client.js';
+import { applyRuntimeUiConfiguration } from '../sysbo/definitions.js';
+import { config } from '../config.js';
+const configFallback = { pageSizeOptions:config.UI_PAGE_SIZE_OPTIONS, defaultPageSize:config.UI_DEFAULT_PAGE_SIZE, showTechnicalErrorDetails:config.SHOW_TECHNICAL_ERROR_DETAILS, sessionErrorLogMaxEntries:config.SESSION_ERROR_LOG_MAX_ENTRIES }; 
 
 /** Public server/API information needed before a user signs in. */
 export interface UiBootstrapState {
@@ -6,9 +9,8 @@ export interface UiBootstrapState {
     alive: boolean;
     implementationVersion: string | null;
   };
-  api: {
-    version: string | null;
-  };
+  api: { version: string | null; };
+  ui: { pageSizeOptions:number[]; defaultPageSize:number; showTechnicalErrorDetails:boolean; sessionErrorLogMaxEntries:number; donationsShow:boolean; };
 }
 
 /**
@@ -20,9 +22,8 @@ export const UI_BOOTSTRAP_DEFAULTS: Readonly<UiBootstrapState> = Object.freeze({
     alive: false,
     implementationVersion: null,
   }),
-  api: Object.freeze({
-    version: null,
-  }),
+  api: Object.freeze({ version:null }),
+  ui: Object.freeze({ pageSizeOptions:[...configFallback.pageSizeOptions], defaultPageSize:configFallback.defaultPageSize, showTechnicalErrorDetails:configFallback.showTechnicalErrorDetails, sessionErrorLogMaxEntries:configFallback.sessionErrorLogMaxEntries, donationsShow:false }),
 });
 
 let currentState: Readonly<UiBootstrapState> = UI_BOOTSTRAP_DEFAULTS;
@@ -48,11 +49,11 @@ export async function refreshUiBootstrap(): Promise<boolean> {
         alive: response.data.server.alive,
         implementationVersion: response.data.server.implementationVersion,
       }),
-      api: Object.freeze({
-        version: response.data.api.version,
-      }),
+      api: Object.freeze({ version: response.data.api.version }),
+      ui: Object.freeze({ ...response.data.ui, pageSizeOptions:[...response.data.ui.pageSizeOptions] }),
     });
 
+    applyRuntimeUiConfiguration(currentState.ui);
     return true;
   } catch {
     currentState = Object.freeze({
@@ -61,6 +62,7 @@ export async function refreshUiBootstrap(): Promise<boolean> {
         alive: false,
       }),
       api: currentState.api,
+      ui: currentState.ui,
     });
 
     return false;

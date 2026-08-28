@@ -13,10 +13,10 @@ describe('UI bootstrap state', () => {
   });
 
   it('starts from API-unavailable local defaults', () => {
-    expect(UI_BOOTSTRAP_DEFAULTS).toEqual({
-      server: { alive: false, implementationVersion: null },
-      api: { version: null },
-    });
+    expect(UI_BOOTSTRAP_DEFAULTS.server).toEqual({ alive:false, implementationVersion:null });
+    expect(UI_BOOTSTRAP_DEFAULTS.api).toEqual({ version:null });
+    expect(UI_BOOTSTRAP_DEFAULTS.ui.pageSizeOptions.length).toBeGreaterThan(0);
+    expect(UI_BOOTSTRAP_DEFAULTS.ui.donationsShow).toBe(false);
   });
 
   it('refreshes server availability and version information after a successful API request', async () => {
@@ -25,14 +25,15 @@ describe('UI bootstrap state', () => {
       data: {
         server: { alive: true, implementationVersion: '0.1.0' },
         api: { version: 'v1' },
+        ui: { pageSizeOptions:[2,5,10,20,50,100], defaultPageSize:10, showTechnicalErrorDetails:false, sessionErrorLogMaxEntries:20, donationsShow:true },
       },
     });
 
     expect(await refreshUiBootstrap()).toBe(true);
-    expect(uiBootstrapState()).toEqual({
-      server: { alive: true, implementationVersion: '0.1.0' },
-      api: { version: 'v1' },
-    });
+    expect(uiBootstrapState().server).toEqual({ alive:true, implementationVersion:'0.1.0' });
+    expect(uiBootstrapState().api).toEqual({ version:'v1' });
+    expect(uiBootstrapState().ui.defaultPageSize).toBe(10);
+    expect(uiBootstrapState().ui.donationsShow).toBe(true);
   });
 
   it('marks the API unavailable on failure while allowing a later refresh to recover', async () => {
@@ -43,6 +44,7 @@ describe('UI bootstrap state', () => {
         data: {
           server: { alive: true, implementationVersion: '0.1.0' },
           api: { version: 'v1' },
+          ui: { pageSizeOptions:[2,5,10,20,50,100], defaultPageSize:10, showTechnicalErrorDetails:false, sessionErrorLogMaxEntries:20, donationsShow:true },
         },
       });
 

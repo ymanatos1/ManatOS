@@ -17,6 +17,16 @@ A BO definition key (`sys-users`, `sys-principals`, ...) is a stable hard-coded 
 
 Canonical field metadata is keyed by canonical property name for fast lookup. UI metadata is a second category layered on top only by UI clients.
 
+## Company and platform composition
+
+`CompanyInfo` owns Company-wide capabilities and a code-defined catalogue of enabled `SysPlatform` entries. The selected platform contributes its own SysBO capabilities and navigation entries on top of the Company baseline. The current implementation ships with mCRM, but horizontal navigation and platform landing pages are catalogue-driven so additional platforms do not require a separate shell design.
+
+Each platform can provide branding/hero artwork, descriptive copy and capability cards. The UI exposes the current platform both through the top-header badge and the horizontal **Platform** entry.
+
+## Runtime configuration
+
+`SysConfiguration` stores typed/grouped application settings in the business datastore. Missing settings are seeded from code/environment defaults. Sensitive configuration values are encrypted through the existing secrets-encryption service and normal reads expose only a configured/not-configured projection. Root trust material (`SECRETS_ENCRYPTION_KEY`, `INTERNAL_API_KEY`, `SESSION_SECRET`) intentionally remains outside the datastore.
+
 ## Scope tree
 
 Every EJS page gets `app.version`, `app.scopes`, `app.sysBO` and `app.navigation` through `res.locals`. The scope tree contains at least session, user, request and workspace; selecting Play on a SysApplication adds the selected application to workspace scope.

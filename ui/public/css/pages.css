@@ -68,6 +68,29 @@
   color: #0d6efd;
 }
 
+/*
+ * Apps Playground follows the usable workspace width rather than the browser
+ * viewport. With navigation and Details visible, their widths have already
+ * been removed by the shell before this query is evaluated.
+ */
+@container manatOS-workspace (max-width: 900px) {
+  .app-playground-welcome {
+    grid-template-columns: 1fr;
+  }
+
+  .app-playground-illustration-wrap {
+    order: 2;
+  }
+
+  .app-playground-welcome-copy {
+    order: 1;
+  }
+
+  .app-playground-illustration {
+    width: min(100%, 520px);
+  }
+}
+
 @media (max-width: 900px) {
   .app-playground-welcome {
     grid-template-columns: 1fr;

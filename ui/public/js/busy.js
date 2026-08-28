@@ -14,11 +14,16 @@
   const busyTitle = document.getElementById('manatosBusyTitle');
   const busyMessage = document.getElementById('manatosBusyMessage');
   const busyIcon = document.getElementById('manatosBusyIcon');
+  const busyActionWrap = document.getElementById('manatosBusyActionWrap');
+  const busyAction = document.getElementById('manatosBusyAction');
+  let actionHandler = null;
 
   const showBusy = ({
     title = 'Please wait…',
     message = 'ManatOS is completing the requested operation.',
     icon = 'bi-arrow-repeat',
+    actionLabel,
+    onAction,
   } = {}) => {
     if (!busyOverlay) {
       return;
@@ -32,9 +37,10 @@
       busyMessage.textContent = message;
     }
 
-    if (busyIcon) {
-      busyIcon.className = `bi ${icon}`;
-    }
+    if (busyIcon) { busyIcon.className = `bi ${icon}`; }
+    actionHandler = typeof onAction === 'function' ? onAction : null;
+    if (busyActionWrap) busyActionWrap.hidden = !actionHandler;
+    if (busyAction) busyAction.textContent = actionLabel || 'Cancel';
 
     busyOverlay.classList.add('is-visible');
     busyOverlay.setAttribute('aria-hidden', 'false');
@@ -47,7 +53,11 @@
     busyOverlay?.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('manatos-busy');
     busyBackground?.removeAttribute('inert');
+    actionHandler = null;
+    if (busyActionWrap) busyActionWrap.hidden = true;
   };
+
+  busyAction?.addEventListener('click', () => actionHandler?.());
 
   window.manatosBusy = { show: showBusy, hide: hideBusy };
 

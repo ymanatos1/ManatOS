@@ -8,9 +8,13 @@ Requires unique user-name, unique email and local password.
 
 ## External registration
 
-Google/Facebook authenticate first. Before creating the account, the UI checks email uniqueness. If available, it displays the provider email read-only and asks for a unique user-name and an optional password.
+Microsoft, Google, Facebook and GitHub authenticate first. Before creating the account, the UI checks email uniqueness. If available, it displays the provider email read-only and asks for a unique user-name and an optional password. Provider profile data may supply a normalized user-name suggestion, but the user remains free to change it before account creation.
 
 Provider subject + provider name identifies the external identity. Matching email alone never silently links two accounts.
+
+## External-provider configuration
+
+Provider definitions and callback paths are code-defined. Admins configure one record per supported provider through **Configuration > External authentication**. Client ID and Client Secret are treated as one credential pair; new or replacement credentials must successfully complete the provider's real OAuth flow before Save is allowed. Client secrets are encrypted at rest and never returned in plaintext after storage.
 
 ## Password
 

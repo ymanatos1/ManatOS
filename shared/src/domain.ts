@@ -38,6 +38,26 @@ export type SysBOUpdateInput<T extends SysBOEntity> = Partial<
   Omit<T, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'>
 >;
 
+/** Runtime configuration value types. */
+export type SysConfigurationValueType = 'string' | 'number' | 'boolean' | 'enum' | 'secret';
+
+/**
+ * Persisted application configuration. Sensitive values are stored only in
+ * valueEncrypted; normal API/UI projections never expose that envelope.
+ */
+export interface SysConfiguration extends SysBOEntity {
+  value: string | null;
+  valueEncrypted?: string | null;
+  group: string;
+  description?: string;
+  valueType: SysConfigurationValueType;
+  allowedValues?: string[];
+  defaultValue?: string | null;
+  restartRequired?: boolean;
+  editable: boolean;
+  sensitive: boolean;
+}
+
 /**
  * Website user security roles.
  */

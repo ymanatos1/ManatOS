@@ -19,6 +19,7 @@ import {
 } from '../src/services/domain-services.js';
 import { SecretsEncryptionService } from '../src/security/secrets-encryption-service.js';
 import { SysExtAuthProviderService } from '../src/services/sys-ext-auth-provider-service.js';
+import { SysConfigurationService } from '../src/services/sys-configuration-service.js';
 
 /**
  * Standard credentials used by integration tests.
@@ -57,8 +58,13 @@ export async function createTestApi() {
 
   const users = new SysUserService(store);
 
+  const encryption = new SecretsEncryptionService('test', Buffer.alloc(32, 7).toString('base64'));
+  const configurations = new SysConfigurationService(store, encryption);
+  await configurations.seedMissing();
+
   const services = {
     users,
+    configurations,
 
     email: {
       async verifyConnection() {},
@@ -69,7 +75,7 @@ export async function createTestApi() {
 
     extAuthProviders: new SysExtAuthProviderService(
       store,
-      new SecretsEncryptionService('test', Buffer.alloc(32, 7).toString('base64')),
+      encryption,
     ),
 
     principals: new SysPrincipalService(store),

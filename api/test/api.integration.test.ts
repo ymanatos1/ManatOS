@@ -30,6 +30,7 @@ describe('API integration - server and generic SysBO behavior', () => {
     expect(response.body.data).toMatchObject({
       server: { alive: true, implementationVersion: '0.1.0' },
       api: { version: 'v1' },
+      ui: { donationsShow: false },
     });
     expect(response.headers['cache-control']).toBe('no-store');
   });

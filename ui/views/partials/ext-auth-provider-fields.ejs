@@ -1,5 +1,5 @@
 <%
-  const provider = String(credentialTest?.provider || item.provider || 'microsoft').toLowerCase();
+  const provider = String(credentialTest?.provider || item.provider || suggestedProvider || 'microsoft').toLowerCase();
   const enabledValue = credentialTest ? credentialTest.enabled : item.enabled !== false;
   const providerLocked = readOnly || !isNew || credentialTest?.status === 'verified';
   const providerDefinitions = externalAuthProviderDefinitions || [];

@@ -637,6 +637,26 @@
   border-radius: 0.45rem;
 }
 
+/*
+ * Global donation affordance. The warm treatment intentionally separates it
+ * from normal blue/green application actions. While donation processing is
+ * not configured the button remains visibly present but unmistakably disabled.
+ */
+.header-donate-button,
+.header-donate-button:disabled {
+  min-width: 82px;
+  font-weight: 700;
+  border-radius: 0.45rem;
+  color: #fff4df;
+  background: rgba(255, 181, 71, 0.18);
+  border: 1px solid rgba(255, 211, 145, 0.72);
+  opacity: 0.72;
+}
+
+.header-donate-button:disabled {
+  cursor: not-allowed;
+}
+
 .site-header .btn-info {
   color: #06234a;
   background-color: #63d8f5;
@@ -1237,6 +1257,105 @@ body.anonymous .workspace {
 
 @media (max-width: 767.98px) {
   .auth-registration-security-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Workspace title subtitle
+ * ------------------------------------------------------------------------- */
+.workspace-title-copy {
+  min-width: 0;
+}
+
+.workspace-title-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--manatos-muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+/* -------------------------------------------------------------------------
+ * Platform landing pages
+ * ------------------------------------------------------------------------- */
+.platform-page {
+  padding: clamp(1.1rem, 2vw, 1.5rem);
+}
+
+.platform-hero-image {
+  display: block;
+  width: 100%;
+  max-height: 440px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  box-shadow: var(--manatos-shadow);
+}
+
+.platform-intro {
+  max-width: 1180px;
+  color: var(--bs-body-color);
+  font-size: 1.02rem;
+  line-height: 1.55;
+}
+
+.platform-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.platform-feature-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  background: var(--bs-body-bg);
+  box-shadow: 0 0.2rem 0.8rem rgb(15 42 78 / 6%);
+}
+
+.platform-feature-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: var(--manatos-blue);
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.platform-feature-card h2 {
+  margin-bottom: 0.4rem;
+  font-weight: 650;
+}
+
+.platform-feature-card p {
+  color: var(--manatos-muted);
+  line-height: 1.45;
+}
+
+.current-platform-badge {
+  text-decoration: none;
+}
+
+.current-platform-badge:hover,
+.current-platform-badge:focus-visible {
+  text-decoration: none;
+}
+
+.company-platform-card-title a {
+  color: inherit;
+}
+
+@media (max-width: 991.98px) {
+  .platform-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .platform-feature-grid {
     grid-template-columns: 1fr;
   }
 }

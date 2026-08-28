@@ -138,11 +138,15 @@ A simplified visual representation is:
 - authenticated notifications entry point;
 - authenticated Account dropdown with account details, personal details, password management and logout.
 
+The Company logo links to the Company/Home experience, while the current-platform badge is a separate clickable control that opens the selected platform landing page. This keeps Company identity and product-platform identity visually and architecturally distinct.
+
 The Account dropdown contains the detailed account controls; it is distinct from the compact signed-in identity displayed in the horizontal navigation.
 
 ### 3.3 Horizontal navigation
 
 `views/partials/horizontal-nav.ejs` renders metadata/configuration-driven items from `src/navigation.ts` and supports nested menus.
+
+The main navigation exposes **Home → Company → Platform → Resources → Apps Playground**. The Platform entry is catalogue-driven: with one enabled platform it is a direct link to that platform; with multiple enabled platforms it becomes a dropdown of platform pages without requiring new shell markup.
 
 For authenticated users, the right side contains a compact signed-in identity immediately before the language selector. This keeps global session identity out of page-specific content such as the Home hero.
 
@@ -183,6 +187,12 @@ Navigation definitions live in `src/navigation.ts`, not in individual EJS pages.
 - bottom docking in the vertical navigation.
 
 `navigationFor(role, auth)` recursively filters the navigation tree before rendering it. Presentation templates therefore receive only the menu entries applicable to the current session.
+
+Horizontal platform navigation is derived from the shared `CompanyInfo.platforms` catalogue. Vertical navigation is composed from Company and current-Platform contributions, including shared containers such as Administration and Configuration.
+
+## 4.1 Platform landing pages
+
+`/platform/:platformId` is a generic platform landing route driven by `SysPlatform` metadata. A platform may provide a hero image, subtitle, introductory copy and capability cards. mCRM is presented as the **ManatOS Dynamic Customer Relationship Management Platform**: a platform for defining and evolving CRM applications with configurable business models, relationships and processes, licensing-controlled access, Playground testing and a path toward independent delivery as applications mature. Its current presentation includes a connected customer-relationship network plus Customer 360°, Opportunities, Activities, Communications, Documents and Analytics. Future platforms reuse the same page structure rather than introducing hard-coded mCRM routes.
 
 ## 5. Generic SysBO UI
 
@@ -386,7 +396,7 @@ Future illustrations may add other parameterized contexts; callers should pass s
 | Information/success | Message | contextual | short message | OK or follow-up action |
 | Warning | Message | contextual | short warning | OK or follow-up action |
 | Operation failed | Message/error | Operation failed | safe error + optional operation trace | Cancel and optional Retry |
-| Delete entry | Message/confirmation | Delete `<SysBO>` | destructive warning | Cancel / Delete |
+| Delete entry | Message/confirmation | Friendly record/entity title (for example `Delete Google External Provider`) | destructive warning | Cancel / Delete |
 | Unsaved changes | Message/confirmation | Unsaved changes | unsaved-state warning | Cancel / Discard / Save |
 
 `external-registration.ejs` is currently a page/content-card flow rather than a modal; it is therefore not included as a popup despite belonging to the wider authentication UX.
@@ -408,6 +418,8 @@ Popup actions follow a consistent positional convention:
 Long-running form operations use `data-busy-submit` plus semantic busy title/message/icon attributes. `public/js/busy.js` presents a full-screen locked overlay while the request is in progress.
 
 This avoids duplicate submissions and gives explicit feedback during operations such as registration, password reset/change and external-account linking.
+
+External-provider credential testing uses the same locked-form principle but keeps provider authentication in a temporary browser window. The Admin page polls authoritative server-side test state, offers **Cancel test**, detects a manually closed provider window, and preserves the entered credential pair after cancellation/failure so the Admin can correct and retry it.
 
 ## 8.9 Popup architecture extension rules
 

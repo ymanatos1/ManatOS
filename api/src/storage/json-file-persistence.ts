@@ -33,6 +33,8 @@ export class JsonFilePersistence {
 
         sysApplications: fromPersistedRecords(raw.sysApplications),
 
+        sysConfigurations: fromPersistedRecords(raw.sysConfigurations),
+
         sysLicenses: normalizeLegacyLicenses(fromPersistedRecords(raw.sysLicenses)),
 
         sysExtAuthProviders: fromPersistedRecords(raw.sysExtAuthProviders),
@@ -70,6 +72,8 @@ export class JsonFilePersistence {
       sysPrincipals: toPersistedRecords(state.sysPrincipals),
 
       sysApplications: toPersistedRecords(state.sysApplications),
+
+      sysConfigurations: toPersistedRecords(state.sysConfigurations),
 
       sysLicenses: toPersistedRecords(state.sysLicenses),
 

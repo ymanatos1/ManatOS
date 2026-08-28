@@ -70,7 +70,7 @@ OpenAPI is generated programmatically from the canonical BO metadata; no separat
 
 Playwright, Husky/lint-staged and Testcontainers are intentionally deferred until they provide immediate value.
 
-## Environment
+## Environment and runtime configuration
 
 Copy:
 
@@ -80,6 +80,8 @@ ui/.env.example  -> ui/.env
 ```
 
 The `INTERNAL_API_KEY` values must match.
+
+Environment files now form the **bootstrap/default layer**, not the only application-configuration source. Admin-maintainable runtime settings are represented by persisted `SysConfiguration` records. Missing records are seeded from environment/default values on API startup. Sensitive settings such as `SMTP_PASSWORD` are encrypted before persistence; root trust secrets (`SECRETS_ENCRYPTION_KEY`, `INTERNAL_API_KEY`, `SESSION_SECRET`) stay outside the datastore.
 
 ### Session idle timeout
 
@@ -93,9 +95,9 @@ This is a rolling inactivity timeout. The value is intentionally specified in mi
 
 `ConsoleEmailService` prints verification/reset URLs in the UI terminal. This lets a developer test all flows without SMTP.
 
-## Google/Facebook
+## External authentication providers
 
-Provider buttons are included only when the related ID/secret values exist. External providers are a UI concern; the API merely stores normalized external-identity links.
+Microsoft, Google, Facebook and GitHub provider definitions are code-defined, while Admin-supplied Client ID/Client Secret pairs are stored by the API. Secrets are encrypted at rest. New/replaced credential pairs must complete the real provider OAuth flow before they can be persisted as verified and exposed to sign-in/registration. The UI owns Passport/browser redirects; the API owns provider configuration and normalized external-identity persistence.
 
 ## VS Code
 

@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import type { ListQuery } from '../storage/in-memory-repository.js';
 
 import { config } from '../config.js';
+import { runtimeNumber } from '../runtime-configuration.js';
 
 /**
  * Converts the standard SysBO HTTP query-string parameters into
@@ -39,9 +40,9 @@ export function parseListQuery(req: Request): ListQuery {
    * both the default and maximum independently configurable.
    */
   const pageSize = Math.min(
-    positiveInteger(req.query.pageSize, config.API_DEFAULT_PAGE_SIZE),
+    positiveInteger(req.query.pageSize, runtimeNumber('API_DEFAULT_PAGE_SIZE', config.API_DEFAULT_PAGE_SIZE)),
 
-    config.API_MAX_PAGE_SIZE,
+    runtimeNumber('API_MAX_PAGE_SIZE', config.API_MAX_PAGE_SIZE),
   );
 
   /**

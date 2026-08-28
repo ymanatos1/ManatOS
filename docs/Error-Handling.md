@@ -50,4 +50,4 @@ All API failures expose the user-facing message twice deliberately: once at the 
 }
 ```
 
-API error detail level can be `normal`, `operations` or `full`. `operations` adds the semantic operation trace; `full` additionally exposes developer diagnostics and stack information. Production should normally avoid `full`.
+API error detail level can be `none`, `basic`, `operations` or `full`. `operations` adds the semantic operation trace; `full` additionally exposes developer diagnostics and stack information. The value is Admin-configurable through `SysConfiguration` (with deployment configuration as the startup/default layer). Production should normally avoid `full`.

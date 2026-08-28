@@ -8,7 +8,7 @@ The test suite is intentionally layered. The goal is strong coverage of architec
 - **Supertest** executes the real Express application without opening a TCP port.
 - Every integration test uses a temporary `InMemoryDataStore` and a unique temporary JSON file.
 - Tests never read or overwrite the development `data/database.json`.
-- External Google/Facebook providers are not live CI dependencies; provider adapters should be faked when those flows are added to automated tests.
+- Real Microsoft/Google/Facebook/GitHub services are not live CI dependencies. Deterministic provider configuration/credential-state rules are tested locally, while browser/provider protocol flows should use fake adapters in automated coverage.
 
 ## Test layout
 
@@ -19,6 +19,8 @@ api/
     storage.contract.test.ts
     api.integration.test.ts
     api.auth.integration.test.ts
+    ext-auth-provider.integration.test.ts
+    sys-configuration.integration.test.ts
 ```
 
 ### `test-helpers.ts`
@@ -75,6 +77,12 @@ Covers the security-sensitive public authentication contract:
 - logout-all;
 - revoked-token behavior;
 - password change and subsequent login behavior.
+
+### External-provider and configuration integration tests
+
+`ext-auth-provider.integration.test.ts` protects the verified-credential lifecycle: pairwise Client ID/secret replacement, encrypted secret storage, unrelated edits preserving credentials, atomic credential removal, callback-path ownership and public/runtime exposure only after verification.
+
+`sys-configuration.integration.test.ts` protects Admin-only configuration updates, typed values and the rule that encrypted secret material is never returned through normal API projections.
 
 ## Global API response contract
 
@@ -173,7 +181,7 @@ Add tests when the corresponding functionality becomes real rather than pre-buil
 - reusable datastore-contract runner for SQLite/MySQL adapters;
 - license/relationship authorization scenarios;
 - email verification/reset token one-time/expiry behavior;
-- external-identity linking with fake providers;
+- broader external-identity/provider browser flows using fake provider adapters;
 - operation-trace pruning/masking tests;
 - readiness failure tests using a deliberately unhealthy adapter;
 - UI Supertest + Cheerio tests;

@@ -51,12 +51,14 @@ Project/
 
 ## Business objects
 
-The four current first-class SysBOs are:
+The current first-class SysBOs are:
 
 - **SysUser** (`sys-users`) — website/security account.
 - **SysPrincipal** (`sys-principals`) — customer/commercial identity.
 - **SysApplication** (`sys-applications`) — managed/licensed application.
 - **SysLicense** (`sys-licenses`) — customer license for an application.
+- **SysExtAuthProvider** (`sys-ext-auth-providers`) — Admin-managed external OAuth provider configuration with verified encrypted credentials.
+- **SysConfiguration** (`sys-configurations`) — typed/grouped runtime application configuration; sensitive values are encrypted at rest.
 
 Supporting entities are `SysExternalIdentity`, `SysUserPrincipal`, and a `SysUserInvitation` scaffold for customer-first onboarding.
 
@@ -102,13 +104,15 @@ Normal list calls return `success + data`, with collection entries under `data.i
 
 ## Registration and sign-in
 
-The website registration/sign-in UI can offer:
+The website registration/sign-in UI can offer the external providers currently configured and successfully verified by an Admin:
 
 - Microsoft (when configured)
 - Google (when configured)
 - Facebook (when configured)
 - GitHub (when configured)
 - local email/user-name + password
+
+External-provider Client ID/Client Secret pairs are configured through **Configuration > External authentication**. A new or replaced pair must complete the provider's real OAuth flow before it can be saved as verified. The plaintext Client Secret is never returned after storage.
 
 Email registration asks for unique user-name, unique email and password.
 
@@ -166,6 +170,7 @@ The responsive shell provides:
 - theme-aware clickable company logo and version;
 - anonymous sign-in/sign-up or authenticated notifications/account controls;
 - metadata-driven nested horizontal navigation;
+- first-class Company and current-Platform navigation/pages; the current platform badge is also a link to its platform page;
 - compact signed-in identity and language selector on the horizontal navigation;
 - authenticated nested/collapsible left navigation;
 - central workspace with breadcrumb, page actions, title and content;
@@ -217,7 +222,7 @@ Selected context values may be attached to operations. Sensitive names (`passwor
 ********
 ```
 
-The same canonical error can be projected to API JSON, the UI error popup and a bounded session error log. API failures always expose the user-facing message at root level as well as in `error.message`. API error detail is configurable (`normal`, `operations`, `full`).
+The same canonical error can be projected to API JSON, the UI error popup and a bounded session error log. API failures always expose the user-facing message at root level as well as in `error.message`. API error detail is configurable (`none`, `basic`, `operations`, `full`).
 
 ## Storage
 
@@ -229,6 +234,8 @@ Services
   -> JsonFilePersistence
   -> data/database.json
 ```
+
+`SysConfiguration` is persisted in the same datastore. Non-secret settings can override deployment defaults at runtime; sensitive entries such as `SMTP_PASSWORD` use the existing AES-GCM secrets service and are never exposed through normal configuration reads. Root trust material such as `SECRETS_ENCRYPTION_KEY`, `INTERNAL_API_KEY` and `SESSION_SECRET` intentionally remains deployment-managed outside the datastore.
 
 JSON writes use temporary-file + rename. In-memory transactions snapshot the Maps and roll back on failure.
 
@@ -250,6 +257,7 @@ Future SQL/database adapters can replace the current implementation without chan
 
 - [Developer Guide](DEVELOPMENT.md)
 - [Architecture](docs/Architecture.md)
+- [Runtime Configuration](docs/Configuration.md)
 - [Storage](docs/Storage.md)
 - [Authentication](docs/Authentication.md)
 - [Authentication Flows](docs/authentication-flows.md)
@@ -264,7 +272,7 @@ Detailed architectural comments are also kept next to important interfaces/class
 This is a baseline rather than a completed production system. In particular:
 
 - UI sessions and verification/reset tokens are memory-only.
-- SMTP delivery is available but remains environment/configuration dependent.
-- Microsoft/Google/Facebook/GitHub require real provider credentials and callback URLs.
+- SMTP delivery is available and can be configured through Admin `SysConfiguration`; root encryption/trust secrets remain deployment-managed.
+- Microsoft/Google/Facebook/GitHub require real provider applications, credentials and callback URLs; configured credential pairs must pass the ManatOS provider test before becoming active.
 - Real-browser Playwright E2E tests are not yet part of the automated suite.
 - SysApplication playground internals are intentionally deferred.

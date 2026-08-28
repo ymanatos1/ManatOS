@@ -1,0 +1,34 @@
+<%
+  const groupEntries = Object.entries(configurationGroups || {});
+  const icons = { UI:'bi-window', API:'bi-braces', Mail:'bi-envelope-at', Logging:'bi-journal-text', 'Errors & diagnostics':'bi-bug', Sessions:'bi-clock-history' };
+%>
+<div class="alert alert-info d-flex gap-2" role="note"><i class="bi bi-shield-lock-fill"></i><div><strong>Secrets stay protected.</strong> Sensitive values are encrypted at rest and are never returned to this page. Enter a new value only when you want to replace the stored secret.</div></div>
+<div class="row g-4">
+<% for (const [group, items] of groupEntries) { %>
+  <div class="col-12 col-xl-6">
+    <section class="card shadow-sm h-100">
+      <div class="card-header bg-body-tertiary"><h2 class="h5 mb-0"><i class="bi <%= icons[group] || 'bi-gear' %> me-2"></i><%= group %></h2></div>
+      <div class="card-body p-0">
+        <% for (const item of items) { %>
+          <form method="post" action="/configuration/<%= item.id %>" class="p-3 border-bottom" data-config-setting>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="d-flex justify-content-between gap-3 mb-1"><label class="fw-semibold" for="cfg-<%= item.id %>"><%= item.name %></label><div><% if (item.restartRequired) { %><span class="badge text-bg-warning">Restart required</span><% } %> <% if (item.sensitive && item.secretConfigured) { %><span class="badge text-bg-success"><i class="bi bi-lock-fill"></i> Secret configured</span><% } %></div></div>
+            <p class="small text-secondary mb-2"><%= item.description || '' %></p>
+            <div class="input-group">
+              <% if (item.valueType === 'boolean') { %>
+                <select class="form-select" id="cfg-<%= item.id %>" name="value"><option value="true" <%= item.value === 'true' ? 'selected' : '' %>>Enabled / true</option><option value="false" <%= item.value === 'false' ? 'selected' : '' %>>Disabled / false</option></select>
+              <% } else if (item.valueType === 'enum') { %>
+                <select class="form-select" id="cfg-<%= item.id %>" name="value"><% for (const option of (item.allowedValues || [])) { %><option value="<%= option %>" <%= item.value === option ? 'selected' : '' %>><%= option %></option><% } %></select>
+              <% } else { %>
+                <input class="form-control" id="cfg-<%= item.id %>" name="value" type="<%= item.sensitive ? 'password' : (item.valueType === 'number' ? 'number' : 'text') %>" value="<%= item.sensitive ? '' : (item.value || '') %>" placeholder="<%= item.sensitive && item.secretConfigured ? 'Leave blank to keep the stored secret' : '' %>" <%= item.valueType === 'number' ? 'min="1"' : '' %>>
+              <% } %>
+              <button class="btn btn-outline-primary" type="submit"><i class="bi bi-check2"></i> Apply</button>
+            </div>
+            <% if (item.defaultValue && !item.sensitive) { %><div class="form-text">Default: <code><%= item.defaultValue %></code></div><% } %>
+          </form>
+        <% } %>
+      </div>
+    </section>
+  </div>
+<% } %>
+</div>

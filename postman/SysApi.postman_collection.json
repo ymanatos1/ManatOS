@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "116a6257-0413-4473-ab8a-eed1e069313c",
     "name": "ManatOS System API",
-    "description": "Postman collection for ManatOS API authentication, health, SysBO CRUD, external-authentication credential lifecycle and security tests.",
+    "description": "Postman collection for ManatOS API authentication, health, SysBO CRUD and security tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1253976",
     "_collection_link": "https://go.postman.co/collection/1253976-116a6257-0413-4473-ab8a-eed1e069313c?source=collection_link"
@@ -578,95 +578,6 @@
                 "{{apiVersion}}",
                 "auth",
                 "sessions"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "02 - Public UI",
-      "item": [
-        {
-          "name": "UI Bootstrap",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Server is alive', () => pm.expect(json.data.server.alive).to.eql(true));",
-                  "pm.test('Implementation version returned', () => pm.expect(json.data.server.implementationVersion).to.be.a('string').and.not.empty);",
-                  "pm.test('API version returned', () => pm.expect(json.data.api.version).to.be.a('string').and.not.empty);",
-                  "pm.test('Response is non-cacheable', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/public/ui-bootstrap",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "public",
-                "ui-bootstrap"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "External Authentication Provider State",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('Providers array returned', () => pm.expect(json.data.providers).to.be.an('array'));",
-                  "pm.test('Public projection contains no credentials', () => {",
-                  "  const serialized = JSON.stringify(json);",
-                  "  pm.expect(serialized).to.not.include('clientSecret');",
-                  "  pm.expect(serialized).to.not.include('clientSecretEncrypted');",
-                  "  pm.expect(serialized).to.not.include('clientId');",
-                  "});",
-                  "pm.test('Response is non-cacheable', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/public/external-auth-providers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "public",
-                "external-auth-providers"
               ]
             }
           },
@@ -1636,113 +1547,30 @@
       ]
     },
     {
-      "name": "SysExtAuthProviders",
-      "description": "Admin-only external authentication provider configuration. Callback paths are provider-defined and cannot be overridden.",
+      "name": "SysConfigurations",
+      "description": "Admin-only runtime configuration. Sensitive values such as SMTP_PASSWORD are encrypted at rest and never returned in plaintext.",
       "item": [
         {
-          "name": "List SysExtAuthProviders",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
+          "name": "List SysConfigurations",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders",
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysConfigurations",
               "host": [
                 "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysConfigurations"
               ]
             }
           },
           "response": []
         },
         {
-          "name": "Provider Definitions",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/definitions",
-              "host": [
-                "{{baseUrl}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Disabled Provider Draft",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "const json = pm.response.json(); if (json.data?.id) pm.environment.set('testExtAuthProviderId', json.data.id);",
-                  "pm.test('Draft has no verified credentials', () => pm.expect(json.data.credentialsConfigured).to.eql(false));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"provider\": \"{{testExtAuthProvider}}\",\n  \"enabled\": false\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders",
-              "host": [
-                "{{baseUrl}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Reject Untested Credentials Through Generic CRUD",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
+          "name": "Update Configuration Value",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1751,187 +1579,27 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysConfigurations/{{configurationId}}/value",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysConfigurations",
+                "{{configurationId}}",
+                "value"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clientId\": \"unverified-direct-change\"\n}",
+              "raw": "{\n  \"value\": \"25\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Save Verified Credentials (trusted UI simulation)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Verification timestamp returned', () => pm.expect(pm.response.json().data.credentialsVerifiedAt).to.be.a('string').and.not.empty);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "x-internal-api-key",
-                "value": "{{internalApiKey}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{testExtAuthProviderId}}\",\n  \"provider\": \"{{testExtAuthProvider}}\",\n  \"enabled\": true,\n  \"clientId\": \"{{testExtAuthClientId}}\",\n  \"clientSecret\": \"{{testExtAuthClientSecret}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/verified-credentials",
-              "host": [
-                "{{baseUrl}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Test External Provider by Id",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json(); pm.test('Credentials configured', () => pm.expect(json.data.credentialsConfigured).to.eql(true));",
-                  "pm.test('No secret material returned', () => { const text=pm.response.text(); pm.expect(text).not.to.include('clientSecretEncrypted'); pm.expect(text).not.to.include(pm.environment.get('testExtAuthClientSecret')); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Patch General Setting Without Touching Credentials",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Credentials remain configured', () => pm.expect(pm.response.json().data.credentialsConfigured).to.eql(true));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"enabled\": false\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Remove Provider Credentials",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "x-internal-api-key",
-                "value": "{{internalApiKey}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/{{testExtAuthProviderId}}/credentials",
-              "host": [
-                "{{baseUrl}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Test External Provider",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) pm.environment.unset('testExtAuthProviderId');"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ]
             }
           },
           "response": []
@@ -2375,12 +2043,10 @@
       "value": "mcrm"
     },
     {
-      "key": "testExtAuthProviderId",
-      "value": ""
-    },
-    {
-      "key": "testExtAuthProvider",
-      "value": "github"
+      "key": "configurationId",
+      "value": "",
+      "type": "string",
+      "description": "SysConfiguration id selected from List SysConfigurations."
     }
   ]
 }

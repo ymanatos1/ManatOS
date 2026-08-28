@@ -144,19 +144,8 @@ if (parsedConfig.API_DEFAULT_PAGE_SIZE > parsedConfig.API_MAX_PAGE_SIZE) {
   );
 }
 
-if (parsedConfig.MAIL_ENABLED) {
-  const missing = [
-    ['SMTP_HOST', parsedConfig.SMTP_HOST],
-    ['SMTP_USER', parsedConfig.SMTP_USER],
-    ['SMTP_PASSWORD', parsedConfig.SMTP_PASSWORD],
-    ['MAIL_FROM_ADDRESS', parsedConfig.MAIL_FROM_ADDRESS],
-  ]
-    .filter(([, value]) => !value)
-    .map(([name]) => name);
+// Mail settings may be supplied by encrypted SysConfiguration after the datastore
+// initializes, so startup validation cannot require them to exist in .env.
 
-  if (missing.length) {
-    throw new Error(`MAIL_ENABLED=true requires: ${missing.join(', ')}.`);
-  }
-}
 
 export const config = parsedConfig;

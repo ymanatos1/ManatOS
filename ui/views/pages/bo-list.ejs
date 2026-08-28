@@ -60,9 +60,9 @@
         <% } %>
 
         <% if (permissions.create) { %>
-          <a class="btn btn-success" href="/bo/<%= definition.key %>/new">
-            <i class="bi bi-plus-circle me-1"></i>
-            <%= definition.uiMetadata.listViewModel.addButtonText %>
+          <% const providerAddDisabled = definition.key === 'sys-ext-auth-providers' && typeof allExternalProvidersConfigured !== 'undefined' && allExternalProvidersConfigured; %>
+          <a class="btn btn-success <%= providerAddDisabled ? 'disabled' : '' %>" href="<%= providerAddDisabled ? '#' : '/bo/' + definition.key + '/new' %>" <%= providerAddDisabled ? 'aria-disabled="true" tabindex="-1" title="All supported providers are configured."' : '' %>>
+            <i class="bi bi-plus-circle me-1"></i><%= definition.uiMetadata.listViewModel.addButtonText %>
           </a>
         <% } %>
       </div>

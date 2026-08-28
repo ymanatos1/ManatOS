@@ -3,8 +3,12 @@ import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 
 import { EmailDeliveryError, type SysUser } from '@manatos/shared';
 
-import { config } from '../config.js';
 import { logger } from '../logging/logger.js';
+
+export interface MailRuntimeConfiguration {
+  enabled:boolean; host:string | undefined; port:number; secure:boolean; user:string | undefined; password:string | undefined;
+  fromAddress:string | undefined; fromName:string; tlsRejectUnauthorized:boolean;
+}
 
 /** Server-side application mail boundary. */
 export interface IEmailService {
@@ -35,43 +39,43 @@ class DisabledEmailService implements IEmailService {
 class SmtpEmailService implements IEmailService {
   private readonly transporter: Transporter;
 
-  constructor() {
+  constructor(private readonly mail: MailRuntimeConfiguration) {
     const transportOptions: SMTPTransport.Options = {
-      host: config.SMTP_HOST!,
-      port: config.SMTP_PORT,
-      secure: config.SMTP_SECURE,
+      host: this.mail.host!,
+      port: this.mail.port,
+      secure: this.mail.secure,
       auth: {
-        user: config.SMTP_USER!,
-        pass: config.SMTP_PASSWORD!,
+        user: this.mail.user!,
+        pass: this.mail.password!,
       },
       tls: {
-        rejectUnauthorized: config.SMTP_TLS_REJECT_UNAUTHORIZED,
+        rejectUnauthorized: this.mail.tlsRejectUnauthorized,
       },
     };
 
     this.transporter = nodemailer.createTransport(transportOptions);
 
     logger.info('SMTP transport created', {
-      host: config.SMTP_HOST,
-      port: config.SMTP_PORT,
-      secure: config.SMTP_SECURE,
-      tlsRejectUnauthorized: config.SMTP_TLS_REJECT_UNAUTHORIZED,
-      fromAddress: config.MAIL_FROM_ADDRESS,
+      host: this.mail.host,
+      port: this.mail.port,
+      secure: this.mail.secure,
+      tlsRejectUnauthorized: this.mail.tlsRejectUnauthorized,
+      fromAddress: this.mail.fromAddress,
     });
   }
 
   async verifyConnection(): Promise<void> {
     logger.info('Verifying SMTP connection', {
-      host: config.SMTP_HOST,
-      port: config.SMTP_PORT,
+      host: this.mail.host,
+      port: this.mail.port,
     });
 
     try {
       await this.transporter.verify();
       logger.info('SMTP connection verified', {
-        host: config.SMTP_HOST,
-        port: config.SMTP_PORT,
-        secure: config.SMTP_SECURE,
+        host: this.mail.host,
+        port: this.mail.port,
+        secure: this.mail.secure,
       });
     } catch (error) {
       logger.error('SMTP connection verification failed', { error });
@@ -129,12 +133,12 @@ class SmtpEmailService implements IEmailService {
       mailType,
       userId,
       to,
-      from: config.MAIL_FROM_ADDRESS,
+      from: this.mail.fromAddress,
     });
 
     try {
       const result = await this.transporter.sendMail({
-        from: { name: config.MAIL_FROM_NAME, address: config.MAIL_FROM_ADDRESS! },
+        from: { name: this.mail.fromName, address: this.mail.fromAddress! },
         to,
         subject,
         text,
@@ -155,7 +159,7 @@ class SmtpEmailService implements IEmailService {
         mailType,
         userId,
         to,
-        from: config.MAIL_FROM_ADDRESS,
+        from: this.mail.fromAddress,
         error,
       });
 
@@ -177,11 +181,11 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-export function createEmailService(): IEmailService {
-  if (!config.MAIL_ENABLED) return new DisabledEmailService();
+export function createEmailService(mail: MailRuntimeConfiguration): IEmailService {
+  if (!mail.enabled) return new DisabledEmailService();
 
   try {
-    return new SmtpEmailService();
+    return new SmtpEmailService(mail);
   } catch (error) {
     logger.error('Failed to initialize SMTP email service', { error });
     return new DisabledEmailService();

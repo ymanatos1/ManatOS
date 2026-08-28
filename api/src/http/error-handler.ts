@@ -3,6 +3,7 @@ import type { ErrorRequestHandler } from 'express';
 import { AppError } from '@manatos/shared';
 
 import { config } from '../config.js';
+import { runtimeString } from '../runtime-configuration.js';
 import { logger } from '../logging/logger.js';
 
 /**
@@ -77,7 +78,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
           },
         );
 
-  const detailLevel = config.API_ERROR_DETAIL_LEVEL;
+  const detailLevel = runtimeString('API_ERROR_DETAIL_LEVEL', config.API_ERROR_DETAIL_LEVEL) as typeof config.API_ERROR_DETAIL_LEVEL;
 
   const httpStatus = httpStatusByErrorCode[appError.code] ?? 500;
 

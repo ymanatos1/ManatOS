@@ -10,6 +10,8 @@ Business code does not know the JSON filename.
 
 Records are held in GUID-keyed Maps and persisted as JSON objects keyed by the same GUID.
 
+`SysConfiguration` records use the same persistence boundary. Sensitive configuration values are stored only in encrypted form; normal configuration projections do not return plaintext or ciphertext. The encryption root/key itself is deployment configuration and is deliberately not stored in the datastore it protects.
+
 Unique fields declared by BO metadata are enforced case-insensitively by the in-memory repository. Future database adapters should map these invariants to database UNIQUE constraints.
 
 The demonstration transaction clones current Maps, executes the logical operation, atomically writes JSON and restores the snapshot if any stage fails. A SQL adapter would use a real transaction instead.

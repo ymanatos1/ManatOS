@@ -21,12 +21,7 @@ export interface AppNavMenuItem {
   dockBottom?: boolean;
 }
 
-/**
- * Horizontal navigation is still shell-global. Platform composition currently
- * applies to the authenticated left navigation, where platform capabilities
- * are operationally exposed. This can be generalized later if required.
- */
-export const appHorizontalNavMenu: AppNavMenuItem[] = [
+const baseHorizontalNavMenu: AppNavMenuItem[] = [
   { id: 'home', text: 'Home', icon: 'bi-house', url: '/' },
   { id: 'company', text: 'Company', icon: 'bi-building', url: '/company' },
   {
@@ -47,6 +42,42 @@ export const appHorizontalNavMenu: AppNavMenuItem[] = [
   },
   { id: 'app-playground', text: 'Apps Playground', icon: 'bi-play-circle-fill', url: '/app-playground' },
 ];
+
+/**
+ * Build the horizontal platform entry from the code-defined platform catalogue.
+ * With one enabled platform it behaves as a simple link; once more platforms
+ * are added, the same entry becomes a dropdown without changing shell markup.
+ */
+export function horizontalNavigation(
+  company: CompanyInfo = MANATOS_COMPANY,
+  platform: PlatformInfo = resolvePlatform(company),
+): AppNavMenuItem[] {
+  const enabledPlatforms = company.platforms.filter((entry) => entry.enabled);
+  const platformItem: AppNavMenuItem = enabledPlatforms.length <= 1
+    ? {
+        id: 'platform',
+        text: 'Platform',
+        icon: 'bi-boxes',
+        url: `/platform/${encodeURIComponent(platform.id)}`,
+      }
+    : {
+        id: 'platform',
+        text: 'Platform',
+        icon: 'bi-boxes',
+        children: enabledPlatforms.map((entry) => ({
+          id: `platform-${entry.id}`,
+          text: entry.shortName,
+          icon: 'bi-boxes',
+          url: `/platform/${encodeURIComponent(entry.id)}`,
+        })),
+      };
+
+  return [
+    ...baseHorizontalNavMenu.slice(0, 2),
+    platformItem,
+    ...baseHorizontalNavMenu.slice(2),
+  ];
+}
 
 /**
  * Compose the left navigation from Company contributions plus the selected
@@ -117,7 +148,7 @@ export function navigationFor(
     });
 
   return {
-    horizontal: filter(appHorizontalNavMenu),
+    horizontal: filter(horizontalNavigation(company, platform)),
     vertical: auth ? filter(composeVerticalNavigation(company, platform)) : [],
   };
 }

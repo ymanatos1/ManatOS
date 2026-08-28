@@ -177,6 +177,10 @@ export function buildOpenApiSpec() {
 
       '/api/v1/SysExtAuthProviders/definitions': externalAuthProviderDefinitionsOperation(),
 
+      '/api/v1/SysConfigurations': sysConfigurationsOperation(),
+
+      '/api/v1/SysConfigurations/{id}/value': sysConfigurationValueOperation(),
+
       '/api/v1/internal/external-auth-providers/verified-credentials': verifiedExternalAuthCredentialsOperation(),
 
       '/api/v1/internal/external-auth-providers/{id}/credentials': removeExternalAuthCredentialsOperation(),
@@ -722,4 +726,11 @@ function passwordOperation() {
       },
     },
   };
+}
+
+function sysConfigurationsOperation() {
+  return { get: { summary:'List application configuration (Admin)', security:[{bearerAuth:[]}], responses:{ '200':{description:'Safe configuration values; encrypted material is never returned.'}, '403':{description:'Admin access required.'} } } };
+}
+function sysConfigurationValueOperation() {
+  return { patch: { summary:'Update one application configuration value (Admin)', security:[{bearerAuth:[]}], parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}], requestBody:{required:true,content:{'application/json':{schema:{type:'object',properties:{value:{type:['string','null']}}}}}}, responses:{'200':{description:'Configuration updated.'},'403':{description:'Admin access required.'}} } };
 }

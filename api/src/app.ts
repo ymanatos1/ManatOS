@@ -46,6 +46,8 @@ import { createAuthRouter } from './auth/auth-router.js';
 import { sendCommand, sendFailure, sendQuery } from './http/api-response.js';
 import { authenticatedAuditActor } from './audit/audit-service.js';
 import type { IEmailService } from './email/email-service.js';
+import type { SysConfigurationService } from './services/sys-configuration-service.js';
+
 import type {
   SysExtAuthProviderService,
   SaveSysExtAuthProviderInput,
@@ -63,6 +65,8 @@ export interface ApiServices {
   principals: SysPrincipalService;
 
   applications: SysApplicationService;
+
+  configurations: SysConfigurationService;
 
   licenses: SysLicenseService;
 
@@ -246,15 +250,18 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    * provider state has its own on-demand endpoint because freshness matters when
    * Sign in/Register is opened.
    */
-  app.get('/api/v1/public/ui-bootstrap', (_req, res) => {
+  app.get('/api/v1/public/ui-bootstrap', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
+    const value = async (name:string) => services.configurations.resolve(name);
     sendQuery(res, {
-      server: {
-        alive: true,
-        implementationVersion: API_IMPLEMENTATION_VERSION,
-      },
-      api: {
-        version: API_VERSION,
+      server: { alive:true, implementationVersion:API_IMPLEMENTATION_VERSION },
+      api: { version:API_VERSION },
+      ui: {
+        pageSizeOptions: (await value('UI_PAGE_SIZE_OPTIONS') ?? '2,5,10,20,50,100').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0),
+        defaultPageSize: Number(await value('UI_DEFAULT_PAGE_SIZE') ?? 10),
+        showTechnicalErrorDetails: (await value('SHOW_TECHNICAL_ERROR_DETAILS') ?? 'false') === 'true',
+        sessionErrorLogMaxEntries: Number(await value('SESSION_ERROR_LOG_MAX_ENTRIES') ?? 20),
+        donationsShow: (await value('DONATIONS_SHOW') ?? 'false') === 'true',
       },
     });
   });
@@ -295,6 +302,19 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
 
     createSysBORouter(services.principals, sysPrincipalsMetadata, authorization),
   );
+
+  /** Admin-only application configuration. Sensitive values are projected safely. */
+  app.get('/api/v1/SysConfigurations', requireAuthenticated, requireAdmin, async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    sendQuery(res, { items: await services.configurations.safeList() });
+  });
+
+  app.patch('/api/v1/SysConfigurations/:id/value', requireAuthenticated, requireAdmin, async (req, res) => {
+    const subject = req.auth!;
+    const actor = authenticatedAuditActor(subject.userId, subject.userName);
+    const item = await services.configurations.setValue(String(req.params.id ?? ''), req.body?.value == null ? null : String(req.body.value), actor);
+    sendCommand(res, 'Configuration updated successfully.', { item });
+  });
 
   app.use(
     '/api/v1/SysApplications',

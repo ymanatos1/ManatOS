@@ -1,6 +1,7 @@
 import { operationContext } from '@manatos/shared';
 
 import { config } from '../config.js';
+import { runtimeString } from '../runtime-configuration.js';
 import { FileLogSink } from './file-log-sink.js';
 import type { LogEntry, LogSink } from './log-sink.js';
 
@@ -70,7 +71,8 @@ function sanitizeFields(fields: LogFields): LogFields {
 const sinks: LogSink[] = [new FileLogSink()];
 
 function effectiveConsoleMinLevel(): LogLevel {
-  if (config.LOG_CONSOLE_MIN_LEVEL) return config.LOG_CONSOLE_MIN_LEVEL;
+  const configured = runtimeString('LOG_CONSOLE_MIN_LEVEL', config.LOG_CONSOLE_MIN_LEVEL ?? '');
+  if (configured) return configured as LogLevel;
 
   // Integration tests intentionally generate many 4xx responses. Keep their
   // console readable unless a test explicitly opts into more logging.

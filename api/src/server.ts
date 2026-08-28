@@ -19,6 +19,7 @@ import { createEmailService } from './email/email-service.js';
 import { logger } from './logging/logger.js';
 import { SecretsEncryptionService } from './security/secrets-encryption-service.js';
 import { SysExtAuthProviderService } from './services/sys-ext-auth-provider-service.js';
+import { SysConfigurationService } from './services/sys-configuration-service.js';
 
 /**
  * Application composition root.
@@ -57,17 +58,33 @@ try {
  */
 const users = new SysUserService(store);
 
-const email = createEmailService();
-
 const secretsEncryption = new SecretsEncryptionService(
   config.SECRETS_ENCRYPTION_ACTIVE_KEY_ID,
   config.SECRETS_ENCRYPTION_KEY,
 );
 
+const configurations = new SysConfigurationService(store, secretsEncryption);
+await configurations.seedMissing();
+await configurations.bindRuntime();
+
+const email = createEmailService({
+  enabled: (await configurations.resolve('MAIL_ENABLED') ?? String(config.MAIL_ENABLED)) === 'true',
+  host: await configurations.resolve('SMTP_HOST') ?? config.SMTP_HOST,
+  port: Number(await configurations.resolve('SMTP_PORT') ?? config.SMTP_PORT),
+  secure: (await configurations.resolve('SMTP_SECURE') ?? String(config.SMTP_SECURE)) === 'true',
+  user: await configurations.resolve('SMTP_USER') ?? config.SMTP_USER,
+  password: await configurations.resolve('SMTP_PASSWORD') ?? config.SMTP_PASSWORD,
+  fromAddress: await configurations.resolve('MAIL_FROM_ADDRESS') ?? config.MAIL_FROM_ADDRESS,
+  fromName: await configurations.resolve('MAIL_FROM_NAME') ?? config.MAIL_FROM_NAME,
+  tlsRejectUnauthorized: (await configurations.resolve('SMTP_TLS_REJECT_UNAUTHORIZED') ?? String(config.SMTP_TLS_REJECT_UNAUTHORIZED)) === 'true',
+});
+
 const services = {
   users,
 
   email,
+
+  configurations,
 
   principals: new SysPrincipalService(store),
 

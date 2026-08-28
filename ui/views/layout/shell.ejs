@@ -307,12 +307,17 @@
 
         <div class="workspace-titlebar">
 
-          <h1>
-            <% if (typeof titleIcon === 'string' && titleIcon) { %>
-              <i class="bi <%= titleIcon %> workspace-title-icon me-2" aria-hidden="true"></i>
+          <div class="workspace-title-copy">
+            <h1>
+              <% if (typeof titleIcon === 'string' && titleIcon) { %>
+                <i class="bi <%= titleIcon %> workspace-title-icon me-2" aria-hidden="true"></i>
+              <% } %>
+              <%= title || 'Home' %>
+            </h1>
+            <% if (typeof titleSubtitle === 'string' && titleSubtitle) { %>
+              <p class="workspace-title-subtitle"><%= titleSubtitle %></p>
             <% } %>
-            <%= title || 'Home' %>
-          </h1>
+          </div>
 
         </div>
 

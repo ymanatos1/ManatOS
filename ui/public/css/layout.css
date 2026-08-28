@@ -174,6 +174,16 @@
 
   min-width: 0;
 
+  /*
+   * Responsive page layouts must react to the width that is actually
+   * available to the workspace, not to the browser viewport. The shell may
+   * currently consume 255px for the left navigation and/or 320px for the
+   * Details panel, so viewport media queries alone can substantially
+   * overestimate the usable page width.
+   */
+  container-name: manatOS-workspace;
+  container-type: inline-size;
+
   padding: 1.35rem 1.5rem 2rem;
 }
 
@@ -384,7 +394,7 @@ body.anonymous .workspace {
 
 .home-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(420px, 0.92fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(380px, 0.92fr);
   align-items: center;
   gap: clamp(2rem, 4vw, 4.5rem);
 }
@@ -706,7 +716,54 @@ body.anonymous .workspace {
 }
 
 
-@media (max-width: 1199.98px) {
+/*
+ * The Home hero is laid out according to the workspace width after optional
+ * shell panels have taken their space. This is the key distinction from a
+ * viewport media query: opening Details or showing the left navigation can
+ * now make the architecture panel move below the copy only when the actual
+ * remaining workspace becomes genuinely narrow. The desktop two-column
+ * composition is intentionally retained deeper into medium widths.
+ */
+@container manatOS-workspace (max-width: 899.98px) {
+  .home-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-platform-map {
+    width: min(100%, 720px);
+    margin-inline: auto;
+  }
+}
+
+@container manatOS-workspace (max-width: 767.98px) {
+  .home-benefits,
+  .home-platform-services {
+    grid-template-columns: 1fr;
+  }
+
+  .home-benefit {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .home-platform-service {
+    min-height: 0;
+  }
+
+  .home-platform-connector {
+    display: none;
+  }
+
+  .home-platform-services {
+    margin-block: 0.75rem;
+  }
+
+  .home-platform-node {
+    width: 100%;
+  }
+}
+
+/* Viewport fallbacks also keep the pages sensible outside the normal shell. */
+@media (max-width: 899.98px) {
   .home-hero-grid {
     grid-template-columns: 1fr;
   }

@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { operationContext, type AppError, type OperationNodeSnapshot } from '@manatos/shared';
-import { config } from '../config.js';
+import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
 export interface SessionErrorEntry {
   timestamp: string;
   requestId: string;
@@ -20,10 +20,10 @@ export function addSessionError(req: Request, e: AppError): SessionErrorEntry {
     developerMessage: e.message,
     retryable: e.retryable,
     ...(e.operationTrace ? { operationTrace: e.operationTrace } : {}),
-    ...(config.SHOW_TECHNICAL_ERROR_DETAILS && e.stack ? { technicalStack: e.stack } : {}),
+    ...(uiBootstrapState().ui.showTechnicalErrorDetails && e.stack ? { technicalStack: e.stack } : {}),
   };
   const a = req.session.errorLog ?? [];
   a.unshift(x);
-  req.session.errorLog = a.slice(0, config.SESSION_ERROR_LOG_MAX_ENTRIES);
+  req.session.errorLog = a.slice(0, uiBootstrapState().ui.sessionErrorLogMaxEntries);
   return x;
 }
