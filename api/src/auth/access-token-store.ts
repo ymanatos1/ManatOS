@@ -323,13 +323,18 @@ export class AccessTokenStore {
    * Remove tokenHash before returning session context outside the store.
    */
   private publicContext(session: StoredAccessToken): AccessTokenContext {
-    const {
-      tokenHash: _tokenHash,
-
-      ...context
-    } = session;
-
-    return context;
+    return {
+      tokenId: session.tokenId,
+      userId: session.userId,
+      userName: session.userName,
+      role: session.role,
+      createdAt: session.createdAt,
+      lastSeenAt: session.lastSeenAt,
+      expiresAt: session.expiresAt,
+      ...(session.clientName !== undefined ? { clientName: session.clientName } : {}),
+      ...(session.userAgent !== undefined ? { userAgent: session.userAgent } : {}),
+      ...(session.ipAddress !== undefined ? { ipAddress: session.ipAddress } : {}),
+    };
   }
 }
 

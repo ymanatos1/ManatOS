@@ -280,7 +280,7 @@ export class ExternalIdentityService {
         }
 
         return this.store.executeTransaction(async () => {
-          const audit = auditService.createStamp(actor, 'sys-external-identities');
+          const audit = auditService.createStamp(actor);
 
           const identity: SysExternalIdentity = {
             id: randomUUID(),
@@ -363,7 +363,7 @@ export class UserPrincipalService {
         }
 
         return this.store.executeTransaction(async () => {
-          const audit = auditService.createStamp(actor, 'sys-user-principals');
+          const audit = auditService.createStamp(actor);
 
           const link: SysUserPrincipal = {
             id: randomUUID(),

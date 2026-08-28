@@ -100,14 +100,10 @@ export function createSysUserCommandRouter(users: SysUserService): Router {
  * API-safe SysUser representation.
  */
 function publicUser(user: SysUser) {
-  const {
-    passwordHash: _passwordHash,
-    //passwordHash,
-    ...safe
-  } = user;
+  const { passwordHash, ...safe } = user;
 
   return {
     ...safe,
-    hasPassword: Boolean(user.passwordHash),
+    hasPassword: Boolean(passwordHash),
   };
 }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import createError from 'http-errors';
 
-import { AppError, MANATOS_COMPANY, resolvePlatform, validatePassword, type SysUser } from '@manatos/shared';
+import { AppError, MANATOS_COMPANY, validatePassword, type SysUser } from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
 

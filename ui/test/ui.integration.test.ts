@@ -197,7 +197,12 @@ function routeHarness(currentUser: SysUser) {
 
   app.use(createSysBORoutes());
 
-  const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+  const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+    if (res.headersSent) {
+      next(error);
+
+      return;
+    }
     if (error instanceof AppError) {
       res.status(error.code === 'FORBIDDEN' ? 403 : 500).json({
         code: error.code,

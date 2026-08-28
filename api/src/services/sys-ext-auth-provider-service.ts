@@ -44,7 +44,7 @@ export interface SaveVerifiedSysExtAuthProviderInput {
  * at rest in both cases, while credentialsVerifiedAt is populated only after a
  * successful provider test.
  */
-export interface SaveStoredSysExtAuthProviderInput extends SaveVerifiedSysExtAuthProviderInput {}
+export type SaveStoredSysExtAuthProviderInput = SaveVerifiedSysExtAuthProviderInput;
 
 export interface StoredExternalAuthCredentialMaterial {
   id: string;

@@ -57,7 +57,17 @@ const httpStatusByErrorCode: Record<string, number> = {
  *     Full development diagnostics including developer message,
  *     JavaScript stack and semantic operation trace.
  */
-export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
+  /**
+   * Delegate to Express when a response has already started. Attempting to
+   * write our JSON envelope at that point could corrupt the response stream.
+   * This also preserves the standard Express error-handler contract.
+   */
+  if (res.headersSent) {
+    next(error);
+
+    return;
+  }
   /**
    * Convert unexpected/native exceptions into our standard AppError.
    */

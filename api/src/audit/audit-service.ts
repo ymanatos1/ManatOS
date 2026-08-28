@@ -90,7 +90,7 @@ export class AuditService {
    * Creation initializes both the creation and latest-update fields
    * to the same actor and timestamp.
    */
-  createStamp(actor: AuditActor, _sysBOKey: string): CreateAuditStamp {
+  createStamp(actor: AuditActor): CreateAuditStamp {
     const now = new Date().toISOString();
 
     return {
@@ -107,7 +107,7 @@ export class AuditService {
   /**
    * Generate audit information for an entity update.
    */
-  updateStamp(actor: AuditActor, _sysBOKey: string): UpdateAuditStamp {
+  updateStamp(actor: AuditActor): UpdateAuditStamp {
     return {
       updatedAt: new Date().toISOString(),
 
@@ -131,7 +131,10 @@ export class AuditService {
    * without changing every service/repository caller.
    */
   async beforeDelete(_actor: AuditActor, _sysBOKey: string, _entity: SysBOEntity): Promise<void> {
-    // Intentionally empty in the initial implementation.
+    // TODO: Persist a deletion audit event (or introduce soft-delete metadata) before
+    // consuming these values. The hook contract is intentionally retained so callers
+    // already provide the actor, SysBO identity and deleted entity when that audit
+    // capability is introduced. Keep the lint findings visible until then.
   }
 }
 

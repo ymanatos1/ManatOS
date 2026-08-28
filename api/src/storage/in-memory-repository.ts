@@ -188,7 +188,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
      */
     await this.ensureUnique(input as Record<string, unknown>);
 
-    const audit = auditService.createStamp(actor, this.metadata.key);
+    const audit = auditService.createStamp(actor);
 
     const record = {
       ...input,
@@ -237,7 +237,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
     delete safeChanges.updatedAt;
     delete safeChanges.updatedBy;
 
-    const audit = auditService.updateStamp(actor, this.metadata.key);
+    const audit = auditService.updateStamp(actor);
 
     const candidate = {
       ...existing,

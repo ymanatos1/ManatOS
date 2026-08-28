@@ -7,25 +7,7 @@ import {
   SysUserRole,
 } from '@manatos/shared';
 
-import { accessTokenStore, type AccessTokenContext } from './access-token-store.js';
-
-declare global {
-  namespace Express {
-    interface Request {
-      /**
-       * Authenticated user/session context.
-       */
-      auth?: AccessTokenContext;
-
-      /**
-       * Raw Bearer token for operations such as logout.
-       *
-       * This exists only for the duration of the HTTP request.
-       */
-      accessToken?: string;
-    }
-  }
-}
+import { accessTokenStore } from './access-token-store.js';
 
 /**
  * Require a valid API Bearer session.

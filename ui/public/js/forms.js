@@ -487,6 +487,16 @@
       window.manatosBusy?.hide();
     };
 
+    const closeTestWindow = () => {
+      try {
+        if (!testWindow.closed) testWindow.close();
+        return true;
+      } catch (error) {
+        console.warn('Unable to close the provider credential-test window.', error);
+        return false;
+      }
+    };
+
     try {
       const response = await fetch(
         testCredentials.dataset.providerTestUrl || '/bo/sys-ext-auth-providers/test-credentials',
@@ -502,7 +512,7 @@
       const payload = await response.json().catch(() => null);
 
       if (!response.ok || !payload?.success || !payload.redirectUrl || !payload.testId || !payload.statusUrl) {
-        testWindow.close();
+        closeTestWindow();
         showFeedback(payload?.errorMessage || 'ManatOS could not start the provider credential test. Your unsaved provider values have been kept on this page.');
         updateTestButton();
         return;
@@ -514,15 +524,34 @@
         icon: providerIcons[provider.value] || 'bi-shield-check',
         actionLabel: 'Cancel test',
         onAction: async () => {
+          let cancellationConfirmed = true;
+
           try {
             const cancelBody = new URLSearchParams();
             cancelBody.set('_csrf', body.get('_csrf') || '');
             cancelBody.set('testId', payload.testId);
-            await fetch(payload.cancelUrl, { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8', Accept:'application/json' }, body:cancelBody.toString() });
-          } catch {}
+            const cancelResponse = await fetch(payload.cancelUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                Accept: 'application/json',
+              },
+              body: cancelBody.toString(),
+            });
+
+            cancellationConfirmed = cancelResponse.ok;
+          } catch (error) {
+            cancellationConfirmed = false;
+            console.warn('Could not confirm provider credential-test cancellation with ManatOS.', error);
+          }
+
           finishWaiting();
-          try { testWindow.close(); } catch {}
-          showFeedback('Credential test cancelled. Your values were not changed.');
+          closeTestWindow();
+          showFeedback(
+            cancellationConfirmed
+              ? 'Credential test cancelled. Your values were not changed.'
+              : 'Credential testing was stopped locally, but ManatOS could not confirm server-side cancellation. The pending test will expire automatically; your values were not changed.',
+          );
           updateTestButton();
         },
       });
@@ -538,7 +567,7 @@
           if (statusResponse.ok && statusPayload?.success && statusPayload.testId === payload.testId) {
             if (statusPayload.status === 'verified' || statusPayload.status === 'failed') {
               finishWaiting();
-              try { testWindow.close(); } catch {}
+              closeTestWindow();
               const verified = statusPayload.status === 'verified';
               showFeedback(statusPayload.message, verified);
 
@@ -579,9 +608,10 @@
         showFeedback(noReturnMessage());
         updateTestButton();
       }, 2 * 60 * 1000);
-    } catch {
+    } catch (error) {
+      console.warn('Provider credential testing failed before completion.', error);
       finishWaiting();
-      try { testWindow.close(); } catch {}
+      closeTestWindow();
       showFeedback('The credential test could not reach ManatOS. Your unsaved provider values have been kept on this page.');
       updateTestButton();
     }

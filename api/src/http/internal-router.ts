@@ -551,11 +551,11 @@ function parseEmailVerificationSource(value: unknown): EmailVerificationSource {
  * without exposing the actual hash.
  */
 function publicUser(user: SysUser) {
-  const { passwordHash: _ignored, ...safeUser } = user;
+  const { passwordHash, ...safeUser } = user;
 
   return {
     ...safeUser,
 
-    hasPassword: Boolean(user.passwordHash),
+    hasPassword: Boolean(passwordHash),
   };
 }
