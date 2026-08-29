@@ -5,35 +5,35 @@ import {
   MANATOS_COMPANY,
   resolvePlatform,
   NotFoundError,
-  SysUserRole,
+  SysBOUserRole,
   operationContext,
-  sysApplicationsMetadata,
-  sysLicensesMetadata,
-  sysPrincipalsMetadata,
-  type SysApplication,
+  sysBOApplicationsMetadata,
+  sysBOLicensesMetadata,
+  sysBOPrincipalsMetadata,
+  type SysBOApplication,
   type SysBOCreateInput,
   type SysBOUpdateInput,
-  type SysExternalIdentity,
-  type SysLicense,
-  type SysPrincipal,
-  type SysUserPrincipal,
-  type SysUserPrincipalRelationship,
+  type SysBOExternalIdentity,
+  type SysBOLicense,
+  type SysBOPrincipal,
+  type SysBOUserPrincipal,
+  type SysBOUserPrincipalRelationship,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 
 import { GenericSysBOService } from './generic-sysbo-service.js';
 
-import type { SysUserService } from './sys-user-service.js';
+import type { SysBOUserService } from './sys-user-service.js';
 
 import { auditService, type AuditActor } from '../audit/audit-service.js';
 
 /**
  * Application service for customer/commercial principals.
  */
-export class SysPrincipalService extends GenericSysBOService<SysPrincipal> {
+export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
   constructor(store: InMemoryDataStore) {
-    super(store, store.sysPrincipals, sysPrincipalsMetadata);
+    super(store, store.sysPrincipals, sysBOPrincipalsMetadata);
   }
 
   /**
@@ -43,9 +43,9 @@ export class SysPrincipalService extends GenericSysBOService<SysPrincipal> {
    */
   override async update(
     id: string,
-    changes: SysBOUpdateInput<SysPrincipal>,
+    changes: SysBOUpdateInput<SysBOPrincipal>,
     actor: AuditActor,
-  ): Promise<SysPrincipal> {
+  ): Promise<SysBOPrincipal> {
     /*
      * A principal cannot be its own parent.
      */
@@ -63,7 +63,7 @@ export class SysPrincipalService extends GenericSysBOService<SysPrincipal> {
      * When a parent is supplied, that principal must exist.
      */
     if (changes.parentId && !(await this.repository.getById(changes.parentId))) {
-      throw new NotFoundError('SysPrincipal parent', changes.parentId);
+      throw new NotFoundError('SysBOPrincipal parent', changes.parentId);
     }
 
     return super.update(id, changes, actor);
@@ -76,18 +76,18 @@ export class SysPrincipalService extends GenericSysBOService<SysPrincipal> {
  * No additional domain rules are currently required beyond the
  * generic SysBO behavior.
  */
-export class SysApplicationService extends GenericSysBOService<SysApplication> {
+export class SysBOApplicationService extends GenericSysBOService<SysBOApplication> {
   constructor(store: InMemoryDataStore) {
-    super(store, store.sysApplications, sysApplicationsMetadata);
+    super(store, store.sysApplications, sysBOApplicationsMetadata);
   }
 }
 
 /**
  * Application service for customer/application licenses.
  */
-export class SysLicenseService extends GenericSysBOService<SysLicense> {
+export class SysBOLicenseService extends GenericSysBOService<SysBOLicense> {
   constructor(store: InMemoryDataStore) {
-    super(store, store.sysLicenses, sysLicensesMetadata);
+    super(store, store.sysLicenses, sysBOLicensesMetadata);
   }
 
   /**
@@ -95,16 +95,16 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
    *
    * `applicationId` is deliberately optional: omitting it creates a
    * platform-wide entitlement. When supplied today it is valid only for a
-   * platform that contributes SysApplication (currently mCRM).
+   * platform that contributes SysBOApplication (currently mCRM).
    */
   override async create(
-    input: SysBOCreateInput<SysLicense>,
+    input: SysBOCreateInput<SysBOLicense>,
     actor: AuditActor,
-  ): Promise<SysLicense> {
+  ): Promise<SysBOLicense> {
     const principal = await this.store.sysPrincipals.getById(input.principalId);
 
     if (!principal) {
-      throw new NotFoundError('SysPrincipal', input.principalId);
+      throw new NotFoundError('SysBOPrincipal', input.principalId);
     }
 
     const platform = resolvePlatform(MANATOS_COMPANY, input.platformId);
@@ -123,7 +123,7 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
 
       const application = await this.store.sysApplications.getById(input.applicationId);
       if (!application) {
-        throw new NotFoundError('SysApplication', input.applicationId);
+        throw new NotFoundError('SysBOApplication', input.applicationId);
       }
     }
 
@@ -137,12 +137,12 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
    */
   override async update(
     id: string,
-    changes: SysBOUpdateInput<SysLicense>,
+    changes: SysBOUpdateInput<SysBOLicense>,
     actor: AuditActor,
-  ): Promise<SysLicense> {
+  ): Promise<SysBOLicense> {
     const existing = await this.get(id);
     if (!existing) {
-      throw new NotFoundError('SysLicense', id);
+      throw new NotFoundError('SysBOLicense', id);
     }
 
     const platformId = changes.platformId ?? existing.platformId;
@@ -166,7 +166,7 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
 
       const application = await this.store.sysApplications.getById(applicationId);
       if (!application) {
-        throw new NotFoundError('SysApplication', applicationId);
+        throw new NotFoundError('SysBOApplication', applicationId);
       }
     }
 
@@ -183,18 +183,18 @@ export class SysLicenseService extends GenericSysBOService<SysLicense> {
  * - Facebook
  * - future OAuth/OIDC providers
  *
- * External identities belong to SysUser rather than SysPrincipal.
+ * External identities belong to SysBOUser rather than SysBOPrincipal.
  */
 export class ExternalIdentityService {
   constructor(
     private readonly store: InMemoryDataStore,
-    private readonly users: SysUserService,
+    private readonly users: SysBOUserService,
   ) {}
 
   /**
    * Find an external identity by provider + provider subject.
    */
-  async find(provider: string, subject: string): Promise<SysExternalIdentity | null> {
+  async find(provider: string, subject: string): Promise<SysBOExternalIdentity | null> {
     for (const identity of this.store.externalIdentities().values()) {
       const sameProvider = identity.provider.toLowerCase() === provider.toLowerCase();
 
@@ -209,13 +209,13 @@ export class ExternalIdentityService {
   }
 
   /**
-   * Return every external authentication identity linked to one SysUser.
+   * Return every external authentication identity linked to one SysBOUser.
    */
-  async listForUser(userId: string): Promise<SysExternalIdentity[]> {
+  async listForUser(userId: string): Promise<SysBOExternalIdentity[]> {
     const user = await this.users.get(userId);
 
     if (!user) {
-      throw new NotFoundError('SysUser', userId);
+      throw new NotFoundError('SysBOUser', userId);
     }
 
     return [...this.store.externalIdentities().values()]
@@ -224,7 +224,7 @@ export class ExternalIdentityService {
   }
 
   /**
-   * Attach an external identity to a SysUser.
+   * Attach an external identity to a SysBOUser.
    *
    * Provider + providerSubject must be unique.
    */
@@ -241,9 +241,9 @@ export class ExternalIdentityService {
     },
 
     actor: AuditActor,
-  ): Promise<SysExternalIdentity> {
+  ): Promise<SysBOExternalIdentity> {
     return operationContext.run(
-      'Link external identity to SysUser',
+      'Link external identity to SysBOUser',
 
       async (scope) => {
         scope.addContext({
@@ -254,7 +254,7 @@ export class ExternalIdentityService {
         });
 
         /**
-         * Resolve the target user through SysUserService rather than directly
+         * Resolve the target user through SysBOUserService rather than directly
          * through store.sysUsers.  Domain services are constructed over the
          * active repository instance, while the in-memory store may rebuild its
          * repository wrappers after a transaction rollback.  Using the user
@@ -264,7 +264,7 @@ export class ExternalIdentityService {
         const user = await this.users.get(userId);
 
         if (!user) {
-          throw new NotFoundError('SysUser', userId);
+          throw new NotFoundError('SysBOUser', userId);
         }
 
         const existing = await this.find(input.provider, input.providerSubject);
@@ -282,7 +282,7 @@ export class ExternalIdentityService {
         return this.store.executeTransaction(async () => {
           const audit = auditService.createStamp(actor);
 
-          const identity: SysExternalIdentity = {
+          const identity: SysBOExternalIdentity = {
             id: randomUUID(),
 
             name: `${input.provider}:${input.providerSubject}`,
@@ -316,7 +316,7 @@ export class ExternalIdentityService {
 /**
  * Service responsible for relationships between:
  *
- *   SysUser <-> SysPrincipal
+ *   SysBOUser <-> SysBOPrincipal
  *
  * This keeps website/security identity separate from customer identity.
  */
@@ -324,7 +324,7 @@ export class UserPrincipalService {
   constructor(
     private readonly store: InMemoryDataStore,
 
-    private readonly users: SysUserService,
+    private readonly users: SysBOUserService,
   ) {}
 
   /**
@@ -336,12 +336,12 @@ export class UserPrincipalService {
   async link(
     userId: string,
     principalId: string,
-    relationship: SysUserPrincipalRelationship,
+    relationship: SysBOUserPrincipalRelationship,
     isDefault = false,
     actor: AuditActor,
-  ): Promise<SysUserPrincipal> {
+  ): Promise<SysBOUserPrincipal> {
     return operationContext.run(
-      'Link SysUser to SysPrincipal',
+      'Link SysBOUser to SysBOPrincipal',
 
       async (scope) => {
         scope.addContext({
@@ -353,19 +353,19 @@ export class UserPrincipalService {
         const user = await this.users.get(userId);
 
         if (!user) {
-          throw new NotFoundError('SysUser', userId);
+          throw new NotFoundError('SysBOUser', userId);
         }
 
         const principal = await this.store.sysPrincipals.getById(principalId);
 
         if (!principal) {
-          throw new NotFoundError('SysPrincipal', principalId);
+          throw new NotFoundError('SysBOPrincipal', principalId);
         }
 
         return this.store.executeTransaction(async () => {
           const audit = auditService.createStamp(actor);
 
-          const link: SysUserPrincipal = {
+          const link: SysBOUserPrincipal = {
             id: randomUUID(),
 
             name: `${user.name}-${principal.name}`,
@@ -386,14 +386,14 @@ export class UserPrincipalService {
            * A registered account without a customer relationship
            * starts as Guest.
            *
-           * Acquiring a SysPrincipal relationship promotes the
+           * Acquiring a SysBOPrincipal relationship promotes the
            * account to User.
            */
-          if (user.role === SysUserRole.Guest) {
+          if (user.role === SysBOUserRole.Guest) {
             await this.store.sysUsers.update(
               user.id,
               {
-                role: SysUserRole.User,
+                role: SysBOUserRole.User,
               },
               actor,
             );

@@ -13,6 +13,7 @@
   const navigationStatePersistence = appShell?.dataset.navigationStatePersistence ?? 'none';
   const LEFT_NAVIGATION_STORAGE_KEY = 'manatos.ui.leftNavigation.visible';
   const DETAILS_STORAGE_KEY = 'manatos.ui.details.visible';
+  const DEBUG_STORAGE_KEY = 'manatos.debug.panel.visible';
 
   const leftNavigation = document.getElementById('leftNavigation');
 
@@ -25,6 +26,10 @@
   const toggleDetailsPanelButton = document.getElementById('toggleDetailsPanel');
 
   const closeDetailsPanelButton = document.getElementById('closeDetailsPanel');
+
+  const debugPanel = document.getElementById('debugPanel');
+  const toggleDebugPanelButton = document.getElementById('toggleDebugPanel');
+  const closeDebugPanelButton = document.getElementById('closeDebugPanel');
 
   /* =======================================================================
    * Workspace-centered Bootstrap modals
@@ -192,6 +197,30 @@
 
       this.setDetailsVisible(!appShell.classList.contains('has-details'));
     },
+
+    /** Show/hide the development debugger as the shell's rightmost column. */
+    setDebugVisible(visible, persist = true) {
+      if (!appShell || !debugPanel) {
+        return;
+      }
+
+      appShell.classList.toggle('has-debug', visible);
+      debugPanel.classList.toggle('d-none', !visible);
+      debugPanel.setAttribute('aria-hidden', String(!visible));
+      toggleDebugPanelButton?.setAttribute('aria-expanded', String(visible));
+      toggleDebugPanelButton?.classList.toggle('active', visible);
+
+      refreshVisibleModalCenters();
+
+      if (persist) {
+        localStorage.setItem(DEBUG_STORAGE_KEY, String(visible));
+      }
+    },
+
+    toggleDebug() {
+      if (!appShell) return;
+      this.setDebugVisible(!appShell.classList.contains('has-debug'));
+    },
   };
 
   /* -----------------------------------------------------------------------
@@ -222,7 +251,58 @@
     shellState.setLeftNavigationVisible(initialLeftNavigationVisible, false);
 
     shellState.setDetailsVisible(initialDetailsVisible, false);
+
+    const initialDebugVisible =
+      Boolean(debugPanel) && localStorage.getItem(DEBUG_STORAGE_KEY) === 'true';
+    shellState.setDebugVisible(initialDebugVisible, false);
   }
+
+  /* -----------------------------------------------------------------------
+   * Active left-navigation entry
+   * -------------------------------------------------------------------- */
+
+  /**
+   * Highlight the navigation entry that owns the currently opened page.
+   *
+   * Nested pages (for example /bo/sys-users/<id>/edit) belong to their first
+   * navigation page (/bo/sys-users), so prefix matching deliberately keeps
+   * Users selected while deeper pages are open. When multiple links match,
+   * the longest route wins. Root ('/') only matches the actual home page.
+   */
+  const markActiveVerticalNavigation = () => {
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    const links = [...document.querySelectorAll('.vertical-menu a[href]')];
+    let best = null;
+    let bestLength = -1;
+
+    for (const link of links) {
+      let targetPath;
+      try {
+        targetPath = new URL(link.getAttribute('href') || '', window.location.origin).pathname;
+      } catch {
+        continue;
+      }
+
+      targetPath = targetPath.replace(/\/+$/, '') || '/';
+      const matches = targetPath === '/'
+        ? currentPath === '/'
+        : currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+
+      if (matches && targetPath.length > bestLength) {
+        best = link;
+        bestLength = targetPath.length;
+      }
+    }
+
+    for (const link of links) {
+      const active = link === best;
+      link.classList.toggle('is-active', active);
+      if (active) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    }
+  };
+
+  markActiveVerticalNavigation();
 
   /* -----------------------------------------------------------------------
    * Left-navigation events
@@ -263,4 +343,17 @@
       shellState.setDetailsVisible(false);
     },
   );
+
+
+  /* -----------------------------------------------------------------------
+   * Development debugger events
+   * -------------------------------------------------------------------- */
+  toggleDebugPanelButton?.addEventListener('click', () => {
+    shellState.toggleDebug();
+  });
+
+  closeDebugPanelButton?.addEventListener('click', () => {
+    shellState.setDebugVisible(false);
+  });
+
 })();

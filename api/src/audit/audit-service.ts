@@ -10,9 +10,9 @@ import type { SysBOEntity } from '@manatos/shared';
  */
 export interface AuditActor {
   /**
-   * SysUser Id when the operation is performed by an authenticated user.
+   * SysBOUser Id when the operation is performed by an authenticated user.
    *
-   * System/internal operations may not have a corresponding SysUser.
+   * System/internal operations may not have a corresponding SysBOUser.
    */
   userId?: string;
 
@@ -80,7 +80,7 @@ export interface UpdateAuditStamp {
  * - correlation/request Id;
  * - source IP or client information where appropriate.
  *
- * SysApplication auditing can therefore become richer later without
+ * SysBOApplication auditing can therefore become richer later without
  * redesigning the generic repository API.
  */
 export class AuditService {
@@ -153,7 +153,7 @@ export const SYSTEM_AUDIT_ACTOR: AuditActor = {
 };
 
 /**
- * Build an audit actor for an authenticated SysUser.
+ * Build an audit actor for an authenticated SysBOUser.
  */
 export function authenticatedAuditActor(userId: string, userName: string): AuditActor {
   return {
@@ -167,7 +167,7 @@ export function authenticatedAuditActor(userId: string, userName: string): Audit
 /**
  * Build the audit actor used during public self-registration.
  *
- * At this point the new SysUser does not yet have a generated Id,
+ * At this point the new SysBOUser does not yet have a generated Id,
  * so the unique user-name is the available identity for auditing.
  */
 export function registrationAuditActor(userName: string): AuditActor {
@@ -182,7 +182,7 @@ export function registrationAuditActor(userName: string): AuditActor {
  * Build an audit actor for trusted internal API operations.
  *
  * Internal API calls are authenticated with the internal API key rather
- * than a SysUser Bearer token, so they may not have a SysUser Id.
+ * than a SysBOUser Bearer token, so they may not have a SysBOUser Id.
  */
 export function internalAuditActor(userName = 'InternalApi'): AuditActor {
   return {

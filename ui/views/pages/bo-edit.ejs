@@ -1,4 +1,6 @@
 <% const readOnly = !isNew && !permissions.edit; %>
+<% const requestedTabId = typeof sysBOUiActiveTab === 'string' ? sysBOUiActiveTab : ''; %>
+<% const activeTabId = tabs.some((tab) => tab.id === requestedTabId) ? requestedTabId : (tabs[0]?.id || ''); %>
 <% const isOwnSysUser = !isNew && definition.key === 'sys-users' && currentUser && item.id === currentUser.id; %>
 
 <section class="content-card">
@@ -16,14 +18,14 @@
         <% const tab = tabs[tabIndex]; %>
         <li class="nav-item" role="presentation">
           <button
-            class="nav-link <%= tabIndex === 0 ? 'active' : '' %>"
+            class="nav-link <%= tab.id === activeTabId ? 'active' : '' %>"
             id="bo-<%= tab.id %>-tab"
             data-bs-toggle="tab"
             data-bs-target="#bo-<%= tab.id %>-pane"
             type="button"
             role="tab"
             aria-controls="bo-<%= tab.id %>-pane"
-            aria-selected="<%= tabIndex === 0 ? 'true' : 'false' %>"
+            aria-selected="<%= tab.id === activeTabId ? 'true' : 'false' %>"
           >
             <% if (tab.icon) { %>
               <i class="bi <%= tab.icon %> me-1" aria-hidden="true"></i>
@@ -38,7 +40,7 @@
       <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
         <% const tab = tabs[tabIndex]; %>
         <div
-          class="tab-pane fade <%= tabIndex === 0 ? 'show active' : '' %>"
+          class="tab-pane fade <%= tab.id === activeTabId ? 'show active' : '' %>"
           id="bo-<%= tab.id %>-pane"
           role="tabpanel"
           aria-labelledby="bo-<%= tab.id %>-tab"

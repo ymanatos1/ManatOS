@@ -3,11 +3,12 @@ import { Router, type Request, type RequestHandler } from 'express';
 import {
   AuthenticationError,
   ForbiddenAppError,
-  SysUserRole,
+  SysBOUserRole,
   NotFoundError,
   operationContext,
   type SysBOEntity,
   type SysBOMetadata,
+  type SysBOUIMetadata,
 } from '@manatos/shared';
 
 import { authenticatedAuditActor, type AuditActor } from '../audit/audit-service.js';
@@ -15,6 +16,8 @@ import { authenticatedAuditActor, type AuditActor } from '../audit/audit-service
 import type { AuthorizationService } from '../auth/authorization-service.js';
 
 import type { GenericSysBOService } from '../services/generic-sysbo-service.js';
+
+import { getSysBOUIMetadata } from '../metadata/sysbo-ui-registry.js';
 
 import { parseListQuery } from './query.js';
 
@@ -28,10 +31,14 @@ import { sendCommand, sendQuery } from './api-response.js';
  * Metadata is returned:
  *
  *   GET /$metadata
+ *   GET /$metadata-ui
  *
  * or optionally alongside a list when:
  *
  *   ?includeMetadata=true
+ *   ?includeMetadataUI=true
+ *
+ * includeMetadataUI=true implies includeMetadata=true
  *
  * GET/query responses return:
  *
@@ -50,7 +57,7 @@ export function createSysBORouter<T extends SysBOEntity>(
   /**
    * Optional entity-specific creation hook.
    *
-   * SysUser uses this because creation may involve password hashing
+   * SysBOUser uses this because creation may involve password hashing
    * and other account-specific processing before persistence.
    */
 
@@ -69,6 +76,22 @@ export function createSysBORouter<T extends SysBOEntity>(
   });
 
   /**
+   * Return framework-neutral UI metadata for this SysBO when defined.
+   *
+   * This is a read-only presentation contract intended for EJS today and
+   * other UI clients later. It deliberately contains no EJS/Bootstrap detail.
+   */
+  router.get('/$metadata-ui', (_req, res) => {
+    const metadataUI = getSysBOUIMetadata(metadata.key);
+
+    if (!metadataUI) {
+      throw new NotFoundError('SysBO UI metadata', metadata.key);
+    }
+
+    sendQuery(res, { metadataUI });
+  });
+
+  /**
    * List entries with filtering, sorting and pagination.
    */
   router.get('/', async (req, res) => {
@@ -81,14 +104,15 @@ export function createSysBORouter<T extends SysBOEntity>(
 
         const result = await service.list(parseListQuery(req));
 
-        const includeMetadata = req.query.includeMetadata === 'true';
+        const includeMetadataUI = req.query.includeMetadataUI === 'true';
+        const includeMetadata = includeMetadataUI || req.query.includeMetadata === 'true';
+        const metadataUI: SysBOUIMetadata | undefined = includeMetadataUI
+          ? getSysBOUIMetadata(metadata.key)
+          : undefined;
 
         sendQuery(res, {
-          ...(includeMetadata
-            ? {
-                metadata,
-              }
-            : {}),
+          ...(includeMetadata ? { metadata } : {}),
+          ...(metadataUI ? { metadataUI } : {}),
 
           items: result.items.map((item) => sanitize(item, metadata)),
 
@@ -154,7 +178,7 @@ export function createSysBORouter<T extends SysBOEntity>(
         /*
          * Some BOs need specialized creation logic.
          *
-         * For example, SysUser creation hashes a supplied password
+         * For example, SysBOUser creation hashes a supplied password
          * before persistence.
          */
         const item = customCreate
@@ -198,7 +222,7 @@ export function createSysBORouter<T extends SysBOEntity>(
 
         /**
          * Role assignment is an administrator capability, independent from a
-         * user's ability to update other fields on their own SysUser record.
+         * user's ability to update other fields on their own SysBOUser record.
          * This also guarantees that the new Superuser role cannot be granted
          * by a User/Superuser through a direct API PATCH.
          */
@@ -206,7 +230,7 @@ export function createSysBORouter<T extends SysBOEntity>(
           metadata.key === 'sys-users' &&
           req.body?.role !== undefined &&
           req.body.role !== (existing as { role?: unknown }).role &&
-          subject.role !== SysUserRole.Admin
+          subject.role !== SysBOUserRole.Admin
         ) {
           throw new ForbiddenAppError('Only an Admin may change a user role.');
         }
@@ -279,10 +303,10 @@ export function createSysBORouter<T extends SysBOEntity>(
 /**
  * Converts an internal persisted entity into an API-safe representation.
  *
- * Sensitive metadata fields, such as SysUser.passwordHash, are never
+ * Sensitive metadata fields, such as SysBOUser.passwordHash, are never
  * returned to API callers.
  *
- * SysUser exposes only:
+ * SysBOUser exposes only:
  *
  *   hasPassword: boolean
  *

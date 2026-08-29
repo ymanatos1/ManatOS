@@ -2,15 +2,15 @@ import {
   MANATOS_COMPANY,
   effectiveEntityKeys,
   resolvePlatform,
-  SysUserRole,
+  SysBOUserRole,
   type CompanyInfo,
   type PlatformInfo,
-  sysApplicationsMetadata,
-  sysConfigurationsMetadata,
-  sysExtAuthProvidersMetadata,
-  sysLicensesMetadata,
-  sysPrincipalsMetadata,
-  sysUsersMetadata,
+  sysBOApplicationsMetadata,
+  sysBOConfigurationsMetadata,
+  sysBOExtAuthProvidersMetadata,
+  sysBOLicensesMetadata,
+  sysBOPrincipalsMetadata,
+  sysBOUsersMetadata,
 } from '@manatos/shared';
 
 import { config } from '../config.js';
@@ -26,8 +26,8 @@ import type {
  * System-business-object permissions are role/action specific.
  * Users may read/view current SysBOs; mutations remain Admin-only.
  */
-const adminRoles = [SysUserRole.Admin];
-const readRoles = [SysUserRole.Admin, SysUserRole.Superuser, SysUserRole.User];
+const adminRoles = [SysBOUserRole.Admin];
+const readRoles = [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User];
 
 const permissions: SysBOPermissions = {
   view: readRoles,
@@ -77,7 +77,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
   'sys-users': {
     key: 'sys-users',
 
-    boMetadata: sysUsersMetadata,
+    boMetadata: sysBOUsersMetadata,
 
     uiMetadata: {
       icon: 'bi-people-fill',
@@ -108,7 +108,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
             title: 'Authentication',
             icon: 'bi-shield-lock',
             visible: {
-              roles: [SysUserRole.Admin],
+              roles: [SysBOUserRole.Admin],
             },
           },
         ],
@@ -141,7 +141,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
   'sys-principals': {
     key: 'sys-principals',
 
-    boMetadata: sysPrincipalsMetadata,
+    boMetadata: sysBOPrincipalsMetadata,
 
     uiMetadata: {
       icon: 'bi-diagram-3-fill',
@@ -195,7 +195,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
   'sys-applications': {
     key: 'sys-applications',
 
-    boMetadata: sysApplicationsMetadata,
+    boMetadata: sysBOApplicationsMetadata,
 
     uiMetadata: {
       icon: 'bi-window-stack',
@@ -251,7 +251,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
   'sys-configurations': {
     key: 'sys-configurations',
-    boMetadata: sysConfigurationsMetadata,
+    boMetadata: sysBOConfigurationsMetadata,
     uiMetadata: {
       icon: 'bi-sliders2',
       listViewModel: { title: 'Configuration', addButtonText: 'Add setting', showResultCount: true },
@@ -265,7 +265,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
   'sys-ext-auth-providers': {
     key: 'sys-ext-auth-providers',
-    boMetadata: sysExtAuthProvidersMetadata,
+    boMetadata: sysBOExtAuthProvidersMetadata,
     uiMetadata: {
       icon: 'bi-globe2',
       listViewModel: { title: 'External authentication', addButtonText: 'Add provider', showResultCount: true },
@@ -295,7 +295,7 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
   'sys-licenses': {
     key: 'sys-licenses',
 
-    boMetadata: sysLicensesMetadata,
+    boMetadata: sysBOLicensesMetadata,
 
     uiMetadata: {
       icon: 'bi-key',

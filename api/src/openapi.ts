@@ -74,7 +74,7 @@ const businessObjectSchema = (metadata: SysBOMetadata<unknown>) => {
   }
 
   /*
-   * SysUser exposes password existence rather than passwordHash.
+   * SysBOUser exposes password existence rather than passwordHash.
    */
   if (metadata.key === 'sys-users') {
     properties.hasPassword = {
@@ -205,25 +205,35 @@ export function buildOpenApiSpec() {
       /**
        * Protected SysBO resources.
        */
-      '/api/v1/SysUsers': genericOperations('SysUser'),
+      '/api/v1/SysUsers': genericOperations('User'),
+
+      '/api/v1/SysUsers/$metadata-ui': sysBOUIMetadataOperation('User'),
 
       '/api/v1/SysUsers/{id}/verify-email': adminVerifyEmailOperation(),
 
-      '/api/v1/SysPrincipals': genericOperations('SysPrincipal'),
+      '/api/v1/SysPrincipals': genericOperations('Principal'),
 
-      '/api/v1/SysApplications': genericOperations('SysApplication'),
+      '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation('Principal'),
 
-      '/api/v1/SysLicenses': genericOperations('SysLicense'),
+      '/api/v1/SysApplications': genericOperations('Application'),
+
+      '/api/v1/SysApplications/$metadata-ui': sysBOUIMetadataOperation('Application'),
+
+      '/api/v1/SysLicenses': genericOperations('License'),
+
+      '/api/v1/SysLicenses/$metadata-ui': sysBOUIMetadataOperation('License'),
 
       '/api/v1/SysExtAuthProviders': externalAuthProviderOperations(),
+
+      '/api/v1/SysExtAuthProviders/$metadata-ui': sysBOUIMetadataOperation('External authentication provider'),
 
       '/api/v1/SysExtAuthProviders/{id}': externalAuthProviderItemOperations(),
 
       '/api/v1/SysExtAuthProviders/definitions': externalAuthProviderDefinitionsOperation(),
 
-      '/api/v1/SysConfigurations': sysConfigurationsOperation(),
+      '/api/v1/SysConfigurations': sysBOConfigurationsOperation(),
 
-      '/api/v1/SysConfigurations/{id}/value': sysConfigurationValueOperation(),
+      '/api/v1/SysConfigurations/{id}/value': sysBOConfigurationValueOperation(),
 
       '/api/v1/internal/external-auth-providers/verified-credentials': verifiedExternalAuthCredentialsOperation(),
 
@@ -376,7 +386,7 @@ function removeExternalAuthCredentialsOperation() {
 }
 
 function externalAuthProviderOperations() {
-  const generic = genericOperations('SysExtAuthProvider');
+  const generic = genericOperations('External authentication provider');
 
   return {
     get: {
@@ -390,7 +400,7 @@ function externalAuthProviderOperations() {
       },
     },
     post: {
-      summary: 'Create SysExtAuthProvider',
+      summary: 'Create external-authentication provider',
       description:
         'Access: Admin only (Bearer token). Creates one provider configuration. callbackPath is generated from the provider definition and any non-default override is rejected. Credential material is managed separately through trusted credential-management operations.',
       tags: ['External Authentication'],
@@ -452,13 +462,35 @@ function externalAuthProviderItemOperations() {
 }
 
 /**
+ * Framework-neutral, read-only UI metadata for one SysBO.
+ */
+const sysBOUIMetadataOperation = (name: string) => ({
+  get: {
+    summary: `Get ${name} UI metadata`,
+    description: 'Read-only framework-neutral UI contract for EJS and future Angular/React/mobile clients.',
+    tags: ['System Business Objects'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      '200': { description: 'UI metadata returned.' },
+      '401': { description: 'Authentication required' },
+      '404': { description: 'UI metadata not defined for this SysBO' },
+    },
+  },
+});
+
+/**
  * Standard OpenAPI operations currently shared by generic SysBO
  * collection endpoints.
  */
 const genericOperations = (name: string) => ({
   get: {
     summary: `List ${name} entries`,
+    description: '`includeMetadataUI=true` returns framework-neutral UI metadata and also implies `includeMetadata=true`.',
     tags: ['System Business Objects'],
+    parameters: [
+      { name: 'includeMetadata', in: 'query', schema: { type: 'boolean' }, description: 'Include canonical SysBO metadata.' },
+      { name: 'includeMetadataUI', in: 'query', schema: { type: 'boolean' }, description: 'Include UI metadata and canonical SysBO metadata.' },
+    ],
     security: [
       {
         bearerAuth: [],
@@ -571,9 +603,9 @@ function failureResponse(description: string) {
 function adminVerifyEmailOperation() {
   return {
     post: {
-      summary: 'Verify a SysUser email as Admin',
+      summary: 'Verify a SysBOUser email as Admin',
       description:
-        'Marks the selected SysUser email as verified. Requires an authenticated Admin and ADMIN_EMAIL_VERIFICATION_ENABLED=true.',
+        'Marks the selected SysBOUser email as verified. Requires an authenticated Admin and ADMIN_EMAIL_VERIFICATION_ENABLED=true.',
       tags: ['System Business Objects'],
       security: [
         {
@@ -599,7 +631,7 @@ function adminVerifyEmailOperation() {
         '403': failureResponse(
           'Administrator role required or administrator email verification is disabled.',
         ),
-        '404': failureResponse('SysUser not found.'),
+        '404': failureResponse('SysBOUser not found.'),
       },
     },
   };
@@ -892,9 +924,9 @@ function passwordOperation() {
   };
 }
 
-function sysConfigurationsOperation() {
+function sysBOConfigurationsOperation() {
   return { get: { summary:'List application configuration (Admin)', tags:['System Configuration'], description:'Access: Admin only (Bearer token). Returns persisted runtime configuration using safe projections; encrypted secret material is never returned.', security:[{bearerAuth:[]}], responses:{ '200':{description:'Safe configuration values; encrypted material is never returned.'}, '403':{description:'Admin access required.'} } } };
 }
-function sysConfigurationValueOperation() {
+function sysBOConfigurationValueOperation() {
   return { patch: { summary:'Update one application configuration value (Admin)', tags:['System Configuration'], description:'Access: Admin only (Bearer token). Updates one Admin-maintainable runtime setting. Sensitive values are accepted for secure storage but never returned as plaintext.', security:[{bearerAuth:[]}], parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}], requestBody:{required:true,content:{'application/json':{schema:{type:'object',properties:{value:{type:['string','null']}}}}}}, responses:{'200':{description:'Configuration updated.'},'403':{description:'Admin access required.'}} } };
 }

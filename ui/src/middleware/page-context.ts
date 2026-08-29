@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { MANATOS_COMPANY, resolvePlatform, type SysApplication, type SysUser } from '@manatos/shared';
+import { MANATOS_COMPANY, resolvePlatform, type SysBOApplication, type SysBOUser } from '@manatos/shared';
 
 import { config } from '../config.js';
 
@@ -15,6 +15,7 @@ import { navigationFor } from '../navigation.js';
 import { buildRootScope } from '../scopes.js';
 
 import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
+import { createManatOSContext, registerContextEntity } from '../context/manatos-context.js';
 
 
 /**
@@ -25,9 +26,9 @@ import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
  */
 export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
   try {
-    let user: SysUser | null = null;
+    let user: SysBOUser | null = null;
 
-    let activeApplication: SysApplication | undefined;
+    let activeApplication: SysBOApplication | undefined;
 
     /**
      * If a browser session still contains a userId but its corresponding
@@ -43,12 +44,12 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     }
 
     /**
-     * Resolve the currently authenticated website SysUser through the
+     * Resolve the currently authenticated website SysBOUser through the
      * protected API using the server-side Bearer token.
      */
     if (req.session.userId) {
       user = (
-        await apiClient.get<SysUser>(
+        await apiClient.get<SysBOUser>(
           `/api/v1/SysUsers/${req.session.userId}`,
 
           apiSessionOptions(req),
@@ -64,7 +65,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         delete req.session.activeApplicationId;
       } else {
         activeApplication = (
-          await apiClient.get<SysApplication>(
+          await apiClient.get<SysBOApplication>(
             `/api/v1/SysApplications/${req.session.activeApplicationId}`,
 
             apiSessionOptions(req),
@@ -76,6 +77,30 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     const currentPlatform = resolvePlatform(MANATOS_COMPANY);
 
     res.locals.currentUser = user;
+
+    // Typed ManatOS runtime/evaluation context. Every rendered page receives
+    // this root even when the route has not attached a page-specific branch.
+    res.locals.ctx = createManatOSContext(
+      MANATOS_COMPANY,
+      currentPlatform,
+      config.API_BASE_URL,
+      '0.1.0',
+      user,
+    );
+
+    /*
+     * Seed ctx.entities with metadata already available locally. This registry
+     * is the canonical cross-page metadata location; route/API metadata loaded
+     * later can enrich/replace an entry through registerContextEntity().
+     */
+    for (const definition of Object.values(effectiveSysBODefinitions(MANATOS_COMPANY, currentPlatform))) {
+      registerContextEntity(
+        res.locals.ctx,
+        definition.key,
+        definition.boMetadata,
+        definition.uiMetadata,
+      );
+    }
 
     // Anonymous/auth-entry presentation starts from the safe local default: no providers.
     // Sign in/Register refresh current provider state on demand.
@@ -109,6 +134,9 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
        */
       ui: Object.freeze({
         navigationStatePersistence: config.UI_NAVIGATION_STATE_PERSISTENCE,
+
+        /** Developer inspector is never rendered in production. */
+        debugTools: config.NODE_ENV !== 'production',
 
         allowAdminEmailVerification: config.ALLOW_ADMIN_EMAIL_VERIFICATION,
 

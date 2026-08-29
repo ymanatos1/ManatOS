@@ -1,0 +1,51 @@
+<!--
+  ManatOS development debugger.
+
+  Debugger-only markup lives here. The CTX runtime/event contract is generic
+  ManatOS infrastructure even though this inspector is currently its main
+  interactive consumer.
+-->
+<aside
+  class="debug-panel d-none"
+  id="debugPanel"
+  aria-label="ManatOS developer debugger"
+  aria-hidden="true"
+>
+  <div class="debug-panel-heading">
+    <strong>DEVELOPER DEBUG CTX <span class="debug-panel-heading-hint">(live context tree)</span></strong>
+    <button class="btn-close" type="button" id="closeDebugPanel" aria-label="Close debugger"></button>
+  </div>
+
+  <div class="debug-panel-tools" role="toolbar" aria-label="CTX debugger navigation">
+    <button class="debug-tool-button" id="ctxDebugBack" type="button" title="Previous CTX selection" aria-label="Previous CTX selection" disabled>
+      <i class="bi bi-arrow-left"></i>
+    </button>
+    <button class="debug-tool-button" id="ctxDebugForward" type="button" title="Next CTX selection" aria-label="Next CTX selection" disabled>
+      <i class="bi bi-arrow-right"></i>
+    </button>
+    <button class="debug-tool-button" id="ctxDebugWatch" type="button" title="Watch selected CTX value for changes" aria-label="Watch selected CTX value for changes">
+      <i class="bi bi-eye"></i>
+    </button>
+    <button class="debug-tool-button" id="ctxDebugProperties" type="button" title="Selected node properties" aria-label="Show selected CTX node properties">
+      <i class="bi bi-info-square"></i>
+    </button>
+    <span class="debug-tool-selection" id="ctxDebugSelection" title="Current CTX selection">ctx</span>
+  </div>
+
+  <!--
+    Docked between the toolbar and CTX tree: opening properties reduces the
+    available tree height instead of covering nodes. The JS keeps the selected
+    row visible when this panel opens/closes or selection changes programmatically.
+  -->
+  <section class="ctx-debug-properties d-none" id="ctxDebugPropertiesPanel" aria-hidden="true" aria-label="Selected CTX node properties">
+    <div class="ctx-debug-properties-heading">
+      <strong>NODE PROPERTIES</strong>
+      <button class="btn-close btn-close-sm" type="button" id="ctxDebugPropertiesClose" aria-label="Close node properties"></button>
+    </div>
+    <div class="ctx-debug-properties-body" id="ctxDebugPropertiesBody"></div>
+  </section>
+
+  <div id="ctxDebugTree" class="ctx-debug-tree" role="tree" aria-label="ManatOS context tree"></div>
+
+  <script id="manatosCtxSnapshot" type="application/json"><%- JSON.stringify(ctx ?? null).replace(/</g, '\\u003c') %></script>
+</aside>

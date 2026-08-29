@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { MANATOS_COMPANY, SysUserRole, resolvePlatform } from '@manatos/shared';
+import { MANATOS_COMPANY, SysBOUserRole, resolvePlatform } from '@manatos/shared';
 
 import { navigationFor } from '../src/navigation.js';
 import { effectiveSysBODefinitions } from '../src/sysbo/definitions.js';
 
 describe('company/platform navigation composition', () => {
   it('places Platform immediately after Company in horizontal navigation', () => {
-    const navigation = navigationFor(SysUserRole.Admin, true).horizontal;
+    const navigation = navigationFor(SysBOUserRole.Admin, true).horizontal;
 
     expect(navigation.slice(0, 4).map((item) => item.id)).toEqual([
       'home',
@@ -31,7 +31,7 @@ describe('company/platform navigation composition', () => {
       platforms: [...MANATOS_COMPANY.platforms, secondPlatform],
     };
 
-    const platformItem = navigationFor(SysUserRole.Admin, true, company, resolvePlatform(company)).horizontal
+    const platformItem = navigationFor(SysBOUserRole.Admin, true, company, resolvePlatform(company)).horizontal
       .find((item) => item.id === 'platform');
 
     expect(platformItem?.url).toBeUndefined();
@@ -40,7 +40,7 @@ describe('company/platform navigation composition', () => {
 
   it('merges Company and mCRM contributions into the current left-nav order', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
-    const navigation = navigationFor(SysUserRole.Admin, true, MANATOS_COMPANY, platform).vertical;
+    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform).vertical;
 
     expect(navigation.map((item) => item.id)).toEqual([
       'account',
@@ -88,7 +88,7 @@ describe('company/platform navigation composition', () => {
     };
 
     const configuration = navigationFor(
-      SysUserRole.Admin,
+      SysBOUserRole.Admin,
       true,
       MANATOS_COMPANY,
       platform,
@@ -101,13 +101,13 @@ describe('company/platform navigation composition', () => {
     ]);
   });
 
-  it('keeps Apps Playground dependent on the mCRM SysApplication capability', () => {
+  it('keeps Apps Playground dependent on the mCRM SysBOApplication capability', () => {
     const platform = {
       ...resolvePlatform(MANATOS_COMPANY),
       entities: [],
     };
 
-    const navigation = navigationFor(SysUserRole.Admin, true, MANATOS_COMPANY, platform).vertical;
+    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform).vertical;
 
     expect(navigation.some((item) => item.id === 'app-playground')).toBe(false);
     expect(
@@ -118,7 +118,7 @@ describe('company/platform navigation composition', () => {
   });
 
   it('preserves existing User navigation visibility and includes Superuser', () => {
-    for (const role of [SysUserRole.User, SysUserRole.Superuser]) {
+    for (const role of [SysBOUserRole.User, SysBOUserRole.Superuser]) {
       const navigation = navigationFor(role, true).vertical;
       expect(navigation.some((item) => item.id === 'administration')).toBe(true);
       expect(navigation.some((item) => item.id === 'configuration')).toBe(false);
@@ -129,7 +129,7 @@ describe('company/platform navigation composition', () => {
 // The effective SysBO catalogue follows the same ownership composition as navigation.
 
 describe('company/platform SysBO ownership', () => {
-  it('combines Company-owned SysBOs with mCRM-owned SysApplication', () => {
+  it('combines Company-owned SysBOs with mCRM-owned SysBOApplication', () => {
     expect(Object.keys(effectiveSysBODefinitions()).sort()).toEqual([
       'sys-applications',
       'sys-configurations',
@@ -140,7 +140,7 @@ describe('company/platform SysBO ownership', () => {
     ]);
   });
 
-  it('removes mCRM SysApplication when the selected platform does not contribute it', () => {
+  it('removes mCRM SysBOApplication when the selected platform does not contribute it', () => {
     const platform = {
       ...resolvePlatform(MANATOS_COMPANY),
       entities: [],

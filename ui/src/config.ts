@@ -63,12 +63,12 @@ const schema = z.object({
    * browser:
    *   State is persisted in browser localStorage.
    *
-   * A future "user" mode can store preferences in SysUser/profile data.
+   * A future "user" mode can store preferences in SysBOUser/profile data.
    */
   UI_NAVIGATION_STATE_PERSISTENCE: z.enum(['none', 'browser']).default('browser'),
 
   /**
-   * Allows an authenticated Admin to mark another SysUser's email as verified
+   * Allows an authenticated Admin to mark another SysBOUser's email as verified
    * from the administration UI. The API/internal route remains the final
    * server-side mutation boundary.
    */

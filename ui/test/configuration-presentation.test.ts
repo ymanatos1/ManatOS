@@ -10,5 +10,6 @@ describe('configuration presentation', () => {
     expect(source).toContain('Secret configured');
     expect(source).toContain('Restart required');
     expect(source).toContain("item.valueType === 'boolean'");
+    expect(source).toContain('data-config-apply-result');
   });
 });

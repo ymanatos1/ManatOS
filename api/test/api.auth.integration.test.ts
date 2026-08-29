@@ -17,11 +17,11 @@ import {
 } from './test-helpers.js';
 
 /**
- * Public SysUser representation returned by the API.
+ * Public SysBOUser representation returned by the API.
  *
  * passwordHash must never appear in this object.
  */
-interface PublicSysUser {
+interface PublicSysBOUser {
   id: string;
   name: string;
   email: string;
@@ -50,7 +50,7 @@ interface LoginData {
   sessionId: string;
   expiresInSeconds: number;
   expiresAt: string;
-  user: PublicSysUser;
+  user: PublicSysBOUser;
 }
 
 /**
@@ -117,7 +117,7 @@ describe('API integration - authentication and sessions', () => {
 
     expect(response.status).toBe(201);
 
-    const user = commandData<PublicSysUser>(response.body);
+    const user = commandData<PublicSysBOUser>(response.body);
 
     expect(user).toMatchObject({
       name: 'Yiannis',
@@ -201,7 +201,7 @@ describe('API integration - authentication and sessions', () => {
       },
     );
 
-    const registeredUser = commandData<PublicSysUser>(registration.body);
+    const registeredUser = commandData<PublicSysBOUser>(registration.body);
 
     const userId = registeredUser.id;
 
@@ -283,7 +283,7 @@ describe('API integration - authentication and sessions', () => {
       },
     );
 
-    const registeredUser = commandData<PublicSysUser>(registration.body);
+    const registeredUser = commandData<PublicSysBOUser>(registration.body);
 
     const userId = registeredUser.id;
 
@@ -386,7 +386,7 @@ describe('API integration - authentication and sessions', () => {
 
     expect(stillValidB.status).toBe(200);
 
-    const currentUser = queryData<PublicSysUser>(stillValidB.body);
+    const currentUser = queryData<PublicSysBOUser>(stillValidB.body);
 
     expect(currentUser.id).toBe(userId);
 
@@ -422,7 +422,7 @@ describe('API integration - authentication and sessions', () => {
       password: 'Initial!1234',
     });
 
-    const registeredUser = commandData<PublicSysUser>(registration.body);
+    const registeredUser = commandData<PublicSysBOUser>(registration.body);
 
     const userId = registeredUser.id;
 
@@ -450,7 +450,7 @@ describe('API integration - authentication and sessions', () => {
 
     expect(changed.status).toBe(200);
 
-    const changedUser = commandData<PublicSysUser>(changed.body);
+    const changedUser = commandData<PublicSysBOUser>(changed.body);
 
     expect(changedUser).not.toHaveProperty('passwordHash');
 
@@ -498,7 +498,7 @@ describe('API integration - authentication and sessions', () => {
 
     expect(registration.status).toBe(201);
 
-    const registeredUser = commandData<PublicSysUser>(registration.body);
+    const registeredUser = commandData<PublicSysBOUser>(registration.body);
     expect(registeredUser.emailVerified).toBe(false);
 
     const verification = await request(context.app)
@@ -512,7 +512,7 @@ describe('API integration - authentication and sessions', () => {
     expect(verification.status).toBe(200);
     expectCommandSuccess(verification.body);
 
-    const verifiedUser = commandData<PublicSysUser>(verification.body);
+    const verifiedUser = commandData<PublicSysBOUser>(verification.body);
     expect(verifiedUser.id).toBe(registeredUser.id);
     expect(verifiedUser.emailVerified).toBe(false);
   });
@@ -543,7 +543,7 @@ describe('API integration - authentication and sessions', () => {
 
     expect(registration.status).toBe(201);
 
-    const registeredUser = commandData<PublicSysUser>(registration.body);
+    const registeredUser = commandData<PublicSysBOUser>(registration.body);
 
     expect(registeredUser).toMatchObject({
       name: 'ExternalGuest',
@@ -603,7 +603,7 @@ describe('API integration - authentication and sessions', () => {
 
     expect(me.status).toBe(200);
 
-    const currentUser = queryData<PublicSysUser>(me.body);
+    const currentUser = queryData<PublicSysBOUser>(me.body);
 
     expect(currentUser.id).toBe(userId);
   });
@@ -629,7 +629,7 @@ describe('API integration - authentication and sessions', () => {
 
     expect(registration.status).toBe(201);
 
-    const registeredUser = commandData<PublicSysUser>(registration.body);
+    const registeredUser = commandData<PublicSysBOUser>(registration.body);
 
     expect(registeredUser.emailVerified).toBe(false);
 
@@ -653,7 +653,7 @@ describe('API integration - authentication and sessions', () => {
     expect(session.body.error.code).toBe('FORBIDDEN');
   });
 
-  it('allows one SysUser to own identities from multiple external providers', async () => {
+  it('allows one SysBOUser to own identities from multiple external providers', async () => {
     const registration = await request(context.app)
       .post('/api/v1/internal/auth/register-external')
       .set('x-internal-api-key', config.INTERNAL_API_KEY)
@@ -665,7 +665,7 @@ describe('API integration - authentication and sessions', () => {
       });
 
     expect(registration.status).toBe(201);
-    const user = commandData<PublicSysUser>(registration.body);
+    const user = commandData<PublicSysBOUser>(registration.body);
 
     for (const [provider, providerSubject] of [
       ['github', 'github-subject-1'],
@@ -709,7 +709,7 @@ describe('API integration - authentication and sessions', () => {
       });
 
     expect(registration.status).toBe(201);
-    const user = commandData<PublicSysUser>(registration.body);
+    const user = commandData<PublicSysBOUser>(registration.body);
     const originalVerifiedAt = user.emailVerifiedAt;
 
     const verification = await request(context.app)
@@ -718,7 +718,7 @@ describe('API integration - authentication and sessions', () => {
       .send({ source: 'google' });
 
     expect(verification.status).toBe(200);
-    const unchanged = commandData<PublicSysUser>(verification.body);
+    const unchanged = commandData<PublicSysBOUser>(verification.body);
 
     expect(unchanged.emailVerificationSource).toBe('github');
     expect(unchanged.emailVerifiedAt).toBe(originalVerifiedAt);

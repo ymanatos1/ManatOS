@@ -1,12 +1,12 @@
 import type {
-  SysApplication,
-  SysConfiguration,
-  SysExtAuthProvider,
+  SysBOApplication,
+  SysBOConfiguration,
+  SysBOExtAuthProvider,
   SysBOMetadata,
-  SysLicense,
-  SysPrincipal,
-  SysUser,
-  SysUserRole,
+  SysBOLicense,
+  SysBOPrincipal,
+  SysBOUser,
+  SysBOUserRole,
 } from '@manatos/shared';
 
 /**
@@ -26,7 +26,7 @@ export interface SysBOListViewModel {
  * Omitting the property means visible (the default).
  */
 export type SysBOEditTabVisibility = boolean | {
-  roles: SysUserRole[];
+  roles: SysBOUserRole[];
 };
 
 /**
@@ -78,7 +78,7 @@ export interface SysBOGridConfiguration {
   responsive: boolean;
 
   /**
-   * Currently used by SysApplication to expose its future playground.
+   * Currently used by SysBOApplication to expose its future playground.
    */
   showPlayAction?: boolean;
 
@@ -116,12 +116,13 @@ export interface SysBOPaginationConfiguration {
 }
 
 /**
- * UI-specific metadata.
+ * Current EJS-specific UI metadata.
  *
- * This is intentionally separate from the UI-neutral BO metadata
- * originating from @manatos/shared.
+ * This remains the reference implementation during #16. The new framework-neutral
+ * API `$metadata-ui` contract is defined in @manatos/shared and must not absorb
+ * EJS/Bootstrap-specific details from this structure.
  */
-export interface SysBOUIMetadata {
+export interface CurrentEJSSysBOUIMetadata {
   icon: string;
 
   listViewModel: SysBOListViewModel;
@@ -139,13 +140,13 @@ export interface SysBOUIMetadata {
  * Role-level permissions associated with a UI SysBO definition.
  */
 export interface SysBOPermissions {
-  view: SysUserRole[];
+  view: SysBOUserRole[];
 
-  create: SysUserRole[];
+  create: SysBOUserRole[];
 
-  edit: SysUserRole[];
+  edit: SysBOUserRole[];
 
-  delete: SysUserRole[];
+  delete: SysBOUserRole[];
 }
 
 /**
@@ -159,7 +160,7 @@ export interface SysBODefinitionFor<T> {
 
   boMetadata: SysBOMetadata<T>;
 
-  uiMetadata: SysBOUIMetadata;
+  uiMetadata: CurrentEJSSysBOUIMetadata;
 
   permissions: SysBOPermissions;
 }
@@ -171,13 +172,13 @@ export interface SysBODefinitionFor<T> {
  *
  *   SysBODefinition<unknown>
  *
- * because SysBOMetadata<T> is entity-specific. SysBOMetadata<SysUser>,
+ * because SysBOMetadata<T> is entity-specific. SysBOMetadata<SysBOUser>,
  * for example, should not be forced into SysBOMetadata<unknown>.
  */
 export type SysBODefinition =
-  | SysBODefinitionFor<SysUser>
-  | SysBODefinitionFor<SysPrincipal>
-  | SysBODefinitionFor<SysApplication>
-  | SysBODefinitionFor<SysConfiguration>
-  | SysBODefinitionFor<SysExtAuthProvider>
-  | SysBODefinitionFor<SysLicense>;
+  | SysBODefinitionFor<SysBOUser>
+  | SysBODefinitionFor<SysBOPrincipal>
+  | SysBODefinitionFor<SysBOApplication>
+  | SysBODefinitionFor<SysBOConfiguration>
+  | SysBODefinitionFor<SysBOExtAuthProvider>
+  | SysBODefinitionFor<SysBOLicense>;

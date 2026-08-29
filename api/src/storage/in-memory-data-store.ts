@@ -1,19 +1,19 @@
 import {
-  sysApplicationsMetadata,
-  sysConfigurationsMetadata,
-  sysExtAuthProvidersMetadata,
-  sysLicensesMetadata,
-  sysPrincipalsMetadata,
-  sysUsersMetadata,
-  type SysApplication,
-  type SysConfiguration,
-  type SysExternalIdentity,
-  type SysExtAuthProvider,
-  type SysLicense,
-  type SysPrincipal,
-  type SysUser,
-  type SysUserInvitation,
-  type SysUserPrincipal,
+  sysBOApplicationsMetadata,
+  sysBOConfigurationsMetadata,
+  sysBOExtAuthProvidersMetadata,
+  sysBOLicensesMetadata,
+  sysBOPrincipalsMetadata,
+  sysBOUsersMetadata,
+  type SysBOApplication,
+  type SysBOConfiguration,
+  type SysBOExternalIdentity,
+  type SysBOExtAuthProvider,
+  type SysBOLicense,
+  type SysBOPrincipal,
+  type SysBOUser,
+  type SysBOUserInvitation,
+  type SysBOUserPrincipal,
 } from '@manatos/shared';
 
 import { InMemoryRepository } from './in-memory-repository.js';
@@ -36,17 +36,17 @@ import type { StorageAdapter, StorageFlushResult } from './storage-adapter.js';
 export class InMemoryDataStore implements StorageAdapter {
   private state!: DatabaseState;
 
-  public sysUsers!: InMemoryRepository<SysUser>;
+  public sysUsers!: InMemoryRepository<SysBOUser>;
 
-  public sysPrincipals!: InMemoryRepository<SysPrincipal>;
+  public sysPrincipals!: InMemoryRepository<SysBOPrincipal>;
 
-  public sysApplications!: InMemoryRepository<SysApplication>;
+  public sysApplications!: InMemoryRepository<SysBOApplication>;
 
-  public sysConfigurations!: InMemoryRepository<SysConfiguration>;
+  public sysConfigurations!: InMemoryRepository<SysBOConfiguration>;
 
-  public sysLicenses!: InMemoryRepository<SysLicense>;
+  public sysLicenses!: InMemoryRepository<SysBOLicense>;
 
-  public sysExtAuthProviders!: InMemoryRepository<SysExtAuthProvider>;
+  public sysExtAuthProviders!: InMemoryRepository<SysBOExtAuthProvider>;
 
   constructor(private readonly persistence: JsonFilePersistence) {}
 
@@ -66,21 +66,21 @@ export class InMemoryDataStore implements StorageAdapter {
    * These currently use their Map directly rather than the generic
    * SysBO repository abstraction.
    */
-  externalIdentities(): Map<string, SysExternalIdentity> {
+  externalIdentities(): Map<string, SysBOExternalIdentity> {
     return this.state.sysExternalIdentities;
   }
 
   /**
-   * SysUser <-> SysPrincipal relationships.
+   * SysBOUser <-> SysBOPrincipal relationships.
    */
-  userPrincipals(): Map<string, SysUserPrincipal> {
+  userPrincipals(): Map<string, SysBOUserPrincipal> {
     return this.state.sysUserPrincipals;
   }
 
   /**
    * User invitation records.
    */
-  userInvitations(): Map<string, SysUserInvitation> {
+  userInvitations(): Map<string, SysBOUserInvitation> {
     return this.state.sysUserInvitations;
   }
 
@@ -116,7 +116,7 @@ export class InMemoryDataStore implements StorageAdapter {
        * Long-lived domain services keep references to the repositories created
        * during application startup. Replacing those wrappers after a rollback
        * leaves the services pointing at detached Maps and can make an existing
-       * SysUser appear to disappear in a later request.
+       * SysBOUser appear to disappear in a later request.
        *
        * Restore every collection IN PLACE instead. This preserves the identity
        * of both the DatabaseState Maps and the repository wrappers while still
@@ -199,22 +199,22 @@ export class InMemoryDataStore implements StorageAdapter {
    * repository references.
    */
   private rebuild(): void {
-    this.sysUsers = new InMemoryRepository(this.state.sysUsers, sysUsersMetadata);
+    this.sysUsers = new InMemoryRepository(this.state.sysUsers, sysBOUsersMetadata);
 
-    this.sysPrincipals = new InMemoryRepository(this.state.sysPrincipals, sysPrincipalsMetadata);
+    this.sysPrincipals = new InMemoryRepository(this.state.sysPrincipals, sysBOPrincipalsMetadata);
 
     this.sysApplications = new InMemoryRepository(
       this.state.sysApplications,
-      sysApplicationsMetadata,
+      sysBOApplicationsMetadata,
     );
 
-    this.sysConfigurations = new InMemoryRepository(this.state.sysConfigurations, sysConfigurationsMetadata);
+    this.sysConfigurations = new InMemoryRepository(this.state.sysConfigurations, sysBOConfigurationsMetadata);
 
-    this.sysLicenses = new InMemoryRepository(this.state.sysLicenses, sysLicensesMetadata);
+    this.sysLicenses = new InMemoryRepository(this.state.sysLicenses, sysBOLicensesMetadata);
 
     this.sysExtAuthProviders = new InMemoryRepository(
       this.state.sysExtAuthProviders,
-      sysExtAuthProvidersMetadata,
+      sysBOExtAuthProvidersMetadata,
     );
   }
 }

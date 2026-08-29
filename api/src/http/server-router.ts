@@ -77,7 +77,7 @@ export function createServerRouter(store: InMemoryDataStore): Router {
    *
    * Security:
    *
-   *   authenticated SysUser
+   *   authenticated SysBOUser
    *   AND
    *   Admin role
    */

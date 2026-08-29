@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 
-import type { SysUserRole } from '@manatos/shared';
+import type { SysBOUserRole } from '@manatos/shared';
 
 /**
  * Client information observed when a session is created.
@@ -22,7 +22,7 @@ export interface AccessTokenContext {
 
   userId: string;
   userName: string;
-  role: SysUserRole;
+  role: SysBOUserRole;
 
   createdAt: number;
   lastSeenAt: number;
@@ -89,7 +89,7 @@ export class AccessTokenStore {
   private readonly tokens = new Map<string, StoredAccessToken>();
 
   /**
-   * Create a new independent session for a SysUser.
+   * Create a new independent session for a SysBOUser.
    *
    * Logging in twice therefore creates two active sessions.
    */
@@ -97,7 +97,7 @@ export class AccessTokenStore {
     user: {
       id: string;
       name: string;
-      role: SysUserRole;
+      role: SysBOUserRole;
     },
 
     lifetimeMinutes: number,

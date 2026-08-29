@@ -8,18 +8,18 @@ import { createApp } from '../src/app.js';
 import { JsonFilePersistence } from '../src/storage/json-file-persistence.js';
 import { InMemoryDataStore } from '../src/storage/in-memory-data-store.js';
 
-import { SysUserService } from '../src/services/sys-user-service.js';
+import { SysBOUserService } from '../src/services/sys-user-service.js';
 
 import {
   ExternalIdentityService,
-  SysApplicationService,
-  SysLicenseService,
-  SysPrincipalService,
+  SysBOApplicationService,
+  SysBOLicenseService,
+  SysBOPrincipalService,
   UserPrincipalService,
 } from '../src/services/domain-services.js';
 import { SecretsEncryptionService } from '../src/security/secrets-encryption-service.js';
-import { SysExtAuthProviderService } from '../src/services/sys-ext-auth-provider-service.js';
-import { SysConfigurationService } from '../src/services/sys-configuration-service.js';
+import { SysBOExtAuthProviderService } from '../src/services/sys-ext-auth-provider-service.js';
+import { SysBOConfigurationService } from '../src/services/sys-configuration-service.js';
 
 /**
  * Standard credentials used by integration tests.
@@ -56,10 +56,10 @@ export async function createTestApi() {
 
   await store.initialize();
 
-  const users = new SysUserService(store);
+  const users = new SysBOUserService(store);
 
   const encryption = new SecretsEncryptionService('test', Buffer.alloc(32, 7).toString('base64'));
-  const configurations = new SysConfigurationService(store, encryption);
+  const configurations = new SysBOConfigurationService(store, encryption);
   await configurations.seedMissing();
 
   const services = {
@@ -73,16 +73,16 @@ export async function createTestApi() {
       async sendPasswordChangedEmail() {},
     },
 
-    extAuthProviders: new SysExtAuthProviderService(
+    extAuthProviders: new SysBOExtAuthProviderService(
       store,
       encryption,
     ),
 
-    principals: new SysPrincipalService(store),
+    principals: new SysBOPrincipalService(store),
 
-    applications: new SysApplicationService(store),
+    applications: new SysBOApplicationService(store),
 
-    licenses: new SysLicenseService(store),
+    licenses: new SysBOLicenseService(store),
 
     externalIdentities: new ExternalIdentityService(store, users),
 
@@ -112,7 +112,7 @@ export async function createTestApi() {
  * occurs through the public HTTP endpoint.
  */
 export async function seedAdmin(
-  users: SysUserService,
+  users: SysBOUserService,
 ): Promise<void> {
   await users.bootstrapAdmin(
     TEST_ADMIN.name,

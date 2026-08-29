@@ -7,7 +7,7 @@ import {
   validatePassword,
   type EmailVerificationSource,
   type ExternalProviderKey,
-  type SysUser,
+  type SysBOUser,
 } from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
@@ -55,7 +55,7 @@ interface ApiLoginResult {
 
   expiresAt: string;
 
-  user: SysUser;
+  user: SysBOUser;
 }
 
 /**
@@ -66,7 +66,7 @@ interface ApiLoginResult {
  *
  * External provider authentication remains a UI/Passport concern, but after
  * provider authentication the trusted UI asks the API to create an ordinary
- * API access-token session for the resolved SysUser.
+ * API access-token session for the resolved SysBOUser.
  */
 export function createAuthRouter() {
   const router = Router();
@@ -174,7 +174,7 @@ export function createAuthRouter() {
              * Public registration always creates Guest + unverified email.
              */
             const user = (
-              await apiClient.post<SysUser>(
+              await apiClient.post<SysBOUser>(
                 '/api/v1/auth/register',
 
                 {
@@ -221,7 +221,7 @@ export function createAuthRouter() {
               /**
                * Registration and notification delivery are separate outcomes.
                *
-               * The SysUser has already been created successfully at this
+               * The SysBOUser has already been created successfully at this
                * point. An SMTP/provider failure must therefore NOT report that
                * account creation itself failed, and must not encourage a Retry
                * that would immediately collide with the newly-created account.
@@ -333,7 +333,7 @@ export function createAuthRouter() {
    * exists.
    *
    * Lookup uses a trusted internal endpoint because the requester is not
-   * authenticated yet and therefore cannot query protected SysUsers.
+   * authenticated yet and therefore cannot query protected SysBOUsers.
    */
   router.post(
     '/password/request',
@@ -457,7 +457,7 @@ export function createAuthRouter() {
         }
 
         const user = (
-          await apiClient.put<SysUser>(
+          await apiClient.put<SysBOUser>(
             `/api/v1/internal/SysUsers/${userId}/password`,
 
             {
@@ -843,7 +843,7 @@ export function createAuthRouter() {
             /**
              * A linked provider may verify the account's exact email after the
              * original link was created. Accept that verification only when the
-             * provider email resolves to this same SysUser.
+             * provider email resolves to this same SysBOUser.
              */
             if (
               profile.emailVerified &&
@@ -910,7 +910,7 @@ export function createAuthRouter() {
 
           /**
            * If no provider identity exists yet, ensure this email is not
-           * already owned by another SysUser.
+           * already owned by another SysBOUser.
            */
           const existing = await lookup(profile.email);
 
@@ -919,7 +919,7 @@ export function createAuthRouter() {
              * The provider authenticated successfully, but its identity has not
              * previously been linked to a ManatOS account.
              *
-             * The provider supplied an email already owned by an existing SysUser.
+             * The provider supplied an email already owned by an existing SysBOUser.
              *
              * IMPORTANT:
              *
@@ -1105,7 +1105,7 @@ export function createAuthRouter() {
         }); */
 
         const verifiedUser = (
-          await apiClient.post<SysUser>(
+          await apiClient.post<SysBOUser>(
             '/api/v1/internal/auth/verify-local',
 
             {
@@ -1134,7 +1134,7 @@ export function createAuthRouter() {
           throw new AppError(
             'EXTERNAL_LINK_ACCOUNT_MISMATCH',
 
-            `Authenticated SysUser ${verifiedUser.id} does not match pending external-link SysUser ${pending.existingUserId}.`,
+            `Authenticated SysBOUser ${verifiedUser.id} does not match pending external-link SysBOUser ${pending.existingUserId}.`,
 
             `Please sign in to the existing account "${pending.existingUserName}" to link this external account.`,
           );
@@ -1328,7 +1328,7 @@ export function createAuthRouter() {
          * marked verified immediately.
          */
         const user = (
-          await apiClient.post<SysUser>(
+          await apiClient.post<SysBOUser>(
             '/api/v1/internal/auth/register-external',
 
             {
@@ -1370,7 +1370,7 @@ export function createAuthRouter() {
         ).data;
 
         /**
-         * Persist normalized provider identity separately from SysUser.
+         * Persist normalized provider identity separately from SysBOUser.
          */
         await apiClient.post(
           `/api/v1/internal/SysUsers/${user.id}/external-identities`,
@@ -1496,9 +1496,9 @@ function normalizeSuggestedUserName(value: string): string {
     .slice(0, 80);
 }
 
-async function lookup(identity: string): Promise<SysUser | null> {
+async function lookup(identity: string): Promise<SysBOUser | null> {
   return (
-    await apiClient.get<SysUser | null>(
+    await apiClient.get<SysBOUser | null>(
       `/api/v1/internal/auth/lookup?identity=${encodeURIComponent(identity)}`,
 
       {
@@ -1528,7 +1528,7 @@ async function resolveExternalUserId(profile: ExternalProfile): Promise<string |
 }
 
 /**
- * Ask the trusted API bridge to mint an ordinary API session for a SysUser
+ * Ask the trusted API bridge to mint an ordinary API session for a SysBOUser
  * already authenticated by an approved UI mechanism.
  */
 async function createTrustedApiSession(

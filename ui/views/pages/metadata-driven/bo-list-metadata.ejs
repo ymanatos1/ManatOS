@@ -1,0 +1,225 @@
+<% if (!hasAnyEntries) { %>
+  <section class="empty-entity-state">
+    <i class="bi bi-inbox" aria-hidden="true"></i>
+    <strong>No entries found</strong>
+    <span>This entity does not contain any entries yet.</span>
+
+    <% if (permissions.create && metadataUI.list.addAction.visible) { %>
+      <a class="btn btn-success mt-2" href="/bo/<%= definition.key %>/new">
+        <i class="bi bi-plus-circle me-1"></i>
+        Add the first entry
+      </a>
+    <% } %>
+  </section>
+<% } else { %>
+  <%
+    const filterFields = metadataUI.list.filterFields;
+    const activeFilterCount = filterFields.filter((key) => String(query[`filter.${key}`] || '').trim() !== '').length;
+    const hasActiveFilters = activeFilterCount > 0;
+    const filterCollapseId = `metadata-filters-${definition.key}`;
+    const externalAuthProviderLabels = {
+      microsoft: 'Microsoft',
+      google: 'Google',
+      facebook: 'Facebook',
+      github: 'GitHub'
+    };
+  %>
+
+  <section
+    class="content-card sysbo-list-page"
+    data-entity-key="<%= definition.key %>"
+    data-default-page-size="<%= paging.pageSize %>"
+    data-allowed-page-sizes="<%= pageSizeOptions.join(',') %>"
+  >
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+      <div class="text-secondary">
+        <strong class="text-body"><%= paging.total %></strong>
+        <%= paging.total === 1 ? 'entry' : 'entries' %>
+      </div>
+
+      <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
+        <% if (filterFields.length) { %>
+          <button
+            class="btn <%= hasActiveFilters ? 'btn-outline-primary' : 'btn-outline-secondary' %>"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#<%= filterCollapseId %>"
+            aria-expanded="<%= hasActiveFilters ? 'true' : 'false' %>"
+            aria-controls="<%= filterCollapseId %>"
+          >
+            <i class="bi bi-funnel me-1" aria-hidden="true"></i>
+            Filters
+            <% if (activeFilterCount) { %>
+              <span class="badge text-bg-primary ms-1"><%= activeFilterCount %></span>
+            <% } %>
+          </button>
+        <% } %>
+
+        <% if (permissions.create && metadataUI.list.addAction.visible) { %>
+          <% const providerAddDisabled = definition.key === 'sys-ext-auth-providers' && allExternalProvidersConfigured; %>
+          <a
+            class="btn btn-success <%= providerAddDisabled ? 'disabled' : '' %>"
+            href="<%= providerAddDisabled ? '#' : '/bo/' + definition.key + '/new' %>"
+            <%= providerAddDisabled ? 'aria-disabled="true" tabindex="-1" title="All supported providers are configured."' : '' %>
+          >
+            <i class="bi bi-plus-circle me-1"></i><%= metadataUI.list.addAction.label %>
+          </a>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (filterFields.length) { %>
+      <div class="collapse <%= hasActiveFilters ? 'show' : '' %>" id="<%= filterCollapseId %>">
+        <form class="filter-panel row g-2 mb-3" method="get">
+          <% for (const key of filterFields) { %>
+            <% const field = metadata.fieldDefinition[key]; %>
+            <% if (!field) continue; %>
+
+            <div class="col-xl-3 col-md-4">
+              <label class="form-label small" for="metadata-filter-<%= key %>">
+                <i class="bi bi-funnel me-1"></i>
+                <%= field.label %>
+              </label>
+
+              <% if (field.type === 'enum') { %>
+                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
+                  <option value="">All</option>
+                  <% for (const option of field.enumValues || []) { %>
+                    <option value="<%= option %>" <%= query[`filter.${key}`] === option ? 'selected' : '' %>><%= option %></option>
+                  <% } %>
+                </select>
+              <% } else { %>
+                <input class="form-control" id="metadata-filter-<%= key %>" name="filter.<%= key %>" value="<%= query[`filter.${key}`] || '' %>">
+              <% } %>
+            </div>
+          <% } %>
+
+          <div class="col-xl-3 col-md-4 d-flex align-items-end gap-2">
+            <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+            <a class="btn btn-outline-secondary" href="/bo/<%= definition.key %>"><i class="bi bi-x-circle me-1"></i>Clear</a>
+          </div>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <% for (const key of metadataUI.list.visibleFields) { %>
+              <% const field = metadata.fieldDefinition[key]; %>
+              <% if (!field) continue; %>
+              <th>
+                <% if (metadataUI.list.sortableFields.includes(key)) { %>
+                  <a class="table-sort-link" href="?<%= new URLSearchParams({...query, sort: key, direction: query.sort === key && query.direction !== 'desc' ? 'desc' : 'asc'}).toString() %>">
+                    <%= field.label %>
+                    <% if (query.sort === key) { %>
+                      <i class="bi <%= query.direction === 'desc' ? 'bi-sort-down' : 'bi-sort-up' %>"></i>
+                    <% } else { %>
+                      <i class="bi bi-arrow-down-up table-sort-muted"></i>
+                    <% } %>
+                  </a>
+                <% } else { %>
+                  <%= field.label %>
+                <% } %>
+              </th>
+            <% } %>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% if (!items.length) { %>
+            <tr>
+              <td class="empty-table-state" colspan="<%= metadataUI.list.visibleFields.length %>">
+                <i class="bi bi-search"></i>
+                <strong>No entries found</strong>
+                <span>No existing entries match the current filter. Change or clear the filters.</span>
+              </td>
+            </tr>
+          <% } %>
+
+          <% for (const item of items) { %>
+            <tr>
+              <% for (const key of metadataUI.list.visibleFields) { %>
+                <% const field = metadata.fieldDefinition[key]; %>
+                <% if (!field) continue; %>
+                <td>
+                  <% if (definition.key === 'sys-ext-auth-providers' && key === 'provider') { %>
+                    <% const providerKey = String(item[key] || '').toLowerCase(); %>
+                    <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= externalAuthProviderLabels[providerKey] || item[key] || '' %></a>
+                  <% } else if (key === metadata.primaryField) { %>
+                    <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= item[key] ?? '' %></a>
+                  <% } else if (field.type === 'boolean') { %>
+                    <% const positive = Boolean(item[key]); %>
+                    <% const positiveLabel = key === 'emailVerified' ? 'Verified' : (key === 'enabled' ? 'Enabled' : 'Yes'); %>
+                    <% const negativeLabel = key === 'emailVerified' ? 'Not verified' : (key === 'enabled' ? 'Disabled' : 'No'); %>
+                    <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
+                      <i class="bi <%= positive ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"></i>
+                      <%= positive ? positiveLabel : negativeLabel %>
+                    </span>
+                  <% } else { %>
+                    <%= item[key] ?? '' %>
+                  <% } %>
+                </td>
+              <% } %>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (paging) { %>
+      <% const minimumPageSize = pageSizeOptions.length ? Math.min(...pageSizeOptions) : paging.pageSize; %>
+      <% const showPagingControls = paging.totalPages > 1; %>
+      <% const showPageSizeSelector = paging.total >= minimumPageSize; %>
+
+      <% if (showPagingControls || showPageSizeSelector) { %>
+        <div class="sysbo-paging-row mt-2">
+          <% if (showPagingControls) { %>
+            <div class="small text-secondary me-auto">Page <%= paging.page %> of <%= paging.totalPages %></div>
+          <% } else { %>
+            <div class="me-auto"></div>
+          <% } %>
+
+          <div class="sysbo-paging-actions">
+            <% if (showPagingControls) { %>
+              <nav aria-label="Result pages">
+                <ul class="pagination pagination-sm mb-0">
+                  <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
+                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: '1'}).toString() %>" title="First page" aria-label="First page"><i class="bi bi-chevron-bar-left" aria-hidden="true"></i></a>
+                  </li>
+                  <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
+                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.max(1, paging.page - 1))}).toString() %>" title="Previous page" aria-label="Previous page"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                  </li>
+                  <li class="page-item active" aria-current="page"><span class="page-link"><%= paging.page %></span></li>
+                  <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
+                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.min(paging.totalPages, paging.page + 1))}).toString() %>" title="Next page" aria-label="Next page"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                  </li>
+                  <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
+                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(paging.totalPages)}).toString() %>" title="Last page" aria-label="Last page"><i class="bi bi-chevron-bar-right" aria-hidden="true"></i></a>
+                  </li>
+                </ul>
+              </nav>
+            <% } %>
+
+            <% if (showPageSizeSelector) { %>
+              <form method="get" class="d-flex align-items-center gap-2">
+                <% if (query.sort) { %><input type="hidden" name="sort" value="<%= query.sort %>"><% } %>
+                <% if (query.direction) { %><input type="hidden" name="direction" value="<%= query.direction %>"><% } %>
+                <% for (const field of filterFields) { %>
+                  <% if (query[`filter.${field}`]) { %><input type="hidden" name="filter.<%= field %>" value="<%= query[`filter.${field}`] %>"><% } %>
+                <% } %>
+                <label class="small text-secondary" for="metadata-pageSize-<%= definition.key %>">Rows</label>
+                <select class="form-select form-select-sm page-size-select" id="metadata-pageSize-<%= definition.key %>" name="pageSize" data-page-size-select>
+                  <% for (const size of pageSizeOptions) { %>
+                    <option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>><%= size %></option>
+                  <% } %>
+                </select>
+              </form>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    <% } %>
+  </section>
+<% } %>

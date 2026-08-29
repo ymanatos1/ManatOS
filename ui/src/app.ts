@@ -15,6 +15,7 @@ import { createAuthRouter } from './routes/auth-routes.js';
 import { createPageRoutes } from './routes/page-routes.js';
 import { createSysBORoutes } from './routes/sysbo-routes.js';
 import { uiErrorHandler } from './error-handler.js';
+import { refreshUiBootstrap, uiBootstrapState } from './bootstrap/ui-bootstrap.js';
 
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
@@ -55,6 +56,25 @@ export function createUiApp() {
   // root, through npm --workspace, or directly from the ui package.
   app.use('/vendor/bootstrap', express.static(resolve(packageDirectory('bootstrap'), 'dist')));
   app.use('/vendor/bootstrap-icons', express.static(resolve(packageDirectory('bootstrap-icons'), 'font')));
+
+  /**
+   * Browser-visible, same-origin projection of the public UI bootstrap state.
+   * It contains only values already intended for browser UI configuration.
+   * Keeping this on the UI origin avoids exposing API credentials or coupling
+   * browser code to the API server address/CORS policy.
+   */
+  app.get('/runtime/ui-bootstrap', async (_req, res) => {
+    /*
+     * Force one public refresh before projecting the state to the browser.
+     * This removes the startup race where the UI process can still hold its
+     * local donationsShow=false fallback after the API has already become
+     * available. The browser then receives the real bootstrap value and the
+     * existing manatos:ctx-change consumer updates Donate without login/reload.
+     */
+    await refreshUiBootstrap();
+    res.set('Cache-Control', 'no-store');
+    res.json(uiBootstrapState());
+  });
 
   app.use(requestContextMiddleware);
 

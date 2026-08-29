@@ -39,18 +39,18 @@ export type SysBOUpdateInput<T extends SysBOEntity> = Partial<
 >;
 
 /** Runtime configuration value types. */
-export type SysConfigurationValueType = 'string' | 'number' | 'boolean' | 'enum' | 'secret';
+export type SysBOConfigurationValueType = 'string' | 'number' | 'boolean' | 'enum' | 'secret';
 
 /**
  * Persisted application configuration. Sensitive values are stored only in
  * valueEncrypted; normal API/UI projections never expose that envelope.
  */
-export interface SysConfiguration extends SysBOEntity {
+export interface SysBOConfiguration extends SysBOEntity {
   value: string | null;
   valueEncrypted?: string | null;
   group: string;
   description?: string;
-  valueType: SysConfigurationValueType;
+  valueType: SysBOConfigurationValueType;
   allowedValues?: string[];
   defaultValue?: string | null;
   restartRequired?: boolean;
@@ -61,7 +61,7 @@ export interface SysConfiguration extends SysBOEntity {
 /**
  * Website user security roles.
  */
-export enum SysExtAuthProviderType {
+export enum SysBOExtAuthProviderType {
   Microsoft = 'microsoft',
   Google = 'google',
   Facebook = 'facebook',
@@ -69,8 +69,8 @@ export enum SysExtAuthProviderType {
 }
 
 /** Company-owned configuration for one supported external authentication provider. */
-export interface SysExtAuthProvider extends SysBOEntity {
-  provider: SysExtAuthProviderType;
+export interface SysBOExtAuthProvider extends SysBOEntity {
+  provider: SysBOExtAuthProviderType;
   clientId: string;
   /** Encrypted persistence-only OAuth client secret. Never expose through API/UI. */
   clientSecretEncrypted?: string | null;
@@ -92,7 +92,7 @@ export interface SysExtAuthProvider extends SysBOEntity {
   credentialsVerifiedAt?: string | null;
 }
 
-export enum SysUserRole {
+export enum SysBOUserRole {
   Admin = 'Admin',
   Superuser = 'Superuser',
   User = 'User',
@@ -100,7 +100,7 @@ export enum SysUserRole {
 }
 
 /**
- * Source that established trust in a SysUser email address.
+ * Source that established trust in a SysBOUser email address.
  *
  * `internal` means ManatOS verified the email itself (verification link or
  * an explicitly authorized administrative/internal action). External
@@ -119,7 +119,7 @@ export function isExternalProviderKey(value: string): value is ExternalProviderK
 /**
  * Supported customer/commercial principal types.
  */
-export enum SysPrincipalType {
+export enum SysBOPrincipalType {
   Person = 'Person',
   Company = 'Company',
   Group = 'Group',
@@ -129,7 +129,7 @@ export enum SysPrincipalType {
 /**
  * Supported license states.
  */
-export enum SysLicenseStatus {
+export enum SysBOLicenseStatus {
   Active = 'Active',
   Suspended = 'Suspended',
   Expired = 'Expired',
@@ -140,7 +140,7 @@ export enum SysLicenseStatus {
  * Defines the relationship between a website user
  * and a customer/commercial principal.
  */
-export enum SysUserPrincipalRelationship {
+export enum SysBOUserPrincipalRelationship {
   Owner = 'Owner',
   Administrator = 'Administrator',
   Member = 'Member',
@@ -153,11 +153,11 @@ export enum SysUserPrincipalRelationship {
  * `name` is the unique local user-name.
  * `email` is also unique.
  *
- * A SysUser represents a website account and is deliberately
- * separated from SysPrincipal, which represents a customer or
+ * A SysBOUser represents a website account and is deliberately
+ * separated from SysBOPrincipal, which represents a customer or
  * other commercial identity.
  */
-export interface SysUser extends SysBOEntity {
+export interface SysBOUser extends SysBOEntity {
   email: string;
   emailVerified: boolean;
 
@@ -176,7 +176,7 @@ export interface SysUser extends SysBOEntity {
 
   passwordChangedAt: string | null;
 
-  role: SysUserRole;
+  role: SysBOUserRole;
 
   firstName?: string;
   lastName?: string;
@@ -186,13 +186,13 @@ export interface SysUser extends SysBOEntity {
 /**
  * Customer/commercial identity.
  *
- * A SysPrincipal does not authenticate directly.
+ * A SysBOPrincipal does not authenticate directly.
  *
- * Authentication belongs to SysUser, while SysUserPrincipal
+ * Authentication belongs to SysBOUser, while SysBOUserPrincipal
  * establishes the relationship between users and principals.
  */
-export interface SysPrincipal extends SysBOEntity {
-  principalType: SysPrincipalType;
+export interface SysBOPrincipal extends SysBOEntity {
+  principalType: SysBOPrincipalType;
 
   /**
    * Optional parent principal.
@@ -209,7 +209,7 @@ export interface SysPrincipal extends SysBOEntity {
 /**
  * Application known and managed by the platform.
  */
-export interface SysApplication extends SysBOEntity {
+export interface SysBOApplication extends SysBOEntity {
   /**
    * Unique application-specific name.
    */
@@ -225,11 +225,11 @@ export interface SysApplication extends SysBOEntity {
  * License associating a customer/commercial principal
  * with an application.
  */
-export interface SysLicense extends SysBOEntity {
+export interface SysBOLicense extends SysBOEntity {
   /** Company-owned principal receiving the entitlement. */
   principalId: string;
 
-  /** Exactly one platform is licensed by each SysLicense. */
+  /** Exactly one platform is licensed by each SysBOLicense. */
   platformId: string;
 
   /**
@@ -243,7 +243,7 @@ export interface SysLicense extends SysBOEntity {
 
   licenseKey?: string;
 
-  status: SysLicenseStatus;
+  status: SysBOLicenseStatus;
 
   validFrom?: string;
   validUntil?: string | null;
@@ -254,7 +254,7 @@ export interface SysLicense extends SysBOEntity {
 }
 
 /**
- * External authentication identity associated with a SysUser.
+ * External authentication identity associated with a SysBOUser.
  *
  * Examples of providers may include:
  *
@@ -262,10 +262,10 @@ export interface SysLicense extends SysBOEntity {
  * - Facebook
  * - other OAuth/OIDC providers added later
  *
- * A SysUser may therefore authenticate through an external
+ * A SysBOUser may therefore authenticate through an external
  * provider without necessarily having a local password.
  */
-export interface SysExternalIdentity extends SysBOEntity {
+export interface SysBOExternalIdentity extends SysBOEntity {
   userId: string;
 
   provider: string;
@@ -277,8 +277,8 @@ export interface SysExternalIdentity extends SysBOEntity {
 }
 
 /**
- * Relationship between a website SysUser and a
- * customer/commercial SysPrincipal.
+ * Relationship between a website SysBOUser and a
+ * customer/commercial SysBOPrincipal.
  *
  * This allows:
  *
@@ -287,11 +287,11 @@ export interface SysExternalIdentity extends SysBOEntity {
  * - the relationship type to describe the user's authority
  *   or association with that principal.
  */
-export interface SysUserPrincipal extends SysBOEntity {
+export interface SysBOUserPrincipal extends SysBOEntity {
   userId: string;
   principalId: string;
 
-  relationship: SysUserPrincipalRelationship;
+  relationship: SysBOUserPrincipalRelationship;
 
   /**
    * Indicates the principal that should normally become the
@@ -307,21 +307,21 @@ export interface SysUserPrincipal extends SysBOEntity {
  * a website account exists.
  *
  * This supports the scenario where a customer/principal exists
- * before the corresponding person has registered a SysUser.
+ * before the corresponding person has registered a SysBOUser.
  *
  * `tokenHash` stores only a hash.
  *
  * The raw activation token must exist only in the invitation
  * email and must never be persisted.
  */
-export interface SysUserInvitation extends SysBOEntity {
+export interface SysBOUserInvitation extends SysBOEntity {
   email: string;
 
   principalId: string;
 
-  relationship: SysUserPrincipalRelationship;
+  relationship: SysBOUserPrincipalRelationship;
 
-  requestedRole: SysUserRole;
+  requestedRole: SysBOUserRole;
 
   tokenHash: string;
 

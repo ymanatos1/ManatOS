@@ -1,13 +1,13 @@
 import 'express-session';
 
-import type { ExternalProviderKey, SysUser } from '@manatos/shared';
+import type { ExternalProviderKey, SysBOUser } from '@manatos/shared';
 
 import type { SessionErrorEntry } from '../errors/session-error-log.js';
 
 declare module 'express-session' {
   interface SessionData {
     /**
-     * Website/security SysUser associated with this browser session.
+     * Website/security SysBOUser associated with this browser session.
      */
     userId?: string;
 
@@ -72,7 +72,7 @@ declare module 'express-session' {
     errorLog?: SessionErrorEntry[];
 
     /**
-     * Currently selected SysApplication playground.
+     * Currently selected SysBOApplication playground.
      */
     activeApplicationId?: string;
 
@@ -80,7 +80,7 @@ declare module 'express-session' {
      * Temporary external-provider registration information.
      *
      * This exists only between successful Passport authentication and
-     * completion of a NEW SysUser account.
+     * completion of a NEW SysBOUser account.
      */
     /** Intent selected before redirecting to an external OAuth provider. */
     externalAuthIntent?: 'signin' | 'register';
@@ -153,13 +153,13 @@ declare module 'express-session' {
 
     /**
      * External identity waiting to be explicitly linked to an existing
-     * ManatOS SysUser.
+     * ManatOS SysBOUser.
      *
      * This is deliberately separate from pendingExternalRegistration:
      *
-     * - pendingExternalRegistration => provider belongs to a NEW SysUser
+     * - pendingExternalRegistration => provider belongs to a NEW SysBOUser
      * - pendingExternalLink         => provider must be attached to an
-     *                                  EXISTING authenticated SysUser
+     *                                  EXISTING authenticated SysBOUser
      */
     pendingExternalLink?: {
       provider: ExternalProviderKey;
@@ -179,7 +179,7 @@ declare module 'express-session' {
       lastName?: string;
 
       /**
-       * Existing SysUser discovered by provider email.
+       * Existing SysBOUser discovered by provider email.
        *
        * This does NOT authenticate that user.
        * The user must still prove ownership of the ManatOS account
@@ -194,7 +194,7 @@ declare module 'express-session' {
 
 declare global {
   namespace Express {
-    type User = SysUser;
+    type User = SysBOUser;
 
     /**
      * Additional Passport authentication information.

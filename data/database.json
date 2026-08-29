@@ -354,6 +354,111 @@
       "updatedAt": "2026-08-27T22:10:30.081Z",
       "updatedBy": "Admin",
       "valueEncrypted": null
+    },
+    "0494aeb3-69d5-4fb3-8d0e-18409d28c02a": {
+      "name": "UI_SYSBO_USERS_VIEW_MODE",
+      "value": "MetadataDriven",
+      "group": "#16 SysBO UI migration",
+      "description": "Temporary Users UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
+      "valueType": "enum",
+      "allowedValues": [
+        "CurrentEJS",
+        "MetadataDriven"
+      ],
+      "defaultValue": "CurrentEJS",
+      "restartRequired": false,
+      "editable": true,
+      "sensitive": false,
+      "enabled": true,
+      "createdAt": "2026-08-28T18:21:24.534Z",
+      "createdBy": "System",
+      "updatedAt": "2026-08-29T00:47:28.824Z",
+      "updatedBy": "Admin",
+      "valueEncrypted": null
+    },
+    "5f6ff076-5c0b-40e3-be07-44ec41768a5f": {
+      "name": "UI_SYSBO_PRINCIPALS_VIEW_MODE",
+      "value": "CurrentEJS",
+      "group": "#16 SysBO UI migration",
+      "description": "Temporary Principals UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
+      "valueType": "enum",
+      "allowedValues": [
+        "CurrentEJS",
+        "MetadataDriven"
+      ],
+      "defaultValue": "CurrentEJS",
+      "restartRequired": false,
+      "editable": true,
+      "sensitive": false,
+      "enabled": true,
+      "createdAt": "2026-08-28T18:21:24.551Z",
+      "createdBy": "System",
+      "updatedAt": "2026-08-28T21:27:23.010Z",
+      "updatedBy": "Admin",
+      "valueEncrypted": null
+    },
+    "0c2834b9-e29a-4850-a4a2-2d416b65aab1": {
+      "name": "UI_SYSBO_APPLICATIONS_VIEW_MODE",
+      "value": "MetadataDriven",
+      "group": "#16 SysBO UI migration",
+      "description": "Temporary Applications UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
+      "valueType": "enum",
+      "allowedValues": [
+        "CurrentEJS",
+        "MetadataDriven"
+      ],
+      "defaultValue": "CurrentEJS",
+      "restartRequired": false,
+      "editable": true,
+      "sensitive": false,
+      "enabled": true,
+      "createdAt": "2026-08-28T18:21:24.558Z",
+      "createdBy": "System",
+      "updatedAt": "2026-08-28T21:27:30.179Z",
+      "updatedBy": "Admin",
+      "valueEncrypted": null
+    },
+    "dd38a27f-7953-4d1b-8a43-44f458572a84": {
+      "name": "UI_SYSBO_LICENSES_VIEW_MODE",
+      "value": "MetadataDriven",
+      "group": "#16 SysBO UI migration",
+      "description": "Temporary Licenses UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
+      "valueType": "enum",
+      "allowedValues": [
+        "CurrentEJS",
+        "MetadataDriven"
+      ],
+      "defaultValue": "CurrentEJS",
+      "restartRequired": false,
+      "editable": true,
+      "sensitive": false,
+      "enabled": true,
+      "createdAt": "2026-08-28T18:21:24.564Z",
+      "createdBy": "System",
+      "updatedAt": "2026-08-28T21:27:35.138Z",
+      "updatedBy": "Admin",
+      "valueEncrypted": null
+    },
+    "5a08e8e8-f129-40ef-b48d-b96ba524d09a": {
+      "name": "UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE",
+      "value": "MetadataDriven",
+      "group": "#16 SysBO UI migration",
+      "description": "Temporary External authentication providers UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
+      "valueType": "enum",
+      "allowedValues": [
+        "CurrentEJS",
+        "MetadataDriven"
+      ],
+      "defaultValue": "CurrentEJS",
+      "restartRequired": false,
+      "editable": true,
+      "sensitive": false,
+      "enabled": true,
+      "createdAt": "2026-08-28T18:21:24.573Z",
+      "createdBy": "System",
+      "updatedAt": "2026-08-28T21:28:06.396Z",
+      "updatedBy": "Admin",
+      "valueEncrypted": null
     }
   },
   "sysLicenses": {},

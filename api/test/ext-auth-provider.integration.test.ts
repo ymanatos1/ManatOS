@@ -28,7 +28,7 @@ async function saveStored(
     .send(body);
 }
 
-describe('SysExtAuthProvider API', () => {
+describe('SysBOExtAuthProvider API', () => {
   it('stores an unverified credential pair securely and keeps it unavailable to runtime until verified', async () => {
     const context = await createTestApi();
     await seedAdmin(context.services.users);

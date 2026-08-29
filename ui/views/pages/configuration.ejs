@@ -1,6 +1,6 @@
 <%
   const groupEntries = Object.entries(configurationGroups || {});
-  const icons = { UI:'bi-window', API:'bi-braces', Mail:'bi-envelope-at', Logging:'bi-journal-text', 'Errors & diagnostics':'bi-bug', Sessions:'bi-clock-history' };
+  const icons = { UI:'bi-window', API:'bi-braces', Mail:'bi-envelope-at', Logging:'bi-journal-text', 'Errors & diagnostics':'bi-bug', Sessions:'bi-clock-history', '#16 SysBO UI migration':'bi-signpost-split' };
 %>
 <div class="alert alert-info d-flex gap-2" role="note"><i class="bi bi-shield-lock-fill"></i><div><strong>Secrets stay protected.</strong> Sensitive values are encrypted at rest and are never returned to this page. Enter a new value only when you want to replace the stored secret.</div></div>
 <div class="row g-4">
@@ -24,6 +24,7 @@
               <% } %>
               <button class="btn btn-outline-primary" type="submit"><i class="bi bi-check2"></i> Apply</button>
             </div>
+            <div class="form-text" data-config-apply-result aria-live="polite"></div>
             <% if (item.defaultValue && !item.sensitive) { %><div class="form-text">Default: <code><%= item.defaultValue %></code></div><% } %>
           </form>
         <% } %>

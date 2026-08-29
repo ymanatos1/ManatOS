@@ -1,10 +1,10 @@
 import {
   ConflictError,
-  sysConfigurationsMetadata,
+  sysBOConfigurationsMetadata,
   type SysBOCreateInput,
   type SysBOUpdateInput,
-  type SysConfiguration,
-  type SysConfigurationValueType,
+  type SysBOConfiguration,
+  type SysBOConfigurationValueType,
 } from '@manatos/shared';
 import type { AuditActor } from '../audit/audit-service.js';
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
@@ -13,7 +13,7 @@ import { GenericSysBOService } from './generic-sysbo-service.js';
 import { setRuntimeConfiguration } from '../runtime-configuration.js';
 
 export interface ConfigurationDefinition {
-  name: string; group: string; description: string; valueType: SysConfigurationValueType;
+  name: string; group: string; description: string; valueType: SysBOConfigurationValueType;
   envValue: string | number | boolean | undefined; defaultValue?: string; allowedValues?: string[];
   sensitive?: boolean; restartRequired?: boolean;
 }
@@ -21,6 +21,12 @@ export interface ConfigurationDefinition {
 export const CONFIGURATION_DEFINITIONS: ConfigurationDefinition[] = [
   { name:'UI_PAGE_SIZE_OPTIONS', group:'UI', description:'Page-size choices offered by SysBO list pages.', valueType:'string', envValue:process.env.UI_PAGE_SIZE_OPTIONS, defaultValue:'2,5,10,20,50,100' },
   { name:'UI_DEFAULT_PAGE_SIZE', group:'UI', description:'Default number of rows displayed on SysBO list pages.', valueType:'number', envValue:process.env.UI_DEFAULT_PAGE_SIZE, defaultValue:'10' },
+  // Temporary #16 migration controls. Remove after the metadata-driven SysBO UI fully replaces Current EJS.
+  { name:'UI_SYSBO_USERS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Users UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
+  { name:'UI_SYSBO_PRINCIPALS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Principals UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
+  { name:'UI_SYSBO_APPLICATIONS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Applications UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
+  { name:'UI_SYSBO_LICENSES_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Licenses UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
+  { name:'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary External authentication providers UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
   { name:'DONATIONS_SHOW', group:'Donations', description:'Show the global Donate action in the ManatOS header. The action remains disabled until donation processing is configured.', valueType:'boolean', envValue:process.env.DONATIONS_SHOW, defaultValue:'false' },
   { name:'SHOW_TECHNICAL_ERROR_DETAILS', group:'Errors & diagnostics', description:'Show technical diagnostic details in UI error dialogs.', valueType:'boolean', envValue:process.env.SHOW_TECHNICAL_ERROR_DETAILS, defaultValue:'false' },
   { name:'SESSION_ERROR_LOG_MAX_ENTRIES', group:'Sessions', description:'Maximum recent session errors retained for diagnostics.', valueType:'number', envValue:process.env.SESSION_ERROR_LOG_MAX_ENTRIES, defaultValue:'20' },
@@ -41,9 +47,9 @@ export const CONFIGURATION_DEFINITIONS: ConfigurationDefinition[] = [
 
 const seedActor: AuditActor = { userId:'system', userName:'System', source:'system' };
 
-export class SysConfigurationService extends GenericSysBOService<SysConfiguration> {
+export class SysBOConfigurationService extends GenericSysBOService<SysBOConfiguration> {
   constructor(store: InMemoryDataStore, private readonly encryption: SecretsEncryptionService) {
-    super(store, store.sysConfigurations, sysConfigurationsMetadata);
+    super(store, store.sysConfigurations, sysBOConfigurationsMetadata);
   }
 
   async seedMissing(): Promise<void> {
@@ -51,7 +57,7 @@ export class SysConfigurationService extends GenericSysBOService<SysConfiguratio
       const existing = (await this.list({ page:1, pageSize:1000, direction:'asc', filters:{ name:def.name } })).items[0];
       if (existing) continue;
       const raw = def.envValue === undefined ? def.defaultValue : String(def.envValue);
-      const input: SysBOCreateInput<SysConfiguration> = {
+      const input: SysBOCreateInput<SysBOConfiguration> = {
         name:def.name, value:def.sensitive ? null : (raw ?? null),
         ...(def.sensitive && raw ? { valueEncrypted:this.encryption.encrypt(raw) } : {}),
         group:def.group, description:def.description, valueType:def.valueType,
@@ -79,18 +85,18 @@ export class SysConfigurationService extends GenericSysBOService<SysConfiguratio
     if(!item.editable) throw new ConflictError('CONFIGURATION_READ_ONLY','Configuration is read-only.','This setting cannot be changed here.');
     if (item.sensitive && !value) return this.project(item);
     this.validate(item,value);
-    const changes:SysBOUpdateInput<SysConfiguration>= item.sensitive
+    const changes:SysBOUpdateInput<SysBOConfiguration>= item.sensitive
       ? { value:null, valueEncrypted:value ? this.encryption.encrypt(value) : null }
       : { value, valueEncrypted:null };
     const updated=await super.update(id,changes,actor);
     if (!updated.sensitive) setRuntimeConfiguration(updated.name, updated.value ?? undefined);
     return this.project(updated);
   }
-  private validate(item:SysConfiguration,value:string|null){
+  private validate(item:SysBOConfiguration,value:string|null){
     if(value===null || value==='') return;
     if(item.valueType==='number' && (!Number.isFinite(Number(value)) || Number(value)<=0)) throw new ConflictError('INVALID_CONFIGURATION_VALUE','Invalid configuration value.','Enter a positive number.');
     if(item.valueType==='boolean' && !['true','false'].includes(value)) throw new ConflictError('INVALID_CONFIGURATION_VALUE','Invalid configuration value.','Choose true or false.');
     if(item.valueType==='enum' && item.allowedValues && !item.allowedValues.includes(value)) throw new ConflictError('INVALID_CONFIGURATION_VALUE','Invalid configuration value.',`Choose one of: ${item.allowedValues.join(', ')}.`);
   }
-  private project(item:SysConfiguration){ const {valueEncrypted,...safe}=item; return {...safe, value:item.sensitive?null:item.value, secretConfigured:Boolean(item.sensitive && valueEncrypted)}; }
+  private project(item:SysBOConfiguration){ const {valueEncrypted,...safe}=item; return {...safe, value:item.sensitive?null:item.value, secretConfigured:Boolean(item.sensitive && valueEncrypted)}; }
 }

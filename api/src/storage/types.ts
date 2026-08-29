@@ -1,13 +1,13 @@
 import type {
-  SysApplication,
-  SysConfiguration,
-  SysExternalIdentity,
-  SysExtAuthProvider,
-  SysLicense,
-  SysPrincipal,
-  SysUser,
-  SysUserInvitation,
-  SysUserPrincipal,
+  SysBOApplication,
+  SysBOConfiguration,
+  SysBOExternalIdentity,
+  SysBOExtAuthProvider,
+  SysBOLicense,
+  SysBOPrincipal,
+  SysBOUser,
+  SysBOUserInvitation,
+  SysBOUserPrincipal,
 } from '@manatos/shared';
 
 /**
@@ -16,23 +16,23 @@ import type {
  * Every business-object collection is keyed by the entity GUID.
  */
 export interface DatabaseState {
-  sysUsers: Map<string, SysUser>;
+  sysUsers: Map<string, SysBOUser>;
 
-  sysPrincipals: Map<string, SysPrincipal>;
+  sysPrincipals: Map<string, SysBOPrincipal>;
 
-  sysApplications: Map<string, SysApplication>;
+  sysApplications: Map<string, SysBOApplication>;
 
-  sysConfigurations: Map<string, SysConfiguration>;
+  sysConfigurations: Map<string, SysBOConfiguration>;
 
-  sysLicenses: Map<string, SysLicense>;
+  sysLicenses: Map<string, SysBOLicense>;
 
-  sysExtAuthProviders: Map<string, SysExtAuthProvider>;
+  sysExtAuthProviders: Map<string, SysBOExtAuthProvider>;
 
-  sysExternalIdentities: Map<string, SysExternalIdentity>;
+  sysExternalIdentities: Map<string, SysBOExternalIdentity>;
 
-  sysUserPrincipals: Map<string, SysUserPrincipal>;
+  sysUserPrincipals: Map<string, SysBOUserPrincipal>;
 
-  sysUserInvitations: Map<string, SysUserInvitation>;
+  sysUserInvitations: Map<string, SysBOUserInvitation>;
 }
 
 /**
@@ -60,23 +60,23 @@ export type PersistedEntity<T extends { id: string }> = Omit<T, 'id'>;
  * On load, the JSON property name is restored as entity.id.
  */
 export interface PersistedDatabaseState {
-  sysUsers: Record<string, PersistedEntity<SysUser>>;
+  sysUsers: Record<string, PersistedEntity<SysBOUser>>;
 
-  sysPrincipals: Record<string, PersistedEntity<SysPrincipal>>;
+  sysPrincipals: Record<string, PersistedEntity<SysBOPrincipal>>;
 
-  sysApplications: Record<string, PersistedEntity<SysApplication>>;
+  sysApplications: Record<string, PersistedEntity<SysBOApplication>>;
 
-  sysConfigurations: Record<string, PersistedEntity<SysConfiguration>>;
+  sysConfigurations: Record<string, PersistedEntity<SysBOConfiguration>>;
 
-  sysLicenses: Record<string, PersistedEntity<SysLicense>>;
+  sysLicenses: Record<string, PersistedEntity<SysBOLicense>>;
 
-  sysExtAuthProviders: Record<string, PersistedEntity<SysExtAuthProvider>>;
+  sysExtAuthProviders: Record<string, PersistedEntity<SysBOExtAuthProvider>>;
 
-  sysExternalIdentities: Record<string, PersistedEntity<SysExternalIdentity>>;
+  sysExternalIdentities: Record<string, PersistedEntity<SysBOExternalIdentity>>;
 
-  sysUserPrincipals: Record<string, PersistedEntity<SysUserPrincipal>>;
+  sysUserPrincipals: Record<string, PersistedEntity<SysBOUserPrincipal>>;
 
-  sysUserInvitations: Record<string, PersistedEntity<SysUserInvitation>>;
+  sysUserInvitations: Record<string, PersistedEntity<SysBOUserInvitation>>;
 }
 
 /**

@@ -5,7 +5,7 @@ import {
   type CompanyInfo,
   type NavigationContribution,
   type PlatformInfo,
-  type SysUserRole,
+  type SysBOUserRole,
 } from '@manatos/shared';
 
 export interface AppNavMenuItem {
@@ -16,7 +16,7 @@ export interface AppNavMenuItem {
   children?: AppNavMenuItem[];
   separatorBefore?: boolean;
   requiresAuthentication?: boolean;
-  roles?: SysUserRole[];
+  roles?: SysBOUserRole[];
   action?: 'open-preferences';
   dockBottom?: boolean;
 }
@@ -133,7 +133,7 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
 }
 
 export function navigationFor(
-  role: SysUserRole | null,
+  role: SysBOUserRole | null,
   auth: boolean,
   company: CompanyInfo = MANATOS_COMPANY,
   platform: PlatformInfo = resolvePlatform(company),

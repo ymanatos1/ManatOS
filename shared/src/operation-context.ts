@@ -138,7 +138,7 @@ export class OperationScope {
  *
  * Example:
  *
- * Save SysPrincipal "John"
+ * Save SysBOPrincipal "John"
  * ├── ✓ Validate principal
  * ├── ✓ Update in-memory data
  * └── ✗ Persist data
@@ -181,8 +181,8 @@ export class OperationContext {
    * A root operation represents the main action that could be retried from
    * the UI, for example:
    *
-   * - Create SysUser
-   * - Save SysPrincipal
+   * - Create SysBOUser
+   * - Save SysBOPrincipal
    * - Change password
    * - Register account
    *

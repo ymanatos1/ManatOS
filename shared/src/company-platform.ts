@@ -1,4 +1,4 @@
-import { SysUserRole } from './domain.js';
+import { SysBOUserRole } from './domain.js';
 
 /**
  * Lightweight image reference used by shared company/platform branding.
@@ -39,7 +39,7 @@ export interface NavigationContribution {
   separatorBefore?: boolean;
   dockBottom?: boolean;
   requiresAuthentication?: boolean;
-  roles?: SysUserRole[];
+  roles?: SysBOUserRole[];
 
   /**
    * Optional capability dependency. The item is omitted unless every named
@@ -177,7 +177,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       order: 300,
       requiresAuthentication: true,
       // Preserve the existing User/Admin visibility and add Superuser.
-      roles: [SysUserRole.Admin, SysUserRole.Superuser, SysUserRole.User],
+      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User],
     },
     {
       id: 'users',
@@ -204,7 +204,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       order: 890,
       separatorBefore: true,
       requiresAuthentication: true,
-      roles: [SysUserRole.Admin],
+      roles: [SysBOUserRole.Admin],
     },
     {
       id: 'system-configuration',
@@ -214,7 +214,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/configuration',
       order: 400,
       requiresAuthentication: true,
-      roles: [SysUserRole.Admin],
+      roles: [SysBOUserRole.Admin],
       requiresEntityKeys: ['sys-configurations'],
     },
     {
@@ -225,7 +225,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-ext-auth-providers',
       order: 410,
       requiresAuthentication: true,
-      roles: [SysUserRole.Admin],
+      roles: [SysBOUserRole.Admin],
       requiresEntityKeys: ['sys-ext-auth-providers'],
     },
     {

@@ -3,12 +3,12 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 
 import {
-  SysUserRole,
-  sysApplicationsMetadata,
-  sysExtAuthProvidersMetadata,
-  sysLicensesMetadata,
-  sysPrincipalsMetadata,
-  sysUsersMetadata,
+  SysBOUserRole,
+  sysBOApplicationsMetadata,
+  sysBOExtAuthProvidersMetadata,
+  sysBOLicensesMetadata,
+  sysBOPrincipalsMetadata,
+  sysBOUsersMetadata,
 } from '@manatos/shared';
 
 import { createSysBORouter } from './http/sysbo-router.js';
@@ -23,19 +23,19 @@ import { requireInternalApiKey } from './http/internal-api-key.js';
 import { requestContextMiddleware } from './http/request-context.js';
 
 import { createServerRouter } from './http/server-router.js';
-import { createSysUserCommandRouter } from './http/sys-user-command-router.js';
+import { createSysBOUserCommandRouter } from './http/sys-user-command-router.js';
 
 import { buildOpenApiSpec } from './openapi.js';
 
 import type { InMemoryDataStore } from './storage/in-memory-data-store.js';
 
-import type { SysUserService } from './services/sys-user-service.js';
+import type { SysBOUserService } from './services/sys-user-service.js';
 
 import type {
   ExternalIdentityService,
-  SysApplicationService,
-  SysLicenseService,
-  SysPrincipalService,
+  SysBOApplicationService,
+  SysBOLicenseService,
+  SysBOPrincipalService,
   UserPrincipalService,
 } from './services/domain-services.js';
 
@@ -46,32 +46,32 @@ import { createAuthRouter } from './auth/auth-router.js';
 import { sendCommand, sendFailure, sendQuery } from './http/api-response.js';
 import { authenticatedAuditActor } from './audit/audit-service.js';
 import type { IEmailService } from './email/email-service.js';
-import type { SysConfigurationService } from './services/sys-configuration-service.js';
+import type { SysBOConfigurationService } from './services/sys-configuration-service.js';
 
 import type {
-  SysExtAuthProviderService,
-  SaveSysExtAuthProviderInput,
-  SaveStoredSysExtAuthProviderInput,
-  SaveVerifiedSysExtAuthProviderInput,
+  SysBOExtAuthProviderService,
+  SaveSysBOExtAuthProviderInput,
+  SaveStoredSysBOExtAuthProviderInput,
+  SaveVerifiedSysBOExtAuthProviderInput,
 } from './services/sys-ext-auth-provider-service.js';
 
 /**
  * Application services required by the HTTP/API layer.
  */
 export interface ApiServices {
-  users: SysUserService;
+  users: SysBOUserService;
 
   email: IEmailService;
 
-  principals: SysPrincipalService;
+  principals: SysBOPrincipalService;
 
-  applications: SysApplicationService;
+  applications: SysBOApplicationService;
 
-  configurations: SysConfigurationService;
+  configurations: SysBOConfigurationService;
 
-  licenses: SysLicenseService;
+  licenses: SysBOLicenseService;
 
-  extAuthProviders: SysExtAuthProviderService;
+  extAuthProviders: SysBOExtAuthProviderService;
 
   externalIdentities: ExternalIdentityService;
 
@@ -170,15 +170,15 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   );
 
   /**
-   * SysUser CRUD.
+   * SysBOUser CRUD.
    *
-   * SysUser creation requires specialized processing because a supplied
+   * SysBOUser creation requires specialized processing because a supplied
    * password must be validated and hashed before persistence.
    */
   app.use(
     '/api/v1/SysUsers',
     requireAuthenticated,
-    createSysUserCommandRouter(services.users),
+    createSysBOUserCommandRouter(services.users),
   );
 
   app.use(
@@ -187,7 +187,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
 
     createSysBORouter(
       services.users,
-      sysUsersMetadata,
+      sysBOUsersMetadata,
 
       authorization,
 
@@ -206,7 +206,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
 
             ...(body.role
               ? {
-                  role: body.role as SysUserRole,
+                  role: body.role as SysBOUserRole,
                 }
               : {}),
 
@@ -301,7 +301,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     '/api/v1/SysPrincipals',
     requireAuthenticated,
 
-    createSysBORouter(services.principals, sysPrincipalsMetadata, authorization),
+    createSysBORouter(services.principals, sysBOPrincipalsMetadata, authorization),
   );
 
   /** Admin-only application configuration. Sensitive values are projected safely. */
@@ -321,14 +321,14 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     '/api/v1/SysApplications',
     requireAuthenticated,
 
-    createSysBORouter(services.applications, sysApplicationsMetadata, authorization),
+    createSysBORouter(services.applications, sysBOApplicationsMetadata, authorization),
   );
 
   app.use(
     '/api/v1/SysLicenses',
     requireAuthenticated,
 
-    createSysBORouter(services.licenses, sysLicensesMetadata, authorization),
+    createSysBORouter(services.licenses, sysBOLicensesMetadata, authorization),
   );
 
   app.use(
@@ -336,10 +336,10 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     requireAuthenticated,
     createSysBORouter(
       services.extAuthProviders,
-      sysExtAuthProvidersMetadata,
+      sysBOExtAuthProvidersMetadata,
       authorization,
-      (body, actor) => services.extAuthProviders.createProvider(body as unknown as SaveSysExtAuthProviderInput, actor),
-      (id, body, actor) => services.extAuthProviders.updateProvider(id, body as unknown as SaveSysExtAuthProviderInput, actor),
+      (body, actor) => services.extAuthProviders.createProvider(body as unknown as SaveSysBOExtAuthProviderInput, actor),
+      (id, body, actor) => services.extAuthProviders.updateProvider(id, body as unknown as SaveSysBOExtAuthProviderInput, actor),
     ),
   );
 
@@ -367,7 +367,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       const subject = req.auth!;
       const actor = authenticatedAuditActor(subject.userId, subject.userName);
       const item = await services.extAuthProviders.saveVerifiedCredentials(
-        req.body as SaveVerifiedSysExtAuthProviderInput,
+        req.body as SaveVerifiedSysBOExtAuthProviderInput,
         actor,
       );
 
@@ -393,7 +393,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       const subject = req.auth!;
       const actor = authenticatedAuditActor(subject.userId, subject.userName);
       const item = await services.extAuthProviders.saveStoredCredentials(
-        req.body as SaveStoredSysExtAuthProviderInput,
+        req.body as SaveStoredSysBOExtAuthProviderInput,
         actor,
       );
 

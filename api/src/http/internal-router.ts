@@ -3,17 +3,17 @@ import { Router, type Request } from 'express';
 import {
   ForbiddenAppError,
   NotFoundError,
-  SysUserRole,
+  SysBOUserRole,
   operationContext,
   isExternalProviderKey,
   type EmailVerificationSource,
-  type SysUser,
-  type SysUserPrincipalRelationship,
+  type SysBOUser,
+  type SysBOUserPrincipalRelationship,
 } from '@manatos/shared';
 
 import type { ExternalIdentityService, UserPrincipalService } from '../services/domain-services.js';
 
-import type { SysUserService } from '../services/sys-user-service.js';
+import type { SysBOUserService } from '../services/sys-user-service.js';
 
 import { internalAuditActor } from '../audit/audit-service.js';
 
@@ -45,7 +45,7 @@ import type { IEmailService } from '../email/email-service.js';
  * operations.
  */
 export function createInternalRouter(
-  users: SysUserService,
+  users: SysBOUserService,
   ext: ExternalIdentityService,
   links: UserPrincipalService,
   email: IEmailService,
@@ -63,7 +63,7 @@ export function createInternalRouter(
    */
   router.post('/email/verification', async (req, res) => {
     const user = await users.get(String(req.body?.userId ?? ''));
-    if (!user) throw new NotFoundError('SysUser', String(req.body?.userId ?? ''));
+    if (!user) throw new NotFoundError('SysBOUser', String(req.body?.userId ?? ''));
 
     const verificationUrl = req.body?.verificationUrl
       ? String(req.body.verificationUrl)
@@ -75,7 +75,7 @@ export function createInternalRouter(
 
   router.post('/email/password-reset', async (req, res) => {
     const user = await users.get(String(req.body?.userId ?? ''));
-    if (!user) throw new NotFoundError('SysUser', String(req.body?.userId ?? ''));
+    if (!user) throw new NotFoundError('SysBOUser', String(req.body?.userId ?? ''));
 
     await email.sendPasswordResetEmail(user, String(req.body?.resetUrl ?? ''));
     sendCommand(res, 'Password reset email sent successfully.', null);
@@ -83,7 +83,7 @@ export function createInternalRouter(
 
   router.post('/email/password-changed', async (req, res) => {
     const user = await users.get(String(req.body?.userId ?? ''));
-    if (!user) throw new NotFoundError('SysUser', String(req.body?.userId ?? ''));
+    if (!user) throw new NotFoundError('SysBOUser', String(req.body?.userId ?? ''));
 
     await email.sendPasswordChangedEmail(user);
     sendCommand(res, 'Password change notification sent successfully.', null);
@@ -130,7 +130,7 @@ export function createInternalRouter(
   );
 
   /**
-   * Trusted SysUser lookup by user-name or email.
+   * Trusted SysBOUser lookup by user-name or email.
    *
    * Used before a normal authenticated API session exists, primarily for:
    *
@@ -153,7 +153,7 @@ export function createInternalRouter(
   );
 
   /**
-   * Register a SysUser following successful authentication by a trusted
+   * Register a SysBOUser following successful authentication by a trusted
    * external identity provider handled by the UI.
    *
    * The caller is never allowed to choose User/Admin here.
@@ -165,7 +165,7 @@ export function createInternalRouter(
 
     async (req, res) => {
       await operationContext.runRoot(
-        'Register external-provider SysUser',
+        'Register external-provider SysBOUser',
 
         async (scope) => {
           const name = String(req.body?.name ?? '');
@@ -196,7 +196,7 @@ export function createInternalRouter(
                *
                * external registration cannot request User/Admin.
                */
-              role: SysUserRole.Guest,
+              role: SysBOUserRole.Guest,
 
               emailVerified,
 
@@ -255,7 +255,7 @@ export function createInternalRouter(
    *
    *   Google/Facebook
    *       -> Passport in UI
-   *       -> resolved SysUser
+   *       -> resolved SysBOUser
    *       -> POST /internal/auth/session
    *       -> ordinary opaque API Bearer token
    *
@@ -279,14 +279,14 @@ export function createInternalRouter(
           const user = await users.get(userId);
 
           if (!user) {
-            throw new NotFoundError('SysUser', userId);
+            throw new NotFoundError('SysBOUser', userId);
           }
 
           /*
            * Disabled users must not receive new API sessions.
            */
           if (!user.enabled) {
-            throw new ForbiddenAppError('Disabled SysUser cannot receive an API session.');
+            throw new ForbiddenAppError('Disabled SysBOUser cannot receive an API session.');
           }
 
           /*
@@ -348,7 +348,7 @@ export function createInternalRouter(
   );
 
   /**
-   * List external authentication identities linked to a SysUser.
+   * List external authentication identities linked to a SysBOUser.
    *
    * This trusted endpoint is used by the server-rendered UI to present
    * read-only authentication information on Account/User pages.
@@ -365,7 +365,7 @@ export function createInternalRouter(
   );
 
   /**
-   * Attach an external authentication identity to a SysUser.
+   * Attach an external authentication identity to a SysBOUser.
    */
   router.post(
     '/SysUsers/:userId/external-identities',
@@ -408,7 +408,7 @@ export function createInternalRouter(
   );
 
   /**
-   * Set or replace a SysUser local password.
+   * Set or replace a SysBOUser local password.
    *
    * This internal form remains appropriate for trusted password-recovery
    * and external-account setup flows where an authenticated Bearer session
@@ -427,7 +427,7 @@ export function createInternalRouter(
   );
 
   /**
-   * Mark the SysUser email address as verified.
+   * Mark the SysBOUser email address as verified.
    */
   router.put(
     '/SysUsers/:userId/email-verified',
@@ -448,7 +448,7 @@ export function createInternalRouter(
   );
 
   /**
-   * Associate a website SysUser with a customer SysPrincipal.
+   * Associate a website SysBOUser with a customer SysBOPrincipal.
    *
    * IMPORTANT:
    *
@@ -471,7 +471,7 @@ export function createInternalRouter(
 
       const principalId = String(req.body.principalId ?? '');
 
-      const relationship = req.body.relationship as SysUserPrincipalRelationship;
+      const relationship = req.body.relationship as SysBOUserPrincipalRelationship;
 
       const isDefault = Boolean(req.body.isDefault);
 
@@ -539,7 +539,7 @@ function parseEmailVerificationSource(value: unknown): EmailVerificationSource {
 }
 
 /**
- * Creates the API-safe representation of a SysUser.
+ * Creates the API-safe representation of a SysBOUser.
  *
  * passwordHash must never leave the trusted application layer.
  *
@@ -550,7 +550,7 @@ function parseEmailVerificationSource(value: unknown): EmailVerificationSource {
  * so the UI can determine whether local password authentication exists
  * without exposing the actual hash.
  */
-function publicUser(user: SysUser) {
+function publicUser(user: SysBOUser) {
   const { passwordHash, ...safeUser } = user;
 
   return {

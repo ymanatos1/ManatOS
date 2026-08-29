@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { SysUserRole, type SysBOEntity } from '@manatos/shared';
+import { SysBOUserRole, type SysBOEntity } from '@manatos/shared';
 
 import { AuthorizationService, type AuthorizationSubject } from '../src/auth/authorization-service.js';
 
@@ -24,15 +24,15 @@ describe('AuthorizationService', () => {
     const record = entity('application-1');
 
     await expect(
-      authorization.can(action, subject(SysUserRole.Admin), 'sys-applications', record),
+      authorization.can(action, subject(SysBOUserRole.Admin), 'sys-applications', record),
     ).resolves.toBe(true);
   });
 
   it.each([
-    SysUserRole.Superuser,
-    SysUserRole.Superuser,
-    SysUserRole.User,
-    SysUserRole.Guest,
+    SysBOUserRole.Superuser,
+    SysBOUserRole.Superuser,
+    SysBOUserRole.User,
+    SysBOUserRole.Guest,
   ])('allows an authenticated %s to read SysBOs', async (role) => {
     await expect(
       authorization.can('read', subject(role), 'sys-applications'),
@@ -40,18 +40,18 @@ describe('AuthorizationService', () => {
   });
 
   it.each([
-    SysUserRole.Superuser,
-    SysUserRole.Superuser,
-    SysUserRole.User,
-    SysUserRole.Guest,
+    SysBOUserRole.Superuser,
+    SysBOUserRole.Superuser,
+    SysBOUserRole.User,
+    SysBOUserRole.Guest,
   ])('blocks generic SysBO creation for %s', async (role) => {
     await expect(
       authorization.can('create', subject(role), 'sys-applications'),
     ).resolves.toBe(false);
   });
 
-  it('allows an Admin to delete another SysUser', async () => {
-    const admin = subject(SysUserRole.Admin, 'admin-id', 'Admin');
+  it('allows an Admin to delete another SysBOUser', async () => {
+    const admin = subject(SysBOUserRole.Admin, 'admin-id', 'Admin');
     const otherUser = entity('other-user-id');
 
     await expect(
@@ -59,8 +59,8 @@ describe('AuthorizationService', () => {
     ).resolves.toBe(true);
   });
 
-  it('blocks an Admin from deleting their own SysUser', async () => {
-    const admin = subject(SysUserRole.Admin, 'admin-id', 'Admin');
+  it('blocks an Admin from deleting their own SysBOUser', async () => {
+    const admin = subject(SysBOUserRole.Admin, 'admin-id', 'Admin');
     const ownUser = entity('admin-id');
 
     await expect(
@@ -68,8 +68,8 @@ describe('AuthorizationService', () => {
     ).resolves.toBe(false);
   });
 
-  it('blocks a non-Admin from deleting their own SysUser', async () => {
-    const user = subject(SysUserRole.User, 'user-id', 'User');
+  it('blocks a non-Admin from deleting their own SysBOUser', async () => {
+    const user = subject(SysBOUserRole.User, 'user-id', 'User');
     const ownUser = entity('user-id');
 
     await expect(
@@ -77,7 +77,7 @@ describe('AuthorizationService', () => {
     ).resolves.toBe(false);
   });
 
-  it.each([SysUserRole.Superuser, SysUserRole.User, SysUserRole.Guest])(
+  it.each([SysBOUserRole.Superuser, SysBOUserRole.User, SysBOUserRole.Guest])(
     'blocks external-authentication configuration from %s',
     async (role) => {
       await expect(authorization.can('read', subject(role), 'sys-ext-auth-providers')).resolves.toBe(false);
@@ -86,12 +86,12 @@ describe('AuthorizationService', () => {
   );
 
   it('allows Admin access to external-authentication configuration', async () => {
-    await expect(authorization.can('read', subject(SysUserRole.Admin), 'sys-ext-auth-providers')).resolves.toBe(true);
-    await expect(authorization.can('create', subject(SysUserRole.Admin), 'sys-ext-auth-providers')).resolves.toBe(true);
+    await expect(authorization.can('read', subject(SysBOUserRole.Admin), 'sys-ext-auth-providers')).resolves.toBe(true);
+    await expect(authorization.can('create', subject(SysBOUserRole.Admin), 'sys-ext-auth-providers')).resolves.toBe(true);
   });
 
-  it('blocks SysUser deletion when the target record was not resolved', async () => {
-    const admin = subject(SysUserRole.Admin, 'admin-id', 'Admin');
+  it('blocks SysBOUser deletion when the target record was not resolved', async () => {
+    const admin = subject(SysBOUserRole.Admin, 'admin-id', 'Admin');
 
     await expect(
       authorization.can('delete', admin, 'sys-users'),
@@ -100,7 +100,7 @@ describe('AuthorizationService', () => {
 });
 
 function subject(
-  role: SysUserRole,
+  role: SysBOUserRole,
   userId = 'subject-id',
   userName = role,
 ): AuthorizationSubject {

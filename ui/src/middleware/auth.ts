@@ -2,7 +2,7 @@ import type { RequestHandler } from 'express';
 
 import createError from 'http-errors';
 
-import { SysUserRole } from '@manatos/shared';
+import { SysBOUserRole } from '@manatos/shared';
 
 import { clearApiSession, isApiSessionExpired } from '../auth/api-session.js';
 
@@ -44,9 +44,9 @@ export const requireSignedIn: RequestHandler = (req, res, next) => {
  * The API still performs the final authorization check.
  */
 export const requireAdmin: RequestHandler = (_req, res, next) => {
-  const user = res.locals.currentUser as import('@manatos/shared').SysUser | null;
+  const user = res.locals.currentUser as import('@manatos/shared').SysBOUser | null;
 
-  if (!user || user.role !== SysUserRole.Admin) {
+  if (!user || user.role !== SysBOUserRole.Admin) {
     next(createError(403, 'Administrator access is required.'));
 
     return;

@@ -114,7 +114,7 @@ const schema = z.object({
 
   /**
    * Allows authenticated Admin users to explicitly verify another
-   * SysUser email address through the dedicated command endpoint.
+   * SysBOUser email address through the dedicated command endpoint.
    */
   ADMIN_EMAIL_VERIFICATION_ENABLED: z
     .enum(['true', 'false'])
@@ -144,7 +144,7 @@ if (parsedConfig.API_DEFAULT_PAGE_SIZE > parsedConfig.API_MAX_PAGE_SIZE) {
   );
 }
 
-// Mail settings may be supplied by encrypted SysConfiguration after the datastore
+// Mail settings may be supplied by encrypted SysBOConfiguration after the datastore
 // initializes, so startup validation cannot require them to exist in .env.
 
 

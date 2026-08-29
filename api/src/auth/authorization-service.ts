@@ -1,11 +1,11 @@
 import {
   ForbiddenAppError,
   MCRM_PLATFORM_ID,
-  SysLicenseStatus,
-  SysUserRole,
-  type SysApplication,
+  SysBOLicenseStatus,
+  SysBOUserRole,
+  type SysBOApplication,
   type SysBOEntity,
-  type SysLicense,
+  type SysBOLicense,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
@@ -19,7 +19,7 @@ import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 export interface AuthorizationSubject {
   userId: string;
   userName: string;
-  role: SysUserRole;
+  role: SysBOUserRole;
 }
 
 export type SysBOAuthorizationAction = 'read' | 'create' | 'update' | 'delete';
@@ -28,24 +28,24 @@ export type SysBOAuthorizationAction = 'read' | 'create' | 'update' | 'delete';
  * Context provided to application-specific permission logic.
  *
  * This is deliberately separate from the generic authorization service.
- * SysApplication permissions are expected to become considerably richer
+ * SysBOApplication permissions are expected to become considerably richer
  * later.
  */
-export interface SysApplicationPermissionContext {
+export interface SysBOApplicationPermissionContext {
   action: 'update' | 'delete';
 
   subject: AuthorizationSubject;
 
-  application: SysApplication;
+  application: SysBOApplication;
 
-  relatedLicenses: SysLicense[];
+  relatedLicenses: SysBOLicense[];
 }
 
 /**
- * Extension point for future SysApplication permission logic.
+ * Extension point for future SysBOApplication permission logic.
  */
-export interface SysApplicationPermissionPolicy {
-  canModifyDefinition(context: SysApplicationPermissionContext): Promise<boolean>;
+export interface SysBOApplicationPermissionPolicy {
+  canModifyDefinition(context: SysBOApplicationPermissionContext): Promise<boolean>;
 }
 
 /**
@@ -64,10 +64,10 @@ export interface SysApplicationPermissionPolicy {
  * - subscription tier;
  * - feature flags.
  */
-export class DefaultSysApplicationPermissionPolicy implements SysApplicationPermissionPolicy {
-  async canModifyDefinition(context: SysApplicationPermissionContext): Promise<boolean> {
+export class DefaultSysBOApplicationPermissionPolicy implements SysBOApplicationPermissionPolicy {
+  async canModifyDefinition(context: SysBOApplicationPermissionContext): Promise<boolean> {
     return context.relatedLicenses.some(
-      (license) => license.enabled && license.status === SysLicenseStatus.Active,
+      (license) => license.enabled && license.status === SysBOLicenseStatus.Active,
     );
   }
 }
@@ -89,7 +89,7 @@ export class AuthorizationService {
   constructor(
     private readonly store: InMemoryDataStore,
 
-    private readonly applicationPermissions: SysApplicationPermissionPolicy = new DefaultSysApplicationPermissionPolicy(),
+    private readonly applicationPermissions: SysBOApplicationPermissionPolicy = new DefaultSysBOApplicationPermissionPolicy(),
   ) {}
 
   async assertCan(
@@ -115,24 +115,24 @@ export class AuthorizationService {
   ): Promise<boolean> {
     /** External authentication configuration contains security-sensitive settings. */
     if (sysBOKey === 'sys-ext-auth-providers') {
-      return subject.role === SysUserRole.Admin;
+      return subject.role === SysBOUserRole.Admin;
     }
 
     /**
-     * SysUser deletion is intentionally stricter than the generic
+     * SysBOUser deletion is intentionally stricter than the generic
      * relationship-based authorization rules:
      *
-     * - only Administrators may delete SysUsers;
-     * - an Administrator may never delete their own SysUser record.
+     * - only Administrators may delete SysBOUsers;
+     * - an Administrator may never delete their own SysBOUser record.
      */
     if (action === 'delete' && sysBOKey === 'sys-users') {
-      return subject.role === SysUserRole.Admin && record !== undefined && record.id !== subject.userId;
+      return subject.role === SysBOUserRole.Admin && record !== undefined && record.id !== subject.userId;
     }
 
     /**
      * Administrators may perform every other action.
      */
-    if (subject.role === SysUserRole.Admin) {
+    if (subject.role === SysBOUserRole.Admin) {
       return true;
     }
 
@@ -147,7 +147,7 @@ export class AuthorizationService {
      * Generic creation remains administrator-only.
      *
      * Public Guest registration is a separate controlled workflow and
-     * therefore does not use generic SysUser creation authorization.
+     * therefore does not use generic SysBOUser creation authorization.
      */
     if (action === 'create') {
       return false;
@@ -175,10 +175,10 @@ export class AuthorizationService {
         return this.userRelatesToPrincipal(subject.userId, record.id);
 
       case 'sys-licenses':
-        return this.userRelatesToLicense(subject.userId, record as SysLicense);
+        return this.userRelatesToLicense(subject.userId, record as SysBOLicense);
 
       case 'sys-applications':
-        return this.userMayModifyApplication(action, subject, record as SysApplication);
+        return this.userMayModifyApplication(action, subject, record as SysBOApplication);
 
       default:
         /*
@@ -216,21 +216,21 @@ export class AuthorizationService {
    * A license is related to the user when its owning principal is
    * related to that user.
    */
-  private userRelatesToLicense(userId: string, license: SysLicense): boolean {
+  private userRelatesToLicense(userId: string, license: SysBOLicense): boolean {
     return this.userRelatesToPrincipal(userId, license.principalId);
   }
 
   /**
-   * A SysApplication becomes related through a license owned by one
+   * A SysBOApplication becomes related through a license owned by one
    * of the user's related principals.
    *
    * The actual ability to alter the application definition is then
-   * delegated to the SysApplication permission policy.
+   * delegated to the SysBOApplication permission policy.
    */
   private async userMayModifyApplication(
     action: SysBOAuthorizationAction,
     subject: AuthorizationSubject,
-    application: SysApplication,
+    application: SysBOApplication,
   ): Promise<boolean> {
     if (action !== 'update' && action !== 'delete') {
       return false;
@@ -250,8 +250,8 @@ export class AuthorizationService {
     });
   }
 
-  private findUserApplicationLicenses(userId: string, applicationId: string): SysLicense[] {
-    const result: SysLicense[] = [];
+  private findUserApplicationLicenses(userId: string, applicationId: string): SysBOLicense[] {
+    const result: SysBOLicense[] = [];
 
     for (const license of this.store.sysLicenses.values()) {
       if (license.platformId !== MCRM_PLATFORM_ID) {
@@ -259,7 +259,7 @@ export class AuthorizationService {
       }
 
       // A platform-wide mCRM license (no applicationId) relates to every
-      // SysApplication. A restricted legacy/current license relates only to
+      // SysBOApplication. A restricted legacy/current license relates only to
       // its named application.
       if (license.applicationId && license.applicationId !== applicationId) {
         continue;

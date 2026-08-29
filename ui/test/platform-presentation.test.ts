@@ -34,7 +34,7 @@ describe('platform presentation', () => {
     expect($('.current-platform-badge').attr('href')).toBe('/platform/mcrm');
     expect($('.current-platform-badge').text().trim()).toBe('mCRM');
   });
-  it('shows the disabled Donate action only when DONATIONS_SHOW is enabled', async () => {
+  it('keeps Donate reactive in the DOM and applies the initial DONATIONS_SHOW visibility', async () => {
     const currentPlatform = resolvePlatform(MANATOS_COMPANY);
     const baseApp = { company: MANATOS_COMPANY, currentPlatform, version: '0.1.0' };
 
@@ -42,7 +42,9 @@ describe('platform presentation', () => {
       app: { ...baseApp, ui: { bootstrap: { ui: { donationsShow: false } } } },
       currentUser: null,
     });
-    expect(load(hiddenHtml)('.header-donate-button').length).toBe(0);
+    const hidden$ = load(hiddenHtml);
+    expect(hidden$('.header-donate-button').length).toBe(1);
+    expect(hidden$('.header-donate-button').hasClass('d-none')).toBe(true);
 
     const shownHtml = await ejs.renderFile(headerView, {
       app: { ...baseApp, ui: { bootstrap: { ui: { donationsShow: true } } } },
@@ -50,6 +52,7 @@ describe('platform presentation', () => {
     });
     const $ = load(shownHtml);
     expect($('.header-donate-button').text().trim()).toBe('Donate');
+    expect($('.header-donate-button').hasClass('d-none')).toBe(false);
     expect($('.header-donate-button').is(':disabled')).toBe(true);
   });
 

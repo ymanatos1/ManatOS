@@ -4,13 +4,13 @@ import { JsonFilePersistence } from './storage/json-file-persistence.js';
 
 import { InMemoryDataStore } from './storage/in-memory-data-store.js';
 
-import { SysUserService } from './services/sys-user-service.js';
+import { SysBOUserService } from './services/sys-user-service.js';
 
 import {
   ExternalIdentityService,
-  SysApplicationService,
-  SysLicenseService,
-  SysPrincipalService,
+  SysBOApplicationService,
+  SysBOLicenseService,
+  SysBOPrincipalService,
   UserPrincipalService,
 } from './services/domain-services.js';
 
@@ -18,8 +18,8 @@ import { createApp } from './app.js';
 import { createEmailService } from './email/email-service.js';
 import { logger } from './logging/logger.js';
 import { SecretsEncryptionService } from './security/secrets-encryption-service.js';
-import { SysExtAuthProviderService } from './services/sys-ext-auth-provider-service.js';
-import { SysConfigurationService } from './services/sys-configuration-service.js';
+import { SysBOExtAuthProviderService } from './services/sys-ext-auth-provider-service.js';
+import { SysBOConfigurationService } from './services/sys-configuration-service.js';
 
 /**
  * Application composition root.
@@ -56,14 +56,14 @@ try {
 /**
  * Construct domain/application services.
  */
-const users = new SysUserService(store);
+const users = new SysBOUserService(store);
 
 const secretsEncryption = new SecretsEncryptionService(
   config.SECRETS_ENCRYPTION_ACTIVE_KEY_ID,
   config.SECRETS_ENCRYPTION_KEY,
 );
 
-const configurations = new SysConfigurationService(store, secretsEncryption);
+const configurations = new SysBOConfigurationService(store, secretsEncryption);
 await configurations.seedMissing();
 await configurations.bindRuntime();
 
@@ -86,13 +86,13 @@ const services = {
 
   configurations,
 
-  principals: new SysPrincipalService(store),
+  principals: new SysBOPrincipalService(store),
 
-  applications: new SysApplicationService(store),
+  applications: new SysBOApplicationService(store),
 
-  licenses: new SysLicenseService(store),
+  licenses: new SysBOLicenseService(store),
 
-  extAuthProviders: new SysExtAuthProviderService(store, secretsEncryption),
+  extAuthProviders: new SysBOExtAuthProviderService(store, secretsEncryption),
 
   externalIdentities: new ExternalIdentityService(store, users),
 

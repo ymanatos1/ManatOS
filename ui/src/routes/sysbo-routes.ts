@@ -1,15 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import { Router, type Request } from 'express';
+import { Router, type Request, type Response } from 'express';
 
 import createError from 'http-errors';
 
 import {
   AppError,
   operationContext,
-  SysUserRole,
+  SysBOUserRole,
   type ExternalProviderKey,
-  type SysUser,
+  type SysBOMetadata,
+  type SysBOUIMetadata,
+  type SysBOUser,
+  type ManatOSContext,
 } from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
@@ -24,6 +27,8 @@ import { requireCsrf } from '../middleware/csrf.js';
 
 import { renderPage } from '../render.js';
 
+import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
+
 import { addSessionError } from '../errors/session-error-log.js';
 
 import { getSysBODefinition } from '../sysbo/definitions.js';
@@ -33,6 +38,13 @@ import type { SysBODefinition, SysBOEditTabDefinition } from '../sysbo/types.js'
 import { externalIdentitiesForUser } from '../auth/user-authentication.js';
 import { refreshExternalProviderRegistry } from '../auth/external-providers.js';
 import { configurePassport } from '../auth/passport.js';
+import {
+  contextFields,
+  entityContextName,
+  pageContextNode,
+  registerContextEntity,
+  setPageContext,
+} from '../context/manatos-context.js';
 
 interface ExternalAuthProviderDefinition {
   provider: string;
@@ -70,6 +82,30 @@ const pathByKey: Record<string, string> = {
 /**
  * Current generic SysBO list payload.
  */
+type SysBOUiImplementation = 'current' | 'metadata';
+
+const CURRENT_SYSBO_UI: SysBOUiImplementation = 'current';
+const METADATA_SYSBO_UI: SysBOUiImplementation = 'metadata';
+
+/**
+ * Temporary persisted #16 selector settings. These live in SysConfiguration so
+ * the comparison choice survives browser/server-session changes while the
+ * migration is in progress. Remove the settings and this map when #16 closes.
+ */
+const sysBOUiViewModeConfigurationNameByKey: Readonly<Record<string, string>> = {
+  'sys-users': 'UI_SYSBO_USERS_VIEW_MODE',
+  'sys-principals': 'UI_SYSBO_PRINCIPALS_VIEW_MODE',
+  'sys-applications': 'UI_SYSBO_APPLICATIONS_VIEW_MODE',
+  'sys-licenses': 'UI_SYSBO_LICENSES_VIEW_MODE',
+  'sys-ext-auth-providers': 'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE',
+};
+
+interface SysBOUiViewModeConfigurationItem {
+  id: string;
+  name: string;
+  value: string | null;
+}
+
 interface SysBOListData<T> {
   items: T[];
 
@@ -87,6 +123,92 @@ interface SysBOListData<T> {
 }
 
 /**
+ * Attach a SysBO list page as the root of the active logical page branch.
+ *
+ * Canonical BO/UI metadata is registered once under ctx.entities. The page
+ * keeps only runtime state that is specific to this list instance.
+ */
+function applySysBOListContext(
+  res: Response,
+  definition: SysBODefinition,
+  values: Readonly<Record<string, unknown>>,
+) {
+  const ctx = res.locals.ctx as ManatOSContext;
+  const { metadata, uiMetadata, ...pageValues } = values;
+
+  registerContextEntity(
+    ctx,
+    definition.key,
+    metadata ?? definition.boMetadata,
+    uiMetadata ?? definition.uiMetadata,
+  );
+
+  const page = pageContextNode(
+    entityContextName(definition.key),
+    'sysbo-list',
+    'list',
+    contextFields({
+      entity: entityContextName(definition.key),
+      ...pageValues,
+    }),
+  );
+
+  res.locals.ctx = setPageContext(ctx, page);
+}
+
+/**
+ * Attach a SysBO entry page beneath its logical list page.
+ *
+ * The child does not repeat entity identity or canonical metadata: lexical
+ * resolution can find `entity` in its parent list page and canonical metadata
+ * is always addressable through ctx.entities.
+ */
+function applySysBOEntryContext(
+  res: Response,
+  definition: SysBODefinition,
+  mode: string,
+  entry: Record<string, unknown> | null,
+  values: Readonly<Record<string, unknown>>,
+) {
+  const ctx = res.locals.ctx as ManatOSContext;
+  const { metadata, uiMetadata, formValues, ...pageValues } = values;
+
+  registerContextEntity(
+    ctx,
+    definition.key,
+    metadata ?? definition.boMetadata,
+    uiMetadata ?? definition.uiMetadata,
+  );
+
+  const runtimeEntryValues =
+    formValues && typeof formValues === 'object' && !Array.isArray(formValues)
+      ? (formValues as Record<string, unknown>)
+      : entry ?? {};
+
+  const entryPage = pageContextNode(
+    'entry',
+    'sysbo-entry',
+    mode,
+    contextFields({
+      ...runtimeEntryValues,
+      ...pageValues,
+    }),
+  );
+
+  const listPage = pageContextNode(
+    entityContextName(definition.key),
+    'sysbo-list',
+    'list',
+    contextFields({
+      entity: entityContextName(definition.key),
+    }),
+    entryPage,
+  );
+
+  res.locals.ctx = setPageContext(ctx, listPage);
+}
+
+/**
  * Generic metadata-driven SysBO administration routes.
  */
 export function createSysBORoutes() {
@@ -97,6 +219,35 @@ export function createSysBORoutes() {
    * per route below. The API remains the ultimate authorization boundary.
    */
   router.use(requireSignedIn);
+
+  /**
+   * Temporary #16 migration switch between the current entity-specific EJS
+   * implementation and the emerging shared metadata-driven SysBO UI engine.
+   *
+   * The choice is per SysBO and per authenticated browser session so the two
+   * implementations can be compared repeatedly without changing persisted
+   * application configuration. SysBOConfiguration is intentionally excluded.
+   */
+  router.post('/:key/ui-implementation', requireCsrf, async (req, res, next) => {
+    try {
+      const key = routeParam(req.params.key);
+      const definition = getSysBODefinition(key);
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+
+      requireSysBOUiMigrationAccess(currentUser, definition);
+
+      const requested = String(req.body.implementation ?? '').trim();
+      if (requested !== CURRENT_SYSBO_UI && requested !== METADATA_SYSBO_UI) {
+        throw createError(400, 'Unknown SysBO UI implementation.');
+      }
+
+      await persistSysBOUiImplementation(req, definition, requested);
+
+      res.redirect(safeSysBOReturnPath(req.body.returnPath, definition.key));
+    } catch (error) {
+      next(error);
+    }
+  });
 
   /**
    * List one SysBO.
@@ -114,10 +265,16 @@ export function createSysBORoutes() {
 
         const definition = getSysBODefinition(key);
 
-        const currentUser = res.locals.currentUser as SysUser | null;
+        const currentUser = res.locals.currentUser as SysBOUser | null;
 
         const permissions = uiPermissions(currentUser, definition);
         requirePermission(permissions.view, 'Read access is required for this entity.');
+
+        const uiImplementation = await sysBOUiImplementation(req, currentUser, definition);
+        if (uiImplementation === METADATA_SYSBO_UI) {
+          await renderMetadataDrivenListPlaceholder(req, res, definition, permissions);
+          return;
+        }
 
         const apiPath = apiPathFor(definition.key);
 
@@ -148,6 +305,15 @@ export function createSysBORoutes() {
           hasAnyEntries = unfiltered.data.paging.total > 0;
         }
 
+        applySysBOListContext(res, definition, {
+          metadata: definition.boMetadata,
+          uiMetadata: definition.uiMetadata,
+          items: response.data.items,
+          paging: response.data.paging,
+          query: { ...req.query, pageSize: String(response.data.paging.pageSize) },
+          permissions,
+        });
+
         await renderPage(
           res,
           'pages/bo-list',
@@ -158,6 +324,7 @@ export function createSysBORoutes() {
 
             definition,
             permissions,
+            ...sysBOUiSelectorModel(req, currentUser, definition, CURRENT_SYSBO_UI),
             hasAnyEntries,
             allExternalProvidersConfigured,
 
@@ -195,8 +362,35 @@ export function createSysBORoutes() {
     async (req, res, next) => {
       try {
         const definition = getSysBODefinition(routeParam(req.params.key));
-        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        const currentUser = res.locals.currentUser as SysBOUser | null;
+        const permissions = uiPermissions(currentUser, definition);
         requirePermission(permissions.create, 'Create access is required for this entity.');
+
+        const uiImplementation = await sysBOUiImplementation(req, currentUser, definition);
+        if (uiImplementation === METADATA_SYSBO_UI) {
+          await renderMetadataDrivenRecordPlaceholder(req, res, definition, permissions, {
+            isNew: true,
+          });
+          return;
+        }
+
+        const supplemental = await editPageSupplementalData(
+          req,
+          definition,
+          currentUser,
+          {},
+          true,
+        );
+
+        applySysBOEntryContext(res, definition, 'create', null, {
+          formValues: {},
+          metadata: definition.boMetadata,
+          uiMetadata: definition.uiMetadata,
+          permissions,
+          referenceData: supplemental.referenceData,
+          externalIdentities: supplemental.relatedData.externalIdentities,
+          activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
+        });
 
         await renderPage(
           res,
@@ -208,18 +402,13 @@ export function createSysBORoutes() {
 
             definition,
             permissions,
+            ...sysBOUiSelectorModel(req, currentUser, definition, CURRENT_SYSBO_UI),
 
             item: {},
 
             isNew: true,
 
-            ...(await editPageSupplementalData(
-              req,
-              definition,
-              res.locals.currentUser as SysUser | null,
-              {},
-              true,
-            )),
+            ...supplemental,
             ...credentialTestResultPresentation(req),
           },
         );
@@ -242,8 +431,18 @@ export function createSysBORoutes() {
         const id = routeParam(req.params.id);
 
         const definition = getSysBODefinition(key);
-        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        const currentUser = res.locals.currentUser as SysBOUser | null;
+        const permissions = uiPermissions(currentUser, definition);
         requirePermission(permissions.view, 'Read access is required for this entity.');
+
+        const uiImplementation = await sysBOUiImplementation(req, currentUser, definition);
+        if (uiImplementation === METADATA_SYSBO_UI) {
+          await renderMetadataDrivenRecordPlaceholder(req, res, definition, permissions, {
+            isNew: false,
+            recordId: id,
+          });
+          return;
+        }
 
         const apiPath = apiPathFor(definition.key);
 
@@ -255,7 +454,25 @@ export function createSysBORoutes() {
           )
         ).data;
 
-        const currentUser = res.locals.currentUser as SysUser | null;
+        const supplemental = await editPageSupplementalData(
+          req,
+          definition,
+          currentUser,
+          item,
+          false,
+        );
+        const recordMode = permissions.edit ? 'edit' : 'view';
+
+        applySysBOEntryContext(res, definition, recordMode, item, {
+          recordId: id,
+          formValues: item,
+          metadata: definition.boMetadata,
+          uiMetadata: definition.uiMetadata,
+          permissions,
+          referenceData: supplemental.referenceData,
+          externalIdentities: supplemental.relatedData.externalIdentities,
+          activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
+        });
 
         await renderPage(
           res,
@@ -269,12 +486,13 @@ export function createSysBORoutes() {
 
             definition,
             permissions,
+            ...sysBOUiSelectorModel(req, currentUser, definition, CURRENT_SYSBO_UI),
 
             item,
 
             isNew: false,
 
-            ...(await editPageSupplementalData(req, definition, currentUser, item, false)),
+            ...supplemental,
             ...credentialTestResultPresentation(req),
           },
         );
@@ -285,10 +503,10 @@ export function createSysBORoutes() {
   );
 
   /**
-   * Allow an Admin to explicitly verify another SysUser email address.
+   * Allow an Admin to explicitly verify another SysBOUser email address.
    *
    * This is intentionally a dedicated command instead of being folded into
-   * the generic SysUser edit payload. It prevents an ordinary edit/save from
+   * the generic SysBOUser edit payload. It prevents an ordinary edit/save from
    * silently changing verification state.
    */
   router.post(
@@ -309,19 +527,19 @@ export function createSysBORoutes() {
 
         const id = routeParam(req.params.id);
 
-        const currentUser = res.locals.currentUser as import('@manatos/shared').SysUser | null;
+        const currentUser = res.locals.currentUser as import('@manatos/shared').SysBOUser | null;
 
-        if (!currentUser || currentUser.role !== SysUserRole.Admin || currentUser.id === id) {
+        if (!currentUser || currentUser.role !== SysBOUserRole.Admin || currentUser.id === id) {
           throw new AppError(
             'FORBIDDEN',
-            'An Admin may use this command only for another SysUser.',
+            'An Admin may use this command only for another SysBOUser.',
             'You can verify another user account only.',
             false,
           );
         }
 
         await operationContext.runRoot(
-          'Verify SysUser email administratively',
+          'Verify SysBOUser email administratively',
 
           async (scope) => {
             scope.addContext({
@@ -357,7 +575,7 @@ export function createSysBORoutes() {
   router.post('/sys-ext-auth-providers/test-credentials', requireCsrf, async (req, res, next) => {
     try {
       const definition = getSysBODefinition('sys-ext-auth-providers');
-      const currentUser = res.locals.currentUser as SysUser | null;
+      const currentUser = res.locals.currentUser as SysBOUser | null;
       const permissions = uiPermissions(currentUser, definition);
       requirePermission(permissions.edit || permissions.create, 'Admin access is required to test provider credentials.');
 
@@ -480,7 +698,7 @@ export function createSysBORoutes() {
   router.get('/sys-ext-auth-providers/test-credentials/status', async (req, res, next) => {
     try {
       const definition = getSysBODefinition('sys-ext-auth-providers');
-      const currentUser = res.locals.currentUser as SysUser | null;
+      const currentUser = res.locals.currentUser as SysBOUser | null;
       const permissions = uiPermissions(currentUser, definition);
       requirePermission(permissions.edit || permissions.create, 'Admin access is required to inspect provider credential tests.');
 
@@ -531,7 +749,7 @@ export function createSysBORoutes() {
   router.post('/sys-ext-auth-providers/:id/remove-credentials', requireCsrf, async (req, res, next) => {
     try {
       const definition = getSysBODefinition('sys-ext-auth-providers');
-      const currentUser = res.locals.currentUser as SysUser | null;
+      const currentUser = res.locals.currentUser as SysBOUser | null;
       const permissions = uiPermissions(currentUser, definition);
       requirePermission(permissions.edit, 'Edit access is required for external authentication providers.');
       const id = routeParam(req.params.id);
@@ -564,7 +782,7 @@ export function createSysBORoutes() {
       const apiPath = apiPathFor(definition.key);
 
       const id = String(req.body.id ?? '');
-      const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+      const permissions = uiPermissions(res.locals.currentUser as SysBOUser | null, definition);
 
       try {
         requirePermission(
@@ -751,7 +969,7 @@ export function createSysBORoutes() {
             ...(await editPageSupplementalData(
               req,
               definition,
-              res.locals.currentUser as SysUser | null,
+              res.locals.currentUser as SysBOUser | null,
               {
                 ...req.body,
                 id,
@@ -782,14 +1000,14 @@ export function createSysBORoutes() {
 
         const definition = getSysBODefinition(key);
 
-        const currentUser = res.locals.currentUser as SysUser | null;
+        const currentUser = res.locals.currentUser as SysBOUser | null;
         const permissions = uiPermissions(currentUser, definition);
         requirePermission(permissions.delete, 'Delete access is required for this entity.');
 
         if (definition.key === 'sys-users' && currentUser && id === currentUser.id) {
           throw new AppError(
             'FORBIDDEN',
-            'A SysUser cannot delete its own account.',
+            'A SysBOUser cannot delete its own account.',
             'You cannot delete your own user account.',
             false,
           );
@@ -822,7 +1040,7 @@ export function createSysBORoutes() {
   );
 
   /**
-   * Open the future SysApplication playground.
+   * Open the future SysBOApplication playground.
    */
   router.get(
     '/sys-applications/:id/play',
@@ -832,7 +1050,7 @@ export function createSysBORoutes() {
         const id = routeParam(req.params.id);
 
         const definition = getSysBODefinition('sys-applications');
-        const permissions = uiPermissions(res.locals.currentUser as SysUser | null, definition);
+        const permissions = uiPermissions(res.locals.currentUser as SysBOUser | null, definition);
         requirePermission(permissions.view, 'Read access is required for applications.');
 
         req.session.activeApplicationId = id;
@@ -875,7 +1093,7 @@ export function createSysBORoutes() {
 async function editPageSupplementalData(
   req: Request,
   definition: SysBODefinition,
-  currentUser: SysUser | null,
+  currentUser: SysBOUser | null,
   item: Record<string, unknown>,
   isNew: boolean,
 ) {
@@ -913,6 +1131,8 @@ async function editPageSupplementalData(
   return {
     tabs,
     authenticationIdentities,
+    // Generic page-context bucket consumed by metadata-driven related collections.
+    relatedData: { externalIdentities: authenticationIdentities },
     referenceData: await references(req, definition),
     deletePresentation: {
       displayValue,
@@ -965,7 +1185,7 @@ function credentialTestResultPresentation(req: Request) {
  *   false         -> hidden
  *   { roles: [] } -> visible only to one of the listed roles
  *
- * Authentication is meaningful only for an existing SysUser, so it is
+ * Authentication is meaningful only for an existing SysBOUser, so it is
  * suppressed automatically on the create page.
  */
 function credentialTestForPage(
@@ -992,7 +1212,7 @@ function credentialTestForPage(
 
 function visibleEditTabs(
   definition: SysBODefinition,
-  user: SysUser | null,
+  user: SysBOUser | null,
   isNew: boolean,
 ): SysBOEditTabDefinition[] {
   const configuredTabs = definition.uiMetadata.editViewModel.tabs ?? [
@@ -1027,9 +1247,9 @@ interface UIEntityPermissions {
   delete: boolean;
 }
 
-function uiPermissions(user: SysUser | null, definition: SysBODefinition): UIEntityPermissions {
+function uiPermissions(user: SysBOUser | null, definition: SysBODefinition): UIEntityPermissions {
   const role = user?.role;
-  const allowed = (roles: SysUserRole[]) => Boolean(role && roles.includes(role));
+  const allowed = (roles: SysBOUserRole[]) => Boolean(role && roles.includes(role));
 
   return {
     view: allowed(definition.permissions.view),
@@ -1132,7 +1352,7 @@ function formPayload(
     }
 
     /**
-     * SysUser email verification is an explicit security command in the UI,
+     * SysBOUser email verification is an explicit security command in the UI,
      * not a normal editable boolean. Omitting it here prevents an ordinary
      * Save from accidentally verifying or un-verifying an account.
      */
@@ -1205,6 +1425,343 @@ function apiPathFor(key: string): string {
   }
 
   return apiPath;
+}
+
+/**
+ * SysBOConfiguration deliberately keeps its purpose-built administration page.
+ * All other UI-visible SysBO definitions are eligible for the #16 migration.
+ */
+function isMetadataDrivenUiEligible(definition: SysBODefinition): boolean {
+  return definition.key !== 'sys-configurations';
+}
+
+/**
+ * The temporary comparison switch is Admin-only so incomplete target pages are
+ * never exposed accidentally to ordinary application users during migration.
+ */
+function canSelectSysBOUiImplementation(
+  currentUser: SysBOUser | null,
+  definition: SysBODefinition,
+): boolean {
+  return currentUser?.role === SysBOUserRole.Admin && isMetadataDrivenUiEligible(definition);
+}
+
+function requireSysBOUiMigrationAccess(
+  currentUser: SysBOUser | null,
+  definition: SysBODefinition,
+): void {
+  if (!canSelectSysBOUiImplementation(currentUser, definition)) {
+    throw createError(403, 'Admin access is required to switch the SysBO UI implementation.');
+  }
+}
+
+/**
+ * Current EJS is intentionally the default. Metadata mode is honored only for
+ * an Admin who could have selected it through the migration control.
+ */
+async function sysBOUiImplementation(
+  req: Request,
+  currentUser: SysBOUser | null,
+  definition: SysBODefinition,
+): Promise<SysBOUiImplementation> {
+  if (!canSelectSysBOUiImplementation(currentUser, definition)) {
+    return CURRENT_SYSBO_UI;
+  }
+
+  const configurationName = sysBOUiViewModeConfigurationNameByKey[definition.key];
+  if (!configurationName) {
+    return CURRENT_SYSBO_UI;
+  }
+
+  const items = await loadSysBOUiViewModeConfigurations(req);
+  const setting = items.find((item) => item.name === configurationName);
+
+  return setting?.value === 'MetadataDriven' ? METADATA_SYSBO_UI : CURRENT_SYSBO_UI;
+}
+
+async function loadSysBOUiViewModeConfigurations(
+  req: Request,
+): Promise<SysBOUiViewModeConfigurationItem[]> {
+  const response = await apiClient.get<{ items: SysBOUiViewModeConfigurationItem[] }>(
+    '/api/v1/SysConfigurations',
+    apiSessionOptions(req),
+  );
+
+  return response.data.items;
+}
+
+async function persistSysBOUiImplementation(
+  req: Request,
+  definition: SysBODefinition,
+  implementation: SysBOUiImplementation,
+): Promise<void> {
+  const configurationName = sysBOUiViewModeConfigurationNameByKey[definition.key];
+  if (!configurationName) {
+    throw createError(400, 'This SysBO does not participate in the #16 UI migration.');
+  }
+
+  const items = await loadSysBOUiViewModeConfigurations(req);
+  const setting = items.find((item) => item.name === configurationName);
+  if (!setting) {
+    throw createError(500, `Missing temporary #16 SysConfiguration setting '${configurationName}'.`);
+  }
+
+  await apiClient.patch(
+    `/api/v1/SysConfigurations/${encodeURIComponent(setting.id)}/value`,
+    { value: implementation === METADATA_SYSBO_UI ? 'MetadataDriven' : 'CurrentEJS' },
+    apiSessionOptions(req),
+  );
+}
+
+function sysBOUiSelectorModel(
+  req: Request,
+  currentUser: SysBOUser | null,
+  definition: SysBODefinition,
+  implementation: SysBOUiImplementation,
+) {
+  return {
+    sysBOUiImplementation: implementation,
+    sysBOUiImplementationSelectable: canSelectSysBOUiImplementation(currentUser, definition),
+    sysBOUiReturnPath: req.originalUrl,
+    sysBOUiActiveTab: typeof req.query.tab === 'string' ? req.query.tab : '',
+  };
+}
+
+/**
+ * Keep the post-switch redirect inside the selected SysBO routes. This preserves
+ * list query strings and record URLs without accepting an arbitrary redirect.
+ */
+function safeSysBOReturnPath(value: unknown, key: string): string {
+  const candidate = String(value ?? '');
+  const prefix = `/bo/${key}`;
+
+  return candidate === prefix ||
+    candidate.startsWith(`${prefix}/`) ||
+    candidate.startsWith(`${prefix}?`)
+    ? candidate
+    : prefix;
+}
+
+/**
+ * Load the canonical, UI-neutral SysBO metadata through the public API
+ * boundary. The #16 renderer intentionally does not import entity-specific
+ * UI definitions: even the current EJS implementation is treated as an API
+ * client while the metadata-driven engine is developed.
+ */
+async function canonicalSysBOMetadata(
+  req: Request,
+  definition: SysBODefinition,
+): Promise<SysBOMetadata<Record<string, unknown>>> {
+  const apiPath = apiPathFor(definition.key);
+
+  const response = await apiClient.get<{ metadata: SysBOMetadata<Record<string, unknown>> }>(
+    `/api/v1/${apiPath}/$metadata`,
+    apiSessionOptions(req),
+  );
+
+  return response.data.metadata;
+}
+
+/** Load the framework-neutral presentation metadata for one SysBO. */
+async function canonicalSysBOUIMetadata(
+  req: Request,
+  definition: SysBODefinition,
+): Promise<SysBOUIMetadata> {
+  const apiPath = apiPathFor(definition.key);
+  const response = await apiClient.get<{ metadataUI: SysBOUIMetadata }>(
+    `/api/v1/${apiPath}/$metadata-ui`,
+    apiSessionOptions(req),
+  );
+
+  return response.data.metadataUI;
+}
+
+function metadataDrivenListQuery(
+  req: Request,
+  metadataUI: SysBOUIMetadata,
+): {
+  params: URLSearchParams;
+  pageSizeOptions: number[];
+  query: Record<string, string>;
+} {
+  const runtimeUi = uiBootstrapState().ui;
+  const pageSizeOptions = runtimeUi.pageSizeOptions.filter((value) => Number.isInteger(value) && value > 0);
+  const safePageSizeOptions = [...new Set([runtimeUi.defaultPageSize, ...pageSizeOptions])]
+    .filter((value) => Number.isInteger(value) && value > 0)
+    .sort((left, right) => left - right);
+  const requestedPageSize = Number(req.query.pageSize);
+
+  if (safePageSizeOptions.includes(requestedPageSize)) {
+    req.session.uiPageSize = requestedPageSize;
+  }
+
+  const sessionPageSize = req.session.uiPageSize;
+  const pageSize =
+    typeof sessionPageSize === 'number' && safePageSizeOptions.includes(sessionPageSize)
+      ? sessionPageSize
+      : runtimeUi.defaultPageSize;
+
+  const requestedPage = Number(req.query.page);
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  const query: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
+
+  const requestedSort = typeof req.query.sort === 'string' ? req.query.sort : '';
+  if (requestedSort && metadataUI.list.sortableFields.includes(requestedSort)) {
+    params.set('sort', requestedSort);
+    query.sort = requestedSort;
+    const direction = req.query.direction === 'desc' ? 'desc' : 'asc';
+    params.set('direction', direction);
+    query.direction = direction;
+  }
+
+  for (const field of metadataUI.list.filterFields) {
+    const value = req.query[`filter.${field}`];
+    if (typeof value === 'string' && value.trim()) {
+      params.set(`filter.${field}`, value);
+      query[`filter.${field}`] = value;
+    }
+  }
+
+  return { params, pageSizeOptions: safePageSizeOptions, query };
+}
+
+async function renderMetadataDrivenListPlaceholder(
+  req: Request,
+  res: Response,
+  definition: SysBODefinition,
+  permissions: ReturnType<typeof uiPermissions>,
+): Promise<void> {
+  const currentUser = res.locals.currentUser as SysBOUser | null;
+  const [metadata, metadataUI] = await Promise.all([
+    canonicalSysBOMetadata(req, definition),
+    canonicalSysBOUIMetadata(req, definition),
+  ]);
+  const apiPath = apiPathFor(definition.key);
+  const listQuery = metadataDrivenListQuery(req, metadataUI);
+  const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+    `/api/v1/${apiPath}?${listQuery.params.toString()}`,
+    apiSessionOptions(req),
+  );
+
+  let hasAnyEntries = response.data.paging.total > 0;
+  const filtersActive = metadataUI.list.filterFields.some(
+    (field) => Boolean(listQuery.query[`filter.${field}`]),
+  );
+
+  if (!hasAnyEntries && filtersActive) {
+    const unfiltered = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+      `/api/v1/${apiPath}?page=1&pageSize=1`,
+      apiSessionOptions(req),
+    );
+    hasAnyEntries = unfiltered.data.paging.total > 0;
+  }
+
+  let allExternalProvidersConfigured = false;
+  if (definition.key === 'sys-ext-auth-providers') {
+    const definitions = (
+      await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>(
+        '/api/v1/SysExtAuthProviders/definitions',
+        apiSessionOptions(req),
+      )
+    ).data.providers;
+    allExternalProvidersConfigured = response.data.paging.total >= definitions.length;
+  }
+
+  applySysBOListContext(res, definition, {
+    metadata,
+    metadataUI,
+    items: response.data.items,
+    paging: response.data.paging,
+    query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
+    permissions,
+  });
+
+  await renderPage(res, 'pages/metadata-driven/bo-list-metadata', {
+    title: metadata.pluralName,
+    titleIcon: definition.uiMetadata.icon,
+    definition,
+    metadata,
+    metadataUI,
+    permissions,
+    hasAnyEntries,
+    allExternalProvidersConfigured,
+    items: response.data.items,
+    paging: response.data.paging,
+    pageSizeOptions: listQuery.pageSizeOptions,
+    query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
+    ...sysBOUiSelectorModel(req, currentUser, definition, METADATA_SYSBO_UI),
+  });
+}
+
+async function renderMetadataDrivenRecordPlaceholder(
+  req: Request,
+  res: Response,
+  definition: SysBODefinition,
+  permissions: ReturnType<typeof uiPermissions>,
+  record: { isNew: boolean; recordId?: string },
+): Promise<void> {
+  const currentUser = res.locals.currentUser as SysBOUser | null;
+  const recordMode = record.isNew ? 'create' : permissions.edit ? 'edit' : 'view';
+  const [metadata, metadataUI] = await Promise.all([
+    canonicalSysBOMetadata(req, definition),
+    canonicalSysBOUIMetadata(req, definition),
+  ]);
+  const modeLabel = recordMode === 'create' ? 'Add' : recordMode === 'edit' ? 'Edit' : 'View';
+  const primaryField = metadata.fieldDefinition[metadata.primaryField];
+
+  if (!primaryField) {
+    throw createError(500, `Primary field '${metadata.primaryField}' is missing from ${metadata.key} metadata.`);
+  }
+
+  const item = record.recordId
+    ? (
+        await apiClient.get<Record<string, unknown>>(
+          `/api/v1/${apiPathFor(definition.key)}/${record.recordId}`,
+          apiSessionOptions(req),
+        )
+      ).data
+    : {};
+
+  const supplemental = await editPageSupplementalData(
+    req,
+    definition,
+    currentUser,
+    item,
+    record.isNew,
+  );
+
+  applySysBOEntryContext(
+    res,
+    definition,
+    recordMode,
+    record.isNew ? null : item,
+    {
+      recordId: record.recordId ?? null,
+      formValues: item,
+      metadata,
+      metadataUI,
+      permissions,
+      referenceData: supplemental.referenceData,
+      externalIdentities: supplemental.relatedData.externalIdentities,
+      activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
+    },
+  );
+
+  await renderPage(res, 'pages/metadata-driven/bo-entry-metadata', {
+    title: `${modeLabel} ${metadata.name}`,
+    titleIcon: definition.uiMetadata.icon,
+    definition,
+    metadata,
+    metadataUI,
+    primaryField,
+    permissions,
+    recordMode,
+    recordId: record.recordId ?? null,
+    item,
+    ...supplemental,
+    ...sysBOUiSelectorModel(req, currentUser, definition, METADATA_SYSBO_UI),
+  });
 }
 
 /**

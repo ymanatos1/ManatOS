@@ -3,13 +3,13 @@ import argon2 from 'argon2';
 import {
   AuthenticationError,
   NotFoundError,
-  SysUserRole,
+  SysBOUserRole,
   ValidationAppError,
   operationContext,
-  sysUsersMetadata,
+  sysBOUsersMetadata,
   validatePassword,
   type EmailVerificationSource,
-  type SysUser,
+  type SysBOUser,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
@@ -22,7 +22,7 @@ import {
 } from '../audit/audit-service.js';
 
 /**
- * Input accepted when creating a website SysUser.
+ * Input accepted when creating a website SysBOUser.
  *
  * Technical persistence fields such as:
  *
@@ -33,13 +33,13 @@ import {
  *
  * are not supplied directly by the caller.
  */
-export interface CreateSysUserInput {
+export interface CreateSysBOUserInput {
   name: string;
   email: string;
 
   password?: string;
 
-  role?: SysUserRole;
+  role?: SysBOUserRole;
 
   firstName?: string;
   lastName?: string;
@@ -53,13 +53,13 @@ export interface CreateSysUserInput {
 /**
  * Application service for website/security users.
  *
- * SysUser represents a website identity and is deliberately
- * separate from SysPrincipal, which represents a customer or
+ * SysBOUser represents a website identity and is deliberately
+ * separate from SysBOPrincipal, which represents a customer or
  * commercial identity.
  */
-export class SysUserService extends GenericSysBOService<SysUser> {
+export class SysBOUserService extends GenericSysBOService<SysBOUser> {
   constructor(store: InMemoryDataStore) {
-    super(store, store.sysUsers, sysUsersMetadata);
+    super(store, store.sysUsers, sysBOUsersMetadata);
   }
 
   /**
@@ -71,10 +71,10 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    * When supplied, the password is validated and stored only as an
    * Argon2id hash.
    */
-  //async createUser(input: CreateSysUserInput): Promise<SysUser> {
-  async createUser(input: CreateSysUserInput, actor: AuditActor): Promise<SysUser> {
+  //async createUser(input: CreateSysBOUserInput): Promise<SysBOUser> {
+  async createUser(input: CreateSysBOUserInput, actor: AuditActor): Promise<SysBOUser> {
     return operationContext.run(
-      'Prepare SysUser account',
+      'Prepare SysBOUser account',
 
       async (scope) => {
         /*
@@ -112,7 +112,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
             passwordHash,
             passwordChangedAt,
 
-            role: input.role ?? SysUserRole.Guest,
+            role: input.role ?? SysBOUserRole.Guest,
 
             ...(input.firstName
               ? {
@@ -145,12 +145,12 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    *
    * The caller can never choose User/Admin here.
    */
-  async registerGuest(input: Omit<CreateSysUserInput, 'role' | 'emailVerified'>): Promise<SysUser> {
+  async registerGuest(input: Omit<CreateSysBOUserInput, 'role' | 'emailVerified'>): Promise<SysBOUser> {
     return this.createUser(
       {
         ...input,
 
-        role: SysUserRole.Guest,
+        role: SysBOUserRole.Guest,
 
         emailVerified: false,
         enabled: true,
@@ -166,7 +166,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    * - unique user-name; or
    * - unique email address.
    */
-  async lookupByIdentity(identity: string): Promise<SysUser | null> {
+  async lookupByIdentity(identity: string): Promise<SysBOUser | null> {
     const byName = await this.repository.findByUnique('name', identity);
 
     if (byName) {
@@ -182,9 +182,9 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    * Accounts without passwordHash cannot authenticate locally,
    * but may still authenticate through an external provider.
    */
-  async verifyLocalCredentials(identity: string, password: string): Promise<SysUser> {
+  async verifyLocalCredentials(identity: string, password: string): Promise<SysBOUser> {
     return operationContext.run(
-      'Verify local SysUser credentials',
+      'Verify local SysBOUser credentials',
 
       async (scope) => {
         scope.addContext({
@@ -225,7 +225,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    * This also allows an externally registered account to acquire
    * local email/user-name + password authentication later.
    */
-  async setPassword(id: string, password: string, actor: AuditActor): Promise<SysUser> {
+  async setPassword(id: string, password: string, actor: AuditActor): Promise<SysBOUser> {
     const passwordHash = await this.hashPassword(password);
 
     return this.update(
@@ -255,7 +255,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
     currentPassword: string | undefined,
     newPassword: string,
     actor: AuditActor,
-  ): Promise<SysUser> {
+  ): Promise<SysBOUser> {
     const user = await this.get(userId);
 
     if (!user) {
@@ -284,11 +284,11 @@ export class SysUserService extends GenericSysBOService<SysUser> {
     id: string,
     actor: AuditActor,
     source: EmailVerificationSource = 'internal',
-  ): Promise<SysUser> {
+  ): Promise<SysBOUser> {
     const user = await this.get(id);
 
     if (!user) {
-      throw new NotFoundError('SysUser', id);
+      throw new NotFoundError('SysBOUser', id);
     }
 
     /*
@@ -317,7 +317,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
    *
    * Bootstrap occurs only when:
    *
-   * - the SysUser repository is empty;
+   * - the SysBOUser repository is empty;
    * - name is supplied;
    * - email is supplied;
    * - password is supplied.
@@ -338,7 +338,7 @@ export class SysUserService extends GenericSysBOService<SysUser> {
         emailVerified: true,
         emailVerificationSource: 'internal',
 
-        role: SysUserRole.Admin,
+        role: SysBOUserRole.Admin,
 
         description: 'Bootstrap administrator created from environment configuration.',
       },

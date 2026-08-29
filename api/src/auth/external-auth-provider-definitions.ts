@@ -1,16 +1,16 @@
-import { SysExtAuthProviderType } from '@manatos/shared';
+import { SysBOExtAuthProviderType } from '@manatos/shared';
 
 /**
  * API-owned definition of one supported external authentication provider.
  *
  * These values describe the third-party provider itself rather than one
- * persisted SysExtAuthProvider record. Keeping the catalogue on the API side
+ * persisted SysBOExtAuthProvider record. Keeping the catalogue on the API side
  * gives ManatOS one authoritative source for defaults, OAuth scopes and Admin
  * setup guidance. The user-facing strings can later become localization keys
  * without changing persisted provider records.
  */
 export interface ExternalAuthProviderDefinition {
-  provider: SysExtAuthProviderType;
+  provider: SysBOExtAuthProviderType;
   label: string;
   icon: string;
   scope: string[];
@@ -31,11 +31,11 @@ export interface ExternalAuthProviderDefinition {
 }
 
 export const externalAuthProviderDefinitions: Record<
-  SysExtAuthProviderType,
+  SysBOExtAuthProviderType,
   ExternalAuthProviderDefinition
 > = {
-  [SysExtAuthProviderType.Microsoft]: {
-    provider: SysExtAuthProviderType.Microsoft,
+  [SysBOExtAuthProviderType.Microsoft]: {
+    provider: SysBOExtAuthProviderType.Microsoft,
     label: 'Microsoft',
     icon: 'bi-microsoft',
     scope: ['openid', 'profile', 'email', 'User.Read'],
@@ -71,8 +71,8 @@ export const externalAuthProviderDefinitions: Record<
     },
   },
 
-  [SysExtAuthProviderType.Google]: {
-    provider: SysExtAuthProviderType.Google,
+  [SysBOExtAuthProviderType.Google]: {
+    provider: SysBOExtAuthProviderType.Google,
     label: 'Google',
     icon: 'bi-google',
     scope: ['profile', 'email'],
@@ -105,8 +105,8 @@ export const externalAuthProviderDefinitions: Record<
     },
   },
 
-  [SysExtAuthProviderType.Facebook]: {
-    provider: SysExtAuthProviderType.Facebook,
+  [SysBOExtAuthProviderType.Facebook]: {
+    provider: SysBOExtAuthProviderType.Facebook,
     label: 'Facebook',
     icon: 'bi-facebook',
     scope: ['email'],
@@ -137,8 +137,8 @@ export const externalAuthProviderDefinitions: Record<
     },
   },
 
-  [SysExtAuthProviderType.GitHub]: {
-    provider: SysExtAuthProviderType.GitHub,
+  [SysBOExtAuthProviderType.GitHub]: {
+    provider: SysBOExtAuthProviderType.GitHub,
     label: 'GitHub',
     icon: 'bi-github',
     scope: ['read:user', 'user:email'],
@@ -173,10 +173,10 @@ export const externalAuthProviderDefinitions: Record<
 export function externalAuthProviderDefinitionFor(
   provider: string | null | undefined,
 ): ExternalAuthProviderDefinition {
-  const normalized = String(provider ?? '').trim().toLowerCase() as SysExtAuthProviderType;
+  const normalized = String(provider ?? '').trim().toLowerCase() as SysBOExtAuthProviderType;
 
   return (
     externalAuthProviderDefinitions[normalized] ??
-    externalAuthProviderDefinitions[SysExtAuthProviderType.Microsoft]!
+    externalAuthProviderDefinitions[SysBOExtAuthProviderType.Microsoft]!
   );
 }

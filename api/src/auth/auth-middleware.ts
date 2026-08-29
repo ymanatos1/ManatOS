@@ -4,7 +4,7 @@ import {
   AuthenticationRequiredError,
   ForbiddenAppError,
   InvalidAccessTokenError,
-  SysUserRole,
+  SysBOUserRole,
 } from '@manatos/shared';
 
 import { accessTokenStore } from './access-token-store.js';
@@ -61,7 +61,7 @@ export const requireAuthenticated: RequestHandler = (req, _res, next) => {
 /**
  * Restrict an authenticated endpoint to specified roles.
  */
-export function requireRole(...roles: SysUserRole[]): RequestHandler {
+export function requireRole(...roles: SysBOUserRole[]): RequestHandler {
   return (req, _res, next) => {
     if (!req.auth || !roles.includes(req.auth.role)) {
       next(new ForbiddenAppError());
@@ -76,4 +76,4 @@ export function requireRole(...roles: SysUserRole[]): RequestHandler {
 /**
  * Convenience middleware for administrator-only operations.
  */
-export const requireAdmin = requireRole(SysUserRole.Admin);
+export const requireAdmin = requireRole(SysBOUserRole.Admin);

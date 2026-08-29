@@ -1,0 +1,61 @@
+<% if (typeof sysBOUiImplementationSelectable !== 'undefined' && sysBOUiImplementationSelectable) { %>
+  <div class="sysbo-ui-implementation-switch">
+    <div class="sysbo-ui-implementation-copy">
+      <span class="fw-semibold"><i class="bi bi-signpost-split me-1" aria-hidden="true"></i>#16 UI engine</span>
+      <span class="small text-secondary">Temporary per-entity comparison switch</span>
+    </div>
+
+    <% const metadataMode = sysBOUiImplementation === 'metadata'; %>
+    <form method="post" action="/bo/<%= definition.key %>/ui-implementation" class="sysbo-ui-engine-toggle-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="returnPath" value="<%= typeof sysBOUiReturnPath !== 'undefined' ? sysBOUiReturnPath : `/bo/${definition.key}` %>">
+      <input type="hidden" name="implementation" value="<%= metadataMode ? 'current' : 'metadata' %>">
+
+      <span class="sysbo-ui-engine-mode-label <%= metadataMode ? 'is-unselected' : 'is-selected' %>">Current EJS</span>
+
+      <button
+        type="submit"
+        class="sysbo-ui-engine-toggle <%= metadataMode ? 'is-metadata' : '' %>"
+        role="switch"
+        aria-checked="<%= metadataMode ? 'true' : 'false' %>"
+        aria-label="Switch SysBO UI engine to <%= metadataMode ? 'Current EJS' : 'Metadata-driven' %>"
+        title="Switch to <%= metadataMode ? 'Current EJS' : 'Metadata-driven' %>"
+      >
+        <span class="sysbo-ui-engine-toggle-thumb" aria-hidden="true"></span>
+      </button>
+
+      <span class="sysbo-ui-engine-mode-label <%= metadataMode ? 'is-selected' : 'is-unselected' %>">Metadata-driven</span>
+    </form>
+  </div>
+<% } %>
+
+<script>
+  (() => {
+    const selectorForm = document.querySelector('.sysbo-ui-engine-toggle-form');
+    if (!selectorForm) return;
+
+    const returnPath = selectorForm.querySelector('input[name="returnPath"]');
+
+    /**
+     * Keep the selected record tab in the URL/page context. The #16 renderer
+     * switch posts this same URL, so Current EJS and Metadata-driven reopen the
+     * equivalent tab instead of always returning to the first one.
+     */
+    document.addEventListener('shown.bs.tab', (event) => {
+      const button = event.target;
+      if (!(button instanceof HTMLElement)) return;
+
+      const target = button.getAttribute('data-bs-target') || '';
+      const match = target.match(/^#(?:bo|metadata)-(.+)-pane$/);
+      if (!match) return;
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', match[1]);
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+
+      if (returnPath) {
+        returnPath.value = `${url.pathname}${url.search}${url.hash}`;
+      }
+    });
+  })();
+</script>

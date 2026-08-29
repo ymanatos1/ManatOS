@@ -1,14 +1,14 @@
 import {
-  SysExtAuthProviderType,
-  SysLicenseStatus,
-  SysPrincipalType,
-  SysUserRole,
-  type SysApplication,
-  type SysConfiguration,
-  type SysExtAuthProvider,
-  type SysLicense,
-  type SysPrincipal,
-  type SysUser,
+  SysBOExtAuthProviderType,
+  SysBOLicenseStatus,
+  SysBOPrincipalType,
+  SysBOUserRole,
+  type SysBOApplication,
+  type SysBOConfiguration,
+  type SysBOExtAuthProvider,
+  type SysBOLicense,
+  type SysBOPrincipal,
+  type SysBOUser,
 } from './domain.js';
 import { MANATOS_COMPANY } from './company-platform.js';
 
@@ -197,18 +197,18 @@ const common: Record<string, SysBOFieldMetadata> = {
 /**
  * Website/security account metadata.
  *
- * SysUser is deliberately separated from SysPrincipal:
+ * SysBOUser is deliberately separated from SysBOPrincipal:
  *
- * - SysUser      = website identity/authentication
- * - SysPrincipal = customer/commercial identity
+ * - SysBOUser      = website identity/authentication
+ * - SysBOPrincipal = customer/commercial identity
  *
  * `name` is the unique user-name used for local sign-in.
  * `email` is also unique.
  */
-export const sysUsersMetadata: SysBOMetadata<SysUser> = {
+export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
   key: 'sys-users',
-  name: 'SysUser',
-  pluralName: 'SysUsers',
+  name: 'User',
+  pluralName: 'Users',
 
   primaryField: 'name',
 
@@ -216,7 +216,7 @@ export const sysUsersMetadata: SysBOMetadata<SysUser> = {
     ...common,
 
     /*
-     * We customize the common `name` field label for SysUser.
+     * We customize the common `name` field label for SysBOUser.
      *
      * The `!` is required because `common` is a Record and
      * noUncheckedIndexedAccess=true makes common.name potentially
@@ -302,7 +302,7 @@ export const sysUsersMetadata: SysBOMetadata<SysUser> = {
       order: 60,
 
       required: true,
-      enumValues: Object.values(SysUserRole),
+      enumValues: Object.values(SysBOUserRole),
     },
 
     firstName: {
@@ -337,14 +337,14 @@ export const sysUsersMetadata: SysBOMetadata<SysUser> = {
 /**
  * Customer/commercial identity metadata.
  *
- * Parent/child relationships belong here rather than in SysUser.
+ * Parent/child relationships belong here rather than in SysBOUser.
  * Only parentId is stored. Children are derived by querying principals
  * whose parentId refers to the current principal.
  */
-export const sysPrincipalsMetadata: SysBOMetadata<SysPrincipal> = {
+export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
   key: 'sys-principals',
-  name: 'SysPrincipal',
-  pluralName: 'SysPrincipals',
+  name: 'Principal',
+  pluralName: 'Principals',
 
   primaryField: 'name',
 
@@ -358,7 +358,7 @@ export const sysPrincipalsMetadata: SysBOMetadata<SysPrincipal> = {
       order: 20,
 
       required: true,
-      enumValues: Object.values(SysPrincipalType),
+      enumValues: Object.values(SysBOPrincipalType),
     },
 
     parentId: {
@@ -388,10 +388,10 @@ export const sysPrincipalsMetadata: SysBOMetadata<SysPrincipal> = {
  * `name` is the generic unique BO name.
  * `appName` is an additional application-specific unique identifier.
  */
-export const sysApplicationsMetadata: SysBOMetadata<SysApplication> = {
+export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
   key: 'sys-applications',
-  name: 'SysApplication',
-  pluralName: 'SysApplications',
+  name: 'Application',
+  pluralName: 'Applications',
 
   primaryField: 'name',
 
@@ -444,14 +444,14 @@ export const sysApplicationsMetadata: SysBOMetadata<SysApplication> = {
 /**
  * License metadata.
  *
- * A Company-owned license belongs to a SysPrincipal (customer identity) and
- * targets exactly one platform. An optional SysApplication restriction is
+ * A Company-owned license belongs to a SysBOPrincipal (customer identity) and
+ * targets exactly one platform. An optional SysBOApplication restriction is
  * currently meaningful for mCRM; omitting it represents platform-wide scope.
  */
-export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
+export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
   key: 'sys-licenses',
-  name: 'SysLicense',
-  pluralName: 'SysLicenses',
+  name: 'License',
+  pluralName: 'Licenses',
 
   primaryField: 'name',
 
@@ -504,7 +504,7 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
       order: 60,
 
       required: true,
-      enumValues: Object.values(SysLicenseStatus),
+      enumValues: Object.values(SysBOLicenseStatus),
     },
 
     validFrom: {
@@ -544,10 +544,10 @@ export const sysLicensesMetadata: SysBOMetadata<SysLicense> = {
 };
 
 /** Persisted application configuration metadata. */
-export const sysConfigurationsMetadata: SysBOMetadata<SysConfiguration> = {
+export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
   key: 'sys-configurations',
-  name: 'SysConfiguration',
-  pluralName: 'SysConfigurations',
+  name: 'Configuration',
+  pluralName: 'Configurations',
   primaryField: 'name',
   fieldDefinition: {
     ...common,
@@ -566,15 +566,15 @@ export const sysConfigurationsMetadata: SysBOMetadata<SysConfiguration> = {
 };
 
 /** Company-owned external OAuth/OIDC provider configuration metadata. */
-export const sysExtAuthProvidersMetadata: SysBOMetadata<SysExtAuthProvider> = {
+export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> = {
   key: 'sys-ext-auth-providers',
-  name: 'SysExtAuthProvider',
-  pluralName: 'SysExtAuthProviders',
+  name: 'External authentication provider',
+  pluralName: 'External authentication providers',
   primaryField: 'name',
   fieldDefinition: {
     ...common,
     name: { ...common.name!, label: 'Provider name', readOnly: true },
-    provider: { key: 'provider', label: 'Provider', type: 'enum', order: 20, required: true, unique: true, enumValues: Object.values(SysExtAuthProviderType) },
+    provider: { key: 'provider', label: 'Provider', type: 'enum', order: 20, required: true, unique: true, enumValues: Object.values(SysBOExtAuthProviderType) },
     clientId: { key: 'clientId', label: 'Client ID', type: 'string', order: 30, maxLength: 500 },
     clientSecretEncrypted: { key: 'clientSecretEncrypted', label: 'Client secret', type: 'string', order: 40, sensitive: true, readOnly: true, nullable: true },
     callbackPath: { key: 'callbackPath', label: 'Callback path', type: 'string', order: 50, required: true, maxLength: 300, generated: true, readOnly: true },
@@ -592,10 +592,10 @@ export const sysExtAuthProvidersMetadata: SysBOMetadata<SysExtAuthProvider> = {
  * Keys are stable hard-coded BO identifiers, NOT instance GUIDs.
  */
 export const allSysBOMetadata = {
-  [sysUsersMetadata.key]: sysUsersMetadata,
-  [sysPrincipalsMetadata.key]: sysPrincipalsMetadata,
-  [sysApplicationsMetadata.key]: sysApplicationsMetadata,
-  [sysLicensesMetadata.key]: sysLicensesMetadata,
-  [sysExtAuthProvidersMetadata.key]: sysExtAuthProvidersMetadata,
-  [sysConfigurationsMetadata.key]: sysConfigurationsMetadata,
+  [sysBOUsersMetadata.key]: sysBOUsersMetadata,
+  [sysBOPrincipalsMetadata.key]: sysBOPrincipalsMetadata,
+  [sysBOApplicationsMetadata.key]: sysBOApplicationsMetadata,
+  [sysBOLicensesMetadata.key]: sysBOLicensesMetadata,
+  [sysBOExtAuthProvidersMetadata.key]: sysBOExtAuthProvidersMetadata,
+  [sysBOConfigurationsMetadata.key]: sysBOConfigurationsMetadata,
 } as const;

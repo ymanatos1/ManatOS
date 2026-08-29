@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import createError from 'http-errors';
 
-import { AppError, MANATOS_COMPANY, validatePassword, type SysUser } from '@manatos/shared';
+import { AppError, MANATOS_COMPANY, validatePassword, type SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../api-client.js';
 
@@ -54,7 +54,19 @@ export function createPageRoutes() {
 
   router.post('/configuration/:id', requireSignedIn, requireAdmin, requireCsrf, async (req, res, next) => {
     try {
-      await apiClient.patch('/api/v1/SysConfigurations/' + encodeURIComponent(String(req.params.id ?? '')) + '/value', { value:req.body.value ?? null }, apiSessionOptions(req));
+      await apiClient.patch(
+        '/api/v1/SysConfigurations/' + encodeURIComponent(String(req.params.id ?? '')) + '/value',
+        { value:req.body.value ?? null },
+        apiSessionOptions(req),
+      );
+
+      // Configuration forms progressively enhance to an in-place Apply action.
+      // Keep the redirect fallback for browsers/clients that submit normally.
+      if (req.accepts(['json', 'html']) === 'json') {
+        res.json({ success: true });
+        return;
+      }
+
       res.redirect('/configuration?message=saved');
     } catch (error) { next(error); }
   });
@@ -109,7 +121,7 @@ export function createPageRoutes() {
    * Application design/runtime playground landing page.
    *
    * The first version is intentionally only a welcome surface. Future
-   * SysApplication selection, design and execution features will be added
+   * SysBOApplication selection, design and execution features will be added
    * behind this stable route.
    */
   router.get(
@@ -143,7 +155,7 @@ export function createPageRoutes() {
 
     async (_req, res, next) => {
       try {
-        const user = res.locals.currentUser as SysUser;
+        const user = res.locals.currentUser as SysBOUser;
         const authenticationIdentities = await externalIdentitiesForUser(user.id);
 
         await renderPage(
@@ -191,7 +203,7 @@ export function createPageRoutes() {
 
     async (req, res, next) => {
       try {
-        const user = res.locals.currentUser as SysUser;
+        const user = res.locals.currentUser as SysBOUser;
 
         await apiClient.patch(
           `/api/v1/SysUsers/${user.id}`,
@@ -232,7 +244,7 @@ export function createPageRoutes() {
         'pages/account-password',
 
         {
-          title: (res.locals.currentUser as SysUser & { hasPassword?: boolean }).hasPassword
+          title: (res.locals.currentUser as SysBOUser & { hasPassword?: boolean }).hasPassword
             ? 'Change password'
             : 'Set password',
         },
@@ -282,11 +294,11 @@ export function createPageRoutes() {
 
         const currentPassword = String(req.body.currentPassword ?? '');
         const changingPassword = Boolean(
-          (res.locals.currentUser as SysUser & { hasPassword?: boolean }).hasPassword,
+          (res.locals.currentUser as SysBOUser & { hasPassword?: boolean }).hasPassword,
         );
 
         const updated = (
-          await apiClient.put<SysUser>(
+          await apiClient.put<SysBOUser>(
             '/api/v1/auth/password',
 
             {

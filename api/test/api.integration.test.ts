@@ -104,7 +104,7 @@ describe('API integration - server and generic SysBO behavior', () => {
     });
   });
 
-  describe('SysUser administration commands', () => {
+  describe('SysBOUser administration commands', () => {
     it('allows Admin email verification only when enabled by configuration', async () => {
       const token = await loginAdmin(context.app);
 
@@ -155,7 +155,7 @@ describe('API integration - server and generic SysBO behavior', () => {
     });
   });
 
-  describe('generic SysApplication REST contract', () => {
+  describe('generic SysBOApplication REST contract', () => {
     it('rejects anonymous access with the global failure envelope', async () => {
       const response = await request(
         context.app,
@@ -261,8 +261,30 @@ describe('API integration - server and generic SysBO behavior', () => {
 
       expect(metadata.body.data.metadata).toMatchObject({
         key: 'sys-applications',
-        name: 'SysApplication',
+        name: 'Application',
       });
+
+      const metadataUI = await request(context.app)
+        .get('/api/v1/SysApplications/$metadata-ui')
+        .set('Authorization', bearer(token));
+
+      expect(metadataUI.status).toBe(200);
+      expectQuerySuccess(metadataUI.body);
+      expect(metadataUI.body.data.metadataUI).toMatchObject({
+        key: 'sys-applications',
+        list: {
+          visibleFields: ['name', 'appName', 'fullName', 'version', 'enabled'],
+          filterFields: ['name', 'appName', 'fullName'],
+        },
+      });
+
+      const combinedMetadata = await request(context.app)
+        .get('/api/v1/SysApplications?includeMetadataUI=true')
+        .set('Authorization', bearer(token));
+
+      expect(combinedMetadata.status).toBe(200);
+      expect(combinedMetadata.body.data.metadata).toMatchObject({ key: 'sys-applications' });
+      expect(combinedMetadata.body.data.metadataUI).toMatchObject({ key: 'sys-applications' });
 
       const create = await request(
         context.app,

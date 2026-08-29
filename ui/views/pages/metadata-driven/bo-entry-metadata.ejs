@@ -1,0 +1,343 @@
+<%
+  const isViewMode = recordMode === 'view';
+  const isNew = recordMode === 'create';
+  const tabs = [...metadataUI.record.tabs]
+    .filter((tab) => !(isNew && tab.id === 'authentication'))
+    .sort((left, right) => left.order - right.order);
+  const overrides = metadataUI.record.fieldOverrides || {};
+  const derivedFields = metadataUI.record.derivedFields || {};
+  const relatedCollections = metadataUI.record.relatedCollections || {};
+  // Metadata-driven pages consume related values from the canonical ctx leaf.
+  // The legacy relatedData fallback keeps save-error/current-renderer paths safe
+  // while the wider UI is progressively moved onto ctx.
+  const ctxFields = typeof ctxPage !== 'undefined' && ctxPage?.fields ? ctxPage.fields : {};
+  const ctxValue = (key) => ctxFields[key]?.value;
+  const legacyRelatedData = typeof relatedData !== 'undefined' && relatedData ? relatedData : {};
+  const ctxExternalIdentities = ctxValue('externalIdentities');
+  const pageRelatedData = {
+    ...legacyRelatedData,
+    ...(Array.isArray(ctxExternalIdentities)
+      ? { externalIdentities: ctxExternalIdentities }
+      : {}),
+  };
+  const entryActions = metadataUI.record.entryActions || [];
+  const deleteAction = entryActions.find((action) => action.kind === 'delete' && action.visible);
+  const referenceValues = referenceData || {};
+  const providerDefinitions =
+    typeof externalAuthProviderDefinitions !== 'undefined' && Array.isArray(externalAuthProviderDefinitions)
+      ? externalAuthProviderDefinitions
+      : [];
+  const availableAuthProviders = typeof authProviders !== 'undefined' && Array.isArray(authProviders)
+    ? authProviders
+    : [];
+  const ctxActiveTab = ctxValue('activeTab');
+  const requestedTabId = typeof ctxActiveTab === 'string'
+    ? ctxActiveTab
+    : (typeof sysBOUiActiveTab === 'string' ? sysBOUiActiveTab : '');
+  const activeTabId = tabs.some((tab) => tab.id === requestedTabId) ? requestedTabId : (tabs[0]?.id || '');
+  const isOwnSysUser = !isNew && definition.key === 'sys-users' && currentUser && item.id === currentUser.id;
+
+  const valueFor = (key) => {
+    if (item && item[key] !== undefined && item[key] !== null) return item[key];
+    const createDefault = overrides[key]?.createDefaultValue;
+    return isNew && createDefault !== undefined ? createDefault : '';
+  };
+
+  const fieldEditable = (field) => {
+    const override = overrides[field.key];
+    if (isViewMode || field.readOnly || field.generated || field.sensitive) return false;
+    return override?.editable !== false;
+  };
+
+  const fieldVisible = (field) => overrides[field.key]?.visible !== false;
+  const fieldLabel = (field) => overrides[field.key]?.label || field.label;
+
+  const formatValue = (value, presentation = {}) => {
+    if (value === undefined || value === null || value === '') {
+      return presentation.emptyText || '—';
+    }
+
+    if (presentation.format === 'datetime') {
+      const parsed = new Date(String(value));
+      return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
+    }
+
+    if (presentation.format === 'verification-source') {
+      if (value === 'internal') return 'ManatOS';
+      const provider = availableAuthProviders.find((candidate) => candidate.key === value);
+      return provider?.label || String(value);
+    }
+
+    return String(value);
+  };
+
+  const derivedStateFor = (derived, source = item) => {
+    const sourceValue = source?.[derived.sourceField];
+    return (derived.states || []).find((state) => state.equals === sourceValue);
+  };
+
+  const providerFor = (providerKey) =>
+    availableAuthProviders.find((candidate) => candidate.key === providerKey);
+
+  const collectionValue = (row, field) => {
+    if (field.derived) {
+      const state = derivedStateFor(field.derived, row);
+      return { kind: 'derived', state, raw: row?.[field.derived.sourceField] };
+    }
+
+    return { kind: 'field', raw: row?.[field.sourceField || field.key] };
+  };
+%>
+
+<section class="content-card">
+  <form>
+    <ul class="nav nav-tabs entity-tabs" role="tablist" aria-label="Metadata-driven record tabs">
+      <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
+        <% const tab = tabs[tabIndex]; %>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link <%= tab.id === activeTabId ? 'active' : '' %>"
+            id="metadata-<%= tab.id %>-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#metadata-<%= tab.id %>-pane"
+            type="button"
+            role="tab"
+            aria-controls="metadata-<%= tab.id %>-pane"
+            aria-selected="<%= tab.id === activeTabId ? 'true' : 'false' %>"
+          >
+            <% if (tab.icon) { %>
+              <i class="bi bi-<%= tab.icon %> me-1" aria-hidden="true"></i>
+            <% } %>
+            <%= tab.label %>
+          </button>
+        </li>
+      <% } %>
+    </ul>
+
+    <div class="tab-content entity-tab-content">
+      <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
+        <% const tab = tabs[tabIndex]; %>
+        <div
+          class="tab-pane fade <%= tab.id === activeTabId ? 'show active' : '' %>"
+          id="metadata-<%= tab.id %>-pane"
+          role="tabpanel"
+          aria-labelledby="metadata-<%= tab.id %>-tab"
+          tabindex="0"
+        >
+          <% if (tab.layout === 'summary') { %>
+            <div class="account-summary-grid authentication-summary-grid">
+              <% for (const key of tab.fields) { %>
+                <% const derived = derivedFields[key]; %>
+                <% const collection = relatedCollections[key]; %>
+                <% const field = metadata.fieldDefinition[key]; %>
+                <% if (collection) continue; %>
+
+                <% if (derived) { %>
+                  <% const state = derivedStateFor(derived); %>
+                  <% const rawValue = valueFor(derived.sourceField); %>
+                  <div class="account-summary-label"><% if (derived.icon) { %><i class="bi bi-<%= derived.icon %> me-1" aria-hidden="true"></i><% } %><%= derived.label %></div>
+                  <div class="account-summary-value">
+                    <% if (state) { %>
+                      <% if (state.icon) { %>
+                        <span class="status-value <%= state.tone === 'success' ? 'status-positive' : 'status-neutral' %>">
+                          <i class="bi bi-<%= state.icon %>" aria-hidden="true"></i>
+                          <%= state.label %>
+                        </span>
+                      <% } else { %>
+                        <span class="badge text-bg-<%= state.tone || 'secondary' %>"><%= state.label %></span>
+                      <% } %>
+                    <% } else { %>
+                      <span class="text-secondary"><%= formatValue(rawValue, derived) %></span>
+                    <% } %>
+                  </div>
+                <% } else if (field && fieldVisible(field) && !field.sensitive) { %>
+                  <% const presentation = overrides[key]?.presentation || {}; %>
+                  <div class="account-summary-label"><%= fieldLabel(field) %></div>
+                  <div class="account-summary-value">
+                    <% const rendered = formatValue(valueFor(key), presentation); %>
+                    <% if (rendered === (presentation.emptyText || '—')) { %>
+                      <span class="text-secondary"><%= rendered %></span>
+                    <% } else { %>
+                      <%= rendered %>
+                    <% } %>
+                  </div>
+                <% } %>
+              <% } %>
+            </div>
+
+            <% for (const key of tab.fields) { %>
+              <% const collection = relatedCollections[key]; %>
+              <% if (!collection) continue; %>
+              <% const rows = Array.isArray(pageRelatedData[collection.sourceKey]) ? pageRelatedData[collection.sourceKey] : []; %>
+
+              <div class="authentication-identities mt-4">
+                <h3 class="h6 mb-3">
+                  <% if (collection.icon) { %><i class="bi bi-<%= collection.icon %> me-1" aria-hidden="true"></i><% } %>
+                  <%= collection.label %>
+                </h3>
+
+                <% if (rows.length > 0) { %>
+                  <div class="authentication-identity-list">
+                    <% for (const row of rows) { %>
+                      <div class="authentication-identity-row">
+                        <% for (const collectionField of collection.fields) { %>
+                          <% const renderedValue = collectionValue(row, collectionField); %>
+                          <div>
+                            <% if (renderedValue.kind === 'derived') { %>
+                              <% if (renderedValue.state) { %>
+                                <span class="badge text-bg-<%= renderedValue.state.tone || 'secondary' %>">
+                                  <% if (renderedValue.state.icon) { %><i class="bi bi-<%= renderedValue.state.icon %> me-1" aria-hidden="true"></i><% } %>
+                                  <%= renderedValue.state.label %>
+                                </span>
+                              <% } else { %>
+                                <span class="text-secondary"><%= collectionField.derived.emptyText || '—' %></span>
+                              <% } %>
+                            <% } else if (collectionField.format === 'auth-provider') { %>
+                              <% const provider = providerFor(renderedValue.raw); %>
+                              <span class="authentication-provider">
+                                <i class="bi <%= provider?.icon || 'bi-box-arrow-in-right' %>" aria-hidden="true"></i>
+                                <strong><%= provider?.label || renderedValue.raw || '—' %></strong>
+                              </span>
+                            <% } else { %>
+                              <%= renderedValue.raw || '—' %>
+                            <% } %>
+                          </div>
+                        <% } %>
+                      </div>
+                    <% } %>
+                  </div>
+                <% } else { %>
+                  <div class="text-secondary small"><%= collection.emptyText || 'No related entries.' %></div>
+                <% } %>
+              </div>
+            <% } %>
+          <% } else { %>
+            <div class="row g-3">
+              <% for (const key of tab.fields) { %>
+                <% const field = metadata.fieldDefinition[key]; %>
+                <% if (!field || !fieldVisible(field) || field.sensitive) continue; %>
+                <% const editable = fieldEditable(field); %>
+                <% const value = valueFor(key); %>
+
+                <div class="col-md-6">
+                  <label class="form-label" for="metadata-field-<%= key %>"><%= fieldLabel(field) %></label>
+
+                  <% if (field.type === 'boolean') { %>
+                    <div class="form-check form-switch">
+                      <input
+                        class="form-check-input"
+                        id="metadata-field-<%= key %>"
+                        type="checkbox"
+                        name="<%= key %>"
+                        <%= value === true ? 'checked' : '' %>
+                        <%= editable ? '' : 'disabled' %>
+                      >
+                    </div>
+                  <% } else if (field.type === 'enum') { %>
+                    <select
+                      class="form-select"
+                      id="metadata-field-<%= key %>"
+                      name="<%= key %>"
+                      <%= field.required ? 'required' : '' %>
+                      <%= editable ? '' : 'disabled' %>
+                    >
+                      <option value="">Choose...</option>
+                      <% for (const option of field.enumValues || []) { %>
+                        <% const providerDefinition = definition.key === 'sys-ext-auth-providers' && key === 'provider' ? providerDefinitions.find((candidate) => candidate.provider === option) : null; %>
+                        <option value="<%= option %>" <%= value === option ? 'selected' : '' %>><%= providerDefinition?.label || option %></option>
+                      <% } %>
+                    </select>
+                  <% } else if (field.type === 'reference') { %>
+                    <select
+                      class="form-select"
+                      id="metadata-field-<%= key %>"
+                      name="<%= key %>"
+                      <%= field.required ? 'required' : '' %>
+                      <%= editable ? '' : 'disabled' %>
+                    >
+                      <option value=""><%= field.required ? 'Choose...' : 'None' %></option>
+                      <% for (const reference of referenceValues[key] || []) { %>
+                        <option value="<%= reference.id %>" <%= value === reference.id ? 'selected' : '' %>><%= reference.name %></option>
+                      <% } %>
+                    </select>
+                  <% } else { %>
+                    <input
+                      class="form-control"
+                      id="metadata-field-<%= key %>"
+                      name="<%= key %>"
+                      type="<%= field.type === 'email' ? 'email' : field.type === 'number' ? 'number' : field.type === 'date' ? 'datetime-local' : 'text' %>"
+                      value="<%= value %>"
+                      <%= field.required ? 'required' : '' %>
+                      <% if (field.minLength !== undefined) { %>minlength="<%= field.minLength %>"<% } %>
+                      <% if (field.maxLength !== undefined) { %>maxlength="<%= field.maxLength %>"<% } %>
+                      <%= editable ? '' : 'readonly' %>
+                    >
+                  <% } %>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+
+          <% if (tab.id === 'secrets') { %>
+            <div class="small text-secondary mt-3">
+              The canonical metadata exposes stored-secret state but deliberately has no client-secret field. A write-only secret/control contract is still required before this tab can reproduce the Current EJS credential editor exactly.
+            </div>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <% if (!isNew && permissions.delete && deleteAction) { %>
+          <button
+            class="btn btn-danger"
+            type="button"
+            <%= isOwnSysUser ? 'disabled' : '' %>
+            <% if (!isOwnSysUser) { %>
+              data-bs-toggle="modal"
+              data-bs-target="#deleteEntryModal"
+            <% } %>
+            <% if (isOwnSysUser) { %>
+              title="You cannot delete your own user account."
+            <% } %>
+          >
+            <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
+            <%= deleteAction.label %>
+          </button>
+        <% } %>
+      </div>
+
+      <div class="d-flex gap-2">
+        <a class="btn btn-secondary" href="/bo/<%= definition.key %>">
+          <i class="bi bi-x-circle me-1"></i>
+          <%= isViewMode ? 'Back' : 'Cancel' %>
+        </a>
+
+        <% if (!isViewMode) { %>
+          <button
+            class="btn btn-primary"
+            type="button"
+            disabled
+            title="Save remains disabled until the metadata contract covers all specialized form behavior."
+          >
+            <i class="bi bi-check-circle me-1"></i>
+            Save
+          </button>
+        <% } %>
+      </div>
+    </div>
+  </form>
+</section>
+
+<% if (!isNew && permissions.delete && deleteAction) { %>
+  <%- include('../../popups/messages/bo-edit-confirmations', {
+    isNew,
+    permissions,
+    isOwnSysUser,
+    definition,
+    item,
+    csrfToken,
+    deletePresentation
+  }) %>
+<% } %>

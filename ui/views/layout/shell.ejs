@@ -119,6 +119,7 @@
 
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/layout.css">
+  <% if (app.ui?.debugTools) { %><link rel="stylesheet" href="/css/debugger/ctx-debug.css"><% } %>
   <link rel="stylesheet" href="/css/ui.css">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
@@ -305,6 +306,11 @@
         </div>
 
 
+        <% if (typeof sysBOUiImplementationSelectable !== 'undefined' && sysBOUiImplementationSelectable) { %>
+          <%- include('../partials/metadata-driven/sysbo-ui-implementation-selector') %>
+        <% } %>
+
+
         <div class="workspace-titlebar">
 
           <div class="workspace-title-copy">
@@ -395,6 +401,11 @@
 
       <% } %>
 
+
+      <% if (app.ui?.debugTools) { %>
+        <%- include('../partials/debugger/ctx-debug') %>
+      <% } %>
+
     </main>
 
 
@@ -418,6 +429,10 @@
 
   <script src="/js/prefs.js"></script>
   <script src="/js/shell.js"></script>
+  <script src="/js/ui-bootstrap-runtime.js"></script>
+  <% if (app.ui?.debugTools) { %>
+    <script src="/js/debugger/ctx-debug.js"></script>
+  <% } %>
   <script src="/js/lists.js"></script>
   <script src="/js/busy.js"></script>
   <script src="/js/forms.js"></script>

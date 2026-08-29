@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { AppError, SysUserRole, type SysUser } from '@manatos/shared';
+import { AppError, SysBOUserRole, type SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../src/api-client.js';
 import { createSysBORoutes } from '../src/routes/sysbo-routes.js';
@@ -16,15 +16,15 @@ import { getSysBODefinition } from '../src/sysbo/definitions.js';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const boEditView = resolve(testDirectory, '../views/pages/bo-edit.ejs');
 
-describe('UI integration - SysUser delete behavior', () => {
+describe('UI integration - SysBOUser delete behavior', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it('renders the own-account Delete entry button disabled and without modal wiring', async () => {
-    const currentUser = sysUser('admin-id', SysUserRole.Admin, 'Admin');
+    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
 
-    const $ = load(await renderSysUserEdit(currentUser, currentUser));
+    const $ = load(await renderSysBOUserEdit(currentUser, currentUser));
     const deleteButton = deleteEntryButton($);
 
     expect(deleteButton.length).toBe(1);
@@ -35,11 +35,11 @@ describe('UI integration - SysUser delete behavior', () => {
     expect($('#deleteEntryModal').length).toBe(0);
   });
 
-  it('renders Delete entry enabled with a confirmation modal for another SysUser', async () => {
-    const currentUser = sysUser('admin-id', SysUserRole.Admin, 'Admin');
-    const target = sysUser('other-id', SysUserRole.User, 'OtherUser');
+  it('renders Delete entry enabled with a confirmation modal for another SysBOUser', async () => {
+    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
+    const target = sysUser('other-id', SysBOUserRole.User, 'OtherUser');
 
-    const $ = load(await renderSysUserEdit(currentUser, target));
+    const $ = load(await renderSysBOUserEdit(currentUser, target));
     const deleteButton = deleteEntryButton($);
 
     expect(deleteButton.length).toBe(1);
@@ -51,11 +51,11 @@ describe('UI integration - SysUser delete behavior', () => {
   });
 
   it('does not render Delete entry when the current role has no delete permission', async () => {
-    const currentUser = sysUser('user-id', SysUserRole.User, 'NormalUser');
-    const target = sysUser('other-id', SysUserRole.User, 'OtherUser');
+    const currentUser = sysUser('user-id', SysBOUserRole.User, 'NormalUser');
+    const target = sysUser('other-id', SysBOUserRole.User, 'OtherUser');
 
     const $ = load(
-      await renderSysUserEdit(currentUser, target, {
+      await renderSysBOUserEdit(currentUser, target, {
         view: true,
         create: false,
         edit: false,
@@ -67,17 +67,17 @@ describe('UI integration - SysUser delete behavior', () => {
     expect($('#deleteEntryModal').length).toBe(0);
   });
 
-  it('does not render Delete entry on a new SysUser form', async () => {
-    const currentUser = sysUser('admin-id', SysUserRole.Admin, 'Admin');
+  it('does not render Delete entry on a new SysBOUser form', async () => {
+    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
 
-    const $ = load(await renderSysUserEdit(currentUser, {}, undefined, true));
+    const $ = load(await renderSysBOUserEdit(currentUser, {}, undefined, true));
 
     expect(deleteEntryButton($).length).toBe(0);
     expect($('#deleteEntryModal').length).toBe(0);
   });
 
   it('rejects a manually posted own-account delete before calling the API', async () => {
-    const currentUser = sysUser('admin-id', SysUserRole.Admin, 'Admin');
+    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
     const deleteSpy = vi.spyOn(apiClient, 'delete');
 
     const response = await request(routeHarness(currentUser))
@@ -90,8 +90,8 @@ describe('UI integration - SysUser delete behavior', () => {
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 
-  it('allows an Admin UI route to delete another SysUser and redirects to the list', async () => {
-    const currentUser = sysUser('admin-id', SysUserRole.Admin, 'Admin');
+  it('allows an Admin UI route to delete another SysBOUser and redirects to the list', async () => {
+    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
     const deleteSpy = vi.spyOn(apiClient, 'delete').mockResolvedValue({
       success: true,
       message: 'Deleted.',
@@ -111,7 +111,7 @@ describe('UI integration - SysUser delete behavior', () => {
   });
 
   it('rejects a non-Admin UI delete route before calling the API', async () => {
-    const currentUser = sysUser('user-id', SysUserRole.User, 'NormalUser');
+    const currentUser = sysUser('user-id', SysBOUserRole.User, 'NormalUser');
     const deleteSpy = vi.spyOn(apiClient, 'delete');
 
     const response = await request(routeHarness(currentUser))
@@ -124,7 +124,7 @@ describe('UI integration - SysUser delete behavior', () => {
   });
 
   it('rejects a delete request with an invalid CSRF token before calling the API', async () => {
-    const currentUser = sysUser('admin-id', SysUserRole.Admin, 'Admin');
+    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
     const deleteSpy = vi.spyOn(apiClient, 'delete');
 
     const response = await request(routeHarness(currentUser))
@@ -137,8 +137,8 @@ describe('UI integration - SysUser delete behavior', () => {
   });
 });
 
-async function renderSysUserEdit(
-  currentUser: SysUser,
+async function renderSysBOUserEdit(
+  currentUser: SysBOUser,
   item: Record<string, unknown>,
   permissions = {
     view: true,
@@ -176,7 +176,7 @@ function deleteEntryButton($: ReturnType<typeof load>) {
   );
 }
 
-function routeHarness(currentUser: SysUser) {
+function routeHarness(currentUser: SysBOUser) {
   const app = express();
 
   app.use(express.urlencoded({ extended: true }));
@@ -224,7 +224,7 @@ function routeHarness(currentUser: SysUser) {
   return app;
 }
 
-function sysUser(id: string, role: SysUserRole, name: string): SysUser {
+function sysUser(id: string, role: SysBOUserRole, name: string): SysBOUser {
   return {
     id,
     name,

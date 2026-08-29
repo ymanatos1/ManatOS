@@ -1,0 +1,370 @@
+/* =========================================================================
+   Development debugger
+   ========================================================================= */
+.debug-panel {
+  grid-area: debug;
+  min-width: 0;
+  height: calc(100vh - var(--top-header-height, 0px));
+  max-height: 100vh;
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  border-left: 1px solid var(--manatos-border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0.9rem 0.65rem;
+  border-bottom: 1px solid var(--manatos-border);
+}
+
+.debug-panel-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.debug-panel-toolbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--manatos-border);
+  background: #fff;
+}
+
+.debug-panel-hint {
+  font-size: 0.72rem;
+  color: #6c757d;
+}
+
+.ctx-debug-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.55rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.ctx-debug-node {
+  white-space: nowrap;
+}
+
+.ctx-debug-row {
+  display: flex;
+  align-items: center;
+  min-height: 1.45rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ctx-debug-row:hover,
+.ctx-debug-row.is-selected {
+  background: rgba(13, 110, 253, 0.09);
+}
+
+.ctx-debug-toggle {
+  width: 1.1rem;
+  flex: 0 0 1.1rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #5f6b7a;
+}
+
+.ctx-debug-key {
+  font-weight: 600;
+}
+
+.ctx-debug-expand-action {
+  margin-left: auto;
+  padding-left: 0.75rem;
+  padding-right: 0.2rem;
+  color: #52606d;
+  font-weight: 700;
+}
+
+.ctx-debug-derived {
+  font-style: italic;
+}
+
+.ctx-debug-value {
+  margin-left: 0.4rem;
+  color: #52606d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ctx-debug-children {
+  margin-left: 1rem;
+}
+
+.header-debug-button {
+  margin-inline: 0.7rem;
+}
+
+/* Compact one-line debugger identity plus debugger-specific command strip. */
+.debug-panel-heading {
+  min-height: 3rem;
+  padding-block: 0.65rem;
+}
+
+.debug-panel-heading > strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.debug-panel-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border-bottom: 1px solid var(--manatos-border);
+  background: #fff;
+}
+
+.debug-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #52606d;
+}
+
+.debug-tool-button:hover:not(:disabled),
+.debug-tool-button.is-active {
+  border-color: #b8c7d9;
+  background: #eef5ff;
+  color: #0d6efd;
+}
+
+.debug-tool-button:disabled {
+  opacity: 0.35;
+}
+
+.debug-tool-selection {
+  min-width: 0;
+  margin-left: 0.35rem;
+  overflow: hidden;
+  color: #6c757d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Function/derived values show a reference only; canonical data stays elsewhere. */
+.ctx-debug-row.is-derived .ctx-debug-key {
+  color: #315f9b;
+  font-style: italic;
+}
+
+.ctx-debug-row.is-derived-source {
+  color: #0d6efd;
+  font-style: italic;
+}
+
+.ctx-debug-row.is-derived-source .ctx-debug-key {
+  color: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.12rem;
+}
+
+.ctx-debug-row.is-derived-source:hover {
+  background: rgba(13, 110, 253, 0.07);
+}
+
+.ctx-debug-row.is-changed {
+  outline: 1px solid rgba(13, 110, 253, 0.45);
+  background: rgba(13, 110, 253, 0.12);
+}
+
+/* Node-kind glyphs make real values, containers and calculated nodes distinct. */
+.ctx-debug-node-icon {
+  width: 1rem;
+  flex: 0 0 1rem;
+  margin-right: 0.2rem;
+  text-align: center;
+  color: #65758b;
+  font-size: 0.72rem;
+}
+
+.ctx-debug-node-icon.is-derived,
+.ctx-debug-node-icon.is-reference {
+  color: #0d6efd;
+}
+
+.ctx-debug-node-icon.is-null,
+.ctx-debug-node-icon.is-empty {
+  color: #8a96a6;
+}
+
+/* Selected-node details are debugger-local and do not obscure the application. */
+.ctx-debug-properties {
+  position: absolute;
+  z-index: 5;
+  top: 5.25rem;
+  right: 0.55rem;
+  left: 0.55rem;
+  max-height: min(24rem, calc(100% - 6rem));
+  overflow: auto;
+  border: 1px solid #b8c7d9;
+  border-radius: 0.35rem;
+  background: #fff;
+  box-shadow: 0 0.5rem 1.25rem rgba(15, 23, 42, 0.18);
+}
+
+.ctx-debug-properties-heading {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--manatos-border);
+  background: #f8fafc;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.ctx-debug-properties-body {
+  padding: 0.45rem 0.65rem 0.65rem;
+}
+
+.ctx-debug-property-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.28rem 0;
+  border-bottom: 1px dotted #d8e0ea;
+  font-size: 0.72rem;
+}
+
+.ctx-debug-property-label {
+  font-weight: 700;
+  color: #52606d;
+}
+
+.ctx-debug-property-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.ctx-debug-property-value.is-link {
+  color: #0d6efd;
+  cursor: pointer;
+  font-style: italic;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.12rem;
+}
+.debug-panel { position: sticky; }
+
+/* -------------------------------------------------------------------------
+   CTX debugger interaction refinements
+   ------------------------------------------------------------------------- */
+.debug-panel-heading {
+  flex: 0 0 auto;
+  min-height: 2.55rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.debug-panel-heading > strong {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.debug-panel-heading-hint {
+  color: #6c757d;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* The DEBUG button keeps top-header contrast while its panel is open. */
+.header-debug-button.active,
+.header-debug-button.active:hover,
+.header-debug-button.active:focus {
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+/* [+]/[-] is the sole expansion hit target and is always left-most. */
+.ctx-debug-toggle {
+  width: 2rem;
+  flex: 0 0 2rem;
+  margin: 0 0.15rem 0 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #445468;
+  font-family: inherit;
+  font-size: 0.69rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ctx-debug-toggle:disabled {
+  cursor: default;
+  opacity: 0;
+}
+
+.ctx-debug-expand-action {
+  display: none;
+}
+
+/* Properties is docked at the bottom of the debugger, never over the tree. */
+.ctx-debug-properties {
+  position: static;
+  z-index: auto;
+  flex: 0 0 auto;
+  width: 100%;
+  max-height: min(18rem, 42vh);
+  overflow: auto;
+  border: 0;
+  border-top: 1px solid #b8c7d9;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.ctx-debug-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* -------------------------------------------------------------------------
+   Properties dock: toolbar -> properties -> CTX tree.
+   ------------------------------------------------------------------------- */
+.ctx-debug-properties {
+  order: 0;
+  flex: 0 0 auto;
+  max-height: min(16rem, 36vh);
+  border-top: 0;
+  border-bottom: 1px solid #b8c7d9;
+}
+
+.ctx-debug-tree {
+  order: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+}

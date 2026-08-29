@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MCRM_PLATFORM_ID,
-  SysLicenseStatus,
-  SysPrincipalType,
+  SysBOLicenseStatus,
+  SysBOPrincipalType,
 } from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
@@ -17,7 +17,7 @@ describe('platform-aware licenses', () => {
     const principal = await context.services.principals.create(
       {
         name: 'Acme',
-        principalType: SysPrincipalType.Company,
+        principalType: SysBOPrincipalType.Company,
         parentId: null,
         enabled: true,
       },
@@ -29,7 +29,7 @@ describe('platform-aware licenses', () => {
         name: 'Acme mCRM 1',
         principalId: principal.id,
         platformId: MCRM_PLATFORM_ID,
-        status: SysLicenseStatus.Active,
+        status: SysBOLicenseStatus.Active,
         quantity: 1,
         enabled: true,
       },
@@ -41,7 +41,7 @@ describe('platform-aware licenses', () => {
         name: 'Acme mCRM 2',
         principalId: principal.id,
         platformId: MCRM_PLATFORM_ID,
-        status: SysLicenseStatus.Active,
+        status: SysBOLicenseStatus.Active,
         quantity: 5,
         enabled: true,
       },

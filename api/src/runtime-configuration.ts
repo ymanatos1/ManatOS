@@ -1,4 +1,4 @@
-/** In-process cache of non-secret SysConfiguration values used on hot paths. */
+/** In-process cache of non-secret SysBOConfiguration values used on hot paths. */
 const values = new Map<string,string>();
 export function setRuntimeConfiguration(name:string, value:string|undefined) { if(value===undefined) values.delete(name); else values.set(name,value); }
 export function runtimeString(name:string, fallback:string):string { return values.get(name) ?? fallback; }

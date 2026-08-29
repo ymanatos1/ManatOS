@@ -1,12 +1,12 @@
 import { Router, type Request } from 'express';
 
-import { AppError, NotFoundError, operationContext, type SysUser } from '@manatos/shared';
+import { AppError, NotFoundError, operationContext, type SysBOUser } from '@manatos/shared';
 
 import { config } from '../config.js';
 
 import { authenticatedAuditActor } from '../audit/audit-service.js';
 
-import type { SysUserService } from '../services/sys-user-service.js';
+import type { SysBOUserService } from '../services/sys-user-service.js';
 
 import { accessTokenStore, type SessionClientInfo } from './access-token-store.js';
 
@@ -30,7 +30,7 @@ import { sendCommand, sendQuery } from '../http/api-response.js';
  *   POST /logout
  *   POST /logout-all
  */
-export function createAuthRouter(users: SysUserService): Router {
+export function createAuthRouter(users: SysBOUserService): Router {
   const router = Router();
 
   /**
@@ -41,7 +41,7 @@ export function createAuthRouter(users: SysUserService): Router {
 
     async (req, res) => {
       await operationContext.runRoot(
-        'Register Guest SysUser',
+        'Register Guest SysBOUser',
 
         async (scope) => {
           const name = String(req.body?.name ?? '');
@@ -96,7 +96,7 @@ export function createAuthRouter(users: SysUserService): Router {
 
     async (req, res) => {
       await operationContext.runRoot(
-        'Login SysUser',
+        'Login SysBOUser',
 
         async (scope) => {
           const identity = String(req.body?.identity ?? '');
@@ -155,7 +155,7 @@ export function createAuthRouter(users: SysUserService): Router {
       const user = await users.get(req.auth!.userId);
 
       if (!user) {
-        throw new NotFoundError('SysUser', req.auth!.userId);
+        throw new NotFoundError('SysBOUser', req.auth!.userId);
       }
 
       sendQuery(res, publicUser(user));
@@ -221,7 +221,7 @@ export function createAuthRouter(users: SysUserService): Router {
 
     async (req, res) => {
       await operationContext.runRoot(
-        'Change current SysUser password',
+        'Change current SysBOUser password',
 
         async (scope) => {
           const newPassword = String(req.body?.newPassword ?? '');
@@ -295,7 +295,7 @@ function sessionClientInfo(req: Request): SessionClientInfo {
 /**
  * Never expose passwordHash.
  */
-function publicUser(user: SysUser) {
+function publicUser(user: SysBOUser) {
   const {
     passwordHash,
 

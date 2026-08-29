@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { sysApplicationsMetadata, sysExtAuthProvidersMetadata } from '@manatos/shared';
+import { sysBOApplicationsMetadata, sysBOExtAuthProvidersMetadata } from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 
@@ -21,13 +21,13 @@ import { JsonFilePersistence } from '../src/storage/json-file-persistence.js';
  */
 describe('storage contract', () => {
   it('defines credentialsVerified as persisted application-managed metadata', () => {
-    const field = sysExtAuthProvidersMetadata.fieldDefinition.credentialsVerified;
+    const field = sysBOExtAuthProvidersMetadata.fieldDefinition.credentialsVerified;
     expect(field).toMatchObject({ readOnly: true, applicationManaged: true });
     expect(field).not.toHaveProperty('generated');
   });
   let databasePath: string;
   let store: InMemoryDataStore;
-  let applications: GenericSysBOService<import('@manatos/shared').SysApplication>;
+  let applications: GenericSysBOService<import('@manatos/shared').SysBOApplication>;
 
   beforeEach(async () => {
     const directory = await mkdtemp(join(tmpdir(), 'manatos-storage-test-'));
@@ -38,7 +38,7 @@ describe('storage contract', () => {
 
     await store.initialize();
 
-    applications = new GenericSysBOService(store, store.sysApplications, sysApplicationsMetadata);
+    applications = new GenericSysBOService(store, store.sysApplications, sysBOApplicationsMetadata);
   });
 
   it('normalizes legacy external-provider verification timestamps into the persisted verification flag', async () => {

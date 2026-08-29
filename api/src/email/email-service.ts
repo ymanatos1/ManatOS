@@ -1,7 +1,7 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 
-import { EmailDeliveryError, type SysUser } from '@manatos/shared';
+import { EmailDeliveryError, type SysBOUser } from '@manatos/shared';
 
 import { logger } from '../logging/logger.js';
 
@@ -13,9 +13,9 @@ export interface MailRuntimeConfiguration {
 /** Server-side application mail boundary. */
 export interface IEmailService {
   verifyConnection(): Promise<void>;
-  sendWelcomeAndVerificationEmail(user: SysUser, verificationUrl?: string): Promise<void>;
-  sendPasswordResetEmail(user: SysUser, resetUrl: string): Promise<void>;
-  sendPasswordChangedEmail(user: SysUser): Promise<void>;
+  sendWelcomeAndVerificationEmail(user: SysBOUser, verificationUrl?: string): Promise<void>;
+  sendPasswordResetEmail(user: SysBOUser, resetUrl: string): Promise<void>;
+  sendPasswordChangedEmail(user: SysBOUser): Promise<void>;
 }
 
 class DisabledEmailService implements IEmailService {
@@ -83,7 +83,7 @@ class SmtpEmailService implements IEmailService {
     }
   }
 
-  async sendWelcomeAndVerificationEmail(user: SysUser, verificationUrl?: string): Promise<void> {
+  async sendWelcomeAndVerificationEmail(user: SysBOUser, verificationUrl?: string): Promise<void> {
     const action = verificationUrl
       ? `<p><a href="${escapeHtml(verificationUrl)}">Verify your email address</a></p>`
       : '';
@@ -99,7 +99,7 @@ class SmtpEmailService implements IEmailService {
     );
   }
 
-  async sendPasswordResetEmail(user: SysUser, resetUrl: string): Promise<void> {
+  async sendPasswordResetEmail(user: SysBOUser, resetUrl: string): Promise<void> {
     await this.send(
       user.email,
       'Set or reset your password',
@@ -110,7 +110,7 @@ class SmtpEmailService implements IEmailService {
     );
   }
 
-  async sendPasswordChangedEmail(user: SysUser): Promise<void> {
+  async sendPasswordChangedEmail(user: SysBOUser): Promise<void> {
     await this.send(
       user.email,
       'Your password was changed',
@@ -168,7 +168,7 @@ class SmtpEmailService implements IEmailService {
   }
 }
 
-function displayName(user: SysUser): string {
+function displayName(user: SysBOUser): string {
   return user.firstName?.trim() || user.name;
 }
 

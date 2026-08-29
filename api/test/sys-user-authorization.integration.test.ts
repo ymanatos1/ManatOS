@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import request from 'supertest';
 
-import { SysUserRole } from '@manatos/shared';
+import { SysBOUserRole } from '@manatos/shared';
 
 import {
   bearer,
@@ -14,7 +14,7 @@ import {
   TEST_ADMIN,
 } from './test-helpers.js';
 
-describe('API integration - SysUser delete authorization', () => {
+describe('API integration - SysBOUser delete authorization', () => {
   let context: Awaited<ReturnType<typeof createTestApi>>;
   let adminToken: string;
   let adminId: string;
@@ -35,7 +35,7 @@ describe('API integration - SysUser delete authorization', () => {
     adminId = admin.id;
   });
 
-  it('rejects an Admin deleting their own SysUser and preserves the account', async () => {
+  it('rejects an Admin deleting their own SysBOUser and preserves the account', async () => {
     const response = await request(context.app)
       .delete(`/api/v1/SysUsers/${adminId}`)
       .set('Authorization', bearer(adminToken));
@@ -49,7 +49,7 @@ describe('API integration - SysUser delete authorization', () => {
     expect(preserved?.id).toBe(adminId);
   });
 
-  it('allows an Admin to delete another SysUser', async () => {
+  it('allows an Admin to delete another SysBOUser', async () => {
     const otherUser = await createUser('DeleteTarget', 'delete-target@example.test');
 
     const response = await request(context.app)
@@ -63,11 +63,11 @@ describe('API integration - SysUser delete authorization', () => {
     await expect(context.services.users.get(otherUser.id)).resolves.toBeNull();
   });
 
-  it('rejects a non-Admin deleting another SysUser', async () => {
+  it('rejects a non-Admin deleting another SysBOUser', async () => {
     const user = await createUser(
       'NormalUser',
       'normal-user@example.test',
-      SysUserRole.User,
+      SysBOUserRole.User,
       'NormalUser!123',
     );
 
@@ -99,11 +99,11 @@ describe('API integration - SysUser delete authorization', () => {
   });
 
 
-  it('prevents a Superuser from assigning roles through a direct SysUser PATCH', async () => {
+  it('prevents a Superuser from assigning roles through a direct SysBOUser PATCH', async () => {
     const superuser = await createUser(
       'SuperUser',
       'superuser@example.test',
-      SysUserRole.Superuser,
+      SysBOUserRole.Superuser,
       'SuperUser!123',
     );
 
@@ -121,19 +121,19 @@ describe('API integration - SysUser delete authorization', () => {
     const response = await request(context.app)
       .patch(`/api/v1/SysUsers/${superuser.id}`)
       .set('Authorization', bearer(token))
-      .send({ role: SysUserRole.Admin });
+      .send({ role: SysBOUserRole.Admin });
 
     expect(response.status).toBe(403);
     expectFailure(response.body);
 
     const preserved = await context.services.users.get(superuser.id);
-    expect(preserved?.role).toBe(SysUserRole.Superuser);
+    expect(preserved?.role).toBe(SysBOUserRole.Superuser);
   });
 
   async function createUser(
     name: string,
     email: string,
-    role = SysUserRole.Guest,
+    role = SysBOUserRole.Guest,
     password = 'TargetUser!123',
   ) {
     const response = await request(context.app)

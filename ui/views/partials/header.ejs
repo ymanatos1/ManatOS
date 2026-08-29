@@ -55,24 +55,45 @@
   </div>
 
   <div class="header-actions">
-    <% if (app.ui?.bootstrap?.ui?.donationsShow) { %>
-      <!--
-        Donations are a ManatOS-level concern rather than a platform or
-        SysApplication action. Visibility is runtime-configured through
-        DONATIONS_SHOW; the control intentionally remains disabled until a
-        donation provider/target is configured in a later implementation.
-      -->
-      <button
-        type="button"
-        class="btn btn-sm header-donate-button"
-        disabled
-        title="Donations will be available soon."
-        aria-label="Donate - donations will be available soon"
-      >
-        <i class="bi bi-heart-fill me-1"></i>
-        Donate
-      </button>
+    <!--
+      Donate is always present in the DOM and its visibility is reactive.
+      The initial server snapshot avoids a flash when bootstrap is already
+      known; /runtime/ui-bootstrap + manatos:ctx-change updates it when the
+      asynchronous bootstrap response arrives after this page was rendered.
+    -->
+    <button
+      type="button"
+      id="headerDonateButton"
+      class="btn btn-sm header-donate-button<%= app.ui?.bootstrap?.ui?.donationsShow ? '' : ' d-none' %>"
+      data-ctx-visibility="ctx.client.uiBootstrap.ui.donationsShow"
+      disabled
+      title="Donations will be available soon."
+      aria-label="Donate - donations will be available soon"
+    >
+      <i class="bi bi-heart-fill me-1"></i>
+      Donate
+    </button>
+
+    <% if (app.ui?.debugTools) { %>
+        <!--
+          Development-only ManatOS inspector. The first inspector surface is
+          CTX; the panel is intentionally generic so Expressions, Events, API,
+          performance, etc. can be added later without another shell redesign.
+        -->
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-light header-debug-button"
+          id="toggleDebugPanel"
+          title="Developer debugger"
+          aria-label="Open ManatOS debugger"
+          aria-controls="debugPanel"
+          aria-expanded="false"
+        >
+          <i class="bi bi-bug me-1"></i>
+          DEBUG
+        </button>
     <% } %>
+
     <% if (!currentUser) { %>
       <button
         type="button"
@@ -94,6 +115,8 @@
         Sign up
       </button>
     <% } else { %>
+
+
       <button
         type="button"
         class="btn btn-sm btn-outline-light header-notifications-button"

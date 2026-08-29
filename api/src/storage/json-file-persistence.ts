@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 
 import { dirname, resolve } from 'node:path';
 
-import { MCRM_PLATFORM_ID, StorageAppError, type SysExtAuthProvider, type SysLicense } from '@manatos/shared';
+import { MCRM_PLATFORM_ID, StorageAppError, type SysBOExtAuthProvider, type SysBOLicense } from '@manatos/shared';
 
 import { emptyDatabaseState, type DatabaseState, type PersistedDatabaseState } from './types.js';
 
@@ -157,10 +157,10 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
 /**
  * Backward-compatible normalization for databases written before platform
  * ownership was introduced. Existing licenses necessarily referred to mCRM
- * SysApplications, so the migration is deterministic and does not require a
+ * SysBOApplications, so the migration is deterministic and does not require a
  * destructive database rebuild.
  */
-function normalizeLegacyLicenses(records: Map<string, SysLicense>): Map<string, SysLicense> {
+function normalizeLegacyLicenses(records: Map<string, SysBOLicense>): Map<string, SysBOLicense> {
   for (const [id, license] of records) {
     if (!license.platformId) {
       records.set(id, {
@@ -179,7 +179,7 @@ function normalizeLegacyLicenses(records: Map<string, SysLicense>): Map<string, 
  * credentialsVerifiedAt timestamp was already authoritative, so infer the new
  * flag once on load without requiring a destructive database migration.
  */
-function normalizeLegacyExternalAuthProviders(records: Map<string, SysExtAuthProvider>): Map<string, SysExtAuthProvider> {
+function normalizeLegacyExternalAuthProviders(records: Map<string, SysBOExtAuthProvider>): Map<string, SysBOExtAuthProvider> {
   for (const [id, provider] of records) {
     if (typeof provider.credentialsVerified !== 'boolean') {
       records.set(id, {

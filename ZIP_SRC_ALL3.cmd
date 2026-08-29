@@ -32,7 +32,7 @@ if exist "%ARCHIVE%" (
     )
 )
 
-"%SEVENZIP%" a -tzip "%ARCHIVE%" ".\%FOLDER%\*" -xr!node_modules
+"%SEVENZIP%" a -tzip "%ARCHIVE%" ".\%FOLDER%\*" -xr!node_modules -xr!dist
 
 if errorlevel 1 (
     echo.
@@ -98,7 +98,7 @@ REM ============================================================
 echo.
 echo ============================================================
 echo   ManatOS Source Archiver
-echo   Excluding node_modules
+echo   Excluding node_modules and dist
 echo ============================================================
 echo.
 

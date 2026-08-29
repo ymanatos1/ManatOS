@@ -1,16 +1,16 @@
 import { Router } from 'express';
 
-import { AppError, NotFoundError, operationContext, type SysUser } from '@manatos/shared';
+import { AppError, NotFoundError, operationContext, type SysBOUser } from '@manatos/shared';
 
 import { authenticatedAuditActor } from '../audit/audit-service.js';
 import { requireAdmin } from '../auth/auth-middleware.js';
 import { config } from '../config.js';
-import type { SysUserService } from '../services/sys-user-service.js';
+import type { SysBOUserService } from '../services/sys-user-service.js';
 
 import { sendCommand } from './api-response.js';
 
 /**
- * Explicit SysUser commands which should not be expressed as generic CRUD.
+ * Explicit SysBOUser commands which should not be expressed as generic CRUD.
  *
  * Email verification is a security state transition, not a normal editable
  * property. Keeping it here gives us:
@@ -22,11 +22,11 @@ import { sendCommand } from './api-response.js';
  *
  * The parent /api/v1/SysUsers mount already requires authentication.
  */
-export function createSysUserCommandRouter(users: SysUserService): Router {
+export function createSysBOUserCommandRouter(users: SysBOUserService): Router {
   const router = Router();
 
   /**
-   * Mark another SysUser's email address as verified.
+   * Mark another SysBOUser's email address as verified.
    *
    * Security:
    *
@@ -44,7 +44,7 @@ export function createSysUserCommandRouter(users: SysUserService): Router {
 
     async (req, res) => {
       await operationContext.runRoot(
-        'Admin verify SysUser email',
+        'Admin verify SysBOUser email',
 
         async (scope) => {
           const userId = String(req.params.id ?? '');
@@ -66,7 +66,7 @@ export function createSysUserCommandRouter(users: SysUserService): Router {
           const existing = await users.get(userId);
 
           if (!existing) {
-            throw new NotFoundError('SysUser', userId);
+            throw new NotFoundError('SysBOUser', userId);
           }
 
           if (existing.emailVerified) {
@@ -97,9 +97,9 @@ export function createSysUserCommandRouter(users: SysUserService): Router {
 }
 
 /**
- * API-safe SysUser representation.
+ * API-safe SysBOUser representation.
  */
-function publicUser(user: SysUser) {
+function publicUser(user: SysBOUser) {
   const { passwordHash, ...safe } = user;
 
   return {
