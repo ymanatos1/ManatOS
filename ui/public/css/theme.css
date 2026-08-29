@@ -139,7 +139,7 @@ body[data-ui-theme='lighter'] .version-badge {
 
 /* -------------------------------------------------------------------------
    Center every Bootstrap popup in the CURRENT CENTER WORKSPACE, rather than
-   in the whole browser viewport. site.js supplies the dynamic coordinates.
+   in the whole browser viewport. shell.js supplies the dynamic coordinates.
    ---------------------------------------------------------------------- */
 .modal.workspace-centered-modal .modal-dialog {
   position: fixed;
@@ -446,4 +446,21 @@ body[data-ui-theme='lighter'] .current-platform-badge {
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
     inset 0 -1px 0 rgba(18, 54, 93, 0.08),
     0 1px 2px rgba(18, 54, 93, 0.08);
+}
+
+
+.horizontal-debug-button {
+  margin-inline: 0.8rem 0.55rem;
+  padding-inline: 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.82;
+}
+
+.horizontal-debug-button:hover,
+.horizontal-debug-button:focus,
+.horizontal-debug-button.active {
+  opacity: 1;
 }

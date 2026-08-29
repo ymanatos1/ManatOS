@@ -55,7 +55,7 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
     expect(routes).toContain('/$metadata');
     expect(routes).toContain('/$metadata-ui');
     expect(routes).toContain('title: metadata.pluralName');
-    expect(routes).toContain('`${modeLabel} ${metadata.name}`');
+    expect(routes).toContain('`${modeLabel} ${metadata.name}${primaryDisplayValue}`');
 
     expect(list).toContain('metadataUI.list.visibleFields');
     expect(list).toContain('metadataUI.list.filterFields');
@@ -93,10 +93,28 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
     expect(shared).toContain('entryActions');
     expect(shared).toContain('relatedCollections');
     expect(apiMetadata).toContain("icon: 'shield-lock'");
-    expect(apiMetadata).toContain("sourceField: 'emailVerified'");
-    expect(apiMetadata).toContain("sourceField: 'hasPassword'");
-    expect(apiMetadata).toContain("key: 'externalIdentities'");
-    expect(apiMetadata).toContain("kind: 'delete'");
+
+    // Entity-level derived values such as emailVerificationStatus and
+    // localPasswordStatus now belong to canonical SysBO metadata. UI metadata
+    // only decorates those evaluated values (tone/icon/summary presentation).
+    expect(apiMetadata).toContain('emailVerificationStatus');
+    expect(apiMetadata).toContain("{ equals: 'Verified', tone: 'success' }");
+    expect(apiMetadata).toContain('localPasswordStatus');
+    expect(apiMetadata).toContain("{ equals: 'Configured', icon: 'check-circle-fill', tone: 'success' }");
+
+    // Related-collection calculations now use the same generic expression evaluator;
+    // only row presentation remains UI metadata.
+    expect(apiMetadata).toContain("expression: \"emailVerified == true ? 'Provider email verified' : 'Provider email not verified'\"");
+    expect(apiMetadata).toContain("equals: 'Provider email verified'");
+    expect(apiMetadata).toContain('externalIdentities: {');
+
+    // Keyed metadata containers do not repeat their parent key in each value.
+    expect(apiMetadata).toContain('entryActions: {');
+    expect(apiMetadata).toContain("delete: { kind: 'delete'");
+    expect(apiMetadata).not.toContain("key: 'externalIdentities'");
+    expect(apiMetadata).not.toContain("sourceKey: 'externalIdentities'");
+    expect(apiMetadata).not.toContain("sourceField: 'provider'");
+    expect(apiMetadata).not.toContain("sourceField: 'email'");
 
     for (const definitionName of [
       'sysBOUsersUIMetadata',
@@ -110,6 +128,7 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
 
     expect(apiRouter).toContain("router.get('/$metadata-ui'");
     expect(apiRouter).toContain('includeMetadataUI');
+    expect(apiRouter).toContain('getEffectiveSysBOUIMetadata(metadata)');
     expect(apiMetadata).not.toContain('.ejs');
     expect(apiRegistry).not.toContain('.ejs');
   });

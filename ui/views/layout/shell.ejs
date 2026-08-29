@@ -66,6 +66,11 @@
     content="<%= currentUser?.id || 'anonymous' %>"
   >
 
+  <meta
+    name="manatos-ui-boot-id"
+    content="<%= typeof uiBootId !== 'undefined' ? uiBootId : 'unknown' %>"
+  >
+
 
   <!-- =========================================================
        Restore the user's theme before styles paint.

@@ -92,8 +92,6 @@ export interface SysPlatform {
   navigation: NavigationContribution[];
 }
 
-/** @deprecated Prefer SysPlatform for new code. */
-export type PlatformInfo = SysPlatform;
 
 export interface CompanyInfo {
   id: string;

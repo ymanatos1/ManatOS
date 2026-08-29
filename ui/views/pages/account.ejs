@@ -53,6 +53,12 @@
           <span class="badge rounded-pill text-bg-light border"><%= currentUser.role %></span>
         </div>
 
+        <% const calculatedFullName = ctxUserFieldValue('fullName'); %>
+        <% if (calculatedFullName) { %>
+          <div class="account-summary-label">Full name</div>
+          <div class="account-summary-value"><%= calculatedFullName %></div>
+        <% } %>
+
         <% if (currentUser.firstName) { %>
           <div class="account-summary-label">First name</div>
           <div class="account-summary-value"><%= currentUser.firstName %></div>

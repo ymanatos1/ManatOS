@@ -7,7 +7,7 @@
     <li>
       <% if (item.children?.length) { %>
         <details <%= level === 0 ? 'open' : '' %>>
-          <summary>
+          <summary title="<%= item.text %>">
             <span class="vertical-menu-caption">
               <% if (item.icon) { %>
                 <i class="bi <%= item.icon %> me-2"></i>
@@ -32,6 +32,8 @@
           class="vertical-menu-action"
           data-bs-toggle="modal"
           data-bs-target="#preferencesModal"
+          title="<%= item.text %>"
+          aria-label="<%= item.text %>"
         >
           <span class="vertical-menu-caption">
             <% if (item.icon) { %>
@@ -41,7 +43,7 @@
           </span>
         </button>
       <% } else { %>
-        <a href="<%= item.url || '#' %>">
+        <a href="<%= item.url || '#' %>" title="<%= item.text %>">
           <span class="vertical-menu-caption">
             <% if (item.icon) { %>
               <i class="bi <%= item.icon %> me-2"></i>

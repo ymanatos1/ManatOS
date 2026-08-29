@@ -54,7 +54,7 @@
     </span>
   </div>
 
-  <div class="header-actions">
+  <div class="header-center-actions">
     <!--
       Donate is always present in the DOM and its visibility is reactive.
       The initial server snapshot avoids a flash when bootstrap is already
@@ -74,32 +74,17 @@
       Donate
     </button>
 
-    <% if (app.ui?.debugTools) { %>
-        <!--
-          Development-only ManatOS inspector. The first inspector surface is
-          CTX; the panel is intentionally generic so Expressions, Events, API,
-          performance, etc. can be added later without another shell redesign.
-        -->
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-light header-debug-button"
-          id="toggleDebugPanel"
-          title="Developer debugger"
-          aria-label="Open ManatOS debugger"
-          aria-controls="debugPanel"
-          aria-expanded="false"
-        >
-          <i class="bi bi-bug me-1"></i>
-          DEBUG
-        </button>
-    <% } %>
+  </div>
 
+  <div class="header-actions">
     <% if (!currentUser) { %>
       <button
         type="button"
         class="btn btn-info btn-sm header-auth-button"
         data-bs-toggle="modal"
         data-bs-target="#signInModal"
+        title="Sign in to ManatOS"
+        aria-label="Sign in to ManatOS"
       >
         <i class="bi bi-box-arrow-in-right me-1"></i>
         Sign in
@@ -110,6 +95,8 @@
         class="btn btn-success btn-sm header-auth-button"
         data-bs-toggle="modal"
         data-bs-target="#signUpMethodModal"
+        title="Create a ManatOS account"
+        aria-label="Create a ManatOS account"
       >
         <i class="bi bi-person-plus me-1"></i>
         Sign up
@@ -132,6 +119,8 @@
           type="button"
           data-bs-toggle="dropdown"
           aria-expanded="false"
+          title="Account menu"
+          aria-label="Open account menu"
         >
           <i class="bi bi-person-circle me-1"></i>
           Account
@@ -148,21 +137,21 @@
           <li><hr class="dropdown-divider"></li>
 
           <li>
-            <a class="dropdown-item" href="/account">
+            <a class="dropdown-item" href="/account" title="Account details">
               <i class="bi bi-person-vcard me-2"></i>
               Account details
             </a>
           </li>
 
           <li>
-            <a class="dropdown-item" href="/personal">
+            <a class="dropdown-item" href="/personal" title="Personal details">
               <i class="bi bi-person-lines-fill me-2"></i>
               Personal details
             </a>
           </li>
 
           <li>
-            <a class="dropdown-item" href="/account/password">
+            <a class="dropdown-item" href="/account/password" title="<%= currentUser.hasPassword ? 'Change password' : 'Set password' %>">
               <i class="bi bi-key me-2"></i>
               <%= currentUser.hasPassword ? 'Change password' : 'Set password' %>
             </a>
@@ -171,7 +160,7 @@
           <li><hr class="dropdown-divider"></li>
 
           <li>
-            <a class="dropdown-item" href="/auth/logout">
+            <a class="dropdown-item" href="/auth/logout" title="Sign out of ManatOS">
               <i class="bi bi-box-arrow-right me-2"></i>
               Logout
             </a>

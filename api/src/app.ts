@@ -21,6 +21,7 @@ import { errorHandler } from './http/error-handler.js';
 import { requireInternalApiKey } from './http/internal-api-key.js';
 
 import { requestContextMiddleware } from './http/request-context.js';
+import { requestLoggingMiddleware } from './http/request-logging.js';
 
 import { createServerRouter } from './http/server-router.js';
 import { createSysBOUserCommandRouter } from './http/sys-user-command-router.js';
@@ -97,6 +98,18 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(helmet());
 
   /**
+   * Establish request/correlation context before parsing or routing so even
+   * malformed request bodies receive a traceable x-request-id.
+   */
+  app.use(requestContextMiddleware);
+
+  /**
+   * Log the full request/response lifecycle after correlation context exists so
+   * both entries carry the same x-request-id returned to the caller.
+   */
+  app.use(requestLoggingMiddleware);
+
+  /**
    * JSON request parsing.
    *
    * The 1 MB limit protects against unexpectedly large API payloads.
@@ -106,11 +119,6 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       limit: '1mb',
     }),
   );
-
-  /**
-   * Establish request/correlation context before API processing.
-   */
-  app.use(requestContextMiddleware);
 
   /**
    * Build the OpenAPI specification once during application startup.

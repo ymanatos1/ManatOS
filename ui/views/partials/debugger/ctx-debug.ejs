@@ -11,6 +11,8 @@
   aria-label="ManatOS developer debugger"
   aria-hidden="true"
 >
+  <div class="ctx-debug-panel-resize" id="ctxDebugPanelResize" title="Drag to resize debugger; double-click to reset" aria-hidden="true"></div>
+
   <div class="debug-panel-heading">
     <strong>DEVELOPER DEBUG CTX <span class="debug-panel-heading-hint">(live context tree)</span></strong>
     <button class="btn-close" type="button" id="closeDebugPanel" aria-label="Close debugger"></button>
@@ -29,7 +31,14 @@
     <button class="debug-tool-button" id="ctxDebugProperties" type="button" title="Selected node properties" aria-label="Show selected CTX node properties">
       <i class="bi bi-info-square"></i>
     </button>
-    <span class="debug-tool-selection" id="ctxDebugSelection" title="Current CTX selection">ctx</span>
+    <button class="debug-tool-button" id="ctxDebugFind" type="button" title="Find CTX variable by name" aria-label="Find CTX variable by name">
+      <i class="bi bi-search"></i>
+    </button>
+    <div class="ctx-debug-find d-none" id="ctxDebugFindBox">
+      <input id="ctxDebugFindInput" type="text" autocomplete="off" placeholder="variable name" aria-label="CTX variable name">
+      <div class="ctx-debug-find-history d-none" id="ctxDebugFindHistory" role="listbox" aria-label="Recent CTX searches"></div>
+    </div>
+    <strong class="debug-tool-selection" id="ctxDebugSelection" title="Current CTX selection">ctx</strong>
   </div>
 
   <!--
@@ -39,10 +48,11 @@
   -->
   <section class="ctx-debug-properties d-none" id="ctxDebugPropertiesPanel" aria-hidden="true" aria-label="Selected CTX node properties">
     <div class="ctx-debug-properties-heading">
-      <strong>NODE PROPERTIES</strong>
+      <span id="ctxDebugPropertiesTitle"><strong class="ctx-debug-properties-variable-name">ctx</strong></span>
       <button class="btn-close btn-close-sm" type="button" id="ctxDebugPropertiesClose" aria-label="Close node properties"></button>
     </div>
     <div class="ctx-debug-properties-body" id="ctxDebugPropertiesBody"></div>
+    <div class="ctx-debug-properties-resize" id="ctxDebugPropertiesResize" title="Drag to resize; double-click to reset" aria-hidden="true"></div>
   </section>
 
   <div id="ctxDebugTree" class="ctx-debug-tree" role="tree" aria-label="ManatOS context tree"></div>

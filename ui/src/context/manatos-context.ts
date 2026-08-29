@@ -8,6 +8,9 @@ import {
   type ManatOSPageContextNode,
   type ManatOSUserContext,
   type SysBOUser,
+  sysBOUsersMetadata,
+  calculatedContextField,
+  compileExpression,
   type SysPlatform,
 } from '@manatos/shared';
 
@@ -72,9 +75,16 @@ function userContext(user: SysBOUser | null): ManatOSUserContext | null {
 
   // passwordHash is intentionally never exposed to the browser/debug context.
   const { passwordHash: _passwordHash, ...safeUser } = user;
+  const fields = contextFields(safeUser);
+  for (const [derivedName, derived] of Object.entries(sysBOUsersMetadata.derivedFields ?? {})) {
+    fields[derivedName] = calculatedContextField(derived.expression, {
+      diagnosticSink: (diagnostic) => console.error('[ManatOS expression parse]', diagnostic),
+    });
+  }
+
   return {
     entityName: entityContextName('sys-users'),
-    fields: contextFields(safeUser),
+    fields,
   };
 }
 
@@ -116,6 +126,45 @@ export function createManatOSContext(
   };
 }
 
+
+/**
+ * Copy metadata into the runtime CTX registry and precompile every declared
+ * expression, regardless of where the metadata contract uses it (canonical
+ * derived field, UI-derived field, related-row calculation, future dynamic
+ * visibility/read-only rule, and so on).
+ *
+ * Parsing remains context-agnostic. Variable/path resolution is deliberately
+ * deferred until the expression value is requested. Keeping the AST beside
+ * the declaration gives DEBUG immediate parser visibility without evaluation.
+ */
+function withCompiledExpressions(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => withCompiledExpressions(item));
+  }
+  if (!value || typeof value !== 'object') return value;
+
+  const source = value as Record<string, unknown>;
+  const copy: Record<string, unknown> = Object.fromEntries(
+    Object.entries(source)
+      .filter(([key]) => key !== 'ast')
+      .map(([key, child]) => [key, withCompiledExpressions(child)]),
+  );
+
+  if (typeof source.expression === 'string') {
+    try {
+      const compiled = compileExpression(source.expression, {
+        diagnosticSink: (diagnostic) => console.error('[ManatOS expression parse]', diagnostic),
+      });
+      copy.ast = compiled.ast;
+    } catch {
+      // The compiler already emitted the diagnostic. Preserve the expression
+      // text so DEBUG can expose the faulty declaration for diagnosis.
+    }
+  }
+
+  return copy;
+}
+
 /**
  * Register/update canonical entity knowledge once at ctx.entities root.
  * This is intentionally mutable so metadata loaded on demand can enrich the
@@ -132,8 +181,8 @@ export function registerContextEntity(
   const entity: ManatOSEntityContext = {
     key: sysBOKey,
     ...(existing ?? {}),
-    ...(metadata !== undefined ? { metadata } : {}),
-    ...(uiMetadata !== undefined ? { uiMetadata } : {}),
+    ...(metadata !== undefined ? { metadata: withCompiledExpressions(metadata) } : {}),
+    ...(uiMetadata !== undefined ? { uiMetadata: withCompiledExpressions(uiMetadata) } : {}),
   };
   ctx.entities[name] = entity;
   return entity;

@@ -1,4 +1,5 @@
 import type { CompanyInfo, EntityContribution, SysPlatform } from './company-platform.js';
+import type { ExpressionNode } from './expressions/types.js';
 
 export interface ManatOSSysBOContext {
   key: string;
@@ -40,7 +41,21 @@ export type ManatOSEntitiesContext = Record<string, ManatOSEntityContext>;
  * Canonical metadata is resolved from ctx.entities on demand; it is not copied
  * into every field/page scope.
  */
-export interface ManatOSContextField<T = unknown> { value: T; }
+export interface ManatOSStoredContextField<T = unknown> {
+  value: T;
+}
+
+export interface ManatOSCalculatedContextField<T = unknown> {
+  /** Optional materialized/edited anchor; normal evaluation still uses expression. */
+  value: T | null;
+  expression: string;
+  /** Parsed, context-agnostic AST compiled when the calculated field is declared. */
+  ast: ExpressionNode;
+}
+
+export type ManatOSContextField<T = unknown> =
+  | ManatOSStoredContextField<T>
+  | ManatOSCalculatedContextField<T>;
 export type ManatOSContextFields = Record<string, ManatOSContextField>;
 
 export interface ManatOSUserContext {

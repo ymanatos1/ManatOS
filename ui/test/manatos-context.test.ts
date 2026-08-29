@@ -5,6 +5,7 @@ import {
   resolveContextMember,
   resolveContextMembers,
   resolvePlatform,
+  sysBOUsersMetadata,
 } from '@manatos/shared';
 
 import {
@@ -77,6 +78,18 @@ describe('ManatOS ctx tree', () => {
     expect(ctx.entities.sysUsers?.metadata).toEqual({ name: 'User' });
   });
 
+  it('precompiles canonical entity derived-field expressions for DEBUG AST inspection', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
+
+    registerContextEntity(ctx, 'sys-users', sysBOUsersMetadata);
+
+    const fullName = (ctx.entities.sysUsers?.metadata as any)?.derivedFields?.fullName;
+    expect(fullName?.expression).toBe("firstName + ' ' + lastName");
+    expect(fullName?.ast?.kind).toBe('binary');
+    expect(fullName?.ast?.operator).toBe('+');
+  });
+
   it('rejects ctx identifiers that the future expression grammar cannot address', () => {
     expect(() => contextFields({ 'bad-name': 1 })).toThrow(/Invalid ManatOS ctx field identifier/);
     expect(() => pageContextNode('bad-name', 'page', 'none')).toThrow(/Invalid ManatOS ctx page identifier/);
@@ -106,4 +119,28 @@ describe('ManatOS ctx tree', () => {
     expect(node.kind).toBe('sysconfiguration');
     expect(node.mode).toBe('special');
   });
+
+  it('precompiles nested UI metadata expressions without evaluating their variables', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
+
+    registerContextEntity(ctx, 'sys-users', sysBOUsersMetadata, {
+      key: 'sys-users',
+      record: {
+        relatedCollections: {
+          externalIdentities: {
+            fields: [{
+              key: 'status',
+              expression: "emailVerified == true ? 'Verified' : 'Not verified'",
+            }],
+          },
+        },
+      },
+    });
+
+    const field = (ctx.entities.sysUsers?.uiMetadata as any)?.record?.relatedCollections?.externalIdentities?.fields?.[0];
+    expect(field?.expression).toContain('emailVerified');
+    expect(field?.ast?.kind).toBe('conditional');
+  });
+
 });

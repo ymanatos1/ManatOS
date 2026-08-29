@@ -28,6 +28,21 @@
         </div>
       <% } %>
 
+      <% if (app.ui?.debugTools) { %>
+        <button
+          type="button"
+          class="nav-link horizontal-debug-button"
+          id="toggleDebugPanel"
+          title="Developer debugger"
+          aria-label="Open ManatOS debugger"
+          aria-controls="debugPanel"
+          aria-expanded="false"
+        >
+          <i class="bi bi-bug me-1" aria-hidden="true"></i>
+          DEBUG
+        </button>
+      <% } %>
+
       <!--
         UI-language selector foundation.
 
@@ -44,6 +59,7 @@
             data-bs-toggle="dropdown"
             aria-expanded="false"
             aria-label="Select language"
+            title="Select language"
           >
             <img
               id="languageMenuFlag"
@@ -61,6 +77,8 @@
                 class="dropdown-item language-option"
                 type="button"
                 data-ui-language="en"
+                title="Use English"
+                aria-label="Use English"
               >
                 <img src="/assets/flags/en.svg" class="language-flag me-2" alt="" aria-hidden="true" >
                 EN — English
@@ -72,6 +90,8 @@
                 class="dropdown-item language-option"
                 type="button"
                 data-ui-language="el"
+                title="Χρήση Ελληνικών"
+                aria-label="Χρήση Ελληνικών"
               >
                 <img src="/assets/flags/el.svg" class="language-flag me-2" alt="" aria-hidden="true" >
                 EL — Ελληνικά

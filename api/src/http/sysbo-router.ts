@@ -17,7 +17,7 @@ import type { AuthorizationService } from '../auth/authorization-service.js';
 
 import type { GenericSysBOService } from '../services/generic-sysbo-service.js';
 
-import { getSysBOUIMetadata } from '../metadata/sysbo-ui-registry.js';
+import { getEffectiveSysBOUIMetadata } from '../metadata/sysbo-ui-registry.js';
 
 import { parseListQuery } from './query.js';
 
@@ -82,7 +82,7 @@ export function createSysBORouter<T extends SysBOEntity>(
    * other UI clients later. It deliberately contains no EJS/Bootstrap detail.
    */
   router.get('/$metadata-ui', (_req, res) => {
-    const metadataUI = getSysBOUIMetadata(metadata.key);
+    const metadataUI = getEffectiveSysBOUIMetadata(metadata);
 
     if (!metadataUI) {
       throw new NotFoundError('SysBO UI metadata', metadata.key);
@@ -107,7 +107,7 @@ export function createSysBORouter<T extends SysBOEntity>(
         const includeMetadataUI = req.query.includeMetadataUI === 'true';
         const includeMetadata = includeMetadataUI || req.query.includeMetadata === 'true';
         const metadataUI: SysBOUIMetadata | undefined = includeMetadataUI
-          ? getSysBOUIMetadata(metadata.key)
+          ? getEffectiveSysBOUIMetadata(metadata)
           : undefined;
 
         sendQuery(res, {

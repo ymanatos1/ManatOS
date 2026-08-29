@@ -4,7 +4,7 @@ import {
   resolvePlatform,
   SysBOUserRole,
   type CompanyInfo,
-  type PlatformInfo,
+  type SysPlatform,
   sysBOApplicationsMetadata,
   sysBOConfigurationsMetadata,
   sysBOExtAuthProvidersMetadata,
@@ -371,7 +371,7 @@ export function getSysBODefinition(key: string): SysBODefinition {
  */
 export function effectiveSysBODefinitions(
   company: CompanyInfo = MANATOS_COMPANY,
-  platform: PlatformInfo = resolvePlatform(company),
+  platform: SysPlatform = resolvePlatform(company),
 ): Record<string, SysBODefinition> {
   const keys = effectiveEntityKeys(company, platform);
 

@@ -66,7 +66,7 @@
 .app-shell.has-debug {
   grid-template-columns:
     minmax(0, 1fr)
-    minmax(340px, 28vw);
+    var(--manatos-debug-width, 28vw);
   grid-template-areas: 'workspace debug';
 }
 
@@ -74,7 +74,7 @@
   grid-template-columns:
     255px
     minmax(0, 1fr)
-    minmax(340px, 28vw);
+    var(--manatos-debug-width, 28vw);
   grid-template-areas: 'left workspace debug';
 }
 
@@ -82,7 +82,7 @@
   grid-template-columns:
     minmax(0, 1fr)
     320px
-    minmax(340px, 28vw);
+    var(--manatos-debug-width, 28vw);
   grid-template-areas: 'workspace details debug';
 }
 
@@ -91,7 +91,7 @@
     255px
     minmax(0, 1fr)
     320px
-    minmax(340px, 28vw);
+    var(--manatos-debug-width, 28vw);
   grid-template-areas: 'left workspace details debug';
 }
 
@@ -1084,109 +1084,6 @@ body.anonymous .workspace {
 }
 
 
-/* =========================================================================
-   Development debugger
-   ========================================================================= */
-.debug-panel {
-  grid-area: debug;
-  min-width: 0;
-  height: calc(100vh - var(--top-header-height, 0px));
-  max-height: 100vh;
-  position: sticky;
-  top: 0;
-  background: #f8fafc;
-  border-left: 1px solid var(--manatos-border);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.debug-panel-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem 0.9rem 0.65rem;
-  border-bottom: 1px solid var(--manatos-border);
-}
-
-.debug-panel-heading h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.debug-panel-toolbar {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid var(--manatos-border);
-  background: #fff;
-}
-
-.debug-panel-hint {
-  font-size: 0.72rem;
-  color: #6c757d;
-}
-
-.ctx-debug-tree {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding: 0.55rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 0.76rem;
-  line-height: 1.45;
-}
-
-.ctx-debug-node {
-  white-space: nowrap;
-}
-
-.ctx-debug-row {
-  display: flex;
-  align-items: center;
-  min-height: 1.45rem;
-  border-radius: 0.25rem;
-  cursor: default;
-}
-
-.ctx-debug-row:hover,
-.ctx-debug-row.is-selected {
-  background: rgba(13, 110, 253, 0.09);
-}
-
-.ctx-debug-toggle {
-  width: 1.1rem;
-  flex: 0 0 1.1rem;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #5f6b7a;
-}
-
-.ctx-debug-key {
-  font-weight: 600;
-}
-
-.ctx-debug-derived {
-  font-style: italic;
-}
-
-.ctx-debug-value {
-  margin-left: 0.4rem;
-  color: #52606d;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ctx-debug-children {
-  margin-left: 1rem;
-}
-
-.header-debug-button {
-  margin-inline: 0.7rem;
-}
 
 /* -------------------------------------------------------------------------
    Active workspace navigation

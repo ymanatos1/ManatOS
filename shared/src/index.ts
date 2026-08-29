@@ -13,3 +13,5 @@ export * from './password-rules.js';
 export * from './company-platform.js';
 
 export * from './context.js';
+
+export * from './expressions/index.js';

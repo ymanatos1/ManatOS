@@ -2,6 +2,7 @@ import ejs from 'ejs';
 import type { Response } from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 
 import { popupContent } from './presentation/popup-content.js';
 import {
@@ -10,11 +11,21 @@ import {
   pageContextNode,
   setPageContext,
 } from './context/manatos-context.js';
-import type { ManatOSContext } from '@manatos/shared';
+import {
+  evaluateCompiledExpression,
+  evaluateExpression,
+  type ManatOSCalculatedContextField,
+  type ManatOSContext,
+} from '@manatos/shared';
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const uiRoot = resolve(moduleDirectory, '..');
 const viewsDirectory = resolve(uiRoot, 'views');
+
+// Changes on every UI-server process start. Browser debugger state is keyed by
+// this value so normal page reloads preserve state, while a ManatOS restart
+// deliberately starts a fresh debugging session.
+const uiBootId = randomUUID();
 
 export async function renderPage(
   res: Response,
@@ -51,10 +62,88 @@ export async function renderPage(
     : baseCtx;
 
   // EJS convenience cursor only. The canonical structure remains ctx.page.page...
+  const ctxPage = ctx ? currentPageContext(ctx) : null;
+
+  /*
+   * Generic lazy CTX field accessor for server-rendered views. Stored fields
+   * return immediately; calculated fields evaluate their already-parsed AST
+   * only when a renderer actually asks for the value. The current scope is the
+   * page's keyed fields collection so expressions such as `firstName + ' ' +
+   * lastName` resolve field names naturally without knowing anything about
+   * SysBOUsers or any other concrete page/entity.
+   */
+  const ctxFieldValue = (key: string): unknown => {
+    const field = ctxPage?.fields?.[key];
+    if (!field) return undefined;
+
+    if ('expression' in field && 'ast' in field && ctx) {
+      const calculated = field as ManatOSCalculatedContextField;
+      try {
+        return evaluateCompiledExpression(
+          { source: calculated.expression, ast: calculated.ast },
+          ctx,
+          ctxPage.fields,
+          {
+            diagnosticSink: (diagnostic) => {
+              console.error('[ManatOS expression evaluation]', diagnostic);
+            },
+          },
+        );
+      } catch {
+        // Diagnostics above preserve the bug signal; rendering stays resilient.
+        return undefined;
+      }
+    }
+
+    return field.value;
+  };
+
+  const ctxUserFieldValue = (key: string): unknown => {
+    const field = ctx?.user?.fields?.[key];
+    if (!field) return undefined;
+    if ('expression' in field && 'ast' in field && ctx) {
+      const calculated = field as ManatOSCalculatedContextField;
+      try {
+        return evaluateCompiledExpression(
+          { source: calculated.expression, ast: calculated.ast },
+          ctx,
+          ctx.user?.fields ?? null,
+          { diagnosticSink: (diagnostic) => console.error('[ManatOS expression evaluation]', diagnostic) },
+        );
+      } catch {
+        return undefined;
+      }
+    }
+    return field.value;
+  };
+
+
+
+  /**
+   * Generic expression accessor for presentation metadata whose current scope
+   * is not a page field collection (for example a related-record row). The
+   * evaluator remains context-agnostic; callers supply only the expression and
+   * the current CTX node/scope.
+   */
+  const ctxExpressionValue = (expression: string, currentCtxNode: unknown): unknown => {
+    if (!ctx) return undefined;
+    try {
+      return evaluateExpression(expression, ctx, currentCtxNode, {
+        diagnosticSink: (diagnostic) => console.error('[ManatOS expression evaluation]', diagnostic),
+      });
+    } catch {
+      return undefined;
+    }
+  };
+
   const renderedModel: Record<string, unknown> = {
     ...viewModel,
     ...(ctx ? { ctx } : {}),
-    ctxPage: ctx ? currentPageContext(ctx) : null,
+    ctxPage,
+    ctxFieldValue,
+    ctxUserFieldValue,
+    ctxExpressionValue,
+    uiBootId,
   };
 
   const body = await ejs.renderFile(resolve(viewsDirectory, `${view}.ejs`), renderedModel);

@@ -12,6 +12,7 @@ import {
   type SysBOMetadata,
   type SysBOUIMetadata,
   type SysBOUser,
+  calculatedContextField,
   type ManatOSContext,
 } from '@manatos/shared';
 
@@ -185,14 +186,35 @@ function applySysBOEntryContext(
       ? (formValues as Record<string, unknown>)
       : entry ?? {};
 
+  const entryFields = contextFields({
+    ...runtimeEntryValues,
+    ...pageValues,
+  });
+
+  /*
+   * Expression-backed UI fields become real calculated CTX variables. Parsing
+   * happens here, when the context variable is declared, while variable/path
+   * resolution remains completely lazy and context-dependent at value access.
+   */
+  const canonical = (metadata ?? definition.boMetadata) as SysBOMetadata<Record<string, unknown>>;
+  const ui = (uiMetadata ?? definition.uiMetadata) as SysBOUIMetadata | undefined;
+  // API $metadata-ui is already the effective UI contract. Current-EJS paths
+  // do not use that contract, so fall back to canonical derived fields there.
+  const effectiveDerivedFields = ui?.record?.derivedFields ?? canonical.derivedFields ?? {};
+  for (const [derivedName, derived] of Object.entries(effectiveDerivedFields)) {
+    if (!derived.expression) continue;
+    entryFields[derivedName] = calculatedContextField(derived.expression, {
+      diagnosticSink: (diagnostic) => {
+        console.error('[ManatOS expression parse]', diagnostic);
+      },
+    });
+  }
+
   const entryPage = pageContextNode(
     'entry',
     'sysbo-entry',
     mode,
-    contextFields({
-      ...runtimeEntryValues,
-      ...pageValues,
-    }),
+    entryFields,
   );
 
   const listPage = pageContextNode(
@@ -479,9 +501,9 @@ export function createSysBORoutes() {
           'pages/bo-edit',
 
           {
-            title: permissions.edit
+            title: `${permissions.edit
               ? definition.uiMetadata.editViewModel.editTitle
-              : definition.uiMetadata.editViewModel.editTitle.replace(/^Edit\b/, 'View'),
+              : definition.uiMetadata.editViewModel.editTitle.replace(/^Edit\b/, 'View')} - ${supplemental.primaryDisplayValue}`,
             titleIcon: definition.uiMetadata.icon,
 
             definition,
@@ -1134,6 +1156,7 @@ async function editPageSupplementalData(
     // Generic page-context bucket consumed by metadata-driven related collections.
     relatedData: { externalIdentities: authenticationIdentities },
     referenceData: await references(req, definition),
+    primaryDisplayValue: displayValue,
     deletePresentation: {
       displayValue,
       entityLabel:
@@ -1748,8 +1771,12 @@ async function renderMetadataDrivenRecordPlaceholder(
     },
   );
 
+  const primaryDisplayValue = !record.isNew && supplemental.primaryDisplayValue && supplemental.primaryDisplayValue !== 'entry'
+    ? ` - ${supplemental.primaryDisplayValue}`
+    : '';
+
   await renderPage(res, 'pages/metadata-driven/bo-entry-metadata', {
-    title: `${modeLabel} ${metadata.name}`,
+    title: `${modeLabel} ${metadata.name}${primaryDisplayValue}`,
     titleIcon: definition.uiMetadata.icon,
     definition,
     metadata,

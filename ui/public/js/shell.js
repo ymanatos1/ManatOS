@@ -13,7 +13,8 @@
   const navigationStatePersistence = appShell?.dataset.navigationStatePersistence ?? 'none';
   const LEFT_NAVIGATION_STORAGE_KEY = 'manatos.ui.leftNavigation.visible';
   const DETAILS_STORAGE_KEY = 'manatos.ui.details.visible';
-  const DEBUG_STORAGE_KEY = 'manatos.debug.panel.visible';
+  const debugBootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
+  const DEBUG_STORAGE_KEY = `manatos.debug.panel.visible.${debugBootId}`;
 
   const leftNavigation = document.getElementById('leftNavigation');
 
@@ -213,7 +214,7 @@
       refreshVisibleModalCenters();
 
       if (persist) {
-        localStorage.setItem(DEBUG_STORAGE_KEY, String(visible));
+        sessionStorage.setItem(DEBUG_STORAGE_KEY, String(visible));
       }
     },
 
@@ -253,7 +254,7 @@
     shellState.setDetailsVisible(initialDetailsVisible, false);
 
     const initialDebugVisible =
-      Boolean(debugPanel) && localStorage.getItem(DEBUG_STORAGE_KEY) === 'true';
+      Boolean(debugPanel) && sessionStorage.getItem(DEBUG_STORAGE_KEY) === 'true';
     shellState.setDebugVisible(initialDebugVisible, false);
   }
 

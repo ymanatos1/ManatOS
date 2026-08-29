@@ -38,7 +38,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         'general',
         'General info',
         10,
-        ['name', 'email', 'role', 'firstName', 'lastName', 'description', 'enabled'],
+        ['name', 'email', 'fullName', 'role', 'firstName', 'lastName', 'description', 'enabled'],
         { icon: 'info-circle', layout: 'form' },
       ),
       tab(
@@ -50,76 +50,72 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       ),
     ],
     fieldOverrides: {
-      // Current EJS keeps verification state out of ordinary CRUD editing and
-      // changes it only through the dedicated Verify email command.
-      // The persisted boolean is represented by the calculated
-      // emailVerificationStatus pseudo-field on the Authentication tab.
-      emailVerified: { editable: false, visible: false },
+      /*
+       * `emailVerified` and `passwordChangedAt` are intentionally absent from
+       * every tab, so no redundant visible:false override is needed. Canonical
+       * readOnly/application-managed rules remain in SysBOUsersMetadata.
+       *
+       * These two calculated fields are canonical entity derivedFields; the UI
+       * only decorates their already-evaluated textual values.
+       */
+      emailVerificationStatus: {
+        presentation: {
+          states: [
+            { equals: 'Verified', tone: 'success' },
+            { equals: 'Not verified', tone: 'secondary' },
+          ],
+        },
+      },
+      localPasswordStatus: {
+        presentation: {
+          states: [
+            { equals: 'Configured', icon: 'check-circle-fill', tone: 'success' },
+            { equals: 'Not configured', icon: 'dash-circle', tone: 'secondary' },
+          ],
+        },
+      },
+
+      // Shorter Authentication-tab labels and summary formatting are genuine
+      // presentation overrides; canonical readOnly already controls editing.
       emailVerifiedAt: {
         label: 'Verified at',
-        editable: false,
         presentation: { mode: 'summary', format: 'datetime', emptyText: '—' },
       },
       emailVerificationSource: {
         label: 'Verification source',
-        editable: false,
         presentation: { mode: 'summary', format: 'verification-source', emptyText: '—' },
       },
-      passwordChangedAt: { editable: false, visible: false },
 
-      // Current EJS creates enabled users by default. Keep the default in UI
-      // metadata so every future renderer obtains the same create behaviour.
+      // Create-form behavior is UI-specific; persisted/entity semantics stay
+      // in SysBO metadata and the API.
       enabled: { createDefaultValue: true },
-    },
-    derivedFields: {
-      emailVerificationStatus: {
-        key: 'emailVerificationStatus',
-        label: 'Email verification',
-        sourceField: 'emailVerified',
-        states: [
-          { equals: true, label: 'Verified', tone: 'success' },
-          { equals: false, label: 'Not verified', tone: 'secondary' },
-        ],
-      },
-      localPasswordStatus: {
-        key: 'localPasswordStatus',
-        label: 'Local password',
-        sourceField: 'hasPassword',
-        states: [
-          { equals: true, label: 'Configured', icon: 'check-circle-fill', tone: 'success' },
-          { equals: false, label: 'Not configured', icon: 'dash-circle', tone: 'secondary' },
-        ],
-      },
     },
     relatedCollections: {
       externalIdentities: {
-        key: 'externalIdentities',
         label: 'External identities',
         icon: 'person-badge',
-        sourceKey: 'externalIdentities',
         layout: 'panel-list',
         emptyText: 'No external authentication providers are linked.',
         fields: [
-          { key: 'provider', sourceField: 'provider', format: 'auth-provider' },
-          { key: 'email', sourceField: 'email' },
+          { key: 'provider', format: 'auth-provider' },
+          { key: 'email' },
           {
             key: 'providerEmailVerificationStatus',
-            derived: {
-              key: 'providerEmailVerificationStatus',
-              label: 'Provider email verification',
-              sourceField: 'emailVerified',
+            label: 'Provider email verification',
+            expression: "emailVerified == true ? 'Provider email verified' : 'Provider email not verified'",
+            presentation: {
               states: [
-                { equals: true, label: 'Provider email verified', tone: 'success' },
-                { equals: false, label: 'Provider email not verified', tone: 'secondary' },
+                { equals: 'Provider email verified', tone: 'success' },
+                { equals: 'Provider email not verified', tone: 'secondary' },
               ],
             },
           },
         ],
       },
     },
-    entryActions: [
-      { key: 'delete', kind: 'delete', visible: true, label: 'Delete entry', icon: 'trash' },
-    ],
+    entryActions: {
+      delete: { kind: 'delete', visible: true, label: 'Delete entry', icon: 'trash' },
+    },
   },
 };
 
@@ -196,12 +192,10 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
       tab('secrets', 'Secrets', 20, ['clientId', 'hasClientSecret', 'secretUpdatedAt', 'credentialsVerified', 'credentialsVerifiedAt']),
     ],
     fieldOverrides: {
-      callbackPath: { editable: false },
+      // Tenant is canonically writable but this current administration form
+      // intentionally presents it read-only. The remaining fields already
+      // carry canonical readOnly/generated metadata and need no repetition.
       tenant: { editable: false },
-      hasClientSecret: { editable: false },
-      secretUpdatedAt: { editable: false },
-      credentialsVerified: { editable: false },
-      credentialsVerifiedAt: { editable: false },
     },
   },
 };

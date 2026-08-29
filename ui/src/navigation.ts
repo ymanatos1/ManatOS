@@ -4,7 +4,7 @@ import {
   resolvePlatform,
   type CompanyInfo,
   type NavigationContribution,
-  type PlatformInfo,
+  type SysPlatform,
   type SysBOUserRole,
 } from '@manatos/shared';
 
@@ -50,7 +50,7 @@ const baseHorizontalNavMenu: AppNavMenuItem[] = [
  */
 export function horizontalNavigation(
   company: CompanyInfo = MANATOS_COMPANY,
-  platform: PlatformInfo = resolvePlatform(company),
+  platform: SysPlatform = resolvePlatform(company),
 ): AppNavMenuItem[] {
   const enabledPlatforms = company.platforms.filter((entry) => entry.enabled);
   const platformItem: AppNavMenuItem = enabledPlatforms.length <= 1
@@ -88,7 +88,7 @@ export function horizontalNavigation(
  */
 export function composeVerticalNavigation(
   company: CompanyInfo = MANATOS_COMPANY,
-  platform: PlatformInfo = resolvePlatform(company),
+  platform: SysPlatform = resolvePlatform(company),
 ): AppNavMenuItem[] {
   const entityKeys = effectiveEntityKeys(company, platform);
   const contributions = [...company.navigation, ...platform.navigation]
@@ -136,7 +136,7 @@ export function navigationFor(
   role: SysBOUserRole | null,
   auth: boolean,
   company: CompanyInfo = MANATOS_COMPANY,
-  platform: PlatformInfo = resolvePlatform(company),
+  platform: SysPlatform = resolvePlatform(company),
 ) {
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {

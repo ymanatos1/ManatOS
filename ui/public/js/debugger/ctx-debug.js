@@ -6,6 +6,7 @@
   if (!snapshotElement || !treeElement) return;
 
   const CHANGE_EVENT = 'manatos:ctx-change';
+  const bootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
 
   let ctx;
   try {
@@ -16,21 +17,55 @@
   if (!ctx || typeof ctx !== 'object') return;
 
   /*
-   * Debugger tree state is intentionally page-session local. Every newly
-   * rendered page starts from the same predictable inspection position:
-   * only the ctx root is expanded and selected. Context-change rerenders
-   * keep the in-memory state for that page, but it is not persisted across
-   * reloads/navigation and does not belong in SysState/database storage.
+   * DEBUG state is browser-session state, not application/business state.
+   * sessionStorage intentionally preserves it across ordinary full-page
+   * navigation/reloads in the same browser tab, while avoiding SysState/DB
+   * persistence. Missing paths are recovered to their nearest surviving
+   * parent after the new page CTX has been loaded.
    */
+  const DEBUG_STATE_KEY = `manatos.debug.ctx.state.v1.${bootId}`;
+
+  const readPersistedState = () => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(DEBUG_STATE_KEY) || 'null');
+      if (!saved || typeof saved !== 'object') return null;
+      return saved;
+    } catch {
+      return null;
+    }
+  };
+
+  const persisted = readPersistedState();
   const state = {
-    expanded: new Set(['ctx']),
-    selected: 'ctx',
-    scrollTop: 0,
+    expanded: new Set(Array.isArray(persisted?.expanded) && persisted.expanded.length ? persisted.expanded : ['ctx']),
+    selected: typeof persisted?.selected === 'string' ? persisted.selected : 'ctx',
+    scrollTop: Number.isFinite(persisted?.scrollTop) ? persisted.scrollTop : 0,
+    propertiesOpen: persisted?.propertiesOpen === true,
+    propertiesHeight: Number.isFinite(persisted?.propertiesHeight) ? persisted.propertiesHeight : 256,
+    debuggerWidth: Number.isFinite(persisted?.debuggerWidth) ? persisted.debuggerWidth : null,
+  };
+
+  const persistState = () => {
+    try {
+      sessionStorage.setItem(DEBUG_STATE_KEY, JSON.stringify({
+        expanded: [...state.expanded],
+        selected: state.selected,
+        scrollTop: state.scrollTop,
+        propertiesOpen: state.propertiesOpen,
+        propertiesHeight: state.propertiesHeight,
+        debuggerWidth: state.debuggerWidth,
+        historyEntries: history?.entries ?? [],
+        historyIndex: history?.index ?? -1,
+        watchedPath,
+      }));
+    } catch {
+      // Debugging must never interfere with normal application behavior.
+    }
   };
 
   const saveState = () => {
-    // Retain only transient scroll state for rerenders in this page instance.
     state.scrollTop = treeElement.scrollTop;
+    persistState();
   };
 
   const isObject = (value) => value !== null && typeof value === 'object';
@@ -151,6 +186,9 @@
     return children;
   };
 
+  const isCalculatedContextField = (value) =>
+    isObject(value) && typeof value.expression === 'string' && isObject(value.ast);
+
   const objectChildren = (path, value) => {
     if (!isObject(value)) return [];
 
@@ -171,7 +209,8 @@
       });
     }
 
-    return Object.entries(value).map(([key, item]) => ({
+    const entries = Object.entries(value).filter(([key]) => !(isCalculatedContextField(value) && key === 'ast'));
+    return entries.map(([key, item]) => ({
       key: Array.isArray(item) ? `${key}[]` : key,
       path: `${path}.${key}`,
       value: item,
@@ -364,9 +403,10 @@
   };
 
   const history = {
-    entries: [],
-    index: -1,
+    entries: Array.isArray(persisted?.historyEntries) ? persisted.historyEntries.filter((value) => typeof value === 'string') : [],
+    index: Number.isInteger(persisted?.historyIndex) ? persisted.historyIndex : -1,
   };
+  if (history.index >= history.entries.length) history.index = history.entries.length - 1;
 
   const backButton = document.getElementById('ctxDebugBack');
   const forwardButton = document.getElementById('ctxDebugForward');
@@ -376,7 +416,15 @@
   const propertiesPanel = document.getElementById('ctxDebugPropertiesPanel');
   const propertiesBody = document.getElementById('ctxDebugPropertiesBody');
   const propertiesClose = document.getElementById('ctxDebugPropertiesClose');
-  let watchedPath = null;
+  const propertiesTitle = document.getElementById('ctxDebugPropertiesTitle');
+  const propertiesResize = document.getElementById('ctxDebugPropertiesResize');
+  const findButton = document.getElementById('ctxDebugFind');
+  const findBox = document.getElementById('ctxDebugFindBox');
+  const findInput = document.getElementById('ctxDebugFindInput');
+  const findHistoryList = document.getElementById('ctxDebugFindHistory');
+  const FIND_HISTORY_KEY = `manatos.debug.ctx.find-history.v1.${bootId}`;
+  const FIND_HISTORY_LIMIT = 30;
+  let watchedPath = typeof persisted?.watchedPath === 'string' ? persisted.watchedPath : null;
   let changedPath = null;
   let changedTimer = null;
 
@@ -415,7 +463,7 @@
     if (backButton) backButton.disabled = history.index <= 0;
     if (forwardButton) forwardButton.disabled = history.index < 0 || history.index >= history.entries.length - 1;
     if (selectionElement) {
-      selectionElement.textContent = state.selected;
+      selectionElement.textContent = nodeNameFromPath(state.selected);
       selectionElement.title = state.selected;
     }
     if (watchButton) {
@@ -442,13 +490,85 @@
     selectedRow?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
 
-  const selectPath = (requestedPath, { remember = true } = {}) => {
+  const selectPath = (requestedPath, { remember = true, openProperties = true } = {}) => {
     const path = nearestExistingPath(requestedPath);
     expandAncestors(path);
     state.selected = path;
     if (remember) rememberSelection(path);
+    if (openProperties && propertiesPanel) {
+      state.propertiesOpen = true;
+      propertiesPanel.classList.remove('d-none');
+      propertiesPanel.setAttribute('aria-hidden', 'false');
+    }
     saveState();
     render({ revealSelection: true });
+  };
+
+  const allRealNodePaths = () => {
+    const paths = [];
+    const visit = (path, value) => {
+      paths.push(path);
+      if (!isObject(value) || isCalculatedContextField(value)) return;
+      for (const child of objectChildren(path, value)) visit(child.path, child.value);
+    };
+    visit('ctx', ctx);
+    return paths;
+  };
+
+  const nodeNameFromPath = (path) => {
+    const indexed = path.match(/\[(\d+)\]$/);
+    if (indexed) return `[${indexed[1]}]`;
+    return path.split('.').at(-1)?.replace(/\[\]$/, '') ?? path;
+  };
+
+  const readFindHistory = () => {
+    try {
+      const values = JSON.parse(sessionStorage.getItem(FIND_HISTORY_KEY) || '[]');
+      return Array.isArray(values)
+        ? values.filter((v) => typeof v === 'string' && v.trim()).slice(0, FIND_HISTORY_LIMIT)
+        : [];
+    } catch { return []; }
+  };
+
+  const closeFindHistory = () => findHistoryList?.classList.add('d-none');
+
+  const refreshFindHistory = () => {
+    if (!findHistoryList) return;
+    const values = readFindHistory();
+    findHistoryList.replaceChildren(...values.map((value) => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'ctx-debug-find-history-item';
+      option.textContent = value;
+      option.title = value;
+      option.setAttribute('role', 'option');
+      option.addEventListener('mousedown', (event) => event.preventDefault());
+      option.addEventListener('click', () => {
+        if (findInput) findInput.value = value;
+        closeFindHistory();
+        findNextByName(value);
+      });
+      return option;
+    }));
+    findHistoryList.classList.toggle('d-none', values.length === 0);
+  };
+
+  const rememberFind = (term) => {
+    const values = [term, ...readFindHistory().filter((v) => v !== term)].slice(0, FIND_HISTORY_LIMIT);
+    try { sessionStorage.setItem(FIND_HISTORY_KEY, JSON.stringify(values)); } catch { /* debugger only */ }
+    refreshFindHistory();
+  };
+
+  const findNextByName = (rawTerm) => {
+    const term = rawTerm.trim();
+    if (!term) return;
+    rememberFind(term);
+    const paths = allRealNodePaths();
+    const current = Math.max(0, paths.indexOf(state.selected));
+    const ordered = [...paths.slice(current + 1), ...paths.slice(0, current + 1)];
+    const exact = ordered.find((path) => nodeNameFromPath(path) === term);
+    const match = exact ?? ordered.find((path) => nodeNameFromPath(path).toLowerCase().includes(term.toLowerCase()));
+    if (match) selectPath(match);
   };
 
   const nodeKind = (path, value, derived = false, source = false) => {
@@ -476,20 +596,130 @@
     return { path, value: getExact(path), derived: false, source: false, sourcePath: null };
   };
 
+  const astDescriptor = (node) => {
+    if (!node || typeof node !== 'object') return { value: 'Invalid', type: 'AST node', icon: 'bi-exclamation-triangle' };
+    switch (node.kind) {
+      case 'literal': {
+        const literalValue = typeof node.value === 'string'
+          ? `'${String(node.value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+          : displayValue(node.value);
+        return { value: literalValue, type: 'literal', icon: 'bi-quote' };
+      }
+      case 'variable': return { value: node.path, type: 'variable', icon: 'bi-tag' };
+      case 'binary': return { value: node.operator, type: 'binary', icon: 'bi-calculator' };
+      case 'unary': return { value: node.operator, type: 'unary', icon: 'bi-calculator' };
+      case 'group': return { value: '(...)', type: 'group', icon: 'bi-parentheses' };
+      case 'conditional': return { value: '?:', type: 'conditional', icon: 'bi-signpost-split' };
+      case 'function': return { value: node.functionName, type: 'function', icon: 'bi-gear' };
+      default: return { value: String(node.kind ?? 'Unknown'), type: 'unknown', icon: 'bi-question-circle' };
+    }
+  };
+
+  const astChildren = (node) => {
+    if (!node || typeof node !== 'object') return [];
+    switch (node.kind) {
+      case 'binary': return [
+        {role: 'left', node: node.left},
+        {role: 'right', node: node.right},
+      ];
+      case 'unary': return [{role: 'operand', node: node.operand}];
+      case 'group': return [{role: 'expression', node: node.expression}];
+      case 'conditional': return [
+        {role: 'condition', node: node.condition},
+        {role: 'true', node: node.whenTrue},
+        {role: 'false', node: node.whenFalse},
+      ];
+      case 'function': return (node.arguments || []).map((argument, index) => ({role: `arg[${index}]`, node: argument}));
+      default: return [];
+    }
+  };
+
+  const renderAstNode = (node, role = null) => {
+    const item = document.createElement('li');
+    item.className = 'ctx-debug-ast-node';
+
+    const line = document.createElement('div');
+    line.className = 'ctx-debug-ast-line';
+
+    const descriptor = astDescriptor(node);
+
+    const icon = document.createElement('i');
+    icon.className = `bi ${descriptor.icon} ctx-debug-ast-icon`;
+    icon.setAttribute('aria-hidden', 'true');
+    line.appendChild(icon);
+
+    const value = document.createElement('span');
+    value.className = `ctx-debug-ast-value ctx-debug-ast-${String(node?.kind ?? 'unknown')}`;
+    value.textContent = descriptor.value;
+    line.appendChild(value);
+
+    if (role) {
+      const roleElement = document.createElement('span');
+      roleElement.className = 'ctx-debug-ast-role';
+      roleElement.textContent = `(${role})`;
+      line.appendChild(roleElement);
+    }
+
+    const separator = document.createElement('span');
+    separator.className = 'ctx-debug-ast-separator';
+    separator.textContent = '-';
+    line.appendChild(separator);
+
+    const type = document.createElement('span');
+    type.className = 'ctx-debug-ast-type';
+    type.textContent = descriptor.type;
+    line.appendChild(type);
+
+    item.appendChild(line);
+
+    const children = astChildren(node);
+    if (children.length) {
+      const list = document.createElement('ul');
+      list.className = 'ctx-debug-ast-children';
+      children.forEach((child) => list.appendChild(renderAstNode(child.node, child.role)));
+      item.appendChild(list);
+    }
+    return item;
+  };
+
+  const renderAst = (ast) => {
+    const section = document.createElement('div');
+    section.className = 'ctx-debug-ast-section';
+    const title = document.createElement('div');
+    title.className = 'ctx-debug-ast-title';
+    title.textContent = 'AST';
+    const tree = document.createElement('ul');
+    tree.className = 'ctx-debug-ast-tree';
+    tree.appendChild(renderAstNode(ast));
+    section.append(title, tree);
+    return section;
+  };
+
   const renderProperties = () => {
     if (!propertiesPanel || !propertiesBody || propertiesPanel.classList.contains('d-none')) return;
     const info = selectedNodeInfo();
     const kind = nodeKind(info.path, info.value, info.derived, info.source);
     const children = info.derived ? [] : objectChildren(info.path, info.value);
+    const calculated = isCalculatedContextField(info.value);
+    if (propertiesTitle) {
+      const variableName = nodeNameFromPath(info.path);
+      const prefix = info.path.slice(0, Math.max(0, info.path.length - variableName.length));
+      const variableElement = document.createElement('strong');
+      variableElement.className = 'ctx-debug-properties-variable-name';
+      variableElement.textContent = variableName;
+      propertiesTitle.replaceChildren(document.createTextNode(prefix), variableElement);
+      propertiesTitle.title = info.path;
+    }
     const rows = [
       ['Path', info.path],
-      ['Kind', kind],
+      ['Kind', calculated ? 'calculated' : kind],
       ['JavaScript type', info.value === null ? 'null' : Array.isArray(info.value) ? 'array' : typeof info.value],
       ['Value', displayValue(info.value)],
       ['Children', String(children.length)],
       ['Watchable', info.derived || info.source ? 'no' : 'yes'],
     ];
     if (info.sourcePath) rows.splice(4, 0, ['Derived from', info.sourcePath]);
+    if (calculated) rows.splice(4, 0, ['Expression', info.value.expression]);
 
     propertiesBody.replaceChildren();
     for (const [label, value] of rows) {
@@ -512,6 +742,9 @@
       }
       row.append(labelElement, valueElement);
       propertiesBody.appendChild(row);
+      if (calculated && label === 'Expression') {
+        propertiesBody.appendChild(renderAst(info.value.ast));
+      }
     }
   };
 
@@ -544,6 +777,11 @@
         event.stopPropagation();
         state.selected = path;
         rememberSelection(path);
+        if (propertiesPanel) {
+          state.propertiesOpen = true;
+          propertiesPanel.classList.remove('d-none');
+          propertiesPanel.setAttribute('aria-hidden', 'false');
+        }
         if (state.expanded.has(path)) state.expanded.delete(path);
         else state.expanded.add(path);
         saveState();
@@ -576,10 +814,7 @@
       });
     } else {
       row.addEventListener('click', () => {
-        state.selected = path;
-        rememberSelection(path);
-        saveState();
-        render({ revealSelection: true });
+        selectPath(path);
       });
     }
 
@@ -631,21 +866,133 @@
   watchButton?.addEventListener('click', () => {
     if (watchButton.disabled) return;
     watchedPath = watchedPath === state.selected ? null : state.selected;
+    persistState();
     updateToolbar();
   });
+
+  refreshFindHistory();
+  findButton?.addEventListener('click', () => {
+    findBox?.classList.toggle('d-none');
+    if (findBox && !findBox.classList.contains('d-none')) {
+      refreshFindHistory();
+      findInput?.focus();
+      findInput?.select();
+    } else {
+      closeFindHistory();
+    }
+  });
+  findInput?.addEventListener('focus', refreshFindHistory);
+  findInput?.addEventListener('input', refreshFindHistory);
+  findInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      closeFindHistory();
+      findNextByName(findInput.value);
+    } else if (event.key === 'Escape') {
+      closeFindHistory();
+      findBox?.classList.add('d-none');
+      findButton?.focus();
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (findBox && !findBox.contains(event.target) && event.target !== findButton) closeFindHistory();
+  });
+
+  const panelResize = document.getElementById('ctxDebugPanelResize');
+  const debugPanel = document.getElementById('debugPanel');
+  const appShell = document.querySelector('.app-shell');
+  const DEFAULT_DEBUGGER_WIDTH = 430;
+
+  const applyDebuggerWidth = (requested = state.debuggerWidth) => {
+    if (!debugPanel || !appShell) return;
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const minWidth = 320;
+    const maxWidth = Math.max(minWidth, Math.floor(viewportWidth * 0.66));
+    const width = Math.max(minWidth, Math.min(Number(requested) || DEFAULT_DEBUGGER_WIDTH, maxWidth));
+    state.debuggerWidth = width;
+    appShell.style.setProperty('--manatos-debug-width', `${width}px`);
+  };
+
+  if (panelResize && debugPanel) {
+    let startX = 0;
+    let startWidth = 0;
+    panelResize.addEventListener('pointerdown', (event) => {
+      startX = event.clientX;
+      startWidth = debugPanel.getBoundingClientRect().width;
+      panelResize.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    });
+    panelResize.addEventListener('pointermove', (event) => {
+      if (!panelResize.hasPointerCapture?.(event.pointerId)) return;
+      applyDebuggerWidth(startWidth + (startX - event.clientX));
+      requestAnimationFrame(ensureSelectedVisible);
+    });
+    panelResize.addEventListener('pointerup', (event) => {
+      panelResize.releasePointerCapture?.(event.pointerId);
+      persistState();
+      requestAnimationFrame(ensureSelectedVisible);
+    });
+    panelResize.addEventListener('dblclick', () => {
+      applyDebuggerWidth(DEFAULT_DEBUGGER_WIDTH);
+      persistState();
+      requestAnimationFrame(ensureSelectedVisible);
+    });
+  }
+
+  applyDebuggerWidth();
+
+  const DEFAULT_PROPERTIES_HEIGHT = 256;
+  const applyPropertiesHeight = (requested = state.propertiesHeight) => {
+    if (!propertiesPanel) return;
+    const panelHeight = document.getElementById('debugPanel')?.clientHeight || window.innerHeight;
+    const minHeight = 136;
+    const maxHeight = Math.max(minHeight, Math.floor(panelHeight * 2 / 3));
+    state.propertiesHeight = Math.max(minHeight, Math.min(Number(requested) || DEFAULT_PROPERTIES_HEIGHT, maxHeight));
+    propertiesPanel.style.height = `${state.propertiesHeight}px`;
+  };
+
+  if (propertiesResize && propertiesPanel) {
+    let startY = 0;
+    let startHeight = 0;
+    propertiesResize.addEventListener('pointerdown', (event) => {
+      startY = event.clientY;
+      startHeight = propertiesPanel.getBoundingClientRect().height;
+      propertiesResize.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    });
+    propertiesResize.addEventListener('pointermove', (event) => {
+      if (!propertiesResize.hasPointerCapture?.(event.pointerId)) return;
+      applyPropertiesHeight(startHeight + (event.clientY - startY));
+      requestAnimationFrame(ensureSelectedVisible);
+    });
+    propertiesResize.addEventListener('pointerup', (event) => {
+      propertiesResize.releasePointerCapture?.(event.pointerId);
+      persistState();
+      requestAnimationFrame(ensureSelectedVisible);
+    });
+    propertiesResize.addEventListener('dblclick', () => {
+      applyPropertiesHeight(DEFAULT_PROPERTIES_HEIGHT);
+      persistState();
+      requestAnimationFrame(ensureSelectedVisible);
+    });
+  }
 
   propertiesButton?.addEventListener('click', () => {
     if (!propertiesPanel) return;
     const opening = propertiesPanel.classList.contains('d-none');
+    state.propertiesOpen = opening;
     propertiesPanel.classList.toggle('d-none', !opening);
     propertiesPanel.setAttribute('aria-hidden', String(!opening));
-    if (opening) renderProperties();
+    if (opening) { applyPropertiesHeight(); renderProperties(); }
+    persistState();
     requestAnimationFrame(ensureSelectedVisible);
   });
 
   propertiesClose?.addEventListener('click', () => {
+    state.propertiesOpen = false;
     propertiesPanel?.classList.add('d-none');
     propertiesPanel?.setAttribute('aria-hidden', 'true');
+    persistState();
     requestAnimationFrame(ensureSelectedVisible);
   });
 
@@ -708,7 +1055,18 @@
     render();
   });
 
+  // Restore paths only if they still exist in the newly rendered page CTX.
   state.selected = nearestExistingPath(state.selected);
+  state.expanded = new Set([...state.expanded].filter((path) => pathExists(path)));
+  state.expanded.add('ctx');
+  if (watchedPath && !pathExists(watchedPath)) watchedPath = nearestExistingPath(watchedPath);
+
+  if (propertiesPanel) {
+    applyPropertiesHeight();
+    propertiesPanel.classList.toggle('d-none', !state.propertiesOpen);
+    propertiesPanel.setAttribute('aria-hidden', String(!state.propertiesOpen));
+  }
+
   rememberSelection(state.selected);
-  render();
+  render({ revealSelection: true });
 })();

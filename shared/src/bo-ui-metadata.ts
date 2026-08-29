@@ -43,21 +43,50 @@ export interface SysBOUIRecordTabMetadata {
   layout?: 'form' | 'summary';
 }
 
+export interface SysBOUIDerivedStateMetadata {
+  equals: string | number | boolean | null;
+  /** Optional UI-only icon/tone decoration for the already-calculated value. */
+  icon?: SysBOUIIconKey;
+  tone?: SysBOUIStatusTone;
+}
+
 export interface SysBOUIFieldPresentationMetadata {
   /**
-   * Read-only output presentation. `form-control` remains the default for
-   * ordinary canonical fields; `summary` is useful for application-managed
-   * state such as authentication information.
+   * Output presentation only. It must never redefine entity/domain semantics.
+   * `summary` is useful for compact application-managed state such as
+   * authentication information.
    */
   mode?: 'form-control' | 'summary';
   format?: SysBOUIValueFormat;
   emptyText?: string;
+
+  /**
+   * Optional UI decoration selected from the evaluated field value. The value
+   * itself remains canonical/entity-derived; these states only choose icon/tone.
+   */
+  states?: readonly SysBOUIDerivedStateMetadata[];
 }
 
 export interface SysBOUIFieldOverrideMetadata {
+  /**
+   * Presentation overrides for a field/derived-field when this particular UI
+   * intentionally differs from the canonical metadata. Do not repeat canonical
+   * properties merely for emphasis: omission means "use the canonical rule".
+   *
+   * A field that is not referenced by any tab is already absent from this entry
+   * UI; `visible: false` is therefore unnecessary in that case. `visible` remains
+   * useful for a field that is otherwise included but conditionally suppressed.
+   */
   order?: number;
   label?: string;
   visible?: boolean;
+
+  /**
+   * UI-only restriction. `editable: false` may make a canonically writable field
+   * read-only in this view, but must never make canonical `readOnly: true` writable.
+   * Dynamic UI/domain decisions should prefer evaluator-backed expressions when
+   * introduced rather than accumulating mode-specific booleans.
+   */
   editable?: boolean;
 
   /** Applied only when a new record has no value for this field. */
@@ -67,36 +96,25 @@ export interface SysBOUIFieldOverrideMetadata {
 }
 
 /**
- * One state in a calculated display field. The metadata selects the text,
- * semantic icon and tone from the current source value without introducing a
- * persisted property into the business object itself.
- */
-export interface SysBOUIDerivedStateMetadata {
-  equals: string | number | boolean | null;
-  label: string;
-  icon?: SysBOUIIconKey;
-  tone?: SysBOUIStatusTone;
-}
-
-/**
- * Read-only, on-the-fly UI value derived from an existing API projection field.
- * This deliberately belongs to UI metadata rather than canonical BO metadata:
- * it is presentation state, not persisted business data.
+ * UI-only calculated field declaration. Canonical/reusable calculations belong
+ * in SysBOMetadata.derivedFields; this container exists so a presentation can
+ * add calculations that are meaningful only for that UI/context.
  */
 export interface SysBOUIDerivedFieldMetadata {
-  key: string;
   label: string;
   icon?: SysBOUIIconKey;
-  sourceField: string;
+
+  /** Context-agnostic ManatOS expression, parsed when its CTX field is declared. */
+  expression?: string;
+
   format?: SysBOUIValueFormat;
   emptyText?: string;
-  states?: readonly SysBOUIDerivedStateMetadata[];
 }
 
 export type SysBOUIEntryActionKind = 'delete';
 
 export interface SysBOUIEntryActionMetadata {
-  key: string;
+  /** The parent Record key is the stable action identifier. */
   kind: SysBOUIEntryActionKind;
   visible: boolean;
   label: string;
@@ -104,19 +122,27 @@ export interface SysBOUIEntryActionMetadata {
 }
 
 export interface SysBOUIRelatedCollectionFieldMetadata {
+  /** Required because related fields are ordered in an array rather than a keyed Record. */
   key: string;
   label?: string;
   sourceField?: string;
+
+  /**
+   * Optional evaluator-backed row calculation. The related row is supplied as
+   * the current evaluation context; ordinary CTX root paths remain available.
+   */
+  expression?: string;
+
   format?: SysBOUIValueFormat;
   icon?: SysBOUIIconKey;
-  derived?: SysBOUIDerivedFieldMetadata;
+  presentation?: SysBOUIFieldPresentationMetadata;
 }
 
 export interface SysBOUIRelatedCollectionMetadata {
-  key: string;
   label: string;
   icon?: SysBOUIIconKey;
-  sourceKey: string;
+  /** Defaults to the parent relatedCollections Record key when omitted. */
+  sourceKey?: string;
   layout: 'panel-list';
   emptyText?: string;
   fields: readonly SysBOUIRelatedCollectionFieldMetadata[];
@@ -129,8 +155,12 @@ export interface SysBOUIRecordMetadata {
   /** Optional calculated/read-only fields referenced by tab.fields. */
   derivedFields?: Readonly<Record<string, SysBOUIDerivedFieldMetadata>>;
 
-  /** Record-level commands. More action kinds can be added without changing the container shape. */
-  entryActions?: readonly SysBOUIEntryActionMetadata[];
+  /**
+   * Keyed record-level commands. The Record key is the action identifier, so
+   * action metadata does not repeat a redundant `key` property. New action
+   * kinds can be added without changing the container shape.
+   */
+  entryActions?: Readonly<Record<string, SysBOUIEntryActionMetadata>>;
 
   /** Read-only related-record blocks referenced by tab.fields. */
   relatedCollections?: Readonly<Record<string, SysBOUIRelatedCollectionMetadata>>;

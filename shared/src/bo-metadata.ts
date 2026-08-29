@@ -85,6 +85,13 @@ export interface SysBOFieldMetadata {
  *
  * Actual BO records have completely separate generated GUID `id` values.
  */
+/** Canonical, non-persisted value derived from an entity record/context. */
+export interface SysBODerivedFieldMetadata {
+  /** The parent Record key is the canonical derived-field name. */
+  label: string;
+  expression: string;
+}
+
 export interface SysBOMetadata<T> {
   key: string;
   name: string;
@@ -106,6 +113,9 @@ export interface SysBOMetadata<T> {
    * fieldDefinition.email
    */
   fieldDefinition: Record<string, SysBOFieldMetadata>;
+
+  /** Entity/domain calculations, independent from any particular UI. */
+  derivedFields?: Readonly<Record<string, SysBODerivedFieldMetadata>>;
 }
 
 /**
@@ -212,6 +222,21 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
   primaryField: 'name',
 
+  derivedFields: {
+    fullName: {
+      label: 'Full name',
+      expression: "firstName + ' ' + lastName",
+    },
+    emailVerificationStatus: {
+      label: 'Email verification',
+      expression: "emailVerified == true ? 'Verified' : 'Not verified'",
+    },
+    localPasswordStatus: {
+      label: 'Local password',
+      expression: "hasPassword == true ? 'Configured' : 'Not configured'",
+    },
+  },
+
   fieldDefinition: {
     ...common,
 
@@ -246,6 +271,8 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
       order: 30,
 
       required: true,
+      readOnly: true,
+      applicationManaged: true,
     },
 
     emailVerifiedAt: {
@@ -570,7 +597,8 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
   key: 'sys-ext-auth-providers',
   name: 'External authentication provider',
   pluralName: 'External authentication providers',
-  primaryField: 'name',
+  // Provider is the human/business identity shown as the clickable list value.
+  primaryField: 'provider',
   fieldDefinition: {
     ...common,
     name: { ...common.name!, label: 'Provider name', readOnly: true },

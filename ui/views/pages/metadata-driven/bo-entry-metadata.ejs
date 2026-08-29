@@ -11,7 +11,8 @@
   // The legacy relatedData fallback keeps save-error/current-renderer paths safe
   // while the wider UI is progressively moved onto ctx.
   const ctxFields = typeof ctxPage !== 'undefined' && ctxPage?.fields ? ctxPage.fields : {};
-  const ctxValue = (key) => ctxFields[key]?.value;
+  const ctxValue = (key) =>
+    typeof ctxFieldValue === 'function' ? ctxFieldValue(key) : ctxFields[key]?.value;
   const legacyRelatedData = typeof relatedData !== 'undefined' && relatedData ? relatedData : {};
   const ctxExternalIdentities = ctxValue('externalIdentities');
   const pageRelatedData = {
@@ -20,8 +21,8 @@
       ? { externalIdentities: ctxExternalIdentities }
       : {}),
   };
-  const entryActions = metadataUI.record.entryActions || [];
-  const deleteAction = entryActions.find((action) => action.kind === 'delete' && action.visible);
+  const entryActions = metadataUI.record.entryActions || {};
+  const deleteAction = Object.values(entryActions).find((action) => action.kind === 'delete' && action.visible);
   const referenceValues = referenceData || {};
   const providerDefinitions =
     typeof externalAuthProviderDefinitions !== 'undefined' && Array.isArray(externalAuthProviderDefinitions)
@@ -71,18 +72,19 @@
     return String(value);
   };
 
-  const derivedStateFor = (derived, source = item) => {
-    const sourceValue = source?.[derived.sourceField];
-    return (derived.states || []).find((state) => state.equals === sourceValue);
-  };
+  const presentationStateFor = (key, value) =>
+    (overrides[key]?.presentation?.states || []).find((state) => state.equals === value);
 
   const providerFor = (providerKey) =>
     availableAuthProviders.find((candidate) => candidate.key === providerKey);
 
   const collectionValue = (row, field) => {
-    if (field.derived) {
-      const state = derivedStateFor(field.derived, row);
-      return { kind: 'derived', state, raw: row?.[field.derived.sourceField] };
+    if (field.expression) {
+      const raw = typeof ctxExpressionValue === 'function'
+        ? ctxExpressionValue(field.expression, row)
+        : undefined;
+      const state = (field.presentation?.states || []).find((candidate) => candidate.equals === raw);
+      return { kind: 'derived', state, raw };
     }
 
     return { kind: 'field', raw: row?.[field.sourceField || field.key] };
@@ -133,21 +135,22 @@
                 <% if (collection) continue; %>
 
                 <% if (derived) { %>
-                  <% const state = derivedStateFor(derived); %>
-                  <% const rawValue = valueFor(derived.sourceField); %>
-                  <div class="account-summary-label"><% if (derived.icon) { %><i class="bi bi-<%= derived.icon %> me-1" aria-hidden="true"></i><% } %><%= derived.label %></div>
+                  <% const rawValue = derived.expression ? ctxValue(key) : undefined; %>
+                  <% const state = presentationStateFor(key, rawValue); %>
+                  <% const renderedDerivedValue = state?.label || formatValue(rawValue, derived); %>
+                  <div class="account-summary-label"><% if (derived.icon) { %><i class="bi bi-<%= derived.icon %> me-1" aria-hidden="true"></i><% } %><%= overrides[key]?.label || derived.label %></div>
                   <div class="account-summary-value">
                     <% if (state) { %>
                       <% if (state.icon) { %>
                         <span class="status-value <%= state.tone === 'success' ? 'status-positive' : 'status-neutral' %>">
                           <i class="bi bi-<%= state.icon %>" aria-hidden="true"></i>
-                          <%= state.label %>
+                          <%= renderedDerivedValue %>
                         </span>
                       <% } else { %>
-                        <span class="badge text-bg-<%= state.tone || 'secondary' %>"><%= state.label %></span>
+                        <span class="badge text-bg-<%= state.tone || 'secondary' %>"><%= renderedDerivedValue %></span>
                       <% } %>
                     <% } else { %>
-                      <span class="text-secondary"><%= formatValue(rawValue, derived) %></span>
+                      <span class="text-secondary"><%= renderedDerivedValue %></span>
                     <% } %>
                   </div>
                 <% } else if (field && fieldVisible(field) && !field.sensitive) { %>
@@ -168,7 +171,8 @@
             <% for (const key of tab.fields) { %>
               <% const collection = relatedCollections[key]; %>
               <% if (!collection) continue; %>
-              <% const rows = Array.isArray(pageRelatedData[collection.sourceKey]) ? pageRelatedData[collection.sourceKey] : []; %>
+              <% const collectionSourceKey = collection.sourceKey || key; %>
+              <% const rows = Array.isArray(pageRelatedData[collectionSourceKey]) ? pageRelatedData[collectionSourceKey] : []; %>
 
               <div class="authentication-identities mt-4">
                 <h3 class="h6 mb-3">
@@ -187,10 +191,10 @@
                               <% if (renderedValue.state) { %>
                                 <span class="badge text-bg-<%= renderedValue.state.tone || 'secondary' %>">
                                   <% if (renderedValue.state.icon) { %><i class="bi bi-<%= renderedValue.state.icon %> me-1" aria-hidden="true"></i><% } %>
-                                  <%= renderedValue.state.label %>
+                                  <%= renderedValue.raw %>
                                 </span>
                               <% } else { %>
-                                <span class="text-secondary"><%= collectionField.derived.emptyText || '—' %></span>
+                                <span class="text-secondary"><%= collectionField.presentation?.emptyText || '—' %></span>
                               <% } %>
                             <% } else if (collectionField.format === 'auth-provider') { %>
                               <% const provider = providerFor(renderedValue.raw); %>
@@ -214,7 +218,26 @@
           <% } else { %>
             <div class="row g-3">
               <% for (const key of tab.fields) { %>
+                <% const derived = derivedFields[key]; %>
                 <% const field = metadata.fieldDefinition[key]; %>
+
+                <% if (derived?.expression) { %>
+                  <% const calculatedValue = ctxValue(key); %>
+                  <div class="col-md-6">
+                    <label class="form-label" for="metadata-field-<%= key %>"><%= derived.label %></label>
+                    <input
+                      class="form-control"
+                      id="metadata-field-<%= key %>"
+                      type="text"
+                      value="<%= calculatedValue ?? '' %>"
+                      readonly
+                      aria-readonly="true"
+                      title="Calculated from: <%= derived.expression %>"
+                    >
+                  </div>
+                  <% continue; %>
+                <% } %>
+
                 <% if (!field || !fieldVisible(field) || field.sensitive) continue; %>
                 <% const editable = fieldEditable(field); %>
                 <% const value = valueFor(key); %>
