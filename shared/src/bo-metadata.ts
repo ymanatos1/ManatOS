@@ -161,7 +161,7 @@ export interface ManatOSRelationshipMetadata {
  *
  * Actual BO records have completely separate generated GUID `id` values.
  */
-/** Canonical, non-persisted value derived from an entity record/context. */
+/** Canonical value derived from an entity record/context; persistence is opt-in. */
 export interface SysBODerivedFieldMetadata {
   /** The parent Record key is the canonical derived-field name. */
   label: string;
@@ -200,14 +200,14 @@ export interface ManatOSObjectMetadata<T> {
 }
 
 /** Canonical metadata for a first-class SysBO exposed through generic SysBO CRUD. */
-export interface SysBOMetadata<T> extends ManatOSObjectMetadata<T> {}
+export type SysBOMetadata<T> = ManatOSObjectMetadata<T>;
 
 /**
  * Canonical metadata for a related/domain object that is not independently
  * exposed as a generic SysBO CRUD endpoint. It still deserves the same field
  * and derived-value semantics so renderers, reports and expressions can reuse it.
  */
-export interface ManatOSValueObjectMetadata<T> extends ManatOSObjectMetadata<T> {}
+export type ManatOSValueObjectMetadata<T> = ManatOSObjectMetadata<T>;
 
 /**
  * Fields common to all first-class SysBO entities.

@@ -1279,6 +1279,7 @@
                       "const json = pm.response.json();",
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
+                      "pm.test('Persisted rootPrincipalId is materialized for direct API creation', () => pm.expect(json.data.rootPrincipalId).to.eql(json.data.id));",
                       "if (json.data && json.data.id) pm.environment.set('testPrincipalId', json.data.id);"
                     ]
                   }
@@ -1343,7 +1344,8 @@
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
                       "const json = pm.response.json();",
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                      "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
+                      "pm.test('Persisted rootPrincipalId remains materialized', () => pm.expect(json.data.rootPrincipalId).to.eql(json.data.id));"
                     ]
                   }
                 }

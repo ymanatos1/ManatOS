@@ -12,7 +12,7 @@ ui     -> EJS + sessions + external auth + generic CRUD
 
 The UI uses the API over HTTP. It never reads `data/database.json` directly.
 
-The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions; server-side context construction compiles them to ASTs and the browser consumes the compiled representation with dependency-aware refresh. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule.
+The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions; server-side context construction compiles them to ASTs and the browser consumes the compiled representation with dependency-aware refresh. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one SysBO must be checked against all registered metadata-driven SysBOs. Live entry state belongs in CTX (`dataOriginal` baseline, `dataCurrent` working record); owning list context is exposed through keyed `dataList`; calculated mutations use the same CTX setter/events as user changes. Canonical derived fields may opt into generic persistence with `persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
 
 ## Commands
 

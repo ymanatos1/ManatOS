@@ -449,7 +449,7 @@
     },
     "0c2834b9-e29a-4850-a4a2-2d416b65aab1": {
       "name": "UI_SYSBO_APPLICATIONS_VIEW_MODE",
-      "value": "MetadataDriven",
+      "value": "CurrentEJS",
       "group": "#16 SysBO UI migration",
       "description": "Temporary Applications UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
       "valueType": "enum",
@@ -464,7 +464,7 @@
       "enabled": true,
       "createdAt": "2026-08-28T18:21:24.558Z",
       "createdBy": "System",
-      "updatedAt": "2026-08-30T04:07:35.578Z",
+      "updatedAt": "2026-08-30T23:46:00.791Z",
       "updatedBy": "Admin",
       "valueEncrypted": null
     },

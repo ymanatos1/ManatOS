@@ -289,7 +289,7 @@ This is a baseline rather than a completed production system. In particular:
 - Microsoft/Google/Facebook/GitHub require real provider applications, credentials and callback URLs; credential pairs may be stored unverified, but must pass the ManatOS provider test before becoming available for sign-in.
 - Real-browser Playwright E2E tests are not yet part of the automated suite.
 - SysApplication playground internals are intentionally deferred.
-- The #16 Current EJS / Metadata-driven comparison switch remains temporary for the **remaining** SysBOs while they are migrated and regression-tested. SysUsers is already locked to Metadata-driven and its legacy EJS branch is disposable pending final #16 cleanup.
+- The #16 Current EJS / Metadata-driven comparison switch remains temporary for the **remaining** SysBOs while they are migrated and regression-tested. SysUsers and SysPrincipals are already locked to Metadata-driven and their legacy EJS branches are disposable pending final #16 cleanup; active switches remain for Applications, Licenses and External authentication providers.
 
 ### API presentation groups
 
