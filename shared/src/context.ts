@@ -25,6 +25,12 @@ export interface ManatOSClientContext {
   features: Readonly<Record<string, boolean>>;
 }
 
+/** Runtime/host facts grouped away from business/user/company context. */
+export interface ManatOSSystemContext {
+  server: ManatOSServerContext;
+  client: ManatOSClientContext;
+}
+
 /**
  * Canonical entity knowledge available from every context branch.
  *
@@ -50,6 +56,13 @@ export type ManatOSEntitiesContext = Record<string, ManatOSEntityContext>;
  */
 export interface ManatOSStoredContextField<T = unknown> {
   value: T;
+
+  /**
+   * For enum fields, the selected canonical enum-item metadata is exposed as
+   * `field.option`. Expressions can therefore consume declarative traits such
+   * as `principalType.option.isContainer` without hard-coded UI branches.
+   */
+  option?: Readonly<Record<string, unknown>> | null;
 }
 
 export interface ManatOSCalculatedContextField<T = unknown> {
@@ -82,6 +95,8 @@ export interface ManatOSUserPermissionsContext {
 }
 
 export interface ManatOSUserContext {
+  /** Effective application/runtime scope owning this user context. */
+  scope: string;
   /** Expression-safe ctx.entities key that supplies this user's metadata. */
   entityName: string;
   fields: ManatOSContextFields;
@@ -97,13 +112,16 @@ export interface ManatOSUserContext {
  *
  * `id` is preferred because platform/domain objects already use it as their
  * stable identity; `key` is accepted for metadata-style collection members.
+ * Keys do not have to be expression identifiers: UUIDs and similar ids are
+ * addressable through quoted bracket syntax, for example
+ * `ctx.page.dataList['8c7d...']`.
  */
 export function contextCollectionMemberKey(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null;
 
   const record = value as Record<string, unknown>;
   for (const candidate of [record.id, record.key]) {
-    if (typeof candidate === 'string' && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(candidate)) {
+    if (typeof candidate === 'string' && candidate.length > 0) {
       return candidate;
     }
   }
@@ -114,9 +132,11 @@ export function contextCollectionMemberKey(value: unknown): string | null {
  * Resolve one child member using ManatOS CTX semantics.
  *
  * Arrays keep normal zero-based numeric indexing while also supporting a
- * semantic keyed lookup for members with a stable expression-safe `id`/`key`.
- * This is intentionally a resolver concern: the underlying CTX value remains
- * a normal array and is not duplicated into a second keyed object.
+ * semantic keyed lookup for members with a stable `id`/`key`. Identifier-like
+ * keys may be reached with member syntax; arbitrary ids (including UUIDs) use
+ * quoted bracket syntax. This is intentionally a resolver concern: the
+ * underlying CTX value remains a normal array and is not duplicated into a
+ * second keyed object.
  */
 export function resolveContextMember(
   container: unknown,
@@ -177,7 +197,9 @@ export function contextPathOf(ctxRoot: unknown, target: unknown): string | null 
         const child = value[index];
         const semanticKey = contextCollectionMemberKey(child);
         const childPath = semanticKey
-          ? `${path}.${semanticKey}`
+          ? /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(semanticKey)
+            ? `${path}.${semanticKey}`
+            : `${path}[${JSON.stringify(semanticKey)}]`
           : `${path}[${index}]`;
         const found = visit(child, childPath);
         if (found) return found;
@@ -200,20 +222,73 @@ export function contextPathOf(ctxRoot: unknown, target: unknown): string | null 
  * One logical page scope. `name` is only this page's segment. Full `path()` is
  * derived by walking the nested page chain and is never persisted.
  */
-export interface ManatOSPageContextNode {
+/**
+ * Runtime values owned directly by one logical page.
+ *
+ * Important page resources intentionally live at ONE page-node level. This
+ * keeps lexical expression lookup predictable: an entry-page expression can
+ * request `dataList`, and the resolver searches the current page, then parent
+ * pages, until it finds the nearest list page exposing that resource.
+ */
+export interface ManatOSPageRuntimeContext {
+  /** Declared/current API filter inputs on list pages. */
+  filters?: Readonly<Record<string, unknown>>;
+  /**
+   * Actual API result rows in display order on list pages.
+   *
+   * This remains a real array for ordering/paging semantics, while ManatOS CTX
+   * resolution treats each member as keyed by its stable `id` (or `key`) too.
+   * Thus both `dataList[0]` and `dataList['<record-id>']` resolve the same row.
+   */
+  dataList?: readonly Readonly<Record<string, unknown>>[];
+  /** Immutable entry-page baseline captured when the page opens. */
+  dataOriginal?: Readonly<Record<string, unknown>>;
+  /** Live entry-page working record. DOM adapters update this through CTX. */
+  dataCurrent?: Readonly<Record<string, unknown>>;
+}
+
+export interface ManatOSPageListRuntimeContext extends ManatOSPageRuntimeContext {
+  filters: Readonly<Record<string, unknown>>;
+  dataList: readonly Readonly<Record<string, unknown>>[];
+}
+
+export interface ManatOSPageEntryRuntimeContext extends ManatOSPageRuntimeContext {
+  dataOriginal: Readonly<Record<string, unknown>>;
+  dataCurrent: Readonly<Record<string, unknown>>;
+}
+
+/** Live state owned by every logical page and available to metadata expressions. */
+export interface ManatOSPageStateContext {
+  dirty: boolean;
+  valid: boolean;
+  saving: boolean;
+  deleting: boolean;
+}
+
+export interface ManatOSPageContextNode extends ManatOSPageRuntimeContext {
+  /** Effective application/runtime scope owning this logical page. */
+  scope: string;
   name: string;
   kind: string;
   mode: string;
   fields: ManatOSContextFields;
+  /** Live page state; decisions/actions may depend on this branch declaratively. */
+  state: ManatOSPageStateContext;
   page?: ManatOSPageContextNode | null;
 }
 
 export interface ManatOSContext {
+  /**
+   * Active root scope. Current system UI uses `sys`; future Apps Playground
+   * flows can establish an application scope (for example `mcrm`) and page/user
+   * nodes may override it when ownership changes.
+   */
+  scope: string;
+  /** Runtime/host facts are intentionally the first root branch in DEBUG/CTX traversal. */
+  system: ManatOSSystemContext;
   entities: ManatOSEntitiesContext;
   company: ManatOSCompanyContext;
   /** Null while anonymous; populated at login and absent again after logout. */
   user: ManatOSUserContext | null;
-  server: ManatOSServerContext;
-  client: ManatOSClientContext;
   page: ManatOSPageContextNode | null;
 }

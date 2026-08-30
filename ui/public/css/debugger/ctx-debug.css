@@ -616,3 +616,25 @@ html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none 
   display: flex !important;
   height: var(--manatos-debug-properties-height, 16rem);
 }
+
+/*
+ * CTX calculated expressions use the same shared syntax palette as the
+ * metadata-driven entry-form Debugging tab.
+ */
+.ctx-debug-expression {
+  font-family: var(--bs-font-monospace);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ctx-debug-expression .debug-expression-field { color: var(--manatos-debug-field); font-weight: 700; }
+.ctx-debug-expression .debug-expression-system { color: var(--manatos-debug-system); font-weight: 600; }
+.ctx-debug-expression .debug-expression-string { color: var(--manatos-debug-string); }
+.ctx-debug-expression .debug-expression-number { color: var(--manatos-debug-number); }
+.ctx-debug-expression .debug-expression-literal { color: var(--manatos-debug-literal); font-weight: 600; }
+.ctx-debug-expression .debug-expression-identifier { color: var(--manatos-debug-identifier); }
+.ctx-debug-expression .debug-expression-operator { color: var(--manatos-debug-operator); }
+.ctx-debug-expression .debug-expression-punctuation { color: var(--manatos-debug-punctuation); }
+
+/* Shared formula syntax palette for calculated-expression properties. */
+.ctx-debug-expression .debug-expression-path { color: var(--manatos-debug-path); }

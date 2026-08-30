@@ -61,6 +61,8 @@ export interface ListResult<T> {
  * invariants that future SQL adapters should represent through
  * UNIQUE database constraints.
  */
+export type InMemoryRecordPreparer<T extends SysBOEntity> = (record: T) => Promise<T> | T;
+
 export class InMemoryRepository<T extends SysBOEntity> {
   constructor(
     private readonly records: Map<string, T>,
@@ -201,17 +203,19 @@ export class InMemoryRepository<T extends SysBOEntity> {
    *
    * Those values belong to the storage provider.
    */
-  async create(input: SysBOCreateInput<T>, actor: AuditActor): Promise<T> {
+  async create(
+    input: SysBOCreateInput<T>,
+    actor: AuditActor,
+    prepare?: InMemoryRecordPreparer<T>,
+  ): Promise<T> {
     /*
      * Creation input is intentionally not a complete T yet.
      * ensureUnique() only needs a property bag, so no unsafe generic
      * Partial<T> assignment is required.
      */
-    await this.ensureUnique(input as Record<string, unknown>);
-
     const audit = auditService.createStamp(actor);
 
-    const record = {
+    const candidate = {
       ...input,
 
       /*
@@ -225,6 +229,12 @@ export class InMemoryRepository<T extends SysBOEntity> {
       ...audit,
     } as T;
 
+    // Application/service infrastructure may materialize metadata-derived fields
+    // after provider-generated identity/audit values exist but before the record
+    // is committed into the backing collection.
+    const record = prepare ? await prepare(candidate) : candidate;
+
+    await this.ensureUnique(record as unknown as Record<string, unknown>);
     this.records.set(record.id, record);
 
     return record;
@@ -233,7 +243,12 @@ export class InMemoryRepository<T extends SysBOEntity> {
   /**
    * Update an existing record.
    */
-  async update(id: string, changes: SysBOUpdateInput<T>, actor: AuditActor): Promise<T> {
+  async update(
+    id: string,
+    changes: SysBOUpdateInput<T>,
+    actor: AuditActor,
+    prepare?: InMemoryRecordPreparer<T>,
+  ): Promise<T> {
     const existing = this.records.get(id);
 
     if (!existing) {
@@ -277,15 +292,17 @@ export class InMemoryRepository<T extends SysBOEntity> {
       ...audit,
     } as T;
 
+    const prepared = prepare ? await prepare(candidate) : candidate;
+
     await this.ensureUnique(
-      candidate as unknown as Record<string, unknown>,
+      prepared as unknown as Record<string, unknown>,
 
       id,
     );
 
-    this.records.set(id, candidate);
+    this.records.set(id, prepared);
 
-    return candidate;
+    return prepared;
   }
 
   /**

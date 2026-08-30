@@ -64,7 +64,7 @@ describe('generic SysBO form state presentation', () => {
 
   it('marks every tab with no editable fields as an informational read-only pane', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
-    expect(metadataSource).toContain("const readOnlyTab = !tabHasEditableFields");
+    expect(metadataSource).toContain("const readOnlyTab = tab.layout === 'summary'");
     expect(metadataSource).toContain("entity-readonly-tab");
     expect(metadataSource).toContain("data-readonly-tab=\"true\"");
     expect(metadataSource).toContain("fieldEditable(field)");
@@ -86,6 +86,7 @@ describe('generic SysBO form state presentation', () => {
   it('adds a development-only read-only Debugging tab with live formula values', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
     const formsSource = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const expressionFormatSource = await readFile(resolve(testDirectory, '../public/js/debugger/expression-format.js'), 'utf8');
 
     expect(metadataSource).toContain("const debuggingTabEnabled = Boolean(app?.ui?.debugTools)");
     expect(metadataSource).toContain("label: 'Debugging'");
@@ -117,9 +118,12 @@ describe('generic SysBO form state presentation', () => {
 
     expect(metadataSource.indexOf("'TABS'")).toBeLessThan(metadataSource.indexOf("'FIELDS',"));
     expect(metadataSource).toContain('data-debug-calculation-ast');
-    expect(metadataSource).toContain('highlightDebugFormula');
-    expect(metadataSource).toContain('debug-expression-${tokenClass}');
-    expect(metadataSource).toContain("emit(identifier, 'field')");
+    expect(metadataSource).toContain('data-debug-expression');
+    expect(expressionFormatSource).toContain('window.ManatOSDebugExpression');
+    expect(expressionFormatSource).toContain('const systemRoots = new Set');
+    expect(expressionFormatSource).toContain("emit(identifier, 'path')");
+    expect(expressionFormatSource).toContain("systemRoots.has(identifier) ? 'system' : 'field'");
+    expect(expressionFormatSource).toContain('debug-expression-${tokenClass}');
     expect(metadataSource).toContain("`[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`");
     expect(formsSource).toContain("`[ ${value.map(debugValueText).join(', ')} ]`");
     expect(metadataSource).toContain('debugElementNameParts');
@@ -129,15 +133,12 @@ describe('generic SysBO form state presentation', () => {
     expect(formsSource).toContain("typeof value === 'string'");
     expect(metadataSource).toContain("return `'${value.replaceAll");
     expect(formsSource).toContain("return `'${value.replaceAll");
-    expect(metadataSource).toContain('debugSystemRoots');
-    expect(metadataSource).toContain("previousNonSpace === '.'");
-    expect(metadataSource).toContain("emit(identifier, 'path')");
     expect(metadataSource).toContain('Array.isArray(scope)');
     expect(metadataSource).toContain('rows,');
     expect(metadataSource).toContain('Array.isArray(scope) ? null');
     expect(formsSource).toContain("kind: 'debug-value'");
     expect(formsSource).toContain("parseAst(cell, 'data-debug-calculation-ast')");
-    expect(formsSource).toContain('dependencies: expressionDependencies(ast)');
+    expect(formsSource).toContain('dependencyPaths: expressionDependencyPaths(ast)');
   });
 
 

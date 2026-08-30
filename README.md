@@ -91,7 +91,7 @@ A future mobile application can reuse BO metadata while defining different UI me
 
 ManatOS metadata is not limited to labels and field types. Canonical `derivedFields` and evaluator-backed UI properties can define dynamic decisions such as calculated values, visibility, editability and presentation decoration, while canonical metadata continues to own constraints such as required/read-only state. Expressions are compiled by the shared expression engine into ASTs; the metadata-driven browser renderer consumes those ASTs rather than reparsing source strings on every change.
 
-The live ManatOS CTX provides lexical scope for evaluation. Browser-side dependency extraction refreshes only calculations affected by a changed source field and propagates dependent calculated values through the same mechanism used by dynamic UI properties. Development builds expose these decisions in the read-only **Debugging** entry-form tab, grouped by entity fields, related entities and UI metadata with formula and current value.
+The live ManatOS CTX provides lexical scope for evaluation. Browser-side dependency extraction refreshes only calculations affected by a changed source field and propagates dependent calculated values through the same mechanism used by dynamic UI properties. Development builds expose these decisions in the read-only **Debugging** entry-form tab, grouped by entity fields, related entities and UI metadata with formula and current value. Runtime/host facts are grouped under `ctx.system`, while `ctx.user.permissions` exposes resolved authorization facts such as `userRole` and platform capability buckets to the same evaluator. This is the intended path for replacing repeated renderer-side permission branches with metadata expressions while keeping the API as the authoritative security boundary.
 
 API metadata is explicit for every generic SysBO:
 
@@ -289,7 +289,7 @@ This is a baseline rather than a completed production system. In particular:
 - Microsoft/Google/Facebook/GitHub require real provider applications, credentials and callback URLs; credential pairs may be stored unverified, but must pass the ManatOS provider test before becoming available for sign-in.
 - Real-browser Playwright E2E tests are not yet part of the automated suite.
 - SysApplication playground internals are intentionally deferred.
-- The #16 per-entity Current EJS / Metadata-driven comparison switch remains temporary while remaining SysBOs are migrated and regression-tested.
+- The #16 Current EJS / Metadata-driven comparison switch remains temporary for the **remaining** SysBOs while they are migrated and regression-tested. SysUsers is already locked to Metadata-driven and its legacy EJS branch is disposable pending final #16 cleanup.
 
 ### API presentation groups
 

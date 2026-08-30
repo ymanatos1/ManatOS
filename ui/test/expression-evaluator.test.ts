@@ -38,6 +38,59 @@ function testCtx() {
 }
 
 describe('ManatOS expression parser/evaluator', () => {
+  it('inherits a one-level dataList symbol from the nearest parent page scope', () => {
+    const entryFields = { parentId: { value: 'p2' } };
+    const ctx = {
+      page: {
+        dataList: [
+          { id: 'p1', parentId: null, name: 'Root' },
+          { id: 'p2', parentId: 'p1', name: 'Parent' },
+        ],
+        page: {
+          fields: entryFields,
+          dataCurrent: { id: 'p3', parentId: 'p2', name: 'Child' },
+        },
+      },
+    };
+
+    expect(evaluateTest("dataList['p2'].parentId", ctx, entryFields)).toBe('p1');
+    expect(evaluateTest('dataCurrent.parentId', ctx, entryFields)).toBe('p2');
+  });
+
+  it('traverses a keyed parent hierarchy generically and returns the requested root field', () => {
+    const fields = { parentId: { value: 'p3' }, name: { value: 'Child' } };
+    const ctx = {
+      page: {
+        dataList: [
+          { id: 'p1', parentId: null, name: 'Root' },
+          { id: 'p2', parentId: 'p1', name: 'Branch' },
+          { id: 'p3', parentId: 'p2', name: 'Parent' },
+        ],
+        page: { fields },
+      },
+    };
+
+    expect(evaluateTest("TraverseCtx(parentId, dataList, 'parentId', 'name')", ctx, fields)).toBe('Root');
+    expect(evaluateTest("parentId == null ? name : TraverseCtx(parentId, dataList, 'parentId', 'name')", ctx, fields)).toBe('Root');
+  });
+
+  it('terminates malformed hierarchy cycles instead of looping forever', () => {
+    const fields = { parentId: { value: 'p1' } };
+    const ctx = {
+      page: {
+        dataList: [
+          { id: 'p1', parentId: 'p2', name: 'One' },
+          { id: 'p2', parentId: 'p1', name: 'Two' },
+        ],
+        page: { fields },
+      },
+    };
+
+    expect(() => evaluateTest("TraverseCtx(parentId, dataList, 'parentId', 'name')", ctx, fields))
+      .toThrow(/parent cycle/i);
+  });
+
+
   it('builds the expected left-associative AST for string concatenation', () => {
     const compiled = compileExpression("firstname + ' ' + lastname");
     expect(compiled.ast).toEqual({

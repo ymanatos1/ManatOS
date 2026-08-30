@@ -85,6 +85,14 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
     boMetadata: sysBOUsersMetadata,
 
+    /*
+     * #16 DISPOSABLE LEGACY SYSUSER EJS METADATA
+     *
+     * SysUsers is now hard-locked to the canonical metadata-driven renderer.
+     * This Current-EJS presentation block is intentionally retained only so
+     * the remaining #16 cleanup can delete the legacy path in one explicit
+     * step after regression acceptance. Do not add new SysUser behavior here.
+     */
     uiMetadata: {
       icon: 'bi-people-fill',
 
@@ -149,6 +157,15 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
     boMetadata: sysBOPrincipalsMetadata,
 
+    /*
+     * #16 DISPOSABLE LEGACY PRINCIPAL EJS METADATA — READY FOR DELETION
+     *
+     * SysPrincipals is now hard-locked to the canonical metadata-driven
+     * renderer. This block is intentionally frozen only because the shared
+     * SysBODefinition contract still carries the old Current-EJS presentation
+     * shape. Do not add new Principal behavior here. Delete this block when
+     * the remaining #16 entities no longer require the legacy contract.
+     */
     uiMetadata: {
       icon: 'bi-diagram-3-fill',
 

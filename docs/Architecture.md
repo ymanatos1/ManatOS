@@ -37,11 +37,26 @@ Each platform can provide branding/hero artwork, descriptive copy and capability
 
 `SysConfiguration` stores typed/grouped application settings in the business datastore. Missing settings are seeded from code/environment defaults. Sensitive configuration values are encrypted through the existing secrets-encryption service and normal reads expose only a configured/not-configured projection. Root trust material (`SECRETS_ENCRYPTION_KEY`, `INTERNAL_API_KEY`, `SESSION_SECRET`) intentionally remains outside the datastore.
 
-## Scope tree
+## Runtime context and scope trees
 
-Every EJS page gets `app.version`, `app.scopes`, `app.sysBO` and `app.navigation` through `res.locals`. The scope tree contains at least session, user, request and workspace; selecting Play on a SysApplication adds the selected application to workspace scope.
+Every rendered page receives a typed ManatOS `ctx` evaluation tree in addition to the older `app.scopes` shell/workspace structure. Root CTX order is intentionally:
 
-Scope state is runtime context, not business persistence.
+```text
+ctx
+  system
+    server
+    client
+  entities
+  company
+  user
+    fields
+    permissions
+  page
+```
+
+`ctx.system` contains safe runtime/host facts, `ctx.entities` is the canonical metadata registry, `ctx.user.permissions` is the evaluator-visible authorization fact branch, and `ctx.page` contains the active lexical page chain. This makes UI decisions increasingly declarative without exposing server secrets.
+
+The older `app.scopes` tree still carries session/request/workspace shell state; selecting Play on a SysApplication adds the selected application to workspace scope. Scope/CTX state is runtime context, not business persistence. A future consolidation can remove duplicated facts from `app.*` once all consumers read CTX consistently.
 
 ## Security domains
 

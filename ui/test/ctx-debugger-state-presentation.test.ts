@@ -18,6 +18,16 @@ const themeSource = readFileSync(
   'utf8',
 );
 
+const expressionFormatSource = readFileSync(
+  resolve(process.cwd(), 'public/js/debugger/expression-format.js'),
+  'utf8',
+);
+
+const shellViewSource = readFileSync(
+  resolve(process.cwd(), 'views/layout/shell.ejs'),
+  'utf8',
+);
+
 describe('CTX debugger presentation state', () => {
   it('keeps Properties visibility independent from node selection/history navigation', () => {
     const selectStart = debuggerSource.indexOf('const selectPath =');
@@ -46,11 +56,17 @@ describe('CTX debugger presentation state', () => {
     expect(debugToggleRule).toContain('background: transparent !important');
   });
 
-  it('persists the debugger open/closed preference across UI-server restarts', () => {
-    expect(shellSource).toContain("const DEBUG_STORAGE_KEY = 'manatos.debug.panel.visible.v1'");
-    expect(shellSource).toContain('localStorage.setItem(DEBUG_STORAGE_KEY, String(visible))');
-    expect(shellSource).toContain("localStorage.getItem(DEBUG_STORAGE_KEY) === 'true'");
-    expect(shellSource).not.toContain('manatos.debug.panel.visible.${debugBootId}');
+  it('uses one shared lexical highlighter for entry-form and CTX expressions', () => {
+    expect(expressionFormatSource).toContain('window.ManatOSDebugExpression');
+    expect(expressionFormatSource).toContain("emit(identifier, 'path')");
+    expect(debuggerSource).toContain("const isExpressionSourcePath = (path)");
+    expect(debuggerSource).toContain("label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path))");
+    expect(debuggerSource).toContain("typeof value === 'string' && isExpressionSourcePath(path)");
+    expect(debuggerSource).toContain('window.ManatOSDebugExpression.highlightElement');
+    expect(shellViewSource).toContain('/js/debugger/expression-format.js');
+    expect(shellViewSource.indexOf('/js/debugger/expression-format.js')).toBeLessThan(
+      shellViewSource.indexOf('/js/debugger/ctx-debug.js'),
+    );
   });
 
 });

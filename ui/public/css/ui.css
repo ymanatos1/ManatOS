@@ -1569,3 +1569,157 @@ body.anonymous .workspace {
   max-height: 18rem;
   overflow: auto;
 }
+
+/* Metadata-driven enum fields may declare a semantic icon per enum item. */
+.metadata-enum-with-icon .metadata-enum-icon {
+  min-width: 2.5rem;
+  justify-content: center;
+}
+
+/* Reusable rich enum selector for metadata-driven forms. */
+.metadata-enum-select { position: relative; }
+.metadata-enum-select-toggle { display: block; padding-right: 2.25rem; }
+.metadata-enum-select-menu { max-height: 18rem; overflow-y: auto; }
+.metadata-enum-select-menu .dropdown-item { min-height: 2.25rem; }
+
+/* Metadata-driven hierarchy visualization. Data/state comes from CTX; these
+ * rules intentionally contain no entity-specific selectors. The same component
+ * can present either a compact tree or a top-down organization chart. */
+.metadata-hierarchy-toolbar .btn { min-width: 5rem; }
+
+.metadata-hierarchy-root,
+.metadata-hierarchy-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.metadata-hierarchy-view-tree .metadata-hierarchy-children {
+  margin-left: 1.25rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--bs-border-color);
+}
+
+.metadata-hierarchy-node-row {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 2.25rem;
+}
+
+.metadata-hierarchy-toggle,
+.metadata-hierarchy-toggle-spacer {
+  width: 1.5rem;
+  flex: 0 0 1.5rem;
+}
+
+.metadata-hierarchy-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  padding: 0;
+}
+
+.metadata-hierarchy-node-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem .55rem;
+  border-radius: .45rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.metadata-hierarchy-node-link:hover {
+  background: var(--bs-tertiary-bg);
+}
+
+.metadata-hierarchy-node.is-current > .metadata-hierarchy-node-row > .metadata-hierarchy-node-link {
+  background: rgba(var(--bs-primary-rgb), .12);
+  color: var(--bs-primary);
+  font-weight: 700;
+  outline: 1px solid rgba(var(--bs-primary-rgb), .28);
+}
+
+/* Organization-chart mode reuses the exact same CTX/model and node markup. */
+.metadata-hierarchy-view-chart {
+  overflow-x: auto;
+  padding: .75rem .5rem 1rem;
+}
+
+.metadata-hierarchy-view-chart > .metadata-hierarchy-root {
+  display: flex;
+  justify-content: center;
+  min-width: max-content;
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-node-row {
+  position: relative;
+  z-index: 1;
+  justify-content: center;
+  min-height: auto;
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-node-link {
+  min-width: 8.5rem;
+  justify-content: center;
+  padding: .55rem .8rem;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .05);
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-toggle,
+.metadata-hierarchy-view-chart .metadata-hierarchy-toggle-spacer {
+  position: absolute;
+  right: 100%;
+  margin-right: .15rem;
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-children {
+  position: relative;
+  display: flex;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 1.6rem .5rem 0;
+  border: 0;
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-children::before {
+  content: '';
+  position: absolute;
+  top: .75rem;
+  left: 1rem;
+  right: 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-node > .metadata-hierarchy-children::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: .75rem;
+  border-left: 1px solid var(--bs-border-color);
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node::before {
+  content: '';
+  position: absolute;
+  top: -.85rem;
+  left: 50%;
+  height: .85rem;
+  border-left: 1px solid var(--bs-border-color);
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-children[hidden] {
+  display: none !important;
+}
+

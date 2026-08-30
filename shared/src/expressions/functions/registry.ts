@@ -1,3 +1,4 @@
+import {resolveContextMember} from '../../context.js';
 import {ExpressionEvaluationError} from '../diagnostics.js';
 import type {
   ExpressionFunctionArgumentType,
@@ -52,6 +53,49 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
       argumentTypes: ['number'],
     },
     evaluate: ([value]) => Math.sqrt(value as number),
+  }),
+
+
+
+  TraverseCtx: checked({
+    name: 'TraverseCtx',
+    signature: {
+      text: "TraverseCtx(startId, collection, parentField: string, resultField?: string)",
+      minArguments: 3,
+      maxArguments: 4,
+      argumentTypes: ['scalar', 'any', 'string', 'string'],
+    },
+    evaluate: ([startId, collection, parentField, resultField]) => {
+      if (startId === null || startId === undefined || startId === '') return null;
+      if (!collection || typeof collection !== 'object') return null;
+
+      const seen = new Set<string>();
+      let id: unknown = startId;
+      let root: unknown = null;
+
+      // Protect both malformed cycles and unexpectedly deep hostile data.
+      for (let depth = 0; depth < 256; depth += 1) {
+        const key = String(id);
+        if (seen.has(key)) {
+          throw new ExpressionEvaluationError(`TraverseCtx detected a parent cycle at ${key}.`);
+        }
+        seen.add(key);
+
+        const row = resolveContextMember(collection, key);
+        if (!row || typeof row !== 'object') return null;
+        root = row;
+
+        const parent = resolveContextMember(row, parentField as string);
+        if (parent === null || parent === undefined || parent === '') {
+          return resultField
+            ? resolveContextMember(root, resultField as string) ?? null
+            : root;
+        }
+        id = parent;
+      }
+
+      throw new ExpressionEvaluationError('TraverseCtx exceeded the maximum traversal depth of 256.');
+    },
   }),
 
   GetTime: checked({

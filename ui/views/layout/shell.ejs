@@ -303,17 +303,36 @@
             class="page-breadcrumb workspace-breadcrumb"
             aria-label="Breadcrumb"
           >
-            <a href="/">
-              ManatOS
-            </a>
-
-            <i class="bi bi-chevron-right"></i>
-
-            <span>
-              <%= (typeof breadcrumbTitle === 'string' && breadcrumbTitle)
-                  ? breadcrumbTitle
-                  : (title || 'Home') %>
-            </span>
+            <%
+              /*
+               * CTX owns logical page nesting, so breadcrumbs are projected from
+               * the CTX page chain rather than rebuilt independently from routes.
+               * The fallback keeps non-CTX/legacy rendering resilient while the
+               * same generic renderer is progressively adopted everywhere.
+               */
+              const ctxBreadcrumb = Array.isArray(breadcrumbItems) && breadcrumbItems.length
+                ? breadcrumbItems
+                : [
+                    { label: 'ManatOS', href: '/' },
+                    {
+                      label: (typeof breadcrumbTitle === 'string' && breadcrumbTitle)
+                        ? breadcrumbTitle
+                        : (title || 'Home'),
+                      href: null,
+                    },
+                  ];
+            %>
+            <% for (let breadcrumbIndex = 0; breadcrumbIndex < ctxBreadcrumb.length; breadcrumbIndex += 1) { %>
+              <% const breadcrumb = ctxBreadcrumb[breadcrumbIndex]; %>
+              <% if (breadcrumbIndex > 0) { %>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+              <% } %>
+              <% if (breadcrumb.href && breadcrumbIndex < ctxBreadcrumb.length - 1) { %>
+                <a href="<%= breadcrumb.href %>"><%= breadcrumb.label %></a>
+              <% } else { %>
+                <span<%= breadcrumbIndex === ctxBreadcrumb.length - 1 ? ' aria-current="page"' : '' %>><%= breadcrumb.label %></span>
+              <% } %>
+            <% } %>
           </nav>
 
 
@@ -479,13 +498,17 @@
       })();
     </script>
   <% } %>
+  <script id="manatosCtxSnapshot" type="application/json"><%- JSON.stringify(ctx ?? null).replace(/</g, '\\u003c') %></script>
+  <script src="/js/ctx-runtime.js"></script>
   <script src="/js/ui-bootstrap-runtime.js"></script>
   <% if (app.ui?.debugTools) { %>
+    <script src="/js/debugger/expression-format.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
     <script src="/js/debugger/ctx-debug.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <% } %>
   <script src="/js/lists.js"></script>
   <script src="/js/busy.js"></script>
   <script src="/js/forms.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/components/hierarchy-tree.js"></script>
   <script src="/js/auth-providers.js"></script>
 
 </body>

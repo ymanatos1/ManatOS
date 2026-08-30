@@ -28,6 +28,13 @@ import type { SysBOUserService } from './sys-user-service.js';
 
 import { auditService, type AuditActor } from '../audit/audit-service.js';
 
+
+function principalTypeCanHaveParent(principalType: SysBOPrincipal['principalType']): boolean {
+  const field = sysBOPrincipalsMetadata.fieldDefinition.principalType!;
+  const item = field.enumItems?.find((candidate) => candidate.value === principalType);
+  return item?.canHaveParent === true;
+}
+
 /**
  * Application service for customer/commercial principals.
  */
@@ -37,19 +44,48 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
   }
 
   /**
+   * Canonical enum-item metadata owns the parentability rule. Principal types
+   * whose selected enum item has canHaveParent=false can never persist a parent, even if a caller bypasses the
+   * browser and posts directly to the API.
+   */
+  override async create(
+    input: SysBOCreateInput<SysBOPrincipal>,
+    actor: AuditActor,
+  ): Promise<SysBOPrincipal> {
+    const normalized = principalTypeCanHaveParent(input.principalType)
+      ? input
+      : { ...input, parentId: null };
+
+    if (normalized.parentId && !(await this.repository.getById(normalized.parentId))) {
+      throw new NotFoundError('SysBOPrincipal parent', normalized.parentId);
+    }
+
+    return super.create(normalized, actor);
+  }
+
+  /**
    * Update a principal.
    *
-   * Adds domain-specific validation for parent relationships.
+   * Adds domain-specific validation for parent relationships and applies the
+   * same declarative parentability trait used by the UI evaluator.
    */
   override async update(
     id: string,
     changes: SysBOUpdateInput<SysBOPrincipal>,
     actor: AuditActor,
   ): Promise<SysBOPrincipal> {
+    const current = await this.repository.getById(id);
+    if (!current) throw new NotFoundError('SysBOPrincipal', id);
+
+    const effectiveType = changes.principalType ?? current.principalType;
+    const normalizedChanges: SysBOUpdateInput<SysBOPrincipal> = principalTypeCanHaveParent(effectiveType)
+      ? changes
+      : { ...changes, parentId: null };
+
     /*
      * A principal cannot be its own parent.
      */
-    if (changes.parentId === id) {
+    if (normalizedChanges.parentId === id) {
       throw new ConflictError(
         'SELF_PARENT_NOT_ALLOWED',
 
@@ -62,11 +98,11 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     /*
      * When a parent is supplied, that principal must exist.
      */
-    if (changes.parentId && !(await this.repository.getById(changes.parentId))) {
-      throw new NotFoundError('SysBOPrincipal parent', changes.parentId);
+    if (normalizedChanges.parentId && !(await this.repository.getById(normalizedChanges.parentId))) {
+      throw new NotFoundError('SysBOPrincipal parent', normalizedChanges.parentId);
     }
 
-    return super.update(id, changes, actor);
+    return super.update(id, normalizedChanges, actor);
   }
 }
 

@@ -1,20 +1,14 @@
 (() => {
   'use strict';
 
-  const snapshotElement = document.getElementById('manatosCtxSnapshot');
+  const runtime = window.ManatOS?.ctx;
   const treeElement = document.getElementById('ctxDebugTree');
-  if (!snapshotElement || !treeElement) return;
+  if (!runtime?.value || !treeElement) return;
 
   const CHANGE_EVENT = 'manatos:ctx-change';
   const bootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
 
-  let ctx;
-  try {
-    ctx = JSON.parse(snapshotElement.textContent || 'null');
-  } catch {
-    ctx = null;
-  }
-  if (!ctx || typeof ctx !== 'object') return;
+  const ctx = runtime.value;
 
   /*
    * DEBUG state is browser-session state, not application/business state.
@@ -78,10 +72,13 @@
   const collectionMemberKey = (value) => {
     if (!isObject(value)) return null;
     for (const candidate of [value.id, value.key]) {
-      if (typeof candidate === 'string' && CONTEXT_IDENTIFIER.test(candidate)) return candidate;
+      if (typeof candidate === 'string' && candidate.length > 0) return candidate;
     }
     return null;
   };
+
+  const semanticArrayPath = (path, key) =>
+    CONTEXT_IDENTIFIER.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`;
 
   /** Resolve one strict downward member, including keyed access into arrays. */
   const resolveMember = (container, member) => {
@@ -226,6 +223,9 @@
   const isCalculatedContextField = (value) =>
     isObject(value) && typeof value.expression === 'string' && isObject(value.ast);
 
+  /** A CTX leaf that contains the source text of a compiled calculation. */
+  const isExpressionSourcePath = (path) => typeof path === 'string' && path.endsWith('.expression');
+
   const objectChildren = (path, value) => {
     if (!isObject(value)) return [];
 
@@ -237,8 +237,10 @@
           ? semanticKey
           : null;
         return {
-          key: uniqueSemanticKey ?? `[${index}]`,
-          path: uniqueSemanticKey ? `${path}.${uniqueSemanticKey}` : `${path}[${index}]`,
+          // Keep array ordering while presenting the stable record identity as
+          // the member key whenever one exists (for example a SysBO UUID).
+          key: uniqueSemanticKey ? `[${uniqueSemanticKey}]` : `[${index}]`,
+          path: uniqueSemanticKey ? semanticArrayPath(path, uniqueSemanticKey) : `${path}[${index}]`,
           value: item,
           derived: false,
           arrayIndex: index,
@@ -275,7 +277,8 @@
    * Canonical array syntax is `array[1]`; `array.[1]` remains accepted only
    * as a temporary compatibility form while existing CTX code is migrated.
    * It intentionally rejects '-' and other expression-significant punctuation
-   * in identifiers; bracket indexes are non-negative integers.
+   * in dotted identifiers. Brackets accept either non-negative numeric indexes
+   * or quoted semantic collection keys such as UUID record ids.
    */
   function tokenize(path) {
     if (!path) return [];
@@ -292,9 +295,18 @@
       if (normalized[index] === '[') {
         const end = normalized.indexOf(']', index);
         if (end < 0) throw new Error(`Invalid ctx array path: ${path}`);
-        const raw = normalized.slice(index + 1, end);
-        if (!/^\d+$/.test(raw)) throw new Error(`Invalid ctx array index: ${raw}`);
-        tokens.push(Number(raw));
+        const raw = normalized.slice(index + 1, end).trim();
+        if (/^\d+$/.test(raw)) {
+          tokens.push(Number(raw));
+        } else if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+          try {
+            tokens.push(raw.startsWith('"') ? JSON.parse(raw) : raw.slice(1, -1).replace(/\\'/g, "'"));
+          } catch {
+            throw new Error(`Invalid ctx array key: ${raw}`);
+          }
+        } else {
+          throw new Error(`Invalid ctx array index/key: ${raw}`);
+        }
         index = end + 1;
         continue;
       }
@@ -313,8 +325,9 @@
    * resolve the FIRST identifier at the current page scope, then parent pages,
    * then root. Once found, all remaining segments are traversed strictly
    * downward; lookup never jumps back to a parent for a missing child. Array
-   * members may be traversed by zero-based index (`platforms[0]`) or by an
-   * expression-safe semantic `id`/`key` (`platforms.mcrm`).
+   * members may be traversed by zero-based index (`list[0]`) or by a semantic
+   * `id`/`key`: identifier keys use dotted syntax (`platforms.mcrm`), while
+   * arbitrary ids use quoted brackets (`dataList['<uuid>']`).
    *
    * `metadata()` is a virtual field operation backed by ctx.entities.
    * `path()` is a virtual page operation. Both are calculated, never stored.
@@ -364,7 +377,15 @@
           isObject(scopeValue?.fields) &&
           Object.prototype.hasOwnProperty.call(scopeValue.fields, firstTokens[0])
         ) {
-          value = scopeValue.fields[firstTokens[0]]?.value;
+          const field = scopeValue.fields[firstTokens[0]];
+          /*
+           * Match the server evaluator's lexical field semantics. A bare field
+           * name resolves to its scalar `.value`, but a path continuing below
+           * the field (for example `principalType.option.canHaveParent`) must
+           * keep the field wrapper so declarative metadata attached to the
+           * selected enum item remains addressable in browser-side reactivity.
+           */
+          value = parts.length ? field : field?.value;
           basePath = `${scope}.fields.${firstTokens[0]}`;
           break;
         }
@@ -552,18 +573,11 @@
     state.selected = path;
     if (remember) rememberSelection(path);
 
-    /*
-     * Node selection is deliberately independent from the Properties-panel
-     * preference. Clicking a row, following a source link, searching, or using
-     * Back/Forward must never reopen a panel the developer explicitly hid.
-     * The panel's open/closed state changes only through its own controls and
-     * is persisted separately in the debugger's browser-session state.
-     */
-    if (propertiesPanel) {
-      propertiesPanel.classList.toggle('d-none', !state.propertiesOpen);
-      propertiesPanel.setAttribute('aria-hidden', String(!state.propertiesOpen));
-    }
-
+    // Node selection and history navigation must not change the developer's
+    // persisted Properties-panel preference. render() applies that preference
+    // consistently after the selection changes.
+    propertiesPanel?.classList.toggle('d-none', !state.propertiesOpen);
+    propertiesPanel?.setAttribute('aria-hidden', String(!state.propertiesOpen));
     saveState();
     render({ revealSelection: true });
   };
@@ -794,7 +808,13 @@
       labelElement.textContent = label;
       const valueElement = document.createElement('span');
       valueElement.className = 'ctx-debug-property-value';
-      valueElement.textContent = value;
+      const formulaValue = label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path));
+      if (formulaValue && typeof value === 'string' && window.ManatOSDebugExpression) {
+        valueElement.classList.add('ctx-debug-expression');
+        window.ManatOSDebugExpression.highlightElement(valueElement, value);
+      } else {
+        valueElement.textContent = value;
+      }
       if (label === 'Derived from' && info.sourcePath) {
         valueElement.classList.add('is-link');
         valueElement.title = `Go to ${info.sourcePath}`;
@@ -841,8 +861,6 @@
         event.stopPropagation();
         state.selected = path;
         rememberSelection(path);
-        // Expanding/collapsing a node is navigation, not a request to change
-        // the independently persisted Properties-panel preference.
         if (state.expanded.has(path)) state.expanded.delete(path);
         else state.expanded.add(path);
         saveState();
@@ -862,9 +880,17 @@
       if (derived) {
         valueElement.textContent = '= derived';
       } else if (!isObject(value)) {
-        valueElement.textContent = `= ${displayValue(value)}`;
+        if (typeof value === 'string' && isExpressionSourcePath(path) && window.ManatOSDebugExpression) {
+          valueElement.appendChild(document.createTextNode('= '));
+          const formulaElement = document.createElement('span');
+          formulaElement.className = 'ctx-debug-expression';
+          window.ManatOSDebugExpression.highlightElement(formulaElement, value);
+          valueElement.appendChild(formulaElement);
+        } else {
+          valueElement.textContent = `= ${displayValue(value)}`;
+        }
       }
-      if (valueElement.textContent) row.appendChild(valueElement);
+      if (valueElement.textContent || valueElement.childNodes.length) row.appendChild(valueElement);
     }
 
     if (source) {
@@ -1070,55 +1096,7 @@
     requestAnimationFrame(ensureSelectedVisible);
   });
 
-  const emitChange = (operation, path, oldValue, newValue, cause = {}) => {
-    const eventId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-    const rootEventId = cause.rootEventId || cause.eventId || eventId;
-    const detail = {
-      operation, path, oldValue, newValue,
-      cause: {
-        source: cause.source || 'ctx-runtime', eventId, rootEventId,
-        triggerPath: cause.triggerPath || path,
-      },
-    };
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail }));
-    return detail;
-  };
-
-  const mutate = (operation, path, value, cause) => {
-    const tokens = tokenize(path.replace(/^ctx\.?/, ''));
-    if (!tokens.length) throw new Error('The ctx root cannot be replaced by this operation.');
-    let parent = ctx;
-    for (const token of tokens.slice(0, -1)) {
-      if (!isObject(parent[token])) throw new Error(`ctx path not found: ${path}`);
-      parent = parent[token];
-    }
-    const key = tokens.at(-1);
-    const oldValue = parent[key];
-    if (operation === 'delete') {
-      if (Array.isArray(parent) && typeof key === 'number') parent.splice(key, 1);
-      else delete parent[key];
-      emitChange(operation, path, oldValue, undefined, cause);
-      return;
-    }
-    if (operation === 'add' && Array.isArray(parent[key])) {
-      parent[key].push(value);
-      emitChange(operation, path, oldValue, parent[key], cause);
-      return;
-    }
-    parent[key] = value;
-    emitChange(operation, path, oldValue, value, cause);
-  };
-
-  window.ManatOS = window.ManatOS || {};
-  window.ManatOS.ctx = {
-    value: ctx, eventName: CHANGE_EVENT, get: getExact, resolve,
-    set: (path, value, cause) => mutate('set', path, value, cause),
-    replace: (path, value, cause) => mutate('replace', path, value, cause),
-    delete: (path, cause) => mutate('delete', path, undefined, cause),
-    add: (path, value, cause) => mutate('add', path, value, cause),
-    emit: emitChange, tokenize,
-  };
-
+  // CTX mutation/event infrastructure is provided by /js/ctx-runtime.js.
   window.addEventListener(CHANGE_EVENT, (event) => {
     const path = event.detail?.path;
     if (watchedPath && typeof path === 'string' && (path === watchedPath || path.startsWith(`${watchedPath}.`) || path.startsWith(`${watchedPath}[`))) {
@@ -1143,4 +1121,7 @@
 
   rememberSelection(state.selected);
   render({ revealSelection: true });
+
+  // Pre-paint CSS has done its job; normal debugger classes now own visibility.
+  delete document.documentElement.dataset.manatosDebugPropertiesOpen;
 })();

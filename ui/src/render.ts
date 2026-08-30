@@ -9,6 +9,7 @@ import {
   contextFields,
   currentPageContext,
   pageContextNode,
+  pageBreadcrumbItems,
   setPageContext,
 } from './context/manatos-context.js';
 import {
@@ -189,6 +190,7 @@ export async function renderPage(
     ctxFieldValue,
     ctxUserFieldValue,
     ctxExpressionValue,
+    breadcrumbItems: ctx ? pageBreadcrumbItems(ctx) : [],
     relatedEntityMetadata: allManatOSValueObjectMetadata,
     ctxDiagnostics,
     uiBootId,

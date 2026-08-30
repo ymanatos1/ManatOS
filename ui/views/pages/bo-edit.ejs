@@ -1,6 +1,11 @@
 <% const readOnly = !isNew && !permissions.edit; %>
 <% const requestedTabId = typeof sysBOUiActiveTab === 'string' ? sysBOUiActiveTab : ''; %>
 <% const activeTabId = tabs.some((tab) => tab.id === requestedTabId) ? requestedTabId : (tabs[0]?.id || ''); %>
+<% /*
+  #16 DISPOSABLE LEGACY SYSUSER EJS:
+  SysUsers is now hard-locked to the metadata-driven renderer. Keep this
+  compatibility state only until #16 cleanup deletes the legacy branch.
+*/ %>
 <% const isOwnSysUser = !isNew && definition.key === 'sys-users' && currentUser && item.id === currentUser.id; %>
 
 <section class="content-card">
@@ -50,7 +55,7 @@
             <%- include('../partials/ext-auth-provider-fields', { readOnly }) %>
           <% } else if (tab.id === 'general') { %>
             <%- include('../partials/sysbo-general-fields', { readOnly }) %>
-          <% } else if (tab.id === 'authentication' && definition.key === 'sys-users') { %>
+          <% } else if (false && tab.id === 'authentication' && definition.key === 'sys-users') { /* #16 DISPOSABLE legacy SysUser Authentication tab */ %>
             <%- include('../partials/authentication-summary', {
               authenticationUser: item,
               authenticationIdentities: authenticationIdentities || [],
@@ -68,6 +73,7 @@
     <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <% if (
+          false && /* #16 DISPOSABLE legacy SysUser Verify-email action */
           !isNew &&
           definition.key === 'sys-users' &&
           permissions.edit &&
@@ -126,6 +132,7 @@
 </section>
 
 <% if (
+  false && /* #16 DISPOSABLE legacy SysUser Verify-email form */
   !isNew &&
   definition.key === 'sys-users' &&
   permissions.edit &&

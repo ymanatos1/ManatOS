@@ -203,6 +203,13 @@ export interface SysBOPrincipal extends SysBOEntity {
    */
   parentId: string | null;
 
+  /**
+   * Materialized canonical hierarchy root. The value is always an id; UI
+   * presentation resolves names independently. Older stored snapshots may omit
+   * it until they are read/re-saved through the derived-field pipeline.
+   */
+  rootPrincipalId?: string | null;
+
   description?: string;
 }
 

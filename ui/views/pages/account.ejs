@@ -18,6 +18,33 @@
     const elapsed = future ? `in ${parts.join(' ')}` : `${parts.join(' ')} ago`;
     return `${date.toLocaleString()} (${elapsed})`;
   };
+
+  /*
+   * Account is a purpose-built read-only page rather than a metadata-driven
+   * SysBO entry renderer. In developer mode it still exposes the canonical
+   * authenticated-user calculations that this page can consume from CTX.
+   * Do not invent entry-form UI calculations here: the grid reports only
+   * calculations that genuinely exist on the Account page's user context.
+   */
+  const accountDebuggingEnabled = Boolean(app?.ui?.debugTools);
+  const accountUserFields = typeof ctx !== 'undefined' && ctx?.user?.fields ? ctx.user.fields : {};
+  const accountDebugRows = Object.entries(accountUserFields)
+    .filter(([, field]) => field && typeof field === 'object' && typeof field.expression === 'string')
+    .map(([name, field]) => ({
+      name,
+      formula: field.expression,
+      value: typeof ctxUserFieldValue === 'function' ? ctxUserFieldValue(name) : field.value,
+    }));
+
+  const accountDebugValueText = (value) => {
+    if (value === undefined || value === null || value === '') return '—';
+    if (Array.isArray(value)) return value.length ? `[ ${value.map((entry) => accountDebugValueText(entry)).join(', ')} ]` : '[]';
+    if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
+    if (typeof value === 'object') {
+      try { return JSON.stringify(value); } catch { return String(value); }
+    }
+    return String(value);
+  };
 %>
 <section class="account-page entity-tabbed-page">
   <ul class="nav nav-tabs entity-tabs" role="tablist">
@@ -68,6 +95,24 @@
         System details
       </button>
     </li>
+
+    <% if (accountDebuggingEnabled) { %>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="account-debugging-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#account-debugging-pane"
+          type="button"
+          role="tab"
+          aria-controls="account-debugging-pane"
+          aria-selected="false"
+        >
+          <i class="bi bi-bug me-1" aria-hidden="true"></i>
+          Debugging
+        </button>
+      </li>
+    <% } %>
   </ul>
 
   <div class="tab-content entity-tab-content">
@@ -151,5 +196,53 @@
         <div class="account-summary-value"><%= currentUser.updatedBy || '—' %></div>
       </div>
     </div>
+
+
+    <% if (accountDebuggingEnabled) { %>
+      <div
+        class="tab-pane fade entity-readonly-tab"
+        id="account-debugging-pane"
+        role="tabpanel"
+        aria-labelledby="account-debugging-tab"
+        tabindex="0"
+        data-readonly-tab="true"
+      >
+        <div class="table-responsive debugging-calculation-table-wrap">
+          <table class="table table-sm align-middle debugging-calculation-table mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Element name</th>
+                <th scope="col">Calculation formula</th>
+                <th scope="col">Current value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="debugging-calculation-category">
+                <th colspan="3">ENTITY FIELDS</th>
+              </tr>
+              <tr class="debugging-calculation-subcategory">
+                <th colspan="3">FIELD VALUES</th>
+              </tr>
+              <tr class="debugging-calculation-detail-category">
+                <th colspan="3">DECLARED FIELDS</th>
+              </tr>
+              <% if (accountDebugRows.length) { %>
+                <% for (const debugRow of accountDebugRows) { %>
+                  <tr>
+                    <td><code class="debugging-element-name"><strong class="debugging-element-leaf"><%= debugRow.name %></strong></code></td>
+                    <td><code class="debugging-formula" data-debug-expression><%= debugRow.formula %></code></td>
+                    <td class="debugging-current-value"><%= accountDebugValueText(debugRow.value) %></td>
+                  </tr>
+                <% } %>
+              <% } else { %>
+                <tr>
+                  <td colspan="3" class="text-secondary small">No calculated user-context fields are available on this page.</td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } %>
   </div>
 </section>

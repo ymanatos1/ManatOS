@@ -22,10 +22,10 @@
 
     // When the generic CTX runtime is available, use its mutation API so all
     // subscribers receive one standard causal event envelope.
-    if (runtime?.value?.client && typeof runtime.set === 'function') {
-      const hasBootstrap = Object.prototype.hasOwnProperty.call(runtime.value.client, 'uiBootstrap');
+    if (runtime?.value?.system?.client && typeof runtime.set === 'function') {
+      const hasBootstrap = Object.prototype.hasOwnProperty.call(runtime.value.system.client, 'uiBootstrap');
       runtime[hasBootstrap ? 'replace' : 'set'](
-        'ctx.client.uiBootstrap',
+        'ctx.system.client.uiBootstrap',
         newValue,
         { source: 'ui-bootstrap' },
       );
@@ -35,10 +35,10 @@
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
       detail: {
         operation: oldValue === undefined ? 'set' : 'replace',
-        path: 'ctx.client.uiBootstrap',
+        path: 'ctx.system.client.uiBootstrap',
         oldValue,
         newValue,
-        cause: { source: 'ui-bootstrap', triggerPath: 'ctx.client.uiBootstrap' },
+        cause: { source: 'ui-bootstrap', triggerPath: 'ctx.system.client.uiBootstrap' },
       },
     }));
   };
@@ -55,7 +55,7 @@
 
   // Donate is deliberately an event consumer, not a bootstrap fetch consumer.
   window.addEventListener(CHANGE_EVENT, (event) => {
-    if (event.detail?.path !== 'ctx.client.uiBootstrap') return;
+    if (event.detail?.path !== 'ctx.system.client.uiBootstrap') return;
     const show = event.detail?.newValue?.ui?.donationsShow === true;
     donateButton?.classList.toggle('d-none', !show);
   });

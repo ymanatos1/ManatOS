@@ -52,7 +52,54 @@
       "description": "hey"
     }
   },
-  "sysPrincipals": {},
+  "sysPrincipals": {
+    "ce34b655-e494-438f-a091-ab18d2b37bad": {
+      "name": "ManatOS",
+      "enabled": true,
+      "principalType": "Company",
+      "parentId": null,
+      "description": "The root company principal",
+      "createdAt": "2026-08-30T12:07:58.426Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-30T12:07:58.426Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+    },
+    "436c29bc-9361-4f01-b30e-06fd21e7642c": {
+      "name": "Our Admin",
+      "enabled": true,
+      "principalType": "Person",
+      "parentId": "ce34b655-e494-438f-a091-ab18d2b37bad",
+      "description": "Simply the best.",
+      "createdAt": "2026-08-30T12:08:59.857Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-30T12:08:59.857Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+    },
+    "00ca6124-5764-420c-830c-ff288dd1faea": {
+      "name": "Guest Yiannis",
+      "enabled": true,
+      "principalType": "Person",
+      "parentId": "37d5a118-9568-4577-84fb-5b3a4706168a",
+      "createdAt": "2026-08-30T12:10:41.692Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-30T23:28:33.541Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+    },
+    "37d5a118-9568-4577-84fb-5b3a4706168a": {
+      "name": "ManatOS Guests Group",
+      "enabled": true,
+      "principalType": "Group",
+      "parentId": "ce34b655-e494-438f-a091-ab18d2b37bad",
+      "createdAt": "2026-08-30T23:28:13.178Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-30T23:28:13.178Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+    }
+  },
   "sysApplications": {},
   "sysConfigurations": {
     "b8a48ff0-e117-4b98-a418-3c9dd657bd9d": {
@@ -396,7 +443,7 @@
       "enabled": true,
       "createdAt": "2026-08-28T18:21:24.551Z",
       "createdBy": "System",
-      "updatedAt": "2026-08-29T08:30:11.703Z",
+      "updatedAt": "2026-08-30T12:11:16.718Z",
       "updatedBy": "Admin",
       "valueEncrypted": null
     },

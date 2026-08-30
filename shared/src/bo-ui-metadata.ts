@@ -53,8 +53,17 @@ export interface SysBOUIRecordTabMetadata {
    */
   visible?: SysBOUIDynamicValue<boolean>;
 
-  /** Normal editable form layout, or a compact label/value summary. */
-  layout?: 'form' | 'summary';
+  /** Normal editable form, compact summary, or reusable CTX-driven component. */
+  layout?: 'form' | 'summary' | 'component';
+
+  /**
+   * Reusable metadata-driven component declaration. Concrete renderers map the
+   * key to their component implementation; options remain entity/field agnostic.
+   */
+  component?: Readonly<{
+    key: string;
+    options?: Readonly<Record<string, string | number | boolean | null>>;
+  }>;
 }
 
 export interface SysBOUIFieldPresentationMetadata {
@@ -106,6 +115,13 @@ export interface SysBOUIFieldOverrideMetadata {
    * default unless the canonical entity metadata/API enforces the same rule.
    */
   createDefaultValue?: SysBOUIDynamicValue<string | number | boolean | null>;
+
+  /**
+   * Optional submitted/displayed value while a dynamic editable rule resolves
+   * false. This is explicit because becoming read-only must not normally erase
+   * a field. For nullable references, `null` naturally renders/submits as None.
+   */
+  readOnlyValue?: string | number | boolean | null;
 
   /** Formatting and visual decoration only; never changes entity semantics. */
   presentation?: SysBOUIFieldPresentationMetadata;

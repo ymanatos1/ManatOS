@@ -19,10 +19,31 @@ const tab = (
   label: string,
   order: number,
   fields: readonly string[],
-  options: Pick<SysBOUIRecordTabMetadata, 'icon' | 'layout' | 'visible'> = {},
+  options: Pick<SysBOUIRecordTabMetadata, 'icon' | 'layout' | 'visible' | 'component'> = {},
 ): SysBOUIRecordTabMetadata => ({ id, label, order, fields, ...options });
 
-const generalTab = (fields: readonly string[]) => tab('general', 'General', 10, fields);
+const generalTab = (fields: readonly string[]) =>
+  tab('general', 'General', 10, fields, { icon: 'info-circle', layout: 'form' });
+
+const standardEntryActions = {
+  delete: {
+    kind: 'delete' as const,
+    order: 20,
+    visible: true,
+    label: 'Delete entry',
+    icon: 'trash',
+    tone: 'danger' as const,
+  },
+  save: {
+    kind: 'save' as const,
+    order: 100,
+    visible: { expression: "mode !== 'view'" },
+    label: 'Save',
+    icon: 'check-circle',
+    tone: 'primary' as const,
+  },
+} as const;
+
 
 const systemTab = (): SysBOUIRecordTabMetadata =>
   tab(
@@ -55,13 +76,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
   },
   record: {
     tabs: [
-      tab(
-        'general',
-        'General',
-        10,
-        ['name', 'email', 'fullName', 'role', 'firstName', 'lastName', 'description', 'enabled'],
-        { icon: 'info-circle', layout: 'form' },
-      ),
+      generalTab(['name', 'email', 'fullName', 'role', 'firstName', 'lastName', 'description', 'enabled']),
       tab(
         'authentication',
         'Authentication',
@@ -166,7 +181,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         command: 'verify-email',
         visible: {
           expression:
-            "client.features.allowAdminEmailVerification && " +
+            "system.client.features.allowAdminEmailVerification && " +
             "user.permissions.userRole === 'Admin' && " +
             "id !== user.fields.id.value && emailVerified !== true",
         },
@@ -175,22 +190,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         tone: 'success',
         emphasis: 'outline',
       },
-      delete: {
-        kind: 'delete',
-        order: 20,
-        visible: true,
-        label: 'Delete entry',
-        icon: 'trash',
-        tone: 'danger',
-      },
-      save: {
-        kind: 'save',
-        order: 100,
-        visible: { expression: "mode !== 'view'" },
-        label: 'Save',
-        icon: 'check-circle',
-        tone: 'primary',
-      },
+      ...standardEntryActions,
     },
   },
 };
@@ -198,14 +198,57 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
 export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
   key: 'sys-principals',
   list: {
-    visibleFields: ['name', 'principalType', 'parentId', 'enabled'],
+    // Root/Parent are shown first for hierarchy scanning; `name` remains the
+    // canonical primary/clickable field in the generic list renderer.
+    visibleFields: ['rootPrincipalId', 'parentId', 'name', 'principalType', 'enabled'],
     filterFields: ['name', 'principalType'],
-    sortableFields: ['name', 'principalType', 'parentId', 'enabled'],
+    sortableFields: ['rootPrincipalId', 'parentId', 'name', 'principalType', 'enabled'],
     addAction: { visible: true, label: 'Add new' },
   },
   record: {
-    tabs: [generalTab(['name', 'principalType', 'parentId', 'description', 'enabled']), systemTab()],
-    fieldOverrides: { ...systemFieldOverrides },
+    tabs: [
+      generalTab(['name', 'principalType', 'parentId', 'rootPrincipalId', 'description', 'enabled']),
+      tab('organization', 'Organization', 20, [], {
+        icon: 'diagram-3',
+        layout: 'component',
+        visible: { expression: "mode !== 'create'" },
+        component: {
+          key: 'hierarchy-tree',
+          options: {
+            dataSource: 'dataList',
+            currentSource: 'dataCurrent',
+            idField: 'id',
+            parentField: 'parentId',
+            rootField: 'rootPrincipalId',
+            labelField: 'name',
+            typeField: 'principalType',
+            viewModes: 'tree,chart',
+            defaultView: 'chart',
+          },
+        },
+      }),
+      systemTab(),
+    ],
+    fieldOverrides: {
+      ...systemFieldOverrides,
+      enabled: { createDefaultValue: true },
+      parentId: {
+        // Parentability is a separate declarative enum trait from containment: a
+        // Company can contain children yet acts as a root here, while Person and
+        // Group records may themselves belong to a parent. The evaluator reads
+        // the selected enum item's canonical metadata through CTX.
+        editable: { expression: 'principalType.option != null && principalType.option.canHaveParent === true' },
+        readOnlyValue: null,
+      },
+    },
+
+    /*
+     * Standard record commands belong to the entity UI contract, while the
+     * metadata-driven renderer merely renders whatever actions that contract
+     * declares. Without these entries the generic form still edits fields, but
+     * deliberately has no Delete/Save controls or dirty-state indicator.
+     */
+    entryActions: standardEntryActions,
   },
 };
 
@@ -220,6 +263,7 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
   record: {
     tabs: [generalTab(['name', 'appName', 'fullName', 'version', 'description', 'enabled']), systemTab()],
     fieldOverrides: { ...systemFieldOverrides },
+    entryActions: standardEntryActions,
   },
 };
 
@@ -249,6 +293,7 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
       systemTab(),
     ],
     fieldOverrides: { ...systemFieldOverrides },
+    entryActions: standardEntryActions,
   },
 };
 
@@ -276,5 +321,6 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
       // carry canonical readOnly/generated metadata and need no repetition.
       tenant: { editable: false },
     },
+    entryActions: standardEntryActions,
   },
 };

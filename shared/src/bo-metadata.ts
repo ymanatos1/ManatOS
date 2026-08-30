@@ -38,6 +38,24 @@ export type SysBOFieldType =
  * individual field definition still knows its own identity when it is
  * passed around independently of the containing object.
  */
+export interface SysBOEnumItemMetadata {
+  /** Stored enum value submitted to the domain/API. */
+  value: string;
+
+  /** Optional human-readable caption; value is the fallback. */
+  label?: string;
+
+  /** Optional semantic icon key consumed by capable UI renderers. */
+  icon?: string;
+
+  /**
+   * Enum-item traits are deliberately open-ended and evaluator-readable.
+   * Domain metadata can therefore attach facts such as `isContainer` without
+   * teaching the generic renderer about a particular enum or entity.
+   */
+  readonly [trait: string]: unknown;
+}
+
 export interface SysBOFieldMetadata {
   key: string;
   label: string;
@@ -64,6 +82,9 @@ export interface SysBOFieldMetadata {
   maxLength?: number;
 
   enumValues?: readonly string[];
+
+  /** Optional rich metadata for enum values (labels, icons and declarative traits). */
+  enumItems?: readonly SysBOEnumItemMetadata[];
 
   referenceBOKey?: string;
 }
@@ -145,6 +166,14 @@ export interface SysBODerivedFieldMetadata {
   /** The parent Record key is the canonical derived-field name. */
   label: string;
   expression: string;
+
+  /**
+   * When true, the derived value is materialized into persisted entity data.
+   * The default is false, preserving the normal calculated-only behavior.
+   * Persistence infrastructure recalculates these values before commit so the
+   * same rule applies to UI, API and automatic/background creation paths.
+   */
+  persisted?: boolean;
 }
 
 export interface ManatOSObjectMetadata<T> {
@@ -437,6 +466,14 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
   primaryField: 'name',
 
+  derivedFields: {
+    rootPrincipalId: {
+      label: 'Root principal',
+      expression: "parentId == null ? id : TraverseCtx(parentId, dataList, 'parentId', 'id')",
+      persisted: true,
+    },
+  },
+
   relationships: {
     parent: {
       fields: ['parentId'],
@@ -457,6 +494,12 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
       required: true,
       enumValues: Object.values(SysBOPrincipalType),
+      enumItems: [
+        { value: SysBOPrincipalType.Person, label: 'Person', icon: 'person', isContainer: false, canHaveParent: true },
+        { value: SysBOPrincipalType.Company, label: 'Company', icon: 'building', isContainer: true, canHaveParent: false },
+        { value: SysBOPrincipalType.Group, label: 'Group', icon: 'people', isContainer: true, canHaveParent: true },
+        { value: SysBOPrincipalType.System, label: 'System', icon: 'gear', isContainer: false, canHaveParent: false },
+      ],
     },
 
     parentId: {
@@ -466,6 +509,18 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       order: 30,
 
       nullable: true,
+      referenceBOKey: 'sys-principals',
+    },
+
+    rootPrincipalId: {
+      key: 'rootPrincipalId',
+      label: 'Root principal',
+      type: 'reference',
+      order: 35,
+
+      required: true,
+      readOnly: true,
+      applicationManaged: true,
       referenceBOKey: 'sys-principals',
     },
 
@@ -830,7 +885,16 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
   fieldDefinition: {
     ...common,
     name: { ...common.name!, label: 'Provider name', readOnly: true },
-    provider: { key: 'provider', label: 'Provider', type: 'enum', order: 20, required: true, unique: true, enumValues: Object.values(SysBOExtAuthProviderType) },
+    provider: {
+      key: 'provider', label: 'Provider', type: 'enum', order: 20, required: true, unique: true,
+      enumValues: Object.values(SysBOExtAuthProviderType),
+      enumItems: [
+        { value: SysBOExtAuthProviderType.Microsoft, label: 'Microsoft', icon: 'microsoft' },
+        { value: SysBOExtAuthProviderType.Google, label: 'Google', icon: 'google' },
+        { value: SysBOExtAuthProviderType.Facebook, label: 'Facebook', icon: 'facebook' },
+        { value: SysBOExtAuthProviderType.GitHub, label: 'GitHub', icon: 'github' },
+      ],
+    },
     clientId: { key: 'clientId', label: 'Client ID', type: 'string', order: 30, maxLength: 500 },
     clientSecretEncrypted: { key: 'clientSecretEncrypted', label: 'Client secret', type: 'string', order: 40, sensitive: true, readOnly: true, nullable: true },
     callbackPath: { key: 'callbackPath', label: 'Callback path', type: 'string', order: 50, required: true, maxLength: 300, generated: true, readOnly: true },

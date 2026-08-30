@@ -4,7 +4,7 @@
       .sort((a, b) => a.order - b.order)
   ) { %>
     <% if (field.generated || field.readOnly || field.sensitive) continue; %>
-    <% if (definition.key === 'sys-users' && field.key === 'emailVerified') continue; %>
+    <% if (false && definition.key === 'sys-users' && field.key === 'emailVerified') continue; /* #16 DISPOSABLE legacy SysUser-only field suppression */ %>
 
     <div class="col-md-6">
       <label class="form-label"><%= field.label %></label>

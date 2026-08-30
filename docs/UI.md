@@ -186,7 +186,7 @@ Navigation definitions live in `src/navigation.ts`, not in individual EJS pages.
 - client-side UI actions;
 - bottom docking in the vertical navigation.
 
-`navigationFor(role, auth)` recursively filters the navigation tree before rendering it. Presentation templates therefore receive only the menu entries applicable to the current session.
+`navigationFor(role, auth, company, platform, access)` recursively filters the navigation tree before rendering it. The current `access` facts include platform entitlement; presentation templates therefore receive only menu entries applicable to the current authenticated/licensed session. This filtering can later converge on evaluator-backed metadata visibility once resolved permission facts are projected into CTX.
 
 Horizontal platform navigation is derived from the shared `CompanyInfo.platforms` catalogue. Vertical navigation is composed from Company and current-Platform contributions, including shared containers such as Administration and Configuration.
 
@@ -209,7 +209,7 @@ Generic SysBO pages provide sorting, filtering, pagination, create/edit/delete b
 
 ### 5.1 Canonical metadata + UI metadata renderer
 
-The metadata-driven renderer consumes two contracts: canonical SysBO metadata (fields, constraints, derived fields and relationships) and framework-neutral UI metadata (tabs, list fields, field overrides, related collections and entry actions). The API exposes these as `/$metadata` and `/$metadata-ui`. During #16 migration the UI can switch each participating SysBO between the Current EJS implementation and the metadata-driven implementation through persisted `SysConfiguration` settings. The migration switch is temporary; engine behavior must remain generic and must not depend on a particular entity key.
+The metadata-driven renderer consumes two contracts: canonical SysBO metadata (fields, constraints, derived fields and relationships) and framework-neutral UI metadata (tabs, list fields, field overrides, related collections and entry actions). The API exposes these as `/$metadata` and `/$metadata-ui`. During #16 migration the remaining participating SysBOs can switch between the Current EJS implementation and the metadata-driven implementation through persisted `SysConfiguration` settings. **SysUsers is already locked to the metadata-driven implementation** and no longer exposes the comparison selector. The remaining migration switches are temporary; engine behavior must remain generic and must not depend on a particular entity key.
 
 SysUser is the first full acceptance target. Authenticated non-Admin users can reach their own SysUser entry, while authorization and evaluator-backed field metadata keep administrative properties such as Role protected. The owner may view Authentication/external-identity information; self-deletion remains prohibited.
 
@@ -227,7 +227,7 @@ Calculated field values and evaluator-driven UI properties share the same expres
 
 Development builds add a read-only **Debugging** tab to metadata-driven entry forms. It lists calculated element name, source formula and current value without displaying the AST. The hierarchy is generated dynamically from metadata: entity-level calculations, entity fields (value/other properties and provenance), related-entity calculations, and UI calculations (tabs, fields, related collections and actions). Repeated dotted prefixes are grouped/compressed as a diagnostic tree instead of being hard-coded for SysUser.
 
-The separate **CTX DEBUGGER** exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. It uses lazy DOM rendering, session-scoped developer preferences and a resizable width. Debugger/UI state survives ordinary page reload/navigation but is keyed to the UI-server boot identifier so a server restart resets it.
+The separate **CTX DEBUGGER** exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. Root CTX traversal presents `system` first, followed by `entities`, `company`, `user` and `page`; `system` contains the `server` and `client` runtime branches. It uses lazy DOM rendering and a resizable width. Transient debugger state remains UI-boot/session scoped so a server restart can reset selections/expansion/history, while the user's explicit debugger **open/closed** preference is browser-persisted and therefore survives a normal patch/server restart. Properties-panel visibility is preserved independently while selecting or expanding nodes.
 
 ### 5.5 Relationship-aware delete confirmation
 

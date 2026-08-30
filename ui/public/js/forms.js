@@ -740,6 +740,18 @@
     const indicatorIcon = indicator?.querySelector('[data-form-state-icon]');
     const indicatorText = indicator?.querySelector('[data-form-state-text]');
     const recordMode = form.dataset.recordMode || 'edit';
+    const runtime = window.ManatOS?.ctx;
+    const leafPagePath = () => {
+      if (!runtime?.value?.page) return null;
+      let node = runtime.value.page;
+      let path = 'ctx.page';
+      while (node?.page) { node = node.page; path += '.page'; }
+      return path;
+    };
+    const sameRecord = (left, right) => {
+      try { return JSON.stringify(left ?? {}) === JSON.stringify(right ?? {}); }
+      catch { return false; }
+    };
 
     const setIndicator = ({ changed, valid }) => {
       if (!(indicator instanceof HTMLElement) || !(indicatorText instanceof HTMLElement)) return;
@@ -773,12 +785,29 @@
         && pendingCredentialSave.value === 'true';
       const formDataChanged = sharedState.baseline !== null
         && snapshot() !== sharedState.baseline;
-      const changed = typeof sharedState.isDirty === 'function'
-        ? sharedState.isDirty()
-        : hasPendingCredentialSave || formDataChanged;
+      const pagePath = leafPagePath();
+      const original = pagePath ? runtime?.get?.(`${pagePath}.dataOriginal`) : undefined;
+      const current = pagePath ? runtime?.get?.(`${pagePath}.dataCurrent`) : undefined;
+      const ctxDirty = original !== undefined && current !== undefined
+        ? !sameRecord(original, current)
+        : null;
+      const changed = hasPendingCredentialSave || (ctxDirty !== null
+        ? ctxDirty
+        : (typeof sharedState.isDirty === 'function' ? sharedState.isDirty() : formDataChanged));
       const valid = typeof sharedState.isValid === 'function'
         ? sharedState.isValid()
         : form.checkValidity();
+
+      // Page state is itself CTX. Metadata/actions can therefore make live,
+      // declarative decisions from state.dirty/state.valid without inspecting DOM.
+      if (pagePath && runtime?.replace) {
+        if (runtime.get?.(`${pagePath}.state.dirty`) !== changed) {
+          runtime.replace(`${pagePath}.state.dirty`, changed, { source: 'page-state' });
+        }
+        if (runtime.get?.(`${pagePath}.state.valid`) !== valid) {
+          runtime.replace(`${pagePath}.state.valid`, valid, { source: 'page-state' });
+        }
+      }
 
       // Credential verification is deliberately not a prerequisite for
       // persistence. A complete pair may be stored encrypted with verification
@@ -799,6 +828,9 @@
     const scheduleUpdate = () => queueMicrotask(update);
     form.addEventListener('input', scheduleUpdate);
     form.addEventListener('change', scheduleUpdate);
+    // Programmatic/calculated mutations also flow through CTX and must update
+    // dirtiness/validity even when no native DOM event initiated the change.
+    window.addEventListener('manatos:ctx-change', scheduleUpdate);
 
     queueMicrotask(update);
   });
@@ -827,7 +859,7 @@
   const CHANGE_EVENT = 'manatos:ctx-change';
   const runtime = window.ManatOS?.ctx;
 
-  const leafPageFieldsPath = () => {
+  const leafPagePath = () => {
     if (!runtime?.value?.page) return null;
     let node = runtime.value.page;
     let path = 'ctx.page';
@@ -835,15 +867,78 @@
       node = node.page;
       path += '.page';
     }
-    return `${path}.fields`;
+    return path;
+  };
+
+  const leafPageFieldsPath = () => {
+    const pagePath = leafPagePath();
+    return pagePath ? `${pagePath}.fields` : null;
+  };
+
+  const leafPageDataCurrentPath = () => {
+    const pagePath = leafPagePath();
+    return pagePath ? `${pagePath}.dataCurrent` : null;
+  };
+
+  /** Update the working record through CTX; dependents react to the CTX event. */
+  const syncCurrentValue = (key, value, source, triggerPath) => {
+    const currentPath = leafPageDataCurrentPath();
+    if (!key || !currentPath || !runtime?.replace) return;
+    const path = `${currentPath}.${key}`;
+    if (runtime.get?.(path) !== value) {
+      runtime.replace(path, value, { source, triggerPath: triggerPath ?? path });
+    }
   };
 
   const controlValue = (control) => {
+    if (control instanceof HTMLSelectElement && control.value === '') return null;
     if (control instanceof HTMLInputElement && control.type === 'checkbox') return control.checked;
     if (control instanceof HTMLInputElement && control.type === 'number') {
       return control.value === '' ? null : Number(control.value);
     }
     return control?.value ?? null;
+  };
+
+  const enumItems = (control) => {
+    if (!(control instanceof HTMLSelectElement) || !control.dataset.enumItems) return [];
+    try {
+      const parsed = JSON.parse(control.dataset.enumItems);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const selectedEnumItem = (control) => {
+    if (!(control instanceof HTMLSelectElement)) return null;
+
+    // HTML select values are always strings. Canonical enum metadata normally
+    // uses strings too, but normalize both sides so generic enum traits remain
+    // reliable if a future enum uses numeric/boolean wire values.
+    const selectedValue = String(control.value ?? '');
+    const fromFieldMetadata = enumItems(control).find(
+      (item) => item && String(item.value ?? '') === selectedValue,
+    );
+    if (fromFieldMetadata) return fromFieldMetadata;
+
+    // Keep the selected option self-describing as a defensive fallback. This
+    // also means reactive metadata rules do not depend on developer CTX runtime
+    // availability or on a second lookup table after the server rendered them.
+    const raw = control.selectedOptions?.[0]?.dataset?.enumItem;
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  };
+
+  const updateEnumIcon = (control) => {
+    if (!(control instanceof HTMLSelectElement)) return;
+    const root = control.closest('[data-metadata-enum-select], [data-enum-icon-control]');
+    const icon = root?.querySelector('[data-enum-selected-icon]');
+    const label = root?.querySelector('[data-enum-selected-label]');
+    const toggle = root?.querySelector('[data-metadata-enum-toggle]');
+    const item = selectedEnumItem(control);
+    if (icon instanceof HTMLElement) icon.className = `bi bi-${item?.icon || 'list'}`;
+    if (label instanceof HTMLElement) label.textContent = item?.label || item?.value || 'Choose...';
+    if (toggle instanceof HTMLButtonElement) toggle.disabled = control.disabled;
   };
 
   const formFieldValue = (name) => {
@@ -855,17 +950,56 @@
     return undefined;
   };
 
+  /**
+   * Resolve a live form field as an evaluator value. Bare field references use
+   * the control's scalar value, while member access keeps a tiny field wrapper
+   * so declarative enum-item metadata (for example
+   * `principalType.option.canHaveParent`) remains available even when the CTX
+   * debugger/runtime is disabled. This keeps reactive UI decisions independent
+   * from developer tooling and mirrors the server evaluator's field semantics.
+   */
+  const resolveLocalFieldVariable = (members) => {
+    if (!Array.isArray(members) || !members.length || typeof members[0] !== 'string') return undefined;
+    const key = members[0];
+    const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
+    const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
+    const calculated = form.querySelector(`[data-ctx-calculated-field="${escaped}"]`);
+
+    let fieldValue;
+    let option;
+    if (control) {
+      fieldValue = controlValue(control);
+      if (control instanceof HTMLSelectElement && control.dataset.enumItems) {
+        option = selectedEnumItem(control);
+      }
+    } else if (calculated instanceof HTMLInputElement) {
+      fieldValue = calculated.value;
+    } else {
+      return undefined;
+    }
+
+    if (members.length === 1) return fieldValue;
+
+    let value = { value: fieldValue, option };
+    for (const member of members.slice(1)) {
+      if (value == null || (typeof value !== 'object' && typeof value !== 'function')) return undefined;
+      value = value[member];
+    }
+    return value;
+  };
+
   const resolveVariable = (node) => {
     if (!node || !Array.isArray(node.members) || !node.members.length) return undefined;
 
-    // A single field name is the common and fastest case for reactive forms.
-    if (!node.absolute && node.members.length === 1 && typeof node.members[0] === 'string') {
-      const local = formFieldValue(node.members[0]);
+    // Non-absolute expressions resolve local form fields first. This includes
+    // rich enum option traits and therefore works in production even when the
+    // development CTX runtime is not loaded.
+    if (!node.absolute) {
+      const local = resolveLocalFieldVariable(node.members);
       if (local !== undefined) return local;
     }
 
-    // For root/page/user paths reuse the generic CTX resolver when DEBUG/runtime
-    // is available. Server rendering remains authoritative when it is not.
+    // Root/page/user/system paths continue through the generic CTX resolver.
     if (runtime?.resolve) {
       const scopePath = leafPageFieldsPath()?.replace(/\.fields$/, '') ?? undefined;
       const resolved = runtime.resolve(node.path, scopePath);
@@ -930,6 +1064,29 @@
       case 'function': {
         const args = (node.arguments || []).map(evaluate);
         if (node.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
+        if (node.functionName === 'TraverseCtx') {
+          const [startId, collection, parentField, resultField] = args;
+          if (startId == null || startId === '' || !collection || typeof collection !== 'object') return null;
+          const keyed = (container, key) => {
+            if (Array.isArray(container)) {
+              return container.find((item) => item && typeof item === 'object' && (item.id === key || item.key === key));
+            }
+            return container?.[key];
+          };
+          const seen = new Set();
+          let id = startId;
+          for (let depth = 0; depth < 256; depth += 1) {
+            const key = String(id);
+            if (seen.has(key)) throw new Error(`TraverseCtx detected a parent cycle at ${key}.`);
+            seen.add(key);
+            const row = keyed(collection, key);
+            if (!row || typeof row !== 'object') return null;
+            const parent = row[parentField];
+            if (parent == null || parent === '') return resultField ? (row[resultField] ?? null) : row;
+            id = parent;
+          }
+          throw new Error('TraverseCtx exceeded the maximum traversal depth of 256.');
+        }
         if (node.functionName === 'GetTime') return Date.now();
         if (node.functionName === 'StrFormat') {
           return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) => Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match);
@@ -964,35 +1121,59 @@
     }
   };
 
-  const expressionDependencies = (ast) => {
+  const expressionDependencyPaths = (ast) => {
     const dependencies = new Set();
+    const scopePath = leafPagePath() ?? undefined;
+
     const visit = (node) => {
       if (!node || typeof node !== 'object') return;
-      if (node.kind === 'variable') {
-        if (!node.absolute && Array.isArray(node.members) && typeof node.members[0] === 'string') {
-          dependencies.add(node.members[0]);
-        } else if (typeof node.path === 'string') {
-          const match = node.path.match(/(?:^|\.)fields\.([A-Za-z_$][A-Za-z0-9_$]*)/);
-          if (match) dependencies.add(match[1]);
+
+      if (node.kind === 'variable' && typeof node.path === 'string') {
+        const resolvedPath = runtime?.resolvePath?.(node.path, scopePath);
+        if (typeof resolvedPath === 'string' && resolvedPath) {
+          dependencies.add(resolvedPath);
         }
       }
+
       Object.values(node).forEach((value) => {
         if (Array.isArray(value)) value.forEach(visit);
         else if (value && typeof value === 'object') visit(value);
       });
     };
+
     visit(ast);
     return dependencies;
   };
 
-  const dependents = new Map();
+  const pathsOverlap = (left, right) => {
+    if (left === right) return true;
+    const childOf = (candidate, parent) =>
+      candidate.startsWith(`${parent}.`) || candidate.startsWith(`${parent}[`);
+    return childOf(left, right) || childOf(right, left);
+  };
+
   const reactiveEntries = [];
   const registerEntry = (entry) => {
     reactiveEntries.push(entry);
-    entry.dependencies.forEach((dependency) => {
-      if (!dependents.has(dependency)) dependents.set(dependency, new Set());
-      dependents.get(dependency).add(entry);
-    });
+  };
+
+  const calculatedRawValue = (element) => {
+    try { return JSON.parse(element.dataset.calculatedValue || 'null'); }
+    catch { return null; }
+  };
+
+  const setCalculatedDisplay = (element, value) => {
+    if (element.dataset.calculatedFieldType === 'reference') {
+      let values = [];
+      try {
+        const parsed = JSON.parse(element.dataset.referenceValues || '[]');
+        if (Array.isArray(parsed)) values = parsed;
+      } catch { /* keep empty */ }
+      const match = values.find((candidate) => candidate?.id === value);
+      element.value = value == null || value === '' ? '' : String(match?.name ?? value);
+      return;
+    }
+    element.value = value == null ? '' : String(value);
   };
 
   form.querySelectorAll('[data-ctx-calculated-field]').forEach((element) => {
@@ -1000,27 +1181,45 @@
     const ast = parseAst(element, 'data-calculated-ast');
     if (!ast) return;
     const key = element.dataset.ctxCalculatedField;
+    const persisted = element.dataset.calculatedPersisted === 'true';
+
     registerEntry({
       kind: 'calculated',
       key,
-      dependencies: expressionDependencies(ast),
+      dependencyPaths: expressionDependencyPaths(ast),
       run: () => {
         try {
           const next = evaluate(ast);
-          const text = next == null ? '' : String(next);
-          const changed = element.value !== text;
-          if (changed) element.value = text;
+          const current = calculatedRawValue(element);
+          const changed = !Object.is(current, next);
 
+          if (changed) {
+            element.dataset.calculatedValue = JSON.stringify(next ?? null);
+            setCalculatedDisplay(element, next);
+          }
+
+          const pagePath = leafPagePath();
           const fieldsPath = leafPageFieldsPath();
-          if (key && fieldsPath && runtime?.replace) {
-            const path = `${fieldsPath}.${key}.value`;
-            if (runtime.get?.(path) !== next) {
-              runtime.replace(path, next, { source: 'calculated-field', triggerPath: path });
+          if (key && pagePath && fieldsPath && runtime) {
+            const valuePath = `${fieldsPath}.${key}.value`;
+            if (runtime.get?.(valuePath) !== next) {
+              if (persisted && runtime.updateField) {
+                runtime.updateField(pagePath, key, next, undefined, {
+                  source: 'calculated-field',
+                  triggerPath: valuePath,
+                });
+              } else if (runtime.replace) {
+                runtime.replace(valuePath, next, {
+                  source: 'calculated-field',
+                  triggerPath: valuePath,
+                });
+              }
             }
           }
-          return changed ? key : null;
+
+          return changed;
         } catch {
-          return null;
+          return false;
         }
       },
     });
@@ -1037,9 +1236,9 @@
   };
 
   /*
-   * Development-only Debugging-tab cells participate in the exact same
-   * dependency registry. Their AST was compiled by ManatOS on the server and
-   * embedded invisibly; only the human-readable formula is shown in the grid.
+   * Development-only Debugging-tab cells subscribe to the same resolved CTX
+   * dependency paths as visible calculated values. Their AST is still the
+   * server-compiled AST; the browser never reparses formula text.
    */
   form.querySelectorAll('[data-debug-calculation-value]').forEach((cell) => {
     if (!(cell instanceof HTMLElement)) return;
@@ -1047,15 +1246,15 @@
     if (!ast) return;
     registerEntry({
       kind: 'debug-value',
-      dependencies: expressionDependencies(ast),
+      dependencyPaths: expressionDependencyPaths(ast),
       run: () => {
         try {
           const next = debugValueText(evaluate(ast));
           const changed = cell.textContent !== next;
           if (changed) cell.textContent = next;
-          return null;
+          return changed;
         } catch {
-          return null;
+          return false;
         }
       },
     });
@@ -1069,10 +1268,16 @@
     if (visibleAst) {
       registerEntry({
         kind: 'visible',
-        dependencies: expressionDependencies(visibleAst),
+        dependencyPaths: expressionDependencyPaths(visibleAst),
         run: () => {
-          try { container.hidden = evaluate(visibleAst) === false; } catch { /* keep server state */ }
-          return null;
+          try {
+            const nextHidden = evaluate(visibleAst) === false;
+            const changed = container.hidden !== nextHidden;
+            container.hidden = nextHidden;
+            return changed;
+          } catch {
+            return false;
+          }
         },
       });
     }
@@ -1080,49 +1285,129 @@
     if (editableAst) {
       registerEntry({
         kind: 'editable',
-        dependencies: expressionDependencies(editableAst),
+        dependencyPaths: expressionDependencyPaths(editableAst),
         run: () => {
           try {
             const editable = evaluate(editableAst) !== false;
-            container.querySelectorAll('input, select, textarea').forEach((control) => {
+            const controls = [...container.querySelectorAll('[data-ctx-field]')];
+            const readonlySubmit = container.querySelector('[data-readonly-submit]');
+            const hasReadOnlyValue = container.dataset.uiHasReadonlyValue === 'true';
+            let readOnlyValue;
+            if (hasReadOnlyValue) {
+              try { readOnlyValue = JSON.parse(container.dataset.uiReadonlyValue || 'null'); }
+              catch { readOnlyValue = null; }
+            }
+
+            let changed = false;
+            controls.forEach((control) => {
+              const wasEditable = control instanceof HTMLInputElement && control.type !== 'checkbox'
+                ? !control.readOnly
+                : !control.disabled;
+
+              if (!editable && hasReadOnlyValue) {
+                const current = controlValue(control);
+                if (!Object.is(current, readOnlyValue)) {
+                  if (control instanceof HTMLInputElement && control.type === 'checkbox') {
+                    control.checked = Boolean(readOnlyValue);
+                  } else if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) {
+                    control.value = readOnlyValue == null ? '' : String(readOnlyValue);
+                  }
+                  updateEnumIcon(control);
+
+                  const key = control.dataset.ctxField;
+                  const pagePath = leafPagePath();
+                  const fieldsPath = leafPageFieldsPath();
+                  if (key && pagePath && fieldsPath && runtime?.updateField) {
+                    const valuePath = `${fieldsPath}.${key}.value`;
+                    runtime.updateField(pagePath, key, readOnlyValue, undefined, {
+                      source: 'field-editability',
+                      triggerPath: valuePath,
+                    });
+                  } else if (key && fieldsPath && runtime?.replace) {
+                    const valuePath = `${fieldsPath}.${key}.value`;
+                    runtime.replace(valuePath, readOnlyValue, {
+                      source: 'field-editability',
+                      triggerPath: valuePath,
+                    });
+                    syncCurrentValue(key, readOnlyValue, 'field-editability', valuePath);
+                  }
+                  changed = true;
+                }
+              }
+
               if (control instanceof HTMLInputElement && control.type !== 'checkbox') control.readOnly = !editable;
               else control.disabled = !editable;
+              updateEnumIcon(control);
+              if (wasEditable !== editable) changed = true;
             });
-          } catch { /* keep server state */ }
-          return null;
+
+            if (readonlySubmit instanceof HTMLInputElement) {
+              readonlySubmit.disabled = editable;
+              readonlySubmit.value = readOnlyValue == null ? '' : String(readOnlyValue);
+            }
+
+            return changed;
+          } catch {
+            return false;
+          }
         },
       });
     }
   });
 
-  const runAllReactiveEntries = () => {
-    reactiveEntries.forEach((entry) => entry.run());
-  };
+  /*
+   * CTX-event scheduler.
+   *
+   * Every formula subscribes to the exact CTX paths resolved from its AST when
+   * the page starts. User edits and calculated/programmatic changes all travel
+   * through the same CTX setter/event path. If a calculation changes another
+   * CTX value, that event is queued and wakes its own dependents. Processing
+   * continues until the queue is empty, with a hard cycle/runaway guard.
+   */
+  const pendingPaths = [];
+  const pendingPathSet = new Set();
+  let processingChanges = false;
 
-  const runDependents = (sourceKey) => {
-    if (!sourceKey) {
-      runAllReactiveEntries();
-      return;
+  const enqueueChangedPaths = (paths) => {
+    for (const path of paths) {
+      if (typeof path !== 'string' || !path || pendingPathSet.has(path)) continue;
+      pendingPathSet.add(path);
+      pendingPaths.push(path);
     }
 
-    const pendingKeys = [sourceKey];
-    const visitedKeys = new Set();
-    const visitedEntries = new Set();
+    if (processingChanges) return;
 
-    while (pendingKeys.length) {
-      const key = pendingKeys.shift();
-      if (!key || visitedKeys.has(key)) continue;
-      visitedKeys.add(key);
+    processingChanges = true;
+    let executions = 0;
+    try {
+      while (pendingPaths.length) {
+        const changedPath = pendingPaths.shift();
+        pendingPathSet.delete(changedPath);
 
-      for (const entry of dependents.get(key) || []) {
-        if (visitedEntries.has(entry)) continue;
-        visitedEntries.add(entry);
-        const changedCalculatedKey = entry.run();
-        if (changedCalculatedKey && !visitedKeys.has(changedCalculatedKey)) {
-          pendingKeys.push(changedCalculatedKey);
+        for (const entry of reactiveEntries) {
+          if (![...entry.dependencyPaths].some((dependencyPath) => pathsOverlap(dependencyPath, changedPath))) {
+            continue;
+          }
+
+          entry.run();
+          executions += 1;
+          if (executions > 512) {
+            console.error('[ManatOS CTX] Reactive calculation queue exceeded 512 executions; possible dependency cycle.', {
+              changedPath,
+            });
+            pendingPaths.length = 0;
+            pendingPathSet.clear();
+            return;
+          }
         }
       }
+    } finally {
+      processingChanges = false;
     }
+  };
+
+  const runAllReactiveEntries = () => {
+    reactiveEntries.forEach((entry) => entry.run());
   };
 
   const syncSourceField = (control) => {
@@ -1132,12 +1417,21 @@
     const fieldsPath = leafPageFieldsPath();
     const path = fieldsPath ? `${fieldsPath}.${key}.value` : `fields.${key}.value`;
 
-    if (fieldsPath && runtime?.replace) {
+    updateEnumIcon(control);
+
+    if (fieldsPath && runtime?.updateField) {
+      const pagePath = leafPagePath();
+      const option = control instanceof HTMLSelectElement && control.dataset.enumItems
+        ? selectedEnumItem(control)
+        : undefined;
+      runtime.updateField(pagePath, key, value, option, { source: 'form-field', triggerPath: path });
+    } else if (fieldsPath && runtime?.replace) {
       runtime.replace(path, value, { source: 'form-field', triggerPath: path });
+      syncCurrentValue(key, value, 'form-field', path);
     } else {
       window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
         detail: {
-          operation: 'replace', path, newValue: value,
+          operation: 'replace', path, relatedPaths: [], newValue: value,
           cause: { source: 'form-field', triggerPath: path },
         },
       }));
@@ -1146,15 +1440,21 @@
 
   const react = (event) => {
     const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
-    if (control) {
-      syncSourceField(control);
-      runDependents(control.dataset.ctxField);
-    }
+    if (control) syncSourceField(control);
   };
+
+  // DOM controls only adapt user input into CTX. Formula-to-form reactivity is
+  // entirely driven by CTX value paths discovered from AST dependencies.
+  window.addEventListener(CHANGE_EVENT, (event) => {
+    const path = event?.detail?.path;
+    const relatedPaths = Array.isArray(event?.detail?.relatedPaths) ? event.detail.relatedPaths : [];
+    enqueueChangedPaths([path, ...relatedPaths]);
+  });
 
   form.addEventListener('input', react);
   form.addEventListener('change', react);
   queueMicrotask(() => {
+    form.querySelectorAll('select[data-enum-items]').forEach(updateEnumIcon);
     runAllReactiveEntries();
     form.dispatchEvent(new Event('change', { bubbles: true }));
   });
@@ -1285,5 +1585,47 @@
         submit.innerHTML = originalHtml;
       }
     });
+  });
+})();
+
+/* ========================================================================== 
+ * Metadata-driven rich enum component
+ *
+ * Presentation delegates all value semantics to the hidden native select.
+ * Choosing a rich option updates that select and emits its normal change event;
+ * the CTX adapter above is therefore the single state mutation path.
+ * ======================================================================== */
+(() => {
+  document.querySelectorAll('[data-metadata-enum-select]').forEach((root) => {
+    const select = root.querySelector('select[data-ctx-field]');
+    const toggle = root.querySelector('[data-metadata-enum-toggle]');
+    if (!(select instanceof HTMLSelectElement) || !(toggle instanceof HTMLButtonElement)) return;
+
+    const items = () => {
+      try { return JSON.parse(select.dataset.enumItems || '[]'); } catch { return []; }
+    };
+    const refresh = () => {
+      const item = items().find((candidate) => String(candidate?.value ?? '') === String(select.value ?? ''));
+      const label = toggle.querySelector('[data-enum-selected-label]');
+      const icon = toggle.querySelector('[data-enum-selected-icon]');
+      if (label) label.textContent = item?.label || item?.value || 'Choose...';
+      if (icon instanceof HTMLElement) icon.className = `bi bi-${item?.icon || 'list'}`;
+      root.querySelectorAll('[data-enum-choice]').forEach((choice) => {
+        const selected = choice.getAttribute('data-enum-choice') === select.value;
+        choice.classList.toggle('active', selected);
+        choice.setAttribute('aria-selected', selected ? 'true' : 'false');
+      });
+      toggle.disabled = select.disabled;
+    };
+
+    root.addEventListener('click', (event) => {
+      const choice = event.target instanceof Element ? event.target.closest('[data-enum-choice]') : null;
+      if (!(choice instanceof HTMLButtonElement) || select.disabled) return;
+      select.value = choice.dataset.enumChoice || '';
+      refresh();
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    select.addEventListener('change', refresh);
+    refresh();
   });
 })();

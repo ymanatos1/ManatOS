@@ -1,4 +1,5 @@
 import {
+  evaluateExpression,
   operationContext,
   type SysBOCreateInput,
   type SysBOEntity,
@@ -46,7 +47,13 @@ export class GenericSysBOService<T extends SysBOEntity> {
     query: ListQuery,
     authorizationFilter?: InMemoryListAuthorizationFilter<T>,
   ): Promise<ListResult<T>> {
-    return this.repository.list(query, authorizationFilter);
+    const result = await this.repository.list(query, authorizationFilter);
+    if (!this.hasPersistedDerivedFields()) return result;
+
+    return {
+      ...result,
+      items: await Promise.all(result.items.map((item) => this.materializePersistedDerivedFields(item))),
+    };
   }
 
   /**
@@ -55,7 +62,10 @@ export class GenericSysBOService<T extends SysBOEntity> {
    * Returns null when the entity does not exist.
    */
   async get(id: string): Promise<T | null> {
-    return this.repository.getById(id);
+    const item = await this.repository.getById(id);
+    return item && this.hasPersistedDerivedFields()
+      ? this.materializePersistedDerivedFields(item)
+      : item;
   }
 
   /**
@@ -82,7 +92,13 @@ export class GenericSysBOService<T extends SysBOEntity> {
 
           scope.comment('createdBy', actor.userName);
 
-          return this.repository.create(input, actor);
+          const created = await this.repository.create(
+            input,
+            actor,
+            (record) => this.materializePersistedDerivedFields(record),
+          );
+          await this.refreshPersistedDerivedCollection();
+          return (await this.repository.getById(created.id)) ?? created;
         },
       ),
     );
@@ -109,9 +125,116 @@ export class GenericSysBOService<T extends SysBOEntity> {
             updatedBy: actor.userName,
           });
 
-          return this.repository.update(id, changes, actor);
+          const updated = await this.repository.update(
+            id,
+            changes,
+            actor,
+            (record) => this.materializePersistedDerivedFields(record),
+          );
+          await this.refreshPersistedDerivedCollection();
+          return (await this.repository.getById(updated.id)) ?? updated;
         },
       ),
+    );
+  }
+
+  /** Whether this entity declares any derived value that must be stored. */
+  private hasPersistedDerivedFields(): boolean {
+    return Object.values(this.metadata.derivedFields ?? {}).some((field) => field.persisted === true);
+  }
+
+  /**
+   * Materialize every metadata-declared persisted derived field against a
+   * minimal, entity-agnostic CTX. The current entity is the expression scope and
+   * the complete same-entity collection is exposed as the normal lexical
+   * `dataList`, so functions such as TraverseCtx need no Principal-specific
+   * persistence code.
+   *
+   * Several derived fields may depend on one another. Iterate to a fixed point
+   * with a strict safety bound; no entity/field names are hard-coded here.
+   */
+  private async materializePersistedDerivedFields(record: T): Promise<T> {
+    const derived = Object.entries(this.metadata.derivedFields ?? {})
+      .filter(([, field]) => field.persisted === true);
+    if (!derived.length) return record;
+
+    const candidate = { ...(record as unknown as Record<string, unknown>) };
+    const collection = this.store.collectionForObjectKey(this.metadata.key);
+
+    const maxPasses = Math.max(4, derived.length * 4);
+    for (let pass = 0; pass < maxPasses; pass += 1) {
+      const dataList = [
+        ...(collection ? [...collection.values()].filter((item) => item.id !== candidate.id) : []),
+        candidate,
+      ];
+      const fields = Object.fromEntries(
+        Object.entries(candidate).map(([key, value]) => [key, { value }]),
+      );
+      const entryPage = { fields, dataCurrent: candidate };
+      const ctx = { page: { dataList, page: entryPage } };
+
+      let changed = false;
+      for (const [key, field] of derived) {
+        const value = evaluateExpression(
+          field.expression,
+          ctx,
+          fields,
+          {
+            source: 'calculated-field',
+            sourcePath: `derivedFields.${key}`,
+            targetPath: key,
+            purpose: 'materialize persisted derived field before persistence',
+          },
+        );
+
+        if (!Object.is(candidate[key], value)) {
+          candidate[key] = value;
+          changed = true;
+        }
+      }
+
+      if (!changed) return candidate as unknown as T;
+    }
+
+    throw new Error(
+      `Persisted derived fields for ${this.metadata.key} did not settle within ${maxPasses} evaluation passes.`,
+    );
+  }
+
+  /**
+   * Recalculate materialized derived values for the complete same-entity
+   * collection before transaction commit. This is required for hierarchy-like
+   * formulas where changing one record can alter a descendant's stored result.
+   * The sweep is metadata-driven and therefore applies equally to future
+   * entities with persisted derived fields.
+   */
+  private async refreshPersistedDerivedCollection(): Promise<void> {
+    if (!this.hasPersistedDerivedFields()) return;
+    const collection = this.store.collectionForObjectKey(this.metadata.key);
+    if (!collection?.size) return;
+
+    const persistedKeys = Object.entries(this.metadata.derivedFields ?? {})
+      .filter(([, field]) => field.persisted === true)
+      .map(([key]) => key);
+    const maxPasses = Math.max(4, collection.size * 2);
+
+    for (let pass = 0; pass < maxPasses; pass += 1) {
+      let changed = false;
+
+      for (const [id, raw] of collection.entries()) {
+        const materialized = await this.materializePersistedDerivedFields(raw as unknown as T);
+        const next = materialized as unknown as Record<string, unknown>;
+        if (!persistedKeys.some((key) => !Object.is(raw[key], next[key]))) continue;
+
+        collection.set(id, next);
+        changed = true;
+      }
+
+      if (!changed) return;
+    }
+
+    throw new Error(
+      `Persisted derived collection for ${this.metadata.key} did not settle within ${maxPasses} passes.`,
     );
   }
 

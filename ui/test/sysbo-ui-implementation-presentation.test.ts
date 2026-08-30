@@ -11,12 +11,18 @@ async function source(relativePath: string): Promise<string> {
 }
 
 describe('#16 SysBO UI implementation migration scaffolding', () => {
-  it('keeps current EJS as the default and persists each SysBO selection through SysConfiguration', async () => {
+  it('locks completed SysUsers and SysPrincipals to metadata-driven mode while keeping comparison for remaining SysBOs', async () => {
     const routes = await source('src/routes/sysbo-routes.ts');
+    const configuration = await source('../api/src/services/sys-configuration-service.ts');
     expect(routes).toContain("const CURRENT_SYSBO_UI: SysBOUiImplementation = 'current'");
     expect(routes).toContain("const METADATA_SYSBO_UI: SysBOUiImplementation = 'metadata'");
     expect(routes).toContain("router.post('/:key/ui-implementation'");
-    expect(routes).toContain('UI_SYSBO_USERS_VIEW_MODE');
+    expect(routes).toContain("if (definition.key === 'sys-users' || definition.key === 'sys-principals') return METADATA_SYSBO_UI");
+    expect(routes).toContain("if (definition.key === 'sys-users' || definition.key === 'sys-principals') return false");
+    expect(routes).not.toContain("'sys-users': 'UI_SYSBO_USERS_VIEW_MODE'");
+    expect(routes).not.toContain("'sys-principals': 'UI_SYSBO_PRINCIPALS_VIEW_MODE'");
+    expect(configuration).not.toContain("name:'UI_SYSBO_USERS_VIEW_MODE'");
+    expect(configuration).not.toContain("name:'UI_SYSBO_PRINCIPALS_VIEW_MODE'");
     expect(routes).toContain('persistSysBOUiImplementation');
     expect(routes).toContain('MetadataDriven');
     expect(routes).toContain("definition.key !== 'sys-configurations'");
@@ -43,6 +49,9 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
     expect(selector).toContain('sysbo-ui-engine-toggle');
     expect(selector).toContain('is-selected');
     expect(selector).toContain('is-unselected');
+
+    expect(edit).toContain('#16 DISPOSABLE LEGACY SYSUSER EJS');
+    expect(edit).toContain("false && tab.id === 'authentication'");
   });
 
   it('loads both canonical BO and UI metadata for metadata-driven list/record pages', async () => {

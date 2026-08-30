@@ -2,7 +2,11 @@
   const isViewMode = recordMode === 'view';
   const isNew = recordMode === 'create';
   const overrides = metadataUI.record.fieldOverrides || {};
-  const derivedFields = metadataUI.record.derivedFields || {};
+  const canonicalDerivedFields = metadata.derivedFields || {};
+  const uiDerivedFields = metadataUI.record.derivedFields || {};
+  // Canonical calculations are reusable entity fields; UI-only calculations
+  // may add/override presentation-specific values without hiding canonical ones.
+  const derivedFields = { ...canonicalDerivedFields, ...uiDerivedFields };
   const relatedCollections = metadataUI.record.relatedCollections || {};
 
   // Metadata-driven pages consume related values from the canonical ctx leaf.
@@ -94,6 +98,11 @@
   };
 
   const referenceValues = referenceData || {};
+  const referenceLabel = (fieldKey, value) => {
+    if (value === undefined || value === null || value === '') return '—';
+    const match = (referenceValues[fieldKey] || []).find((candidate) => candidate?.id === value);
+    return match?.name ?? String(value);
+  };
   const providerDefinitions =
     typeof externalAuthProviderDefinitions !== 'undefined' && Array.isArray(externalAuthProviderDefinitions)
       ? externalAuthProviderDefinitions
@@ -110,6 +119,12 @@
   const deleteAuthorized = deleteImpact?.authorized !== false;
 
   const valueFor = (key) => {
+    // CTX is the live form-state source of truth. The renderer projects the
+    // current field value rather than independently recreating initial values
+    // from the API item/default metadata. `null` is rendered as an empty native
+    // control value while remaining null in CTX for references/enums.
+    const contextValue = ctxValue(key);
+    if (contextValue !== undefined) return contextValue ?? '';
     if (item && item[key] !== undefined && item[key] !== null) return item[key];
     const createDefault = overrides[key]?.createDefaultValue;
     const resolvedDefault = dynamicUIValue(createDefault, ctxFields, {
@@ -143,6 +158,13 @@
     return visible !== false;
   };
   const fieldLabel = (field) => overrides[field.key]?.label || field.label;
+  const enumItemsFor = (field) => {
+    const rich = Array.isArray(field.enumItems) ? field.enumItems : [];
+    return (field.enumValues || []).map((value) => {
+      const item = rich.find((candidate) => candidate?.value === value);
+      return item ? item : { value, label: value };
+    });
+  };
 
   const formatElapsed = (dateValue) => {
     const elapsedMs = Date.now() - dateValue.getTime();
@@ -308,129 +330,7 @@
       : { prefix: value.slice(0, lastDot + 1), leaf: value.slice(lastDot + 1) };
   };
 
-  /*
-   * Formula syntax colouring is presentation-only lexical highlighting. It
-   * never parses or evaluates the formula; evaluation continues to use the
-   * canonical precompiled AST. Known entity/related field identifiers are
-   * emphasized as fields, while CTX/system roots such as mode/user/client are
-   * visually distinct from literals and operators.
-   */
-  const debugFieldNames = new Set([
-    ...Object.keys(metadata?.fieldDefinition || {}),
-    ...Object.keys(metadata?.derivedFields || {}),
-    ...Object.keys(derivedFields || {}),
-  ]);
-  for (const collection of Object.values(relatedCollections || {})) {
-    const relatedMetadata = relatedMetadataRegistry[collection?.entityKey];
-    for (const fieldKey of Object.keys(relatedMetadata?.fieldDefinition || {})) debugFieldNames.add(fieldKey);
-    for (const fieldKey of Object.keys(relatedMetadata?.derivedFields || {})) debugFieldNames.add(fieldKey);
-  }
-
-  const debugSystemRoots = new Set([
-    'mode', 'user', 'client', 'server', 'company', 'platform', 'page', 'ctx', 'app',
-  ]);
-  const debugLiteralKeywords = new Set(['true', 'false', 'null', 'undefined']);
-  const escapeDebugHtml = (value) => String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-
-  const highlightDebugFormula = (formula) => {
-    const source = String(formula ?? '');
-    let html = '';
-    let index = 0;
-
-    const emit = (text, tokenClass = null) => {
-      const escaped = escapeDebugHtml(text);
-      html += tokenClass ? `<span class="debug-expression-${tokenClass}">${escaped}</span>` : escaped;
-    };
-
-    while (index < source.length) {
-      const char = source[index];
-
-      if (/\s/.test(char)) {
-        const start = index;
-        while (index < source.length && /\s/.test(source[index])) index += 1;
-        emit(source.slice(start, index));
-        continue;
-      }
-
-      if (char === "'" || char === '"' || char === '`') {
-        const quote = char;
-        const start = index++;
-        let escaped = false;
-        while (index < source.length) {
-          const current = source[index++];
-          if (escaped) { escaped = false; continue; }
-          if (current === '\\') { escaped = true; continue; }
-          if (current === quote) break;
-        }
-        emit(source.slice(start, index), 'string');
-        continue;
-      }
-
-      if (/[0-9]/.test(char) || (char === '.' && /[0-9]/.test(source[index + 1] || ''))) {
-        const match = source.slice(index).match(/^(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?/);
-        if (match) {
-          emit(match[0], 'number');
-          index += match[0].length;
-          continue;
-        }
-      }
-
-      if (/[A-Za-z_$]/.test(char)) {
-        const match = source.slice(index).match(/^[A-Za-z_$][A-Za-z0-9_$]*/);
-        const identifier = match?.[0] || char;
-        const previousNonSpace = source.slice(0, index).match(/\S(?=\s*$)/)?.[0] || '';
-
-        if (debugLiteralKeywords.has(identifier)) {
-          emit(identifier, 'literal');
-        } else if (previousNonSpace === '.') {
-          /*
-           * CTX/property-path members are intentionally neutral grey, matching
-           * the VS Code path/member treatment requested for debugging formulas.
-           * Only the root system variable itself is green; direct entity-field
-           * references remain blue.
-           */
-          emit(identifier, 'path');
-        } else if (debugFieldNames.has(identifier)) {
-          emit(identifier, 'field');
-        } else if (debugSystemRoots.has(identifier)) {
-          emit(identifier, 'system');
-        } else {
-          /*
-           * Any remaining bare identifier is an expression-scope variable.
-           * The expression grammar currently has no free-standing function-name
-           * syntax, so treating it as a variable gives synthetic/runtime values
-           * such as `hasPassword` the same blue treatment as canonical fields.
-           */
-          emit(identifier, 'field');
-        }
-        index += identifier.length;
-        continue;
-      }
-
-      if (char === '.') {
-        emit(char, 'punctuation');
-        index += 1;
-        continue;
-      }
-
-      const operatorMatch = source.slice(index).match(/^(===|!==|==|!=|<=|>=|&&|\|\||\?\?|=>|\+\+|--|\+|-|\*|\/|%|<|>|!|\?|:|=)/);
-      if (operatorMatch) {
-        emit(operatorMatch[0], 'operator');
-        index += operatorMatch[0].length;
-        continue;
-      }
-
-      emit(char, 'punctuation');
-      index += 1;
-    }
-
-    return html;
-  };
+  /* Formula syntax colouring is applied client-side by the shared developer helper. */
 
   /*
    * `detailGroup` is optional provenance/classification beneath the semantic
@@ -852,12 +752,15 @@
            * can be changed according to the same metadata/evaluator rule used
            * by the controls themselves.
            */
-          const tabHasEditableFields = tab.layout !== 'summary' && tab.fields.some((key) => {
+          const formLikeTab = !tab.layout || tab.layout === 'form';
+          const tabHasEditableFields = formLikeTab && tab.fields.some((key) => {
             if (derivedFields[key] || relatedCollections[key]) return false;
             const field = metadata.fieldDefinition[key];
             return Boolean(field && fieldVisible(field) && !field.sensitive && fieldEditable(field));
           });
-          const readOnlyTab = !tabHasEditableFields;
+          const readOnlyTab = tab.layout === 'summary'
+            || tab.layout === 'debug-calculations'
+            || (formLikeTab && !tabHasEditableFields);
         %>
         <div
           class="tab-pane fade <%= tab.id === activeTabId ? 'show active' : '' %> <%= readOnlyTab ? 'entity-readonly-tab' : '' %>"
@@ -910,7 +813,7 @@
                           <td>
                             <code class="debugging-element-name"><span class="debugging-element-prefix"><%= elementNameParts.prefix %></span><strong class="debugging-element-leaf"><%= elementNameParts.leaf %></strong></code>
                           </td>
-                          <td><code class="debugging-formula"><%- highlightDebugFormula(debugRow.formula) %></code></td>
+                          <td><code class="debugging-formula" data-debug-expression><%= debugRow.formula %></code></td>
                           <td
                             class="debugging-current-value"
                             data-debug-calculation-value
@@ -923,6 +826,22 @@
                 </tbody>
               </table>
             </div>
+          <% } else if (tab.layout === 'component' && tab.component) { %>
+            <%
+              const componentKey = String(tab.component.key || '');
+              const componentOptions = tab.component.options || {};
+            %>
+            <!--
+              Component tabs are deliberately renderer-agnostic. The server only
+              publishes the component key/options from metadata; the matching
+              browser component owns its DOM and reads live values from CTX.
+            -->
+            <div
+              data-metadata-component="<%= componentKey %>"
+              data-metadata-component-options="<%= JSON.stringify(componentOptions) %>"
+              data-entity-key="<%= definition.key %>"
+              data-record-mode="<%= recordMode %>"
+            ></div>
           <% } else if (tab.layout === 'summary') { %>
             <div class="account-summary-grid authentication-summary-grid">
               <% for (const key of tab.fields) { %>
@@ -946,7 +865,10 @@
                     targetPath: `fields.${key}.icon`,
                     purpose: 'resolve calculated-field presentation icon',
                   }); %>
-                  <% const renderedDerivedValue = formatValue(rawValue, {...derived, ...presentation}); %>
+                  <% const derivedField = metadata.fieldDefinition[key]; %>
+                  <% const renderedDerivedValue = derivedField?.type === 'reference'
+                    ? referenceLabel(key, rawValue)
+                    : formatValue(rawValue, {...derived, ...presentation}); %>
                   <div class="account-summary-label"><% if (derived.icon) { %><i class="bi bi-<%= derived.icon %> me-1" aria-hidden="true"></i><% } %><%= overrides[key]?.label || derived.label %></div>
                   <div class="account-summary-value">
                     <% if (stateIcon) { %>
@@ -1026,6 +948,9 @@
 
                 <% if (derived?.expression) { %>
                   <% const calculatedValue = ctxValue(key); %>
+                  <% const calculatedDisplayValue = field?.type === 'reference'
+                    ? referenceLabel(key, calculatedValue)
+                    : calculatedValue; %>
                   <% const derivedVisibleExpression = expressionText(overrides[key]?.visible); %>
                   <% const compiledDerivedOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
                   <% const derivedInitiallyVisible = dynamicUIValue(overrides[key]?.visible ?? true, ctxFields, {
@@ -1048,12 +973,18 @@
                       class="form-control"
                       id="metadata-field-<%= key %>"
                       type="text"
-                      value="<%= calculatedValue ?? '' %>"
+                      value="<%= calculatedDisplayValue ?? '' %>"
                       readonly
                       aria-readonly="true"
                       data-ctx-calculated-field="<%= key %>"
                       data-calculated-expression="<%= derived.expression %>"
                       data-calculated-ast="<%= JSON.stringify(ctxFields[key]?.ast ?? null) %>"
+                      data-calculated-value="<%= JSON.stringify(calculatedValue ?? null) %>"
+                      data-calculated-persisted="<%= derived.persisted === true ? 'true' : 'false' %>"
+                      data-calculated-field-type="<%= field?.type || 'string' %>"
+                      <% if (field?.type === 'reference') { %>
+                        data-reference-values="<%= JSON.stringify(referenceValues[key] || []) %>"
+                      <% } %>
                       title="Calculated from: <%= derived.expression %>"
                     >
                   </div>
@@ -1063,7 +994,9 @@
                 <% const visibilityExpression = expressionText(overrides[key]?.visible); %>
                 <% if (!field || (fieldVisible(field) === false && !visibilityExpression) || field.sensitive) continue; %>
                 <% const editable = fieldEditable(field); %>
-                <% const value = valueFor(key); %>
+                <% const hasReadOnlyValue = Object.prototype.hasOwnProperty.call(overrides[key] || {}, 'readOnlyValue'); %>
+                <% const readOnlyValue = hasReadOnlyValue ? overrides[key].readOnlyValue : undefined; %>
+                <% const value = !editable && hasReadOnlyValue ? readOnlyValue : valueFor(key); %>
 
                 <% const visibleExpression = expressionText(overrides[key]?.visible); %>
                 <% const editableExpression = expressionText(overrides[key]?.editable); %>
@@ -1078,6 +1011,10 @@
                   <% if (editableExpression) { %>
                     data-ui-editable-expression="<%= editableExpression %>"
                     data-ui-editable-ast="<%= JSON.stringify(compiledOverride.editable?.ast ?? null) %>"
+                  <% } %>
+                  <% if (hasReadOnlyValue) { %>
+                    data-ui-has-readonly-value="true"
+                    data-ui-readonly-value="<%= JSON.stringify(readOnlyValue) %>"
                   <% } %>
                   <%= !fieldVisible(field) ? 'hidden' : '' %>
                 >
@@ -1096,20 +1033,8 @@
                       >
                     </div>
                   <% } else if (field.type === 'enum') { %>
-                    <select
-                      class="form-select"
-                      id="metadata-field-<%= key %>"
-                      name="<%= key %>"
-                      data-ctx-field="<%= key %>"
-                      <%= field.required ? 'required' : '' %>
-                      <%= editable ? '' : 'disabled' %>
-                    >
-                      <option value="">Choose...</option>
-                      <% for (const option of field.enumValues || []) { %>
-                        <% const providerDefinition = definition.key === 'sys-ext-auth-providers' && key === 'provider' ? providerDefinitions.find((candidate) => candidate.provider === option) : null; %>
-                        <option value="<%= option %>" <%= value === option ? 'selected' : '' %>><%= providerDefinition?.label || option %></option>
-                      <% } %>
-                    </select>
+                    <% const enumItems = enumItemsFor(field); %>
+                    <%- include('components/enum-select', { key, field, value, editable, enumItems }) %>
                   <% } else if (field.type === 'reference') { %>
                     <select
                       class="form-select"
@@ -1136,6 +1061,15 @@
                       <% if (field.minLength !== undefined) { %>minlength="<%= field.minLength %>"<% } %>
                       <% if (field.maxLength !== undefined) { %>maxlength="<%= field.maxLength %>"<% } %>
                       <%= editable ? '' : 'readonly' %>
+                    >
+                  <% } %>
+                  <% if (!isViewMode && hasReadOnlyValue) { %>
+                    <input
+                      type="hidden"
+                      name="<%= key %>"
+                      value="<%= readOnlyValue ?? '' %>"
+                      data-readonly-submit="<%= key %>"
+                      <%= editable ? 'disabled' : '' %>
                     >
                   <% } %>
                 </div>

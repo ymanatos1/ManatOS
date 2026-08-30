@@ -23,6 +23,12 @@
       facebook: 'Facebook',
       github: 'GitHub'
     };
+    const listReferenceValues = typeof referenceData !== 'undefined' && referenceData ? referenceData : {};
+    const referenceLabel = (fieldKey, value) => {
+      if (value === undefined || value === null || value === '') return '—';
+      const match = (listReferenceValues[fieldKey] || []).find((candidate) => candidate?.id === value);
+      return match?.name ?? String(value);
+    };
   %>
 
   <section
@@ -149,6 +155,8 @@
                     <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= externalAuthProviderLabels[providerKey] || item[key] || '' %></a>
                   <% } else if (key === metadata.primaryField) { %>
                     <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= item[key] ?? '' %></a>
+                  <% } else if (field.type === 'reference') { %>
+                    <%= referenceLabel(key, item[key]) %>
                   <% } else if (field.type === 'boolean') { %>
                     <% const positive = Boolean(item[key]); %>
                     <% const positiveLabel = key === 'emailVerified' ? 'Verified' : (key === 'enabled' ? 'Enabled' : 'Yes'); %>

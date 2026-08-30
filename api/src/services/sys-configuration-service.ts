@@ -22,8 +22,8 @@ export const CONFIGURATION_DEFINITIONS: ConfigurationDefinition[] = [
   { name:'UI_PAGE_SIZE_OPTIONS', group:'UI', description:'Page-size choices offered by SysBO list pages.', valueType:'string', envValue:process.env.UI_PAGE_SIZE_OPTIONS, defaultValue:'2,5,10,20,50,100' },
   { name:'UI_DEFAULT_PAGE_SIZE', group:'UI', description:'Default number of rows displayed on SysBO list pages.', valueType:'number', envValue:process.env.UI_DEFAULT_PAGE_SIZE, defaultValue:'10' },
   // Temporary #16 migration controls. Remove after the metadata-driven SysBO UI fully replaces Current EJS.
-  { name:'UI_SYSBO_USERS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Users UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
-  { name:'UI_SYSBO_PRINCIPALS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Principals UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
+  // Completed #16 entities intentionally have no UI-engine configuration.
+  // SysUsers and SysPrincipals are locked to MetadataDriven while #16 closes.
   { name:'UI_SYSBO_APPLICATIONS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Applications UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
   { name:'UI_SYSBO_LICENSES_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Licenses UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
   { name:'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary External authentication providers UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
@@ -46,6 +46,17 @@ export const CONFIGURATION_DEFINITIONS: ConfigurationDefinition[] = [
 ];
 
 const seedActor: AuditActor = { userId:'system', userName:'System', source:'system' };
+
+/**
+ * #16 closure marker. Historical databases may still contain the old Users
+ * comparison setting even though SysUsers is now hard-locked to metadata UI.
+ * Keep it inaccessible/read-only until the final #16 cleanup removes the
+ * persisted row and all migration scaffolding.
+ */
+const RETIRED_SYSBO_UI_MODES = new Set([
+  'UI_SYSBO_USERS_VIEW_MODE',
+  'UI_SYSBO_PRINCIPALS_VIEW_MODE',
+]);
 
 export class SysBOConfigurationService extends GenericSysBOService<SysBOConfiguration> {
   constructor(store: InMemoryDataStore, private readonly encryption: SecretsEncryptionService) {
@@ -73,7 +84,7 @@ export class SysBOConfigurationService extends GenericSysBOService<SysBOConfigur
     const r=await this.list({page:1,pageSize:1000,direction:'asc',filters:{}});
     for (const item of r.items) if (!item.sensitive && item.value != null) setRuntimeConfiguration(item.name,item.value);
   }
-  async safeList() { const r=await this.list({page:1,pageSize:1000,direction:'asc',filters:{}}); return r.items.map(x=>this.project(x)); }
+  async safeList() { const r=await this.list({page:1,pageSize:1000,direction:'asc',filters:{}}); return r.items.filter(x=>!RETIRED_SYSBO_UI_MODES.has(x.name)).map(x=>this.project(x)); }
   async resolve(name:string): Promise<string|undefined> {
     const item=(await this.list({page:1,pageSize:1000,direction:'asc',filters:{name}})).items[0];
     if (!item || !item.enabled) return undefined;
@@ -82,7 +93,7 @@ export class SysBOConfigurationService extends GenericSysBOService<SysBOConfigur
   }
   async setValue(id:string, value:string|null, actor:AuditActor) {
     const item=await this.get(id); if(!item) throw new ConflictError('CONFIGURATION_NOT_FOUND','Configuration not found.','The configuration setting no longer exists.');
-    if(!item.editable) throw new ConflictError('CONFIGURATION_READ_ONLY','Configuration is read-only.','This setting cannot be changed here.');
+    if(RETIRED_SYSBO_UI_MODES.has(item.name) || !item.editable) throw new ConflictError('CONFIGURATION_READ_ONLY','Configuration is read-only.','This setting cannot be changed here.');
     if (item.sensitive && !value) return this.project(item);
     this.validate(item,value);
     const changes:SysBOUpdateInput<SysBOConfiguration>= item.sensitive

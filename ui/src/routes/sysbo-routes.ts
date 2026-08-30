@@ -43,6 +43,8 @@ import {
   contextFields,
   entityContextName,
   pageContextNode,
+  pageEntryRuntimeContext,
+  pageListRuntimeContext,
   registerContextEntity,
   setPageContext,
 } from '../context/manatos-context.js';
@@ -94,8 +96,6 @@ const METADATA_SYSBO_UI: SysBOUiImplementation = 'metadata';
  * migration is in progress. Remove the settings and this map when #16 closes.
  */
 const sysBOUiViewModeConfigurationNameByKey: Readonly<Record<string, string>> = {
-  'sys-users': 'UI_SYSBO_USERS_VIEW_MODE',
-  'sys-principals': 'UI_SYSBO_PRINCIPALS_VIEW_MODE',
   'sys-applications': 'UI_SYSBO_APPLICATIONS_VIEW_MODE',
   'sys-licenses': 'UI_SYSBO_LICENSES_VIEW_MODE',
   'sys-ext-auth-providers': 'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE',
@@ -135,7 +135,7 @@ function applySysBOListContext(
   values: Readonly<Record<string, unknown>>,
 ) {
   const ctx = res.locals.ctx as ManatOSContext;
-  const { metadata, uiMetadata, ...pageValues } = values;
+  const { metadata, uiMetadata, items, query, ...pageValues } = values;
 
   registerContextEntity(
     ctx,
@@ -144,17 +144,32 @@ function applySysBOListContext(
     uiMetadata ?? definition.uiMetadata,
   );
 
+  const effectiveUI = uiMetadata as SysBOUIMetadata | undefined;
+  const filterFields = effectiveUI?.list?.filterFields
+    ?? definition.uiMetadata.filterDefinition.fields;
+  const safeQuery = query && typeof query === 'object' && !Array.isArray(query)
+    ? query as Readonly<Record<string, unknown>>
+    : {};
+  const safeItems = Array.isArray(items)
+    ? items.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    : [];
+  const runtime = pageListRuntimeContext(safeItems, filterFields, safeQuery);
+
   const page = pageContextNode(
     entityContextName(definition.key),
     'sysbo-list',
     'list',
     contextFields({
       entity: entityContextName(definition.key),
+      query: safeQuery,
       ...pageValues,
     }),
+    null,
+    runtime,
   );
 
   res.locals.ctx = setPageContext(ctx, page);
+  return page;
 }
 
 /**
@@ -172,7 +187,7 @@ function applySysBOEntryContext(
   values: Readonly<Record<string, unknown>>,
 ) {
   const ctx = res.locals.ctx as ManatOSContext;
-  const { metadata, uiMetadata, formValues, ...pageValues } = values;
+  const { metadata, uiMetadata, formValues, parentListContext, ...pageValues } = values;
 
   registerContextEntity(
     ctx,
@@ -186,24 +201,85 @@ function applySysBOEntryContext(
       ? (formValues as Record<string, unknown>)
       : entry ?? {};
 
-  const entryFields = contextFields({
-    ...runtimeEntryValues,
-    ...pageValues,
-  });
+  const canonical = (metadata ?? definition.boMetadata) as SysBOMetadata<Record<string, unknown>>;
+  const ui = (uiMetadata ?? definition.uiMetadata) as SysBOUIMetadata | undefined;
+
+  /*
+   * Build one normalized record-shaped baseline before creating either the
+   * field contexts or dataOriginal/dataCurrent. This is especially important
+   * in create mode: an empty API item still renders real field values (for
+   * example enabled=true and null enum/reference selections), so CTX must start
+   * with those same logical values rather than empty record snapshots.
+   *
+   * Sensitive fields are intentionally excluded from browser CTX. Dynamic
+   * create defaults remain evaluator concerns; static defaults can safely seed
+   * the initial record here.
+   */
+  /*
+   * Start from the API-safe runtime projection, not only canonical persisted
+   * fields. Some entities deliberately expose additional non-sensitive runtime
+   * facts (for example password/secret *presence* booleans) that calculations
+   * may consume even though those facts are not persisted entity properties.
+   *
+   * The API projection is the security boundary; known canonical sensitive
+   * fields are still stripped defensively here. This keeps the entry-context
+   * builder entity/field agnostic and avoids teaching it about hasPassword,
+   * hasClientSecret, or any future projection-specific field.
+   */
+  const initialRecordValues: Record<string, unknown> = Object.fromEntries(
+    Object.entries(runtimeEntryValues).filter(([key]) => canonical.fieldDefinition[key]?.sensitive !== true),
+  );
+
+  for (const [key, field] of Object.entries(canonical.fieldDefinition)) {
+    if (field.sensitive) continue;
+
+    if (Object.prototype.hasOwnProperty.call(initialRecordValues, key)) {
+      continue;
+    }
+
+    const createDefault = mode === 'create'
+      ? ui?.record?.fieldOverrides?.[key]?.createDefaultValue
+      : undefined;
+    const staticCreateDefault =
+      createDefault === null || ['string', 'number', 'boolean'].includes(typeof createDefault)
+        ? createDefault
+        : undefined;
+
+    if (staticCreateDefault !== undefined) {
+      initialRecordValues[key] = staticCreateDefault;
+    } else if (field.type === 'boolean') {
+      initialRecordValues[key] = false;
+    } else if (field.type === 'string' || field.type === 'email') {
+      initialRecordValues[key] = '';
+    } else {
+      // guid/date/number/enum/reference have a natural empty CTX value of null.
+      initialRecordValues[key] = null;
+    }
+  }
+
+  const entryFields = contextFields(
+    {
+      ...initialRecordValues,
+      ...pageValues,
+    },
+    canonical.fieldDefinition,
+  );
 
   /*
    * Expression-backed UI fields become real calculated CTX variables. Parsing
    * happens here, when the context variable is declared, while variable/path
    * resolution remains completely lazy and context-dependent at value access.
    */
-  const canonical = (metadata ?? definition.boMetadata) as SysBOMetadata<Record<string, unknown>>;
-  const ui = (uiMetadata ?? definition.uiMetadata) as SysBOUIMetadata | undefined;
   // API $metadata-ui is already the effective UI contract. Current-EJS paths
   // do not use that contract, so fall back to canonical derived fields there.
-  const effectiveDerivedFields = ui?.record?.derivedFields ?? canonical.derivedFields ?? {};
+  const effectiveDerivedFields = {
+    ...(canonical.derivedFields ?? {}),
+    ...(ui?.record?.derivedFields ?? {}),
+  };
   for (const [derivedName, derived] of Object.entries(effectiveDerivedFields)) {
     if (!derived.expression) continue;
     entryFields[derivedName] = calculatedContextField(derived.expression, {
+      value: initialRecordValues[derivedName],
       diagnosticSink: (diagnostic) => {
         console.error('[ManatOS expression parse]', diagnostic);
       },
@@ -215,16 +291,40 @@ function applySysBOEntryContext(
     'sysbo-entry',
     mode,
     entryFields,
+    null,
+    pageEntryRuntimeContext(initialRecordValues),
   );
 
+  const parentList = parentListContext && typeof parentListContext === 'object' && !Array.isArray(parentListContext)
+    ? parentListContext as Readonly<Record<string, unknown>>
+    : {};
+  const parentItems = Array.isArray(parentList.items)
+    ? parentList.items.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    : [];
+  const parentQuery = parentList.query && typeof parentList.query === 'object' && !Array.isArray(parentList.query)
+    ? parentList.query as Readonly<Record<string, unknown>>
+    : {};
+  const parentFilterFields = ui?.list?.filterFields
+    ?? definition.uiMetadata.filterDefinition.fields;
+
+  /*
+   * The entry page is a logical child of the list page, not a replacement for
+   * it. Rebuild the parent with its own runtime data so expressions in the
+   * child can still inspect ctx.page.filters/dataList while the entry scope is
+   * active. The parent is discarded only when navigation leaves this hierarchy.
+   */
   const listPage = pageContextNode(
     entityContextName(definition.key),
     'sysbo-list',
     'list',
     contextFields({
       entity: entityContextName(definition.key),
+      ...(parentList.paging !== undefined ? { paging: parentList.paging } : {}),
+      ...(parentList.permissions !== undefined ? { permissions: parentList.permissions } : {}),
+      ...(parentList.referenceData !== undefined ? { referenceData: parentList.referenceData } : {}),
     }),
     entryPage,
+    pageListRuntimeContext(parentItems, parentFilterFields, parentQuery),
   );
 
   res.locals.ctx = setPageContext(ctx, listPage);
@@ -327,7 +427,7 @@ export function createSysBORoutes() {
           hasAnyEntries = unfiltered.data.paging.total > 0;
         }
 
-        applySysBOListContext(res, definition, {
+        const listPage = applySysBOListContext(res, definition, {
           metadata: definition.boMetadata,
           uiMetadata: definition.uiMetadata,
           items: response.data.items,
@@ -335,6 +435,7 @@ export function createSysBORoutes() {
           query: { ...req.query, pageSize: String(response.data.paging.pageSize) },
           permissions,
         });
+        const listItems = listPage.dataList ?? [];
 
         await renderPage(
           res,
@@ -350,7 +451,7 @@ export function createSysBORoutes() {
             hasAnyEntries,
             allExternalProvidersConfigured,
 
-            items: response.data.items,
+            items: listItems,
 
             paging: response.data.paging,
 
@@ -1534,6 +1635,9 @@ function canSelectSysBOUiImplementation(
   currentUser: SysBOUser | null,
   definition: SysBODefinition,
 ): boolean {
+  // #16 closure stage: completed entities are locked to the metadata-driven engine.
+  // Keep the generic comparison infrastructure only for SysBOs still being migrated.
+  if (definition.key === 'sys-users' || definition.key === 'sys-principals') return false;
   return currentUser?.role === SysBOUserRole.Admin && isMetadataDrivenUiEligible(definition);
 }
 
@@ -1547,14 +1651,20 @@ function requireSysBOUiMigrationAccess(
 }
 
 /**
- * Current EJS is intentionally the default. Metadata mode is honored only for
- * an Admin who could have selected it through the migration control.
+ * #16-complete SysUsers and SysPrincipals are hard-locked to Metadata-driven.
+ * Current EJS remains the default only for SysBOs whose #16 migration is still
+ * in progress, where Metadata-driven mode remains an Admin-selected comparison.
  */
 async function sysBOUiImplementation(
   req: Request,
   currentUser: SysBOUser | null,
   definition: SysBODefinition,
 ): Promise<SysBOUiImplementation> {
+  // #16 closure stage: completed entities no longer participate in the
+  // Current-EJS comparison. Their legacy entity-specific EJS metadata remains
+  // only as explicitly disposable compatibility code until final #16 cleanup.
+  if (definition.key === 'sys-users' || definition.key === 'sys-principals') return METADATA_SYSBO_UI;
+
   if (!canSelectSysBOUiImplementation(currentUser, definition)) {
     return CURRENT_SYSBO_UI;
   }
@@ -1670,6 +1780,7 @@ async function canonicalSysBOUIMetadata(
 function metadataDrivenListQuery(
   req: Request,
   metadataUI: SysBOUIMetadata,
+  sourceQuery: Readonly<Record<string, unknown>> = req.query,
 ): {
   params: URLSearchParams;
   pageSizeOptions: number[];
@@ -1680,7 +1791,7 @@ function metadataDrivenListQuery(
   const safePageSizeOptions = [...new Set([runtimeUi.defaultPageSize, ...pageSizeOptions])]
     .filter((value) => Number.isInteger(value) && value > 0)
     .sort((left, right) => left - right);
-  const requestedPageSize = Number(req.query.pageSize);
+  const requestedPageSize = Number(sourceQuery.pageSize);
 
   if (safePageSizeOptions.includes(requestedPageSize)) {
     req.session.uiPageSize = requestedPageSize;
@@ -1692,22 +1803,22 @@ function metadataDrivenListQuery(
       ? sessionPageSize
       : runtimeUi.defaultPageSize;
 
-  const requestedPage = Number(req.query.page);
+  const requestedPage = Number(sourceQuery.page);
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   const query: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
 
-  const requestedSort = typeof req.query.sort === 'string' ? req.query.sort : '';
+  const requestedSort = typeof sourceQuery.sort === 'string' ? sourceQuery.sort : '';
   if (requestedSort && metadataUI.list.sortableFields.includes(requestedSort)) {
     params.set('sort', requestedSort);
     query.sort = requestedSort;
-    const direction = req.query.direction === 'desc' ? 'desc' : 'asc';
+    const direction = sourceQuery.direction === 'desc' ? 'desc' : 'asc';
     params.set('direction', direction);
     query.direction = direction;
   }
 
   for (const field of metadataUI.list.filterFields) {
-    const value = req.query[`filter.${field}`];
+    const value = sourceQuery[`filter.${field}`];
     if (typeof value === 'string' && value.trim()) {
       params.set(`filter.${field}`, value);
       query[`filter.${field}`] = value;
@@ -1759,14 +1870,22 @@ async function renderMetadataDrivenListPlaceholder(
     allExternalProvidersConfigured = response.data.paging.total >= definitions.length;
   }
 
-  applySysBOListContext(res, definition, {
+  const listReferenceData = metadataUI.list.visibleFields.some(
+    (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
+  )
+    ? await references(req, definition)
+    : {};
+
+  const listPage = applySysBOListContext(res, definition, {
     metadata,
-    metadataUI,
+    uiMetadata: metadataUI,
     items: response.data.items,
     paging: response.data.paging,
     query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
     permissions,
+    referenceData: listReferenceData,
   });
+  const listItems = listPage.dataList ?? [];
 
   await renderPage(res, 'pages/metadata-driven/bo-list-metadata', {
     title: metadata.pluralName,
@@ -1777,12 +1896,69 @@ async function renderMetadataDrivenListPlaceholder(
     permissions,
     hasAnyEntries,
     allExternalProvidersConfigured,
-    items: response.data.items,
+    referenceData: listReferenceData,
+    items: listItems,
     paging: response.data.paging,
     pageSizeOptions: listQuery.pageSizeOptions,
     query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
     ...sysBOUiSelectorModel(req, currentUser, definition, METADATA_SYSBO_UI),
   });
+}
+
+/**
+ * Recover the list URL that logically owns an entry page.
+ *
+ * Normal same-origin navigation supplies a Referer containing the exact list
+ * paging/sort/filter state. Direct entry URLs have no parent browser page, so
+ * they fall back to the list defaults/session page size. This keeps the CTX
+ * hierarchy complete without persisting page data beyond its logical lifetime.
+ */
+function parentListQueryForEntry(
+  req: Request,
+  definition: SysBODefinition,
+): Record<string, string> {
+  const referrer = req.get('referer');
+  if (!referrer) return {};
+
+  try {
+    const origin = `${req.protocol}://${req.get('host')}`;
+    const url = new URL(referrer, origin);
+    const expectedPath = `/bo/${definition.key}`;
+    if (url.origin !== origin || url.pathname !== expectedPath) return {};
+
+    return Object.fromEntries(url.searchParams.entries());
+  } catch {
+    return {};
+  }
+}
+
+/** Load the parent list snapshot before creating the child entry CTX node. */
+async function parentListContextForEntry(
+  req: Request,
+  definition: SysBODefinition,
+  metadata: SysBOMetadata<Record<string, unknown>>,
+  metadataUI: SysBOUIMetadata,
+  permissions: ReturnType<typeof uiPermissions>,
+): Promise<Readonly<Record<string, unknown>>> {
+  const sourceQuery = parentListQueryForEntry(req, definition);
+  const listQuery = metadataDrivenListQuery(req, metadataUI, sourceQuery);
+  const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+    `/api/v1/${apiPathFor(definition.key)}?${listQuery.params.toString()}`,
+    apiSessionOptions(req),
+  );
+  const referenceData = metadataUI.list.visibleFields.some(
+    (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
+  )
+    ? await references(req, definition)
+    : {};
+
+  return {
+    items: response.data.items,
+    paging: response.data.paging,
+    query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
+    permissions,
+    referenceData,
+  };
 }
 
 async function renderMetadataDrivenRecordPlaceholder(
@@ -1824,6 +2000,13 @@ async function renderMetadataDrivenRecordPlaceholder(
     item,
     record.isNew,
   );
+  const parentListContext = await parentListContextForEntry(
+    req,
+    definition,
+    metadata,
+    metadataUI,
+    effectivePermissions,
+  );
 
   applySysBOEntryContext(
     res,
@@ -1834,11 +2017,18 @@ async function renderMetadataDrivenRecordPlaceholder(
       recordId: record.recordId ?? null,
       formValues: item,
       metadata,
-      metadataUI,
+      // applySysBOEntryContext expects the effective UI contract under the
+      // uiMetadata key. Passing `metadataUI` as a shorthand property silently
+      // left that parameter undefined, causing the CTX entity registry to fall
+      // back to definition.uiMetadata. The renderer still received metadataUI,
+      // so server presentation looked correct, but the compiled browser AST for
+      // reactive field rules (for example Parent principal editability) was absent.
+      uiMetadata: metadataUI,
       permissions: effectivePermissions,
       referenceData: supplemental.referenceData,
       externalIdentities: supplemental.relatedData.externalIdentities,
       activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
+      parentListContext,
     },
   );
 
