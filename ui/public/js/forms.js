@@ -249,25 +249,60 @@
 
   if (form) {
     const snapshot = () => new URLSearchParams(new FormData(form)).toString();
-    const state = { baseline: null, snapshot };
+    const state = {
+      baseline: null,
+      snapshot,
+      isDirty: () => {
+        const pendingCredentialSave = form.querySelector('[data-provider-pending-credential-save]');
+        const hasPendingCredentialSave = pendingCredentialSave instanceof HTMLInputElement
+          && pendingCredentialSave.value === 'true';
+        return hasPendingCredentialSave
+          || (state.baseline !== null && state.snapshot() !== state.baseline);
+      },
+      isValid: () => form.checkValidity(),
+    };
     window.manatosSysBOFormState = state;
 
     let pending = null;
     let allowPageExit = false;
 
-    const dirty = () => state.baseline !== null && state.snapshot() !== state.baseline;
+    // Dirty state is a reversible comparison with the persisted/form baseline.
+    // Returning every submitted value to its original value therefore makes the
+    // form clean again; calculated display-only controls do not participate.
+    const dirty = () => state.isDirty();
 
     window.manatosRetry = () => form.requestSubmit();
     window.manatosAllowDirtyPageExit = () => { allowPageExit = true; };
 
-    document.querySelectorAll('a.dirty-navigation').forEach((anchor) => {
-      anchor.addEventListener('click', (event) => {
-        if (!dirty()) return;
-        event.preventDefault();
-        pending = anchor.href;
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('unsavedChangesModal')).show();
-      });
-    });
+    /*
+     * Protect every normal same-origin navigation, not only the explicit
+     * Cancel/Back link. This covers top/left navigation and entity/list links
+     * while leaving tabs, dropdowns, modal triggers, downloads and new-window
+     * links alone. Browser back/refresh remains covered by beforeunload below.
+     */
+    document.addEventListener('click', (event) => {
+      if (!dirty() || allowPageExit || event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target && anchor.target !== '_self') return;
+      if (anchor.hasAttribute('download')) return;
+      if (anchor.dataset.bsToggle || anchor.dataset.bsTarget) return;
+
+      let destination;
+      try {
+        destination = new URL(anchor.href, location.href);
+      } catch {
+        return;
+      }
+      if (destination.origin !== location.origin) return;
+      if (destination.href === location.href || (destination.pathname === location.pathname && destination.search === location.search && destination.hash)) return;
+
+      event.preventDefault();
+      pending = destination.href;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('unsavedChangesModal')).show();
+    }, true);
 
     document.querySelectorAll('[data-unsaved-action]').forEach((button) => {
       button.addEventListener('click', () => {
@@ -677,50 +712,520 @@
 /* ==========================================================================
  * Generic SysBO Save-button state
  *
- * Every metadata-driven entity edit/create form uses the same rule:
+ * Every metadata-driven entity edit/create form uses one reversible rule:
  *
  *   Save enabled = form changed AND form currently valid
  *
- * Native HTML constraints (required/email/minlength/etc.) and entity-specific
- * custom constraints therefore participate without duplicating button logic in
- * each SysBO screen. Server/API validation remains authoritative.
+ * The dirty comparison is based on the values that would actually be posted,
+ * not on a one-way "the user typed once" latch. Reverting an edit back to its
+ * baseline therefore returns the form to clean state and disables Save again.
+ * Native HTML constraints (required/email/minlength/etc.) and any custom
+ * validity participate before Save becomes actionable; API validation remains
+ * authoritative after submission.
  * ======================================================================== */
 (() => {
   document.querySelectorAll('form[data-dirty-guard="true"]').forEach((form) => {
     const save = form.querySelector('[data-form-save]');
 
-    if (!(save instanceof HTMLButtonElement)) {
-      return;
-    }
+    if (!(save instanceof HTMLButtonElement)) return;
 
     const snapshot = () => new URLSearchParams(new FormData(form)).toString();
-    const sharedState = window.manatosSysBOFormState || { baseline: snapshot(), snapshot };
+    const sharedState = window.manatosSysBOFormState || {
+      baseline: null,
+      snapshot,
+      isDirty: () => false,
+      isValid: () => form.checkValidity(),
+    };
+    const indicator = form.querySelector('[data-form-state-indicator]');
+    const indicatorIcon = indicator?.querySelector('[data-form-state-icon]');
+    const indicatorText = indicator?.querySelector('[data-form-state-text]');
+    const recordMode = form.dataset.recordMode || 'edit';
+
+    const setIndicator = ({ changed, valid }) => {
+      if (!(indicator instanceof HTMLElement) || !(indicatorText instanceof HTMLElement)) return;
+
+      indicator.classList.remove('text-secondary', 'text-primary', 'text-warning-emphasis');
+
+      if (!changed) {
+        indicator.classList.add('text-secondary');
+        indicatorText.textContent = recordMode === 'create'
+          ? (valid ? 'New entry · ready' : 'New entry · incomplete')
+          : 'No changes';
+        if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-check-circle me-1';
+        return;
+      }
+
+      if (!valid) {
+        indicator.classList.add('text-warning-emphasis');
+        indicatorText.textContent = 'Unsaved changes · incomplete';
+        if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-exclamation-triangle me-1';
+        return;
+      }
+
+      indicator.classList.add('text-primary');
+      indicatorText.textContent = 'Unsaved changes';
+      if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-pencil-square me-1';
+    };
 
     const update = () => {
       const pendingCredentialSave = form.querySelector('[data-provider-pending-credential-save]');
-      const hasPendingCredentialSave = pendingCredentialSave instanceof HTMLInputElement && pendingCredentialSave.value === 'true';
+      const hasPendingCredentialSave = pendingCredentialSave instanceof HTMLInputElement
+        && pendingCredentialSave.value === 'true';
+      const formDataChanged = sharedState.baseline !== null
+        && snapshot() !== sharedState.baseline;
+      const changed = typeof sharedState.isDirty === 'function'
+        ? sharedState.isDirty()
+        : hasPendingCredentialSave || formDataChanged;
+      const valid = typeof sharedState.isValid === 'function'
+        ? sharedState.isValid()
+        : form.checkValidity();
 
       // Credential verification is deliberately not a prerequisite for
       // persistence. A complete pair may be stored encrypted with verification
       // state = No, while only verified pairs are exposed to sign-in/runtime.
       const credentialStateAllowsSave = true;
 
-      const changed = hasPendingCredentialSave || (sharedState.baseline !== null && snapshot() !== sharedState.baseline);
-      save.disabled = !(changed && form.checkValidity() && credentialStateAllowsSave);
+      save.disabled = !(changed && valid && credentialStateAllowsSave);
+      save.title = !changed
+        ? 'No changes to save.'
+        : !valid
+          ? 'Complete or correct the required fields before saving.'
+          : '';
+      setIndicator({ changed, valid });
     };
 
-    form.addEventListener('input', update);
-    form.addEventListener('change', update);
+    // Run after the current event turn as well, so evaluator-driven visibility
+    // or editability changes have settled before validity is rechecked.
+    const scheduleUpdate = () => queueMicrotask(update);
+    form.addEventListener('input', scheduleUpdate);
+    form.addEventListener('change', scheduleUpdate);
 
-    // Keep state correct when another generic form helper changes values or
-    // validity programmatically during initialisation.
     queueMicrotask(update);
   });
 })();
 
 
 /* ==========================================================================
- * SysConfiguration in-place Apply
+ * Metadata-driven reactive CTX fields
+ *
+ * Server-side expressions are parsed once and their AST is embedded beside
+ * calculated controls. While the user edits ordinary form fields, this small
+ * browser evaluator reuses that AST to refresh calculated values immediately.
+ * Every source-field mutation also emits the normal manatos:ctx-change event;
+ * when the development CTX runtime is present the actual browser CTX node is
+ * updated first so DEBUG observes the same value transition.
+ *
+ * The reactive plan is compiled once from those ASTs. Calculated values and
+ * evaluator-driven UI properties share one dependency registry, so a source
+ * change evaluates only the entries that depend on that field and propagates
+ * through calculated-field dependencies without reparsing expressions.
+ * ======================================================================== */
+(() => {
+  const form = document.querySelector('form.metadata-driven-record-form');
+  if (!(form instanceof HTMLFormElement)) return;
+
+  const CHANGE_EVENT = 'manatos:ctx-change';
+  const runtime = window.ManatOS?.ctx;
+
+  const leafPageFieldsPath = () => {
+    if (!runtime?.value?.page) return null;
+    let node = runtime.value.page;
+    let path = 'ctx.page';
+    while (node?.page) {
+      node = node.page;
+      path += '.page';
+    }
+    return `${path}.fields`;
+  };
+
+  const controlValue = (control) => {
+    if (control instanceof HTMLInputElement && control.type === 'checkbox') return control.checked;
+    if (control instanceof HTMLInputElement && control.type === 'number') {
+      return control.value === '' ? null : Number(control.value);
+    }
+    return control?.value ?? null;
+  };
+
+  const formFieldValue = (name) => {
+    const escaped = globalThis.CSS?.escape ? CSS.escape(name) : name.replace(/"/g, '\\"');
+    const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
+    if (control) return controlValue(control);
+    const calculated = form.querySelector(`[data-ctx-calculated-field="${escaped}"]`);
+    if (calculated instanceof HTMLInputElement) return calculated.value;
+    return undefined;
+  };
+
+  const resolveVariable = (node) => {
+    if (!node || !Array.isArray(node.members) || !node.members.length) return undefined;
+
+    // A single field name is the common and fastest case for reactive forms.
+    if (!node.absolute && node.members.length === 1 && typeof node.members[0] === 'string') {
+      const local = formFieldValue(node.members[0]);
+      if (local !== undefined) return local;
+    }
+
+    // For root/page/user paths reuse the generic CTX resolver when DEBUG/runtime
+    // is available. Server rendering remains authoritative when it is not.
+    if (runtime?.resolve) {
+      const scopePath = leafPageFieldsPath()?.replace(/\.fields$/, '') ?? undefined;
+      const resolved = runtime.resolve(node.path, scopePath);
+      if (resolved !== undefined) return resolved;
+    }
+    throw new Error(`Reactive expression variable not available in this browser scope: ${node.path}`);
+  };
+
+  const scalar = (value) => value === null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value) || value instanceof Date;
+  const num = (value, op) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`${op} requires numbers`);
+    return value;
+  };
+  const truthy = (value) => {
+    if (!scalar(value)) throw new Error('Structured values are not supported by reactive scalar expressions yet.');
+    return Boolean(value);
+  };
+  const plus = (left, right) => {
+    if (typeof left === 'string' || typeof right === 'string') return String(left) + String(right);
+    return num(left, '+') + num(right, '+');
+  };
+
+  const evaluate = (node) => {
+    if (!node) return undefined;
+    switch (node.kind) {
+      case 'literal': return node.value;
+      case 'variable': return resolveVariable(node);
+      case 'group': return evaluate(node.expression);
+      case 'unary': {
+        const value = evaluate(node.operand);
+        if (node.operator === '!') return !truthy(value);
+        if (node.operator === '+') return num(value, '+');
+        if (node.operator === '-') return -num(value, '-');
+        return undefined;
+      }
+      case 'binary': {
+        const left = evaluate(node.left);
+        if (node.operator === '??') return left == null ? evaluate(node.right) : left;
+        if (node.operator === '&&') return truthy(left) ? evaluate(node.right) : left;
+        if (node.operator === '||') return truthy(left) ? left : evaluate(node.right);
+        const right = evaluate(node.right);
+        switch (node.operator) {
+          case '+': return plus(left, right);
+          case '-': return num(left, '-') - num(right, '-');
+          case '*': return num(left, '*') * num(right, '*');
+          case '/': return num(left, '/') / num(right, '/');
+          case '%': return num(left, '%') % num(right, '%');
+          case '**': return num(left, '**') ** num(right, '**');
+          // Intentional JS/TS-style scalar equality split, matching the server evaluator.
+          case '==': return left == right; // eslint-disable-line eqeqeq
+          case '!=': return left != right; // eslint-disable-line eqeqeq
+          case '===': return left === right;
+          case '!==': return left !== right;
+          case '<': return left < right;
+          case '<=': return left <= right;
+          case '>': return left > right;
+          case '>=': return left >= right;
+          default: return undefined;
+        }
+      }
+      case 'conditional': return truthy(evaluate(node.condition)) ? evaluate(node.whenTrue) : evaluate(node.whenFalse);
+      case 'function': {
+        const args = (node.arguments || []).map(evaluate);
+        if (node.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
+        if (node.functionName === 'GetTime') return Date.now();
+        if (node.functionName === 'StrFormat') {
+          return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) => Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match);
+        }
+        return undefined;
+      }
+      default: return undefined;
+    }
+  };
+
+  /*
+   * Compile the browser-side reactive plan once from the ASTs embedded by the
+   * server. The browser never reparses expression strings. Calculated values
+   * and evaluator-driven UI properties share this same dependency registry.
+   */
+  const astCache = new WeakMap();
+  const parseAst = (element, attribute) => {
+    let byAttribute = astCache.get(element);
+    if (!byAttribute) {
+      byAttribute = new Map();
+      astCache.set(element, byAttribute);
+    }
+    if (byAttribute.has(attribute)) return byAttribute.get(attribute);
+    try {
+      const raw = element.getAttribute(attribute);
+      const ast = raw ? JSON.parse(raw) : null;
+      byAttribute.set(attribute, ast);
+      return ast;
+    } catch {
+      byAttribute.set(attribute, null);
+      return null;
+    }
+  };
+
+  const expressionDependencies = (ast) => {
+    const dependencies = new Set();
+    const visit = (node) => {
+      if (!node || typeof node !== 'object') return;
+      if (node.kind === 'variable') {
+        if (!node.absolute && Array.isArray(node.members) && typeof node.members[0] === 'string') {
+          dependencies.add(node.members[0]);
+        } else if (typeof node.path === 'string') {
+          const match = node.path.match(/(?:^|\.)fields\.([A-Za-z_$][A-Za-z0-9_$]*)/);
+          if (match) dependencies.add(match[1]);
+        }
+      }
+      Object.values(node).forEach((value) => {
+        if (Array.isArray(value)) value.forEach(visit);
+        else if (value && typeof value === 'object') visit(value);
+      });
+    };
+    visit(ast);
+    return dependencies;
+  };
+
+  const dependents = new Map();
+  const reactiveEntries = [];
+  const registerEntry = (entry) => {
+    reactiveEntries.push(entry);
+    entry.dependencies.forEach((dependency) => {
+      if (!dependents.has(dependency)) dependents.set(dependency, new Set());
+      dependents.get(dependency).add(entry);
+    });
+  };
+
+  form.querySelectorAll('[data-ctx-calculated-field]').forEach((element) => {
+    if (!(element instanceof HTMLInputElement)) return;
+    const ast = parseAst(element, 'data-calculated-ast');
+    if (!ast) return;
+    const key = element.dataset.ctxCalculatedField;
+    registerEntry({
+      kind: 'calculated',
+      key,
+      dependencies: expressionDependencies(ast),
+      run: () => {
+        try {
+          const next = evaluate(ast);
+          const text = next == null ? '' : String(next);
+          const changed = element.value !== text;
+          if (changed) element.value = text;
+
+          const fieldsPath = leafPageFieldsPath();
+          if (key && fieldsPath && runtime?.replace) {
+            const path = `${fieldsPath}.${key}.value`;
+            if (runtime.get?.(path) !== next) {
+              runtime.replace(path, next, { source: 'calculated-field', triggerPath: path });
+            }
+          }
+          return changed ? key : null;
+        } catch {
+          return null;
+        }
+      },
+    });
+  });
+
+  const debugValueText = (value) => {
+    if (value === undefined || value === null || value === '') return '—';
+    if (Array.isArray(value)) return value.length ? `[ ${value.map(debugValueText).join(', ')} ]` : '[]';
+    if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
+    if (typeof value === 'object') {
+      try { return JSON.stringify(value); } catch { return String(value); }
+    }
+    return String(value);
+  };
+
+  /*
+   * Development-only Debugging-tab cells participate in the exact same
+   * dependency registry. Their AST was compiled by ManatOS on the server and
+   * embedded invisibly; only the human-readable formula is shown in the grid.
+   */
+  form.querySelectorAll('[data-debug-calculation-value]').forEach((cell) => {
+    if (!(cell instanceof HTMLElement)) return;
+    const ast = parseAst(cell, 'data-debug-calculation-ast');
+    if (!ast) return;
+    registerEntry({
+      kind: 'debug-value',
+      dependencies: expressionDependencies(ast),
+      run: () => {
+        try {
+          const next = debugValueText(evaluate(ast));
+          const changed = cell.textContent !== next;
+          if (changed) cell.textContent = next;
+          return null;
+        } catch {
+          return null;
+        }
+      },
+    });
+  });
+
+  form.querySelectorAll('[data-ctx-field-container]').forEach((container) => {
+    if (!(container instanceof HTMLElement)) return;
+    const visibleAst = parseAst(container, 'data-ui-visible-ast');
+    const editableAst = parseAst(container, 'data-ui-editable-ast');
+
+    if (visibleAst) {
+      registerEntry({
+        kind: 'visible',
+        dependencies: expressionDependencies(visibleAst),
+        run: () => {
+          try { container.hidden = evaluate(visibleAst) === false; } catch { /* keep server state */ }
+          return null;
+        },
+      });
+    }
+
+    if (editableAst) {
+      registerEntry({
+        kind: 'editable',
+        dependencies: expressionDependencies(editableAst),
+        run: () => {
+          try {
+            const editable = evaluate(editableAst) !== false;
+            container.querySelectorAll('input, select, textarea').forEach((control) => {
+              if (control instanceof HTMLInputElement && control.type !== 'checkbox') control.readOnly = !editable;
+              else control.disabled = !editable;
+            });
+          } catch { /* keep server state */ }
+          return null;
+        },
+      });
+    }
+  });
+
+  const runAllReactiveEntries = () => {
+    reactiveEntries.forEach((entry) => entry.run());
+  };
+
+  const runDependents = (sourceKey) => {
+    if (!sourceKey) {
+      runAllReactiveEntries();
+      return;
+    }
+
+    const pendingKeys = [sourceKey];
+    const visitedKeys = new Set();
+    const visitedEntries = new Set();
+
+    while (pendingKeys.length) {
+      const key = pendingKeys.shift();
+      if (!key || visitedKeys.has(key)) continue;
+      visitedKeys.add(key);
+
+      for (const entry of dependents.get(key) || []) {
+        if (visitedEntries.has(entry)) continue;
+        visitedEntries.add(entry);
+        const changedCalculatedKey = entry.run();
+        if (changedCalculatedKey && !visitedKeys.has(changedCalculatedKey)) {
+          pendingKeys.push(changedCalculatedKey);
+        }
+      }
+    }
+  };
+
+  const syncSourceField = (control) => {
+    const key = control?.dataset?.ctxField;
+    if (!key) return;
+    const value = controlValue(control);
+    const fieldsPath = leafPageFieldsPath();
+    const path = fieldsPath ? `${fieldsPath}.${key}.value` : `fields.${key}.value`;
+
+    if (fieldsPath && runtime?.replace) {
+      runtime.replace(path, value, { source: 'form-field', triggerPath: path });
+    } else {
+      window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
+        detail: {
+          operation: 'replace', path, newValue: value,
+          cause: { source: 'form-field', triggerPath: path },
+        },
+      }));
+    }
+  };
+
+  const react = (event) => {
+    const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
+    if (control) {
+      syncSourceField(control);
+      runDependents(control.dataset.ctxField);
+    }
+  };
+
+  form.addEventListener('input', react);
+  form.addEventListener('change', react);
+  queueMicrotask(() => {
+    runAllReactiveEntries();
+    form.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+})();
+
+/* ==========================================================================
+ * Metadata-driven entry initial focus
+ *
+ * On opening a record, prefer the first editable field on the first tab. If
+ * that tab is informational/read-only, activate the first later tab that has
+ * an editable field and focus its first control. View-only forms simply keep
+ * the normal document focus because no editable field exists.
+ * ======================================================================== */
+(() => {
+  const form = document.querySelector('form.metadata-driven-record-form');
+  if (!(form instanceof HTMLFormElement)) return;
+
+  const editableControlSelector = [
+    'input:not([type="hidden"]):not([disabled]):not([readonly])',
+    'select:not([disabled])',
+    'textarea:not([disabled]):not([readonly])',
+  ].join(',');
+
+  const editableControlIn = (pane) => {
+    if (!(pane instanceof HTMLElement) || pane.hidden) return null;
+    return [...pane.querySelectorAll(editableControlSelector)].find((control) => {
+      if (!(control instanceof HTMLElement)) return false;
+      const container = control.closest('[data-ctx-field-container]');
+      // Inactive Bootstrap tab panes are display:none, so geometry cannot be
+      // used here; we still need to discover their first editable field.
+      return !container?.hidden;
+    }) ?? null;
+  };
+
+  const focusInitialEditableField = () => {
+    const panes = [...form.querySelectorAll('.entity-tab-content > .tab-pane')];
+    if (!panes.length) return;
+
+    const firstPane = panes[0];
+    let targetPane = firstPane;
+    let targetControl = editableControlIn(firstPane);
+
+    if (!targetControl) {
+      for (const pane of panes.slice(1)) {
+        const candidate = editableControlIn(pane);
+        if (candidate) {
+          targetPane = pane;
+          targetControl = candidate;
+          break;
+        }
+      }
+    }
+
+    if (!(targetControl instanceof HTMLElement)) return;
+
+    if (targetPane !== firstPane || !targetPane.classList.contains('active')) {
+      const tabButton = document.querySelector(`[data-bs-target="#${CSS.escape(targetPane.id)}"]`);
+      if (tabButton instanceof HTMLElement && globalThis.bootstrap?.Tab) {
+        bootstrap.Tab.getOrCreateInstance(tabButton).show();
+      }
+    }
+
+    requestAnimationFrame(() => targetControl.focus({ preventScroll: true }));
+  };
+
+  // Reactive visibility/editability initialization runs in microtasks. Wait one
+  // animation frame so focus is based on the final first-paint field state.
+  requestAnimationFrame(focusInitialEditableField);
+})();
+
+/* ==========================================================================\n * SysConfiguration in-place Apply
  *
  * Configuration is an administrative settings surface with many independent
  * values. Applying one value should not rebuild the page or move the operator

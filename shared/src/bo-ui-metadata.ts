@@ -30,7 +30,14 @@ export type SysBOUIStatusTone =
   | 'warning'
   | 'info';
 
-export type SysBOUIValueFormat = 'text' | 'datetime' | 'verification-source' | 'auth-provider';
+export type SysBOUIValueFormat = 'text' | 'datetime' | 'datetime-elapsed' | 'verification-source' | 'auth-provider';
+
+/**
+ * A UI scalar may be static or evaluated dynamically against the caller's
+ * current CTX scope. The evaluator knows nothing about tone/icon/visibility;
+ * it simply returns the scalar requested by presentation metadata.
+ */
+export type SysBOUIDynamicValue<T> = T | Readonly<{ expression: string }>;
 
 export interface SysBOUIRecordTabMetadata {
   id: string;
@@ -39,15 +46,15 @@ export interface SysBOUIRecordTabMetadata {
   fields: readonly string[];
   icon?: SysBOUIIconKey;
 
+  /**
+   * Static or evaluator-backed visibility. The expression is evaluated against
+   * the active entry page CTX, so it can depend on page mode, authenticated
+   * user, record fields, client features, or any other reachable CTX value.
+   */
+  visible?: SysBOUIDynamicValue<boolean>;
+
   /** Normal editable form layout, or a compact label/value summary. */
   layout?: 'form' | 'summary';
-}
-
-export interface SysBOUIDerivedStateMetadata {
-  equals: string | number | boolean | null;
-  /** Optional UI-only icon/tone decoration for the already-calculated value. */
-  icon?: SysBOUIIconKey;
-  tone?: SysBOUIStatusTone;
 }
 
 export interface SysBOUIFieldPresentationMetadata {
@@ -60,11 +67,9 @@ export interface SysBOUIFieldPresentationMetadata {
   format?: SysBOUIValueFormat;
   emptyText?: string;
 
-  /**
-   * Optional UI decoration selected from the evaluated field value. The value
-   * itself remains canonical/entity-derived; these states only choose icon/tone.
-   */
-  states?: readonly SysBOUIDerivedStateMetadata[];
+  /** Static or evaluator-backed visual decoration. */
+  icon?: SysBOUIDynamicValue<SysBOUIIconKey>;
+  tone?: SysBOUIDynamicValue<SysBOUIStatusTone>;
 }
 
 export interface SysBOUIFieldOverrideMetadata {
@@ -77,9 +82,15 @@ export interface SysBOUIFieldOverrideMetadata {
    * UI; `visible: false` is therefore unnecessary in that case. `visible` remains
    * useful for a field that is otherwise included but conditionally suppressed.
    */
-  order?: number;
+  /** Contextual caption for this UI; canonical field label remains unchanged. */
   label?: string;
-  visible?: boolean;
+
+  /**
+   * Suppress a field that is already part of the active tab/layout. Omitting a
+   * field from every tab already hides it, so visible:false is not needed then.
+   * May be evaluator-backed when visibility depends on live CTX state.
+   */
+  visible?: SysBOUIDynamicValue<boolean>;
 
   /**
    * UI-only restriction. `editable: false` may make a canonically writable field
@@ -87,11 +98,16 @@ export interface SysBOUIFieldOverrideMetadata {
    * Dynamic UI/domain decisions should prefer evaluator-backed expressions when
    * introduced rather than accumulating mode-specific booleans.
    */
-  editable?: boolean;
+  editable?: SysBOUIDynamicValue<boolean>;
 
-  /** Applied only when a new record has no value for this field. */
-  createDefaultValue?: string | number | boolean | null;
+  /**
+   * UI create-mode seed used only when the new record has no field value.
+   * May be evaluator-backed for context-sensitive defaults; it is not a domain
+   * default unless the canonical entity metadata/API enforces the same rule.
+   */
+  createDefaultValue?: SysBOUIDynamicValue<string | number | boolean | null>;
 
+  /** Formatting and visual decoration only; never changes entity semantics. */
   presentation?: SysBOUIFieldPresentationMetadata;
 }
 
@@ -111,25 +127,46 @@ export interface SysBOUIDerivedFieldMetadata {
   emptyText?: string;
 }
 
-export type SysBOUIEntryActionKind = 'delete';
+export type SysBOUIEntryActionKind = 'delete' | 'save' | 'command';
 
 export interface SysBOUIEntryActionMetadata {
   /** The parent Record key is the stable action identifier. */
   kind: SysBOUIEntryActionKind;
-  visible: boolean;
+
+  /** Stable ordering inside the action region; parent Record key remains identity. */
+  order?: number;
+
+  /** Static or evaluator-backed visibility against the active entry page CTX. */
+  visible: SysBOUIDynamicValue<boolean>;
+
   label: string;
   icon?: SysBOUIIconKey;
+
+  /** UI-neutral visual intent mapped by the concrete renderer. */
+  tone?: SysBOUIStatusTone;
+  emphasis?: 'solid' | 'outline';
+
+  /**
+   * Route command segment for kind='command'. The current EJS renderer posts
+   * to /bo/<entity>/<record-id>/<command>; the command endpoint remains the
+   * authoritative authorization/business boundary.
+   */
+  command?: string;
 }
 
 export interface SysBOUIRelatedCollectionFieldMetadata {
-  /** Required because related fields are ordered in an array rather than a keyed Record. */
-  key: string;
+  /** Optional contextual label; canonical related-entity metadata is the fallback. */
   label?: string;
+
+  /**
+   * Optional source-property alias. When omitted the containing keyed field name
+   * is used (`sourceField ?? fieldKey`).
+   */
   sourceField?: string;
 
   /**
-   * Optional evaluator-backed row calculation. The related row is supplied as
-   * the current evaluation context; ordinary CTX root paths remain available.
+   * Optional UI-only calculation. Prefer a canonical related-entity derived
+   * field when the value is reusable outside this presentation.
    */
   expression?: string;
 
@@ -141,11 +178,28 @@ export interface SysBOUIRelatedCollectionFieldMetadata {
 export interface SysBOUIRelatedCollectionMetadata {
   label: string;
   icon?: SysBOUIIconKey;
-  /** Defaults to the parent relatedCollections Record key when omitted. */
+
+  /**
+   * Canonical related/value-object metadata key. This identifies what each row
+   * IS (for example `external-identities`) independently from where the owning
+   * page stores the row array.
+   */
+  entityKey: string;
+
+  /**
+   * CTX/page property containing the row array. When omitted the containing
+   * relatedCollections key is used (`sourceKey ?? collectionKey`).
+   */
   sourceKey?: string;
+
   layout: 'panel-list';
   emptyText?: string;
-  fields: readonly SysBOUIRelatedCollectionFieldMetadata[];
+
+  /**
+   * Keyed presentation fields. The Record key is both the UI field identity and
+   * the default row source property; no redundant child `key` is required.
+   */
+  fields: Readonly<Record<string, SysBOUIRelatedCollectionFieldMetadata>>;
 }
 
 export interface SysBOUIRecordMetadata {

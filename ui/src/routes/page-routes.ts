@@ -126,17 +126,24 @@ export function createPageRoutes() {
    */
   router.get(
     '/app-playground',
+    requireSignedIn,
+    async (_req, res, next) => {
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const platformEntitled = Boolean(res.locals.app?.currentPlatformEntitled);
+      if (!currentUser || !platformEntitled) {
+        next(createError(403, 'Apps Playground access requires a current mCRM license entitlement.'));
+        return;
+      }
 
-    async (_req, res) =>
-      renderPage(
+      await renderPage(
         res,
         'pages/app-playground',
-
         {
           title: 'Apps Playground',
           titleIcon: 'bi-play-circle-fill',
         },
-      ),
+      );
+    },
   );
 
   /**

@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "116a6257-0413-4473-ab8a-eed1e069313c",
-    "name": "ManatOS System API",
-    "description": "Postman collection for ManatOS API authentication, health, SysBO CRUD and security tests.",
+    "name": "ManatOS Multi-Platform API",
+    "description": "Postman collection for the ManatOS Multi-Platform API: server operations, authentication, metadata-driven SysBO CRUD, canonical/UI metadata, relationship delete-impact preflight, runtime configuration, public UI bootstrap, external authentication and security tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1253976",
     "_collection_link": "https://go.postman.co/collection/1253976-116a6257-0413-4473-ab8a-eed1e069313c?source=collection_link"
@@ -863,7 +863,8 @@
                     "{{apiVersion}}",
                     "SysUsers"
                   ]
-                }
+                },
+                "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
               "response": [],
               "event": [
@@ -913,6 +914,41 @@
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
                       "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysUsers UI metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata-ui",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "$metadata-ui"
+                  ]
+                },
+                "description": "Framework-neutral UI metadata used by metadata-driven clients."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));"
                     ]
                   }
                 }
@@ -1049,6 +1085,43 @@
               ]
             },
             {
+              "name": "SysUsers delete impact",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}/$delete-impact",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "{{testUserId}}",
+                    "$delete-impact"
+                  ]
+                },
+                "description": "Non-mutating relationship-impact preflight. Inspect this before destructive deletion."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Delete-impact plan returned', () => pm.expect(json.data).to.be.an('object'));",
+                      "pm.test('Preflight is non-mutating', () => pm.expect(json.data).to.have.property('canDelete'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "Delete SysUser",
               "request": {
                 "method": "DELETE",
@@ -1103,7 +1176,8 @@
                     "{{apiVersion}}",
                     "SysPrincipals"
                   ]
-                }
+                },
+                "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
               "response": [],
               "event": [
@@ -1153,6 +1227,41 @@
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
                       "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysPrincipals UI metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata-ui",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "$metadata-ui"
+                  ]
+                },
+                "description": "Framework-neutral UI metadata used by metadata-driven clients."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));"
                     ]
                   }
                 }
@@ -1289,6 +1398,43 @@
               ]
             },
             {
+              "name": "SysPrincipals delete impact",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}/$delete-impact",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "{{testPrincipalId}}",
+                    "$delete-impact"
+                  ]
+                },
+                "description": "Non-mutating relationship-impact preflight. Inspect this before destructive deletion."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Delete-impact plan returned', () => pm.expect(json.data).to.be.an('object'));",
+                      "pm.test('Preflight is non-mutating', () => pm.expect(json.data).to.have.property('canDelete'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "Delete SysPrincipal",
               "request": {
                 "method": "DELETE",
@@ -1343,7 +1489,8 @@
                     "{{apiVersion}}",
                     "SysApplications"
                   ]
-                }
+                },
+                "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
               "response": [],
               "event": [
@@ -1393,6 +1540,41 @@
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
                       "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysApplications UI metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata-ui",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "$metadata-ui"
+                  ]
+                },
+                "description": "Framework-neutral UI metadata used by metadata-driven clients."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));"
                     ]
                   }
                 }
@@ -1529,6 +1711,43 @@
               ]
             },
             {
+              "name": "SysApplications delete impact",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}/$delete-impact",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "{{testApplicationId}}",
+                    "$delete-impact"
+                  ]
+                },
+                "description": "Non-mutating relationship-impact preflight. Inspect this before destructive deletion."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Delete-impact plan returned', () => pm.expect(json.data).to.be.an('object'));",
+                      "pm.test('Preflight is non-mutating', () => pm.expect(json.data).to.have.property('canDelete'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "Delete SysApplication",
               "request": {
                 "method": "DELETE",
@@ -1583,7 +1802,8 @@
                     "{{apiVersion}}",
                     "SysLicenses"
                   ]
-                }
+                },
+                "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
               "response": [],
               "event": [
@@ -1633,6 +1853,41 @@
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
                       "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysLicenses UI metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata-ui",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "$metadata-ui"
+                  ]
+                },
+                "description": "Framework-neutral UI metadata used by metadata-driven clients."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));"
                     ]
                   }
                 }
@@ -1770,6 +2025,43 @@
               ]
             },
             {
+              "name": "SysLicenses delete impact",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}/$delete-impact",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "{{testLicenseId}}",
+                    "$delete-impact"
+                  ]
+                },
+                "description": "Non-mutating relationship-impact preflight. Inspect this before destructive deletion."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Delete-impact plan returned', () => pm.expect(json.data).to.be.an('object'));",
+                      "pm.test('Preflight is non-mutating', () => pm.expect(json.data).to.have.property('canDelete'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "Delete SysLicense",
               "request": {
                 "method": "DELETE",
@@ -1878,20 +2170,58 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/public/ui-bootstrap",
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/public/ui-bootstrap",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
+                "{{apiVersion}}",
                 "public",
                 "ui-bootstrap"
               ]
             },
-            "description": "Public/anonymous-safe UI bootstrap state. The UI may fall back to local defaults and retry if the API is unavailable."
+            "description": "Anonymous-safe, no-store runtime bootstrap used by the UI for API/server status and persisted UI configuration."
           },
           "response": []
+        },
+        {
+          "name": "Public external authentication providers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/public/external-auth-providers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "public",
+                "external-auth-providers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Anonymous-safe, no-store projection of enabled + verified providers usable by sign-in/registration."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Anonymous-safe provider projection returned', () => pm.expect(json.data.providers).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1933,6 +2263,73 @@
             }
           ],
           "description": "Access: Admin only (Bearer token). Lists persisted provider configuration and verification state. Secret material is never returned."
+        },
+        {
+          "name": "SysExtAuthProviders metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/$metadata",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysExtAuthProviders",
+                "$metadata"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Canonical metadata returned', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SysExtAuthProviders UI metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/$metadata-ui",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysExtAuthProviders",
+                "$metadata-ui"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "External provider definitions",
@@ -2075,6 +2472,42 @@
           "description": "Access: Admin only (Bearer token). Reads one persisted provider configuration record. Secret material is never returned."
         },
         {
+          "name": "External provider delete impact",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}/$delete-impact",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "SysExtAuthProviders",
+                "{{testExtAuthProviderId}}",
+                "$delete-impact"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('Delete-impact plan returned', () => pm.expect(json.data).to.be.an('object'));",
+                  "pm.test('Preflight is non-mutating', () => pm.expect(json.data).to.have.property('canDelete'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Delete SysExtAuthProvider",
           "request": {
             "method": "DELETE",
@@ -2201,8 +2634,145 @@
     },
     {
       "name": "Internal External Authentication Workflow",
-      "description": "Internal ManatOS UI/BFF OAuth credential-test mechanics. Not a routine client API. Kept visible here for architecture/diagnostic reference; use the Admin UI for normal credential verification.",
-      "item": []
+      "description": "UI/BFF-only provider credential-test mechanics. These requests are diagnostic/manual examples, not a general third-party API contract. They require x-internal-api-key; credential material/verification mutations also require an Admin Bearer session.",
+      "item": [
+        {
+          "name": "Runtime configured providers (internal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-internal-api-key",
+                "value": "{{internalApiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/runtime",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "external-auth-providers",
+                "runtime"
+              ]
+            },
+            "description": "Trusted UI runtime projection including provider material needed server-side. Never expose this endpoint directly to browser code."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json=pm.response.json();",
+                  "pm.test('Configured provider items returned', () => pm.expect(json.data.items).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get credentials for provider test (internal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-internal-api-key",
+                "value": "{{internalApiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/{{testExtAuthProviderId}}/credentials-for-test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "external-auth-providers",
+                "{{testExtAuthProviderId}}",
+                "credentials-for-test"
+              ]
+            },
+            "description": "Trusted Admin/BFF diagnostic operation. Response contains sensitive provider-test material and must remain server-side."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json=pm.response.json();",
+                  "pm.test('Credential-test material returned', () => pm.expect(json.data.clientId).to.be.a('string'));",
+                  "if (json.data && json.data.secretUpdatedAt) pm.environment.set('testExtAuthSecretUpdatedAt', json.data.secretUpdatedAt);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark stored credential version verified (internal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-api-key",
+                "value": "{{internalApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/{{testExtAuthProviderId}}/credentials-verified",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "internal",
+                "external-auth-providers",
+                "{{testExtAuthProviderId}}",
+                "credentials-verified"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{testExtAuthClientId}}\",\n  \"secretUpdatedAt\": \"{{testExtAuthSecretUpdatedAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Use only after the exact stored credential pair has completed the real provider OAuth test."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json=pm.response.json();",
+                  "pm.test('Stored credential version is verified', () => pm.expect(json.data.credentialsVerified).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "90 - Security Tests",
@@ -2408,6 +2978,30 @@
       "value": "/auth/github/callback",
       "type": "string",
       "description": "Code-defined callback path for testExtAuthProvider; update together when changing provider."
+    },
+    {
+      "key": "secondaryAccessToken",
+      "value": "",
+      "type": "string",
+      "description": "Second API session token used by multi-session tests."
+    },
+    {
+      "key": "testExtAuthClientId",
+      "value": "",
+      "type": "string",
+      "description": "Manual external-provider Client ID used by trusted credential examples."
+    },
+    {
+      "key": "testExtAuthClientSecret",
+      "value": "",
+      "type": "string",
+      "description": "Manual external-provider Client Secret used by trusted credential examples."
+    },
+    {
+      "key": "testExtAuthSecretUpdatedAt",
+      "value": "",
+      "type": "string",
+      "description": "Exact stored credential-version timestamp captured by the internal credentials-for-test workflow."
     }
   ]
 }

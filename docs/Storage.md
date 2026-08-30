@@ -18,6 +18,8 @@ The demonstration transaction clones current Maps, executes the logical operatio
 
 Sessions, reset tokens and verification tokens are outside business persistence by design.
 
+Canonical relationship metadata is also storage-neutral. Relationship integrity and delete-impact planning operate through metadata/repository boundaries, so cascade, unlink, set-null and restrict behavior can remain consistent when the current in-memory/JSON adapter is replaced by a relational implementation.
+
 
 ## Storage adapter flush contract
 

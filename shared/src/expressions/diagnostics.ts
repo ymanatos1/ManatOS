@@ -16,6 +16,7 @@ export class ExpressionEvaluationError extends Error {
     message: string,
     public readonly expression?: string,
     public readonly variablePath?: string,
+    public readonly evaluationChain?: readonly string[],
   ) {
     super(message);
     this.name = 'ExpressionEvaluationError';
@@ -24,7 +25,10 @@ export class ExpressionEvaluationError extends Error {
 
 export function emitExpressionDiagnostic(
   sink: ExpressionDiagnosticSink | undefined,
-  diagnostic: ExpressionDiagnostic,
+  diagnostic: Omit<ExpressionDiagnostic, 'timestamp'> & {timestamp?: string},
 ): void {
-  sink?.(diagnostic);
+  sink?.({
+    ...diagnostic,
+    timestamp: diagnostic.timestamp ?? new Date().toISOString(),
+  });
 }

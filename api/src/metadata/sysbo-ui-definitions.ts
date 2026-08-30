@@ -19,10 +19,31 @@ const tab = (
   label: string,
   order: number,
   fields: readonly string[],
-  options: Pick<SysBOUIRecordTabMetadata, 'icon' | 'layout'> = {},
+  options: Pick<SysBOUIRecordTabMetadata, 'icon' | 'layout' | 'visible'> = {},
 ): SysBOUIRecordTabMetadata => ({ id, label, order, fields, ...options });
 
-const generalTab = (fields: readonly string[]) => tab('general', 'General info', 10, fields);
+const generalTab = (fields: readonly string[]) => tab('general', 'General', 10, fields);
+
+const systemTab = (): SysBOUIRecordTabMetadata =>
+  tab(
+    'system',
+    'System details',
+    900,
+    ['id', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'],
+    {
+      icon: 'clock-history',
+      layout: 'summary',
+    },
+  );
+
+const systemFieldOverrides = {
+  createdAt: {
+    presentation: { mode: 'summary' as const, format: 'datetime-elapsed' as const, emptyText: '—' },
+  },
+  updatedAt: {
+    presentation: { mode: 'summary' as const, format: 'datetime-elapsed' as const, emptyText: '—' },
+  },
+} as const;
 
 export const sysBOUsersUIMetadata: SysBOUIMetadata = {
   key: 'sys-users',
@@ -36,7 +57,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
     tabs: [
       tab(
         'general',
-        'General info',
+        'General',
         10,
         ['name', 'email', 'fullName', 'role', 'firstName', 'lastName', 'description', 'enabled'],
         { icon: 'info-circle', layout: 'form' },
@@ -46,10 +67,18 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         'Authentication',
         20,
         ['emailVerificationStatus', 'emailVerificationSource', 'emailVerifiedAt', 'localPasswordStatus', 'externalIdentities'],
-        { icon: 'shield-lock', layout: 'summary' },
+        {
+          icon: 'shield-lock',
+          layout: 'summary',
+          visible: {
+            expression: "mode !== 'create' && (user.permissions.userRole === 'Admin' || id === user.fields.id.value)",
+          },
+        },
       ),
+      systemTab(),
     ],
     fieldOverrides: {
+      ...systemFieldOverrides,
       /*
        * `emailVerified` and `passwordChangedAt` are intentionally absent from
        * every tab, so no redundant visible:false override is needed. Canonical
@@ -60,18 +89,15 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
        */
       emailVerificationStatus: {
         presentation: {
-          states: [
-            { equals: 'Verified', tone: 'success' },
-            { equals: 'Not verified', tone: 'secondary' },
-          ],
+          // The canonical derived field owns the text ("Verified"/"Not verified").
+          // UI metadata owns only visual decoration; its decision is evaluator-backed.
+          tone: { expression: "emailVerified ? 'success' : 'secondary'" },
         },
       },
       localPasswordStatus: {
         presentation: {
-          states: [
-            { equals: 'Configured', icon: 'check-circle-fill', tone: 'success' },
-            { equals: 'Not configured', icon: 'dash-circle', tone: 'secondary' },
-          ],
+          tone: { expression: "hasPassword ? 'success' : 'secondary'" },
+          icon: { expression: "hasPassword ? 'check-circle-fill' : 'dash-circle'" },
         },
       },
 
@@ -89,32 +115,82 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       // Create-form behavior is UI-specific; persisted/entity semantics stay
       // in SysBO metadata and the API.
       enabled: { createDefaultValue: true },
+
+      // Role assignment is an authorization capability. Keep the decision in
+      // evaluator-driven UI metadata instead of renderer-specific role checks.
+      role: {
+        editable: { expression: "user.permissions.userRole === 'Admin'" },
+      },
     },
     relatedCollections: {
       externalIdentities: {
+        /*
+         * Related-collection contract:
+         *
+         * - `externalIdentities` (the parent Record key) is the UI collection
+         *   identity and, because sourceKey is omitted, also the default page/CTX
+         *   property holding the row array.
+         * - `entityKey` identifies the canonical metadata for EACH row. External
+         *   Identity is intentionally modelled as a ManatOS value-object metadata
+         *   type rather than a top-level generic SysBO CRUD entity.
+         * - `layout` selects the renderer's collection layout.
+         * - `fields` is keyed: each key is the displayed field identity and the
+         *   default row property (`sourceField ?? fieldKey`).
+         * - Reusable row calculations live in the canonical related-entity
+         *   metadata; UI metadata supplies only visual formatting/decoration.
+         */
         label: 'External identities',
         icon: 'person-badge',
+        entityKey: 'external-identities',
         layout: 'panel-list',
         emptyText: 'No external authentication providers are linked.',
-        fields: [
-          { key: 'provider', format: 'auth-provider' },
-          { key: 'email' },
-          {
-            key: 'providerEmailVerificationStatus',
-            label: 'Provider email verification',
-            expression: "emailVerified == true ? 'Provider email verified' : 'Provider email not verified'",
+        fields: {
+          provider: {
+            // `auth-provider` remains a pure presentation formatter.
+            format: 'auth-provider',
+          },
+          email: {},
+          providerEmailVerificationStatus: {
+            // Value comes from canonical external-identities.derivedFields.
             presentation: {
-              states: [
-                { equals: 'Provider email verified', tone: 'success' },
-                { equals: 'Provider email not verified', tone: 'secondary' },
-              ],
+              tone: { expression: "emailVerified ? 'success' : 'secondary'" },
             },
           },
-        ],
+        },
       },
     },
     entryActions: {
-      delete: { kind: 'delete', visible: true, label: 'Delete entry', icon: 'trash' },
+      verifyEmail: {
+        kind: 'command',
+        order: 10,
+        command: 'verify-email',
+        visible: {
+          expression:
+            "client.features.allowAdminEmailVerification && " +
+            "user.permissions.userRole === 'Admin' && " +
+            "id !== user.fields.id.value && emailVerified !== true",
+        },
+        label: 'Verify email',
+        icon: 'envelope-check',
+        tone: 'success',
+        emphasis: 'outline',
+      },
+      delete: {
+        kind: 'delete',
+        order: 20,
+        visible: true,
+        label: 'Delete entry',
+        icon: 'trash',
+        tone: 'danger',
+      },
+      save: {
+        kind: 'save',
+        order: 100,
+        visible: { expression: "mode !== 'view'" },
+        label: 'Save',
+        icon: 'check-circle',
+        tone: 'primary',
+      },
     },
   },
 };
@@ -128,8 +204,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     addAction: { visible: true, label: 'Add new' },
   },
   record: {
-    tabs: [generalTab(['name', 'principalType', 'parentId', 'description', 'enabled'])],
-    fieldOverrides: {},
+    tabs: [generalTab(['name', 'principalType', 'parentId', 'description', 'enabled']), systemTab()],
+    fieldOverrides: { ...systemFieldOverrides },
   },
 };
 
@@ -142,8 +218,8 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
     addAction: { visible: true, label: 'Add new' },
   },
   record: {
-    tabs: [generalTab(['name', 'appName', 'fullName', 'version', 'description', 'enabled'])],
-    fieldOverrides: {},
+    tabs: [generalTab(['name', 'appName', 'fullName', 'version', 'description', 'enabled']), systemTab()],
+    fieldOverrides: { ...systemFieldOverrides },
   },
 };
 
@@ -170,8 +246,9 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
         'description',
         'enabled',
       ]),
+      systemTab(),
     ],
-    fieldOverrides: {},
+    fieldOverrides: { ...systemFieldOverrides },
   },
 };
 
@@ -190,8 +267,10 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
       // create-vs-edit distinction is not expressible by the current contract.
       generalTab(['provider', 'callbackPath', 'tenant', 'enabled']),
       tab('secrets', 'Secrets', 20, ['clientId', 'hasClientSecret', 'secretUpdatedAt', 'credentialsVerified', 'credentialsVerifiedAt']),
+      systemTab(),
     ],
     fieldOverrides: {
+      ...systemFieldOverrides,
       // Tenant is canonically writable but this current administration form
       // intentionally presents it read-only. The remaining fields already
       // carry canonical readOnly/generated metadata and need no repetition.

@@ -17,6 +17,16 @@ A BO definition key (`sys-users`, `sys-principals`, ...) is a stable hard-coded 
 
 Canonical field metadata is keyed by canonical property name for fast lookup. UI metadata is a second category layered on top only by UI clients.
 
+The API exposes both layers independently through `/$metadata` and `/$metadata-ui`. List calls may request `includeMetadata=true` and/or `includeMetadataUI=true`; requesting UI metadata also includes canonical metadata so clients receive a coherent pair.
+
+### Metadata-driven decisions and expression evaluation
+
+Metadata can carry decisions as expressions rather than hard-coded renderer branches. Canonical `derivedFields` own reusable calculated business/display values, while UI metadata can make properties such as tab/action visibility, field editability and presentation decoration evaluator-backed.
+
+Expression source is parsed by the shared engine into a typed AST when context metadata is materialized. The runtime evaluator resolves variables through the ManatOS CTX lexical scope. The metadata-driven browser renderer receives the AST and performs dependency-aware reevaluation without reparsing the expression source. This keeps one expression contract usable by EJS rendering, browser reactivity, diagnostics and future clients.
+
+Delete behavior follows the same metadata-first principle: canonical relationships describe cascade/unlink/set-null/restrict semantics, the service builds a non-mutating `$delete-impact` plan, and the UI displays that plan before a destructive operation.
+
 ## Company and platform composition
 
 `CompanyInfo` owns Company-wide capabilities and a code-defined catalogue of enabled `SysPlatform` entries. The selected platform contributes its own SysBO capabilities and navigation entries on top of the Company baseline. The current implementation ships with mCRM, but horizontal navigation and platform landing pages are catalogue-driven so additional platforms do not require a separate shell design.
@@ -95,6 +105,8 @@ Swagger, Postman and the developer documentation present API responsibilities in
 1. **Server** — liveness/readiness are public; datastore flush is Admin-only.
 2. **Authentication** — registration, sign-in, sessions and related trusted authentication commands; access is documented per operation.
 3. **System Business Objects** — metadata-driven SysBO resources; authorization depends on the BO and operation.
+
+For platform-owned entities, authorization may also be license scoped. `SysApplication` belongs to mCRM: Admin has unrestricted access; non-Admin collection and record reads require a current effective mCRM `SysLicense` reached through a linked `SysPrincipal`, and an optional `applicationId` restriction narrows visibility to that application. The current in-memory adapter filters materialized rows before client filtering/paging; future RDBMS adapters should push the same predicate into the database query.
 4. **System Configuration** — Admin-only persisted runtime configuration; sensitive values are never returned as plaintext.
 5. **Public UI** — anonymous-safe bootstrap/runtime projections used before sign-in.
 6. **External Authentication** — Admin provider configuration and supported-provider metadata.

@@ -575,3 +575,44 @@
 .debug-tool-selection {
   font-weight: 700;
 }
+
+
+.ctx-debug-stats {
+  margin-left: auto;
+  margin-right: 0.65rem;
+  color: var(--manatos-muted);
+  font-size: 0.72rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/*
+ * Bootstrap appends this tooltip to <body>, so it is not clipped by the
+ * debugger panel's overflow:hidden. Each metric is a separate block to keep
+ * the explanation consistently multiline across browsers.
+ */
+.ctx-debug-stats-tooltip .tooltip-inner {
+  max-width: 360px;
+  text-align: left;
+  line-height: 1.45;
+}
+
+.ctx-debug-stats-tooltip-note {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+/*
+ * Pre-paint debugger-state restoration. Bootstrap's d-none is !important, so
+ * these narrowly scoped rules are also !important and disappear in effect as
+ * soon as shell/debugger JS applies the persisted normal classes.
+ */
+html[data-manatos-debug-visible='true'] #debugPanel.d-none {
+  display: flex !important;
+}
+
+html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none {
+  display: flex !important;
+  height: var(--manatos-debug-properties-height, 16rem);
+}

@@ -99,6 +99,41 @@
         document.documentElement.dataset.uiTheme = theme;
         document.documentElement.dataset.uiLanguage = language;
         document.documentElement.lang = language;
+
+        /*
+         * Restore development-debugger geometry before first paint. The state is
+         * keyed by this UI-server boot id, so an ordinary reload/navigation keeps
+         * the debugger stable while a server restart naturally resets it.
+         */
+        const bootId =
+          document
+            .querySelector('meta[name="manatos-ui-boot-id"]')
+            ?.getAttribute('content') ||
+          'unknown';
+        const debugVisible =
+          sessionStorage.getItem(`manatos.debug.panel.visible.${bootId}`) === 'true';
+        const debugState = JSON.parse(
+          sessionStorage.getItem(`manatos.debug.ctx.state.v1.${bootId}`) || 'null',
+        );
+
+        document.documentElement.dataset.manatosDebugVisible = String(debugVisible);
+
+        if (Number.isFinite(debugState?.debuggerWidth)) {
+          document.documentElement.style.setProperty(
+            '--manatos-debug-width',
+            `${debugState.debuggerWidth}px`,
+          );
+        }
+
+        if (debugState?.propertiesOpen === true) {
+          document.documentElement.dataset.manatosDebugPropertiesOpen = 'true';
+          if (Number.isFinite(debugState?.propertiesHeight)) {
+            document.documentElement.style.setProperty(
+              '--manatos-debug-properties-height',
+              `${debugState.propertiesHeight}px`,
+            );
+          }
+        }
       } catch {
         document.documentElement.dataset.uiTheme = 'darker';
         document.documentElement.dataset.uiLanguage = 'en';
@@ -434,13 +469,23 @@
 
   <script src="/js/prefs.js"></script>
   <script src="/js/shell.js"></script>
+  <% if (app.ui?.debugTools && Array.isArray(ctxDiagnostics) && ctxDiagnostics.length) { %>
+    <script>
+      (() => {
+        const diagnostics = <%- JSON.stringify(ctxDiagnostics).replace(/</g, '\\u003c') %>;
+        for (const diagnostic of diagnostics) {
+          window.dispatchEvent(new CustomEvent('manatos:ctx-diagnostic', { detail: diagnostic }));
+        }
+      })();
+    </script>
+  <% } %>
   <script src="/js/ui-bootstrap-runtime.js"></script>
   <% if (app.ui?.debugTools) { %>
-    <script src="/js/debugger/ctx-debug.js"></script>
+    <script src="/js/debugger/ctx-debug.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <% } %>
   <script src="/js/lists.js"></script>
   <script src="/js/busy.js"></script>
-  <script src="/js/forms.js"></script>
+  <script src="/js/forms.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/auth-providers.js"></script>
 
 </body>

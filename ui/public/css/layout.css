@@ -95,6 +95,46 @@
   grid-template-areas: 'left workspace details debug';
 }
 
+
+/*
+ * Pre-paint debugger restoration.
+ *
+ * shell.js will replace these selectors with the normal has-debug class state
+ * as soon as the DOM is ready. Until then they prevent the workspace from
+ * briefly expanding to full width on ordinary reload/navigation.
+ */
+html[data-manatos-debug-visible='true'] .app-shell {
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'workspace debug';
+}
+
+html[data-manatos-debug-visible='true'] .app-shell.has-left-nav {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'left workspace debug';
+}
+
+html[data-manatos-debug-visible='true'] .app-shell.has-details {
+  grid-template-columns:
+    minmax(0, 1fr)
+    320px
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'workspace details debug';
+}
+
+html[data-manatos-debug-visible='true'] .app-shell.has-left-nav.has-details {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    320px
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'left workspace details debug';
+}
+
 /* =========================================================================
    Left navigation
    ========================================================================= */

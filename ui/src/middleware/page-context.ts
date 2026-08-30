@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { MANATOS_COMPANY, resolvePlatform, type SysBOApplication, type SysBOUser } from '@manatos/shared';
+import { MANATOS_COMPANY, SysBOUserRole, allManatOSValueObjectMetadata, licenseGrantsPlatformAccess, resolvePlatform, type SysBOApplication, type SysBOLicense, type SysBOUser } from '@manatos/shared';
 
 import { config } from '../config.js';
 
@@ -16,6 +16,11 @@ import { buildRootScope } from '../scopes.js';
 
 import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
 import { createManatOSContext, registerContextEntity } from '../context/manatos-context.js';
+
+interface LicenseListData {
+  items: SysBOLicense[];
+  paging: { total: number; page: number; pageSize: number; totalPages: number };
+}
 
 
 /**
@@ -76,6 +81,26 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
 
     const currentPlatform = resolvePlatform(MANATOS_COMPANY);
 
+    /**
+     * Platform functionality is entitlement driven for non-Admin users. The API
+     * returns only licenses related to this user's principals, so the UI can
+     * derive menu visibility from the same shared license semantics without
+     * receiving another customer's license rows.
+     */
+    let currentPlatformEntitled = user?.role === SysBOUserRole.Admin;
+    if (user && !currentPlatformEntitled) {
+      const licenses = (
+        await apiClient.get<LicenseListData>(
+          '/api/v1/SysLicenses?pageSize=1000',
+          apiSessionOptions(req),
+        )
+      ).data.items;
+
+      currentPlatformEntitled = licenses.some((license) =>
+        licenseGrantsPlatformAccess(license, currentPlatform.id),
+      );
+    }
+
     res.locals.currentUser = user;
 
     // Typed ManatOS runtime/evaluation context. Every rendered page receives
@@ -86,6 +111,11 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       config.API_BASE_URL,
       '0.1.0',
       user,
+      {
+        // Only safe, browser-relevant feature facts belong in CTX. Expressions
+        // can now resolve this without templates duplicating config branches.
+        allowAdminEmailVerification: config.ALLOW_ADMIN_EMAIL_VERIFICATION,
+      },
     );
 
     /*
@@ -102,6 +132,13 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       );
     }
 
+    // Related/value-object metadata is canonical too, even though these objects
+    // are not exposed as top-level generic SysBO CRUD pages. Registering it at
+    // ctx.entities makes it available to expressions, DEBUG and future clients.
+    for (const metadata of Object.values(allManatOSValueObjectMetadata)) {
+      registerContextEntity(res.locals.ctx, metadata.key, metadata);
+    }
+
     // Anonymous/auth-entry presentation starts from the safe local default: no providers.
     // Sign in/Register refresh current provider state on demand.
     res.locals.authProviders = [];
@@ -112,6 +149,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       /** Shared, UI-neutral company/platform catalogue. */
       company: MANATOS_COMPANY,
       currentPlatform,
+      currentPlatformEntitled: Boolean(currentPlatformEntitled),
 
       scopes: buildRootScope(req, user, activeApplication, config.SESSION_IDLE_TIMEOUT_MINUTES),
 
@@ -123,6 +161,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         Boolean(user),
         MANATOS_COMPANY,
         currentPlatform,
+        { platformEntitled: Boolean(currentPlatformEntitled) },
       ),
 
       /**

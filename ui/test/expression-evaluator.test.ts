@@ -8,6 +8,21 @@ import {
   type ExpressionNode,
 } from '@manatos/shared';
 
+
+const TEST_CALLER = {
+  source: 'test' as const,
+  purpose: 'expression evaluator unit test',
+};
+
+function evaluateTest(
+  expression: string,
+  ctxRoot: unknown,
+  currentCtxNode: unknown,
+  options: Parameters<typeof evaluateExpression>[4] = {},
+): unknown {
+  return evaluateExpression(expression, ctxRoot, currentCtxNode, TEST_CALLER, options);
+}
+
 function testCtx() {
   const mcrm = {id: 'mcrm', name: 'ManatOS CRM Platform', enabled: true};
   return {
@@ -40,20 +55,49 @@ describe('ManatOS expression parser/evaluator', () => {
 
   it('honors precedence, associativity and explicit grouping', () => {
     const ctx = testCtx();
-    expect(evaluateExpression('2 + 3 * 4', ctx, ctx.page.fields)).toBe(14);
-    expect(evaluateExpression('10 - 5 - 2', ctx, ctx.page.fields)).toBe(3);
-    expect(evaluateExpression('2 ** 3 ** 2', ctx, ctx.page.fields)).toBe(512);
-    expect(evaluateExpression('(2 + 3) * 4', ctx, ctx.page.fields)).toBe(20);
-    expect(evaluateExpression('-2 ** 2', ctx, ctx.page.fields)).toBe(-4);
+    expect(evaluateTest('2 + 3 * 4', ctx, ctx.page.fields)).toBe(14);
+    expect(evaluateTest('10 - 5 - 2', ctx, ctx.page.fields)).toBe(3);
+    expect(evaluateTest('2 ** 3 ** 2', ctx, ctx.page.fields)).toBe(512);
+    expect(evaluateTest('(2 + 3) * 4', ctx, ctx.page.fields)).toBe(20);
+    expect(evaluateTest('-2 ** 2', ctx, ctx.page.fields)).toBe(-4);
   });
 
   it('concatenates strings/numbers with + but keeps other arithmetic strict', () => {
     const ctx = testCtx();
-    expect(evaluateExpression("'Value=' + 12", ctx, ctx.page.fields)).toBe('Value=12');
-    expect(evaluateExpression("12 + 'px'", ctx, ctx.page.fields)).toBe('12px');
-    expect(() => evaluateExpression("'10' - 2", ctx, ctx.page.fields)).toThrow(ExpressionEvaluationError);
+    expect(evaluateTest("'Value=' + 12", ctx, ctx.page.fields)).toBe('Value=12');
+    expect(evaluateTest("12 + 'px'", ctx, ctx.page.fields)).toBe('12px');
+    expect(() => evaluateTest("'10' - 2", ctx, ctx.page.fields)).toThrow(ExpressionEvaluationError);
   });
 
+
+
+  it('supports JS-like loose/strict equality and scalar relational comparisons', () => {
+    const ctx = testCtx();
+    expect(evaluateTest("10 == '10'", ctx, ctx.page.fields)).toBe(true);
+    expect(evaluateTest("10 === '10'", ctx, ctx.page.fields)).toBe(false);
+    expect(evaluateTest("10 != '10'", ctx, ctx.page.fields)).toBe(false);
+    expect(evaluateTest("10 !== '10'", ctx, ctx.page.fields)).toBe(true);
+    expect(evaluateTest('10 < 20', ctx, ctx.page.fields)).toBe(true);
+    expect(evaluateTest("'b' > 'a'", ctx, ctx.page.fields)).toBe(true);
+  });
+
+  it('allows any supported scalar to concatenate with a string', () => {
+    const ctx = testCtx();
+    expect(evaluateTest("'Enabled=' + true", ctx, ctx.page.fields)).toBe('Enabled=true');
+    expect(evaluateTest("null + ':value'", ctx, ctx.page.fields)).toBe('null:value');
+  });
+
+
+  it('prepares runtime Date values for relational comparison and string concatenation', () => {
+    const ctx = {
+      fields: {
+        earlier: {value: new Date('2026-01-01T00:00:00Z')},
+        later: {value: new Date('2026-01-02T00:00:00Z')},
+      },
+    };
+    expect(evaluateTest('earlier < later', ctx, ctx.fields)).toBe(true);
+    expect(evaluateTest("'At ' + earlier", ctx, ctx.fields)).toMatch(/^At /);
+  });
 
   it('supports boolean equality and right-associative ternary conditionals', () => {
     const ctx = {
@@ -63,25 +107,63 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(evaluateExpression("emailVerified == true ? 'Verified' : 'Not verified'", ctx, ctx.fields)).toBe('Verified');
-    expect(evaluateExpression("enabled == true ? 'Enabled' : 'Disabled'", ctx, ctx.fields)).toBe('Disabled');
-    expect(evaluateExpression("emailVerified != false ? 'Verified' : 'Not verified'", ctx, ctx.fields)).toBe('Verified');
-    expect(evaluateExpression("false ? missingVariable : 'safe'", ctx, ctx.fields)).toBe('safe');
+    expect(evaluateTest("emailVerified ? 'Verified' : 'Not verified'", ctx, ctx.fields)).toBe('Verified');
+    expect(evaluateTest("enabled ? 'Enabled' : 'Disabled'", ctx, ctx.fields)).toBe('Disabled');
+    expect(evaluateTest("emailVerified != false ? 'Verified' : 'Not verified'", ctx, ctx.fields)).toBe('Verified');
+    expect(evaluateTest("false ? missingVariable : 'safe'", ctx, ctx.fields)).toBe('safe');
 
-    const compiled = compileExpression("emailVerified == true ? 'Verified' : 'Not verified'");
+    const compiled = compileExpression("emailVerified ? 'Verified' : 'Not verified'");
     expect(compiled.ast).toMatchObject({
       kind: 'conditional',
-      condition: {kind: 'binary', operator: '=='},
+      condition: {kind: 'variable', path: 'emailVerified'},
       whenTrue: {kind: 'literal', value: 'Verified'},
       whenFalse: {kind: 'literal', value: 'Not verified'},
     });
   });
 
+  it('supports lazy nullish coalescing with ??', () => {
+    const ctx = {
+      fields: {
+        nullable: {value: null},
+        present: {value: 'kept'},
+      },
+    };
+
+    expect(evaluateTest("nullable ?? 'fallback'", ctx, ctx.fields)).toBe('fallback');
+    expect(evaluateTest("present ?? missingVariable", ctx, ctx.fields)).toBe('kept');
+
+    const compiled = compileExpression("nullable ?? 'fallback'");
+    expect(compiled.ast).toMatchObject({kind: 'binary', operator: '??'});
+  });
+
+  it('supports lazy JS/TS-like scalar logical operators for metadata decisions', () => {
+    const ctx = {
+      user: { fields: { role: { value: 'Admin' } } },
+      page: {
+        mode: 'edit',
+        fields: {
+          id: { value: 'other-user' },
+          emailVerified: { value: false },
+        },
+      },
+    };
+
+    expect(evaluateTest(
+      "mode !== 'create' && user.fields.role.value === 'Admin'",
+      ctx,
+      ctx.page.fields,
+    )).toBe(true);
+
+    expect(evaluateTest('false && missingVariable', ctx, ctx.page.fields)).toBe(false);
+    expect(evaluateTest('true || missingVariable', ctx, ctx.page.fields)).toBe(true);
+    expect(evaluateTest('!emailVerified', ctx, ctx.page.fields)).toBe(true);
+  });
+
   it('parses function calls against the hard-coded registry and evaluates nested arguments', () => {
     const ctx = testCtx();
-    expect(evaluateExpression('SqRoot(9)', ctx, ctx.page.fields)).toBe(3);
-    expect(evaluateExpression("StrFormat('{0} {1}', firstname, lastname)", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
-    expect(evaluateExpression('GetTime()', ctx, ctx.page.fields, {now: () => new Date(123456)})).toBe(123456);
+    expect(evaluateTest('SqRoot(9)', ctx, ctx.page.fields)).toBe(3);
+    expect(evaluateTest("StrFormat('{0} {1}', firstname, lastname)", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
+    expect(evaluateTest('GetTime()', ctx, ctx.page.fields, {now: () => new Date(123456)})).toBe(123456);
     expect(() => compileExpression('MissingFunction(1)')).toThrow(ExpressionParseError);
     expect(() => compileExpression('SqRoot()')).toThrow(ExpressionParseError);
     expect(() => compileExpression("SqRoot('x')")).toThrow(ExpressionParseError);
@@ -91,19 +173,19 @@ describe('ManatOS expression parser/evaluator', () => {
     const compiled = compileExpression('future.page.value + 1');
     const ctx = testCtx();
     expect(compiled.ast.kind).toBe('binary');
-    expect(() => evaluateExpression(compiled.source, ctx, ctx.page.fields)).toThrow(/variable not found/i);
+    expect(() => evaluateTest(compiled.source, ctx, ctx.page.fields)).toThrow(/variable not found/i);
   });
 
   it('resolves lexical variables from the current ctx node and explicit ctx paths from root', () => {
     const ctx = testCtx();
-    expect(evaluateExpression("firstname + ' ' + lastname", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
-    expect(evaluateExpression('ctx.page.fields.amount.value * 2', ctx, ctx.page.fields)).toBe(24);
+    expect(evaluateTest("firstname + ' ' + lastname", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
+    expect(evaluateTest('ctx.page.fields.amount.value * 2', ctx, ctx.page.fields)).toBe(24);
   });
 
   it('resolves keyed arrays both by zero-based index and semantic member id', () => {
     const ctx = testCtx();
-    expect(evaluateExpression('ctx.company.platforms[0].name', ctx, ctx.page.fields)).toBe('ManatOS CRM Platform');
-    expect(evaluateExpression('ctx.company.platforms.mcrm.name', ctx, ctx.page.fields)).toBe('ManatOS CRM Platform');
+    expect(evaluateTest('ctx.company.platforms[0].name', ctx, ctx.page.fields)).toBe('ManatOS CRM Platform');
+    expect(evaluateTest('ctx.company.platforms.mcrm.name', ctx, ctx.page.fields)).toBe('ManatOS CRM Platform');
   });
 
   it('evaluates the SysUser Full name expression against camelCase page fields', () => {
@@ -118,7 +200,7 @@ describe('ManatOS expression parser/evaluator', () => {
     const fullName = calculatedContextField("firstName + ' ' + lastName");
     ctx.page.fields = {...ctx.page.fields, fullName};
 
-    expect(evaluateExpression('fullName', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
+    expect(evaluateTest('fullName', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
   });
 
   it('parses calculated fields when declared but resolves fresh variable values only when read', () => {
@@ -127,20 +209,20 @@ describe('ManatOS expression parser/evaluator', () => {
     ctx.page.fields = {...ctx.page.fields, fullname: fullName};
 
     expect(fullName.ast.kind).toBe('binary');
-    expect(evaluateExpression('fullname', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
+    expect(evaluateTest('fullname', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
 
     ctx.page.fields.firstname.value = 'John';
     ctx.page.fields.lastname.value = 'Smith';
-    expect(evaluateExpression('fullname', ctx, ctx.page.fields)).toBe('John Smith');
+    expect(evaluateTest('fullname', ctx, ctx.page.fields)).toBe('John Smith');
   });
 
   it('memoizes repeated calculated-field reads only inside one evaluation cycle', () => {
     let tick = 0;
     const now = () => new Date(++tick);
     const ctx = {fields: {b: calculatedContextField('GetTime()')}};
-    expect(evaluateExpression('b + b', ctx, ctx.fields, {now})).toBe(2);
+    expect(evaluateTest('b + b', ctx, ctx.fields, {now})).toBe(2);
     expect(tick).toBe(1);
-    expect(evaluateExpression('b + b', ctx, ctx.fields, {now})).toBe(4);
+    expect(evaluateTest('b + b', ctx, ctx.fields, {now})).toBe(4);
     expect(tick).toBe(2);
   });
 
@@ -152,22 +234,64 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(evaluateExpression('a', ctx, ctx.fields)).toBe(10);
-    expect(evaluateExpression('b', ctx, ctx.fields)).toBe(11);
+    expect(evaluateTest('a', ctx, ctx.fields)).toBe(10);
+    expect(evaluateTest('b', ctx, ctx.fields)).toBe(11);
   });
 
-  it('reports parser and evaluator diagnostics through the optional sink', () => {
-    const diagnostics: string[] = [];
+  it('reports timestamped parser/evaluator diagnostics with caller and actual context path', () => {
+    const diagnostics: any[] = [];
     expect(() => compileExpression('2 + )', {
-      diagnosticSink: (diagnostic) => diagnostics.push(`${diagnostic.phase}:${diagnostic.message}`),
+      diagnosticSink: (diagnostic) => diagnostics.push(diagnostic),
     })).toThrow(ExpressionParseError);
-    expect(diagnostics[0]).toMatch(/^parse:/);
+    expect(diagnostics[0]?.phase).toBe('parse');
+    expect(Number.isNaN(Date.parse(diagnostics[0]?.timestamp))).toBe(false);
 
     const ctx = testCtx();
-    expect(() => evaluateExpression('missing + 1', ctx, ctx.page.fields, {
-      diagnosticSink: (diagnostic) => diagnostics.push(`${diagnostic.phase}:${diagnostic.message}`),
-    })).toThrow(ExpressionEvaluationError);
-    expect(diagnostics.some((item) => item.startsWith('evaluate:'))).toBe(true);
+    const caller = {
+      source: 'renderer' as const,
+      sourcePath: 'metadata-driven-entry',
+      targetPath: 'ctx.page.fields.fullName',
+      purpose: 'diagnostic provenance test',
+    };
+    expect(() => evaluateExpression(
+      'missing + 1',
+      ctx,
+      ctx.page.fields,
+      caller,
+      {diagnosticSink: (diagnostic) => diagnostics.push(diagnostic)},
+    )).toThrow(ExpressionEvaluationError);
+
+    const diagnostic = diagnostics.find((item) => item.phase === 'evaluate');
+    expect(diagnostic?.caller).toEqual(caller);
+    expect(diagnostic?.currentContextPath).toBe('ctx.page.fields');
+    expect(diagnostic?.targetPath).toBe('ctx.page.fields.fullName');
+    expect(diagnostic?.correlationId).toMatch(/^eval-/);
+    expect(Number.isNaN(Date.parse(diagnostic?.timestamp))).toBe(false);
+  });
+
+  it('preserves nested calculated-field provenance in evaluation diagnostics', () => {
+    const diagnostics: any[] = [];
+    const ctx = {
+      fields: {
+        a: calculatedContextField('b + 1'),
+        b: calculatedContextField('missing + 1'),
+      },
+    };
+
+    expect(() => evaluateExpression(
+      'a',
+      ctx,
+      ctx.fields,
+      {
+        source: 'renderer',
+        targetPath: 'ctx.fields.a',
+        purpose: 'nested provenance test',
+      },
+      {diagnosticSink: (diagnostic) => diagnostics.push(diagnostic)},
+    )).toThrow(ExpressionEvaluationError);
+
+    const diagnostic = diagnostics.find((item) => item.phase === 'evaluate');
+    expect(diagnostic?.evaluationChain).toEqual(['ctx.fields.a', 'ctx.fields.b']);
   });
 
   it('evaluates a related-row ternary from the supplied current context node', () => {
@@ -176,8 +300,8 @@ describe('ManatOS expression parser/evaluator', () => {
     const root = { emailVerified: false, page: null };
     const row = { emailVerified: true };
     expect(
-      evaluateExpression(
-        "emailVerified == true ? 'Provider email verified' : 'Provider email not verified'",
+      evaluateTest(
+        "emailVerified ? 'Provider email verified' : 'Provider email not verified'",
         root,
         row,
       ),

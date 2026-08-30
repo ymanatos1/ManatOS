@@ -1359,3 +1359,213 @@ body.anonymous .workspace {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ==========================================================================
+ * Metadata-driven informational/read-only tabs
+ * ========================================================================== */
+
+/*
+ * A metadata-driven tab with no changeable fields is informational rather than
+ * an editing surface, regardless of whether the record is being created, edited,
+ * or viewed. Give the whole pane a subtle grey wash so that distinction
+ * is visible immediately. This is deliberately lighter than Bootstrap's
+ * read-only/disabled control background (#e9ecef), preserving the stronger
+ * field-level cue inside otherwise editable tabs.
+ */
+/*
+ * Every active metadata-driven tab is a visually bounded content surface.
+ * This keeps editable and informational tabs structurally consistent, while
+ * read-only tabs still use their lighter grey background inside the perimeter.
+ */
+.metadata-driven-record-form .entity-tab-content > .tab-pane.active {
+  margin-top: 0.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.55rem;
+}
+
+.metadata-driven-record-form .entity-readonly-tab {
+  background: var(--manatos-readonly-tab-bg);
+}
+
+/* Read-only/calculated controls use the stronger theme-owned grey cue. */
+.metadata-driven-record-form .form-control[readonly],
+.metadata-driven-record-form .form-control:disabled,
+.metadata-driven-record-form .form-select:disabled {
+  background-color: var(--manatos-readonly-field-bg);
+}
+
+
+/* -------------------------------------------------------------------------
+   Development-only calculated-expression inventory.
+   The entire Debugging tab is informational, so it inherits the generic
+   entity-readonly-tab background. Keep the grid compact and readable while
+   allowing long formulas to wrap rather than forcing horizontal page scroll.
+   ---------------------------------------------------------------------- */
+.debugging-calculations-wrap {
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+
+.debugging-calculations-table {
+  background: transparent;
+}
+
+.debugging-calculations-table th,
+.debugging-calculations-table td {
+  padding: 0.55rem 0.7rem;
+  vertical-align: top;
+}
+
+.debugging-calculations-table thead th {
+  background: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+}
+
+.debugging-calculation-category th {
+  background: rgba(0, 0, 0, 0.035);
+  font-size: 0.78rem;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.debugging-calculations-table code {
+  color: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* IDE-like syntax colours for formula text. These values live in theme.css. */
+.debugging-formula .debug-expression-field {
+  color: var(--manatos-debug-field);
+  font-weight: 700;
+}
+
+.debugging-formula .debug-expression-system {
+  color: var(--manatos-debug-system);
+  font-weight: 600;
+}
+
+.debugging-formula .debug-expression-path { color: var(--manatos-debug-path); }
+.debugging-formula .debug-expression-string { color: var(--manatos-debug-string); }
+.debugging-formula .debug-expression-number { color: var(--manatos-debug-number); }
+.debugging-formula .debug-expression-literal { color: var(--manatos-debug-literal); font-weight: 600; }
+.debugging-formula .debug-expression-identifier { color: var(--manatos-debug-identifier); }
+.debugging-formula .debug-expression-operator { color: var(--manatos-debug-operator); }
+.debugging-formula .debug-expression-punctuation { color: var(--manatos-debug-punctuation); }
+
+.debugging-current-value {
+  min-width: 10rem;
+  max-width: 22rem;
+  overflow-wrap: anywhere;
+}
+
+.debugging-calculation-subcategory th {
+  background: rgba(0, 0, 0, 0.018);
+  color: var(--manatos-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding-left: 1.05rem;
+  text-transform: uppercase;
+}
+
+
+/* Development-only calculated-expression hierarchy. */
+.debugging-calculation-provenance th,
+.debugging-calculation-detail-category th {
+  background: rgba(108, 117, 125, 0.09);
+  font-size: 0.72rem;
+  letter-spacing: 0.035em;
+  padding-left: 1.25rem;
+}
+
+.debugging-calculation-prefix th,
+.debugging-calculation-path-category th {
+  background: rgba(108, 117, 125, 0.055);
+  font-weight: 600;
+  padding-left: calc(1.25rem + (var(--debug-prefix-depth, 0) * 0.9rem));
+}
+
+.debugging-calculation-prefix[data-debug-prefix-level="1"] th,
+.debugging-calculation-path-category[data-debug-path-depth="1"] th { padding-left: 2.15rem; }
+.debugging-calculation-prefix[data-debug-prefix-level="2"] th,
+.debugging-calculation-path-category[data-debug-path-depth="2"] th { padding-left: 3.05rem; }
+.debugging-calculation-prefix[data-debug-prefix-level="3"] th,
+.debugging-calculation-path-category[data-debug-path-depth="3"] th { padding-left: 3.95rem; }
+.debugging-element-name {
+  padding-left: calc(0.5rem + (var(--debug-depth, 0) * 0.9rem)) !important;
+  color: var(--bs-body-color) !important;
+  font-weight: 400;
+}
+
+.debugging-element-prefix {
+  font-weight: 400;
+}
+
+.debugging-element-leaf {
+  color: inherit;
+  font-weight: 700;
+}
+
+
+/* -------------------------------------------------------------------------
+   Development CTX diagnostics panel. One floating window collects all current
+   diagnostics; duplicate events are counted rather than stacked as toasts.
+   ---------------------------------------------------------------------- */
+.ctx-diagnostic-panel {
+  position: fixed;
+  top: 5.25rem;
+  right: 1rem;
+  z-index: 2000;
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: min(70vh, 48rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.7rem;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+.ctx-diagnostic-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+}
+
+.ctx-diagnostic-panel-body {
+  overflow: auto;
+  padding: 0.65rem;
+}
+
+.ctx-diagnostic-item {
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  background: var(--bs-body-bg);
+}
+
+.ctx-diagnostic-item + .ctx-diagnostic-item {
+  margin-top: 0.55rem;
+}
+
+.ctx-diagnostic-item-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.ctx-diagnostic-item pre {
+  max-height: 18rem;
+  overflow: auto;
+}

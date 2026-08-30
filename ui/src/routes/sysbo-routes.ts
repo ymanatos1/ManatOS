@@ -454,7 +454,7 @@ export function createSysBORoutes() {
 
         const definition = getSysBODefinition(key);
         const currentUser = res.locals.currentUser as SysBOUser | null;
-        const permissions = uiPermissions(currentUser, definition);
+        const permissions = uiPermissions(currentUser, definition, id);
         requirePermission(permissions.view, 'Read access is required for this entity.');
 
         const uiImplementation = await sysBOUiImplementation(req, currentUser, definition);
@@ -804,7 +804,8 @@ export function createSysBORoutes() {
       const apiPath = apiPathFor(definition.key);
 
       const id = String(req.body.id ?? '');
-      const permissions = uiPermissions(res.locals.currentUser as SysBOUser | null, definition);
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition, id || undefined);
 
       try {
         requirePermission(
@@ -953,6 +954,17 @@ export function createSysBORoutes() {
           return;
         }
 
+        /*
+         * Authorization/navigation failures are HTTP failures, not editable
+         * form validation failures. Preserve their status rather than wrapping
+         * them as UNEXPECTED_ERROR and attempting to re-render the record form.
+         */
+        if (createError.isHttpError(error)) {
+          next(error);
+
+          return;
+        }
+
         const appError =
           error instanceof AppError
             ? error
@@ -1023,9 +1035,14 @@ export function createSysBORoutes() {
         const definition = getSysBODefinition(key);
 
         const currentUser = res.locals.currentUser as SysBOUser | null;
-        const permissions = uiPermissions(currentUser, definition);
-        requirePermission(permissions.delete, 'Delete access is required for this entity.');
+        const permissions = uiPermissions(currentUser, definition, id);
 
+        /*
+         * Own-account deletion is a distinct security invariant, not merely a
+         * missing role permission. Report the stable FORBIDDEN application
+         * error before the generic permission gate so every route explains the
+         * actual reason consistently.
+         */
         if (definition.key === 'sys-users' && currentUser && id === currentUser.id) {
           throw new AppError(
             'FORBIDDEN',
@@ -1034,6 +1051,8 @@ export function createSysBORoutes() {
             false,
           );
         }
+
+        requirePermission(permissions.delete, 'Delete access is required for this entity.');
 
         const apiPath = apiPathFor(definition.key);
 
@@ -1125,10 +1144,34 @@ async function editPageSupplementalData(
 
   const itemId = typeof item.id === 'string' ? item.id : '';
 
+  const maySeeOwnAuthentication = Boolean(currentUser && itemId && currentUser.id === itemId);
   const authenticationIdentities =
-    definition.key === 'sys-users' && !isNew && showAuthenticationTab && itemId
+    definition.key === 'sys-users' && !isNew && itemId && (showAuthenticationTab || maySeeOwnAuthentication)
       ? await externalIdentitiesForUser(itemId)
       : [];
+
+
+  const deleteImpact = !isNew && itemId && uiPermissions(currentUser, definition, itemId).delete
+    ? (
+        await apiClient.get<{
+          targetObjectKey: string;
+          targetId: string;
+          canExecute: boolean;
+          requiresConfirmation: boolean;
+          impacts: Array<{
+            objectKey: string;
+            objectName: string;
+            relationship: string;
+            count: number;
+            action: 'restrict' | 'cascade' | 'set-null' | 'unlink';
+            confirmation: 'silent' | 'confirm' | 'inherit';
+          }>;
+        }>(
+          `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(itemId)}/$delete-impact`,
+          apiSessionOptions(req),
+        )
+      ).data
+    : null;
 
   let externalAuthProviderDefinitions = definition.key === 'sys-ext-auth-providers'
     ? (await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>('/api/v1/SysExtAuthProviders/definitions', apiSessionOptions(req))).data.providers
@@ -1163,6 +1206,7 @@ async function editPageSupplementalData(
         definition.uiMetadata.editViewModel.deleteEntityLabel ??
         definition.uiMetadata.editViewModel.editTitle.replace(/^Edit\s+/i, ''),
     },
+    deleteImpact,
 
     // Provider defaults/help are API-owned reference metadata. Admin pages
     // request them through the authenticated API so create, edit/view and
@@ -1270,16 +1314,40 @@ interface UIEntityPermissions {
   delete: boolean;
 }
 
-function uiPermissions(user: SysBOUser | null, definition: SysBODefinition): UIEntityPermissions {
+function uiPermissions(
+  user: SysBOUser | null,
+  definition: SysBODefinition,
+  recordId?: string,
+): UIEntityPermissions {
   const role = user?.role;
   const allowed = (roles: SysBOUserRole[]) => Boolean(role && roles.includes(role));
 
-  return {
+  const base: UIEntityPermissions = {
     view: allowed(definition.permissions.view),
     create: allowed(definition.permissions.create),
     edit: allowed(definition.permissions.edit),
     delete: allowed(definition.permissions.delete),
   };
+
+  /*
+   * SysBOUser has one record-scoped invariant that cannot be represented by
+   * role arrays alone: every authenticated user owns their own user record.
+   *
+   * The API AuthorizationService already permits that record to be updated
+   * while separately forbidding non-Admin role assignment and all own-user
+   * deletion. Mirror those semantics in the UI so Guest/User/Superuser do not
+   * get an artificial read-only form for themselves.
+   */
+  if (user && definition.key === 'sys-users' && recordId === user.id) {
+    return {
+      ...base,
+      view: true,
+      edit: true,
+      delete: false,
+    };
+  }
+
+  return base;
 }
 
 function requirePermission(allowed: boolean, message: string): void {
@@ -1725,7 +1793,10 @@ async function renderMetadataDrivenRecordPlaceholder(
   record: { isNew: boolean; recordId?: string },
 ): Promise<void> {
   const currentUser = res.locals.currentUser as SysBOUser | null;
-  const recordMode = record.isNew ? 'create' : permissions.edit ? 'edit' : 'view';
+  const effectivePermissions = record.isNew
+    ? permissions
+    : uiPermissions(currentUser, definition, record.recordId);
+  const recordMode = record.isNew ? 'create' : effectivePermissions.edit ? 'edit' : 'view';
   const [metadata, metadataUI] = await Promise.all([
     canonicalSysBOMetadata(req, definition),
     canonicalSysBOUIMetadata(req, definition),
@@ -1764,7 +1835,7 @@ async function renderMetadataDrivenRecordPlaceholder(
       formValues: item,
       metadata,
       metadataUI,
-      permissions,
+      permissions: effectivePermissions,
       referenceData: supplemental.referenceData,
       externalIdentities: supplemental.relatedData.externalIdentities,
       activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
@@ -1782,7 +1853,7 @@ async function renderMetadataDrivenRecordPlaceholder(
     metadata,
     metadataUI,
     primaryField,
-    permissions,
+    permissions: effectivePermissions,
     recordMode,
     recordId: record.recordId ?? null,
     item,

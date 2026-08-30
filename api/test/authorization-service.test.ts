@@ -1,17 +1,26 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { SysBOUserRole, type SysBOEntity } from '@manatos/shared';
+import {
+  MCRM_PLATFORM_ID,
+  SysBOLicenseStatus,
+  SysBOPrincipalType,
+  SysBOUserPrincipalRelationship,
+  SysBOUserRole,
+  type SysBOEntity,
+} from '@manatos/shared';
 
 import { AuthorizationService, type AuthorizationSubject } from '../src/auth/authorization-service.js';
+
+import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 
 import { createTestApi } from './test-helpers.js';
 
 describe('AuthorizationService', () => {
   let authorization: AuthorizationService;
+  let context: Awaited<ReturnType<typeof createTestApi>>;
 
   beforeEach(async () => {
-    const context = await createTestApi();
-
+    context = await createTestApi();
     authorization = new AuthorizationService(context.store);
   });
 
@@ -30,17 +39,69 @@ describe('AuthorizationService', () => {
 
   it.each([
     SysBOUserRole.Superuser,
-    SysBOUserRole.Superuser,
     SysBOUserRole.User,
     SysBOUserRole.Guest,
-  ])('allows an authenticated %s to read SysBOs', async (role) => {
+  ])('blocks an unlicensed non-Admin %s from mCRM SysBOApplications', async (role) => {
     await expect(
       authorization.can('read', subject(role), 'sys-applications'),
-    ).resolves.toBe(true);
+    ).resolves.toBe(false);
+  });
+
+  it('uses linked-principal licenses for mCRM collection and application read access', async () => {
+    const user = await context.services.users.createUser(
+      {
+        name: 'LicensedUser',
+        email: 'licensed@example.test',
+        role: SysBOUserRole.User,
+        emailVerified: true,
+        enabled: true,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    const principal = await context.services.principals.create(
+      {
+        name: 'Licensed Principal',
+        principalType: SysBOPrincipalType.Company,
+        parentId: null,
+        enabled: true,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    await context.services.userPrincipals.link(
+      user.id,
+      principal.id,
+      SysBOUserPrincipalRelationship.Member,
+      true,
+      SYSTEM_AUDIT_ACTOR,
+    );
+    const allowedApp = await context.services.applications.create(
+      { name: 'Allowed App', appName: 'allowed-app', fullName: 'Allowed Application', enabled: true },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    const otherApp = await context.services.applications.create(
+      { name: 'Other App', appName: 'other-app', fullName: 'Other Application', enabled: true },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    await context.services.licenses.create(
+      {
+        name: 'Restricted mCRM license',
+        principalId: principal.id,
+        platformId: MCRM_PLATFORM_ID,
+        applicationId: allowedApp.id,
+        status: SysBOLicenseStatus.Active,
+        quantity: 1,
+        enabled: true,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+
+    const licensed = subject(SysBOUserRole.User, user.id, user.name);
+    await expect(authorization.can('read', licensed, 'sys-applications')).resolves.toBe(true);
+    await expect(authorization.can('read', licensed, 'sys-applications', allowedApp)).resolves.toBe(true);
+    await expect(authorization.can('read', licensed, 'sys-applications', otherApp)).resolves.toBe(false);
   });
 
   it.each([
-    SysBOUserRole.Superuser,
     SysBOUserRole.Superuser,
     SysBOUserRole.User,
     SysBOUserRole.Guest,
@@ -48,6 +109,25 @@ describe('AuthorizationService', () => {
     await expect(
       authorization.can('create', subject(role), 'sys-applications'),
     ).resolves.toBe(false);
+  });
+
+
+  it('scopes non-Admin SysBOUser reads to the authenticated user record', async () => {
+    const guest = subject(SysBOUserRole.Guest, 'guest-id', 'Guest');
+
+    await expect(authorization.can('read', guest, 'sys-users')).resolves.toBe(true);
+    await expect(authorization.can('read', guest, 'sys-users', entity('guest-id'))).resolves.toBe(true);
+    await expect(authorization.can('read', guest, 'sys-users', entity('other-id'))).resolves.toBe(false);
+    await expect(
+      authorization.filterListItems(guest, 'sys-users', [entity('guest-id'), entity('other-id')]),
+    ).resolves.toEqual([entity('guest-id')]);
+  });
+
+  it('does not constrain an Admin SysBOUser list', async () => {
+    const items = [entity('admin-id'), entity('other-id')];
+    await expect(
+      authorization.filterListItems(subject(SysBOUserRole.Admin, 'admin-id'), 'sys-users', items),
+    ).resolves.toEqual(items);
   });
 
   it('allows an Admin to delete another SysBOUser', async () => {

@@ -5,7 +5,13 @@
   collecting domain input. Required bo-edit state is passed explicitly by the caller; do not
   rely on undeclared ambient EJS variables, which makes partial dependencies hard to test.
 %>
-<% if (!isNew && permissions.delete && !isOwnSysUser) { %>
+<%
+  // deleteImpact is a non-mutating server preflight. `authorized:false` means
+  // this particular row is not deletable by the current caller even if their
+  // role normally has entity-level delete permission.
+  const deleteAuthorized = typeof deleteImpact === 'undefined' || deleteImpact?.authorized !== false;
+%>
+<% if (!isNew && permissions.delete && !isOwnSysUser && deleteAuthorized) { %>
   <div
     class="modal fade"
     id="deleteEntryModal"
@@ -32,20 +38,139 @@
           modalSubtitle: null
         }) %>
 
-        <div class="modal-body">
-          Are you sure you want to permanently delete
-          <strong><%= deletePresentation.displayValue %></strong>?
+        <%
+          const effectiveDeleteImpact = typeof deleteImpact !== 'undefined' ? deleteImpact : null;
+          const impactAvailable = Boolean(effectiveDeleteImpact && Array.isArray(effectiveDeleteImpact.impacts));
 
-          <p class="text-danger mt-2 mb-0">
-            This action cannot be undone.
+          /*
+           * A delete confirmation is deliberately more informative than the
+           * relationship confirmation policy itself. Even a relationship marked
+           * "silent" is shown here because the Admin has already opened a
+           * destructive confirmation and should see every known consequence.
+           */
+          const visibleImpacts = impactAvailable ? effectiveDeleteImpact.impacts : [];
+          const deleteBlocked = !impactAvailable || effectiveDeleteImpact?.canExecute === false;
+
+          const impactPresentation = (impact) => {
+            if (impact.action === 'cascade') {
+              return {
+                icon: 'bi-trash3',
+                tone: 'text-danger',
+                title: 'will also be permanently deleted',
+                detail: 'These dependent records are removed together with this entry.',
+              };
+            }
+
+            if (impact.action === 'unlink') {
+              return {
+                icon: 'bi-link-45deg',
+                tone: 'text-warning-emphasis',
+                title: 'relationship link(s) will be removed',
+                detail: 'The linked relationship records are removed; the referenced business records remain.',
+              };
+            }
+
+            if (impact.action === 'set-null') {
+              return {
+                icon: 'bi-eraser',
+                tone: 'text-info-emphasis',
+                title: 'reference(s) will be cleared',
+                detail: 'The related records remain, but their reference to this entry is cleared.',
+              };
+            }
+
+            return {
+              icon: 'bi-ban',
+              tone: 'text-danger',
+              title: 'prevent this deletion',
+              detail: 'These relationships must be resolved before this entry can be deleted.',
+            };
+          };
+        %>
+        <div class="modal-body">
+          <p class="mb-0">
+            Are you sure you want to permanently delete
+            <strong><%= deletePresentation.displayValue %></strong>?
           </p>
+
+          <div
+            class="border rounded-3 p-3 mt-3 <%= deleteBlocked ? 'border-danger-subtle bg-danger-subtle' : 'bg-body-tertiary' %>"
+            data-delete-impact-summary
+          >
+            <div class="d-flex align-items-center gap-2 fw-semibold mb-2">
+              <i class="bi bi-diagram-3" aria-hidden="true"></i>
+              <span>Related-record impact</span>
+            </div>
+
+            <% if (!impactAvailable) { %>
+              <div class="d-flex gap-2 align-items-start text-warning-emphasis">
+                <i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i>
+                <div>
+                  <div class="fw-semibold">Impact information is unavailable.</div>
+                  <div class="small">
+                    ManatOS could not confirm the relationship consequences before showing this dialog.
+                    Cancel and retry before deleting if you need a verified impact summary.
+                  </div>
+                </div>
+              </div>
+            <% } else if (!visibleImpacts.length) { %>
+              <div class="d-flex gap-2 align-items-start text-success">
+                <i class="bi bi-check-circle mt-1" aria-hidden="true"></i>
+                <div>
+                  <div class="fw-semibold">No related records will be affected.</div>
+                  <div class="small text-body-secondary">
+                    ManatOS checked the current relationship metadata and found no records that would
+                    be deleted, unlinked, changed, or block this deletion.
+                  </div>
+                </div>
+              </div>
+            <% } else { %>
+              <div class="vstack gap-2">
+                <% for (const impact of visibleImpacts) {
+                  const presentation = impactPresentation(impact);
+                %>
+                  <div class="d-flex gap-2 align-items-start" data-delete-impact-action="<%= impact.action %>">
+                    <i class="bi <%= presentation.icon %> <%= presentation.tone %> mt-1" aria-hidden="true"></i>
+                    <div>
+                      <div>
+                        <strong><%= impact.count %></strong>
+                        <strong><%= impact.objectName %></strong>
+                        — <span class="<%= presentation.tone %>"><%= presentation.title %></span>.
+                      </div>
+                      <div class="small text-body-secondary"><%= presentation.detail %></div>
+                      <div class="small text-body-tertiary">
+                        Relationship: <code><%= impact.relationship %></code>
+                      </div>
+                    </div>
+                  </div>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+
+          <% if (deleteBlocked) { %>
+            <div class="alert alert-danger mt-3 mb-0" role="alert">
+              <div class="fw-semibold">
+                <i class="bi bi-ban me-1" aria-hidden="true"></i>
+                Deletion cannot continue
+              </div>
+              <div class="small mt-1">
+                One or more related records restrict deletion. Resolve those relationships first.
+              </div>
+            </div>
+          <% } else { %>
+            <p class="text-danger fw-semibold mt-3 mb-0">
+              <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+              This action cannot be undone.
+            </p>
+          <% } %>
         </div>
 
         <%- include('../partials/popup-footer', {
           leftActions: [],
           rightActions: [
             { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
-            { label: 'Delete', variant: 'btn-danger', type: 'submit' }
+            { label: 'Delete', variant: 'btn-danger', type: 'submit', disabled: deleteBlocked }
           ]
         }) %>
       </form>

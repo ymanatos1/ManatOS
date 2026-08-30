@@ -170,7 +170,7 @@ describe('API integration - server and generic SysBO behavior', () => {
     });
 
 
-    it('allows a Guest to read SysBOs but blocks generic creation', async () => {
+    it('blocks a Guest from mCRM SysApplications, including generic creation', async () => {
       const registration = await request(
         context.app,
       )
@@ -220,8 +220,14 @@ describe('API integration - server and generic SysBO behavior', () => {
           bearer(guestToken),
         );
 
-      expect(read.status).toBe(200);
-      expectQuerySuccess(read.body);
+      expect(read.status).toBe(403);
+      expectFailure(read.body);
+
+      const metadata = await request(context.app)
+        .get('/api/v1/SysApplications/$metadata')
+        .set('Authorization', bearer(guestToken));
+      expect(metadata.status).toBe(403);
+      expectFailure(metadata.body);
 
       const create = await request(
         context.app,

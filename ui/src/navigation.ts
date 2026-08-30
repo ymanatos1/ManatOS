@@ -2,10 +2,10 @@ import {
   MANATOS_COMPANY,
   effectiveEntityKeys,
   resolvePlatform,
+  SysBOUserRole,
   type CompanyInfo,
   type NavigationContribution,
   type SysPlatform,
-  type SysBOUserRole,
 } from '@manatos/shared';
 
 export interface AppNavMenuItem {
@@ -19,6 +19,8 @@ export interface AppNavMenuItem {
   roles?: SysBOUserRole[];
   action?: 'open-preferences';
   dockBottom?: boolean;
+  /** Platform-owned function that requires a current license entitlement. */
+  requiresPlatformEntitlement?: boolean;
 }
 
 const baseHorizontalNavMenu: AppNavMenuItem[] = [
@@ -40,7 +42,6 @@ const baseHorizontalNavMenu: AppNavMenuItem[] = [
       },
     ],
   },
-  { id: 'app-playground', text: 'Apps Playground', icon: 'bi-play-circle-fill', url: '/app-playground' },
 ];
 
 /**
@@ -72,10 +73,28 @@ export function horizontalNavigation(
         })),
       };
 
+  /*
+   * Horizontal platform shortcuts reuse the SAME platform navigation
+   * contribution as the left navigation. This prevents two independent copies
+   * of authentication/role/capability rules from drifting apart. Apps
+   * Playground is currently the platform shortcut exposed horizontally; if its
+   * vertical contribution is unavailable for the selected platform capability,
+   * it is unavailable here too. Role/auth filtering is applied later by the
+   * shared navigationFor() filter to both menu surfaces.
+   */
+  const entityKeys = effectiveEntityKeys(company, platform);
+  const playgroundContribution = platform.navigation.find(
+    (item) =>
+      item.id === 'app-playground' &&
+      !item.parentId &&
+      (item.requiresEntityKeys ?? []).every((key) => entityKeys.has(key)),
+  );
+
   return [
     ...baseHorizontalNavMenu.slice(0, 2),
     platformItem,
     ...baseHorizontalNavMenu.slice(2),
+    ...(playgroundContribution ? [toMenuItem(playgroundContribution)] : []),
   ];
 }
 
@@ -129,7 +148,13 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
     ...(item.roles ? { roles: item.roles } : {}),
     ...(item.action === 'open-preferences' ? { action: 'open-preferences' as const } : {}),
     ...(item.dockBottom ? { dockBottom: true } : {}),
+    ...(item.requiresPlatformEntitlement ? { requiresPlatformEntitlement: true } : {}),
   };
+}
+
+export interface NavigationAccessContext {
+  /** Current user is licensed for the selected platform. Admin is implicit. */
+  platformEntitled?: boolean;
 }
 
 export function navigationFor(
@@ -137,11 +162,15 @@ export function navigationFor(
   auth: boolean,
   company: CompanyInfo = MANATOS_COMPANY,
   platform: SysPlatform = resolvePlatform(company),
+  access: NavigationAccessContext = {},
 ) {
+  const platformEntitled = role === SysBOUserRole.Admin || access.platformEntitled === true;
+
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {
       if (item.requiresAuthentication && !auth) return [];
       if (item.roles && (!role || !item.roles.includes(role))) return [];
+      if (item.requiresPlatformEntitlement && !platformEntitled) return [];
 
       const childItems = item.children ? filter(item.children) : undefined;
       return [{ ...item, ...(childItems ? { children: childItems } : {}) }];

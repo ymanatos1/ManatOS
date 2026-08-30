@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MCRM_PLATFORM_ID,
+  licenseGrantsApplicationAccess,
+  licenseGrantsPlatformAccess,
   SysBOLicenseStatus,
   SysBOPrincipalType,
+  type SysBOLicense,
 } from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
@@ -53,4 +56,29 @@ describe('platform-aware licenses', () => {
     expect(first.applicationId).toBeUndefined();
     expect(second.applicationId).toBeUndefined();
   });
+  it('treats enabled active date-valid licenses as the source of platform/application entitlement', () => {
+    const base: SysBOLicense = {
+      id: 'license-1',
+      name: 'Entitlement',
+      principalId: 'principal-1',
+      platformId: MCRM_PLATFORM_ID,
+      status: SysBOLicenseStatus.Active,
+      quantity: 1,
+      enabled: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      createdBy: 'System',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      updatedBy: 'System',
+    };
+    const now = new Date('2026-08-30T12:00:00.000Z');
+
+    expect(licenseGrantsPlatformAccess(base, MCRM_PLATFORM_ID, now)).toBe(true);
+    expect(licenseGrantsApplicationAccess(base, MCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
+    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, MCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
+    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, MCRM_PLATFORM_ID, 'app-2', now)).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29T23:59:59.000Z' }, MCRM_PLATFORM_ID, now)).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, quantity: 0 }, MCRM_PLATFORM_ID, now)).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, enabled: false }, MCRM_PLATFORM_ID, now)).toBe(false);
+  });
+
 });

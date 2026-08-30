@@ -1,6 +1,8 @@
 import {
   ForbiddenAppError,
   MCRM_PLATFORM_ID,
+  licenseGrantsApplicationAccess,
+  licenseGrantsPlatformAccess,
   SysBOLicenseStatus,
   SysBOUserRole,
   type SysBOApplication,
@@ -76,7 +78,8 @@ export class DefaultSysBOApplicationPermissionPolicy implements SysBOApplication
  * Central authorization service for SysBO access.
  *
  * Read:
- *   Every authenticated Guest/User/Superuser/Admin may read every current SysBO.
+ *   Company-owned entities follow their record rules; mCRM applications are
+ *   entitlement-scoped for every non-Admin user.
  *
  * Create:
  *   Generic creation is Admin-only.
@@ -137,8 +140,40 @@ export class AuthorizationService {
     }
 
     /**
-     * Every authenticated Guest/User/Superuser can read all current SysBOs.
+     * SysBOUser reads are record-scoped for every non-Admin role.
+     *
+     * A collection-level read has no record yet, so it is allowed to reach
+     * the list pipeline. The current in-memory adapter then calls
+     * filterListItems() before client filtering/sorting/paging. A direct
+     * record read succeeds only for the authenticated user's own SysBOUser.
      */
+    if (action === 'read' && sysBOKey === 'sys-users') {
+      return record === undefined || record.id === subject.userId;
+    }
+
+    /**
+     * mCRM application visibility is license scoped for every non-Admin user.
+     * A collection read is allowed only when the user owns at least one current
+     * mCRM entitlement through a linked principal. Individual application reads
+     * additionally honor an applicationId restriction when the license has one.
+     */
+    if (action === 'read' && sysBOKey === 'sys-applications') {
+      return record === undefined
+        ? this.userHasPlatformAccess(subject.userId, MCRM_PLATFORM_ID)
+        : this.userMayReadApplication(subject.userId, record as SysBOApplication);
+    }
+
+    /**
+     * Non-Admin users may inspect only licenses belonging to principals linked
+     * to them. The collection itself remains queryable so an unlicensed user
+     * receives an empty own-license list, which the UI uses to derive navigation
+     * entitlement without exposing somebody else's licenses.
+     */
+    if (action === 'read' && sysBOKey === 'sys-licenses') {
+      return record === undefined || this.userRelatesToLicense(subject.userId, record as SysBOLicense);
+    }
+
+    /** Other Company-owned SysBO reads retain the current baseline rule. */
     if (action === 'read') {
       return true;
     }
@@ -190,6 +225,36 @@ export class AuthorizationService {
   }
 
   /**
+   * Filter materialized rows through the same record-level read permission
+   * used by direct GET /:id authorization.
+   *
+   * This is intentionally an in-memory implementation detail for now: it lets
+   * the current Map-backed repository remove unauthorized rows before client
+   * filters and pagination. A future RDBMS adapter should translate equivalent
+   * role/record policy into its SQL WHERE predicate instead of materializing
+   * rows and calling this method.
+   */
+  async filterListItems<T extends SysBOEntity>(
+    subject: AuthorizationSubject,
+    sysBOKey: string,
+    items: readonly T[],
+  ): Promise<T[]> {
+    if (subject.role === SysBOUserRole.Admin) {
+      return [...items];
+    }
+
+    const visible: T[] = [];
+
+    for (const item of items) {
+      if (await this.can('read', subject, sysBOKey, item)) {
+        visible.push(item);
+      }
+    }
+
+    return visible;
+  }
+
+  /**
    * CreatedBy / UpdatedBy are part of the relationship model requested
    * for Guest/User modification rights.
    */
@@ -218,6 +283,21 @@ export class AuthorizationService {
    */
   private userRelatesToLicense(userId: string, license: SysBOLicense): boolean {
     return this.userRelatesToPrincipal(userId, license.principalId);
+  }
+
+  /** True when the user has any currently effective entitlement to a platform. */
+  private userHasPlatformAccess(userId: string, platformId: string): boolean {
+    for (const license of this.store.sysLicenses.values()) {
+      if (!licenseGrantsPlatformAccess(license, platformId)) continue;
+      if (this.userRelatesToPrincipal(userId, license.principalId)) return true;
+    }
+
+    return false;
+  }
+
+  /** True when a current license grants this user read access to one application. */
+  private userMayReadApplication(userId: string, application: SysBOApplication): boolean {
+    return this.findUserApplicationLicenses(userId, application.id).length > 0;
   }
 
   /**
@@ -254,14 +334,10 @@ export class AuthorizationService {
     const result: SysBOLicense[] = [];
 
     for (const license of this.store.sysLicenses.values()) {
-      if (license.platformId !== MCRM_PLATFORM_ID) {
-        continue;
-      }
-
-      // A platform-wide mCRM license (no applicationId) relates to every
-      // SysBOApplication. A restricted legacy/current license relates only to
-      // its named application.
-      if (license.applicationId && license.applicationId !== applicationId) {
+      // A platform-wide mCRM license (no applicationId) grants every app; an
+      // application-restricted license grants only its named application. The
+      // shared helper also enforces enabled/status/date/quantity semantics.
+      if (!licenseGrantsApplicationAccess(license, MCRM_PLATFORM_ID, applicationId)) {
         continue;
       }
 

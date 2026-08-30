@@ -97,8 +97,34 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       continue;
     }
 
+    if ((char === '&' && source[index + 1] === '&') ||
+        (char === '|' && source[index + 1] === '|')) {
+      tokens.push({kind: 'operator', text: `${char}${char}`, position: index});
+      index += 2;
+      continue;
+    }
+
     if ((char === '=' || char === '!') && source[index + 1] === '=') {
+      const strict = source[index + 2] === '=';
+      tokens.push({kind: 'operator', text: strict ? `${char}==` : `${char}=`, position: index});
+      index += strict ? 3 : 2;
+      continue;
+    }
+
+    if ((char === '<' || char === '>') && source[index + 1] === '=') {
       tokens.push({kind: 'operator', text: `${char}=`, position: index});
+      index += 2;
+      continue;
+    }
+
+    if (char === '<' || char === '>') {
+      tokens.push({kind: 'operator', text: char, position: index});
+      index += 1;
+      continue;
+    }
+
+    if (char === '?' && source[index + 1] === '?') {
+      tokens.push({kind: 'operator', text: '??', position: index});
       index += 2;
       continue;
     }
@@ -109,7 +135,7 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       continue;
     }
 
-    if ('+-*/%'.includes(char)) {
+    if ('+-*/%!'.includes(char)) {
       tokens.push({kind: 'operator', text: char, position: index});
       index += 1;
       continue;

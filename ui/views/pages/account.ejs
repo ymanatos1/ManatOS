@@ -1,3 +1,24 @@
+<%
+  const accountDateWithElapsed = (value) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    const elapsedMs = Date.now() - date.getTime();
+    const future = elapsedMs < 0;
+    let remaining = Math.abs(elapsedMs);
+    const parts = [];
+    for (const [suffix, size] of [['d', 86400000], ['h', 3600000], ['m', 60000], ['s', 1000]]) {
+      const amount = Math.floor(remaining / size);
+      if (amount > 0 || (suffix === 's' && parts.length === 0)) {
+        parts.push(`${amount}${suffix}`);
+        remaining -= amount * size;
+      }
+      if (parts.length === 2) break;
+    }
+    const elapsed = future ? `in ${parts.join(' ')}` : `${parts.join(' ')} ago`;
+    return `${date.toLocaleString()} (${elapsed})`;
+  };
+%>
 <section class="account-page entity-tabbed-page">
   <ul class="nav nav-tabs entity-tabs" role="tablist">
     <li class="nav-item" role="presentation">
@@ -12,7 +33,7 @@
         aria-selected="true"
       >
         <i class="bi bi-info-circle me-1"></i>
-        General info
+        General
       </button>
     </li>
 
@@ -29,6 +50,22 @@
       >
         <i class="bi bi-shield-lock me-1"></i>
         Authentication
+      </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="account-system-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#account-system-pane"
+        type="button"
+        role="tab"
+        aria-controls="account-system-pane"
+        aria-selected="false"
+      >
+        <i class="bi bi-clock-history me-1"></i>
+        System details
       </button>
     </li>
   </ul>
@@ -88,6 +125,31 @@
         authenticationIdentities,
         showPasswordAction: true
       }) %>
+    </div>
+
+    <div
+      class="tab-pane fade"
+      id="account-system-pane"
+      role="tabpanel"
+      aria-labelledby="account-system-tab"
+      tabindex="0"
+    >
+      <div class="account-summary-grid">
+        <div class="account-summary-label">Id</div>
+        <div class="account-summary-value"><%= currentUser.id %></div>
+
+        <div class="account-summary-label">Created</div>
+        <div class="account-summary-value"><%= accountDateWithElapsed(currentUser.createdAt) %></div>
+
+        <div class="account-summary-label">Created by</div>
+        <div class="account-summary-value"><%= currentUser.createdBy || '—' %></div>
+
+        <div class="account-summary-label">Updated</div>
+        <div class="account-summary-value"><%= accountDateWithElapsed(currentUser.updatedAt) %></div>
+
+        <div class="account-summary-label">Updated by</div>
+        <div class="account-summary-value"><%= currentUser.updatedBy || '—' %></div>
+      </div>
     </div>
   </div>
 </section>

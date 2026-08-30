@@ -1,6 +1,14 @@
 /** Scalar literal types supported directly by the ManatOS expression grammar. */
 export type ExpressionLiteralValue = string | number | boolean | null;
 
+/**
+ * Runtime scalar values understood by operators/functions. Date is included
+ * now so CTX values and future date/time functions can participate in typed
+ * comparisons without pretending that Date is a grammar literal.
+ */
+export type ExpressionScalarValue = ExpressionLiteralValue | Date;
+export type ExpressionValue = ExpressionScalarValue;
+
 export type ExpressionPathMember = string | number;
 
 export interface ExpressionLiteralNode {
@@ -18,7 +26,12 @@ export interface ExpressionVariableNode {
   absolute: boolean;
 }
 
-export type ExpressionBinaryOperator = '+' | '-' | '*' | '/' | '%' | '**' | '==' | '!=';
+export type ExpressionBinaryOperator =
+  | '+' | '-' | '*' | '/' | '%' | '**'
+  | '==' | '!=' | '===' | '!=='
+  | '<' | '<=' | '>' | '>='
+  | '&&' | '||'
+  | '??';
 export interface ExpressionBinaryOperationNode {
   kind: 'binary';
   operator: ExpressionBinaryOperator;
@@ -26,7 +39,7 @@ export interface ExpressionBinaryOperationNode {
   right: ExpressionNode;
 }
 
-export type ExpressionUnaryOperator = '+' | '-';
+export type ExpressionUnaryOperator = '+' | '-' | '!';
 export interface ExpressionUnaryOperationNode {
   kind: 'unary';
   operator: ExpressionUnaryOperator;
@@ -99,12 +112,47 @@ export interface ExpressionFunctionDefinition {
 
 export type ExpressionFunctionRegistry = Readonly<Record<string, ExpressionFunctionDefinition>>;
 
+export type ExpressionEvaluationSource =
+  | 'renderer'
+  | 'ctx-debugger'
+  | 'calculated-field'
+  | 'ctx-change'
+  | 'ui-metadata'
+  | 'test'
+  | 'other';
+
+/**
+ * Provenance supplied by the code that requested an expression evaluation.
+ * It deliberately describes the caller, not the expression semantics.
+ */
+export interface ExpressionEvaluationCaller {
+  source: ExpressionEvaluationSource;
+  /** CTX/UI path of the requesting component/value when known. */
+  sourcePath?: string;
+  /** Calculated variable/value whose result is being requested when known. */
+  targetPath?: string;
+  /** Short human-readable reason useful in diagnostics. */
+  purpose?: string;
+  /** Optional HTTP/request correlation id supplied by server-side callers. */
+  requestId?: string;
+}
+
 export interface ExpressionDiagnostic {
   phase: 'parse' | 'evaluate';
+  /** UTC timestamp generated when the diagnostic is emitted. */
+  timestamp: string;
   message: string;
   expression?: string;
   position?: number;
   variablePath?: string;
+
+  /** Evaluation provenance. Present for evaluation-time diagnostics. */
+  caller?: ExpressionEvaluationCaller;
+  correlationId?: string;
+  currentContextPath?: string;
+  targetPath?: string;
+  /** Nested calculated values entered during this top-level evaluation. */
+  evaluationChain?: readonly string[];
 }
 
 export type ExpressionDiagnosticSink = (diagnostic: ExpressionDiagnostic) => void;

@@ -24,10 +24,16 @@ import type {
 
 /**
  * System-business-object permissions are role/action specific.
- * Users may read/view current SysBOs; mutations remain Admin-only.
+ * Every authenticated role may read/view current SysBOs; generic mutations remain Admin-only.
+ * Record-specific policies (for example editing your own SysBOUser) are layered in the route permission resolver.
  */
 const adminRoles = [SysBOUserRole.Admin];
-const readRoles = [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User];
+const readRoles = [
+  SysBOUserRole.Admin,
+  SysBOUserRole.Superuser,
+  SysBOUserRole.User,
+  SysBOUserRole.Guest,
+];
 
 const permissions: SysBOPermissions = {
   view: readRoles,

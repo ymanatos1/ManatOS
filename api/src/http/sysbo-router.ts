@@ -69,7 +69,10 @@ export function createSysBORouter<T extends SysBOEntity>(
   /**
    * Return the hard-coded, UI-neutral BO metadata.
    */
-  router.get('/$metadata', (_req, res) => {
+  router.get('/$metadata', async (req, res) => {
+    const subject = securityContext(req);
+    await authorization.assertCan('read', subject, metadata.key);
+
     sendQuery(res, {
       metadata,
     });
@@ -81,7 +84,10 @@ export function createSysBORouter<T extends SysBOEntity>(
    * This is a read-only presentation contract intended for EJS today and
    * other UI clients later. It deliberately contains no EJS/Bootstrap detail.
    */
-  router.get('/$metadata-ui', (_req, res) => {
+  router.get('/$metadata-ui', async (req, res) => {
+    const subject = securityContext(req);
+    await authorization.assertCan('read', subject, metadata.key);
+
     const metadataUI = getEffectiveSysBOUIMetadata(metadata);
 
     if (!metadataUI) {
@@ -102,7 +108,13 @@ export function createSysBORouter<T extends SysBOEntity>(
         const subject = securityContext(req);
         await authorization.assertCan('read', subject, metadata.key);
 
-        const result = await service.list(parseListQuery(req));
+        const result = await service.list(
+          parseListQuery(req),
+          // Current storage is Map-backed, so authorization can filter the
+          // materialized collection before client filters/paging. Future RDBMS
+          // adapters should translate the same policy into database predicates.
+          (items) => authorization.filterListItems(subject, metadata.key, items),
+        );
 
         const includeMetadataUI = req.query.includeMetadataUI === 'true';
         const includeMetadata = includeMetadataUI || req.query.includeMetadata === 'true';
@@ -258,6 +270,49 @@ export function createSysBORouter<T extends SysBOEntity>(
   router.put('/:id', updateHandler);
 
   router.patch('/:id', updateHandler);
+
+  /**
+   * Preview metadata-driven referential consequences without mutating data.
+   * Interactive UIs can use this before confirmation; the server recalculates
+   * the plan again when DELETE executes so stale client plans are never trusted.
+   */
+  router.get('/:id/$delete-impact', async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const existing = await service.get(id);
+    if (!existing) throw new NotFoundError(metadata.name, id);
+
+    const subject = securityContext(req);
+
+    /*
+     * Delete-impact is a preflight, not the mutation itself. A caller who may
+     * read the record is allowed to discover whether deletion is available,
+     * but relationship details are withheld when row-level delete
+     * authorization fails. This prevents an edit/view page from failing merely
+     * because a normally delete-capable role is forbidden to delete THIS row
+     * (for example an Admin viewing their own SysBOUser).
+     *
+     * DELETE still performs the authoritative assertCan('delete') again.
+     */
+    await authorization.assertCan('read', subject, metadata.key, existing);
+    const authorized = await authorization.can('delete', subject, metadata.key, existing);
+
+    if (!authorized) {
+      sendQuery(res, {
+        targetObjectKey: metadata.key,
+        targetId: id,
+        authorized: false,
+        canExecute: false,
+        requiresConfirmation: false,
+        impacts: [],
+      });
+      return;
+    }
+
+    sendQuery(res, {
+      authorized: true,
+      ...service.deleteImpact(id),
+    });
+  });
 
   /**
    * Delete one BO entry.

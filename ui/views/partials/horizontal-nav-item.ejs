@@ -1,3 +1,13 @@
+<%
+  const defaultTooltips = {
+    Home: 'Go to Home',
+    Company: 'Company information',
+    Platform: 'Current platform',
+    Resources: 'Resources',
+    'Apps Playground': 'Open Apps Playground',
+  };
+  const itemTooltip = item.tooltip || defaultTooltips[item.text] || item.text;
+%>
 <% if (item.children?.length) { %>
   <li class="<%= level === 0 ? 'nav-item dropdown' : 'dropdown-submenu' %>">
     <a
@@ -6,7 +16,7 @@
       role="button"
       data-bs-toggle="dropdown"
       aria-expanded="false"
-      title="<%= item.text %>"
+      title="<%= itemTooltip %>"
     >
       <% if (item.icon) { %><i class="bi <%= item.icon %> me-1"></i><% } %>
       <%= item.text %>
@@ -22,7 +32,7 @@
     <a
       class="<%= level === 0 ? 'nav-link' : 'dropdown-item' %>"
       href="<%= item.url || '#' %>"
-      title="<%= item.text %>"
+      title="<%= itemTooltip %>"
     >
       <% if (item.icon) { %><i class="bi <%= item.icon %> me-1"></i><% } %>
       <%= item.text %>

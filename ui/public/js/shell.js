@@ -14,7 +14,10 @@
   const LEFT_NAVIGATION_STORAGE_KEY = 'manatos.ui.leftNavigation.visible';
   const DETAILS_STORAGE_KEY = 'manatos.ui.details.visible';
   const debugBootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
-  const DEBUG_STORAGE_KEY = `manatos.debug.panel.visible.${debugBootId}`;
+  const DEBUG_STORAGE_KEY = 'manatos.debug.panel.visible.v1';
+  const DEBUG_DIAGNOSTICS_STORAGE_KEY = `manatos.debug.diagnostics.visible.${debugBootId}`;
+  // Debugger open/closed preference deliberately survives UI-server restarts;
+  // deeper debugger navigation/width state remains boot-scoped in ctx-debug.js.
 
   const leftNavigation = document.getElementById('leftNavigation');
 
@@ -30,6 +33,7 @@
 
   const debugPanel = document.getElementById('debugPanel');
   const toggleDebugPanelButton = document.getElementById('toggleDebugPanel');
+  const toggleDebugDiagnosticsButton = document.getElementById('toggleDebugDiagnostics');
   const closeDebugPanelButton = document.getElementById('closeDebugPanel');
 
   /* =======================================================================
@@ -123,6 +127,126 @@
     localStorage.setItem(key, String(value));
   };
 
+
+  const setCheckedMenuItem = (button, checked) => {
+    if (!button) return;
+    button.setAttribute('aria-checked', String(checked));
+    const check = button.querySelector('.debug-menu-check');
+    if (check) {
+      check.classList.toggle('bi-check-square', checked);
+      check.classList.toggle('bi-square', !checked);
+    }
+  };
+
+  let debugDiagnosticsVisible = sessionStorage.getItem(DEBUG_DIAGNOSTICS_STORAGE_KEY) !== 'false';
+  const setDebugDiagnosticsVisible = (visible, persist = true) => {
+    debugDiagnosticsVisible = visible;
+    setCheckedMenuItem(toggleDebugDiagnosticsButton, visible);
+    if (!visible) {
+      document.getElementById('debugDiagnosticPanel')?.remove();
+      diagnosticEntries.clear();
+    }
+    if (persist) sessionStorage.setItem(DEBUG_DIAGNOSTICS_STORAGE_KEY, String(visible));
+  };
+
+  /*
+   * Keep CTX diagnostics in one window-like panel rather than spawning a stack
+   * of overlapping toasts. Repeated instances of the same diagnostic are
+   * deduplicated and receive a count, while different diagnostics remain
+   * individually expandable inside the same panel.
+   */
+  const diagnosticEntries = new Map();
+
+  const diagnosticKey = (diagnostic) => JSON.stringify([
+    diagnostic?.phase ?? '',
+    diagnostic?.message ?? '',
+    diagnostic?.expression ?? '',
+    diagnostic?.variablePath ?? '',
+    diagnostic?.caller?.sourcePath ?? '',
+    diagnostic?.targetPath ?? '',
+  ]);
+
+  const ensureDebugDiagnosticPanel = () => {
+    let panel = document.getElementById('debugDiagnosticPanel');
+    if (panel) return panel;
+
+    panel = document.createElement('section');
+    panel.id = 'debugDiagnosticPanel';
+    panel.className = 'ctx-diagnostic-panel shadow';
+    panel.setAttribute('role', 'region');
+    panel.setAttribute('aria-label', 'CTX diagnostics');
+    panel.innerHTML = `
+      <div class="ctx-diagnostic-panel-header">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+          <strong>CTX diagnostics</strong>
+          <span class="badge text-bg-secondary" data-ctx-diagnostic-total>0</span>
+        </div>
+        <button type="button" class="btn-close" data-ctx-diagnostics-close aria-label="Close diagnostics"></button>
+      </div>
+      <div class="ctx-diagnostic-panel-body" data-ctx-diagnostic-list></div>`;
+
+    panel.querySelector('[data-ctx-diagnostics-close]')?.addEventListener('click', () => {
+      panel.remove();
+      diagnosticEntries.clear();
+    });
+    document.body.appendChild(panel);
+    return panel;
+  };
+
+  const refreshDiagnosticTotal = (panel) => {
+    const total = [...diagnosticEntries.values()].reduce((sum, entry) => sum + entry.count, 0);
+    const badge = panel.querySelector('[data-ctx-diagnostic-total]');
+    if (badge) badge.textContent = String(total);
+  };
+
+  const showDebugDiagnostic = (diagnostic) => {
+    if (!debugDiagnosticsVisible || !diagnostic) return;
+
+    const panel = ensureDebugDiagnosticPanel();
+    const key = diagnosticKey(diagnostic);
+    const existing = diagnosticEntries.get(key);
+    if (existing) {
+      existing.count += 1;
+      existing.countNode.textContent = `×${existing.count}`;
+      existing.countNode.hidden = false;
+      refreshDiagnosticTotal(panel);
+      return;
+    }
+
+    const list = panel.querySelector('[data-ctx-diagnostic-list]');
+    if (!list) return;
+
+    const item = document.createElement('article');
+    item.className = 'ctx-diagnostic-item';
+    const title = diagnostic.phase === 'parse' ? 'CTX expression parse error' : 'CTX evaluation warning';
+    const details = JSON.stringify(diagnostic, null, 2);
+    item.innerHTML = `
+      <div class="ctx-diagnostic-item-title">
+        <strong data-ctx-diagnostic-title></strong>
+        <span class="badge text-bg-secondary" data-ctx-diagnostic-count hidden></span>
+      </div>
+      <div class="ctx-diagnostic-message"></div>
+      <details class="mt-2">
+        <summary>Details</summary>
+        <pre class="small mt-2 mb-0 text-wrap"></pre>
+      </details>`;
+    item.querySelector('[data-ctx-diagnostic-title]').textContent = title;
+    item.querySelector('.ctx-diagnostic-message').textContent = String(diagnostic.message || 'CTX diagnostic');
+    item.querySelector('pre').textContent = details;
+    list.appendChild(item);
+
+    diagnosticEntries.set(key, {
+      count: 1,
+      countNode: item.querySelector('[data-ctx-diagnostic-count]'),
+    });
+    refreshDiagnosticTotal(panel);
+  };
+
+  window.addEventListener('manatos:ctx-diagnostic', (event) => {
+    showDebugDiagnostic(event.detail);
+  });
+
   /**
    * Centralized shell-state helper.
    *
@@ -208,13 +332,12 @@
       appShell.classList.toggle('has-debug', visible);
       debugPanel.classList.toggle('d-none', !visible);
       debugPanel.setAttribute('aria-hidden', String(!visible));
-      toggleDebugPanelButton?.setAttribute('aria-expanded', String(visible));
-      toggleDebugPanelButton?.classList.toggle('active', visible);
+      setCheckedMenuItem(toggleDebugPanelButton, visible);
 
       refreshVisibleModalCenters();
 
       if (persist) {
-        sessionStorage.setItem(DEBUG_STORAGE_KEY, String(visible));
+        localStorage.setItem(DEBUG_STORAGE_KEY, String(visible));
       }
     },
 
@@ -254,8 +377,9 @@
     shellState.setDetailsVisible(initialDetailsVisible, false);
 
     const initialDebugVisible =
-      Boolean(debugPanel) && sessionStorage.getItem(DEBUG_STORAGE_KEY) === 'true';
+      Boolean(debugPanel) && localStorage.getItem(DEBUG_STORAGE_KEY) === 'true';
     shellState.setDebugVisible(initialDebugVisible, false);
+    setDebugDiagnosticsVisible(debugDiagnosticsVisible, false);
   }
 
   /* -----------------------------------------------------------------------
@@ -351,6 +475,10 @@
    * -------------------------------------------------------------------- */
   toggleDebugPanelButton?.addEventListener('click', () => {
     shellState.toggleDebug();
+  });
+
+  toggleDebugDiagnosticsButton?.addEventListener('click', () => {
+    setDebugDiagnosticsVisible(!debugDiagnosticsVisible);
   });
 
   closeDebugPanelButton?.addEventListener('click', () => {

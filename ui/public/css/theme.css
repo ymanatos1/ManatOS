@@ -10,6 +10,20 @@
   --manatos-title-border: #d7e3f2;
   --manatos-modal-title-bg: #dce8f6;
   --manatos-modal-title-border: #c9d8eb;
+
+  /* Metadata-driven read-only/debug presentation. Kept equal across both
+     Preferences themes for now, but theme-owned so they can diverge later. */
+  --manatos-readonly-field-bg: #e9ecef;
+  --manatos-readonly-tab-bg: #f6f8fa;
+  --manatos-debug-field: #569cd6;
+  --manatos-debug-system: #4ec9b0;
+  --manatos-debug-path: #7f7f7f;
+  --manatos-debug-string: #8a3f12;
+  --manatos-debug-number: #6f42c1;
+  --manatos-debug-literal: #9a2a5b;
+  --manatos-debug-identifier: #394b61;
+  --manatos-debug-operator: #5f6874;
+  --manatos-debug-punctuation: #687583;
 }
 
 body[data-ui-theme='lighter'] {
@@ -20,6 +34,20 @@ body[data-ui-theme='lighter'] {
   --manatos-title-border: #e2ebf5;
   --manatos-modal-title-bg: #edf4fb;
   --manatos-modal-title-border: #dce7f3;
+
+  /* Same values as darker theme today; explicit ownership makes future theme
+     tuning a Preferences concern rather than a component-code change. */
+  --manatos-readonly-field-bg: #e9ecef;
+  --manatos-readonly-tab-bg: #f6f8fa;
+  --manatos-debug-field: #569cd6;
+  --manatos-debug-system: #4ec9b0;
+  --manatos-debug-path: #7f7f7f;
+  --manatos-debug-string: #8a3f12;
+  --manatos-debug-number: #6f42c1;
+  --manatos-debug-literal: #9a2a5b;
+  --manatos-debug-identifier: #394b61;
+  --manatos-debug-operator: #5f6874;
+  --manatos-debug-punctuation: #687583;
 }
 
 .top-header {
@@ -449,18 +477,25 @@ body[data-ui-theme='lighter'] .current-platform-badge {
 }
 
 
-.horizontal-debug-button {
+.horizontal-debug-menu-toggle {
   margin-inline: 0.8rem 0.55rem;
-  padding-inline: 0.55rem;
-  border: 1px solid currentColor;
-  border-radius: 0.35rem;
-  font-size: 0.78rem;
+  padding-inline: 0.35rem;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.86rem;
   font-weight: 700;
   opacity: 0.82;
 }
 
-.horizontal-debug-button:hover,
-.horizontal-debug-button:focus,
-.horizontal-debug-button.active {
+.horizontal-debug-menu-toggle:hover,
+.horizontal-debug-menu-toggle:focus {
   opacity: 1;
+  background: transparent !important;
+  box-shadow: none !important;
 }
+
+
+.horizontal-debug-nav .dropdown-menu { min-width: 16rem; }
+.horizontal-debug-nav .debug-menu-check { width: 1rem; text-align: center; }

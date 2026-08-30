@@ -11,8 +11,17 @@ import type {
 } from './types.js';
 
 const PRECEDENCE: Readonly<Record<ExpressionBinaryOperator, number>> = {
+  '||': 2,
+  '??': 3,
+  '&&': 4,
   '==': 5,
   '!=': 5,
+  '===': 5,
+  '!==': 5,
+  '<': 6,
+  '<=': 6,
+  '>': 6,
+  '>=': 6,
   '+': 10,
   '-': 10,
   '*': 20,
@@ -91,10 +100,15 @@ class Parser {
   private parsePrefix(): ExpressionNode {
     const token = this.current();
 
-    if (token.kind === 'operator' && (token.text === '+' || token.text === '-')) {
+    if (token.kind === 'operator' && (token.text === '+' || token.text === '-' || token.text === '!')) {
       this.advance();
-      // Exponentiation binds more tightly than unary +/-.
-      return {kind: 'unary', operator: token.text, operand: this.parseExpression(25)};
+      // Exponentiation binds more tightly than unary +/-; logical NOT behaves
+      // as a conventional high-precedence prefix operator.
+      return {
+        kind: 'unary',
+        operator: token.text,
+        operand: token.text === '!' ? this.parseExpression(31) : this.parseExpression(25),
+      };
     }
 
     if (this.match('(')) {

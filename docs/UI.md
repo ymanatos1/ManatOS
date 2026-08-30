@@ -146,7 +146,7 @@ The Account dropdown contains the detailed account controls; it is distinct from
 
 `views/partials/horizontal-nav.ejs` renders metadata/configuration-driven items from `src/navigation.ts` and supports nested menus.
 
-The main navigation exposes **Home → Company → Platform → Resources → Apps Playground**. The Platform entry is catalogue-driven: with one enabled platform it is a direct link to that platform; with multiple enabled platforms it becomes a dropdown of platform pages without requiring new shell markup.
+The main navigation exposes **Home → Company → Platform → Resources** plus platform-owned shortcuts such as **Apps Playground** when the current user is entitled to them. The Platform entry is catalogue-driven: with one enabled platform it is a direct link to that platform; with multiple enabled platforms it becomes a dropdown of platform pages without requiring new shell markup. Apps Playground and SysApplications are mCRM-owned capabilities: Admin bypass applies, while every non-Admin user requires a current effective mCRM license linked through one of their principals.
 
 For authenticated users, the right side contains a compact signed-in identity immediately before the language selector. This keeps global session identity out of page-specific content such as the Home hero.
 
@@ -154,7 +154,7 @@ The language control currently persists `en` / `el` browser preference and updat
 
 ### 3.4 Left navigation
 
-The authenticated left navigation is generated from `app.navigation.vertical`. It supports nested entries, separators, docked lower actions, authorization filtering and UI actions such as opening Preferences.
+The authenticated left navigation is generated from `app.navigation.vertical`. It supports nested entries, separators, docked lower actions, authorization filtering, platform-entitlement filtering and UI actions such as opening Preferences. Horizontal and vertical mCRM shortcuts reuse the same platform contribution so their entitlement rules cannot drift.
 
 It can be collapsed independently. The restore control is intentionally outside the hidden navigation element so it remains available after collapse.
 
@@ -207,6 +207,32 @@ The UI defines website-specific metadata for business-object presentation separa
 
 Generic SysBO pages provide sorting, filtering, pagination, create/edit/delete behavior and authorization-aware actions. This separation allows another client, such as a future mobile application, to reuse BO contracts while defining different UI metadata.
 
+### 5.1 Canonical metadata + UI metadata renderer
+
+The metadata-driven renderer consumes two contracts: canonical SysBO metadata (fields, constraints, derived fields and relationships) and framework-neutral UI metadata (tabs, list fields, field overrides, related collections and entry actions). The API exposes these as `/$metadata` and `/$metadata-ui`. During #16 migration the UI can switch each participating SysBO between the Current EJS implementation and the metadata-driven implementation through persisted `SysConfiguration` settings. The migration switch is temporary; engine behavior must remain generic and must not depend on a particular entity key.
+
+SysUser is the first full acceptance target. Authenticated non-Admin users can reach their own SysUser entry, while authorization and evaluator-backed field metadata keep administrative properties such as Role protected. The owner may view Authentication/external-identity information; self-deletion remains prohibited.
+
+### 5.2 Entry-form state and interaction
+
+Metadata-driven entry forms use one generic state rule: **Save is enabled only when the form is both dirty and valid**. Dirty state compares current editable/submitted values with the captured baseline, so reverting every edit to its original value returns the form to clean and disables Save again. Calculated/read-only fields do not independently make the form dirty. Native HTML constraints provide immediate validity feedback, while server/API validation remains authoritative.
+
+On opening a record, the first editable field on the first tab receives focus. If that tab contains no editable field, the renderer activates the first later tab that contains one and focuses its first editable field. Tabs whose visible fields are entirely read-only use a very light informational-grey pane; individual read-only/calculated controls use the slightly darker read-only control grey. Create forms still show System details as generated/empty information rather than hiding the tab.
+
+### 5.3 Metadata-driven decisions and reactive expressions
+
+Calculated field values and evaluator-driven UI properties share the same expression/dependency mechanism. Expressions are compiled into ASTs during context construction; the browser consumes the AST already supplied by ManatOS and never reparses expression source for each change. Dependencies are extracted from the AST, and a source-field edit reevaluates affected calculations and propagates dependent values. Dynamic properties currently include field editability/visibility and presentation decisions such as tones/icons, plus tab/action visibility.
+
+### 5.4 Development Debugging tab and CTX debugger
+
+Development builds add a read-only **Debugging** tab to metadata-driven entry forms. It lists calculated element name, source formula and current value without displaying the AST. The hierarchy is generated dynamically from metadata: entity-level calculations, entity fields (value/other properties and provenance), related-entity calculations, and UI calculations (tabs, fields, related collections and actions). Repeated dotted prefixes are grouped/compressed as a diagnostic tree instead of being hard-coded for SysUser.
+
+The separate **CTX DEBUGGER** exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. It uses lazy DOM rendering, session-scoped developer preferences and a resizable width. Debugger/UI state survives ordinary page reload/navigation but is keyed to the UI-server boot identifier so a server restart resets it.
+
+### 5.5 Relationship-aware delete confirmation
+
+Before an existing record can be deleted, the UI requests the API `$delete-impact` preflight. The confirmation always tells the user what was found: no related records affected, cascade deletions, relationship unlinking, references cleared through set-null, or restrict relationships that block deletion. If impact information is unavailable, deletion fails safe and remains disabled.
+
 ## 6. CSS architecture
 
 The CSS is intentionally split by concern:
@@ -234,6 +260,8 @@ The shell loads focused browser modules rather than one large page script:
 | `prefs.js` | browser-local UI preferences such as theme and language |
 
 The server remains responsible for authoritative validation/security. Browser validation is primarily usability protection and must not be treated as the security boundary.
+
+`ui-bootstrap-runtime.js` refreshes the anonymous-safe runtime bootstrap independently of page rendering. A failed episode uses bounded backoff for at most 60 seconds and then stops network polling. User activity after suspension triggers a single immediate recovery probe; failure returns to suspended state, while success restores normal low-frequency refresh. Browser DevTools may still show one native `ERR_CONNECTION_REFUSED` for a real failed probe because transport diagnostics are emitted by the browser itself.
 
 # 8. Popup/modal architecture
 
@@ -530,7 +558,7 @@ The browser E2E layer should complement, not replace, the faster unit/presentati
 Current or planned areas include:
 
 - multilingual/i18n literal extraction and translation;
-- richer role-aware UI for Guest/User/Superuser/Admin once role work is implemented;
+- continued refinement of role/record-specific capabilities as additional SysBOs move to the metadata-driven renderer;
 - platform/multiplatform responsive behavior;
 - notifications subsystem;
 - broader centralized field-validation architecture;

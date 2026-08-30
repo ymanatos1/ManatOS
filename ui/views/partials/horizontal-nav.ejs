@@ -28,21 +28,6 @@
         </div>
       <% } %>
 
-      <% if (app.ui?.debugTools) { %>
-        <button
-          type="button"
-          class="nav-link horizontal-debug-button"
-          id="toggleDebugPanel"
-          title="Developer debugger"
-          aria-label="Open ManatOS debugger"
-          aria-controls="debugPanel"
-          aria-expanded="false"
-        >
-          <i class="bi bi-bug me-1" aria-hidden="true"></i>
-          DEBUG
-        </button>
-      <% } %>
-
       <!--
         UI-language selector foundation.
 
@@ -100,6 +85,56 @@
           </ul>
         </li>
       </ul>
+
+      <% if (app.ui?.debugTools) { %>
+        <ul class="navbar-nav mb-2 mb-lg-0 horizontal-debug-nav">
+          <li class="nav-item dropdown">
+            <button
+              class="nav-link dropdown-toggle horizontal-debug-menu-toggle"
+              id="debugMenuButton"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              title="Developer tools"
+              aria-label="Developer tools"
+            >
+              <i class="bi bi-bug" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="debugMenuButton">
+              <li>
+                <button
+                  class="dropdown-item d-flex align-items-center gap-2"
+                  id="toggleDebugPanel"
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked="false"
+                  aria-controls="debugPanel"
+                  title="Show or hide the CTX debugger panel"
+                >
+                  <i class="bi bi-square debug-menu-check" aria-hidden="true"></i>
+                  <i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>
+                  <span>Show/hide CTX debugger</span>
+                </button>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button
+                  class="dropdown-item d-flex align-items-center gap-2"
+                  id="toggleDebugDiagnostics"
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked="true"
+                  title="Show CTX and expression warnings/errors as developer notifications"
+                >
+                  <i class="bi bi-check-square debug-menu-check" aria-hidden="true"></i>
+                  <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                  <span>Show CTX errors/warnings</span>
+                </button>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      <% } %>
     </div>
   </div>
 </nav>

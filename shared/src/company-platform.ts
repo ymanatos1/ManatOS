@@ -1,4 +1,8 @@
-import { SysBOUserRole } from './domain.js';
+import {
+  SysBOLicenseStatus,
+  SysBOUserRole,
+  type SysBOLicense,
+} from './domain.js';
 
 /**
  * Lightweight image reference used by shared company/platform branding.
@@ -32,6 +36,8 @@ export interface NavigationContribution {
   id: string;
   text: string;
   icon?: string;
+  /** Optional action-oriented UI tooltip; clients may fall back to `text`. */
+  tooltip?: string;
   url?: string;
   action?: string;
   parentId?: string;
@@ -46,6 +52,13 @@ export interface NavigationContribution {
    * SysBO is contributed by the effective Company + current Platform model.
    */
   requiresEntityKeys?: string[];
+
+  /**
+   * Platform-owned navigation/functionality may require a current entitlement
+   * in addition to authentication/role checks. Admin bypass is applied by the
+   * UI/API authorization layers; non-Admin access is license driven.
+   */
+  requiresPlatformEntitlement?: boolean;
 }
 
 /**
@@ -174,8 +187,10 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-gear',
       order: 300,
       requiresAuthentication: true,
-      // Preserve the existing User/Admin visibility and add Superuser.
-      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User],
+      // Every authenticated role may reach at least the Users area. Child
+      // contributions carry their own role rules so Guest does not inherit
+      // unrelated administration entries.
+      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User, SysBOUserRole.Guest],
     },
     {
       id: 'users',
@@ -185,6 +200,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-users',
       order: 310,
       requiresEntityKeys: ['sys-users'],
+      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User, SysBOUserRole.Guest],
     },
     {
       id: 'principals',
@@ -194,6 +210,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-principals',
       order: 320,
       requiresEntityKeys: ['sys-principals'],
+      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User],
     },
     {
       id: 'configuration',
@@ -234,6 +251,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-licenses',
       order: 340,
       requiresEntityKeys: ['sys-licenses'],
+      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User],
     },
     {
       id: 'preferences',
@@ -241,6 +259,10 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-sliders',
       action: 'open-preferences',
       order: 900,
+      // Preferences starts the personal/session action group. Keep the group
+      // divider on Preferences itself so it remains visible when Admin-only
+      // Configuration is filtered out for User/Superuser roles.
+      separatorBefore: true,
       requiresAuthentication: true,
     },
     {
@@ -324,6 +346,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
           order: 200,
           requiresAuthentication: true,
           requiresEntityKeys: ['sys-applications'],
+          requiresPlatformEntitlement: true,
         },
         {
           id: 'applications',
@@ -333,6 +356,8 @@ export const MANATOS_COMPANY: CompanyInfo = {
           url: '/bo/sys-applications',
           order: 330,
           requiresEntityKeys: ['sys-applications'],
+          requiresAuthentication: true,
+          requiresPlatformEntitlement: true,
         },
       ],
     },
@@ -364,4 +389,52 @@ export function effectiveEntityKeys(company: CompanyInfo, platform: SysPlatform)
     ...company.entities.map((entry) => entry.sysBOKey),
     ...platform.entities.map((entry) => entry.sysBOKey),
   ]);
+}
+
+
+/**
+ * True when a persisted license is effective at the supplied instant.
+ *
+ * This helper is shared by API authorization and UI navigation so date/status/
+ * quantity semantics cannot drift between the security boundary and menus.
+ */
+export function licenseIsEffective(
+  license: SysBOLicense,
+  at: Date = new Date(),
+): boolean {
+  if (!license.enabled || license.status !== SysBOLicenseStatus.Active || license.quantity <= 0) {
+    return false;
+  }
+
+  const now = at.getTime();
+  const validFrom = license.validFrom ? Date.parse(license.validFrom) : Number.NEGATIVE_INFINITY;
+  const validUntil = license.validUntil ? Date.parse(license.validUntil) : Number.POSITIVE_INFINITY;
+
+  if (!Number.isFinite(validFrom) && license.validFrom) return false;
+  if (!Number.isFinite(validUntil) && license.validUntil) return false;
+
+  return validFrom <= now && now <= validUntil;
+}
+
+/** True when an effective license grants access to the named platform. */
+export function licenseGrantsPlatformAccess(
+  license: SysBOLicense,
+  platformId: string,
+  at: Date = new Date(),
+): boolean {
+  return license.platformId === platformId && licenseIsEffective(license, at);
+}
+
+/**
+ * True when an effective platform license also permits the named application.
+ * A missing applicationId means platform-wide access.
+ */
+export function licenseGrantsApplicationAccess(
+  license: SysBOLicense,
+  platformId: string,
+  applicationId: string,
+  at: Date = new Date(),
+): boolean {
+  return licenseGrantsPlatformAccess(license, platformId, at)
+    && (!license.applicationId || license.applicationId === applicationId);
 }

@@ -1,18 +1,66 @@
 <%
   const isViewMode = recordMode === 'view';
   const isNew = recordMode === 'create';
-  const tabs = [...metadataUI.record.tabs]
-    .filter((tab) => !(isNew && tab.id === 'authentication'))
-    .sort((left, right) => left.order - right.order);
   const overrides = metadataUI.record.fieldOverrides || {};
   const derivedFields = metadataUI.record.derivedFields || {};
   const relatedCollections = metadataUI.record.relatedCollections || {};
+
   // Metadata-driven pages consume related values from the canonical ctx leaf.
   // The legacy relatedData fallback keeps save-error/current-renderer paths safe
   // while the wider UI is progressively moved onto ctx.
   const ctxFields = typeof ctxPage !== 'undefined' && ctxPage?.fields ? ctxPage.fields : {};
   const ctxValue = (key) =>
     typeof ctxFieldValue === 'function' ? ctxFieldValue(key) : ctxFields[key]?.value;
+  const expressionText = (value) =>
+    value && typeof value === 'object' && typeof value.expression === 'string'
+      ? value.expression
+      : null;
+  const compiledEntityContext = typeof ctx !== 'undefined' && ctx?.entities
+    ? Object.values(ctx.entities).find((candidate) => candidate?.key === definition.key)
+    : null;
+  const compiledUIRecord = compiledEntityContext?.uiMetadata?.record || {};
+
+  const dynamicUIValue = (value, currentScope, caller) => {
+    if (value && typeof value === 'object' && typeof value.expression === 'string') {
+      return typeof ctxExpressionValue === 'function'
+        ? ctxExpressionValue(value.expression, currentScope, caller)
+        : undefined;
+    }
+    return value;
+  };
+
+  /*
+   * Tabs are now genuinely metadata/evaluator driven. A tab may depend on page
+   * mode, authenticated-user state or any other reachable CTX value without a
+   * renderer-specific role/mode branch.
+   */
+  const baseTabs = [...metadataUI.record.tabs]
+    .filter((tab) =>
+      dynamicUIValue(tab.visible ?? true, ctxFields, {
+        source: 'ui-metadata',
+        sourcePath: `tabs.${tab.id}.visible`,
+        targetPath: `tabs.${tab.id}.visible`,
+        purpose: 'resolve record-tab visibility',
+      }) !== false
+    )
+    .sort((left, right) => left.order - right.order);
+
+  /*
+   * Development-only formula inspection is a renderer concern rather than
+   * application metadata. It is appended as a synthetic, read-only tab so no
+   * production metadata contract is polluted by diagnostics UI.
+   */
+  const debuggingTabEnabled = Boolean(app?.ui?.debugTools);
+  const debuggingTab = {
+    id: 'debugging',
+    label: 'Debugging',
+    order: Number.MAX_SAFE_INTEGER,
+    fields: [],
+    icon: 'bug',
+    layout: 'debug-calculations',
+  };
+  const tabs = debuggingTabEnabled ? [...baseTabs, debuggingTab] : baseTabs;
+
   const legacyRelatedData = typeof relatedData !== 'undefined' && relatedData ? relatedData : {};
   const ctxExternalIdentities = ctxValue('externalIdentities');
   const pageRelatedData = {
@@ -21,8 +69,30 @@
       ? { externalIdentities: ctxExternalIdentities }
       : {}),
   };
+
   const entryActions = metadataUI.record.entryActions || {};
-  const deleteAction = Object.values(entryActions).find((action) => action.kind === 'delete' && action.visible);
+  const resolvedEntryActions = Object.entries(entryActions)
+    .filter(([actionKey, action]) =>
+      dynamicUIValue(action.visible, ctxFields, {
+        source: 'ui-metadata',
+        sourcePath: `entryActions.${actionKey}.visible`,
+        targetPath: `entryActions.${actionKey}.visible`,
+        purpose: 'resolve record-action visibility',
+      }) !== false
+    )
+    .sort((left, right) => (left[1].order ?? 0) - (right[1].order ?? 0));
+
+  const deleteActionEntry = resolvedEntryActions.find(([, action]) => action.kind === 'delete');
+  const saveActionEntry = resolvedEntryActions.find(([, action]) => action.kind === 'save');
+  const commandActionEntries = resolvedEntryActions.filter(([, action]) => action.kind === 'command');
+  const deleteAction = deleteActionEntry?.[1];
+  const saveAction = saveActionEntry?.[1];
+
+  const actionClass = (action, fallbackTone = 'primary') => {
+    const tone = action?.tone || fallbackTone;
+    return `btn btn-${action?.emphasis === 'outline' ? 'outline-' : ''}${tone}`;
+  };
+
   const referenceValues = referenceData || {};
   const providerDefinitions =
     typeof externalAuthProviderDefinitions !== 'undefined' && Array.isArray(externalAuthProviderDefinitions)
@@ -37,30 +107,79 @@
     : (typeof sysBOUiActiveTab === 'string' ? sysBOUiActiveTab : '');
   const activeTabId = tabs.some((tab) => tab.id === requestedTabId) ? requestedTabId : (tabs[0]?.id || '');
   const isOwnSysUser = !isNew && definition.key === 'sys-users' && currentUser && item.id === currentUser.id;
+  const deleteAuthorized = deleteImpact?.authorized !== false;
 
   const valueFor = (key) => {
     if (item && item[key] !== undefined && item[key] !== null) return item[key];
     const createDefault = overrides[key]?.createDefaultValue;
-    return isNew && createDefault !== undefined ? createDefault : '';
+    const resolvedDefault = dynamicUIValue(createDefault, ctxFields, {
+      source: 'ui-metadata',
+      sourcePath: `fieldOverrides.${key}.createDefaultValue`,
+      targetPath: `fields.${key}.createDefaultValue`,
+      purpose: 'resolve create-form default value',
+    });
+    return isNew && resolvedDefault !== undefined ? resolvedDefault : '';
   };
 
   const fieldEditable = (field) => {
     const override = overrides[field.key];
     if (isViewMode || field.readOnly || field.generated || field.sensitive) return false;
-    return override?.editable !== false;
+    const editable = dynamicUIValue(override?.editable, ctxFields, {
+      source: 'ui-metadata',
+      sourcePath: `fieldOverrides.${field.key}.editable`,
+      targetPath: `fields.${field.key}.editable`,
+      purpose: 'resolve field editability',
+    });
+    return editable !== false;
   };
 
-  const fieldVisible = (field) => overrides[field.key]?.visible !== false;
+  const fieldVisible = (field) => {
+    const visible = dynamicUIValue(overrides[field.key]?.visible, ctxFields, {
+      source: 'ui-metadata',
+      sourcePath: `fieldOverrides.${field.key}.visible`,
+      targetPath: `fields.${field.key}.visible`,
+      purpose: 'resolve field visibility',
+    });
+    return visible !== false;
+  };
   const fieldLabel = (field) => overrides[field.key]?.label || field.label;
+
+  const formatElapsed = (dateValue) => {
+    const elapsedMs = Date.now() - dateValue.getTime();
+    if (!Number.isFinite(elapsedMs)) return '';
+    const future = elapsedMs < 0;
+    const absolute = Math.abs(elapsedMs);
+    const units = [
+      ['d', 24 * 60 * 60 * 1000],
+      ['h', 60 * 60 * 1000],
+      ['m', 60 * 1000],
+      ['s', 1000],
+    ];
+    const parts = [];
+    let remaining = absolute;
+    for (const [suffix, size] of units) {
+      const amount = Math.floor(remaining / size);
+      if (amount > 0 || (suffix === 's' && parts.length === 0)) {
+        parts.push(`${amount}${suffix}`);
+        remaining -= amount * size;
+      }
+      if (parts.length === 2) break;
+    }
+    return future ? `in ${parts.join(' ')}` : `${parts.join(' ')} ago`;
+  };
 
   const formatValue = (value, presentation = {}) => {
     if (value === undefined || value === null || value === '') {
       return presentation.emptyText || '—';
     }
 
-    if (presentation.format === 'datetime') {
+    if (presentation.format === 'datetime' || presentation.format === 'datetime-elapsed') {
       const parsed = new Date(String(value));
-      return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
+      if (Number.isNaN(parsed.getTime())) return String(value);
+      const rendered = parsed.toLocaleString();
+      return presentation.format === 'datetime-elapsed'
+        ? `${rendered} (${formatElapsed(parsed)})`
+        : rendered;
     }
 
     if (presentation.format === 'verification-source') {
@@ -72,27 +191,630 @@
     return String(value);
   };
 
-  const presentationStateFor = (key, value) =>
-    (overrides[key]?.presentation?.states || []).find((state) => state.equals === value);
-
   const providerFor = (providerKey) =>
     availableAuthProviders.find((candidate) => candidate.key === providerKey);
 
-  const collectionValue = (row, field) => {
-    if (field.expression) {
-      const raw = typeof ctxExpressionValue === 'function'
-        ? ctxExpressionValue(field.expression, row)
-        : undefined;
-      const state = (field.presentation?.states || []).find((candidate) => candidate.equals === raw);
-      return { kind: 'derived', state, raw };
+  const relatedMetadataRegistry =
+    typeof relatedEntityMetadata !== 'undefined' && relatedEntityMetadata
+      ? relatedEntityMetadata
+      : {};
+
+  /*
+   * Related records may legitimately omit optional properties (for example an
+   * older External Identity may have no `emailVerified` member at all).  The
+   * expression language deliberately distinguishes a missing variable from a
+   * present nullable value, so create an evaluation scope that materializes
+   * every canonical related field as null before overlaying the actual row.
+   * This keeps optional-field expressions deterministic without weakening the
+   * evaluator's useful "variable not found" diagnostics for genuine mistakes.
+   */
+  const relatedExpressionScope = (row, relatedMetadata) => {
+    if (!row || typeof row !== 'object') return row;
+    const missingKeys = Object.keys(relatedMetadata?.fieldDefinition || {})
+      .filter((key) => row[key] === undefined);
+    if (!missingKeys.length) return row;
+
+    /*
+     * These row objects are request-local CTX values, not persisted domain
+     * instances. Materialising absent optional members as null on the same
+     * object preserves its CTX identity, so a future evaluator diagnostic can
+     * report the real ctx.page... path instead of <detached-context>.
+     */
+    if (Object.isExtensible(row)) {
+      for (const key of missingKeys) row[key] = null;
+      return row;
     }
 
-    return { kind: 'field', raw: row?.[field.sourceField || field.key] };
+    // Defensive fallback for a future frozen adapter projection.
+    return {
+      ...Object.fromEntries(missingKeys.map((key) => [key, null])),
+      ...row,
+    };
   };
+
+  const collectionValue = (row, collectionKey, collection, fieldKey, field) => {
+    const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
+    const expressionScope = relatedExpressionScope(row, relatedMetadata);
+    const canonicalDerived = relatedMetadata?.derivedFields?.[fieldKey];
+    const expression = field.expression || canonicalDerived?.expression;
+    const sourceField = field.sourceField ?? fieldKey;
+
+    const raw = expression
+      ? (typeof ctxExpressionValue === 'function'
+          ? ctxExpressionValue(expression, expressionScope, {
+              source: 'ui-metadata',
+              sourcePath: `relatedCollections.${collectionKey}.fields.${fieldKey}`,
+              targetPath: `${collection.entityKey}.${fieldKey}`,
+              purpose: 'render related-collection calculated value',
+            })
+          : undefined)
+      : row?.[sourceField];
+
+    const presentation = field.presentation || {};
+    const tone = dynamicUIValue(
+      presentation.tone,
+      expressionScope,
+      {
+        source: 'ui-metadata',
+        sourcePath: `relatedCollections.${collectionKey}.fields.${fieldKey}.presentation.tone`,
+        targetPath: `${collection.entityKey}.${fieldKey}.tone`,
+        purpose: 'resolve related-collection presentation tone',
+      },
+    );
+    const icon = dynamicUIValue(
+      presentation.icon,
+      expressionScope,
+      {
+        source: 'ui-metadata',
+        sourcePath: `relatedCollections.${collectionKey}.fields.${fieldKey}.presentation.icon`,
+        targetPath: `${collection.entityKey}.${fieldKey}.icon`,
+        purpose: 'resolve related-collection presentation icon',
+      },
+    );
+
+    return { raw, tone, icon, calculated: Boolean(expression) };
+  };
+
+  /* -----------------------------------------------------------------------
+   * Development-only calculated-expression inventory.
+   *
+   * The visible table deliberately shows formula text, never AST JSON. The
+   * compiled AST is carried only in a data attribute so forms.js can reuse the
+   * already-parsed expression and keep the Current value column live while the
+   * Admin edits the form. This follows the same no-browser-reparse contract as
+   * calculated fields and evaluator-driven UI properties.
+   * --------------------------------------------------------------------- */
+  const debuggingRows = [];
+  const debugValueText = (value) => {
+    if (value === undefined || value === null || value === '') return '—';
+    if (Array.isArray(value)) return value.length ? `[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]` : '[]';
+    if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
+    if (typeof value === 'object') {
+      try { return JSON.stringify(value); } catch { return String(value); }
+    }
+    return String(value);
+  };
+
+  /*
+   * Element-name paths are intentionally much quieter than formulas. Only the
+   * terminal member is emphasized, so `fieldOverrides.role.editable` renders
+   * with a normal-weight `fieldOverrides.role.` prefix and bold `editable`.
+   */
+  const debugElementNameParts = (displayName) => {
+    const value = String(displayName ?? '');
+    const lastDot = value.lastIndexOf('.');
+    return lastDot < 0
+      ? { prefix: '', leaf: value }
+      : { prefix: value.slice(0, lastDot + 1), leaf: value.slice(lastDot + 1) };
+  };
+
+  /*
+   * Formula syntax colouring is presentation-only lexical highlighting. It
+   * never parses or evaluates the formula; evaluation continues to use the
+   * canonical precompiled AST. Known entity/related field identifiers are
+   * emphasized as fields, while CTX/system roots such as mode/user/client are
+   * visually distinct from literals and operators.
+   */
+  const debugFieldNames = new Set([
+    ...Object.keys(metadata?.fieldDefinition || {}),
+    ...Object.keys(metadata?.derivedFields || {}),
+    ...Object.keys(derivedFields || {}),
+  ]);
+  for (const collection of Object.values(relatedCollections || {})) {
+    const relatedMetadata = relatedMetadataRegistry[collection?.entityKey];
+    for (const fieldKey of Object.keys(relatedMetadata?.fieldDefinition || {})) debugFieldNames.add(fieldKey);
+    for (const fieldKey of Object.keys(relatedMetadata?.derivedFields || {})) debugFieldNames.add(fieldKey);
+  }
+
+  const debugSystemRoots = new Set([
+    'mode', 'user', 'client', 'server', 'company', 'platform', 'page', 'ctx', 'app',
+  ]);
+  const debugLiteralKeywords = new Set(['true', 'false', 'null', 'undefined']);
+  const escapeDebugHtml = (value) => String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+  const highlightDebugFormula = (formula) => {
+    const source = String(formula ?? '');
+    let html = '';
+    let index = 0;
+
+    const emit = (text, tokenClass = null) => {
+      const escaped = escapeDebugHtml(text);
+      html += tokenClass ? `<span class="debug-expression-${tokenClass}">${escaped}</span>` : escaped;
+    };
+
+    while (index < source.length) {
+      const char = source[index];
+
+      if (/\s/.test(char)) {
+        const start = index;
+        while (index < source.length && /\s/.test(source[index])) index += 1;
+        emit(source.slice(start, index));
+        continue;
+      }
+
+      if (char === "'" || char === '"' || char === '`') {
+        const quote = char;
+        const start = index++;
+        let escaped = false;
+        while (index < source.length) {
+          const current = source[index++];
+          if (escaped) { escaped = false; continue; }
+          if (current === '\\') { escaped = true; continue; }
+          if (current === quote) break;
+        }
+        emit(source.slice(start, index), 'string');
+        continue;
+      }
+
+      if (/[0-9]/.test(char) || (char === '.' && /[0-9]/.test(source[index + 1] || ''))) {
+        const match = source.slice(index).match(/^(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?/);
+        if (match) {
+          emit(match[0], 'number');
+          index += match[0].length;
+          continue;
+        }
+      }
+
+      if (/[A-Za-z_$]/.test(char)) {
+        const match = source.slice(index).match(/^[A-Za-z_$][A-Za-z0-9_$]*/);
+        const identifier = match?.[0] || char;
+        const previousNonSpace = source.slice(0, index).match(/\S(?=\s*$)/)?.[0] || '';
+
+        if (debugLiteralKeywords.has(identifier)) {
+          emit(identifier, 'literal');
+        } else if (previousNonSpace === '.') {
+          /*
+           * CTX/property-path members are intentionally neutral grey, matching
+           * the VS Code path/member treatment requested for debugging formulas.
+           * Only the root system variable itself is green; direct entity-field
+           * references remain blue.
+           */
+          emit(identifier, 'path');
+        } else if (debugFieldNames.has(identifier)) {
+          emit(identifier, 'field');
+        } else if (debugSystemRoots.has(identifier)) {
+          emit(identifier, 'system');
+        } else {
+          /*
+           * Any remaining bare identifier is an expression-scope variable.
+           * The expression grammar currently has no free-standing function-name
+           * syntax, so treating it as a variable gives synthetic/runtime values
+           * such as `hasPassword` the same blue treatment as canonical fields.
+           */
+          emit(identifier, 'field');
+        }
+        index += identifier.length;
+        continue;
+      }
+
+      if (char === '.') {
+        emit(char, 'punctuation');
+        index += 1;
+        continue;
+      }
+
+      const operatorMatch = source.slice(index).match(/^(===|!==|==|!=|<=|>=|&&|\|\||\?\?|=>|\+\+|--|\+|-|\*|\/|%|<|>|!|\?|:|=)/);
+      if (operatorMatch) {
+        emit(operatorMatch[0], 'operator');
+        index += operatorMatch[0].length;
+        continue;
+      }
+
+      emit(char, 'punctuation');
+      index += 1;
+    }
+
+    return html;
+  };
+
+  /*
+   * `detailGroup` is optional provenance/classification beneath the semantic
+   * category/subcategory. This lets the debugger distinguish values declared
+   * by the entity, inherited values (when metadata exposes that provenance),
+   * and UI-only calculated values without knowing any concrete SysBO.
+   */
+  const addDebugRow = (
+    group,
+    subgroup,
+    name,
+    formula,
+    value,
+    ast = null,
+    detailGroup = null,
+  ) => {
+    if (!debuggingTabEnabled || typeof formula !== 'string' || !formula) return;
+    debuggingRows.push({
+      group,
+      subgroup,
+      detailGroup,
+      name,
+      formula,
+      value: debugValueText(value),
+      ast,
+    });
+  };
+
+  const collectDynamicExpressions = (
+    group,
+    subgroup,
+    prefix,
+    source,
+    compiled,
+    scope = ctxFields,
+    detailGroup = null,
+  ) => {
+    if (!source || typeof source !== 'object') return;
+    for (const [key, child] of Object.entries(source)) {
+      const name = prefix ? `${prefix}.${key}` : key;
+      if (child && typeof child === 'object' && typeof child.expression === 'string') {
+        const caller = {
+          source: 'debugging-tab',
+          sourcePath: name,
+          targetPath: name,
+          purpose: 'inspect calculated property',
+        };
+        const debugValue = Array.isArray(scope)
+          ? scope.map((currentScope) => dynamicUIValue(child, currentScope, caller))
+          : dynamicUIValue(child, scope, caller);
+
+        addDebugRow(
+          group,
+          subgroup,
+          name,
+          child.expression,
+          debugValue,
+          Array.isArray(scope) ? null : (compiled?.[key]?.ast ?? null),
+          detailGroup,
+        );
+        continue;
+      }
+      if (child && typeof child === 'object' && !Array.isArray(child)) {
+        collectDynamicExpressions(
+          group,
+          subgroup,
+          name,
+          child,
+          compiled?.[key],
+          scope,
+          detailGroup,
+        );
+      }
+    }
+  };
+
+  if (debuggingTabEnabled) {
+    /*
+     * ENTITY is reserved for calculations belonging to the entity itself,
+     * rather than to one of its fields. This scan deliberately excludes field
+     * collections; they are classified beneath ENTITY FIELDS below.
+     */
+    const entityMetadataForDebug = Object.fromEntries(
+      Object.entries(metadata || {}).filter(([key]) => !['fieldDefinition', 'derivedFields'].includes(key)),
+    );
+    collectDynamicExpressions(
+      'ENTITY',
+      null,
+      '',
+      entityMetadataForDebug,
+      compiledEntityContext?.metadata,
+      ctxFields,
+    );
+
+    /*
+     * Calculated field values are classified by provenance. Current metadata
+     * explicitly declares SysUser calculations, so they appear under DECLARED
+     * FIELDS. If a future metadata contract marks a derived field with
+     * `inheritedFrom`, it automatically moves to INHERITED FIELDS. UI-only
+     * derived values remain visibly distinct as UI-DEFINED FIELDS.
+     */
+    for (const [key, derived] of Object.entries(metadata.derivedFields || {})) {
+      addDebugRow(
+        'ENTITY FIELDS',
+        'FIELD VALUES',
+        key,
+        derived.expression,
+        ctxValue(key),
+        compiledEntityContext?.metadata?.derivedFields?.[key]?.ast ?? null,
+        derived?.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
+      );
+    }
+
+    for (const [key, derived] of Object.entries(derivedFields || {})) {
+      if (metadata.derivedFields?.[key]?.expression === derived.expression) continue;
+      addDebugRow(
+        'ENTITY FIELDS',
+        'FIELD VALUES',
+        key,
+        derived.expression,
+        ctxValue(key),
+        compiledUIRecord?.derivedFields?.[key]?.ast ?? null,
+        derived?.inheritedFrom ? 'INHERITED FIELDS' : 'UI-DEFINED FIELDS',
+      );
+    }
+
+    /*
+     * Field-state calculations belong under FIELD OTHER. This separates the
+     * field's calculated value from calculations controlling visibility,
+     * editability/read-only state, required/nullable state, etc.
+     */
+    const fieldStatePropertyNames = new Set([
+      'visible', 'editable', 'readOnly', 'readonly', 'required', 'nullable', 'enabled', 'disabled'
+    ]);
+    for (const [fieldKey, fieldMetadata] of Object.entries(metadata.fieldDefinition || {})) {
+      for (const propertyName of fieldStatePropertyNames) {
+        const property = fieldMetadata?.[propertyName];
+        if (property && typeof property === 'object' && typeof property.expression === 'string') {
+          addDebugRow(
+            'ENTITY FIELDS',
+            'FIELD OTHER',
+            `fieldDefinition.${fieldKey}.${propertyName}`,
+            property.expression,
+            dynamicUIValue(property, ctxFields, {
+              source: 'debugging-tab',
+              sourcePath: `fieldDefinition.${fieldKey}.${propertyName}`,
+              targetPath: `fields.${fieldKey}.${propertyName}`,
+              purpose: 'inspect calculated field property',
+            }),
+            compiledEntityContext?.metadata?.fieldDefinition?.[fieldKey]?.[propertyName]?.ast ?? null,
+            fieldMetadata?.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
+          );
+        }
+      }
+    }
+    for (const [fieldKey, override] of Object.entries(overrides || {})) {
+      for (const propertyName of fieldStatePropertyNames) {
+        const property = override?.[propertyName];
+        if (property && typeof property === 'object' && typeof property.expression === 'string') {
+          addDebugRow(
+            'ENTITY FIELDS',
+            'FIELD OTHER',
+            `fieldOverrides.${fieldKey}.${propertyName}`,
+            property.expression,
+            dynamicUIValue(property, ctxFields, {
+              source: 'debugging-tab',
+              sourcePath: `fieldOverrides.${fieldKey}.${propertyName}`,
+              targetPath: `fields.${fieldKey}.${propertyName}`,
+              purpose: 'inspect calculated field property',
+            }),
+            compiledUIRecord?.fieldOverrides?.[fieldKey]?.[propertyName]?.ast ?? null,
+            'UI OVERRIDES',
+          );
+        }
+      }
+    }
+
+    for (const [collectionKey, collection] of Object.entries(relatedCollections || {})) {
+      const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
+      const sourceKey = collection.sourceKey ?? collectionKey;
+      const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
+      for (const [fieldKey, field] of Object.entries(collection.fields || {})) {
+        const canonicalDerived = relatedMetadata?.derivedFields?.[fieldKey];
+        const formula = field.expression || canonicalDerived?.expression;
+        if (!formula) continue;
+        const values = rows.map((row) => collectionValue(row, collectionKey, collection, fieldKey, field).raw);
+        addDebugRow(
+          'RELATED ENTITY',
+          null,
+          `${collectionKey}.${fieldKey}`,
+          formula,
+          values,
+          null,
+        );
+      }
+    }
+
+    /*
+     * UI is one top-level group. TABS deliberately comes first, followed by
+     * field presentation, related presentation and actions.
+     */
+    for (let index = 0; index < metadataUI.record.tabs.length; index += 1) {
+      const tab = metadataUI.record.tabs[index];
+      if (tab?.visible && typeof tab.visible === 'object' && typeof tab.visible.expression === 'string') {
+        addDebugRow(
+          'UI',
+          'TABS',
+          `tabs.${tab.id}.visible`,
+          tab.visible.expression,
+          dynamicUIValue(tab.visible, ctxFields, {
+            source: 'debugging-tab',
+            sourcePath: `tabs.${tab.id}.visible`,
+            targetPath: `tabs.${tab.id}.visible`,
+            purpose: 'inspect tab visibility calculation',
+          }),
+          compiledUIRecord?.tabs?.[index]?.visible?.ast ?? null,
+        );
+      }
+    }
+
+    /* Field-state properties were already classified under FIELD OTHER. */
+    const uiFieldOverrides = {};
+    for (const [fieldKey, override] of Object.entries(overrides || {})) {
+      if (!override || typeof override !== 'object') continue;
+      uiFieldOverrides[fieldKey] = Object.fromEntries(
+        Object.entries(override).filter(([key]) => !fieldStatePropertyNames.has(key)),
+      );
+    }
+    collectDynamicExpressions(
+      'UI',
+      'FIELDS',
+      'fieldOverrides',
+      uiFieldOverrides,
+      compiledUIRecord?.fieldOverrides,
+    );
+
+    for (const [collectionKey, collection] of Object.entries(relatedCollections || {})) {
+      const sourceKey = collection.sourceKey ?? collectionKey;
+      const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
+      const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
+      const expressionScopes = rows.map((row) => relatedExpressionScope(row, relatedMetadata));
+      for (const [fieldKey, field] of Object.entries(collection.fields || {})) {
+        collectDynamicExpressions(
+          'UI',
+          'RELATED',
+          `relatedCollections.${collectionKey}.fields.${fieldKey}.presentation`,
+          field.presentation,
+          compiledUIRecord?.relatedCollections?.[collectionKey]?.fields?.[fieldKey]?.presentation,
+          expressionScopes,
+        );
+      }
+    }
+
+    for (const [actionKey, action] of Object.entries(metadataUI.record.entryActions || {})) {
+      if (action?.visible && typeof action.visible === 'object' && typeof action.visible.expression === 'string') {
+        addDebugRow(
+          'UI',
+          'ACTIONS',
+          `entryActions.${actionKey}.visible`,
+          action.visible.expression,
+          dynamicUIValue(action.visible, ctxFields, {
+            source: 'debugging-tab',
+            sourcePath: `entryActions.${actionKey}.visible`,
+            targetPath: `entryActions.${actionKey}.visible`,
+            purpose: 'inspect action visibility calculation',
+          }),
+          compiledUIRecord?.entryActions?.[actionKey]?.visible?.ast ?? null,
+        );
+      }
+    }
+  }
+
+  /*
+   * Convert raw calculation rows into a compact hierarchy for display.
+   *
+   * Repeated dotted prefixes become headings automatically:
+   *
+   *   fieldOverrides.emailVerificationStatus.presentation.tone
+   *   fieldOverrides.localPasswordStatus.presentation.tone
+   *   fieldOverrides.localPasswordStatus.presentation.icon
+   *
+   * renders as:
+   *
+   *   fieldOverrides
+   *     emailVerificationStatus.presentation.tone
+   *     localPasswordStatus.presentation
+   *       tone
+   *       icon
+   *
+   * Single-use prefixes are intentionally collapsed into the leaf label so the
+   * grid remains compact. No SysBO-specific path names are known here.
+   */
+  const debuggingDisplayRows = [];
+  const orderedUnique = (values) => [...new Set(values)];
+  const commonPrefixLength = (rows, fromIndex) => {
+    if (!rows.length) return fromIndex;
+    let index = fromIndex;
+    while (true) {
+      const segment = rows[0].segments[index];
+      if (segment === undefined) return index;
+      if (rows.some((row) => row.segments[index] !== segment)) return index;
+      index += 1;
+    }
+  };
+
+  const appendDebugNameTree = (rows, fromIndex = 0, depth = 1) => {
+    if (!rows.length) return;
+
+    if (rows.length === 1) {
+      debuggingDisplayRows.push({
+        type: 'value',
+        row: rows[0].row,
+        displayName: rows[0].segments.slice(fromIndex).join('.'),
+      });
+      return;
+    }
+
+    const commonEnd = commonPrefixLength(rows, fromIndex);
+    if (commonEnd > fromIndex) {
+      debuggingDisplayRows.push({
+        type: 'path',
+        label: rows[0].segments.slice(fromIndex, commonEnd).join('.'),
+        depth,
+      });
+      appendDebugNameTree(rows, commonEnd, depth + 1);
+      return;
+    }
+
+    const bySegment = new Map();
+    for (const row of rows) {
+      const segment = row.segments[fromIndex] ?? '';
+      if (!bySegment.has(segment)) bySegment.set(segment, []);
+      bySegment.get(segment).push(row);
+    }
+
+    for (const branchRows of bySegment.values()) {
+      if (branchRows.length === 1) {
+        const only = branchRows[0];
+        debuggingDisplayRows.push({
+          type: 'value',
+          row: only.row,
+          displayName: only.segments.slice(fromIndex).join('.'),
+        });
+      } else {
+        appendDebugNameTree(branchRows, fromIndex, depth);
+      }
+    }
+  };
+
+  if (debuggingRows.length > 0) {
+    for (const group of orderedUnique(debuggingRows.map((row) => row.group))) {
+      debuggingDisplayRows.push({ type: 'group', label: group });
+      const groupRows = debuggingRows.filter((row) => row.group === group);
+
+      for (const subgroup of orderedUnique(groupRows.map((row) => row.subgroup ?? ''))) {
+        const subgroupRows = groupRows.filter((row) => (row.subgroup ?? '') === subgroup);
+        if (subgroup) debuggingDisplayRows.push({ type: 'subgroup', label: subgroup });
+
+        for (const detailGroup of orderedUnique(subgroupRows.map((row) => row.detailGroup ?? ''))) {
+          const detailRows = subgroupRows.filter((row) => (row.detailGroup ?? '') === detailGroup);
+          if (detailGroup) debuggingDisplayRows.push({ type: 'detail', label: detailGroup });
+
+          appendDebugNameTree(
+            detailRows.map((row) => ({ row, segments: row.name.split('.').filter(Boolean) })),
+          );
+        }
+      }
+    }
+  }
+
 %>
 
 <section class="content-card">
-  <form>
+  <form
+    class="metadata-driven-record-form"
+    method="post"
+    action="/bo/<%= definition.key %>/save"
+    data-record-mode="<%= recordMode %>"
+    <% if (!isViewMode) { %>data-dirty-guard="true"<% } %>
+  >
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (!isNew && recordId) { %>
+      <input type="hidden" name="id" value="<%= recordId %>">
+    <% } %>
     <ul class="nav nav-tabs entity-tabs" role="tablist" aria-label="Metadata-driven record tabs">
       <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
         <% const tab = tabs[tabIndex]; %>
@@ -119,14 +841,89 @@
     <div class="tab-content entity-tab-content">
       <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
         <% const tab = tabs[tabIndex]; %>
+        <%
+          /*
+           * A tab that contains no changeable controls is informational only.
+           * Mark the whole pane in both create and edit/view flows so every
+           * metadata-driven entity gets the same visual cue without hard-coding
+           * System details, Authentication, or any particular entity.
+           * Summary tabs are inherently non-editable; form tabs are considered
+           * editable when at least one visible, non-sensitive canonical field
+           * can be changed according to the same metadata/evaluator rule used
+           * by the controls themselves.
+           */
+          const tabHasEditableFields = tab.layout !== 'summary' && tab.fields.some((key) => {
+            if (derivedFields[key] || relatedCollections[key]) return false;
+            const field = metadata.fieldDefinition[key];
+            return Boolean(field && fieldVisible(field) && !field.sensitive && fieldEditable(field));
+          });
+          const readOnlyTab = !tabHasEditableFields;
+        %>
         <div
-          class="tab-pane fade <%= tab.id === activeTabId ? 'show active' : '' %>"
+          class="tab-pane fade <%= tab.id === activeTabId ? 'show active' : '' %> <%= readOnlyTab ? 'entity-readonly-tab' : '' %>"
+          <%= readOnlyTab ? 'data-readonly-tab="true"' : '' %>
           id="metadata-<%= tab.id %>-pane"
           role="tabpanel"
           aria-labelledby="metadata-<%= tab.id %>-tab"
           tabindex="0"
         >
-          <% if (tab.layout === 'summary') { %>
+          <% if (tab.layout === 'debug-calculations') { %>
+            <div class="table-responsive debugging-calculations-wrap">
+              <table class="table table-sm align-middle mb-0 debugging-calculations-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Element name</th>
+                    <th scope="col">Calculation formula</th>
+                    <th scope="col">Current value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (debuggingDisplayRows.length === 0) { %>
+                    <tr>
+                      <td colspan="3" class="text-secondary py-3">No calculated expressions are used by this form.</td>
+                    </tr>
+                  <% } else { %>
+                    <% for (const displayRow of debuggingDisplayRows) { %>
+                      <% if (displayRow.type === 'group') { %>
+                        <tr class="debugging-calculation-category">
+                          <th colspan="3" scope="colgroup"><%= displayRow.label %></th>
+                        </tr>
+                      <% } else if (displayRow.type === 'subgroup') { %>
+                        <tr class="debugging-calculation-subcategory">
+                          <th colspan="3" scope="colgroup"><%= displayRow.label %></th>
+                        </tr>
+                      <% } else if (displayRow.type === 'detail') { %>
+                        <tr class="debugging-calculation-detail-category">
+                          <th colspan="3" scope="colgroup"><%= displayRow.label %></th>
+                        </tr>
+                      <% } else if (displayRow.type === 'path') { %>
+                        <tr
+                          class="debugging-calculation-path-category"
+                          data-debug-path-depth="<%= Math.min(displayRow.depth || 1, 5) %>"
+                        >
+                          <th colspan="3" scope="colgroup"><code><%= displayRow.label %></code></th>
+                        </tr>
+                      <% } else { %>
+                        <% const debugRow = displayRow.row; %>
+                        <% const elementNameParts = debugElementNameParts(displayRow.displayName); %>
+                        <tr>
+                          <td>
+                            <code class="debugging-element-name"><span class="debugging-element-prefix"><%= elementNameParts.prefix %></span><strong class="debugging-element-leaf"><%= elementNameParts.leaf %></strong></code>
+                          </td>
+                          <td><code class="debugging-formula"><%- highlightDebugFormula(debugRow.formula) %></code></td>
+                          <td
+                            class="debugging-current-value"
+                            data-debug-calculation-value
+                            <% if (debugRow.ast) { %>data-debug-calculation-ast="<%= JSON.stringify(debugRow.ast) %>"<% } %>
+                          ><%= debugRow.value %></td>
+                        </tr>
+                      <% } %>
+                    <% } %>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          <% } else if (tab.layout === 'summary') { %>
             <div class="account-summary-grid authentication-summary-grid">
               <% for (const key of tab.fields) { %>
                 <% const derived = derivedFields[key]; %>
@@ -136,19 +933,29 @@
 
                 <% if (derived) { %>
                   <% const rawValue = derived.expression ? ctxValue(key) : undefined; %>
-                  <% const state = presentationStateFor(key, rawValue); %>
-                  <% const renderedDerivedValue = state?.label || formatValue(rawValue, derived); %>
+                  <% const presentation = overrides[key]?.presentation || {}; %>
+                  <% const tone = dynamicUIValue(presentation.tone, ctxFields, {
+                    source: 'ui-metadata',
+                    sourcePath: `fieldOverrides.${key}.presentation.tone`,
+                    targetPath: `fields.${key}.tone`,
+                    purpose: 'resolve calculated-field presentation tone',
+                  }); %>
+                  <% const stateIcon = dynamicUIValue(presentation.icon, ctxFields, {
+                    source: 'ui-metadata',
+                    sourcePath: `fieldOverrides.${key}.presentation.icon`,
+                    targetPath: `fields.${key}.icon`,
+                    purpose: 'resolve calculated-field presentation icon',
+                  }); %>
+                  <% const renderedDerivedValue = formatValue(rawValue, {...derived, ...presentation}); %>
                   <div class="account-summary-label"><% if (derived.icon) { %><i class="bi bi-<%= derived.icon %> me-1" aria-hidden="true"></i><% } %><%= overrides[key]?.label || derived.label %></div>
                   <div class="account-summary-value">
-                    <% if (state) { %>
-                      <% if (state.icon) { %>
-                        <span class="status-value <%= state.tone === 'success' ? 'status-positive' : 'status-neutral' %>">
-                          <i class="bi bi-<%= state.icon %>" aria-hidden="true"></i>
-                          <%= renderedDerivedValue %>
-                        </span>
-                      <% } else { %>
-                        <span class="badge text-bg-<%= state.tone || 'secondary' %>"><%= renderedDerivedValue %></span>
-                      <% } %>
+                    <% if (stateIcon) { %>
+                      <span class="status-value <%= tone === 'success' ? 'status-positive' : 'status-neutral' %>">
+                        <i class="bi bi-<%= stateIcon %>" aria-hidden="true"></i>
+                        <%= renderedDerivedValue %>
+                      </span>
+                    <% } else if (tone) { %>
+                      <span class="badge text-bg-<%= tone %>"><%= renderedDerivedValue %></span>
                     <% } else { %>
                       <span class="text-secondary"><%= renderedDerivedValue %></span>
                     <% } %>
@@ -171,7 +978,7 @@
             <% for (const key of tab.fields) { %>
               <% const collection = relatedCollections[key]; %>
               <% if (!collection) continue; %>
-              <% const collectionSourceKey = collection.sourceKey || key; %>
+              <% const collectionSourceKey = collection.sourceKey ?? key; %>
               <% const rows = Array.isArray(pageRelatedData[collectionSourceKey]) ? pageRelatedData[collectionSourceKey] : []; %>
 
               <div class="authentication-identities mt-4">
@@ -184,18 +991,14 @@
                   <div class="authentication-identity-list">
                     <% for (const row of rows) { %>
                       <div class="authentication-identity-row">
-                        <% for (const collectionField of collection.fields) { %>
-                          <% const renderedValue = collectionValue(row, collectionField); %>
+                        <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
+                          <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
                           <div>
-                            <% if (renderedValue.kind === 'derived') { %>
-                              <% if (renderedValue.state) { %>
-                                <span class="badge text-bg-<%= renderedValue.state.tone || 'secondary' %>">
-                                  <% if (renderedValue.state.icon) { %><i class="bi bi-<%= renderedValue.state.icon %> me-1" aria-hidden="true"></i><% } %>
-                                  <%= renderedValue.raw %>
-                                </span>
-                              <% } else { %>
-                                <span class="text-secondary"><%= collectionField.presentation?.emptyText || '—' %></span>
-                              <% } %>
+                            <% if (renderedValue.calculated && (renderedValue.tone || renderedValue.icon)) { %>
+                              <span class="badge text-bg-<%= renderedValue.tone || 'secondary' %>">
+                                <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
+                                <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
+                              </span>
                             <% } else if (collectionField.format === 'auth-provider') { %>
                               <% const provider = providerFor(renderedValue.raw); %>
                               <span class="authentication-provider">
@@ -203,7 +1006,7 @@
                                 <strong><%= provider?.label || renderedValue.raw || '—' %></strong>
                               </span>
                             <% } else { %>
-                              <%= renderedValue.raw || '—' %>
+                              <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
                             <% } %>
                           </div>
                         <% } %>
@@ -223,8 +1026,24 @@
 
                 <% if (derived?.expression) { %>
                   <% const calculatedValue = ctxValue(key); %>
-                  <div class="col-md-6">
-                    <label class="form-label" for="metadata-field-<%= key %>"><%= derived.label %></label>
+                  <% const derivedVisibleExpression = expressionText(overrides[key]?.visible); %>
+                  <% const compiledDerivedOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
+                  <% const derivedInitiallyVisible = dynamicUIValue(overrides[key]?.visible ?? true, ctxFields, {
+                    source: 'ui-metadata',
+                    sourcePath: `fieldOverrides.${key}.visible`,
+                    targetPath: `fields.${key}.visible`,
+                    purpose: 'resolve calculated-field visibility',
+                  }) !== false; %>
+                  <div
+                    class="col-md-6"
+                    data-ctx-field-container="<%= key %>"
+                    <% if (derivedVisibleExpression) { %>
+                      data-ui-visible-expression="<%= derivedVisibleExpression %>"
+                      data-ui-visible-ast="<%= JSON.stringify(compiledDerivedOverride.visible?.ast ?? null) %>"
+                    <% } %>
+                    <%= !derivedInitiallyVisible ? 'hidden' : '' %>
+                  >
+                    <label class="form-label" for="metadata-field-<%= key %>"><%= overrides[key]?.label || derived.label %></label>
                     <input
                       class="form-control"
                       id="metadata-field-<%= key %>"
@@ -232,17 +1051,36 @@
                       value="<%= calculatedValue ?? '' %>"
                       readonly
                       aria-readonly="true"
+                      data-ctx-calculated-field="<%= key %>"
+                      data-calculated-expression="<%= derived.expression %>"
+                      data-calculated-ast="<%= JSON.stringify(ctxFields[key]?.ast ?? null) %>"
                       title="Calculated from: <%= derived.expression %>"
                     >
                   </div>
                   <% continue; %>
                 <% } %>
 
-                <% if (!field || !fieldVisible(field) || field.sensitive) continue; %>
+                <% const visibilityExpression = expressionText(overrides[key]?.visible); %>
+                <% if (!field || (fieldVisible(field) === false && !visibilityExpression) || field.sensitive) continue; %>
                 <% const editable = fieldEditable(field); %>
                 <% const value = valueFor(key); %>
 
-                <div class="col-md-6">
+                <% const visibleExpression = expressionText(overrides[key]?.visible); %>
+                <% const editableExpression = expressionText(overrides[key]?.editable); %>
+                <% const compiledOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
+                <div
+                  class="col-md-6"
+                  data-ctx-field-container="<%= key %>"
+                  <% if (visibleExpression) { %>
+                    data-ui-visible-expression="<%= visibleExpression %>"
+                    data-ui-visible-ast="<%= JSON.stringify(compiledOverride.visible?.ast ?? null) %>"
+                  <% } %>
+                  <% if (editableExpression) { %>
+                    data-ui-editable-expression="<%= editableExpression %>"
+                    data-ui-editable-ast="<%= JSON.stringify(compiledOverride.editable?.ast ?? null) %>"
+                  <% } %>
+                  <%= !fieldVisible(field) ? 'hidden' : '' %>
+                >
                   <label class="form-label" for="metadata-field-<%= key %>"><%= fieldLabel(field) %></label>
 
                   <% if (field.type === 'boolean') { %>
@@ -252,6 +1090,7 @@
                         id="metadata-field-<%= key %>"
                         type="checkbox"
                         name="<%= key %>"
+                        data-ctx-field="<%= key %>"
                         <%= value === true ? 'checked' : '' %>
                         <%= editable ? '' : 'disabled' %>
                       >
@@ -261,6 +1100,7 @@
                       class="form-select"
                       id="metadata-field-<%= key %>"
                       name="<%= key %>"
+                      data-ctx-field="<%= key %>"
                       <%= field.required ? 'required' : '' %>
                       <%= editable ? '' : 'disabled' %>
                     >
@@ -275,6 +1115,7 @@
                       class="form-select"
                       id="metadata-field-<%= key %>"
                       name="<%= key %>"
+                      data-ctx-field="<%= key %>"
                       <%= field.required ? 'required' : '' %>
                       <%= editable ? '' : 'disabled' %>
                     >
@@ -288,6 +1129,7 @@
                       class="form-control"
                       id="metadata-field-<%= key %>"
                       name="<%= key %>"
+                      data-ctx-field="<%= key %>"
                       type="<%= field.type === 'email' ? 'email' : field.type === 'number' ? 'number' : field.type === 'date' ? 'datetime-local' : 'text' %>"
                       value="<%= value %>"
                       <%= field.required ? 'required' : '' %>
@@ -312,17 +1154,33 @@
 
     <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
       <div class="d-flex align-items-center gap-2 flex-wrap">
+        <% for (const [actionKey, action] of commandActionEntries) { %>
+          <% if (!isNew && recordId && action.command) { %>
+            <button
+              class="<%= actionClass(action, 'primary') %>"
+              type="submit"
+              form="metadata-command-<%= actionKey %>"
+            >
+              <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %>
+              <%= action.label %>
+            </button>
+          <% } %>
+        <% } %>
+
         <% if (!isNew && permissions.delete && deleteAction) { %>
+          <% const deleteDisabled = isOwnSysUser || !deleteAuthorized; %>
           <button
-            class="btn btn-danger"
+            class="<%= actionClass(deleteAction, 'danger') %>"
             type="button"
-            <%= isOwnSysUser ? 'disabled' : '' %>
-            <% if (!isOwnSysUser) { %>
+            <%= deleteDisabled ? 'disabled' : '' %>
+            <% if (!deleteDisabled) { %>
               data-bs-toggle="modal"
               data-bs-target="#deleteEntryModal"
             <% } %>
             <% if (isOwnSysUser) { %>
               title="You cannot delete your own user account."
+            <% } else if (!deleteAuthorized) { %>
+              title="You are not authorized to delete this entry."
             <% } %>
           >
             <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
@@ -331,21 +1189,33 @@
         <% } %>
       </div>
 
-      <div class="d-flex gap-2">
-        <a class="btn btn-secondary" href="/bo/<%= definition.key %>">
+      <div class="d-flex gap-2 align-items-center">
+        <% if (!isViewMode && saveAction) { %>
+          <span
+            class="form-state-indicator small text-secondary me-1"
+            data-form-state-indicator
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <i class="bi bi-check-circle me-1" data-form-state-icon aria-hidden="true"></i>
+            <span data-form-state-text><%= isNew ? 'New entry · incomplete' : 'No changes' %></span>
+          </span>
+        <% } %>
+
+        <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>">
           <i class="bi bi-x-circle me-1"></i>
           <%= isViewMode ? 'Back' : 'Cancel' %>
         </a>
 
-        <% if (!isViewMode) { %>
+        <% if (!isViewMode && saveAction) { %>
           <button
-            class="btn btn-primary"
-            type="button"
+            class="<%= actionClass(saveAction, 'primary') %>"
+            type="submit"
+            data-form-save
             disabled
-            title="Save remains disabled until the metadata contract covers all specialized form behavior."
           >
-            <i class="bi bi-check-circle me-1"></i>
-            Save
+            <% if (saveAction.icon) { %><i class="bi bi-<%= saveAction.icon %> me-1"></i><% } %>
+            <%= saveAction.label %>
           </button>
         <% } %>
       </div>
@@ -353,14 +1223,25 @@
   </form>
 </section>
 
-<% if (!isNew && permissions.delete && deleteAction) { %>
-  <%- include('../../popups/messages/bo-edit-confirmations', {
-    isNew,
-    permissions,
-    isOwnSysUser,
-    definition,
-    item,
-    csrfToken,
-    deletePresentation
-  }) %>
+<% for (const [actionKey, action] of commandActionEntries) { %>
+  <% if (!isNew && recordId && action.command) { %>
+    <form
+      id="metadata-command-<%= actionKey %>"
+      method="post"
+      action="/bo/<%= definition.key %>/<%= recordId %>/<%= action.command %>"
+    >
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    </form>
+  <% } %>
 <% } %>
+
+<%- include('../../popups/messages/bo-edit-confirmations', {
+  isNew,
+  permissions,
+  isOwnSysUser,
+  definition,
+  item,
+  csrfToken,
+  deletePresentation,
+  deleteImpact
+}) %>

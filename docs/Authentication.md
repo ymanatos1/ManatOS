@@ -2,6 +2,8 @@
 
 Registration creates SysUser role Guest. A customer relationship later promotes an ordinary Guest to User. Admin is not automatically changed by commercial relationships.
 
+Every authenticated user may access and update their own `SysUser` record through the generic SysBO entry surface, subject to field-level security metadata. This does **not** grant administrative access to other users: role assignment remains Admin-only, another user record is not writable without the applicable authorization rule, and self-deletion remains prohibited.
+
 ## Email registration
 
 Requires unique user-name, unique email and local password.

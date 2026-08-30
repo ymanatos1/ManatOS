@@ -8,6 +8,8 @@ UI HTTP/navigation errors use `http-errors` and full error pages. Business/appli
 
 Operations can attach selected context such as IDs, names and file paths. Sensitive names (`password`, `hash`, `token`, `secret`, `cookie`, `session`, API key, authorization) are automatically stored/displayed as `********`.
 
+Expression parsing/evaluation has its own structured diagnostics. Parse failures are reported when metadata/CTX calculations are compiled; evaluation failures retain expression/caller provenance so development UI notifications and the CTX tooling can show where a dynamic decision failed without coupling the evaluator to a specific renderer.
+
 The same canonical error object can be serialized differently for:
 
 - API caller;

@@ -4,6 +4,8 @@ import request from 'supertest';
 
 import { SysBOUserRole } from '@manatos/shared';
 
+import { RelationshipIntegrityService } from '../src/services/relationship-integrity-service.js';
+
 import {
   bearer,
   createTestApi,
@@ -49,6 +51,22 @@ describe('API integration - SysBOUser delete authorization', () => {
     expect(preserved?.id).toBe(adminId);
   });
 
+  it('returns a non-mutating delete preflight instead of failing when this row is not deletable', async () => {
+    const response = await request(context.app)
+      .get(`/api/v1/SysUsers/${adminId}/$delete-impact`)
+      .set('Authorization', bearer(adminToken));
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({
+      targetObjectKey: 'sys-users',
+      targetId: adminId,
+      authorized: false,
+      canExecute: false,
+      requiresConfirmation: false,
+      impacts: [],
+    });
+  });
+
   it('allows an Admin to delete another SysBOUser', async () => {
     const otherUser = await createUser('DeleteTarget', 'delete-target@example.test');
 
@@ -61,6 +79,69 @@ describe('API integration - SysBOUser delete authorization', () => {
     expect(response.body.data).toEqual({ id: otherUser.id });
 
     await expect(context.services.users.get(otherUser.id)).resolves.toBeNull();
+  });
+
+
+  it('repairs a historical orphan External Identity from relationship metadata', () => {
+    const now = new Date().toISOString();
+    context.store.externalIdentities().set('orphan-identity', {
+      id: 'orphan-identity',
+      name: 'microsoft:orphan',
+      enabled: true,
+      createdAt: now,
+      createdBy: 'test',
+      updatedAt: now,
+      updatedBy: 'test',
+      userId: 'missing-user',
+      provider: 'microsoft',
+      providerSubject: 'orphan-subject',
+      email: 'orphan@example.test',
+      emailVerified: true,
+    });
+
+    const report = new RelationshipIntegrityService(context.store).repairOrphanedReferences();
+    expect(report.repaired).toBe(1);
+    expect(report.unresolved).toEqual([]);
+    expect(context.store.externalIdentities().size).toBe(0);
+  });
+
+  it('uses relationship metadata to remove dependent external identities when a User is deleted', async () => {
+    const otherUser = await createUser('FederatedTarget', 'federated-target@example.test');
+
+    await context.services.externalIdentities.add(
+      otherUser.id,
+      {
+        provider: 'microsoft',
+        providerSubject: 'provider-subject-1',
+        email: 'federated-target@example.test',
+        emailVerified: true,
+      },
+      {userId: adminId, userName: TEST_ADMIN.name},
+    );
+
+    expect(context.store.externalIdentities().size).toBe(1);
+
+    const preview = await request(context.app)
+      .get(`/api/v1/SysUsers/${otherUser.id}/$delete-impact`)
+      .set('Authorization', bearer(adminToken));
+
+    expect(preview.status).toBe(200);
+    expect(preview.body.data.impacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        objectKey: 'external-identities',
+        relationship: 'user',
+        count: 1,
+        action: 'cascade',
+      }),
+    ]));
+
+    const response = await request(context.app)
+      .delete(`/api/v1/SysUsers/${otherUser.id}`)
+      .set('Authorization', bearer(adminToken));
+
+    expect(response.status).toBe(200);
+    await expect(context.services.users.get(otherUser.id)).resolves.toBeNull();
+    expect(context.store.externalIdentities().size).toBe(0);
   });
 
   it('rejects a non-Admin deleting another SysBOUser', async () => {

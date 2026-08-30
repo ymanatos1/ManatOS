@@ -27,6 +27,16 @@ export interface ListQuery {
 }
 
 /**
+ * In-memory-only collection visibility filter.
+ *
+ * Authorization owns the policy. The repository owns the execution point so
+ * authorization happens before user filtering, sorting and pagination.
+ */
+export type InMemoryListAuthorizationFilter<T extends SysBOEntity> = (
+  items: readonly T[],
+) => Promise<T[]> | T[];
+
+/**
  * Generic paged result returned from repository list operations.
  */
 export interface ListResult<T> {
@@ -61,8 +71,19 @@ export class InMemoryRepository<T extends SysBOEntity> {
   /**
    * Return a filtered, sorted and paginated collection.
    */
-  async list(query: ListQuery): Promise<ListResult<T>> {
+  async list(
+    query: ListQuery,
+    authorizationFilter?: InMemoryListAuthorizationFilter<T>,
+  ): Promise<ListResult<T>> {
     let items = [...this.records.values()];
+
+    /*
+     * Apply authorization first. This keeps paging totals based only on rows
+     * the caller may see and prevents client filters from probing hidden rows.
+     */
+    if (authorizationFilter) {
+      items = await authorizationFilter(items);
+    }
 
     /*
      * Apply all supplied filters using AND semantics.

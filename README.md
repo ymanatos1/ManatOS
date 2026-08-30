@@ -1,8 +1,10 @@
-# ManatOS Express Platform
+# ManatOS Multi-Platform
 
 **Status:** Under Development / Under Testing
 
-A metadata-driven Express 5 + TypeScript application platform with independently runnable **API** and **Express/EJS UI** projects, common domain/metadata contracts, pluggable persistence boundaries, authentication and identity management, runtime configuration, Swagger, Postman and layered automated testing.
+A metadata-driven Express 5 + TypeScript application platform with independently runnable **API** and metadata-driven **Express/EJS UI** projects, common domain/metadata contracts, pluggable persistence boundaries, authentication and identity management, runtime configuration, Swagger, Postman and layered automated testing.
+
+Dynamic decisions are metadata-driven as well: canonical derived values and UI properties can carry built-in ManatOS expressions that are parsed once into ASTs, evaluated against the live CTX scope, and dependency-refreshed when their inputs change.
 
 ## Quick start
 
@@ -58,7 +60,7 @@ The current first-class SysBOs are:
 - **SysUser** (`sys-users`) — website/security account.
 - **SysPrincipal** (`sys-principals`) — customer/commercial identity.
 - **SysApplication** (`sys-applications`) — managed/licensed application.
-- **SysLicense** (`sys-licenses`) — customer license for an application.
+- **SysLicense** (`sys-licenses`) — principal-owned platform entitlement, optionally restricted to one application; mCRM application access for non-Admins is derived from effective license details.
 - **SysExtAuthProvider** (`sys-ext-auth-providers`) — Admin-managed external OAuth provider configuration with encrypted credentials and persisted verification state.
 - **SysConfiguration** (`sys-configurations`) — typed/grouped runtime application configuration; sensitive values are encrypted at rest.
 
@@ -85,16 +87,21 @@ The website adds a second category, **UI metadata**, containing:
 
 A future mobile application can reuse BO metadata while defining different UI metadata.
 
-API metadata is explicit:
+### Metadata-driven decisions and expressions
+
+ManatOS metadata is not limited to labels and field types. Canonical `derivedFields` and evaluator-backed UI properties can define dynamic decisions such as calculated values, visibility, editability and presentation decoration, while canonical metadata continues to own constraints such as required/read-only state. Expressions are compiled by the shared expression engine into ASTs; the metadata-driven browser renderer consumes those ASTs rather than reparsing source strings on every change.
+
+The live ManatOS CTX provides lexical scope for evaluation. Browser-side dependency extraction refreshes only calculations affected by a changed source field and propagates dependent calculated values through the same mechanism used by dynamic UI properties. Development builds expose these decisions in the read-only **Debugging** entry-form tab, grouped by entity fields, related entities and UI metadata with formula and current value.
+
+API metadata is explicit for every generic SysBO:
 
 ```text
-GET /api/v1/SysUsers/$metadata
-GET /api/v1/SysPrincipals/$metadata
-GET /api/v1/SysApplications/$metadata
-GET /api/v1/SysLicenses/$metadata
+GET /api/v1/<SysBO>/$metadata
+GET /api/v1/<SysBO>/$metadata-ui
+GET /api/v1/<SysBO>/<id>/$delete-impact
 ```
 
-Normal list calls return `success + data`, with collection entries under `data.items` and pagination under `data.paging`. `includeMetadata=true` adds BO metadata to `data` when convenient.
+`/$metadata` returns canonical BO/domain metadata. `/$metadata-ui` returns framework-neutral UI metadata. The delete-impact endpoint is a non-mutating relationship preflight used before destructive operations. Normal list calls return `success + data`, with collection entries under `data.items` and pagination under `data.paging`; `includeMetadata=true` adds canonical metadata and `includeMetadataUI=true` adds both canonical and UI metadata.
 
 ## Data rules
 
@@ -193,8 +200,10 @@ Generic SysBO CRUD pages provide:
 - fully configurable pagination;
 - green **Add new**;
 - edit by clicking the primary/name field;
-- authorization-aware **Delete entry** + confirmation popup;
-- unsaved-changes **Cancel / Discard / Save** popup;
+- authorization-aware **Delete entry** with relationship-impact preflight (cascade, unlink, set-null, restrict, or explicit no-impact);
+- dirty + valid Save state with reversible clean-state detection and unsaved-navigation protection;
+- reactive calculated fields and evaluator-driven UI properties using precompiled expression ASTs;
+- read-only informational tabs, System details, initial editable-field focus, and a development-only calculated-expression **Debugging** tab;
 - blue Play button on SysApplication, opening the initial playground placeholder.
 
 Every page receives the complete read-only application context through `res.locals.app`:
@@ -280,6 +289,7 @@ This is a baseline rather than a completed production system. In particular:
 - Microsoft/Google/Facebook/GitHub require real provider applications, credentials and callback URLs; credential pairs may be stored unverified, but must pass the ManatOS provider test before becoming available for sign-in.
 - Real-browser Playwright E2E tests are not yet part of the automated suite.
 - SysApplication playground internals are intentionally deferred.
+- The #16 per-entity Current EJS / Metadata-driven comparison switch remains temporary while remaining SysBOs are migrated and regression-tested.
 
 ### API presentation groups
 

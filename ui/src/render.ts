@@ -12,8 +12,12 @@ import {
   setPageContext,
 } from './context/manatos-context.js';
 import {
+  allManatOSValueObjectMetadata,
+  contextPathOf,
   evaluateCompiledExpression,
   evaluateExpression,
+  type ExpressionDiagnostic,
+  type ExpressionEvaluationCaller,
   type ManatOSCalculatedContextField,
   type ManatOSContext,
 } from '@manatos/shared';
@@ -64,6 +68,23 @@ export async function renderPage(
   // EJS convenience cursor only. The canonical structure remains ctx.page.page...
   const ctxPage = ctx ? currentPageContext(ctx) : null;
 
+  const requestId =
+    typeof (viewModel.app as any)?.scopes?.request?.requestId === 'string'
+      ? (viewModel.app as any).scopes.request.requestId as string
+      : undefined;
+  const evaluationCaller = (caller: ExpressionEvaluationCaller): ExpressionEvaluationCaller =>
+    requestId ? { ...caller, requestId } : caller;
+
+
+  // Render-time CTX/evaluator diagnostics are both logged server-side and
+  // carried once into the rendered page. The browser Debug menu may surface
+  // them as developer notifications without coupling the evaluator to UI code.
+  const ctxDiagnostics: ExpressionDiagnostic[] = [];
+  const recordDiagnostic = (diagnostic: ExpressionDiagnostic) => {
+    ctxDiagnostics.push(diagnostic);
+    console.error('[ManatOS expression evaluation]', diagnostic);
+  };
+
   /*
    * Generic lazy CTX field accessor for server-rendered views. Stored fields
    * return immediately; calculated fields evaluate their already-parsed AST
@@ -79,14 +100,19 @@ export async function renderPage(
     if ('expression' in field && 'ast' in field && ctx) {
       const calculated = field as ManatOSCalculatedContextField;
       try {
+        const fieldsPath = contextPathOf(ctx, ctxPage.fields) ?? 'ctx.page.fields';
         return evaluateCompiledExpression(
           { source: calculated.expression, ast: calculated.ast },
           ctx,
           ctxPage.fields,
+          evaluationCaller({
+            source: 'renderer',
+            sourcePath: fieldsPath,
+            targetPath: `${fieldsPath}.${key}`,
+            purpose: 'render calculated page field value',
+          }),
           {
-            diagnosticSink: (diagnostic) => {
-              console.error('[ManatOS expression evaluation]', diagnostic);
-            },
+            diagnosticSink: recordDiagnostic,
           },
         );
       } catch {
@@ -104,11 +130,18 @@ export async function renderPage(
     if ('expression' in field && 'ast' in field && ctx) {
       const calculated = field as ManatOSCalculatedContextField;
       try {
+        const fieldsPath = contextPathOf(ctx, ctx.user?.fields ?? null) ?? 'ctx.user.fields';
         return evaluateCompiledExpression(
           { source: calculated.expression, ast: calculated.ast },
           ctx,
           ctx.user?.fields ?? null,
-          { diagnosticSink: (diagnostic) => console.error('[ManatOS expression evaluation]', diagnostic) },
+          evaluationCaller({
+            source: 'renderer',
+            sourcePath: fieldsPath,
+            targetPath: `${fieldsPath}.${key}`,
+            purpose: 'render calculated authenticated-user field value',
+          }),
+          { diagnosticSink: recordDiagnostic },
         );
       } catch {
         return undefined;
@@ -125,12 +158,25 @@ export async function renderPage(
    * evaluator remains context-agnostic; callers supply only the expression and
    * the current CTX node/scope.
    */
-  const ctxExpressionValue = (expression: string, currentCtxNode: unknown): unknown => {
+  const ctxExpressionValue = (
+    expression: string,
+    currentCtxNode: unknown,
+    caller: ExpressionEvaluationCaller = {
+      source: 'ui-metadata',
+      purpose: 'evaluate dynamic UI metadata value',
+    },
+  ): unknown => {
     if (!ctx) return undefined;
     try {
-      return evaluateExpression(expression, ctx, currentCtxNode, {
-        diagnosticSink: (diagnostic) => console.error('[ManatOS expression evaluation]', diagnostic),
-      });
+      return evaluateExpression(
+        expression,
+        ctx,
+        currentCtxNode,
+        evaluationCaller(caller),
+        {
+          diagnosticSink: recordDiagnostic,
+        },
+      );
     } catch {
       return undefined;
     }
@@ -143,6 +189,8 @@ export async function renderPage(
     ctxFieldValue,
     ctxUserFieldValue,
     ctxExpressionValue,
+    relatedEntityMetadata: allManatOSValueObjectMetadata,
+    ctxDiagnostics,
     uiBootId,
   };
 

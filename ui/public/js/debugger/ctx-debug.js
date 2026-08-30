@@ -104,6 +104,43 @@
     return String(value);
   };
 
+  /**
+   * Cheap cycle-safe logical-size estimator for the CTX model. This is useful
+   * for development trend monitoring, not a claim about V8 heap allocation:
+   * engine object headers, shapes, interning and GC metadata are not observable
+   * from ordinary JavaScript.
+   */
+  const measureContext = (root) => {
+    const seen = new WeakSet();
+    let nodes = 0;
+    let bytes = 0;
+
+    const visit = (value) => {
+      nodes += 1;
+      if (value === null || value === undefined) { bytes += 8; return; }
+      if (typeof value === 'string') { bytes += 16 + value.length * 2; return; }
+      if (typeof value === 'number') { bytes += 8; return; }
+      if (typeof value === 'boolean') { bytes += 4; return; }
+      if (typeof value !== 'object') { bytes += 8; return; }
+      if (seen.has(value)) { bytes += 8; return; }
+      seen.add(value);
+      bytes += Array.isArray(value) ? 24 : 32;
+      for (const [key, child] of Object.entries(value)) {
+        bytes += 8 + key.length * 2;
+        visit(child);
+      }
+    };
+
+    visit(root);
+    return { nodes, bytes };
+  };
+
+  const formatLogicalSize = (bytes) => {
+    if (bytes < 1024) return `~${bytes} B`;
+    if (bytes < 1024 * 1024) return `~${(bytes / 1024).toFixed(1)} KB`;
+    return `~${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  };
+
   const childPagePath = (pagePath) => `${pagePath}.page`;
 
   /** Return the derived slash path for one ctx.page node. */
@@ -412,6 +449,25 @@
   const forwardButton = document.getElementById('ctxDebugForward');
   const watchButton = document.getElementById('ctxDebugWatch');
   const selectionElement = document.getElementById('ctxDebugSelection');
+  const statsElement = document.getElementById('ctxDebugStats');
+
+  /*
+   * The statistics explanation intentionally uses Bootstrap rather than the
+   * browser's native `title` tooltip. Native title rendering is single-line
+   * or browser-dependent, while this debugger text needs a stable four-line
+   * layout and must escape the debug panel's overflow clipping.
+   */
+  if (statsElement && window.bootstrap?.Tooltip) {
+    bootstrap.Tooltip.getOrCreateInstance(statsElement, {
+      container: 'body',
+      placement: 'bottom',
+      trigger: 'hover focus',
+      html: true,
+      customClass: 'ctx-debug-stats-tooltip',
+      title: () => statsElement.dataset.tooltipHtml || '',
+    });
+  }
+
   const propertiesButton = document.getElementById('ctxDebugProperties');
   const propertiesPanel = document.getElementById('ctxDebugPropertiesPanel');
   const propertiesBody = document.getElementById('ctxDebugPropertiesBody');
@@ -490,16 +546,24 @@
     selectedRow?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
 
-  const selectPath = (requestedPath, { remember = true, openProperties = true } = {}) => {
+  const selectPath = (requestedPath, { remember = true } = {}) => {
     const path = nearestExistingPath(requestedPath);
     expandAncestors(path);
     state.selected = path;
     if (remember) rememberSelection(path);
-    if (openProperties && propertiesPanel) {
-      state.propertiesOpen = true;
-      propertiesPanel.classList.remove('d-none');
-      propertiesPanel.setAttribute('aria-hidden', 'false');
+
+    /*
+     * Node selection is deliberately independent from the Properties-panel
+     * preference. Clicking a row, following a source link, searching, or using
+     * Back/Forward must never reopen a panel the developer explicitly hid.
+     * The panel's open/closed state changes only through its own controls and
+     * is persisted separately in the debugger's browser-session state.
+     */
+    if (propertiesPanel) {
+      propertiesPanel.classList.toggle('d-none', !state.propertiesOpen);
+      propertiesPanel.setAttribute('aria-hidden', String(!state.propertiesOpen));
     }
+
     saveState();
     render({ revealSelection: true });
   };
@@ -777,11 +841,8 @@
         event.stopPropagation();
         state.selected = path;
         rememberSelection(path);
-        if (propertiesPanel) {
-          state.propertiesOpen = true;
-          propertiesPanel.classList.remove('d-none');
-          propertiesPanel.setAttribute('aria-hidden', 'false');
-        }
+        // Expanding/collapsing a node is navigation, not a request to change
+        // the independently persisted Properties-panel preference.
         if (state.expanded.has(path)) state.expanded.delete(path);
         else state.expanded.add(path);
         saveState();
@@ -840,6 +901,19 @@
     state.expanded = new Set([...state.expanded].filter((path) => pathExists(path)));
     treeElement.replaceChildren(renderNode({ key: 'ctx', path: 'ctx', value: ctx }));
     treeElement.scrollTop = Math.min(scrollTop || state.scrollTop, treeElement.scrollHeight);
+
+    if (statsElement) {
+      const measured = measureContext(ctx);
+      const renderedRows = treeElement.querySelectorAll('.ctx-debug-row').length;
+      statsElement.textContent = `${measured.nodes} nodes · ${formatLogicalSize(measured.bytes)}`;
+      statsElement.dataset.tooltipHtml = [
+        `<div>${measured.nodes} logical CTX nodes</div>`,
+        `<div>${formatLogicalSize(measured.bytes)} approximate logical payload</div>`,
+        `<div>${renderedRows} debugger rows currently rendered</div>`,
+        '<div class="ctx-debug-stats-tooltip-note">Actual JavaScript heap usage may differ.</div>',
+      ].join('');
+    }
+
     updateToolbar();
     renderProperties();
     if (revealSelection) requestAnimationFrame(ensureSelectedVisible);

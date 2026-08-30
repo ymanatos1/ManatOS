@@ -10,7 +10,14 @@ import type { AuditActor } from '../audit/audit-service.js';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 
-import type { InMemoryRepository, ListQuery, ListResult } from '../storage/in-memory-repository.js';
+import type {
+  InMemoryListAuthorizationFilter,
+  InMemoryRepository,
+  ListQuery,
+  ListResult,
+} from '../storage/in-memory-repository.js';
+
+import { RelationshipIntegrityService, type DeleteImpactPlan } from './relationship-integrity-service.js';
 
 /**
  * Generic application/service layer for metadata-driven SysBOs.
@@ -35,8 +42,11 @@ export class GenericSysBOService<T extends SysBOEntity> {
   /**
    * Return a filtered, sorted and paginated list of entities.
    */
-  async list(query: ListQuery): Promise<ListResult<T>> {
-    return this.repository.list(query);
+  async list(
+    query: ListQuery,
+    authorizationFilter?: InMemoryListAuthorizationFilter<T>,
+  ): Promise<ListResult<T>> {
+    return this.repository.list(query, authorizationFilter);
   }
 
   /**
@@ -105,8 +115,15 @@ export class GenericSysBOService<T extends SysBOEntity> {
     );
   }
 
+  /** Preview relationship-driven consequences before deleting this record. */
+  deleteImpact(id: string): DeleteImpactPlan {
+    return new RelationshipIntegrityService(this.store).previewDelete(this.metadata.key, id);
+  }
+
   /**
-   * Delete an existing entity by GUID.
+   * Delete an existing entity by GUID. Referential effects are derived from
+   * canonical relationship metadata; no entity-specific cascade code belongs
+   * here.
    */
   async delete(id: string, actor: AuditActor): Promise<void> {
     await this.store.executeTransaction(() =>
@@ -119,6 +136,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
             deletedBy: actor.userName,
           });
 
+          new RelationshipIntegrityService(this.store).applyDeletePolicies(this.metadata.key, id);
           await this.repository.delete(id, actor);
         },
       ),

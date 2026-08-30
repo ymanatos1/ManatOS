@@ -20,6 +20,7 @@ import { logger } from './logging/logger.js';
 import { SecretsEncryptionService } from './security/secrets-encryption-service.js';
 import { SysBOExtAuthProviderService } from './services/sys-ext-auth-provider-service.js';
 import { SysBOConfigurationService } from './services/sys-configuration-service.js';
+import { RelationshipIntegrityService } from './services/relationship-integrity-service.js';
 
 /**
  * Application composition root.
@@ -39,6 +40,18 @@ const store = new InMemoryDataStore(new JsonFilePersistence(config.DATA_FILE));
 
 try {
   await store.initialize();
+
+  // Apply canonical relationship policies to any historical orphan rows left
+  // by older builds before metadata-driven referential integrity existed.
+  const relationshipRepair = new RelationshipIntegrityService(store).repairOrphanedReferences();
+  if (relationshipRepair.repaired > 0) {
+    await store.save();
+    logger.warn('Repaired orphaned relationship records during startup', { repaired: relationshipRepair.repaired, unresolved: relationshipRepair.unresolved });
+  }
+  if (relationshipRepair.unresolved.length > 0) {
+    logger.error('Unresolved relationship-integrity problems detected during startup', { repaired: relationshipRepair.repaired, unresolved: relationshipRepair.unresolved });
+  }
+
   logger.info('Primary datastore initialized', { dataFile: config.DATA_FILE });
 } catch (error) {
   /**

@@ -12,6 +12,8 @@ ui     -> EJS + sessions + external auth + generic CRUD
 
 The UI uses the API over HTTP. It never reads `data/database.json` directly.
 
+The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions; server-side context construction compiles them to ASTs and the browser consumes the compiled representation with dependency-aware refresh. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule.
+
 ## Commands
 
 ```bash
@@ -21,6 +23,7 @@ npm run dev:ui
 npm run build
 npm run test
 npm run verify
+npm run verifyrun
 npm run lint
 npm run format
 npm run reset:data
@@ -29,6 +32,8 @@ npm run reset:data
 ### Verification and lint policy
 
 `npm run verify` is the preferred full validation command before committing significant work. It builds `shared`, `api` and `ui`, runs both automated test suites, and prints a compact final summary with API, UI and total passed-test counts. A failed build or test step makes verification fail and identifies the failed stage.
+
+`npm run verifyrun` performs the same verification and starts the normal development processes only when every build and test stage passes. It is useful for the patch/regression loop because a failing verification cannot accidentally start a stale runtime.
 
 `npm run lint` remains deliberately separate. ESLint is a development diagnostic, not a target to satisfy by suppression. Fix findings when they expose a genuine code-quality improvement. If an intentional construct is currently preferable and no rational improvement is at hand, keep the finding visible (and, where useful, leave a future-improvement comment) rather than weakening the rule or adding a cosmetic bypass.
 
@@ -41,6 +46,7 @@ npm run reset:data
 - **dotenv** — loads local `.env` configuration.
 - **zod** — runtime validation of environment/external input.
 - **helmet** — defensive HTTP headers.
+- **expression engine** (`shared/src/expressions`) — parser, typed AST, lexical CTX resolver, evaluator, built-in function registry and structured diagnostics used by canonical/UI metadata decisions.
 
 ### API
 

@@ -70,7 +70,7 @@ export function contextFields(
   );
 }
 
-function userContext(user: SysBOUser | null): ManatOSUserContext | null {
+function userContext(user: SysBOUser | null, currentPlatform: SysPlatform): ManatOSUserContext | null {
   if (!user) return null;
 
   // passwordHash is intentionally never exposed to the browser/debug context.
@@ -85,6 +85,13 @@ function userContext(user: SysBOUser | null): ManatOSUserContext | null {
   return {
     entityName: entityContextName('sys-users'),
     fields,
+    permissions: {
+      userRole: user.role,
+      [currentPlatform.id]: Object.freeze({
+        // License/capability projection will populate this stable branch later.
+        capabilities: Object.freeze({}),
+      }),
+    },
   };
 }
 
@@ -95,6 +102,7 @@ export function createManatOSContext(
   apiBaseUrl: string,
   clientVersion: string,
   user: SysBOUser | null = null,
+  clientFeatures: Readonly<Record<string, boolean>> = {},
 ): ManatOSContext {
   const foundPlatformIndex = company.platforms.findIndex(
     (candidate) => candidate.id === currentPlatform.id,
@@ -119,9 +127,13 @@ export function createManatOSContext(
   return {
     entities: {},
     company: companyContext,
-    user: userContext(user),
+    user: userContext(user, currentPlatform),
     server: Object.freeze({ apiBaseUrl }),
-    client: Object.freeze({ kind: 'web-ejs', version: clientVersion }),
+    client: Object.freeze({
+      kind: 'web-ejs',
+      version: clientVersion,
+      features: Object.freeze({ ...clientFeatures }),
+    }),
     page: null,
   };
 }
@@ -137,7 +149,7 @@ export function createManatOSContext(
  * deferred until the expression value is requested. Keeping the AST beside
  * the declaration gives DEBUG immediate parser visibility without evaluation.
  */
-function withCompiledExpressions(value: unknown): unknown {
+function withCompiledExpressions(value: unknown, omitOwnKey = false): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => withCompiledExpressions(item));
   }
@@ -146,7 +158,7 @@ function withCompiledExpressions(value: unknown): unknown {
   const source = value as Record<string, unknown>;
   const copy: Record<string, unknown> = Object.fromEntries(
     Object.entries(source)
-      .filter(([key]) => key !== 'ast')
+      .filter(([key]) => key !== 'ast' && !(omitOwnKey && key === 'key'))
       .map(([key, child]) => [key, withCompiledExpressions(child)]),
   );
 
@@ -181,8 +193,8 @@ export function registerContextEntity(
   const entity: ManatOSEntityContext = {
     key: sysBOKey,
     ...(existing ?? {}),
-    ...(metadata !== undefined ? { metadata: withCompiledExpressions(metadata) } : {}),
-    ...(uiMetadata !== undefined ? { uiMetadata: withCompiledExpressions(uiMetadata) } : {}),
+    ...(metadata !== undefined ? { metadata: withCompiledExpressions(metadata, true) } : {}),
+    ...(uiMetadata !== undefined ? { uiMetadata: withCompiledExpressions(uiMetadata, true) } : {}),
   };
   ctx.entities[name] = entity;
   return entity;

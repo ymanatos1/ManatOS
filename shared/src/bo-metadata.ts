@@ -6,9 +6,12 @@ import {
   type SysBOApplication,
   type SysBOConfiguration,
   type SysBOExtAuthProvider,
+  type SysBOExternalIdentity,
   type SysBOLicense,
   type SysBOPrincipal,
   type SysBOUser,
+  type SysBOUserInvitation,
+  type SysBOUserPrincipal,
 } from './domain.js';
 import { MANATOS_COMPANY } from './company-platform.js';
 
@@ -65,6 +68,58 @@ export interface SysBOFieldMetadata {
   referenceBOKey?: string;
 }
 
+
+export type ManatOSRelationshipCardinality =
+  | 'one-to-one'
+  | 'many-to-one'
+  | 'one-to-many'
+  | 'many-to-many';
+
+export type ManatOSRelationshipDeleteAction =
+  | 'restrict'
+  | 'cascade'
+  | 'set-null'
+  | 'unlink';
+
+export type ManatOSRelationshipConfirmationPolicy =
+  | 'silent'
+  | 'confirm'
+  | 'inherit';
+
+export interface ManatOSRelationshipDeletePolicy {
+  /** Referential-integrity consequence when the referenced record is deleted. */
+  action: ManatOSRelationshipDeleteAction;
+
+  /** Interaction policy is independent from the integrity action itself. */
+  confirmation?: ManatOSRelationshipConfirmationPolicy;
+}
+
+export interface ManatOSRelationshipMetadata {
+  /** FK/source fields stored on this object; arrays also support future composite keys. */
+  fields: readonly string[];
+
+  /** Canonical target object and referenced fields. */
+  references: {
+    objectKey: string;
+    fields: readonly string[];
+  };
+
+  /** Physical/navigational cardinality. N:N normally uses an explicit junction object. */
+  cardinality: ManatOSRelationshipCardinality;
+
+  /** Optional semantic N:N navigation backed by a canonical junction object. */
+  through?: {
+    objectKey: string;
+    sourceRelationship: string;
+    targetRelationship: string;
+  };
+
+  /** Keyed policy collection leaves room for future relationship policies. */
+  policies?: Readonly<{
+    delete?: ManatOSRelationshipDeletePolicy;
+  }>;
+}
+
 /**
  * UI-neutral, hard-coded definition of a system business object.
  *
@@ -92,31 +147,38 @@ export interface SysBODerivedFieldMetadata {
   expression: string;
 }
 
-export interface SysBOMetadata<T> {
+export interface ManatOSObjectMetadata<T> {
+  /** Stable metadata identity; may describe a first-class SysBO or a related value object. */
   key: string;
   name: string;
   pluralName: string;
 
-  /**
-   * Main human/business identifying field used for links and display.
-   *
-   * For the current SysBOs this is the unique `name` field.
-   */
+  /** Main human/business identifying property of one object instance. */
   primaryField: keyof T & string;
 
-  /**
-   * Keyed canonical field definitions.
-   *
-   * Example:
-   *
-   * fieldDefinition['email']
-   * fieldDefinition.email
-   */
+  /** Keyed canonical persisted/runtime field definitions. */
   fieldDefinition: Record<string, SysBOFieldMetadata>;
 
-  /** Entity/domain calculations, independent from any particular UI. */
+  /** Reusable object/domain calculations, independent from any particular UI. */
   derivedFields?: Readonly<Record<string, SysBODerivedFieldMetadata>>;
+
+  /**
+   * Keyed canonical relationships registered on the referencing side. `fields`
+   * live on this object and point at `references.objectKey/references.fields`.
+   * Reverse navigation/delete impacts can therefore be derived centrally.
+   */
+  relationships?: Readonly<Record<string, ManatOSRelationshipMetadata>>;
 }
+
+/** Canonical metadata for a first-class SysBO exposed through generic SysBO CRUD. */
+export interface SysBOMetadata<T> extends ManatOSObjectMetadata<T> {}
+
+/**
+ * Canonical metadata for a related/domain object that is not independently
+ * exposed as a generic SysBO CRUD endpoint. It still deserves the same field
+ * and derived-value semantics so renderers, reports and expressions can reuse it.
+ */
+export interface ManatOSValueObjectMetadata<T> extends ManatOSObjectMetadata<T> {}
 
 /**
  * Fields common to all first-class SysBO entities.
@@ -225,15 +287,15 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
   derivedFields: {
     fullName: {
       label: 'Full name',
-      expression: "firstName + ' ' + lastName",
+      expression: "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName",
     },
     emailVerificationStatus: {
       label: 'Email verification',
-      expression: "emailVerified == true ? 'Verified' : 'Not verified'",
+      expression: "emailVerified ? 'Verified' : 'Not verified'",
     },
     localPasswordStatus: {
       label: 'Local password',
-      expression: "hasPassword == true ? 'Configured' : 'Not configured'",
+      expression: "hasPassword ? 'Configured' : 'Not configured'",
     },
   },
 
@@ -375,6 +437,15 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
   primaryField: 'name',
 
+  relationships: {
+    parent: {
+      fields: ['parentId'],
+      references: {objectKey: 'sys-principals', fields: ['id']},
+      cardinality: 'many-to-one',
+      policies: {delete: {action: 'set-null', confirmation: 'confirm'}},
+    },
+  },
+
   fieldDefinition: {
     ...common,
 
@@ -482,6 +553,21 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
   primaryField: 'name',
 
+  relationships: {
+    principal: {
+      fields: ['principalId'],
+      references: {objectKey: 'sys-principals', fields: ['id']},
+      cardinality: 'many-to-one',
+      policies: {delete: {action: 'restrict', confirmation: 'inherit'}},
+    },
+    application: {
+      fields: ['applicationId'],
+      references: {objectKey: 'sys-applications', fields: ['id']},
+      cardinality: 'many-to-one',
+      policies: {delete: {action: 'set-null', confirmation: 'confirm'}},
+    },
+  },
+
   fieldDefinition: {
     ...common,
 
@@ -570,6 +656,148 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
   },
 };
 
+/**
+ * Canonical metadata for an external login identity related to a SysBOUser.
+ *
+ * External identities are persisted domain objects but are not independently
+ * exposed through the generic SysBO CRUD/navigation surface. Modelling them as
+ * a value object keeps their field/derived semantics reusable without falsely
+ * promoting them to a top-level administration entity.
+ */
+export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExternalIdentity> = {
+  key: 'external-identities',
+  name: 'External identity',
+  pluralName: 'External identities',
+  primaryField: 'provider',
+  relationships: {
+    user: {
+      fields: ['userId'],
+      references: {objectKey: 'sys-users', fields: ['id']},
+      cardinality: 'many-to-one',
+      policies: {delete: {action: 'cascade', confirmation: 'confirm'}},
+    },
+  },
+  derivedFields: {
+    providerEmailVerificationStatus: {
+      label: 'Provider email verification',
+      expression: "emailVerified ? 'Provider email verified' : 'Provider email not verified'",
+    },
+  },
+  fieldDefinition: {
+    ...common,
+    userId: {
+      key: 'userId',
+      label: 'User',
+      type: 'reference',
+      order: 20,
+      required: true,
+      referenceBOKey: 'sys-users',
+    },
+    provider: {
+      key: 'provider',
+      label: 'Provider',
+      type: 'string',
+      order: 30,
+      required: true,
+      maxLength: 120,
+    },
+    providerSubject: {
+      key: 'providerSubject',
+      label: 'Provider subject',
+      type: 'string',
+      order: 40,
+      required: true,
+      maxLength: 500,
+    },
+    email: {
+      key: 'email',
+      label: 'Email',
+      type: 'email',
+      order: 50,
+      nullable: true,
+      maxLength: 320,
+    },
+    emailVerified: {
+      key: 'emailVerified',
+      label: 'Email verified',
+      type: 'boolean',
+      order: 60,
+      nullable: true,
+    },
+    displayName: {
+      key: 'displayName',
+      label: 'Display name',
+      type: 'string',
+      order: 70,
+      nullable: true,
+      maxLength: 300,
+    },
+  },
+};
+
+/** Canonical junction metadata for the SysBOUser <-> SysBOPrincipal N:N relation. */
+export const sysBOUserPrincipalMetadata: ManatOSValueObjectMetadata<SysBOUserPrincipal> = {
+  key: 'user-principals',
+  name: 'User principal relationship',
+  pluralName: 'User principal relationships',
+  primaryField: 'name',
+  relationships: {
+    user: {
+      fields: ['userId'],
+      references: {objectKey: 'sys-users', fields: ['id']},
+      cardinality: 'many-to-one',
+      policies: {delete: {action: 'unlink', confirmation: 'confirm'}},
+    },
+    principal: {
+      fields: ['principalId'],
+      references: {objectKey: 'sys-principals', fields: ['id']},
+      cardinality: 'many-to-one',
+      policies: {delete: {action: 'unlink', confirmation: 'confirm'}},
+    },
+  },
+  fieldDefinition: {
+    ...common,
+    userId: {key: 'userId', label: 'User', type: 'reference', order: 20, required: true, referenceBOKey: 'sys-users'},
+    principalId: {key: 'principalId', label: 'Principal', type: 'reference', order: 30, required: true, referenceBOKey: 'sys-principals'},
+    relationship: {key: 'relationship', label: 'Relationship', type: 'string', order: 40, required: true},
+    isDefault: {key: 'isDefault', label: 'Default', type: 'boolean', order: 50, required: true},
+    description: {key: 'description', label: 'Description', type: 'string', order: 60, nullable: true, maxLength: 2000},
+  },
+};
+
+/** Canonical metadata for pending invitations related to a Principal. */
+export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserInvitation> = {
+  key: 'user-invitations',
+  name: 'User invitation',
+  pluralName: 'User invitations',
+  primaryField: 'email',
+  relationships: {
+    principal: {
+      fields: ['principalId'],
+      references: {objectKey: 'sys-principals', fields: ['id']},
+      cardinality: 'many-to-one',
+      policies: {delete: {action: 'cascade', confirmation: 'confirm'}},
+    },
+  },
+  fieldDefinition: {
+    ...common,
+    email: {key: 'email', label: 'Email', type: 'email', order: 20, required: true, maxLength: 320},
+    principalId: {key: 'principalId', label: 'Principal', type: 'reference', order: 30, required: true, referenceBOKey: 'sys-principals'},
+    relationship: {key: 'relationship', label: 'Relationship', type: 'string', order: 40, required: true},
+    requestedRole: {key: 'requestedRole', label: 'Requested role', type: 'string', order: 50, required: true},
+    tokenHash: {key: 'tokenHash', label: 'Token hash', type: 'string', order: 60, required: true, sensitive: true},
+    expiresAt: {key: 'expiresAt', label: 'Expires', type: 'date', order: 70, required: true},
+    usedAt: {key: 'usedAt', label: 'Used', type: 'date', order: 80, nullable: true},
+  },
+};
+
+/** Registry of canonical related/value-object metadata (not generic SysBO CRUD). */
+export const allManatOSValueObjectMetadata = {
+  [sysBOExternalIdentityMetadata.key]: sysBOExternalIdentityMetadata,
+  [sysBOUserPrincipalMetadata.key]: sysBOUserPrincipalMetadata,
+  [sysBOUserInvitationMetadata.key]: sysBOUserInvitationMetadata,
+} as const;
+
 /** Persisted application configuration metadata. */
 export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
   key: 'sys-configurations',
@@ -626,4 +854,10 @@ export const allSysBOMetadata = {
   [sysBOLicensesMetadata.key]: sysBOLicensesMetadata,
   [sysBOExtAuthProvidersMetadata.key]: sysBOExtAuthProvidersMetadata,
   [sysBOConfigurationsMetadata.key]: sysBOConfigurationsMetadata,
+} as const;
+
+/** All canonical objects, used by relationship/report/designer registries. */
+export const allManatOSObjectMetadata = {
+  ...allSysBOMetadata,
+  ...allManatOSValueObjectMetadata,
 } as const;

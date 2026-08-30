@@ -103,7 +103,7 @@ export function buildOpenApiSpec() {
     openapi: '3.1.0',
 
     info: {
-      title: 'ManatOS System API',
+      title: 'ManatOS Multi-Platform API',
 
       version: '0.1.0',
 

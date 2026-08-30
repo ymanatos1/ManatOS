@@ -197,7 +197,11 @@ The normal Vitest verification suite should protect the deterministic security r
 
 Real SMTP/IMAP tests and browser-level Playwright E2E tests are intentionally separate future layers so `npm run verify` remains fast and deterministic.
 
-## 12. Known follow-up work
+## 12. Own-account SysUser administration boundary
+
+The Account page and generic SysUser surface are complementary. Any authenticated subject may reach their own SysUser entry and update fields permitted by authorization/UI metadata. Own-record access does not imply role administration or deletion: role remains Admin-controlled and deleting the currently authenticated SysUser is explicitly rejected. Authentication summary data and linked external identities may be shown on the owner's record.
+
+## 13. Known follow-up work
 
 - Persistent/distributed session and recovery-token stores (for multi-instance deployment and survival across process restarts).
 - Generic user/Admin notification subsystem for mail-delivery fallback and the existing notifications UI.

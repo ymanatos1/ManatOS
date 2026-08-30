@@ -77,6 +77,7 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
 
   it('defines framework-neutral $metadata-ui entries for every SysBO participating in #16', async () => {
     const shared = await source('../shared/src/bo-ui-metadata.ts');
+    const canonicalMetadata = await source('../shared/src/bo-metadata.ts');
     const apiMetadata = await source('../api/src/metadata/sysbo-ui-definitions.ts');
     const apiRegistry = await source('../api/src/metadata/sysbo-ui-registry.ts');
     const apiRouter = await source('../api/src/http/sysbo-router.ts');
@@ -93,24 +94,34 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
     expect(shared).toContain('entryActions');
     expect(shared).toContain('relatedCollections');
     expect(apiMetadata).toContain("icon: 'shield-lock'");
+    expect(apiMetadata).toContain(
+      "mode !== 'create' && (user.permissions.userRole === 'Admin' || id === user.fields.id.value)",
+    );
 
     // Entity-level derived values such as emailVerificationStatus and
-    // localPasswordStatus now belong to canonical SysBO metadata. UI metadata
-    // only decorates those evaluated values (tone/icon/summary presentation).
+    // localPasswordStatus stay canonical. UI metadata dynamically evaluates
+    // only presentation decisions such as tone/icon.
+    expect(apiMetadata).toContain("editable: { expression: \"user.permissions.userRole === 'Admin'\" }");
     expect(apiMetadata).toContain('emailVerificationStatus');
-    expect(apiMetadata).toContain("{ equals: 'Verified', tone: 'success' }");
+    expect(apiMetadata).toContain("tone: { expression: \"emailVerified ? 'success' : 'secondary'\" }");
     expect(apiMetadata).toContain('localPasswordStatus');
-    expect(apiMetadata).toContain("{ equals: 'Configured', icon: 'check-circle-fill', tone: 'success' }");
+    expect(apiMetadata).toContain("icon: { expression: \"hasPassword ? 'check-circle-fill' : 'dash-circle'\" }");
 
-    // Related-collection calculations now use the same generic expression evaluator;
-    // only row presentation remains UI metadata.
-    expect(apiMetadata).toContain("expression: \"emailVerified == true ? 'Provider email verified' : 'Provider email not verified'\"");
-    expect(apiMetadata).toContain("equals: 'Provider email verified'");
+    // External Identity now has its own canonical value-object metadata. The
+    // related collection names that entity and keeps only presentation choices.
+    expect(canonicalMetadata).toContain('sysBOExternalIdentityMetadata');
+    expect(canonicalMetadata).toContain("key: 'external-identities'");
+    expect(canonicalMetadata).toContain('providerEmailVerificationStatus');
+    expect(canonicalMetadata).toContain("expression: \"emailVerified ? 'Provider email verified' : 'Provider email not verified'\"");
+    expect(apiMetadata).toContain("entityKey: 'external-identities'");
     expect(apiMetadata).toContain('externalIdentities: {');
+    expect(apiMetadata).toContain('fields: {');
+    expect(apiMetadata).toContain('providerEmailVerificationStatus: {');
 
     // Keyed metadata containers do not repeat their parent key in each value.
     expect(apiMetadata).toContain('entryActions: {');
-    expect(apiMetadata).toContain("delete: { kind: 'delete'");
+    expect(apiMetadata).toContain('delete: {');
+    expect(apiMetadata).toContain("kind: 'delete'");
     expect(apiMetadata).not.toContain("key: 'externalIdentities'");
     expect(apiMetadata).not.toContain("sourceKey: 'externalIdentities'");
     expect(apiMetadata).not.toContain("sourceField: 'provider'");

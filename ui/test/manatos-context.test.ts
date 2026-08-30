@@ -85,9 +85,10 @@ describe('ManatOS ctx tree', () => {
     registerContextEntity(ctx, 'sys-users', sysBOUsersMetadata);
 
     const fullName = (ctx.entities.sysUsers?.metadata as any)?.derivedFields?.fullName;
-    expect(fullName?.expression).toBe("firstName + ' ' + lastName");
-    expect(fullName?.ast?.kind).toBe('binary');
-    expect(fullName?.ast?.operator).toBe('+');
+    expect(fullName?.expression).toBe(
+      "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName",
+    );
+    expect(fullName?.ast?.kind).toBe('conditional');
   });
 
   it('rejects ctx identifiers that the future expression grammar cannot address', () => {
@@ -106,6 +107,20 @@ describe('ManatOS ctx tree', () => {
     const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0', user);
     expect(ctx.user?.entityName).toBe('sysUsers');
     expect('entity' in (ctx.user ?? {})).toBe(false);
+  });
+
+  it('exposes safe client feature facts to evaluator expressions', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const ctx = createManatOSContext(
+      MANATOS_COMPANY,
+      platform,
+      'http://localhost:3000',
+      '0.1.0',
+      null,
+      { allowAdminEmailVerification: true },
+    );
+
+    expect(ctx.client.features.allowAdminEmailVerification).toBe(true);
   });
 
   it('allows non-SysBO page kinds and modes without a closed CRUD union', () => {
@@ -129,18 +144,48 @@ describe('ManatOS ctx tree', () => {
       record: {
         relatedCollections: {
           externalIdentities: {
-            fields: [{
-              key: 'status',
-              expression: "emailVerified == true ? 'Verified' : 'Not verified'",
-            }],
+            entityKey: 'external-identities',
+            fields: {
+              status: {
+                expression: "emailVerified ? 'Verified' : 'Not verified'",
+              },
+            },
           },
         },
       },
     });
 
-    const field = (ctx.entities.sysUsers?.uiMetadata as any)?.record?.relatedCollections?.externalIdentities?.fields?.[0];
+    const entity = ctx.entities.sysUsers as any;
+    const field = entity?.uiMetadata?.record?.relatedCollections?.externalIdentities?.fields?.status;
     expect(field?.expression).toContain('emailVerified');
     expect(field?.ast?.kind).toBe('conditional');
+
+    // Canonical objects remain self-identifying outside CTX, but the outer
+    // ctx.entities key already owns identity so nested metadata does not repeat it.
+    expect(entity?.key).toBe('sys-users');
+    expect(entity?.metadata?.key).toBeUndefined();
+    expect(entity?.uiMetadata?.key).toBeUndefined();
+  });
+
+  it('exposes a stable user permission branch for role and current platform', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const user = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'guest',
+      email: 'guest@example.test',
+      role: 'Guest',
+      enabled: true,
+      emailVerified: false,
+      createdAt: new Date().toISOString(),
+      createdBy: 'test',
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'test',
+    } as any;
+
+    const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0', user);
+
+    expect(ctx.user?.permissions.userRole).toBe('Guest');
+    expect(ctx.user?.permissions[platform.id]).toEqual({ capabilities: {} });
   });
 
 });

@@ -84,6 +84,32 @@ export class InMemoryDataStore implements StorageAdapter {
     return this.state.sysUserInvitations;
   }
 
+
+  /**
+   * Resolve a persisted collection by canonical ManatOS metadata key.
+   * Relationship/delete planning uses this instead of hard-coding one target
+   * entity at a time. Future storage adapters can provide the equivalent
+   * metadata-key lookup over real tables/repositories.
+   */
+  collectionForObjectKey(objectKey: string): Map<string, Record<string, unknown>> | null {
+    const map = (() => {
+      switch (objectKey) {
+        case 'sys-users': return this.state.sysUsers;
+        case 'sys-principals': return this.state.sysPrincipals;
+        case 'sys-applications': return this.state.sysApplications;
+        case 'sys-configurations': return this.state.sysConfigurations;
+        case 'sys-licenses': return this.state.sysLicenses;
+        case 'sys-ext-auth-providers': return this.state.sysExtAuthProviders;
+        case 'external-identities': return this.state.sysExternalIdentities;
+        case 'user-principals': return this.state.sysUserPrincipals;
+        case 'user-invitations': return this.state.sysUserInvitations;
+        default: return null;
+      }
+    })();
+
+    return map as unknown as Map<string, Record<string, unknown>> | null;
+  }
+
   /**
    * Execute a mutating operation using lightweight transaction-like
    * semantics.

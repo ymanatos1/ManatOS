@@ -62,7 +62,7 @@ describe('company/platform navigation composition', () => {
     const configuration = navigation.find((item) => item.id === 'configuration');
     const preferences = navigation.find((item) => item.id === 'preferences');
     expect(configuration?.separatorBefore).toBe(true);
-    expect(preferences?.separatorBefore).not.toBe(true);
+    expect(preferences?.separatorBefore).toBe(true);
     expect(configuration?.children?.find((item) => item.id === 'external-authentication')?.icon).toBe('bi-globe2');
     expect(configuration?.children?.map((item) => item.id)).toEqual([
       'system-configuration',
@@ -101,20 +101,62 @@ describe('company/platform navigation composition', () => {
     ]);
   });
 
-  it('keeps Apps Playground dependent on the mCRM SysBOApplication capability', () => {
+  it('keeps Apps Playground dependent on the same platform capability in both menus', () => {
     const platform = {
       ...resolvePlatform(MANATOS_COMPANY),
       entities: [],
     };
 
-    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform).vertical;
+    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform);
 
-    expect(navigation.some((item) => item.id === 'app-playground')).toBe(false);
+    expect(navigation.vertical.some((item) => item.id === 'app-playground')).toBe(false);
+    expect(navigation.horizontal.some((item) => item.id === 'app-playground')).toBe(false);
     expect(
-      navigation.find((item) => item.id === 'administration')?.children?.some(
+      navigation.vertical.find((item) => item.id === 'administration')?.children?.some(
         (item) => item.id === 'applications',
       ),
     ).toBe(false);
+  });
+
+  it('gates mCRM application navigation by entitlement for every non-Admin role', () => {
+    for (const role of [SysBOUserRole.Guest, SysBOUserRole.User, SysBOUserRole.Superuser]) {
+      const unlicensed = navigationFor(role, true);
+      expect(unlicensed.vertical.some((item) => item.id === 'app-playground')).toBe(false);
+      expect(unlicensed.horizontal.some((item) => item.id === 'app-playground')).toBe(false);
+      expect(
+        unlicensed.vertical.find((item) => item.id === 'administration')?.children?.some(
+          (item) => item.id === 'applications',
+        ),
+      ).toBe(false);
+
+      const licensed = navigationFor(
+        role,
+        true,
+        MANATOS_COMPANY,
+        resolvePlatform(MANATOS_COMPANY),
+        { platformEntitled: true },
+      );
+      expect(licensed.vertical.some((item) => item.id === 'app-playground')).toBe(true);
+      expect(licensed.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
+      expect(
+        licensed.vertical.find((item) => item.id === 'administration')?.children?.some(
+          (item) => item.id === 'applications',
+        ),
+      ).toBe(true);
+    }
+
+    const admin = navigationFor(SysBOUserRole.Admin, true);
+    expect(admin.vertical.some((item) => item.id === 'app-playground')).toBe(true);
+    expect(admin.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
+  });
+
+  it('gives Guest access to the Users area without exposing unrelated administration entities', () => {
+    const navigation = navigationFor(SysBOUserRole.Guest, true).vertical;
+    const administration = navigation.find((item) => item.id === 'administration');
+
+    expect(administration).toBeDefined();
+    expect(administration?.children?.map((item) => item.id)).toEqual(['users']);
+    expect(navigation.some((item) => item.id === 'configuration')).toBe(false);
   });
 
   it('preserves existing User navigation visibility and includes Superuser', () => {
@@ -122,6 +164,7 @@ describe('company/platform navigation composition', () => {
       const navigation = navigationFor(role, true).vertical;
       expect(navigation.some((item) => item.id === 'administration')).toBe(true);
       expect(navigation.some((item) => item.id === 'configuration')).toBe(false);
+      expect(navigation.find((item) => item.id === 'preferences')?.separatorBefore).toBe(true);
     }
   });
 });

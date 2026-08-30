@@ -88,6 +88,8 @@ Covers the security-sensitive public authentication contract:
 
 The UI suite is a first-class part of normal verification. It combines deterministic TypeScript tests, EJS/Cheerio presentation tests and Supertest route/integration tests. It covers authentication, session handling, external-provider presentation, configuration pages, operation/error presentation and generic SysBO UI behavior.
 
+Current generic-SysBO coverage also protects the metadata-driven renderer migration: canonical + UI metadata loading, evaluator-backed properties, calculated-field reactivity, reversible dirty/valid Save state, initial editable-field focus, all-readonly tab presentation, development-only calculated-expression diagnostics, relationship-aware delete confirmations, SysUser own-record access rules and role-filtered navigation. These are engine contracts and should stay entity-agnostic wherever possible.
+
 These tests deliberately stop short of pretending to be a real browser. Playwright remains the planned complementary layer for a small number of high-value end-to-end browser workflows.
 
 ## Global API response contract
@@ -171,6 +173,8 @@ npm run verify
 ```
 
 `npm run verify` builds `shared`, `api` and `ui`, runs both test suites, and finishes with a compact PASS/FAIL summary containing API, UI and total test counts. `npm run lint` remains separate and is used as a code-quality diagnostic rather than a target to satisfy by suppression.
+
+`npm run verifyrun` first performs that same verification and starts ManatOS only if it passes.
 
 For the API workspace only, if the workspace package exposes the normal test script:
 

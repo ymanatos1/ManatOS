@@ -870,3 +870,12 @@ body.manatos-busy {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Metadata-driven read-only controls are intentionally visually distinct from
+   editable values while remaining fully legible in both themes. */
+.metadata-driven-record-form .form-control[readonly],
+.metadata-driven-record-form .form-select:disabled {
+  background-color: var(--bs-secondary-bg);
+  opacity: 1;
+}
