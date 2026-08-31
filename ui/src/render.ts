@@ -13,7 +13,7 @@ import {
   setPageContext,
 } from './context/manatos-context.js';
 import {
-  allManatOSValueObjectMetadata,
+  allManatOSObjectMetadata,
   contextPathOf,
   evaluateCompiledExpression,
   evaluateExpression,
@@ -191,7 +191,7 @@ export async function renderPage(
     ctxUserFieldValue,
     ctxExpressionValue,
     breadcrumbItems: ctx ? pageBreadcrumbItems(ctx) : [],
-    relatedEntityMetadata: allManatOSValueObjectMetadata,
+    relatedEntityMetadata: allManatOSObjectMetadata,
     ctxDiagnostics,
     uiBootId,
   };

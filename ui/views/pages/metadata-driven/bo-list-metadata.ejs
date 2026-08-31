@@ -29,6 +29,27 @@
       const match = (listReferenceValues[fieldKey] || []).find((candidate) => candidate?.id === value);
       return match?.name ?? String(value);
     };
+    const enumItem = (field, value) =>
+      (field.enumItems || []).find((candidate) => candidate?.value === value) || null;
+    const enumToneClass = (item) => {
+      const tone = item?.tone;
+      if (!tone) return '';
+      if (tone === 'danger' && item?.toneStrength === 'soft') return 'text-danger opacity-75';
+      if (tone === 'danger' && item?.toneStrength === 'strong') return 'text-danger-emphasis';
+      if (tone === 'warning') return 'text-warning-emphasis';
+      return `text-${tone}`;
+    };
+    const rowActions = Object.entries(metadataUI.list.rowActions || {})
+      .map(([key, action]) => ({ key, ...action }))
+      .filter((action) => action.visible !== false)
+      .sort((left, right) => (left.order || 0) - (right.order || 0));
+    const rowActionClass = (action) => {
+      const tone = action.tone || 'secondary';
+      const outline = action.emphasis === 'outline';
+      return `btn btn-sm ${outline ? `btn-outline-${tone}` : `btn-${tone}`}`;
+    };
+    const rowActionHref = (action, item) =>
+      String(action.href || '').replaceAll('{id}', encodeURIComponent(String(item.id || '')));
   %>
 
   <section
@@ -91,8 +112,22 @@
                 <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
                   <option value="">All</option>
                   <% for (const option of field.enumValues || []) { %>
-                    <option value="<%= option %>" <%= query[`filter.${key}`] === option ? 'selected' : '' %>><%= option %></option>
+                    <% const richOption = enumItem(field, option); %>
+                    <option value="<%= option %>" <%= query[`filter.${key}`] === option ? 'selected' : '' %>><%= richOption?.label || option %></option>
                   <% } %>
+                </select>
+              <% } else if (field.type === 'reference') { %>
+                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
+                  <option value="">All</option>
+                  <% for (const option of listReferenceValues[key] || []) { %>
+                    <option value="<%= option.id %>" <%= query[`filter.${key}`] === option.id ? 'selected' : '' %>><%= option.name ?? option.id %></option>
+                  <% } %>
+                </select>
+              <% } else if (field.type === 'boolean') { %>
+                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
+                  <option value="">All</option>
+                  <option value="true" <%= query[`filter.${key}`] === 'true' ? 'selected' : '' %>>Enabled</option>
+                  <option value="false" <%= query[`filter.${key}`] === 'false' ? 'selected' : '' %>>Disabled</option>
                 </select>
               <% } else { %>
                 <input class="form-control" id="metadata-filter-<%= key %>" name="filter.<%= key %>" value="<%= query[`filter.${key}`] || '' %>">
@@ -130,13 +165,16 @@
                 <% } %>
               </th>
             <% } %>
+            <% if (rowActions.length) { %>
+              <th class="text-end">Actions</th>
+            <% } %>
           </tr>
         </thead>
 
         <tbody>
           <% if (!items.length) { %>
             <tr>
-              <td class="empty-table-state" colspan="<%= metadataUI.list.visibleFields.length %>">
+              <td class="empty-table-state" colspan="<%= metadataUI.list.visibleFields.length + (rowActions.length ? 1 : 0) %>">
                 <i class="bi bi-search"></i>
                 <strong>No entries found</strong>
                 <span>No existing entries match the current filter. Change or clear the filters.</span>
@@ -157,6 +195,10 @@
                     <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= item[key] ?? '' %></a>
                   <% } else if (field.type === 'reference') { %>
                     <%= referenceLabel(key, item[key]) %>
+                  <% } else if (field.type === 'enum') { %>
+                    <% const selectedEnumItem = enumItem(field, item[key]); %>
+                    <% if (selectedEnumItem?.icon) { %><i class="bi bi-<%= selectedEnumItem.icon %> <%= enumToneClass(selectedEnumItem) %> me-1" aria-hidden="true"></i><% } %>
+                    <%= selectedEnumItem?.label || item[key] || '' %>
                   <% } else if (field.type === 'boolean') { %>
                     <% const positive = Boolean(item[key]); %>
                     <% const positiveLabel = key === 'emailVerified' ? 'Verified' : (key === 'enabled' ? 'Enabled' : 'Yes'); %>
@@ -168,6 +210,25 @@
                   <% } else { %>
                     <%= item[key] ?? '' %>
                   <% } %>
+                </td>
+              <% } %>
+              <% if (rowActions.length) { %>
+                <td class="text-end">
+                  <div class="d-inline-flex gap-1">
+                    <% for (const action of rowActions) { %>
+                      <% if (action.kind === 'navigate') { %>
+                        <a
+                          class="<%= rowActionClass(action) %>"
+                          href="<%= rowActionHref(action, item) %>"
+                          title="<%= action.title || action.label %>"
+                          aria-label="<%= action.title || action.label %>"
+                        >
+                          <% if (action.icon) { %><i class="bi bi-<%= action.icon %>" aria-hidden="true"></i><% } %>
+                          <span class="<%= action.icon ? 'd-none d-xl-inline ms-1' : '' %>"><%= action.label %></span>
+                        </a>
+                      <% } %>
+                    <% } %>
+                  </div>
                 </td>
               <% } %>
             </tr>

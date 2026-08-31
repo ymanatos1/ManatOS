@@ -13,6 +13,7 @@ import {
   type SysBOUIMetadata,
   type SysBOUser,
   calculatedContextField,
+  evaluateExpression,
   type ManatOSContext,
 } from '@manatos/shared';
 
@@ -96,8 +97,6 @@ const METADATA_SYSBO_UI: SysBOUiImplementation = 'metadata';
  * migration is in progress. Remove the settings and this map when #16 closes.
  */
 const sysBOUiViewModeConfigurationNameByKey: Readonly<Record<string, string>> = {
-  'sys-applications': 'UI_SYSBO_APPLICATIONS_VIEW_MODE',
-  'sys-licenses': 'UI_SYSBO_LICENSES_VIEW_MODE',
   'sys-ext-auth-providers': 'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE',
 };
 
@@ -257,13 +256,66 @@ function applySysBOEntryContext(
     }
   }
 
-  const entryFields = contextFields(
+  const referenceData = pageValues.referenceData && typeof pageValues.referenceData === 'object' && !Array.isArray(pageValues.referenceData)
+    ? pageValues.referenceData as Readonly<Record<string, readonly Readonly<Record<string, unknown>>[]>>
+    : {};
+
+  let entryFields = contextFields(
     {
       ...initialRecordValues,
       ...pageValues,
     },
     canonical.fieldDefinition,
+    referenceData,
   );
+
+  /*
+   * Evaluator-backed create defaults are resolved generically against the same
+   * field CTX that the page will expose. This lets metadata say things such as
+   * `FirstCtx(platformId.options, 'value')` or `CurrentDay()` without teaching the
+   * route about License, Platform, dates, or any other entity-specific rule.
+   * The evaluated values become part of dataOriginal first; dataCurrent then
+   * starts as its strict clone, preserving the page-state golden rule.
+   */
+  if (mode === 'create') {
+    for (const [key, override] of Object.entries(ui?.record?.fieldOverrides ?? {})) {
+      const dynamicDefault = override?.createDefaultValue;
+      if (!dynamicDefault || typeof dynamicDefault !== 'object' || typeof dynamicDefault.expression !== 'string') {
+        continue;
+      }
+
+      const currentValue = initialRecordValues[key];
+      if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+        continue;
+      }
+
+      try {
+        initialRecordValues[key] = evaluateExpression(
+          dynamicDefault.expression,
+          ctx,
+          entryFields,
+          {
+            source: 'ui-metadata',
+            sourcePath: `record.fieldOverrides.${key}.createDefaultValue`,
+            targetPath: `ctx.page.page.fields.${key}.value`,
+            purpose: 'resolve metadata-driven create default',
+          },
+        );
+
+        // Later defaults may depend on values resolved earlier in this pass.
+        entryFields = contextFields(
+          {
+            ...initialRecordValues,
+            ...pageValues,
+          },
+          canonical.fieldDefinition,
+          referenceData,
+        );
+      } catch (error) {
+        console.error(`[ManatOS create default] ${definition.key}.${key}`, error);
+      }
+    }
+  }
 
   /*
    * Expression-backed UI fields become real calculated CTX variables. Parsing
@@ -1238,6 +1290,7 @@ async function editPageSupplementalData(
   currentUser: SysBOUser | null,
   item: Record<string, unknown>,
   isNew: boolean,
+  effectiveUIMetadata?: SysBOUIMetadata,
 ) {
   const tabs = visibleEditTabs(definition, currentUser, isNew);
 
@@ -1251,6 +1304,51 @@ async function editPageSupplementalData(
       ? await externalIdentitiesForUser(itemId)
       : [];
 
+  /*
+   * Load metadata-declared read-only related collections generically. The
+   * owning entity declares only the related SysBO, the FK/filter field and
+   * the current entry field to use as the filter value. No Principal,
+   * Application or License key is known by this loader.
+   */
+  const relatedData: Record<string, unknown[]> = {
+    externalIdentities: authenticationIdentities,
+  };
+  const relatedReferenceData: Record<string, Record<string, unknown[]>> = {};
+  if (!isNew) {
+    for (const [collectionKey, collection] of Object.entries(effectiveUIMetadata?.record.relatedCollections ?? {})) {
+      if (collection.source?.kind !== 'entity-query') continue;
+
+      const currentField = collection.source.currentField ?? 'id';
+      const filterValue = item[currentField];
+      const sourceKey = collection.sourceKey ?? collectionKey;
+      if (filterValue === undefined || filterValue === null || filterValue === '') {
+        relatedData[sourceKey] = [];
+        continue;
+      }
+
+      const relatedDefinition = getSysBODefinition(collection.entityKey);
+      const params = new URLSearchParams({
+        page: '1',
+        pageSize: String(collection.source.pageSize ?? 100),
+        [`filter.${collection.source.filterField}`]: String(filterValue),
+      });
+      if (collection.source.sort) params.set('sort', collection.source.sort);
+      if (collection.source.direction) params.set('direction', collection.source.direction);
+
+      const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+        `/api/v1/${apiPathFor(relatedDefinition.key)}?${params.toString()}`,
+        apiSessionOptions(req),
+      );
+      relatedData[sourceKey] = response.data.items;
+
+      const needsReferenceData = Object.keys(collection.fields || {}).some(
+        (fieldKey) => relatedDefinition.boMetadata.fieldDefinition[fieldKey]?.type === 'reference',
+      );
+      if (needsReferenceData) {
+        relatedReferenceData[sourceKey] = await references(req, relatedDefinition);
+      }
+    }
+  }
 
   const deleteImpact = !isNew && itemId && uiPermissions(currentUser, definition, itemId).delete
     ? (
@@ -1298,7 +1396,8 @@ async function editPageSupplementalData(
     tabs,
     authenticationIdentities,
     // Generic page-context bucket consumed by metadata-driven related collections.
-    relatedData: { externalIdentities: authenticationIdentities },
+    relatedData,
+    relatedReferenceData,
     referenceData: await references(req, definition),
     primaryDisplayValue: displayValue,
     deletePresentation: {
@@ -1637,7 +1736,7 @@ function canSelectSysBOUiImplementation(
 ): boolean {
   // #16 closure stage: completed entities are locked to the metadata-driven engine.
   // Keep the generic comparison infrastructure only for SysBOs still being migrated.
-  if (definition.key === 'sys-users' || definition.key === 'sys-principals') return false;
+  if (definition.key === 'sys-users' || definition.key === 'sys-principals' || definition.key === 'sys-applications' || definition.key === 'sys-licenses') return false;
   return currentUser?.role === SysBOUserRole.Admin && isMetadataDrivenUiEligible(definition);
 }
 
@@ -1651,7 +1750,7 @@ function requireSysBOUiMigrationAccess(
 }
 
 /**
- * #16-complete SysUsers and SysPrincipals are hard-locked to Metadata-driven.
+ * #16-complete SysUsers, SysPrincipals, SysApplications and SysLicenses are hard-locked to Metadata-driven.
  * Current EJS remains the default only for SysBOs whose #16 migration is still
  * in progress, where Metadata-driven mode remains an Admin-selected comparison.
  */
@@ -1663,7 +1762,7 @@ async function sysBOUiImplementation(
   // #16 closure stage: completed entities no longer participate in the
   // Current-EJS comparison. Their legacy entity-specific EJS metadata remains
   // only as explicitly disposable compatibility code until final #16 cleanup.
-  if (definition.key === 'sys-users' || definition.key === 'sys-principals') return METADATA_SYSBO_UI;
+  if (definition.key === 'sys-users' || definition.key === 'sys-principals' || definition.key === 'sys-applications' || definition.key === 'sys-licenses') return METADATA_SYSBO_UI;
 
   if (!canSelectSysBOUiImplementation(currentUser, definition)) {
     return CURRENT_SYSBO_UI;
@@ -1870,7 +1969,11 @@ async function renderMetadataDrivenListPlaceholder(
     allExternalProvidersConfigured = response.data.paging.total >= definitions.length;
   }
 
-  const listReferenceData = metadataUI.list.visibleFields.some(
+  const listReferenceFields = [...new Set([
+    ...metadataUI.list.visibleFields,
+    ...metadataUI.list.filterFields,
+  ])];
+  const listReferenceData = listReferenceFields.some(
     (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
   )
     ? await references(req, definition)
@@ -1946,7 +2049,11 @@ async function parentListContextForEntry(
     `/api/v1/${apiPathFor(definition.key)}?${listQuery.params.toString()}`,
     apiSessionOptions(req),
   );
-  const referenceData = metadataUI.list.visibleFields.some(
+  const referenceFields = [...new Set([
+    ...metadataUI.list.visibleFields,
+    ...metadataUI.list.filterFields,
+  ])];
+  const referenceData = referenceFields.some(
     (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
   )
     ? await references(req, definition)
@@ -1999,6 +2106,7 @@ async function renderMetadataDrivenRecordPlaceholder(
     currentUser,
     item,
     record.isNew,
+    metadataUI,
   );
   const parentListContext = await parentListContextForEntry(
     req,
@@ -2026,7 +2134,7 @@ async function renderMetadataDrivenRecordPlaceholder(
       uiMetadata: metadataUI,
       permissions: effectivePermissions,
       referenceData: supplemental.referenceData,
-      externalIdentities: supplemental.relatedData.externalIdentities,
+      ...supplemental.relatedData,
       activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
       parentListContext,
     },

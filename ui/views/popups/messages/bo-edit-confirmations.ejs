@@ -11,7 +11,7 @@
   // role normally has entity-level delete permission.
   const deleteAuthorized = typeof deleteImpact === 'undefined' || deleteImpact?.authorized !== false;
 %>
-<% if (!isNew && permissions.delete && !isOwnSysUser && deleteAuthorized) { %>
+<% if (!isNew && permissions.delete && deleteEnabled && deleteAuthorized) { %>
   <div
     class="modal fade"
     id="deleteEntryModal"
@@ -56,8 +56,8 @@
               return {
                 icon: 'bi-trash3',
                 tone: 'text-danger',
-                title: 'will also be permanently deleted',
-                detail: 'These dependent records are removed together with this entry.',
+                title: 'dependent record(s) will also be permanently deleted',
+                detail: 'The relationship policy requires these dependent records to be removed to preserve referential integrity.',
               };
             }
 
@@ -66,7 +66,7 @@
                 icon: 'bi-link-45deg',
                 tone: 'text-warning-emphasis',
                 title: 'relationship link(s) will be removed',
-                detail: 'The linked relationship records are removed; the referenced business records remain.',
+                detail: 'Only the relationship data are removed; the related business records remain and referential integrity is preserved.',
               };
             }
 
@@ -75,15 +75,15 @@
                 icon: 'bi-eraser',
                 tone: 'text-info-emphasis',
                 title: 'reference(s) will be cleared',
-                detail: 'The related records remain, but their reference to this entry is cleared.',
+                detail: 'The related records remain; their reference to this entry is cleared to preserve referential integrity.',
               };
             }
 
             return {
               icon: 'bi-ban',
               tone: 'text-danger',
-              title: 'prevent this deletion',
-              detail: 'These relationships must be resolved before this entry can be deleted.',
+              title: 'relationship(s) block this deletion',
+              detail: 'Referential-integrity rules require these relationships to be resolved before this entry can be deleted.',
             };
           };
         %>
@@ -99,17 +99,17 @@
           >
             <div class="d-flex align-items-center gap-2 fw-semibold mb-2">
               <i class="bi bi-diagram-3" aria-hidden="true"></i>
-              <span>Related-record impact</span>
+              <span>Data &amp; referential-integrity impact</span>
             </div>
 
             <% if (!impactAvailable) { %>
               <div class="d-flex gap-2 align-items-start text-warning-emphasis">
                 <i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i>
                 <div>
-                  <div class="fw-semibold">Impact information is unavailable.</div>
+                  <div class="fw-semibold">Data-integrity impact could not be verified.</div>
                   <div class="small">
-                    ManatOS could not confirm the relationship consequences before showing this dialog.
-                    Cancel and retry before deleting if you need a verified impact summary.
+                    ManatOS could not complete the relationship-metadata check needed to verify
+                    referential-integrity consequences. Cancel and retry before deleting.
                   </div>
                 </div>
               </div>
@@ -117,10 +117,10 @@
               <div class="d-flex gap-2 align-items-start text-success">
                 <i class="bi bi-check-circle mt-1" aria-hidden="true"></i>
                 <div>
-                  <div class="fw-semibold">No related records will be affected.</div>
+                  <div class="fw-semibold">No related data or referential-integrity impact was found.</div>
                   <div class="small text-body-secondary">
-                    ManatOS checked the current relationship metadata and found no records that would
-                    be deleted, unlinked, changed, or block this deletion.
+                    The current relationship metadata were checked; no related records were found that
+                    would be deleted, unlinked, changed, or block this deletion.
                   </div>
                 </div>
               </div>

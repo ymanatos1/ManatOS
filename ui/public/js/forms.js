@@ -929,6 +929,15 @@
     try { return JSON.parse(raw); } catch { return null; }
   };
 
+  const enumToneClasses = (item) => {
+    const tone = item?.tone;
+    if (!tone) return [];
+    if (tone === 'danger' && item?.toneStrength === 'soft') return ['text-danger', 'opacity-75'];
+    if (tone === 'danger' && item?.toneStrength === 'strong') return ['text-danger-emphasis'];
+    if (tone === 'warning') return ['text-warning-emphasis'];
+    return [`text-${tone}`];
+  };
+
   const updateEnumIcon = (control) => {
     if (!(control instanceof HTMLSelectElement)) return;
     const root = control.closest('[data-metadata-enum-select], [data-enum-icon-control]');
@@ -936,7 +945,10 @@
     const label = root?.querySelector('[data-enum-selected-label]');
     const toggle = root?.querySelector('[data-metadata-enum-toggle]');
     const item = selectedEnumItem(control);
-    if (icon instanceof HTMLElement) icon.className = `bi bi-${item?.icon || 'list'}`;
+    if (icon instanceof HTMLElement) {
+      icon.className = `bi bi-${item?.icon || 'list'}`;
+      enumToneClasses(item).forEach((className) => icon.classList.add(className));
+    }
     if (label instanceof HTMLElement) label.textContent = item?.label || item?.value || 'Choose...';
     if (toggle instanceof HTMLButtonElement) toggle.disabled = control.disabled;
   };

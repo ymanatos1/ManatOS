@@ -220,6 +220,14 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
     boMetadata: sysBOApplicationsMetadata,
 
+    /*
+     * #16 DISPOSABLE LEGACY APPLICATION EJS METADATA — READY FOR DELETION
+     *
+     * SysApplications is now hard-locked to the canonical metadata-driven
+     * renderer. This frozen block remains only while Licenses and External
+     * Authentication still need the shared Current-EJS definition contract.
+     * Do not add new Application behavior here.
+     */
     uiMetadata: {
       icon: 'bi-window-stack',
 
@@ -320,6 +328,13 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
 
     boMetadata: sysBOLicensesMetadata,
 
+    /*
+     * #16 DISPOSABLE LEGACY LICENSE EJS METADATA — READY FOR DELETION
+     *
+     * SysLicenses is now hard-locked to the canonical metadata-driven
+     * renderer. Keep this frozen block only until the remaining #16 entities
+     * no longer need the shared Current-EJS definition contract.
+     */
     uiMetadata: {
       icon: 'bi-key',
 

@@ -30,6 +30,7 @@ const standardEntryActions = {
     kind: 'delete' as const,
     order: 20,
     visible: true,
+    placement: 'footer-leading' as const,
     label: 'Delete entry',
     icon: 'trash',
     tone: 'danger' as const,
@@ -38,6 +39,7 @@ const standardEntryActions = {
     kind: 'save' as const,
     order: 100,
     visible: { expression: "mode !== 'view'" },
+    placement: 'footer-trailing' as const,
     label: 'Save',
     icon: 'check-circle',
     tone: 'primary' as const,
@@ -65,6 +67,34 @@ const systemFieldOverrides = {
     presentation: { mode: 'summary' as const, format: 'datetime-elapsed' as const, emptyText: '—' },
   },
 } as const;
+
+
+const relatedLicensesCollection = (filterField: 'principalId' | 'applicationId') => ({
+  label: 'Licenses',
+  icon: 'key',
+  entityKey: 'sys-licenses',
+  source: {
+    kind: 'entity-query' as const,
+    filterField,
+    currentField: 'id',
+    pageSize: 100,
+    sort: 'name',
+    direction: 'asc' as const,
+  },
+  layout: 'table-list' as const,
+  rowHref: '/bo/sys-licenses/{id}',
+  emptyText: 'No related licenses.',
+  fields: {
+    name: {},
+    ...(filterField === 'principalId'
+      ? { applicationId: { label: 'Application' } }
+      : { principalId: { label: 'Customer' } }),
+    platformId: {},
+    status: {},
+    validUntil: {},
+    enabled: {},
+  },
+});
 
 export const sysBOUsersUIMetadata: SysBOUIMetadata = {
   key: 'sys-users',
@@ -179,6 +209,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         kind: 'command',
         order: 10,
         command: 'verify-email',
+        placement: 'footer-leading',
         visible: {
           expression:
             "system.client.features.allowAdminEmailVerification && " +
@@ -191,6 +222,14 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         emphasis: 'outline',
       },
       ...standardEntryActions,
+      delete: {
+        ...standardEntryActions.delete,
+        enabled: { expression: "id !== user.fields.id.value" },
+        disabledReason: {
+          expression:
+            "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
+        },
+      },
     },
   },
 };
@@ -227,6 +266,11 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
           },
         },
       }),
+      tab('licenses', 'Licenses', 800, ['licenses'], {
+        icon: 'key',
+        layout: 'summary',
+        visible: { expression: "mode !== 'create'" },
+      }),
       systemTab(),
     ],
     fieldOverrides: {
@@ -249,6 +293,9 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
      * deliberately has no Delete/Save controls or dirty-state indicator.
      */
     entryActions: standardEntryActions,
+    relatedCollections: {
+      licenses: relatedLicensesCollection('principalId'),
+    },
   },
 };
 
@@ -259,11 +306,38 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
     filterFields: ['name', 'appName', 'fullName'],
     sortableFields: ['name', 'appName', 'fullName', 'version', 'enabled'],
     addAction: { visible: true, label: 'Add new' },
+    rowActions: {
+      play: {
+        kind: 'navigate',
+        order: 10,
+        visible: true,
+        label: 'Play',
+        icon: 'play-fill',
+        tone: 'primary',
+        emphasis: 'solid',
+        title: 'Open application playground',
+        href: '/bo/sys-applications/{id}/play',
+      },
+    },
   },
   record: {
-    tabs: [generalTab(['name', 'appName', 'fullName', 'version', 'description', 'enabled']), systemTab()],
-    fieldOverrides: { ...systemFieldOverrides },
+    tabs: [
+      generalTab(['name', 'appName', 'fullName', 'version', 'description', 'enabled']),
+      tab('licenses', 'Licenses', 800, ['licenses'], {
+        icon: 'key',
+        layout: 'summary',
+        visible: { expression: "mode !== 'create'" },
+      }),
+      systemTab(),
+    ],
+    fieldOverrides: {
+      ...systemFieldOverrides,
+      enabled: { createDefaultValue: true },
+    },
     entryActions: standardEntryActions,
+    relatedCollections: {
+      licenses: relatedLicensesCollection('applicationId'),
+    },
   },
 };
 
@@ -271,7 +345,7 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
   key: 'sys-licenses',
   list: {
     visibleFields: ['name', 'principalId', 'platformId', 'applicationId', 'status', 'validUntil', 'enabled'],
-    filterFields: ['name', 'status'],
+    filterFields: ['name', 'principalId', 'platformId', 'applicationId', 'status', 'enabled'],
     sortableFields: ['name', 'principalId', 'platformId', 'applicationId', 'status', 'validUntil', 'enabled'],
     addAction: { visible: true, label: 'Add new' },
   },
@@ -280,8 +354,6 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
       generalTab([
         'name',
         'principalId',
-        'platformId',
-        'applicationId',
         'licenseKey',
         'status',
         'validFrom',
@@ -290,9 +362,31 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
         'description',
         'enabled',
       ]),
+      tab(
+        'contents',
+        'Contents',
+        20,
+        ['platformId', 'applicationId', 'rules'],
+        { icon: 'box-seam', layout: 'form' },
+      ),
       systemTab(),
     ],
-    fieldOverrides: { ...systemFieldOverrides },
+    fieldOverrides: {
+      ...systemFieldOverrides,
+
+      /*
+       * License creation defaults remain declarative and entity-agnostic at the
+       * engine level. The first available reference option is selected through
+       * the generic FirstCtx(...) function; an empty option collection yields
+       * null. CurrentDay() supplies the current calendar day at local midnight.
+       */
+      name: { label: 'License name' },
+      platformId: { createDefaultValue: { expression: "FirstCtx(platformId.options, 'value')" } },
+      status: { createDefaultValue: 'Active' },
+      validFrom: { createDefaultValue: { expression: 'CurrentDay()' } },
+      quantity: { createDefaultValue: 1 },
+      enabled: { createDefaultValue: true },
+    },
     entryActions: standardEntryActions,
   },
 };

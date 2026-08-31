@@ -6,6 +6,19 @@ import type {
   ExpressionFunctionRegistry,
 } from '../types.js';
 
+/**
+ * Check one runtime argument against the small type vocabulary supported by
+ * expression-function signatures.
+ *
+ * Developer mini-guide:
+ * - `any` accepts anything, including arrays/objects/null.
+ * - `scalar` accepts the normal expression value domain: null/string/number/boolean.
+ * - the remaining names (`string`, `number`, ...) use JavaScript `typeof`.
+ *
+ * Keep this deliberately narrower than application TypeScript types: registry
+ * signatures are a runtime contract used for diagnostics before a function's
+ * implementation executes.
+ */
 function valueMatches(type: ExpressionFunctionArgumentType, value: unknown): boolean {
   if (type === 'any') return true;
   if (type === 'scalar') {
@@ -14,6 +27,15 @@ function valueMatches(type: ExpressionFunctionArgumentType, value: unknown): boo
   return typeof value === type;
 }
 
+/**
+ * Wrap a registry function with the shared arity/type validation contract.
+ *
+ * When adding a new function, normally register it through `checked({...})`
+ * rather than validating arguments inside the implementation. This gives every
+ * function the same error wording and keeps the evaluate callback focused on
+ * semantics. `maxArguments: null` means variadic; `variadicType` validates all
+ * arguments beyond the explicitly listed `argumentTypes`.
+ */
 function checked(definition: ExpressionFunctionDefinition): ExpressionFunctionDefinition {
   return {
     ...definition,
@@ -40,10 +62,31 @@ function checked(definition: ExpressionFunctionDefinition): ExpressionFunctionDe
 }
 
 /**
- * Hard-coded, keyed function registry. The parser validates function existence
- * and arity against this registry; evaluation delegates to the registered code.
+ * Hard-coded, keyed expression-function registry.
+ *
+ * This is the single developer entry point for evaluator functions used by
+ * canonical metadata and UI metadata. Function names are intentionally
+ * PascalCase and become part of the metadata language, so rename them only as
+ * a deliberate metadata-contract migration.
+ *
+ * To add a function:
+ * 1. add one keyed definition below using `checked(...)`;
+ * 2. describe its signature in human-readable `signature.text`;
+ * 3. choose the narrowest useful runtime argument types;
+ * 4. keep the implementation entity/field agnostic;
+ * 5. add evaluator tests for normal, empty/null, and error behaviour as relevant.
+ *
+ * The parser validates function existence/arity from this same registry; the
+ * evaluator later invokes the registered implementation with already-evaluated
+ * arguments and the evaluation context (`context.now()`, etc.).
  */
 export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
+  /**
+   * Numeric square root.
+   * Example: `SqRoot(81)` -> `9`.
+   * Primarily a compact reference implementation for a strict single-number
+   * function and useful in metadata formulas that genuinely need it.
+   */
   SqRoot: checked({
     name: 'SqRoot',
     signature: {
@@ -55,8 +98,76 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     evaluate: ([value]) => Math.sqrt(value as number),
   }),
 
+  /**
+   * Return the first member of a CTX-addressable collection, or null when the
+   * collection is absent/empty. With `resultField`, return that member property.
+   *
+   * Examples:
+   * - `FirstCtx(platformId.options, 'value')` -> first enum value.
+   * - `FirstCtx(customerId.options, 'id')` -> first reference id.
+   * - `FirstCtx(dataList)` -> first row object.
+   *
+   * This is intentionally collection-shape agnostic: arrays use index 0 and
+   * objects use their first enumerable value. Do not add entity-specific
+   * ordering here; callers must provide an already ordered collection.
+   */
+  FirstCtx: checked({
+    name: 'FirstCtx',
+    signature: {
+      text: 'FirstCtx(collection, resultField?: string)',
+      minArguments: 1,
+      maxArguments: 2,
+      argumentTypes: ['any', 'string'],
+    },
+    evaluate: ([collection, resultField]) => {
+      if (collection == null || typeof collection !== 'object') return null;
+      const first = Array.isArray(collection)
+        ? collection[0]
+        : Object.values(collection as Record<string, unknown>)[0];
+      if (first === undefined) return null;
+      return resultField
+        ? resolveContextMember(first, resultField as string) ?? null
+        : first;
+    },
+  }),
 
+  /**
+   * Return the current local calendar day at midnight in `datetime-local`
+   * wire/display form (`YYYY-MM-DDT00:00`).
+   *
+   * Use this for UI/default expressions such as `CurrentDay()`. It deliberately
+   * uses `context.now()` rather than constructing `new Date()` directly so tests
+   * and future evaluator hosts can supply a deterministic clock.
+   */
+  CurrentDay: checked({
+    name: 'CurrentDay',
+    signature: {
+      text: 'CurrentDay()',
+      minArguments: 0,
+      maxArguments: 0,
+    },
+    evaluate: (_args, context) => {
+      const now = context.now();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}T00:00`;
+    },
+  }),
 
+  /**
+   * Follow an id-based parent chain inside a CTX collection until the root row.
+   * Optionally project one property from that root row.
+   *
+   * Example:
+   * `TraverseCtx(parentId, dataList, 'parentId', 'id')`
+   * starts at `parentId`, repeatedly reads each row's `parentId`, and returns
+   * the terminal/root row's `id`.
+   *
+   * Collections are resolved through `resolveContextMember`, so keyed arrays and
+   * object maps both work. Cycles are reported explicitly and depth is capped to
+   * protect the evaluator from malformed or hostile hierarchy data.
+   */
   TraverseCtx: checked({
     name: 'TraverseCtx',
     signature: {
@@ -73,7 +184,6 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
       let id: unknown = startId;
       let root: unknown = null;
 
-      // Protect both malformed cycles and unexpectedly deep hostile data.
       for (let depth = 0; depth < 256; depth += 1) {
         const key = String(id);
         if (seen.has(key)) {
@@ -98,6 +208,12 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     },
   }),
 
+  /**
+   * Current evaluator-clock timestamp in Unix milliseconds.
+   * Example: `GetTime()` -> `1788135300000`.
+   * Like CurrentDay(), this uses the injectable evaluator clock for deterministic
+   * tests and host-independent behaviour.
+   */
   GetTime: checked({
     name: 'GetTime',
     signature: {
@@ -108,6 +224,12 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     evaluate: (_args, context) => context.now().getTime(),
   }),
 
+  /**
+   * Replace zero-based placeholders with scalar values.
+   * Example: `StrFormat('{0} / {1}', name, version)`.
+   * Unknown placeholder indexes are intentionally left unchanged, which makes
+   * partially supplied templates visible instead of silently dropping text.
+   */
   StrFormat: checked({
     name: 'StrFormat',
     signature: {

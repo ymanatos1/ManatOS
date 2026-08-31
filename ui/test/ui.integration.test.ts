@@ -72,9 +72,9 @@ describe('UI integration - SysBOUser delete behavior', () => {
 
     const impactSummary = $('#deleteEntryModal [data-delete-impact-summary]');
     expect(impactSummary.length).toBe(1);
-    expect(impactSummary.text()).toContain('Related-record impact');
-    expect(impactSummary.text()).toContain('No related records will be affected.');
-    expect(impactSummary.text()).toContain('found no records that would');
+    expect(impactSummary.text()).toContain('Data & referential-integrity impact');
+    expect(impactSummary.text()).toContain('No related data or referential-integrity impact was found.');
+    expect(impactSummary.text()).toContain('no related records were found that');
   });
 
   it('fails safe when delete-impact information is unavailable', async () => {
@@ -83,7 +83,7 @@ describe('UI integration - SysBOUser delete behavior', () => {
 
     const $ = load(await renderSysBOUserEdit(currentUser, target));
 
-    expect($('#deleteEntryModal [data-delete-impact-summary]').text()).toContain('Impact information is unavailable.');
+    expect($('#deleteEntryModal [data-delete-impact-summary]').text()).toContain('Data-integrity impact could not be verified.');
     expect($('#deleteEntryModal button[type="submit"]').is('[disabled]')).toBe(true);
   });
 
@@ -134,10 +134,10 @@ describe('UI integration - SysBOUser delete behavior', () => {
     }));
 
     const impactSummary = $('#deleteEntryModal [data-delete-impact-summary]');
-    expect(impactSummary.find('[data-delete-impact-action="cascade"]').text()).toContain('will also be permanently deleted');
+    expect(impactSummary.find('[data-delete-impact-action="cascade"]').text()).toContain('dependent record(s) will also be permanently deleted');
     expect(impactSummary.find('[data-delete-impact-action="unlink"]').text()).toContain('relationship link(s) will be removed');
     expect(impactSummary.find('[data-delete-impact-action="set-null"]').text()).toContain('reference(s) will be cleared');
-    expect(impactSummary.find('[data-delete-impact-action="restrict"]').text()).toContain('prevent this deletion');
+    expect(impactSummary.find('[data-delete-impact-action="restrict"]').text()).toContain('relationship(s) block this deletion');
     expect(impactSummary.text()).toContain('Relationship: user');
     expect($('#deleteEntryModal').text()).toContain('Deletion cannot continue');
     expect($('#deleteEntryModal button[type="submit"]').is('[disabled]')).toBe(true);

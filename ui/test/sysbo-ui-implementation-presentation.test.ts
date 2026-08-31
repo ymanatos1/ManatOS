@@ -11,18 +11,24 @@ async function source(relativePath: string): Promise<string> {
 }
 
 describe('#16 SysBO UI implementation migration scaffolding', () => {
-  it('locks completed SysUsers and SysPrincipals to metadata-driven mode while keeping comparison for remaining SysBOs', async () => {
+  it('locks completed SysUsers, SysPrincipals, SysApplications and SysLicenses to metadata-driven mode while keeping comparison for remaining SysBOs', async () => {
     const routes = await source('src/routes/sysbo-routes.ts');
+    const definitions = await source('src/sysbo/definitions.ts');
     const configuration = await source('../api/src/services/sys-configuration-service.ts');
     expect(routes).toContain("const CURRENT_SYSBO_UI: SysBOUiImplementation = 'current'");
     expect(routes).toContain("const METADATA_SYSBO_UI: SysBOUiImplementation = 'metadata'");
     expect(routes).toContain("router.post('/:key/ui-implementation'");
-    expect(routes).toContain("if (definition.key === 'sys-users' || definition.key === 'sys-principals') return METADATA_SYSBO_UI");
-    expect(routes).toContain("if (definition.key === 'sys-users' || definition.key === 'sys-principals') return false");
+    expect(routes).toContain("definition.key === 'sys-applications' || definition.key === 'sys-licenses') return METADATA_SYSBO_UI");
+    expect(routes).toContain("definition.key === 'sys-applications' || definition.key === 'sys-licenses') return false");
     expect(routes).not.toContain("'sys-users': 'UI_SYSBO_USERS_VIEW_MODE'");
     expect(routes).not.toContain("'sys-principals': 'UI_SYSBO_PRINCIPALS_VIEW_MODE'");
+    expect(routes).not.toContain("'sys-applications': 'UI_SYSBO_APPLICATIONS_VIEW_MODE'");
+    expect(routes).not.toContain("'sys-licenses': 'UI_SYSBO_LICENSES_VIEW_MODE'");
     expect(configuration).not.toContain("name:'UI_SYSBO_USERS_VIEW_MODE'");
     expect(configuration).not.toContain("name:'UI_SYSBO_PRINCIPALS_VIEW_MODE'");
+    expect(configuration).not.toContain("name:'UI_SYSBO_APPLICATIONS_VIEW_MODE'");
+    expect(configuration).not.toContain("name:'UI_SYSBO_LICENSES_VIEW_MODE'");
+    expect(definitions).toContain('#16 DISPOSABLE LEGACY LICENSE EJS METADATA — READY FOR DELETION');
     expect(routes).toContain('persistSysBOUiImplementation');
     expect(routes).toContain('MetadataDriven');
     expect(routes).toContain("definition.key !== 'sys-configurations'");
@@ -70,6 +76,9 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
     expect(list).toContain('metadataUI.list.filterFields');
     expect(list).toContain('metadataUI.list.sortableFields');
     expect(list).toContain('metadataUI.list.addAction');
+    expect(list).toContain('metadataUI.list.rowActions');
+    expect(list).toContain("action.kind === 'navigate'");
+    expect(list).toContain("replaceAll('{id}'");
     expect(list).toContain('data-page-size-select');
     expect(list).toContain('Page <%= paging.page %> of <%= paging.totalPages %>');
 
@@ -80,8 +89,25 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
     expect(edit).toContain('derivedFields');
     expect(edit).toContain('createDefaultValue');
     expect(edit).toContain('entryActions');
+    expect(edit).toContain('action.enabled');
+    expect(edit).toContain('action.disabledReason');
+    expect(edit).toContain('action.placement');
+    expect(edit).toContain('resolvedDisabledReason');
+    expect(edit).not.toContain("definition.key === 'sys-users'");
+    expect(edit).not.toContain('isOwnSysUser');
     expect(edit).toContain('relatedCollections');
+    expect(edit).toContain("collection.layout === 'table-list'");
+    expect(edit).toContain('relatedRowHref');
+    expect(routes).toContain("collection.source?.kind !== 'entity-query'");
+    expect(routes).toContain('relatedData[sourceKey] = response.data.items');
     expect(edit).toContain('activeTabId');
+    expect(edit).toContain("tab.layout === 'component'");
+    expect(edit).toContain('entity-readonly-tab');
+
+    // Rich canonical enum items are reused outside forms as well: list cells
+    // display the same semantic icon/label metadata as the enum selector.
+    expect(list).toContain('field.enumItems');
+    expect(list).toContain('selectedEnumItem?.icon');
   });
 
   it('defines framework-neutral $metadata-ui entries for every SysBO participating in #16', async () => {
@@ -96,16 +122,32 @@ describe('#16 SysBO UI implementation migration scaffolding', () => {
     expect(shared).toContain('filterFields');
     expect(shared).toContain('sortableFields');
     expect(shared).toContain('addAction');
+    expect(shared).toContain('rowActions');
+    expect(shared).toContain('SysBOUIListRowActionMetadata');
     expect(shared).toContain('tabs');
     expect(shared).toContain('fieldOverrides');
     expect(shared).toContain('derivedFields');
     expect(shared).toContain('createDefaultValue');
     expect(shared).toContain('entryActions');
+    expect(shared).toContain('enabled?: SysBOUIDynamicValue<boolean>');
+    expect(shared).toContain('disabledReason?: SysBOUIDynamicValue<string | null>');
+    expect(shared).toContain('placement?: SysBOUIEntryActionPlacement');
     expect(shared).toContain('relatedCollections');
     expect(apiMetadata).toContain("icon: 'shield-lock'");
     expect(apiMetadata).toContain(
       "mode !== 'create' && (user.permissions.userRole === 'Admin' || id === user.fields.id.value)",
     );
+    expect(apiMetadata).toContain("enabled: { expression: \"id !== user.fields.id.value\" }");
+    expect(apiMetadata).toContain(
+      "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
+    );
+    expect(apiMetadata).toContain("placement: 'footer-leading'");
+
+    // Application-specific navigation remains metadata, while the generic list
+    // renderer owns how row actions are presented.
+    expect(apiMetadata).toContain("play: {");
+    expect(apiMetadata).toContain("href: '/bo/sys-applications/{id}/play'");
+    expect(apiMetadata).toContain("title: 'Open application playground'");
 
     // Entity-level derived values such as emailVerificationStatus and
     // localPasswordStatus stay canonical. UI metadata dynamically evaluates

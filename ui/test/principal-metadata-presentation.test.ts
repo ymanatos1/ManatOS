@@ -69,10 +69,15 @@ describe('metadata-driven Principal presentation', () => {
     expect(uiMetadata).toContain("rootField: 'rootPrincipalId'");
     expect(uiMetadata).toContain("viewModes: 'tree,chart'");
     expect(uiMetadata).toContain("defaultView: 'chart'");
+    expect(uiMetadata).toContain("tab('licenses', 'Licenses', 800, ['licenses']");
+    expect(uiMetadata).toContain("licenses: relatedLicensesCollection('principalId')");
     expect(component).toContain('options.parentField');
     expect(component).toContain('options.rootField');
     expect(component).toContain('projectedRows');
     expect(component).toContain('data-hierarchy-view-mode');
+    expect(component).toContain('justify-content-start');
+    expect(component).toContain('aria-label="${mode === \'chart\' ? \'Chart\' : \'Tree\'}"');
+    expect(component).not.toContain('<span class="ms-1">');
     expect(component).toContain('runtime.resolvePath');
     expect(component).not.toContain('sys-principals');
     expect(component).not.toContain("'parentId'");

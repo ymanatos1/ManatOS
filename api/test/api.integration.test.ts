@@ -533,13 +533,23 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(response.body.tags.map((tag: { name: string }) => tag.name)).toEqual([
         'Server',
         'Authentication',
-        'System Business Objects',
+        'System Business Objects · Users',
+        'System Business Objects · Principals',
+        'System Business Objects · Applications',
+        'System Business Objects · Licenses',
+        'System Business Objects · External Authentication Providers',
         'System Configuration',
         'Public UI',
         'External Authentication',
         'External Authentication Credentials',
         'Internal External Authentication Workflow',
       ]);
+
+      expect(response.body.paths['/api/v1/SysUsers'].get.tags).toEqual(['System Business Objects · Users']);
+      expect(response.body.paths['/api/v1/SysUsers/{id}/verify-email'].post.tags).toEqual(['System Business Objects · Users']);
+      expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual(['System Business Objects · Principals']);
+      expect(response.body.paths['/api/v1/SysApplications'].get.tags).toEqual(['System Business Objects · Applications']);
+      expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual(['System Business Objects · Licenses']);
 
       expect(response.body.paths['/api/v1/SysConfigurations'].get).toMatchObject({
         tags: ['System Configuration'],

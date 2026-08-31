@@ -27,6 +27,8 @@ export interface ManatOSClientContext {
 
 /** Runtime/host facts grouped away from business/user/company context. */
 export interface ManatOSSystemContext {
+  /** Active runtime/application scope for the root ManatOS context. */
+  scope: string;
   server: ManatOSServerContext;
   client: ManatOSClientContext;
 }
@@ -58,11 +60,14 @@ export interface ManatOSStoredContextField<T = unknown> {
   value: T;
 
   /**
-   * For enum fields, the selected canonical enum-item metadata is exposed as
-   * `field.option`. Expressions can therefore consume declarative traits such
-   * as `principalType.option.isContainer` without hard-coded UI branches.
+   * For enum/reference fields, the selected metadata/runtime option is exposed
+   * as `field.option`. Expressions can therefore consume declarative traits or
+   * reference labels without teaching the evaluator about a particular entity.
    */
   option?: Readonly<Record<string, unknown>> | null;
+
+  /** Available enum/reference choices in a common evaluator-friendly shape. */
+  options?: readonly Readonly<Record<string, unknown>>[];
 }
 
 export interface ManatOSCalculatedContextField<T = unknown> {
@@ -279,12 +284,10 @@ export interface ManatOSPageContextNode extends ManatOSPageRuntimeContext {
 
 export interface ManatOSContext {
   /**
-   * Active root scope. Current system UI uses `sys`; future Apps Playground
-   * flows can establish an application scope (for example `mcrm`) and page/user
-   * nodes may override it when ownership changes.
+   * Runtime/host facts are intentionally the first root branch in DEBUG/CTX
+   * traversal. The active root scope belongs here (`system.scope`) rather than
+   * beside the major semantic context branches.
    */
-  scope: string;
-  /** Runtime/host facts are intentionally the first root branch in DEBUG/CTX traversal. */
   system: ManatOSSystemContext;
   entities: ManatOSEntitiesContext;
   company: ManatOSCompanyContext;

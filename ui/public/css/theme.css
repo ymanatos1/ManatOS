@@ -15,6 +15,7 @@
      Preferences themes for now, but theme-owned so they can diverge later. */
   --manatos-readonly-field-bg: #e9ecef;
   --manatos-readonly-tab-bg: #f6f8fa;
+  --manatos-visualization-bg: #f9fafb;
   --manatos-debug-field: #569cd6;
   --manatos-debug-system: #4ec9b0;
   --manatos-debug-path: #7f7f7f;
@@ -39,6 +40,7 @@ body[data-ui-theme='lighter'] {
      tuning a Preferences concern rather than a component-code change. */
   --manatos-readonly-field-bg: #e9ecef;
   --manatos-readonly-tab-bg: #f6f8fa;
+  --manatos-visualization-bg: #f9fafb;
   --manatos-debug-field: #569cd6;
   --manatos-debug-system: #4ec9b0;
   --manatos-debug-path: #7f7f7f;

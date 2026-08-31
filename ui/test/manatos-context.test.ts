@@ -43,8 +43,8 @@ describe('ManatOS ctx tree', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
 
-    expect(Object.keys(ctx)).toEqual(['system', 'scope', 'entities', 'company', 'user', 'page']);
-    expect(ctx.scope).toBe('sys');
+    expect(Object.keys(ctx)).toEqual(['system', 'entities', 'company', 'user', 'page']);
+    expect(ctx.system.scope).toBe('sys');
   });
 
   it('keeps company platforms as an array and identifies the current platform', () => {
@@ -56,6 +56,28 @@ describe('ManatOS ctx tree', () => {
     expect(ctx.company.platforms[ctx.company.currentPlatformIndex]?.id).toBe(platform.id);
   });
 
+
+  it('normalizes enum choices into the same option/options CTX shape used by references', () => {
+    const fields = contextFields(
+      { platformId: 'mcrm' },
+      {
+        platformId: {
+          key: 'platformId',
+          label: 'Platform',
+          type: 'enum',
+          order: 10,
+          enumValues: ['mcrm', 'other'],
+        },
+      },
+    );
+
+    expect(fields.platformId?.value).toBe('mcrm');
+    expect(fields.platformId?.option).toEqual({ value: 'mcrm', label: 'mcrm' });
+    expect(fields.platformId?.options).toEqual([
+      { value: 'mcrm', label: 'mcrm' },
+      { value: 'other', label: 'other' },
+    ]);
+  });
   it('derives path() from nested page names and stores no path property', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');

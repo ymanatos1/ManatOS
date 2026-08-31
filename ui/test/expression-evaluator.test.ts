@@ -217,6 +217,10 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest('SqRoot(9)', ctx, ctx.page.fields)).toBe(3);
     expect(evaluateTest("StrFormat('{0} {1}', firstname, lastname)", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
     expect(evaluateTest('GetTime()', ctx, ctx.page.fields, {now: () => new Date(123456)})).toBe(123456);
+    expect(evaluateTest("FirstCtx(options, 'id')", { options: [{ id: 'first' }, { id: 'second' }] }, { options: [{ id: 'first' }, { id: 'second' }] })).toBe('first');
+    expect(evaluateTest("FirstCtx(options, 'value')", { options: [{ value: 'mcrm' }] }, { options: [{ value: 'mcrm' }] })).toBe('mcrm');
+    expect(evaluateTest("FirstCtx(options, 'id')", { options: [] }, { options: [] })).toBeNull();
+    expect(evaluateTest('CurrentDay()', ctx, ctx.page.fields, {now: () => new Date(2026, 7, 31, 15, 45)})).toBe('2026-08-31T00:00');
     expect(() => compileExpression('MissingFunction(1)')).toThrow(ExpressionParseError);
     expect(() => compileExpression('SqRoot()')).toThrow(ExpressionParseError);
     expect(() => compileExpression("SqRoot('x')")).toThrow(ExpressionParseError);

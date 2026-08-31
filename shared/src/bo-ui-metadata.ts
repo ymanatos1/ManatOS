@@ -9,11 +9,36 @@ export interface SysBOUIAddActionMetadata {
   label: string;
 }
 
+export type SysBOUIListRowActionKind = 'navigate';
+
+export interface SysBOUIListRowActionMetadata {
+  kind: SysBOUIListRowActionKind;
+  order?: number;
+  visible?: boolean;
+  label: string;
+  icon?: SysBOUIIconKey;
+  tone?: SysBOUIStatusTone;
+  emphasis?: 'solid' | 'outline';
+  title?: string;
+
+  /**
+   * Renderer-neutral navigation target. `{id}` is replaced with the current
+   * row identifier by the concrete renderer.
+   */
+  href: string;
+}
+
 export interface SysBOUIListMetadata {
   visibleFields: readonly string[];
   filterFields: readonly string[];
   sortableFields: readonly string[];
   addAction: SysBOUIAddActionMetadata;
+
+  /**
+   * Optional metadata-driven row commands. The Record key is stable action
+   * identity; renderers must not infer entity-specific row behavior.
+   */
+  rowActions?: Readonly<Record<string, SysBOUIListRowActionMetadata>>;
 }
 
 /**
@@ -145,6 +170,13 @@ export interface SysBOUIDerivedFieldMetadata {
 
 export type SysBOUIEntryActionKind = 'delete' | 'save' | 'command';
 
+/**
+ * Stable action regions understood by metadata-driven entry renderers.
+ * Concrete layout/CSS remains renderer-owned; metadata only chooses the
+ * semantic region.
+ */
+export type SysBOUIEntryActionPlacement = 'footer-leading' | 'footer-trailing';
+
 export interface SysBOUIEntryActionMetadata {
   /** The parent Record key is the stable action identifier. */
   kind: SysBOUIEntryActionKind;
@@ -154,6 +186,22 @@ export interface SysBOUIEntryActionMetadata {
 
   /** Static or evaluator-backed visibility against the active entry page CTX. */
   visible: SysBOUIDynamicValue<boolean>;
+
+  /**
+   * Static or evaluator-backed enabled state. Omitted means enabled.
+   * The API remains the authoritative authorization/business boundary.
+   */
+  enabled?: SysBOUIDynamicValue<boolean>;
+
+  /**
+   * Optional evaluator-backed explanation shown when an action is disabled.
+   * Keeping the reason beside `enabled` avoids entity-specific tooltip logic
+   * leaking into the generic renderer.
+   */
+  disabledReason?: SysBOUIDynamicValue<string | null>;
+
+  /** Semantic renderer region; omitted actions use their kind's default region. */
+  placement?: SysBOUIEntryActionPlacement;
 
   label: string;
   icon?: SysBOUIIconKey;
@@ -191,6 +239,20 @@ export interface SysBOUIRelatedCollectionFieldMetadata {
   presentation?: SysBOUIFieldPresentationMetadata;
 }
 
+export interface SysBOUIRelatedCollectionSourceMetadata {
+  /**
+   * Generic read-only source for a related collection. The renderer/UI server
+   * queries `entityKey` from the containing collection and constrains the
+   * declared `filterField` to the current entry's `currentField` value.
+   */
+  kind: 'entity-query';
+  filterField: string;
+  currentField?: string;
+  pageSize?: number;
+  sort?: string;
+  direction?: 'asc' | 'desc';
+}
+
 export interface SysBOUIRelatedCollectionMetadata {
   label: string;
   icon?: SysBOUIIconKey;
@@ -208,7 +270,21 @@ export interface SysBOUIRelatedCollectionMetadata {
    */
   sourceKey?: string;
 
-  layout: 'panel-list';
+  /**
+   * Optional generic source declaration for collections that are not already
+   * embedded in the owning page payload.
+   */
+  source?: SysBOUIRelatedCollectionSourceMetadata;
+
+  /** Compact stacked rows or a conventional read-only table. */
+  layout: 'panel-list' | 'table-list';
+
+  /**
+   * Optional row navigation template. `{id}` is replaced with the related row
+   * identifier. When present, the first displayed field is rendered as a link.
+   */
+  rowHref?: string;
+
   emptyText?: string;
 
   /**

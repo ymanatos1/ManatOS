@@ -66,13 +66,16 @@
   const tabs = debuggingTabEnabled ? [...baseTabs, debuggingTab] : baseTabs;
 
   const legacyRelatedData = typeof relatedData !== 'undefined' && relatedData ? relatedData : {};
-  const ctxExternalIdentities = ctxValue('externalIdentities');
-  const pageRelatedData = {
-    ...legacyRelatedData,
-    ...(Array.isArray(ctxExternalIdentities)
-      ? { externalIdentities: ctxExternalIdentities }
-      : {}),
-  };
+  const pageRelatedData = { ...legacyRelatedData };
+  for (const [collectionKey, collection] of Object.entries(relatedCollections)) {
+    const sourceKey = collection.sourceKey ?? collectionKey;
+    const ctxRows = ctxValue(sourceKey);
+    if (Array.isArray(ctxRows)) pageRelatedData[sourceKey] = ctxRows;
+  }
+  const pageRelatedReferenceData =
+    typeof relatedReferenceData !== 'undefined' && relatedReferenceData
+      ? relatedReferenceData
+      : {};
 
   const entryActions = metadataUI.record.entryActions || {};
   const resolvedEntryActions = Object.entries(entryActions)
@@ -84,11 +87,43 @@
         purpose: 'resolve record-action visibility',
       }) !== false
     )
+    .map(([actionKey, action]) => {
+      const enabled = dynamicUIValue(action.enabled ?? true, ctxFields, {
+        source: 'ui-metadata',
+        sourcePath: `entryActions.${actionKey}.enabled`,
+        targetPath: `entryActions.${actionKey}.enabled`,
+        purpose: 'resolve record-action enabled state',
+      }) !== false;
+      const disabledReason = dynamicUIValue(action.disabledReason ?? null, ctxFields, {
+        source: 'ui-metadata',
+        sourcePath: `entryActions.${actionKey}.disabledReason`,
+        targetPath: `entryActions.${actionKey}.disabledReason`,
+        purpose: 'resolve record-action disabled reason',
+      });
+      const placement = action.placement ?? (action.kind === 'save' ? 'footer-trailing' : 'footer-leading');
+
+      return [
+        actionKey,
+        {
+          ...action,
+          resolvedEnabled: enabled,
+          resolvedDisabledReason:
+            typeof disabledReason === 'string' && disabledReason.trim() ? disabledReason : null,
+          resolvedPlacement: placement,
+        },
+      ];
+    })
     .sort((left, right) => (left[1].order ?? 0) - (right[1].order ?? 0));
 
   const deleteActionEntry = resolvedEntryActions.find(([, action]) => action.kind === 'delete');
   const saveActionEntry = resolvedEntryActions.find(([, action]) => action.kind === 'save');
   const commandActionEntries = resolvedEntryActions.filter(([, action]) => action.kind === 'command');
+  const leadingCommandActionEntries = commandActionEntries.filter(
+    ([, action]) => action.resolvedPlacement === 'footer-leading',
+  );
+  const trailingCommandActionEntries = commandActionEntries.filter(
+    ([, action]) => action.resolvedPlacement === 'footer-trailing',
+  );
   const deleteAction = deleteActionEntry?.[1];
   const saveAction = saveActionEntry?.[1];
 
@@ -115,8 +150,11 @@
     ? ctxActiveTab
     : (typeof sysBOUiActiveTab === 'string' ? sysBOUiActiveTab : '');
   const activeTabId = tabs.some((tab) => tab.id === requestedTabId) ? requestedTabId : (tabs[0]?.id || '');
-  const isOwnSysUser = !isNew && definition.key === 'sys-users' && currentUser && item.id === currentUser.id;
   const deleteAuthorized = deleteImpact?.authorized !== false;
+  const deleteEnabled = Boolean(deleteAction && deleteAction.resolvedEnabled !== false && deleteAuthorized);
+  const deleteDisabledReason =
+    deleteAction?.resolvedDisabledReason ||
+    (!deleteAuthorized ? 'You are not authorized to delete this entry.' : null);
 
   const valueFor = (key) => {
     // CTX is the live form-state source of truth. The renderer projects the
@@ -216,6 +254,15 @@
   const providerFor = (providerKey) =>
     availableAuthProviders.find((candidate) => candidate.key === providerKey);
 
+  const enumToneClass = (item) => {
+    const tone = item?.tone;
+    if (!tone) return '';
+    if (tone === 'danger' && item?.toneStrength === 'soft') return 'text-danger opacity-75';
+    if (tone === 'danger' && item?.toneStrength === 'strong') return 'text-danger-emphasis';
+    if (tone === 'warning') return 'text-warning-emphasis';
+    return `text-${tone}`;
+  };
+
   const relatedMetadataRegistry =
     typeof relatedEntityMetadata !== 'undefined' && relatedEntityMetadata
       ? relatedEntityMetadata
@@ -296,6 +343,19 @@
 
     return { raw, tone, icon, calculated: Boolean(expression) };
   };
+
+
+  const relatedReferenceLabel = (sourceKey, fieldKey, value) => {
+    if (value === undefined || value === null || value === '') return '—';
+    const candidates = pageRelatedReferenceData?.[sourceKey]?.[fieldKey] || [];
+    const match = candidates.find((candidate) => candidate?.id === value);
+    return match?.name ?? String(value);
+  };
+
+  const relatedRowHref = (collection, row) =>
+    collection.rowHref
+      ? String(collection.rowHref).replaceAll('{id}', encodeURIComponent(String(row?.id ?? '')))
+      : null;
 
   /* -----------------------------------------------------------------------
    * Development-only calculated-expression inventory.
@@ -585,19 +645,24 @@
     }
 
     for (const [actionKey, action] of Object.entries(metadataUI.record.entryActions || {})) {
-      if (action?.visible && typeof action.visible === 'object' && typeof action.visible.expression === 'string') {
+      for (const propertyKey of ['visible', 'enabled', 'disabledReason']) {
+        const dynamicValue = action?.[propertyKey];
+        if (!dynamicValue || typeof dynamicValue !== 'object' || typeof dynamicValue.expression !== 'string') {
+          continue;
+        }
+
         addDebugRow(
           'UI',
           'ACTIONS',
-          `entryActions.${actionKey}.visible`,
-          action.visible.expression,
-          dynamicUIValue(action.visible, ctxFields, {
+          `entryActions.${actionKey}.${propertyKey}`,
+          dynamicValue.expression,
+          dynamicUIValue(dynamicValue, ctxFields, {
             source: 'debugging-tab',
-            sourcePath: `entryActions.${actionKey}.visible`,
-            targetPath: `entryActions.${actionKey}.visible`,
-            purpose: 'inspect action visibility calculation',
+            sourcePath: `entryActions.${actionKey}.${propertyKey}`,
+            targetPath: `entryActions.${actionKey}.${propertyKey}`,
+            purpose: `inspect action ${propertyKey} calculation`,
           }),
-          compiledUIRecord?.entryActions?.[actionKey]?.visible?.ast ?? null,
+          compiledUIRecord?.entryActions?.[actionKey]?.[propertyKey]?.ast ?? null,
         );
       }
     }
@@ -759,6 +824,7 @@
             return Boolean(field && fieldVisible(field) && !field.sensitive && fieldEditable(field));
           });
           const readOnlyTab = tab.layout === 'summary'
+            || tab.layout === 'component'
             || tab.layout === 'debug-calculations'
             || (formLikeTab && !tabHasEditableFields);
         %>
@@ -902,14 +968,66 @@
               <% if (!collection) continue; %>
               <% const collectionSourceKey = collection.sourceKey ?? key; %>
               <% const rows = Array.isArray(pageRelatedData[collectionSourceKey]) ? pageRelatedData[collectionSourceKey] : []; %>
+              <% const rowMetadata = relatedMetadataRegistry[collection.entityKey]; %>
 
-              <div class="authentication-identities mt-4">
-                <h3 class="h6 mb-3">
-                  <% if (collection.icon) { %><i class="bi bi-<%= collection.icon %> me-1" aria-hidden="true"></i><% } %>
-                  <%= collection.label %>
-                </h3>
+              <div class="metadata-related-collection mt-3">
+                <% if (collection.layout !== 'table-list') { %>
+                  <h3 class="h6 mb-3">
+                    <% if (collection.icon) { %><i class="bi bi-<%= collection.icon %> me-1" aria-hidden="true"></i><% } %>
+                    <%= collection.label %>
+                  </h3>
+                <% } %>
 
-                <% if (rows.length > 0) { %>
+                <% if (rows.length > 0 && collection.layout === 'table-list') { %>
+                  <div class="table-responsive metadata-related-table-wrap">
+                    <table class="table table-hover align-middle metadata-related-table mb-0">
+                      <thead>
+                        <tr>
+                          <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
+                            <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
+                            <th scope="col"><%= collectionField.label || canonicalField?.label || collectionFieldKey %></th>
+                          <% } %>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% for (const row of rows) { %>
+                          <% const rowHref = relatedRowHref(collection, row); %>
+                          <% let relatedFieldIndex = 0; %>
+                          <tr>
+                            <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
+                              <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
+                              <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
+                              <% const selectedEnumItem = canonicalField?.type === 'enum'
+                                ? (canonicalField.enumItems || []).find((candidate) => candidate?.value === renderedValue.raw)
+                                : null; %>
+                              <td>
+                                <% if (rowHref && relatedFieldIndex === 0) { %>
+                                  <a class="fw-semibold" href="<%= rowHref %>"><%= renderedValue.raw ?? '—' %></a>
+                                <% } else if (canonicalField?.type === 'reference') { %>
+                                  <%= relatedReferenceLabel(collectionSourceKey, collectionFieldKey, renderedValue.raw) %>
+                                <% } else if (canonicalField?.type === 'enum') { %>
+                                  <% if (selectedEnumItem?.icon) { %><i class="bi bi-<%= selectedEnumItem.icon %> <%= enumToneClass(selectedEnumItem) %> me-1" aria-hidden="true"></i><% } %>
+                                  <%= selectedEnumItem?.label || renderedValue.raw || '—' %>
+                                <% } else if (canonicalField?.type === 'boolean') { %>
+                                  <% const positive = Boolean(renderedValue.raw); %>
+                                  <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
+                                    <i class="bi <%= positive ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"></i>
+                                    <%= positive ? 'Enabled' : 'Disabled' %>
+                                  </span>
+                                <% } else if (canonicalField?.type === 'date') { %>
+                                  <%= formatValue(renderedValue.raw, { format: 'datetime', emptyText: '—' }) %>
+                                <% } else { %>
+                                  <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
+                                <% } %>
+                              </td>
+                              <% relatedFieldIndex += 1; %>
+                            <% } %>
+                          </tr>
+                        <% } %>
+                      </tbody>
+                    </table>
+                  </div>
+                <% } else if (rows.length > 0) { %>
                   <div class="authentication-identity-list">
                     <% for (const row of rows) { %>
                       <div class="authentication-identity-row">
@@ -936,7 +1054,7 @@
                     <% } %>
                   </div>
                 <% } else { %>
-                  <div class="text-secondary small"><%= collection.emptyText || 'No related entries.' %></div>
+                  <div class="text-secondary small py-2"><%= collection.emptyText || 'No related entries.' %></div>
                 <% } %>
               </div>
             <% } %>
@@ -1088,12 +1206,14 @@
 
     <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <% for (const [actionKey, action] of commandActionEntries) { %>
+        <% for (const [actionKey, action] of leadingCommandActionEntries) { %>
           <% if (!isNew && recordId && action.command) { %>
             <button
               class="<%= actionClass(action, 'primary') %>"
               type="submit"
               form="metadata-command-<%= actionKey %>"
+              <%= action.resolvedEnabled === false ? 'disabled' : '' %>
+              <% if (action.resolvedDisabledReason) { %>title="<%= action.resolvedDisabledReason %>"<% } %>
             >
               <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %>
               <%= action.label %>
@@ -1101,21 +1221,28 @@
           <% } %>
         <% } %>
 
-        <% if (!isNew && permissions.delete && deleteAction) { %>
-          <% const deleteDisabled = isOwnSysUser || !deleteAuthorized; %>
+        <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-leading') { %>
+          <button
+            class="<%= actionClass(saveAction, 'primary') %>"
+            type="submit"
+            data-form-save
+            disabled
+          >
+            <% if (saveAction.icon) { %><i class="bi bi-<%= saveAction.icon %> me-1"></i><% } %>
+            <%= saveAction.label %>
+          </button>
+        <% } %>
+
+        <% if (!isNew && permissions.delete && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
           <button
             class="<%= actionClass(deleteAction, 'danger') %>"
             type="button"
-            <%= deleteDisabled ? 'disabled' : '' %>
-            <% if (!deleteDisabled) { %>
+            <%= deleteEnabled ? '' : 'disabled' %>
+            <% if (deleteEnabled) { %>
               data-bs-toggle="modal"
               data-bs-target="#deleteEntryModal"
             <% } %>
-            <% if (isOwnSysUser) { %>
-              title="You cannot delete your own user account."
-            <% } else if (!deleteAuthorized) { %>
-              title="You are not authorized to delete this entry."
-            <% } %>
+            <% if (deleteDisabledReason) { %>title="<%= deleteDisabledReason %>"<% } %>
           >
             <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
             <%= deleteAction.label %>
@@ -1136,12 +1263,43 @@
           </span>
         <% } %>
 
+        <% if (!isNew && permissions.delete && deleteAction && deleteAction.resolvedPlacement === 'footer-trailing') { %>
+          <button
+            class="<%= actionClass(deleteAction, 'danger') %>"
+            type="button"
+            <%= deleteEnabled ? '' : 'disabled' %>
+            <% if (deleteEnabled) { %>
+              data-bs-toggle="modal"
+              data-bs-target="#deleteEntryModal"
+            <% } %>
+            <% if (deleteDisabledReason) { %>title="<%= deleteDisabledReason %>"<% } %>
+          >
+            <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
+            <%= deleteAction.label %>
+          </button>
+        <% } %>
+
+        <% for (const [actionKey, action] of trailingCommandActionEntries) { %>
+          <% if (!isNew && recordId && action.command) { %>
+            <button
+              class="<%= actionClass(action, 'primary') %>"
+              type="submit"
+              form="metadata-command-<%= actionKey %>"
+              <%= action.resolvedEnabled === false ? 'disabled' : '' %>
+              <% if (action.resolvedDisabledReason) { %>title="<%= action.resolvedDisabledReason %>"<% } %>
+            >
+              <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %>
+              <%= action.label %>
+            </button>
+          <% } %>
+        <% } %>
+
         <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>">
           <i class="bi bi-x-circle me-1"></i>
           <%= isViewMode ? 'Back' : 'Cancel' %>
         </a>
 
-        <% if (!isViewMode && saveAction) { %>
+        <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-trailing') { %>
           <button
             class="<%= actionClass(saveAction, 'primary') %>"
             type="submit"
@@ -1172,7 +1330,7 @@
 <%- include('../../popups/messages/bo-edit-confirmations', {
   isNew,
   permissions,
-  isOwnSysUser,
+  deleteEnabled,
   definition,
   item,
   csrfToken,

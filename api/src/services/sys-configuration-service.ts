@@ -23,9 +23,7 @@ export const CONFIGURATION_DEFINITIONS: ConfigurationDefinition[] = [
   { name:'UI_DEFAULT_PAGE_SIZE', group:'UI', description:'Default number of rows displayed on SysBO list pages.', valueType:'number', envValue:process.env.UI_DEFAULT_PAGE_SIZE, defaultValue:'10' },
   // Temporary #16 migration controls. Remove after the metadata-driven SysBO UI fully replaces Current EJS.
   // Completed #16 entities intentionally have no UI-engine configuration.
-  // SysUsers and SysPrincipals are locked to MetadataDriven while #16 closes.
-  { name:'UI_SYSBO_APPLICATIONS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Applications UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
-  { name:'UI_SYSBO_LICENSES_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary Licenses UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
+  // SysUsers, SysPrincipals, SysApplications and SysLicenses are locked to MetadataDriven while #16 closes.
   { name:'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary External authentication providers UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
   { name:'DONATIONS_SHOW', group:'Donations', description:'Show the global Donate action in the ManatOS header. The action remains disabled until donation processing is configured.', valueType:'boolean', envValue:process.env.DONATIONS_SHOW, defaultValue:'false' },
   { name:'SHOW_TECHNICAL_ERROR_DETAILS', group:'Errors & diagnostics', description:'Show technical diagnostic details in UI error dialogs.', valueType:'boolean', envValue:process.env.SHOW_TECHNICAL_ERROR_DETAILS, defaultValue:'false' },
@@ -56,6 +54,8 @@ const seedActor: AuditActor = { userId:'system', userName:'System', source:'syst
 const RETIRED_SYSBO_UI_MODES = new Set([
   'UI_SYSBO_USERS_VIEW_MODE',
   'UI_SYSBO_PRINCIPALS_VIEW_MODE',
+  'UI_SYSBO_APPLICATIONS_VIEW_MODE',
+  'UI_SYSBO_LICENSES_VIEW_MODE',
 ]);
 
 export class SysBOConfigurationService extends GenericSysBOService<SysBOConfiguration> {

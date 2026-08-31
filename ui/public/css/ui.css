@@ -1585,6 +1585,19 @@ body.anonymous .workspace {
 /* Metadata-driven hierarchy visualization. Data/state comes from CTX; these
  * rules intentionally contain no entity-specific selectors. The same component
  * can present either a compact tree or a top-down organization chart. */
+/*
+ * Visualization components are read-only data surfaces. Their tab inherits the
+ * generic read-only tab background; the drawing canvas gets its own nearby
+ * theme-owned shade so chart/tree geometry remains visually distinct without
+ * becoming an editable-looking white panel.
+ */
+[data-metadata-component='ctx-hierarchy'] {
+  background: var(--manatos-visualization-bg);
+  border: 1px solid var(--manatos-border);
+  border-radius: .55rem;
+  padding: .9rem;
+}
+
 .metadata-hierarchy-toolbar .btn { min-width: 5rem; }
 
 .metadata-hierarchy-root,

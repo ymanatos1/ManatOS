@@ -250,6 +250,9 @@ export interface SysBOLicense extends SysBOEntity {
 
   licenseKey?: string;
 
+  /** Optional human-readable entitlement/content rules attached to this license. */
+  rules?: string;
+
   status: SysBOLicenseStatus;
 
   validFrom?: string;

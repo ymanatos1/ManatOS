@@ -61,27 +61,55 @@ function sysBOContext(entries: CompanyInfo['entities'] | SysPlatform['entities']
 export function contextField<T>(
   value: T,
   metadata?: SysBOFieldMetadata,
+  referenceOptions: readonly Readonly<Record<string, unknown>>[] = [],
 ): ManatOSContextField<T> {
-  if (metadata?.type === 'enum' && metadata.enumItems?.length) {
-    const selected = metadata.enumItems.find((item) => item.value === value) ?? null;
-    return { value, option: selected ? Object.freeze({ ...selected }) : null };
+  if (metadata?.type === 'enum') {
+    /*
+     * Enum fields expose the same stable `options` shape as references so
+     * evaluator-backed defaults can reason about available choices without
+     * knowing whether the control is an enum or a relationship selector.
+     * Rich enumItems win; plain enumValues are normalized to {value,label}.
+     */
+    const richItems = metadata.enumItems ?? [];
+    const options = Object.freeze(
+      (metadata.enumValues ?? []).map((enumValue) => {
+        const rich = richItems.find((item) => item.value === enumValue);
+        return Object.freeze(rich ? { ...rich } : { value: enumValue, label: enumValue });
+      }),
+    );
+    const selected = options.find((option) => option.value === value) ?? null;
+    return { value, option: selected, options };
   }
+
+  if (metadata?.type === 'reference') {
+    const options = Object.freeze(referenceOptions.map((option) => Object.freeze({ ...option })));
+    const selected = options.find((option) => option.id === value) ?? null;
+    return {
+      value,
+      option: selected,
+      options,
+    };
+  }
+
   return { value };
 }
 
 /**
- * Build a keyed runtime field collection. When canonical field metadata is
- * supplied, enum fields also expose their selected item under `.option` so
- * evaluator formulas can consume enum traits declaratively.
+ * Build a keyed runtime field collection. Enum and reference fields expose
+ * their selected item under `.option` plus the available `.options` collection.
+ * This shared shape lets generic formulas inspect/select available choices
+ * without coupling to a particular HTML control or field type. This keeps generic
+ * defaults/calculations CTX-driven rather than tied to renderer lookup tables.
  */
 export function contextFields(
   values: Readonly<Record<string, unknown>>,
   fieldDefinition: Readonly<Record<string, SysBOFieldMetadata>> = {},
+  referenceData: Readonly<Record<string, readonly Readonly<Record<string, unknown>>[]>> = {},
 ): ManatOSContextFields {
   return Object.fromEntries(
     Object.entries(values).map(([key, value]) => [
       assertContextIdentifier(key, 'field'),
-      contextField(value, fieldDefinition[key]),
+      contextField(value, fieldDefinition[key], referenceData[key] ?? []),
     ]),
   );
 }
@@ -148,6 +176,7 @@ export function createManatOSContext(
     // entities/company/user/page state. JavaScript preserves insertion order
     // for these string-keyed object properties.
     system: Object.freeze({
+      scope,
       server: Object.freeze({ apiBaseUrl }),
       client: Object.freeze({
         kind: 'web-ejs',
@@ -155,7 +184,6 @@ export function createManatOSContext(
         features: Object.freeze({ ...clientFeatures }),
       }),
     }),
-    scope,
     entities: {},
     company: companyContext,
     user: userContext(user, currentPlatform, scope),

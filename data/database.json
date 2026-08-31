@@ -100,7 +100,18 @@
       "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
     }
   },
-  "sysApplications": {},
+  "sysApplications": {
+    "69cc1b80-326e-44f6-95d2-82d338486580": {
+      "name": "Dikigoriko",
+      "enabled": true,
+      "appName": "Dikigoriko App",
+      "fullName": "Legal software",
+      "createdAt": "2026-08-31T00:36:44.357Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-31T00:36:44.357Z",
+      "updatedBy": "Admin"
+    }
+  },
   "sysConfigurations": {
     "b8a48ff0-e117-4b98-a418-3c9dd657bd9d": {
       "name": "UI_PAGE_SIZE_OPTIONS",
@@ -449,7 +460,7 @@
     },
     "0c2834b9-e29a-4850-a4a2-2d416b65aab1": {
       "name": "UI_SYSBO_APPLICATIONS_VIEW_MODE",
-      "value": "CurrentEJS",
+      "value": "MetadataDriven",
       "group": "#16 SysBO UI migration",
       "description": "Temporary Applications UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
       "valueType": "enum",
@@ -464,7 +475,7 @@
       "enabled": true,
       "createdAt": "2026-08-28T18:21:24.558Z",
       "createdBy": "System",
-      "updatedAt": "2026-08-30T23:46:00.791Z",
+      "updatedAt": "2026-08-31T00:32:55.148Z",
       "updatedBy": "Admin",
       "valueEncrypted": null
     },
@@ -485,7 +496,7 @@
       "enabled": true,
       "createdAt": "2026-08-28T18:21:24.564Z",
       "createdBy": "System",
-      "updatedAt": "2026-08-30T03:12:17.097Z",
+      "updatedAt": "2026-08-31T00:32:49.117Z",
       "updatedBy": "Admin",
       "valueEncrypted": null
     },
@@ -511,7 +522,23 @@
       "valueEncrypted": null
     }
   },
-  "sysLicenses": {},
+  "sysLicenses": {
+    "c24ff885-178b-431c-a4e1-5d4b2b79a164": {
+      "name": "First sample license",
+      "enabled": true,
+      "principalId": "ce34b655-e494-438f-a091-ab18d2b37bad",
+      "platformId": "mcrm",
+      "applicationId": "69cc1b80-326e-44f6-95d2-82d338486580",
+      "status": "Active",
+      "validFrom": "2026-08-31T00:00",
+      "validUntil": null,
+      "quantity": 1,
+      "createdAt": "2026-08-31T01:15:55.801Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-08-31T01:15:55.801Z",
+      "updatedBy": "Admin"
+    }
+  },
   "sysExtAuthProviders": {
     "07ad1dcc-265f-4671-b220-b63b0f80c9ff": {
       "name": "microsoft",

@@ -48,6 +48,12 @@ export interface SysBOEnumItemMetadata {
   /** Optional semantic icon key consumed by capable UI renderers. */
   icon?: string;
 
+  /** Optional renderer-neutral semantic tone for the enum item's visual cue. */
+  tone?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info';
+
+  /** Optional relative tone strength; renderers decide the concrete palette. */
+  toneStrength?: 'soft' | 'normal' | 'strong';
+
   /**
    * Enum-item traits are deliberately open-ended and evaluator-readable.
    * Domain metadata can therefore attach facts such as `isContainer` without
@@ -161,7 +167,7 @@ export interface ManatOSRelationshipMetadata {
  *
  * Actual BO records have completely separate generated GUID `id` values.
  */
-/** Canonical value derived from an entity record/context; persistence is opt-in. */
+/** Canonical, non-persisted value derived from an entity record/context. */
 export interface SysBODerivedFieldMetadata {
   /** The parent Record key is the canonical derived-field name. */
   label: string;
@@ -644,11 +650,17 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
       required: true,
       enumValues: MANATOS_COMPANY.platforms.filter((platform) => platform.enabled).map((platform) => platform.id),
+      enumItems: MANATOS_COMPANY.platforms
+        .filter((platform) => platform.enabled)
+        .map((platform) => ({
+          value: platform.id,
+          label: platform.shortName,
+        })),
     },
 
     applicationId: {
       key: 'applicationId',
-      label: 'Application restriction',
+      label: 'Application',
       type: 'reference',
       order: 40,
 
@@ -665,6 +677,15 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       maxLength: 250,
     },
 
+    rules: {
+      key: 'rules',
+      label: 'Rules',
+      type: 'string',
+      order: 55,
+
+      maxLength: 4000,
+    },
+
     status: {
       key: 'status',
       label: 'Status',
@@ -673,6 +694,12 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
       required: true,
       enumValues: Object.values(SysBOLicenseStatus),
+      enumItems: [
+        { value: SysBOLicenseStatus.Active, label: 'Active', icon: 'check-circle-fill', tone: 'success' },
+        { value: SysBOLicenseStatus.Suspended, label: 'Suspended', icon: 'pause-circle-fill', tone: 'warning' },
+        { value: SysBOLicenseStatus.Expired, label: 'Expired', icon: 'clock-history', tone: 'danger', toneStrength: 'soft' },
+        { value: SysBOLicenseStatus.Cancelled, label: 'Cancelled', icon: 'x-circle-fill', tone: 'danger', toneStrength: 'strong' },
+      ],
     },
 
     validFrom: {

@@ -120,8 +120,24 @@ export function buildOpenApiSpec() {
         description: 'Registration, sign-in, account/session operations and trusted authentication commands. Access requirements are documented per operation.',
       },
       {
-        name: 'System Business Objects',
-        description: 'Metadata-driven SysBO endpoints. Authorization depends on the business object.',
+        name: 'System Business Objects · Users',
+        description: 'Metadata-driven SysUser endpoints and user-specific commands.',
+      },
+      {
+        name: 'System Business Objects · Principals',
+        description: 'Metadata-driven SysPrincipal endpoints.',
+      },
+      {
+        name: 'System Business Objects · Applications',
+        description: 'Metadata-driven SysApplication endpoints.',
+      },
+      {
+        name: 'System Business Objects · Licenses',
+        description: 'Metadata-driven SysLicense endpoints.',
+      },
+      {
+        name: 'System Business Objects · External Authentication Providers',
+        description: 'Framework-neutral SysBO UI metadata for external-authentication providers.',
       },
       {
         name: 'System Configuration',
@@ -205,27 +221,27 @@ export function buildOpenApiSpec() {
       /**
        * Protected SysBO resources.
        */
-      '/api/v1/SysUsers': genericOperations('User'),
+      '/api/v1/SysUsers': genericOperations('User', 'System Business Objects · Users'),
 
-      '/api/v1/SysUsers/$metadata-ui': sysBOUIMetadataOperation('User'),
+      '/api/v1/SysUsers/$metadata-ui': sysBOUIMetadataOperation('User', 'System Business Objects · Users'),
 
-      '/api/v1/SysUsers/{id}/verify-email': adminVerifyEmailOperation(),
+      '/api/v1/SysUsers/{id}/verify-email': adminVerifyEmailOperation('System Business Objects · Users'),
 
-      '/api/v1/SysPrincipals': genericOperations('Principal'),
+      '/api/v1/SysPrincipals': genericOperations('Principal', 'System Business Objects · Principals'),
 
-      '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation('Principal'),
+      '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation('Principal', 'System Business Objects · Principals'),
 
-      '/api/v1/SysApplications': genericOperations('Application'),
+      '/api/v1/SysApplications': genericOperations('Application', 'System Business Objects · Applications'),
 
-      '/api/v1/SysApplications/$metadata-ui': sysBOUIMetadataOperation('Application'),
+      '/api/v1/SysApplications/$metadata-ui': sysBOUIMetadataOperation('Application', 'System Business Objects · Applications'),
 
-      '/api/v1/SysLicenses': genericOperations('License'),
+      '/api/v1/SysLicenses': genericOperations('License', 'System Business Objects · Licenses'),
 
-      '/api/v1/SysLicenses/$metadata-ui': sysBOUIMetadataOperation('License'),
+      '/api/v1/SysLicenses/$metadata-ui': sysBOUIMetadataOperation('License', 'System Business Objects · Licenses'),
 
       '/api/v1/SysExtAuthProviders': externalAuthProviderOperations(),
 
-      '/api/v1/SysExtAuthProviders/$metadata-ui': sysBOUIMetadataOperation('External authentication provider'),
+      '/api/v1/SysExtAuthProviders/$metadata-ui': sysBOUIMetadataOperation('External authentication provider', 'System Business Objects · External Authentication Providers'),
 
       '/api/v1/SysExtAuthProviders/{id}': externalAuthProviderItemOperations(),
 
@@ -464,11 +480,11 @@ function externalAuthProviderItemOperations() {
 /**
  * Framework-neutral, read-only UI metadata for one SysBO.
  */
-const sysBOUIMetadataOperation = (name: string) => ({
+const sysBOUIMetadataOperation = (name: string, tag: string) => ({
   get: {
     summary: `Get ${name} UI metadata`,
     description: 'Read-only framework-neutral UI contract for EJS and future Angular/React/mobile clients.',
-    tags: ['System Business Objects'],
+    tags: [tag],
     security: [{ bearerAuth: [] }],
     responses: {
       '200': { description: 'UI metadata returned.' },
@@ -482,11 +498,11 @@ const sysBOUIMetadataOperation = (name: string) => ({
  * Standard OpenAPI operations currently shared by generic SysBO
  * collection endpoints.
  */
-const genericOperations = (name: string) => ({
+const genericOperations = (name: string, tag = 'System Business Objects · External Authentication Providers') => ({
   get: {
     summary: `List ${name} entries`,
     description: '`includeMetadataUI=true` returns framework-neutral UI metadata and also implies `includeMetadata=true`.',
-    tags: ['System Business Objects'],
+    tags: [tag],
     parameters: [
       { name: 'includeMetadata', in: 'query', schema: { type: 'boolean' }, description: 'Include canonical SysBO metadata.' },
       { name: 'includeMetadataUI', in: 'query', schema: { type: 'boolean' }, description: 'Include UI metadata and canonical SysBO metadata.' },
@@ -511,7 +527,7 @@ const genericOperations = (name: string) => ({
 
   post: {
     summary: `Create ${name}`,
-    tags: ['System Business Objects'],
+    tags: [tag],
     security: [
       {
         bearerAuth: [],
@@ -600,13 +616,13 @@ function failureResponse(description: string) {
 /**
  * Explicit Admin command for email verification.
  */
-function adminVerifyEmailOperation() {
+function adminVerifyEmailOperation(tag: string) {
   return {
     post: {
       summary: 'Verify a SysBOUser email as Admin',
       description:
         'Marks the selected SysBOUser email as verified. Requires an authenticated Admin and ADMIN_EMAIL_VERIFICATION_ENABLED=true.',
-      tags: ['System Business Objects'],
+      tags: [tag],
       security: [
         {
           bearerAuth: [],

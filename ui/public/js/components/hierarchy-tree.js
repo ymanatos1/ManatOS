@@ -134,7 +134,7 @@
 
     if (state.modes.length > 1) {
       const toolbar = document.createElement('div');
-      toolbar.className = 'metadata-hierarchy-toolbar d-flex justify-content-end mb-2';
+      toolbar.className = 'metadata-hierarchy-toolbar d-flex justify-content-start mb-2';
       toolbar.setAttribute('role', 'group');
       toolbar.setAttribute('aria-label', 'Hierarchy visualization');
       toolbar.innerHTML = `
@@ -145,10 +145,10 @@
               class="btn ${state.mode === mode ? 'btn-primary' : 'btn-outline-secondary'}"
               data-hierarchy-view-mode="${esc(mode)}"
               aria-pressed="${state.mode === mode ? 'true' : 'false'}"
-              title="${mode === 'chart' ? 'Organization chart' : 'Hierarchy tree'}"
+              title="${mode === 'chart' ? 'Chart' : 'Tree'}"
+              aria-label="${mode === 'chart' ? 'Chart' : 'Tree'}"
             >
               <i class="bi bi-${mode === 'chart' ? 'diagram-3' : 'list-nested'}" aria-hidden="true"></i>
-              <span class="ms-1">${mode === 'chart' ? 'Chart' : 'Tree'}</span>
             </button>
           `).join('')}
         </div>`;
