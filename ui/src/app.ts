@@ -6,6 +6,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
+import type { ExternalProviderKey } from '@manatos/shared';
+
+import { apiClient } from './api-client.js';
 import { config } from './config.js';
 import { passport } from './auth/passport.js';
 import { requestContextMiddleware } from './middleware/request-context.js';
@@ -14,6 +17,7 @@ import { pageContextMiddleware } from './middleware/page-context.js';
 import { createAuthRouter } from './routes/auth-routes.js';
 import { createPageRoutes } from './routes/page-routes.js';
 import { createSysBORoutes } from './routes/sysbo-routes.js';
+import { createPlatformRoutes } from './platforms/routes.js';
 import { uiErrorHandler } from './error-handler.js';
 import { refreshUiBootstrap, uiBootstrapState } from './bootstrap/ui-bootstrap.js';
 
@@ -76,6 +80,32 @@ export function createUiApp() {
     res.json(uiBootstrapState());
   });
 
+  /**
+   * Anonymous-safe external-authentication provider state for the Sign in and
+   * Register popups. Keep this endpoint ahead of session/page-context middleware:
+   * a stale authenticated browser session must never prevent the sign-in surface
+   * from discovering currently usable providers after an API/server restart.
+   */
+  app.get('/auth/external-providers', async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+
+    try {
+      const response = await apiClient.get<{
+        providers: Array<{
+          provider: ExternalProviderKey;
+          label: string;
+          icon: string;
+          enabled: boolean;
+          configured: boolean;
+        }>;
+      }>('/api/v1/public/external-auth-providers');
+
+      res.json({ providers: response.data.providers, unavailable: false });
+    } catch {
+      res.status(503).json({ providers: [], unavailable: true });
+    }
+  });
+
   app.use(requestContextMiddleware);
 
   app.use(
@@ -99,6 +129,7 @@ export function createUiApp() {
   app.use(pageContextMiddleware);
 
   app.use('/auth', createAuthRouter());
+  app.use('/', createPlatformRoutes());
   app.use('/bo', createSysBORoutes());
   app.use('/', createPageRoutes());
 

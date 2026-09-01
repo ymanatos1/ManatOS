@@ -327,6 +327,12 @@
       actionForm.addEventListener('submit', () => { allowPageExit = true; });
     });
 
+    const deleteModal = document.getElementById('deleteEntryModal');
+    deleteModal?.addEventListener('show.bs.modal', () => {
+      const warning = deleteModal.querySelector('[data-delete-unsaved-warning]');
+      warning?.classList.toggle('d-none', !dirty());
+    });
+
     window.addEventListener('beforeunload', (event) => {
       if (dirty() && !allowPageExit) {
         event.preventDefault();
@@ -345,370 +351,6 @@
     });
   }
 })();
-/** External-auth provider editor: provider defaults, credential lifecycle and help content. */
-(() => {
-  const root = document.querySelector('[data-ext-auth-provider-editor]');
-  if (!root) return;
-
-  const provider = root.querySelector('#provider');
-  const callback = root.querySelector('#callbackPath');
-  const tenant = root.querySelector('[data-microsoft-tenant]');
-  const tenantSelect = root.querySelector('#tenant');
-  const tenantValue = root.querySelector('[data-microsoft-tenant-value]');
-  const providerIcon = root.querySelector('[data-provider-icon] i');
-  const form = root.closest('form');
-  const enabled = form?.querySelector('#enabled');
-  const clientId = form?.querySelector('[data-provider-client-id]');
-  const clientSecret = form?.querySelector('[data-provider-client-secret]');
-  const secretEditor = form?.querySelector('[data-provider-secret-editor]');
-  const secretDisplay = form?.querySelector('[data-provider-secret-display]');
-  const changeCredentials = form?.querySelector('[data-provider-change-credentials]');
-  const testCredentials = form?.querySelector('[data-provider-test-credentials]');
-  const credentialState = form?.querySelector('[data-provider-credential-test-state]');
-  const pendingCredentialSave = form?.querySelector('[data-provider-pending-credential-save]');
-  const verificationIndicator = form?.querySelector('[data-provider-credentials-verified-indicator]');
-
-  if (!(provider instanceof HTMLSelectElement) || !(callback instanceof HTMLInputElement)) return;
-
-  const defaults = Object.fromEntries([...provider.options].map((option) => [option.value, option.dataset.callbackDefault || '']).filter(([, value]) => value));
-  const providerIcons = Object.fromEntries([...provider.options].map((option) => [option.value, option.dataset.providerIcon || '']).filter(([, value]) => value));
-  const tenantDefaults = Object.fromEntries([...provider.options].map((option) => [option.value, option.dataset.tenantDefault || '']).filter(([, value]) => value));
-  let previousProvider = provider.value;
-
-  const notifyFormState = () => form?.dispatchEvent(new Event('change', { bubbles: true }));
-
-  const showProviderHelp = (selector, key) => {
-    document.querySelectorAll(selector).forEach((panel) => {
-      if (panel instanceof HTMLElement) {
-        const panelProvider = panel.dataset.providerGeneralHelp ?? panel.dataset.providerSecretsHelp;
-        panel.hidden = panelProvider !== key;
-      }
-    });
-  };
-
-  const updateCredentialRequirements = () => {
-    if (!(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement)) return;
-    if (clientId.readOnly || clientSecret.disabled) return;
-    const providerEnabled = enabled instanceof HTMLInputElement && enabled.checked;
-    const anyCredentialValue = Boolean(clientId.value.trim() || clientSecret.value.trim());
-    clientId.required = providerEnabled || anyCredentialValue;
-    clientSecret.required = providerEnabled || anyCredentialValue;
-  };
-
-  const updateTestButton = () => {
-    updateCredentialRequirements();
-    if (!(testCredentials instanceof HTMLButtonElement)) return;
-    if (testCredentials.dataset.providerTestStored === 'true') {
-      testCredentials.disabled = false;
-      return;
-    }
-    testCredentials.disabled = !(
-      clientId instanceof HTMLInputElement &&
-      clientSecret instanceof HTMLInputElement &&
-      !clientId.readOnly &&
-      !clientSecret.disabled &&
-      clientId.value.trim() &&
-      clientSecret.value.trim()
-    );
-  };
-
-  const beginCredentialChange = () => {
-    if (!(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement)) return;
-    clientId.readOnly = false;
-    clientId.removeAttribute('aria-readonly');
-    clientId.name = 'clientId';
-    clientId.required = true;
-    clientSecret.disabled = false;
-    clientSecret.required = true;
-    clientSecret.value = '';
-    if (secretEditor instanceof HTMLElement) secretEditor.hidden = false;
-    if (secretDisplay instanceof HTMLElement) secretDisplay.hidden = true;
-    if (changeCredentials instanceof HTMLElement) changeCredentials.hidden = true;
-    if (testCredentials instanceof HTMLButtonElement) {
-      testCredentials.hidden = false;
-      testCredentials.dataset.providerTestStored = 'false';
-    }
-    if (credentialState instanceof HTMLInputElement) credentialState.value = 'required';
-    if (pendingCredentialSave instanceof HTMLInputElement) pendingCredentialSave.value = 'false';
-    if (verificationIndicator instanceof HTMLElement) {
-      const badge = verificationIndicator.querySelector('.badge');
-      if (badge instanceof HTMLElement) {
-        badge.classList.remove('text-bg-success');
-        badge.classList.add('text-bg-secondary');
-        badge.innerHTML = '<i class="bi bi-x-circle me-1"></i>No';
-      }
-    }
-    updateTestButton();
-    notifyFormState();
-    clientId.focus();
-  };
-
-  changeCredentials?.addEventListener('click', beginCredentialChange);
-  clientId?.addEventListener('input', updateTestButton);
-  clientSecret?.addEventListener('input', updateTestButton);
-
-  /*
-   * Provider credential testing uses a dedicated OAuth popup for the provider
-   * UI, while the ManatOS editor remains locked in the original window. The
-   * authoritative completion signal is server-side polling; postMessage is
-   * retained only as an optional fast-path because browser opener isolation
-   * can sever window.opener during cross-origin OAuth navigation.
-   */
-  testCredentials?.addEventListener('click', async () => {
-    if (
-      !(testCredentials instanceof HTMLButtonElement) ||
-      !(clientId instanceof HTMLInputElement) ||
-      !(clientSecret instanceof HTMLInputElement) ||
-      !(form instanceof HTMLFormElement)
-    ) return;
-
-    const feedback = form.querySelector('[data-provider-credential-test-feedback]');
-    const testStoredCredentials = testCredentials.dataset.providerTestStored === 'true';
-    const providerLabel = () => provider.options[provider.selectedIndex]?.text || provider.value || 'Provider';
-    const noReturnMessage = () => {
-      if (provider.value === 'facebook') {
-        return 'Facebook did not return a credential-test result to ManatOS. Check the Facebook window for the provider error. If it shows “App not active”, activate the Meta app or use an account that has an app role (Administrator, Developer or Tester), then retry. Your values were not changed.';
-      }
-      return providerLabel() + ' did not return a credential-test result to ManatOS. Check the provider window for an error, confirm the provider application is active and available to this account, then retry. Your values were not changed.';
-    };
-    const showFeedback = (message, success = false) => {
-      if (!(feedback instanceof HTMLElement)) return;
-      feedback.classList.remove('alert-danger', 'alert-success');
-      feedback.classList.add(success ? 'alert-success' : 'alert-danger');
-      feedback.textContent = message;
-      feedback.hidden = false;
-    };
-
-    if (!testStoredCredentials && (!clientId.value.trim() || !clientSecret.value.trim())) {
-      showFeedback('Enter both Client ID and Client secret before testing.');
-      return;
-    }
-
-    if (feedback instanceof HTMLElement) {
-      feedback.hidden = true;
-      feedback.textContent = '';
-    }
-    testCredentials.disabled = true;
-
-    const popupWidth = 720;
-    const popupHeight = 760;
-    const popupLeft = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
-    const popupTop = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
-    const testWindow = window.open('', 'manatos-provider-credential-test', 'popup,width=' + popupWidth + ',height=' + popupHeight + ',left=' + popupLeft + ',top=' + popupTop + ',resizable=yes,scrollbars=yes');
-    if (!testWindow) {
-      showFeedback('Allow popups for ManatOS to test provider credentials without leaving this form.');
-      updateTestButton();
-      return;
-    }
-    testWindow.document.title = 'Testing provider credentials';
-    testWindow.document.body.innerHTML = '<p style="font-family:sans-serif;padding:1.5rem">Preparing secure provider credential test…</p>';
-
-    const body = new URLSearchParams(new FormData(form));
-    if (!testStoredCredentials) {
-      body.set('clientId', clientId.value.trim());
-      body.set('clientSecret', clientSecret.value);
-    } else {
-      body.delete('clientId');
-      body.delete('clientSecret');
-    }
-    body.set('provider', provider.value);
-    if (enabled instanceof HTMLInputElement) body.set('enabled', enabled.checked ? 'true' : 'false');
-
-    let pollTimer = null;
-    let completed = false;
-    const finishWaiting = () => {
-      completed = true;
-      if (pollTimer) window.clearTimeout(pollTimer);
-      window.manatosBusy?.hide();
-    };
-
-    const closeTestWindow = () => {
-      try {
-        if (!testWindow.closed) testWindow.close();
-        return true;
-      } catch (error) {
-        console.warn('Unable to close the provider credential-test window.', error);
-        return false;
-      }
-    };
-
-    try {
-      const response = await fetch(
-        testCredentials.dataset.providerTestUrl || '/bo/sys-ext-auth-providers/test-credentials',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-            Accept: 'application/json',
-          },
-          body: body.toString(),
-        },
-      );
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok || !payload?.success || !payload.redirectUrl || !payload.testId || !payload.statusUrl) {
-        closeTestWindow();
-        showFeedback(payload?.errorMessage || 'ManatOS could not start the provider credential test. Your unsaved provider values have been kept on this page.');
-        updateTestButton();
-        return;
-      }
-
-      window.manatosBusy?.show({
-        title: 'Testing ' + providerLabel() + ' credentials…',
-        message: 'Complete authentication in the provider window. We will continue automatically when verification finishes.',
-        icon: providerIcons[provider.value] || 'bi-shield-check',
-        actionLabel: 'Cancel test',
-        onAction: async () => {
-          let cancellationConfirmed = true;
-
-          try {
-            const cancelBody = new URLSearchParams();
-            cancelBody.set('_csrf', body.get('_csrf') || '');
-            cancelBody.set('testId', payload.testId);
-            const cancelResponse = await fetch(payload.cancelUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                Accept: 'application/json',
-              },
-              body: cancelBody.toString(),
-            });
-
-            cancellationConfirmed = cancelResponse.ok;
-          } catch (error) {
-            cancellationConfirmed = false;
-            console.warn('Could not confirm provider credential-test cancellation with ManatOS.', error);
-          }
-
-          finishWaiting();
-          closeTestWindow();
-          showFeedback(
-            cancellationConfirmed
-              ? 'Credential test cancelled. Your values were not changed.'
-              : 'Credential testing was stopped locally, but ManatOS could not confirm server-side cancellation. The pending test will expire automatically; your values were not changed.',
-          );
-          updateTestButton();
-        },
-      });
-
-      testWindow.location.replace(payload.redirectUrl);
-
-      const pollStatus = async () => {
-        if (completed) return;
-        try {
-          const statusResponse = await fetch(payload.statusUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-          const statusPayload = await statusResponse.json().catch(() => null);
-
-          if (statusResponse.ok && statusPayload?.success && statusPayload.testId === payload.testId) {
-            if (statusPayload.status === 'verified' || statusPayload.status === 'failed') {
-              finishWaiting();
-              closeTestWindow();
-              const verified = statusPayload.status === 'verified';
-              showFeedback(statusPayload.message, verified);
-
-              if (verified) {
-                // Verified credentials live only in the server-side pending
-                // test state, so refresh the editor to render them locked and
-                // ready to save. Failed credentials stay on the current page
-                // so the Admin can correct the still-local input values.
-                window.manatosAllowDirtyPageExit?.();
-                const url = new URL(window.location.href);
-                url.searchParams.set('credentialsTest', 'verified');
-                url.searchParams.set('tab', 'secrets');
-                window.setTimeout(() => window.location.replace(url.toString()), 180);
-              } else {
-                updateTestButton();
-              }
-              return;
-            }
-          }
-        } catch {
-          // Transient polling failures do not destroy the provider flow.
-        }
-
-        if (testWindow.closed) {
-          // One final server check has just completed. If still pending, the Admin closed the provider window.
-          finishWaiting();
-          showFeedback(noReturnMessage());
-          updateTestButton();
-          return;
-        }
-        pollTimer = window.setTimeout(pollStatus, 750);
-      };
-
-      pollTimer = window.setTimeout(pollStatus, 400);
-      window.setTimeout(() => {
-        if (completed) return;
-        finishWaiting();
-        showFeedback(noReturnMessage());
-        updateTestButton();
-      }, 2 * 60 * 1000);
-    } catch (error) {
-      console.warn('Provider credential testing failed before completion.', error);
-      finishWaiting();
-      closeTestWindow();
-      showFeedback('The credential test could not reach ManatOS. Your unsaved provider values have been kept on this page.');
-      updateTestButton();
-    }
-  });
-
-  window.addEventListener('message', (event) => {
-    if (event.origin !== window.location.origin) return;
-    const result = event.data;
-    if (!result || result.type !== 'manatos:provider-credential-test-result') return;
-    // Fast-path only. Polling remains authoritative.
-  });
-  const apply = () => {
-    const key = provider.value;
-    callback.value = defaults[key] || callback.value;
-    const isMicrosoft = key === 'microsoft';
-
-    if (providerIcon instanceof HTMLElement) providerIcon.className = `bi ${providerIcons[key] || 'bi-globe2'}`;
-    if (tenant instanceof HTMLElement) tenant.hidden = !isMicrosoft;
-    if (tenantSelect instanceof HTMLSelectElement) {
-      tenantSelect.disabled = true;
-      if (isMicrosoft) tenantSelect.value = tenantDefaults[key] || tenantSelect.value;
-    }
-    if (tenantValue instanceof HTMLInputElement) {
-      tenantValue.disabled = !isMicrosoft;
-      if (isMicrosoft) tenantValue.value = tenantDefaults[key] || tenantValue.value;
-    }
-
-    showProviderHelp('[data-provider-general-help]', key);
-    showProviderHelp('[data-provider-secrets-help]', key);
-
-    // On a new record, switching provider invalidates any untested credential
-    // values because Client ID and Client secret are provider-specific.
-    if (previousProvider !== key && clientId instanceof HTMLInputElement && !clientId.readOnly) {
-      clientId.value = '';
-      if (clientSecret instanceof HTMLInputElement) clientSecret.value = '';
-      if (credentialState instanceof HTMLInputElement) credentialState.value = 'required';
-    }
-
-    previousProvider = key;
-    updateTestButton();
-    notifyFormState();
-  };
-
-  const currentUrl = new URL(window.location.href);
-  const requestedTab = currentUrl.searchParams.get('tab');
-  if (requestedTab === 'secrets') {
-    const secretsTab = document.getElementById('bo-secrets-tab');
-    if (secretsTab) bootstrap.Tab.getOrCreateInstance(secretsTab).show();
-  }
-  // Credential-result query parameters are one-shot presentation state. The
-  // server has already rendered the standard ManatOS message popup, so remove
-  // the result marker without another navigation to avoid repeating it on F5.
-  if (currentUrl.searchParams.has('credentialsTest')) {
-    currentUrl.searchParams.delete('credentialsTest');
-    window.history.replaceState({}, '', currentUrl.toString());
-  }
-
-  provider.addEventListener('change', apply);
-  enabled?.addEventListener('change', () => { updateCredentialRequirements(); updateTestButton(); notifyFormState(); });
-  apply();
-})();
-
 /* ==========================================================================
  * Generic SysBO Save-button state
  *
@@ -786,14 +428,17 @@
       const formDataChanged = sharedState.baseline !== null
         && snapshot() !== sharedState.baseline;
       const pagePath = leafPagePath();
-      const original = pagePath ? runtime?.get?.(`${pagePath}.dataOriginal`) : undefined;
-      const current = pagePath ? runtime?.get?.(`${pagePath}.dataCurrent`) : undefined;
-      const ctxDirty = original !== undefined && current !== undefined
-        ? !sameRecord(original, current)
-        : null;
-      const changed = hasPendingCredentialSave || (ctxDirty !== null
-        ? ctxDirty
-        : (typeof sharedState.isDirty === 'function' ? sharedState.isDirty() : formDataChanged));
+      // Navigation protection and Save enablement MUST consume the same
+      // canonical dirty predicate.  CTX remains useful as an observable page
+      // projection, but it cannot replace form-state dirtiness: compound field
+      // components (for example external-provider credentials) can own posted
+      // values that are intentionally not mirrored into dataCurrent.  Using
+      // ctxDirty here previously produced the contradictory state where the
+      // footer said "No changes"/disabled Save while Cancel correctly detected
+      // unsaved credential edits.
+      const changed = typeof sharedState.isDirty === 'function'
+        ? sharedState.isDirty()
+        : (hasPendingCredentialSave || formDataChanged);
       const valid = typeof sharedState.isValid === 'function'
         ? sharedState.isValid()
         : form.checkValidity();
@@ -895,6 +540,15 @@
     if (control instanceof HTMLInputElement && control.type === 'checkbox') return control.checked;
     if (control instanceof HTMLInputElement && control.type === 'number') {
       return control.value === '' ? null : Number(control.value);
+    }
+    if (control instanceof HTMLInputElement && control.dataset.ctxValueType === 'duration') {
+      if (!control.value) return null;
+      try {
+        const parsed = JSON.parse(control.value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
     }
     return control?.value ?? null;
   };
@@ -1034,6 +688,49 @@
     return num(left, '+') + num(right, '+');
   };
 
+  const parseCalendarDate = (raw) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(raw || ''));
+    if (!match) return null;
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+  const formatCalendarDate = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+    const pad2 = (value) => String(value).padStart(2, '0');
+    return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+  };
+  const normalizedCalendarDuration = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const part = (key) => {
+      const numeric = Number(value[key] || 0);
+      return Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : 0;
+    };
+    return { years: part('years'), months: part('months'), days: part('days') };
+  };
+  const daysInCalendarMonth = (year, monthIndex) => new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const withClampedCalendarYearMonth = (date, year, monthIndex) => new Date(Date.UTC(
+    year,
+    monthIndex,
+    Math.min(date.getUTCDate(), daysInCalendarMonth(year, monthIndex)),
+  ));
+  const addCalendarDuration = (start, duration) => {
+    let cursor = withClampedCalendarYearMonth(start, start.getUTCFullYear() + duration.years, start.getUTCMonth());
+    const monthTotal = cursor.getUTCFullYear() * 12 + cursor.getUTCMonth() + duration.months;
+    cursor = withClampedCalendarYearMonth(cursor, Math.floor(monthTotal / 12), monthTotal % 12);
+    return new Date(cursor.getTime() + duration.days * 24 * 60 * 60 * 1000);
+  };
+  const calendarDurationBetween = (start, end) => {
+    if (end.getTime() < start.getTime()) return null;
+    let years = Math.max(0, end.getUTCFullYear() - start.getUTCFullYear());
+    while (years > 0 && addCalendarDuration(start, { years, months: 0, days: 0 }).getTime() > end.getTime()) years -= 1;
+    let cursor = addCalendarDuration(start, { years, months: 0, days: 0 });
+    let months = Math.max(0, (end.getUTCFullYear() - cursor.getUTCFullYear()) * 12 + (end.getUTCMonth() - cursor.getUTCMonth()));
+    while (months > 0 && addCalendarDuration(cursor, { years: 0, months, days: 0 }).getTime() > end.getTime()) months -= 1;
+    cursor = addCalendarDuration(cursor, { years: 0, months, days: 0 });
+    const days = Math.max(0, Math.round((end.getTime() - cursor.getTime()) / (24 * 60 * 60 * 1000)));
+    return { years, months, days };
+  };
+
   const evaluate = (node) => {
     if (!node) return undefined;
     switch (node.kind) {
@@ -1098,6 +795,16 @@
             id = parent;
           }
           throw new Error('TraverseCtx exceeded the maximum traversal depth of 256.');
+        }
+        if (node.functionName === 'CalendarAddDuration') {
+          const start = parseCalendarDate(args[0]);
+          const duration = normalizedCalendarDuration(args[1]);
+          return start && duration ? formatCalendarDate(addCalendarDuration(start, duration)) : null;
+        }
+        if (node.functionName === 'CalendarDurationBetween') {
+          const start = parseCalendarDate(args[0]);
+          const end = parseCalendarDate(args[1]);
+          return start && end ? calendarDurationBetween(start, end) : null;
         }
         if (node.functionName === 'GetTime') return Date.now();
         if (node.functionName === 'StrFormat') {
@@ -1237,6 +944,82 @@
     });
   });
 
+  const sameReactiveValue = (left, right) => {
+    if (Object.is(left, right)) return true;
+    if (left && right && typeof left === 'object' && typeof right === 'object') {
+      try { return JSON.stringify(left) === JSON.stringify(right); } catch { return false; }
+    }
+    return false;
+  };
+
+  const writeCalculatedControlValue = (control, value) => {
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) return;
+    if (control instanceof HTMLInputElement && control.dataset.ctxValueType === 'duration') {
+      const durationRoot = control.closest('[data-duration-field]');
+      if (durationRoot) window.ManatOSFieldComponents?.setDurationValue?.(durationRoot, value, { emit: false });
+      return;
+    }
+    if (control instanceof HTMLInputElement && control.type === 'checkbox') control.checked = Boolean(value);
+    else control.value = value == null ? '' : String(value);
+    updateEnumIcon(control);
+  };
+
+  /*
+   * Canonical normal-field calculations use the same precompiled AST/evaluator
+   * plan as derived fields. The UI component arranging a field never participates
+   * in the calculation. `triggeredBy` is matched against CTX causal provenance,
+   * preserving the original user-authoritative field through dependent writes.
+   */
+  form.querySelectorAll('[data-field-calculation-ast]').forEach((container) => {
+    if (!(container instanceof HTMLElement)) return;
+    const ast = parseAst(container, 'data-field-calculation-ast');
+    if (!ast) return;
+    const key = container.dataset.ctxFieldContainer;
+    if (!key) return;
+    let triggeredBy = [];
+    try {
+      const parsed = JSON.parse(container.dataset.fieldCalculationTriggeredBy || '[]');
+      if (Array.isArray(parsed)) triggeredBy = parsed.filter((value) => typeof value === 'string' && value);
+    } catch { /* invalid metadata is already visible through server-side diagnostics */ }
+    const scopePath = leafPagePath() ?? undefined;
+    const triggerPaths = new Set(triggeredBy.map((fieldKey) => runtime?.resolvePath?.(fieldKey, scopePath)).filter(Boolean));
+
+    registerEntry({
+      kind: 'field-calculation',
+      key,
+      dependencyPaths: expressionDependencyPaths(ast),
+      run: (change) => {
+        if (!change) return false;
+        const authoritativePath = change.cause?.triggerPath || change.changedPath;
+        if (![...triggerPaths].some((triggerPath) => pathsOverlap(triggerPath, authoritativePath))) return false;
+        try {
+          const next = evaluate(ast);
+          const pagePath = leafPagePath();
+          const fieldsPath = leafPageFieldsPath();
+          if (!pagePath || !fieldsPath || !runtime?.updateField) return false;
+          const valuePath = `${fieldsPath}.${key}.value`;
+          const current = runtime.get?.(valuePath);
+          if (sameReactiveValue(current, next)) return false;
+
+          const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
+          const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
+          writeCalculatedControlValue(control, next);
+          const option = control instanceof HTMLSelectElement && control.dataset.enumItems
+            ? selectedEnumItem(control)
+            : undefined;
+          runtime.updateField(pagePath, key, next, option, {
+            source: 'calculated-field',
+            triggerPath: authoritativePath,
+            ...(change.cause?.rootEventId ? { rootEventId: change.cause.rootEventId } : {}),
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    });
+  });
+
   const debugValueText = (value) => {
     if (value === undefined || value === null || value === '') return '—';
     if (Array.isArray(value)) return value.length ? `[ ${value.map(debugValueText).join(', ')} ]` : '[]';
@@ -1265,6 +1048,39 @@
           const changed = cell.textContent !== next;
           if (changed) cell.textContent = next;
           return changed;
+        } catch {
+          return false;
+        }
+      },
+    });
+  });
+
+  /*
+   * Layout spans use the same precompiled-AST reactive pipeline as field
+   * visibility/editability. Metadata may therefore reflow a grid when a CTX
+   * dependency changes without any entity/component-specific JavaScript.
+   */
+  form.querySelectorAll('[data-ui-grid-span-ast]').forEach((container) => {
+    if (!(container instanceof HTMLElement)) return;
+    const spanAst = parseAst(container, 'data-ui-grid-span-ast');
+    if (!spanAst) return;
+    const fallback = Math.max(1, Math.min(12, Number(container.dataset.uiGridSpanFallback || 12) || 12));
+
+    registerEntry({
+      kind: 'grid-span',
+      dependencyPaths: expressionDependencyPaths(spanAst),
+      run: () => {
+        try {
+          const evaluated = Number(evaluate(spanAst));
+          const nextSpan = Number.isFinite(evaluated)
+            ? Math.max(1, Math.min(12, Math.trunc(evaluated)))
+            : fallback;
+          const currentClass = [...container.classList].find((name) => /^col-md-\d+$/.test(name));
+          const nextClass = `col-md-${nextSpan}`;
+          if (currentClass === nextClass) return false;
+          if (currentClass) container.classList.remove(currentClass);
+          container.classList.add(nextClass);
+          return true;
         } catch {
           return false;
         }
@@ -1376,15 +1192,20 @@
    * CTX value, that event is queued and wakes its own dependents. Processing
    * continues until the queue is empty, with a hard cycle/runaway guard.
    */
-  const pendingPaths = [];
-  const pendingPathSet = new Set();
+  const pendingChanges = [];
+  const pendingChangeKeys = new Set();
   let processingChanges = false;
 
-  const enqueueChangedPaths = (paths) => {
-    for (const path of paths) {
-      if (typeof path !== 'string' || !path || pendingPathSet.has(path)) continue;
-      pendingPathSet.add(path);
-      pendingPaths.push(path);
+  const enqueueChange = (change) => {
+    const paths = [change?.path, ...(Array.isArray(change?.relatedPaths) ? change.relatedPaths : [])]
+      .filter((path) => typeof path === 'string' && path);
+    if (!paths.length) return;
+    const cause = change?.cause || {};
+    for (const changedPath of paths) {
+      const key = `${cause.rootEventId || cause.eventId || 'event'}|${changedPath}`;
+      if (pendingChangeKeys.has(key)) continue;
+      pendingChangeKeys.add(key);
+      pendingChanges.push({ changedPath, cause, queueKey: key });
     }
 
     if (processingChanges) return;
@@ -1392,23 +1213,25 @@
     processingChanges = true;
     let executions = 0;
     try {
-      while (pendingPaths.length) {
-        const changedPath = pendingPaths.shift();
-        pendingPathSet.delete(changedPath);
+      while (pendingChanges.length) {
+        const currentChange = pendingChanges.shift();
+        pendingChangeKeys.delete(currentChange.queueKey);
 
         for (const entry of reactiveEntries) {
-          if (![...entry.dependencyPaths].some((dependencyPath) => pathsOverlap(dependencyPath, changedPath))) {
+          if (![...entry.dependencyPaths].some((dependencyPath) => pathsOverlap(dependencyPath, currentChange.changedPath))) {
             continue;
           }
 
-          entry.run();
+          entry.run(currentChange);
           executions += 1;
           if (executions > 512) {
             console.error('[ManatOS CTX] Reactive calculation queue exceeded 512 executions; possible dependency cycle.', {
-              changedPath,
+              changedPath: currentChange.changedPath,
+              triggerPath: currentChange.cause?.triggerPath,
+              rootEventId: currentChange.cause?.rootEventId,
             });
-            pendingPaths.length = 0;
-            pendingPathSet.clear();
+            pendingChanges.length = 0;
+            pendingChangeKeys.clear();
             return;
           }
         }
@@ -1422,7 +1245,7 @@
     reactiveEntries.forEach((entry) => entry.run());
   };
 
-  const syncSourceField = (control) => {
+  const syncSourceField = (control, eventCause = {}) => {
     const key = control?.dataset?.ctxField;
     if (!key) return;
     const value = controlValue(control);
@@ -1431,20 +1254,28 @@
 
     updateEnumIcon(control);
 
+    const source = typeof eventCause.source === 'string' && eventCause.source
+      ? eventCause.source
+      : 'form-field';
+    const triggerPath = eventCause.triggerField && fieldsPath
+      ? `${fieldsPath}.${eventCause.triggerField}.value`
+      : (eventCause.triggerPath || path);
+    const cause = { source, triggerPath, ...(eventCause.rootEventId ? { rootEventId: eventCause.rootEventId } : {}) };
+
     if (fieldsPath && runtime?.updateField) {
       const pagePath = leafPagePath();
       const option = control instanceof HTMLSelectElement && control.dataset.enumItems
         ? selectedEnumItem(control)
         : undefined;
-      runtime.updateField(pagePath, key, value, option, { source: 'form-field', triggerPath: path });
+      runtime.updateField(pagePath, key, value, option, cause);
     } else if (fieldsPath && runtime?.replace) {
-      runtime.replace(path, value, { source: 'form-field', triggerPath: path });
-      syncCurrentValue(key, value, 'form-field', path);
+      runtime.replace(path, value, cause);
+      syncCurrentValue(key, value, source, triggerPath);
     } else {
       window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
         detail: {
           operation: 'replace', path, relatedPaths: [], newValue: value,
-          cause: { source: 'form-field', triggerPath: path },
+          cause,
         },
       }));
     }
@@ -1452,15 +1283,22 @@
 
   const react = (event) => {
     const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
-    if (control) syncSourceField(control);
+    if (control) syncSourceField(control, event.manatosCause || {});
   };
 
   // DOM controls only adapt user input into CTX. Formula-to-form reactivity is
   // entirely driven by CTX value paths discovered from AST dependencies.
   window.addEventListener(CHANGE_EVENT, (event) => {
-    const path = event?.detail?.path;
-    const relatedPaths = Array.isArray(event?.detail?.relatedPaths) ? event.detail.relatedPaths : [];
-    enqueueChangedPaths([path, ...relatedPaths]);
+    enqueueChange(event?.detail || {});
+  });
+
+  form.addEventListener('click', (event) => {
+    const action = event.target instanceof Element ? event.target.closest('[data-debug-inspect-ctx]') : null;
+    if (!(action instanceof HTMLButtonElement)) return;
+    const path = action.dataset.debugInspectPath;
+    if (!path) return;
+    window.dispatchEvent(new Event('manatos:ctx-viewer-show'));
+    window.dispatchEvent(new CustomEvent('manatos:ctx-viewer-select', { detail: { path, expand: true } }));
   });
 
   form.addEventListener('input', react);
@@ -1469,6 +1307,95 @@
     form.querySelectorAll('select[data-enum-items]').forEach(updateEnumIcon);
     runAllReactiveEntries();
     form.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+})();
+
+/* ==========================================================================
+ * Metadata-driven per-field change highlighting
+ *
+ * Change decoration is derived from the initialized CTX/form baseline rather
+ * than from a one-way input latch. Direct edits and evaluator/calculation writes
+ * therefore use the same reversible rule, and returning to the original value
+ * removes the visual marker again.
+ * ======================================================================== */
+(() => {
+  const form = document.querySelector('form.metadata-driven-record-form');
+  if (!(form instanceof HTMLFormElement)) return;
+
+  const runtime = window.ManatOS?.ctx;
+  const containers = [...form.querySelectorAll('[data-ctx-field-container]')];
+  if (!containers.length) return;
+
+  const leafPagePath = () => {
+    if (!runtime?.value?.page) return null;
+    let node = runtime.value.page;
+    let path = 'ctx.page';
+    while (node?.page) { node = node.page; path += '.page'; }
+    return path;
+  };
+
+  const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    try { return structuredClone(value); }
+    catch {
+      try { return JSON.parse(JSON.stringify(value)); }
+      catch { return value; }
+    }
+  };
+
+  const sameValue = (left, right) => {
+    try { return JSON.stringify(left ?? null) === JSON.stringify(right ?? null); }
+    catch { return String(left ?? '') === String(right ?? ''); }
+  };
+
+  const domFieldValue = (container, key) => {
+    const control = container.querySelector('[data-ctx-field]');
+    if (control instanceof HTMLInputElement) {
+      if (control.type === 'checkbox') return control.checked;
+      if (control.dataset.ctxValueType === 'duration') {
+        if (!control.value) return null;
+        try { return JSON.parse(control.value); } catch { return control.value; }
+      }
+      return control.value;
+    }
+    if (control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) return control.value;
+    return undefined;
+  };
+
+  const fieldValue = (container, key) => {
+    const pagePath = leafPagePath();
+    const ctxValue = pagePath ? runtime?.get?.(`${pagePath}.dataCurrent.${key}`) : undefined;
+    return ctxValue !== undefined ? ctxValue : domFieldValue(container, key);
+  };
+
+  const baselines = new Map();
+
+  const update = () => {
+    for (const container of containers) {
+      if (!(container instanceof HTMLElement)) continue;
+      const key = container.dataset.ctxFieldContainer;
+      if (!key || !baselines.has(key)) continue;
+      const changed = !sameValue(baselines.get(key), fieldValue(container, key));
+      container.classList.toggle('metadata-field-changed', changed);
+      const marker = container.querySelector('[data-field-change-marker]');
+      if (marker instanceof HTMLElement) marker.hidden = !changed;
+    }
+  };
+
+  const schedule = () => queueMicrotask(update);
+  form.addEventListener('input', schedule);
+  form.addEventListener('change', schedule);
+  window.addEventListener('manatos:ctx-change', schedule);
+
+  // Wait until create defaults and first-pass calculations have settled. They
+  // are the visual baseline; only subsequent user/causal changes are marked.
+  requestAnimationFrame(() => {
+    for (const container of containers) {
+      if (!(container instanceof HTMLElement)) continue;
+      const key = container.dataset.ctxFieldContainer;
+      if (key) baselines.set(key, cloneValue(fieldValue(container, key)));
+    }
+    update();
   });
 })();
 
@@ -1485,9 +1412,10 @@
   if (!(form instanceof HTMLFormElement)) return;
 
   const editableControlSelector = [
-    'input:not([type="hidden"]):not([disabled]):not([readonly])',
-    'select:not([disabled])',
-    'textarea:not([disabled]):not([readonly])',
+    'input:not([type="hidden"]):not([disabled]):not([readonly]):not([aria-hidden="true"])',
+    'select:not([disabled]):not(.visually-hidden):not([aria-hidden="true"])',
+    'textarea:not([disabled]):not([readonly]):not([aria-hidden="true"])',
+    '[data-metadata-enum-toggle]:not([disabled])',
   ].join(',');
 
   const editableControlIn = (pane) => {
@@ -1639,5 +1567,39 @@
     });
     select.addEventListener('change', refresh);
     refresh();
+  });
+})();
+
+/* ========================================================================== 
+ * Modal focus lifecycle
+ *
+ * Bootstrap applies aria-hidden while closing a modal. Move focus out of the
+ * modal before that transition so assistive-technology users never retain
+ * focus inside an aria-hidden subtree. This applies to every ManatOS modal.
+ * ======================================================================== */
+(() => {
+  const returnFocus = new WeakMap();
+
+  document.addEventListener('show.bs.modal', (event) => {
+    const modal = event.target;
+    if (!(modal instanceof HTMLElement)) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !modal.contains(active)) returnFocus.set(modal, active);
+  });
+
+  document.addEventListener('hide.bs.modal', (event) => {
+    const modal = event.target;
+    if (!(modal instanceof HTMLElement)) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && modal.contains(active)) {
+      const target = returnFocus.get(modal);
+      if (target instanceof HTMLElement && target.isConnected) target.focus({ preventScroll: true });
+      else active.blur();
+    }
+  });
+
+  document.addEventListener('hidden.bs.modal', (event) => {
+    const modal = event.target;
+    if (modal instanceof HTMLElement) returnFocus.delete(modal);
   });
 })();

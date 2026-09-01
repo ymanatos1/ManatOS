@@ -90,6 +90,12 @@ export class RelationshipIntegrityService {
           if (typeof referencedId !== 'string' || target.has(referencedId)) continue;
 
           const policy = relationship.policies?.delete ?? {action: 'restrict' as const};
+          if (policy.action === 'retain') {
+            // Semantic/non-destructive relationships may legitimately outlive
+            // their target configuration (for example an External Identity
+            // retained while its provider configuration is removed).
+            continue;
+          }
           if (policy.action === 'cascade' || policy.action === 'unlink') {
             source.delete(recordId);
             repaired += 1;
@@ -125,7 +131,7 @@ export class RelationshipIntegrityService {
         if (!collection) continue;
 
         const matching = [...collection.entries()].filter(([, record]) =>
-          this.matchesTarget(record, entry.relationship, targetId),
+          this.matchesTarget(record, entry.relationship, targetObjectKey, targetId),
         );
         if (matching.length === 0) continue;
 
@@ -139,6 +145,12 @@ export class RelationshipIntegrityService {
         }
 
         for (const [dependentId, record] of matching) {
+          if (policy.action === 'retain') {
+            // Semantic/non-destructive relationships may legitimately outlive
+            // their target configuration (for example an External Identity
+            // retained while its provider configuration is removed).
+            continue;
+          }
           if (policy.action === 'cascade' || policy.action === 'unlink') {
             this.applyRecursive(entry.metadata.key, dependentId, active);
             collection.delete(dependentId);
@@ -161,7 +173,7 @@ export class RelationshipIntegrityService {
       const collection = this.store.collectionForObjectKey(entry.metadata.key);
       if (!collection) continue;
       const count = [...collection.values()].filter((record) =>
-        this.matchesTarget(record, entry.relationship, targetId),
+        this.matchesTarget(record, entry.relationship, targetObjectKey, targetId),
       ).length;
       if (count === 0) continue;
 
@@ -202,12 +214,20 @@ export class RelationshipIntegrityService {
   private matchesTarget(
     record: Record<string, unknown>,
     relationship: ManatOSRelationshipMetadata,
+    targetObjectKey: string,
     targetId: string,
   ): boolean {
-    // Current persisted objects use single-field GUID keys. The arrays are
-    // intentionally retained so composite-key matching can be added without
-    // changing metadata shape later.
-    if (relationship.fields.length !== 1 || relationship.references.fields.length !== 1) return false;
-    return record[relationship.fields[0]!] === targetId;
+    if (relationship.fields.length !== relationship.references.fields.length || relationship.fields.length === 0) {
+      return false;
+    }
+
+    const targetCollection = this.store.collectionForObjectKey(targetObjectKey);
+    const targetRecord = targetCollection?.get(targetId);
+    if (!targetRecord) return false;
+
+    return relationship.fields.every((sourceField, index) => {
+      const referencedField = relationship.references.fields[index]!;
+      return record[sourceField] === targetRecord[referencedField];
+    });
   }
 }

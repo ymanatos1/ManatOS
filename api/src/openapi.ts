@@ -31,7 +31,32 @@ const fieldSchema = (field: SysBOFieldMetadata): Record<string, unknown> => {
     case 'date':
       return {
         type: 'string',
+        format: 'date',
+      };
+
+    case 'datetime':
+      return {
+        type: 'string',
         format: 'date-time',
+      };
+
+    case 'version':
+      return {
+        type: 'string',
+        pattern: field.versionFormat === 'semver' ? '^\\d+\\.\\d+\\.\\d+$' : undefined,
+        example: field.versionFormat === 'semver' ? '1.0.0' : undefined,
+      };
+
+    case 'duration':
+      return {
+        type: 'object',
+        properties: {
+          years: { type: 'integer', minimum: 0 },
+          months: { type: 'integer', minimum: 0 },
+          days: { type: 'integer', minimum: 0 },
+        },
+        required: ['years', 'months', 'days'],
+        additionalProperties: false,
       };
 
     case 'enum':
@@ -120,24 +145,8 @@ export function buildOpenApiSpec() {
         description: 'Registration, sign-in, account/session operations and trusted authentication commands. Access requirements are documented per operation.',
       },
       {
-        name: 'System Business Objects · Users',
-        description: 'Metadata-driven SysUser endpoints and user-specific commands.',
-      },
-      {
-        name: 'System Business Objects · Principals',
-        description: 'Metadata-driven SysPrincipal endpoints.',
-      },
-      {
-        name: 'System Business Objects · Applications',
-        description: 'Metadata-driven SysApplication endpoints.',
-      },
-      {
-        name: 'System Business Objects · Licenses',
-        description: 'Metadata-driven SysLicense endpoints.',
-      },
-      {
-        name: 'System Business Objects · External Authentication Providers',
-        description: 'Framework-neutral SysBO UI metadata for external-authentication providers.',
+        name: 'System Business Objects',
+        description: 'Metadata-driven system business-object CRUD, UI metadata and entity-specific SysBO commands.',
       },
       {
         name: 'System Configuration',
@@ -221,27 +230,27 @@ export function buildOpenApiSpec() {
       /**
        * Protected SysBO resources.
        */
-      '/api/v1/SysUsers': genericOperations('User', 'System Business Objects · Users'),
+      '/api/v1/SysUsers': genericOperations('User', 'System Business Objects'),
 
-      '/api/v1/SysUsers/$metadata-ui': sysBOUIMetadataOperation('User', 'System Business Objects · Users'),
+      '/api/v1/SysUsers/$metadata-ui': sysBOUIMetadataOperation('User', 'System Business Objects'),
 
-      '/api/v1/SysUsers/{id}/verify-email': adminVerifyEmailOperation('System Business Objects · Users'),
+      '/api/v1/SysUsers/{id}/verify-email': adminVerifyEmailOperation('System Business Objects'),
 
-      '/api/v1/SysPrincipals': genericOperations('Principal', 'System Business Objects · Principals'),
+      '/api/v1/SysPrincipals': genericOperations('Principal', 'System Business Objects'),
 
-      '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation('Principal', 'System Business Objects · Principals'),
+      '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation('Principal', 'System Business Objects'),
 
-      '/api/v1/SysApplications': genericOperations('Application', 'System Business Objects · Applications'),
+      '/api/v1/SysApplications': genericOperations('Application', 'System Business Objects'),
 
-      '/api/v1/SysApplications/$metadata-ui': sysBOUIMetadataOperation('Application', 'System Business Objects · Applications'),
+      '/api/v1/SysApplications/$metadata-ui': sysBOUIMetadataOperation('Application', 'System Business Objects'),
 
-      '/api/v1/SysLicenses': genericOperations('License', 'System Business Objects · Licenses'),
+      '/api/v1/SysLicenses': genericOperations('License', 'System Business Objects'),
 
-      '/api/v1/SysLicenses/$metadata-ui': sysBOUIMetadataOperation('License', 'System Business Objects · Licenses'),
+      '/api/v1/SysLicenses/$metadata-ui': sysBOUIMetadataOperation('License', 'System Business Objects'),
 
       '/api/v1/SysExtAuthProviders': externalAuthProviderOperations(),
 
-      '/api/v1/SysExtAuthProviders/$metadata-ui': sysBOUIMetadataOperation('External authentication provider', 'System Business Objects · External Authentication Providers'),
+      '/api/v1/SysExtAuthProviders/$metadata-ui': sysBOUIMetadataOperation('External authentication provider', 'System Business Objects'),
 
       '/api/v1/SysExtAuthProviders/{id}': externalAuthProviderItemOperations(),
 
@@ -409,7 +418,7 @@ function externalAuthProviderOperations() {
       ...generic.get,
       summary: 'List configured external-authentication providers',
       description: 'Access: Admin only (Bearer token). Lists persisted provider configuration and verification state. Secret material is never returned.',
-      tags: ['External Authentication'],
+      tags: ['System Business Objects'],
       responses: {
         ...generic.get.responses,
         '403': failureResponse('Administrator role required.'),
@@ -419,7 +428,7 @@ function externalAuthProviderOperations() {
       summary: 'Create external-authentication provider',
       description:
         'Access: Admin only (Bearer token). Creates one provider configuration. callbackPath is generated from the provider definition and any non-default override is rejected. Credential material is managed separately through trusted credential-management operations.',
-      tags: ['External Authentication'],
+      tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
       responses: {
         '201': { description: 'Created with the provider-defined callback path.' },
@@ -437,7 +446,7 @@ function externalAuthProviderItemOperations() {
     get: {
       summary: 'Get configured external-authentication provider',
       description: 'Access: Admin only (Bearer token). Returns one persisted provider configuration and verification state. Client Secret and encrypted secret material are never returned.',
-      tags: ['External Authentication'],
+      tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
@@ -450,7 +459,7 @@ function externalAuthProviderItemOperations() {
     patch: {
       summary: 'Update external-authentication provider settings',
       description: 'Access: Admin only (Bearer token). Updates ordinary provider settings such as enabled/tenant. Provider type, Client ID, Client Secret and application-managed verification state cannot be changed through generic CRUD.',
-      tags: ['External Authentication'],
+      tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
@@ -464,7 +473,7 @@ function externalAuthProviderItemOperations() {
     delete: {
       summary: 'Delete external-authentication provider',
       description: 'Access: Admin only (Bearer token). Deletes the provider configuration record.',
-      tags: ['External Authentication'],
+      tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
@@ -498,7 +507,7 @@ const sysBOUIMetadataOperation = (name: string, tag: string) => ({
  * Standard OpenAPI operations currently shared by generic SysBO
  * collection endpoints.
  */
-const genericOperations = (name: string, tag = 'System Business Objects · External Authentication Providers') => ({
+const genericOperations = (name: string, tag = 'System Business Objects') => ({
   get: {
     summary: `List ${name} entries`,
     description: '`includeMetadataUI=true` returns framework-neutral UI metadata and also implies `includeMetadata=true`.',

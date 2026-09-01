@@ -5,202 +5,85 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const source = (relativePath: string) => readFile(resolve(testDirectory, '..', relativePath), 'utf8');
 
-async function source(relativePath: string): Promise<string> {
-  return readFile(resolve(testDirectory, '..', relativePath), 'utf8');
-}
-
-describe('#16 SysBO UI implementation migration scaffolding', () => {
-  it('locks completed SysUsers, SysPrincipals, SysApplications and SysLicenses to metadata-driven mode while keeping comparison for remaining SysBOs', async () => {
+describe('#16 metadata-driven SysBO UI closure', () => {
+  it('uses metadata-driven list/record routes exclusively and removes the temporary engine selector', async () => {
     const routes = await source('src/routes/sysbo-routes.ts');
-    const definitions = await source('src/sysbo/definitions.ts');
-    const configuration = await source('../api/src/services/sys-configuration-service.ts');
-    expect(routes).toContain("const CURRENT_SYSBO_UI: SysBOUiImplementation = 'current'");
-    expect(routes).toContain("const METADATA_SYSBO_UI: SysBOUiImplementation = 'metadata'");
-    expect(routes).toContain("router.post('/:key/ui-implementation'");
-    expect(routes).toContain("definition.key === 'sys-applications' || definition.key === 'sys-licenses') return METADATA_SYSBO_UI");
-    expect(routes).toContain("definition.key === 'sys-applications' || definition.key === 'sys-licenses') return false");
-    expect(routes).not.toContain("'sys-users': 'UI_SYSBO_USERS_VIEW_MODE'");
-    expect(routes).not.toContain("'sys-principals': 'UI_SYSBO_PRINCIPALS_VIEW_MODE'");
-    expect(routes).not.toContain("'sys-applications': 'UI_SYSBO_APPLICATIONS_VIEW_MODE'");
-    expect(routes).not.toContain("'sys-licenses': 'UI_SYSBO_LICENSES_VIEW_MODE'");
-    expect(configuration).not.toContain("name:'UI_SYSBO_USERS_VIEW_MODE'");
-    expect(configuration).not.toContain("name:'UI_SYSBO_PRINCIPALS_VIEW_MODE'");
-    expect(configuration).not.toContain("name:'UI_SYSBO_APPLICATIONS_VIEW_MODE'");
-    expect(configuration).not.toContain("name:'UI_SYSBO_LICENSES_VIEW_MODE'");
-    expect(definitions).toContain('#16 DISPOSABLE LEGACY LICENSE EJS METADATA — READY FOR DELETION');
-    expect(routes).toContain('persistSysBOUiImplementation');
-    expect(routes).toContain('MetadataDriven');
-    expect(routes).toContain("definition.key !== 'sys-configurations'");
-    const sessionTypes = await source('src/types/express.d.ts');
-    expect(sessionTypes).not.toContain('sysBOUiImplementations');
-  });
-
-  it('renders the temporary selector above the shared SysBO title panel', async () => {
     const shell = await source('views/layout/shell.ejs');
-    const list = await source('views/pages/bo-list.ejs');
-    const edit = await source('views/pages/bo-edit.ejs');
-    const selector = await source('views/partials/metadata-driven/sysbo-ui-implementation-selector.ejs');
+    const definitions = await source('src/sysbo/definitions.ts');
+    const types = await source('src/sysbo/types.ts');
+    const configuration = await source('../api/src/services/sys-configuration-service.ts');
 
-    expect(shell).toContain("include('../partials/metadata-driven/sysbo-ui-implementation-selector')");
-    expect(shell.indexOf("include('../partials/metadata-driven/sysbo-ui-implementation-selector')")).toBeLessThan(
-      shell.indexOf('<div class=\"workspace-titlebar\">'),
-    );
-    expect(list).not.toContain("include('../partials/metadata-driven/sysbo-ui-implementation-selector')");
-    expect(edit).not.toContain("include('../partials/metadata-driven/sysbo-ui-implementation-selector')");
-    expect(selector).toContain('#16 UI engine');
-    expect(selector).toContain('Current EJS');
-    expect(selector).toContain('Metadata-driven');
-    expect(selector).toContain('role="switch"');
-    expect(selector).toContain('sysbo-ui-engine-toggle');
-    expect(selector).toContain('is-selected');
-    expect(selector).toContain('is-unselected');
+    expect(routes).toContain('renderMetadataDrivenList');
+    expect(routes).toContain('renderMetadataDrivenRecord');
+    expect(routes).not.toContain("router.post('/:key/ui-implementation'");
+    expect(routes).not.toContain('CURRENT_SYSBO_UI');
+    expect(routes).not.toContain('METADATA_SYSBO_UI');
+    expect(routes).not.toContain('persistSysBOUiImplementation');
+    expect(shell).not.toContain('sysbo-ui-implementation-selector');
+    expect(definitions).not.toContain('listViewModel');
+    expect(definitions).not.toContain('editViewModel');
+    expect(types).not.toContain('CurrentEJSSysBOUIMetadata');
 
-    expect(edit).toContain('#16 DISPOSABLE LEGACY SYSUSER EJS');
-    expect(edit).toContain("false && tab.id === 'authentication'");
+    // Retired settings may remain named only in the hidden/retired compatibility set.
+    expect(configuration).toContain("'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE'");
+    expect(configuration).not.toMatch(/name:\s*'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE'/);
   });
 
-  it('loads both canonical BO and UI metadata for metadata-driven list/record pages', async () => {
+  it('loads canonical BO and UI metadata for every generic list/record page', async () => {
     const routes = await source('src/routes/sysbo-routes.ts');
     const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
     const edit = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const related = await source('views/pages/metadata-driven/ui-components/related-collections.ejs');
 
     expect(routes).toContain('canonicalSysBOMetadata');
     expect(routes).toContain('canonicalSysBOUIMetadata');
     expect(routes).toContain('/$metadata');
     expect(routes).toContain('/$metadata-ui');
-    expect(routes).toContain('title: metadata.pluralName');
-    expect(routes).toContain('`${modeLabel} ${metadata.name}${primaryDisplayValue}`');
-
     expect(list).toContain('metadataUI.list.visibleFields');
     expect(list).toContain('metadataUI.list.filterFields');
-    expect(list).toContain('metadataUI.list.sortableFields');
     expect(list).toContain('metadataUI.list.addAction');
-    expect(list).toContain('metadataUI.list.rowActions');
-    expect(list).toContain("action.kind === 'navigate'");
-    expect(list).toContain("replaceAll('{id}'");
-    expect(list).toContain('data-page-size-select');
-    expect(list).toContain('Page <%= paging.page %> of <%= paging.totalPages %>');
-
     expect(edit).toContain('metadataUI.record.tabs');
     expect(edit).toContain('metadataUI.record.fieldOverrides');
-    expect(edit).toContain('tab.fields');
-    expect(edit).toContain('tab.icon');
-    expect(edit).toContain('derivedFields');
-    expect(edit).toContain('createDefaultValue');
-    expect(edit).toContain('entryActions');
-    expect(edit).toContain('action.enabled');
-    expect(edit).toContain('action.disabledReason');
-    expect(edit).toContain('action.placement');
-    expect(edit).toContain('resolvedDisabledReason');
-    expect(edit).not.toContain("definition.key === 'sys-users'");
-    expect(edit).not.toContain('isOwnSysUser');
-    expect(edit).toContain('relatedCollections');
-    expect(edit).toContain("collection.layout === 'table-list'");
-    expect(edit).toContain('relatedRowHref');
-    expect(routes).toContain("collection.source?.kind !== 'entity-query'");
-    expect(routes).toContain('relatedData[sourceKey] = response.data.items');
-    expect(edit).toContain('activeTabId');
-    expect(edit).toContain("tab.layout === 'component'");
-    expect(edit).toContain('entity-readonly-tab');
-
-    // Rich canonical enum items are reused outside forms as well: list cells
-    // display the same semantic icon/label metadata as the enum selector.
-    expect(list).toContain('field.enumItems');
-    expect(list).toContain('selectedEnumItem?.icon');
+    expect(edit).toContain('tab.content');
+    expect(edit).toContain('metadataComponentPartialFor');
+    expect(related).toContain("collection.layout === 'table-list'");
+    expect(edit).not.toContain("definition.key === 'sys-ext-auth-providers'");
   });
 
-  it('defines framework-neutral $metadata-ui entries for every SysBO participating in #16', async () => {
-    const shared = await source('../shared/src/bo-ui-metadata.ts');
-    const canonicalMetadata = await source('../shared/src/bo-metadata.ts');
-    const apiMetadata = await source('../api/src/metadata/sysbo-ui-definitions.ts');
-    const apiRegistry = await source('../api/src/metadata/sysbo-ui-registry.ts');
-    const apiRouter = await source('../api/src/http/sysbo-router.ts');
+  it('keeps External Authentication Providers entirely declarative after #16 closure', async () => {
+    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    const registry = await source('src/presentation/metadata-component-registry.ts');
 
-    expect(shared).toContain('interface SysBOUIMetadata');
-    expect(shared).toContain('visibleFields');
-    expect(shared).toContain('filterFields');
-    expect(shared).toContain('sortableFields');
-    expect(shared).toContain('addAction');
-    expect(shared).toContain('rowActions');
-    expect(shared).toContain('SysBOUIListRowActionMetadata');
-    expect(shared).toContain('tabs');
-    expect(shared).toContain('fieldOverrides');
-    expect(shared).toContain('derivedFields');
-    expect(shared).toContain('createDefaultValue');
-    expect(shared).toContain('entryActions');
-    expect(shared).toContain('enabled?: SysBOUIDynamicValue<boolean>');
-    expect(shared).toContain('disabledReason?: SysBOUIDynamicValue<string | null>');
-    expect(shared).toContain('placement?: SysBOUIEntryActionPlacement');
-    expect(shared).toContain('relatedCollections');
-    expect(apiMetadata).toContain("icon: 'shield-lock'");
-    expect(apiMetadata).toContain(
-      "mode !== 'create' && (user.permissions.userRole === 'Admin' || id === user.fields.id.value)",
-    );
-    expect(apiMetadata).toContain("enabled: { expression: \"id !== user.fields.id.value\" }");
-    expect(apiMetadata).toContain(
-      "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
-    );
-    expect(apiMetadata).toContain("placement: 'footer-leading'");
-
-    // Application-specific navigation remains metadata, while the generic list
-    // renderer owns how row actions are presented.
-    expect(apiMetadata).toContain("play: {");
-    expect(apiMetadata).toContain("href: '/bo/sys-applications/{id}/play'");
-    expect(apiMetadata).toContain("title: 'Open application playground'");
-
-    // Entity-level derived values such as emailVerificationStatus and
-    // localPasswordStatus stay canonical. UI metadata dynamically evaluates
-    // only presentation decisions such as tone/icon.
-    expect(apiMetadata).toContain("editable: { expression: \"user.permissions.userRole === 'Admin'\" }");
-    expect(apiMetadata).toContain('emailVerificationStatus');
-    expect(apiMetadata).toContain("tone: { expression: \"emailVerified ? 'success' : 'secondary'\" }");
-    expect(apiMetadata).toContain('localPasswordStatus');
-    expect(apiMetadata).toContain("icon: { expression: \"hasPassword ? 'check-circle-fill' : 'dash-circle'\" }");
-
-    // External Identity now has its own canonical value-object metadata. The
-    // related collection names that entity and keeps only presentation choices.
-    expect(canonicalMetadata).toContain('sysBOExternalIdentityMetadata');
-    expect(canonicalMetadata).toContain("key: 'external-identities'");
-    expect(canonicalMetadata).toContain('providerEmailVerificationStatus');
-    expect(canonicalMetadata).toContain("expression: \"emailVerified ? 'Provider email verified' : 'Provider email not verified'\"");
-    expect(apiMetadata).toContain("entityKey: 'external-identities'");
-    expect(apiMetadata).toContain('externalIdentities: {');
-    expect(apiMetadata).toContain('fields: {');
-    expect(apiMetadata).toContain('providerEmailVerificationStatus: {');
-
-    // Keyed metadata containers do not repeat their parent key in each value.
-    expect(apiMetadata).toContain('entryActions: {');
-    expect(apiMetadata).toContain('delete: {');
-    expect(apiMetadata).toContain("kind: 'delete'");
-    expect(apiMetadata).not.toContain("key: 'externalIdentities'");
-    expect(apiMetadata).not.toContain("sourceKey: 'externalIdentities'");
-    expect(apiMetadata).not.toContain("sourceField: 'provider'");
-    expect(apiMetadata).not.toContain("sourceField: 'email'");
-
-    for (const definitionName of [
-      'sysBOUsersUIMetadata',
-      'sysBOPrincipalsUIMetadata',
-      'sysBOApplicationsUIMetadata',
-      'sysBOLicensesUIMetadata',
-      'sysBOExtAuthProvidersUIMetadata',
-    ]) {
-      expect(apiRegistry).toContain(definitionName);
-    }
-
-    expect(apiRouter).toContain("router.get('/$metadata-ui'");
-    expect(apiRouter).toContain('includeMetadataUI');
-    expect(apiRouter).toContain('getEffectiveSysBOUIMetadata(metadata)');
-    expect(apiMetadata).not.toContain('.ejs');
-    expect(apiRegistry).not.toContain('.ejs');
+    expect(metadata).toContain("key: 'sys-ext-auth-providers'");
+    expect(metadata).toContain("key: 'contextual-help'");
+    expect(metadata).toContain("component: { key: 'provider-credentials', readOnly: false }");
+    expect(metadata).toContain('disableWhenAllEnumValuesExistForField');
+    expect(metadata).toContain('One configuration record per provider.');
+    expect(registry).toContain("'contextual-help': 'ui-components/contextual-help'");
+    expect(registry).toContain("'provider-credentials': 'ui-components/provider-credentials'");
   });
 
-  it('uses the global runtime paging configuration while UI metadata drives query fields', async () => {
+  it('keeps framework-neutral UI metadata as the only presentation contract', async () => {
+    const contracts = await source('../shared/src/bo-ui-metadata-types.ts');
+    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+
+    expect(contracts).toContain('interface SysBOUIMetadata');
+    expect(contracts).toContain('interface SysBOUIComponentMetadata');
+    expect(contracts).toContain('bindings?:');
+    expect(contracts).toContain('relatedCollections');
+    expect(contracts).toContain('entryActions');
+    expect(metadata).toContain("href: '/bo/sys-applications/{id}/play'");
+    expect(metadata).toContain("key: 'date-duration-range'");
+  });
+
+  it('uses global runtime paging configuration while metadata selects query fields', async () => {
     const routes = await source('src/routes/sysbo-routes.ts');
+    const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
 
-    expect(routes).toContain('metadataDrivenListQuery');
     expect(routes).toContain('uiBootstrapState().ui');
-    expect(routes).toContain('metadataUI.list.sortableFields.includes');
-    expect(routes).toContain('metadataUI.list.filterFields');
+    expect(list).toContain('metadataUI.list.filterFields');
+    expect(list).toContain('metadataUI.list.sortableFields');
   });
 });

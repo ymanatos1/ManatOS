@@ -1,8 +1,4 @@
 import express, { type ErrorRequestHandler } from 'express';
-import ejs from 'ejs';
-import { load } from 'cheerio';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -11,162 +7,10 @@ import { AppError, SysBOUserRole, type SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../src/api-client.js';
 import { createSysBORoutes } from '../src/routes/sysbo-routes.js';
-import { getSysBODefinition } from '../src/sysbo/definitions.js';
-
-const testDirectory = dirname(fileURLToPath(import.meta.url));
-const boEditView = resolve(testDirectory, '../views/pages/bo-edit.ejs');
 
 describe('UI integration - SysBOUser delete behavior', () => {
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it('renders the own-account Delete entry button disabled and without modal wiring', async () => {
-    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
-
-    const $ = load(await renderSysBOUserEdit(currentUser, currentUser));
-    const deleteButton = deleteEntryButton($);
-
-    expect(deleteButton.length).toBe(1);
-    expect(deleteButton.is('[disabled]')).toBe(true);
-    expect(deleteButton.attr('data-bs-toggle')).toBeUndefined();
-    expect(deleteButton.attr('data-bs-target')).toBeUndefined();
-    expect(deleteButton.attr('title')).toMatch(/cannot delete your own/i);
-    expect($('#deleteEntryModal').length).toBe(0);
-  });
-
-  it('renders Delete entry enabled with a confirmation modal for another SysBOUser', async () => {
-    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
-    const target = sysUser('other-id', SysBOUserRole.User, 'OtherUser');
-
-    const $ = load(await renderSysBOUserEdit(currentUser, target, undefined, false, {
-      targetObjectKey: 'sys-users',
-      targetId: target.id,
-      authorized: true,
-      canExecute: true,
-      requiresConfirmation: false,
-      impacts: [],
-    }));
-    const deleteButton = deleteEntryButton($);
-
-    expect(deleteButton.length).toBe(1);
-    expect(deleteButton.is('[disabled]')).toBe(false);
-    expect(deleteButton.attr('data-bs-toggle')).toBe('modal');
-    expect(deleteButton.attr('data-bs-target')).toBe('#deleteEntryModal');
-    expect($('#deleteEntryModal').length).toBe(1);
-    expect($('#deleteEntryModal form').attr('action')).toBe(`/bo/sys-users/${target.id}/delete`);
-  });
-
-  it('always explains related-record impact, including the verified zero-impact case', async () => {
-    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
-    const target = sysUser('other-id', SysBOUserRole.User, 'OtherUser');
-
-    const $ = load(await renderSysBOUserEdit(currentUser, target, undefined, false, {
-      targetObjectKey: 'sys-users',
-      targetId: target.id,
-      authorized: true,
-      canExecute: true,
-      requiresConfirmation: false,
-      impacts: [],
-    }));
-
-    const impactSummary = $('#deleteEntryModal [data-delete-impact-summary]');
-    expect(impactSummary.length).toBe(1);
-    expect(impactSummary.text()).toContain('Data & referential-integrity impact');
-    expect(impactSummary.text()).toContain('No related data or referential-integrity impact was found.');
-    expect(impactSummary.text()).toContain('no related records were found that');
-  });
-
-  it('fails safe when delete-impact information is unavailable', async () => {
-    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
-    const target = sysUser('other-id', SysBOUserRole.User, 'OtherUser');
-
-    const $ = load(await renderSysBOUserEdit(currentUser, target));
-
-    expect($('#deleteEntryModal [data-delete-impact-summary]').text()).toContain('Data-integrity impact could not be verified.');
-    expect($('#deleteEntryModal button[type="submit"]').is('[disabled]')).toBe(true);
-  });
-
-  it('shows every known delete consequence and blocks Delete when a restrictive relationship exists', async () => {
-    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
-    const target = sysUser('other-id', SysBOUserRole.User, 'OtherUser');
-
-    const $ = load(await renderSysBOUserEdit(currentUser, target, undefined, false, {
-      targetObjectKey: 'sys-users',
-      targetId: target.id,
-      authorized: true,
-      canExecute: false,
-      requiresConfirmation: true,
-      impacts: [
-        {
-          objectKey: 'sys-external-identities',
-          objectName: 'External Identities',
-          relationship: 'user',
-          count: 2,
-          action: 'cascade',
-          confirmation: 'confirm',
-        },
-        {
-          objectKey: 'sys-user-principals',
-          objectName: 'User Principals',
-          relationship: 'user',
-          count: 1,
-          action: 'unlink',
-          confirmation: 'silent',
-        },
-        {
-          objectKey: 'sys-invitations',
-          objectName: 'Invitations',
-          relationship: 'invitedBy',
-          count: 3,
-          action: 'set-null',
-          confirmation: 'confirm',
-        },
-        {
-          objectKey: 'sys-licenses',
-          objectName: 'Licenses',
-          relationship: 'owner',
-          count: 1,
-          action: 'restrict',
-          confirmation: 'inherit',
-        },
-      ],
-    }));
-
-    const impactSummary = $('#deleteEntryModal [data-delete-impact-summary]');
-    expect(impactSummary.find('[data-delete-impact-action="cascade"]').text()).toContain('dependent record(s) will also be permanently deleted');
-    expect(impactSummary.find('[data-delete-impact-action="unlink"]').text()).toContain('relationship link(s) will be removed');
-    expect(impactSummary.find('[data-delete-impact-action="set-null"]').text()).toContain('reference(s) will be cleared');
-    expect(impactSummary.find('[data-delete-impact-action="restrict"]').text()).toContain('relationship(s) block this deletion');
-    expect(impactSummary.text()).toContain('Relationship: user');
-    expect($('#deleteEntryModal').text()).toContain('Deletion cannot continue');
-    expect($('#deleteEntryModal button[type="submit"]').is('[disabled]')).toBe(true);
-  });
-
-  it('does not render Delete entry when the current role has no delete permission', async () => {
-    const currentUser = sysUser('user-id', SysBOUserRole.User, 'NormalUser');
-    const target = sysUser('other-id', SysBOUserRole.User, 'OtherUser');
-
-    const $ = load(
-      await renderSysBOUserEdit(currentUser, target, {
-        view: true,
-        create: false,
-        edit: false,
-        delete: false,
-      }),
-    );
-
-    expect(deleteEntryButton($).length).toBe(0);
-    expect($('#deleteEntryModal').length).toBe(0);
-  });
-
-  it('does not render Delete entry on a new SysBOUser form', async () => {
-    const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
-
-    const $ = load(await renderSysBOUserEdit(currentUser, {}, undefined, true));
-
-    expect(deleteEntryButton($).length).toBe(0);
-    expect($('#deleteEntryModal').length).toBe(0);
   });
 
   it('rejects a manually posted own-account delete before calling the API', async () => {
@@ -278,47 +122,6 @@ describe('UI integration - SysBOUser delete behavior', () => {
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 });
-
-async function renderSysBOUserEdit(
-  currentUser: SysBOUser,
-  item: Record<string, unknown>,
-  permissions = {
-    view: true,
-    create: true,
-    edit: true,
-    delete: true,
-  },
-  isNew = false,
-  deleteImpact: Record<string, unknown> | null = null,
-): Promise<string> {
-  return ejs.renderFile(boEditView, {
-    definition: getSysBODefinition('sys-users'),
-    permissions,
-    currentUser,
-    item,
-    isNew,
-    tabs: [],
-    authenticationIdentities: [],
-    referenceData: {},
-    deletePresentation: {
-      displayValue: String(item.name ?? 'entry'),
-      entityLabel: 'User',
-    },
-    csrfToken: 'test-csrf',
-    app: {
-      ui: {
-        allowAdminEmailVerification: true,
-      },
-    },
-    deleteImpact,
-  });
-}
-
-function deleteEntryButton($: ReturnType<typeof load>) {
-  return $('button.btn-danger').filter((_index, element) =>
-    $(element).text().includes('Delete entry'),
-  );
-}
 
 function routeHarness(currentUser: SysBOUser) {
   const app = express();

@@ -266,4 +266,54 @@ describe('SysBOExtAuthProvider API', () => {
       .send({ provider: 'github', enabled: false, callbackPath: '/auth/custom/callback' });
     expect(rejected.status).toBe(400);
   });
+
+  it('reports retained external identities when provider configuration is deleted', async () => {
+    const context = await createTestApi();
+    await seedAdmin(context.services.users);
+    const token = await loginAdmin(context.app);
+    const admin = (await context.services.users.list({ page: 1, pageSize: 10, direction: 'asc', filters: {} })).items[0]!;
+
+    const created = await saveVerified(context, token, {
+      provider: 'microsoft',
+      enabled: true,
+      clientId: 'microsoft-impact-client',
+      clientSecret: 'microsoft-impact-secret',
+      tenant: 'common',
+    });
+    const providerId = created.body.data.id as string;
+
+    await context.services.externalIdentities.add(
+      admin.id,
+      {
+        provider: 'microsoft',
+        providerSubject: 'retained-provider-subject',
+        email: admin.email,
+        emailVerified: true,
+      },
+      { userId: admin.id, userName: admin.name },
+    );
+
+    const preview = await request(context.app)
+      .get(`/api/v1/SysExtAuthProviders/${providerId}/$delete-impact`)
+      .set('Authorization', bearer(token));
+
+    expect(preview.status).toBe(200);
+    expect(preview.body.data).toMatchObject({ canExecute: true });
+    expect(preview.body.data.impacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        objectKey: 'external-identities',
+        relationship: 'providerConfiguration',
+        count: 1,
+        action: 'retain',
+      }),
+    ]));
+
+    const deleted = await request(context.app)
+      .delete(`/api/v1/SysExtAuthProviders/${providerId}`)
+      .set('Authorization', bearer(token));
+
+    expect(deleted.status).toBe(200);
+    expect(context.store.externalIdentities().size).toBe(1);
+  });
+
 });

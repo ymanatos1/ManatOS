@@ -1,0 +1,31 @@
+<%
+  const richSelected = enumItems.find((option) => option.value === value);
+  const richHasIcons = enumItems.some((option) => typeof option.icon === 'string' && option.icon);
+  const enumToneClass = (option) => {
+    const tone = option?.tone;
+    if (!tone) return '';
+    if (tone === 'danger' && option?.toneStrength === 'soft') return 'text-danger opacity-75';
+    if (tone === 'danger' && option?.toneStrength === 'strong') return 'text-danger-emphasis';
+    if (tone === 'warning') return 'text-warning-emphasis';
+    return `text-${tone}`;
+  };
+%>
+<div class="input-group metadata-field-input metadata-enum-select" data-enhanced-field-input data-field-component="enum" data-metadata-enum-select>
+  <div class="dropdown">
+    <button class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Enumeration field tools" aria-label="Enumeration field tools for <%= fieldLabel(field) %>"><i class="bi bi-list-ul" aria-hidden="true"></i></button>
+    <%- include('field-tools-menu', { key, editable, actions: [{ action: 'clear', icon: 'eraser', label: 'Clear value' }] }) %>
+  </div>
+  <select class="visually-hidden" id="metadata-field-<%= key %>" name="<%= key %>" data-ctx-field="<%= key %>" data-enum-items="<%= JSON.stringify(enumItems) %>" tabindex="-1" aria-hidden="true" <%= field.required ? 'required' : '' %> <%= editable ? '' : 'disabled' %>>
+    <option value="">Choose...</option>
+    <% for (const option of enumItems) { %><option value="<%= option.value %>" data-enum-item="<%= JSON.stringify(option) %>" <%= value === option.value ? 'selected' : '' %>><%= option.label || option.value %></option><% } %>
+  </select>
+  <button type="button" class="form-select metadata-enum-select-toggle text-start" data-bs-toggle="dropdown" data-metadata-enum-toggle aria-expanded="false" <%= editable ? '' : 'disabled' %>>
+    <span class="d-flex align-items-center gap-2"><% if (richHasIcons) { %><i class="bi bi-<%= richSelected?.icon || 'list' %> <%= enumToneClass(richSelected) %>" data-enum-selected-icon aria-hidden="true"></i><% } %><span data-enum-selected-label><%= richSelected?.label || richSelected?.value || 'Choose...' %></span></span>
+  </button>
+  <% if (editable) { %>
+    <ul class="dropdown-menu metadata-enum-select-menu w-100" role="listbox">
+      <li><button type="button" class="dropdown-item d-flex justify-content-between align-items-center" data-enum-choice="" role="option">Choose...</button></li>
+      <% for (const option of enumItems) { %><li><button type="button" class="dropdown-item d-flex justify-content-between align-items-center <%= value === option.value ? 'active' : '' %>" data-enum-choice="<%= option.value %>" role="option" aria-selected="<%= value === option.value ? 'true' : 'false' %>"><span><%= option.label || option.value %></span><% if (option.icon) { %><i class="bi bi-<%= option.icon %> <%= enumToneClass(option) %> ms-3" aria-hidden="true"></i><% } %></button></li><% } %>
+    </ul>
+  <% } %>
+</div>

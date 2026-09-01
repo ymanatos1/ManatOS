@@ -19,11 +19,11 @@ import { emailService } from '../email/email-service.js';
 import { securityTokenStore } from '../security/security-token-store.js';
 
 import { configurePassport, passport } from '../auth/passport.js';
-import { configureProviderCredentialTest, removeProviderCredentialTest } from '../auth/provider-credential-test.js';
+import { configureProviderCredentialTest, removeProviderCredentialTest } from '../auth/providers/credential-test.js';
 
 import { isRecoveryIdentitySyntaxValid } from '../auth/recovery-identity.js';
 
-import type { ExternalProfile } from '../auth/external-profile.js';
+import type { ExternalProfile } from '../auth/providers/contracts.js';
 
 import {
   availableProviders,
@@ -31,7 +31,7 @@ import {
   runtimeProvider,
   externalProviderOption,
   externalVerificationSource,
-} from '../auth/external-providers.js';
+} from '../auth/providers/runtime-registry.js';
 
 import { requireCsrf } from '../middleware/csrf.js';
 
@@ -575,35 +575,6 @@ export function createAuthRouter() {
   );
 
   /**
-   * Current public provider state for the Sign in/Register popups.
-   *
-   * The browser calls this same-origin UI endpoint only when one of the
-   * authentication dialogs is opened. The UI then proxies the API's dedicated
-   * anonymous-safe projection; no Client ID or secret material is returned.
-   */
-  router.get('/external-providers', async (_req, res) => {
-    res.set('Cache-Control', 'no-store');
-
-    try {
-      const response = await apiClient.get<{
-        providers: Array<{
-          provider: ExternalProviderKey;
-          label: string;
-          icon: string;
-          enabled: boolean;
-          configured: boolean;
-        }>;
-      }>('/api/v1/public/external-auth-providers');
-
-      res.json({ providers: response.data.providers, unavailable: false });
-    } catch {
-      // API absence is an expected degraded mode. The browser distinguishes
-      // this from a reachable API reporting an unconfigured provider.
-      res.status(503).json({ providers: [], unavailable: true });
-    }
-  });
-
-  /**
    * Register stable routes for every supported provider key. The provider's
    * current credentials/scopes are loaded from the API immediately before the
    * authentication flow starts, so Admin changes from another client are not
@@ -679,9 +650,16 @@ export function createAuthRouter() {
         const pendingTest = req.session.pendingExtAuthCredentialTest;
         const credentialTestState = String(req.query.state ?? '');
         const credentialTestPrefix = 'manatos-credential-test:';
-        const callbackTestId = credentialTestState.startsWith(credentialTestPrefix)
+        const stateTestId = credentialTestState.startsWith(credentialTestPrefix)
           ? credentialTestState.slice(credentialTestPrefix.length)
           : null;
+        const pendingTestIsFresh = Boolean(
+          pendingTest &&
+          pendingTest.provider === providerKey &&
+          pendingTest.status === 'pending' &&
+          Date.now() - Date.parse(pendingTest.createdAt) <= 10 * 60 * 1000
+        );
+        const callbackTestId = stateTestId ?? (pendingTestIsFresh ? pendingTest?.testId ?? null : null);
 
         if (callbackTestId) {
           if (
@@ -697,6 +675,7 @@ export function createAuthRouter() {
             );
             return;
           }
+
 
           /*
            * OAuth providers may return a standards-based error directly to the

@@ -55,7 +55,7 @@ The Admin UI groups settings by purpose:
 - **Sessions** — bounded UI session error-log size.
 - **Logging** — API console threshold.
 - **Mail** — mail enablement, sender identity and SMTP settings, including encrypted password.
-- **#16 SysBO UI migration** — temporary per-entity Current EJS / Metadata-driven renderer selections used while migrating and regression-comparing the remaining SysBO screens. SysUsers and SysPrincipals are already locked to Metadata-driven; their retired `UI_SYSBO_USERS_VIEW_MODE` / `UI_SYSBO_PRINCIPALS_VIEW_MODE` settings are hidden/immutable until final #16 cleanup removes historical persisted rows/scaffolding. Active switches remain only for Applications, Licenses and External authentication providers.
+- **Retired #16 SysBO UI migration settings** — the Current EJS / Metadata-driven comparison phase is complete and no renderer-selection setting is active. Historical `UI_SYSBO_*_VIEW_MODE` names are suppressed/immutable compatibility tombstones so stale persisted development rows cannot recreate the retired selector.
 - **Donations** — global Donate-action visibility.
 
 ## Runtime versus restart-required settings

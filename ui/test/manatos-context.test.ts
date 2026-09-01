@@ -5,6 +5,7 @@ import {
   resolveContextMember,
   resolveContextMembers,
   resolvePlatform,
+  evaluateExpression,
   sysBOUsersMetadata,
 } from '@manatos/shared';
 
@@ -45,6 +46,24 @@ describe('ManatOS ctx tree', () => {
 
     expect(Object.keys(ctx)).toEqual(['system', 'entities', 'company', 'user', 'page']);
     expect(ctx.system.scope).toBe('sys');
+    expect(ctx.system.runtime.mode).toBe('development');
+    expect(ctx.system.runtime.developerMode).toBe(true);
+  });
+
+
+  it('exposes the safe runtime/developer mode under ctx.system', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const production = createManatOSContext(
+      MANATOS_COMPANY,
+      platform,
+      'http://localhost:3000',
+      '0.1.0',
+      null,
+      {},
+      'sys',
+      'production',
+    );
+    expect(production.system.runtime).toEqual({ mode: 'production', developerMode: false });
   });
 
   it('keeps company platforms as an array and identifies the current platform', () => {
@@ -78,6 +97,49 @@ describe('ManatOS ctx tree', () => {
       { value: 'other', label: 'other' },
     ]);
   });
+  it('uses contextual enum options as the CTX option source when supplied', () => {
+    const fields = contextFields(
+      { provider: null },
+      {
+        provider: {
+          key: 'provider',
+          label: 'Provider',
+          type: 'enum',
+          order: 10,
+          enumValues: ['microsoft', 'google', 'github'],
+          enumItems: [
+            { value: 'microsoft', label: 'Microsoft', icon: 'microsoft' },
+            { value: 'google', label: 'Google', icon: 'google' },
+            { value: 'github', label: 'GitHub', icon: 'github' },
+          ],
+        },
+      },
+      {
+        provider: [
+          { value: 'google', label: 'Google', callbackPath: '/auth/google/callback' },
+          { value: 'github', label: 'GitHub', callbackPath: '/auth/github/callback' },
+        ],
+      },
+    );
+
+    expect(fields.provider?.options).toEqual([
+      { value: 'google', label: 'Google', icon: 'google', callbackPath: '/auth/google/callback' },
+      { value: 'github', label: 'GitHub', icon: 'github', callbackPath: '/auth/github/callback' },
+    ]);
+
+    const noneAvailable = contextFields(
+      { provider: null },
+      {
+        provider: {
+          key: 'provider', label: 'Provider', type: 'enum', order: 10,
+          enumValues: ['microsoft', 'google'],
+        },
+      },
+      { provider: [] },
+    );
+    expect(noneAvailable.provider?.options).toEqual([]);
+  });
+
   it('derives path() from nested page names and stores no path property', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
@@ -168,6 +230,25 @@ describe('ManatOS ctx tree', () => {
     expect(() => pageContextNode('bad-name', 'page', 'none')).toThrow(/Invalid ManatOS ctx page identifier/);
   });
 
+
+  it('gives authenticated-user calculations a nearest-owner mode pointer', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const user = {
+      id: 'u1', name: 'Admin', email: 'admin@example.test', emailVerified: true,
+      hasPassword: true, passwordHash: 'never-exposed', role: 'Admin', firstName: '', lastName: '',
+      description: '', enabled: true, createdAt: '', updatedAt: '',
+    } as any;
+    const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0', user);
+
+    expect(ctx.user?.mode).toEqual({ kind: 'pointer', value: 'view' });
+    const localPasswordStatus = ctx.user?.fields.localPasswordStatus as any;
+    expect(evaluateExpression(
+      localPasswordStatus.expression,
+      ctx,
+      ctx.user?.fields,
+      { source: 'test', purpose: 'verify nearest-owner mode pointer' },
+    )).toBe('Configured');
+  });
 
   it('names the logged-in user entity context explicitly as entityName', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);

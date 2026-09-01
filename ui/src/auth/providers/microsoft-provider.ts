@@ -1,43 +1,90 @@
 import passport from 'passport';
 import { Strategy as MicrosoftStrategy } from 'passport-microsoft';
 
-import { normalizeMicrosoftProfile, type MicrosoftGraphProfile } from '../microsoft-profile.js';
+import type { ExternalProfile, ExternalProviderAdapter } from './contracts.js';
+import { credentialTestVerified } from './contracts.js';
 
-/**
- * Microsoft identity platform adapter.
- *
- * passport-microsoft performs the OAuth 2.0 authorization-code exchange and
- * loads the signed-in user's profile from Microsoft Graph. OIDC identity
- * scopes are requested as part of the authorization request, while ManatOS
- * normalizes the resulting provider profile into its provider-neutral shape.
- */
-export function configureMicrosoftProvider(options: { clientId: string; clientSecret: string; callbackUrl: string; tenant?: string }): void {
-  passport.use(
-    new MicrosoftStrategy(
-      {
-        clientID: options.clientId,
-        clientSecret: options.clientSecret,
-        callbackURL: options.callbackUrl,
-        tenant: options.tenant ?? 'common',
-      },
-      (
-        _accessToken: string,
-        _refreshToken: string,
-        profile: MicrosoftGraphProfile,
-        done: (
-          error: unknown,
-          user?: Express.User | false,
-          info?: { externalProfile: ReturnType<typeof normalizeMicrosoftProfile> },
-        ) => void,
-      ) => {
-        try {
-          const externalProfile = normalizeMicrosoftProfile(profile);
-
-          done(null, {} as Express.User, { externalProfile });
-        } catch (error) {
-          done(error instanceof Error ? error : new Error('Microsoft authentication failed.'));
-        }
-      },
-    ),
-  );
+/** Minimal Microsoft Graph profile shape consumed at the adapter boundary. */
+export interface MicrosoftGraphProfile {
+  id: string;
+  displayName?: string;
+  name?: { givenName?: string; familyName?: string };
+  emails?: Array<{ value?: string }>;
+  _json?: {
+    mail?: string | null;
+    userPrincipalName?: string | null;
+    givenName?: string | null;
+    surname?: string | null;
+  };
 }
+
+export function normalizeMicrosoftProfile(profile: MicrosoftGraphProfile): ExternalProfile {
+  const email =
+    profile.emails?.find((entry) => entry.value?.trim())?.value?.trim() ||
+    profile._json?.mail?.trim() ||
+    profile._json?.userPrincipalName?.trim();
+
+  if (!email) throw new Error('Microsoft did not supply an email address.');
+
+  const firstName = profile.name?.givenName?.trim() || profile._json?.givenName?.trim();
+  const lastName = profile.name?.familyName?.trim() || profile._json?.surname?.trim();
+
+  return {
+    provider: 'microsoft',
+    providerSubject: profile.id,
+    email,
+    // Graph mail/UPN presence is not itself proof of verified email ownership.
+    emailVerified: false,
+    ...(profile.displayName?.trim() ? { displayName: profile.displayName.trim() } : {}),
+    ...(firstName ? { firstName } : {}),
+    ...(lastName ? { lastName } : {}),
+  };
+}
+
+export const microsoftProviderAdapter: ExternalProviderAdapter = {
+  key: 'microsoft',
+
+  configureLive(options) {
+    passport.use(
+      new MicrosoftStrategy(
+        {
+          clientID: options.clientId,
+          clientSecret: options.clientSecret,
+          callbackURL: options.callbackUrl,
+          tenant: options.tenant ?? 'common',
+        },
+        (
+          _accessToken: string,
+          _refreshToken: string,
+          profile: MicrosoftGraphProfile,
+          done: (
+            error: unknown,
+            user?: Express.User | false,
+            info?: { externalProfile: ExternalProfile },
+          ) => void,
+        ) => {
+          try {
+            done(null, {} as Express.User, { externalProfile: normalizeMicrosoftProfile(profile) });
+          } catch (error) {
+            done(error instanceof Error ? error : new Error('Microsoft authentication failed.'));
+          }
+        },
+      ),
+    );
+  },
+
+  configureCredentialTest(strategyName, options) {
+    passport.use(
+      strategyName,
+      new MicrosoftStrategy(
+        {
+          clientID: options.clientId,
+          clientSecret: options.clientSecret,
+          callbackURL: options.callbackUrl,
+          tenant: options.tenant ?? 'common',
+        },
+        credentialTestVerified,
+      ),
+    );
+  },
+};

@@ -1,0 +1,120 @@
+<%
+  /*
+   * The outer Debugging tab reports two different metadata provenances. Keep
+   * canonical/entity expressions and UI/presentation expressions visually
+   * separate without teaching this generic component any SysBO-specific paths.
+   */
+  const debuggingSections = [
+    { id: 'entity', label: 'Entity', rows: entityDebuggingDisplayRows || [] },
+    { id: 'ui', label: 'UI', rows: uiDebuggingDisplayRows || [] },
+  ];
+%>
+
+<ul class="nav nav-tabs debugging-scope-tabs mb-3" role="tablist" data-debugging-scope-tabs>
+  <% for (let index = 0; index < debuggingSections.length; index += 1) { %>
+    <% const section = debuggingSections[index]; %>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link <%= index === 0 ? 'active' : '' %>"
+        id="debugging-<%= section.id %>-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#debugging-<%= section.id %>-pane"
+        type="button"
+        role="tab"
+        aria-controls="debugging-<%= section.id %>-pane"
+        aria-selected="<%= index === 0 ? 'true' : 'false' %>"
+      ><%= section.label %></button>
+    </li>
+  <% } %>
+</ul>
+
+<div class="tab-content" data-debugging-scope-content>
+  <% for (let index = 0; index < debuggingSections.length; index += 1) { %>
+    <% const section = debuggingSections[index]; %>
+    <div
+      class="tab-pane fade <%= index === 0 ? 'show active' : '' %>"
+      id="debugging-<%= section.id %>-pane"
+      role="tabpanel"
+      aria-labelledby="debugging-<%= section.id %>-tab"
+      tabindex="0"
+    >
+      <div class="table-responsive debugging-calculations-wrap">
+        <table class="table table-sm align-middle mb-0 debugging-calculations-table">
+          <thead>
+            <tr>
+              <th scope="col">Element name</th>
+              <th scope="col">Calculation formula</th>
+              <th scope="col">Current value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (section.rows.length === 0) { %>
+              <tr>
+                <td colspan="3" class="text-secondary py-3">No calculated expressions are used in this scope.</td>
+              </tr>
+            <% } else { %>
+              <% for (const displayRow of section.rows) { %>
+                <% if (displayRow.type === 'group') { %>
+                  <tr class="debugging-calculation-category">
+                    <th colspan="3" scope="colgroup"><%= displayRow.label %></th>
+                  </tr>
+                <% } else if (displayRow.type === 'subgroup') { %>
+                  <tr class="debugging-calculation-subcategory">
+                    <th colspan="3" scope="colgroup"><%= displayRow.label %></th>
+                  </tr>
+                <% } else if (displayRow.type === 'detail') { %>
+                  <tr class="debugging-calculation-detail-category">
+                    <th colspan="3" scope="colgroup"><%= displayRow.label %></th>
+                  </tr>
+                <% } else if (displayRow.type === 'path') { %>
+                  <tr
+                    class="debugging-calculation-path-category"
+                    data-debug-path-depth="<%= Math.min(displayRow.depth || 1, 5) %>"
+                  >
+                    <th colspan="3" scope="colgroup"><code><%= displayRow.label %></code></th>
+                  </tr>
+                <% } else { %>
+                  <% const debugRow = displayRow.row; %>
+                  <% const elementNameParts = debugElementNameParts(displayRow.displayName); %>
+                  <tr>
+                    <td>
+                      <div class="d-flex align-items-center gap-1">
+                        <div class="dropdown debugging-row-tools">
+                          <button
+                            class="btn btn-sm btn-outline-secondary border-0 px-1 py-0"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            title="Calculation tools"
+                            aria-label="Calculation tools"
+                          ><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                          <ul class="dropdown-menu metadata-field-input-menu is-enabled">
+                            <li>
+                              <button
+                                class="dropdown-item"
+                                type="button"
+                                data-debug-inspect-ctx
+                                data-debug-inspect-path="<%= debugRow.inspectPath || 'ctx.page.page' %>"
+                              ><i class="bi bi-bug me-2" aria-hidden="true"></i>Inspect in CTX Viewer</button>
+                            </li>
+                          </ul>
+                        </div>
+                        <code class="debugging-element-name"><span class="debugging-element-prefix"><%= elementNameParts.prefix %></span><strong class="debugging-element-leaf"><%= elementNameParts.leaf %></strong></code>
+                      </div>
+                    </td>
+                    <td><code class="debugging-formula" data-debug-expression><%= debugRow.formula %></code></td>
+                    <td
+                      class="debugging-current-value"
+                      data-debug-calculation-value
+                      <% if (debugRow.ast) { %>data-debug-calculation-ast="<%= JSON.stringify(debugRow.ast) %>"<% } %>
+                    ><%= debugRow.value %></td>
+                  </tr>
+                <% } %>
+              <% } %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% } %>
+</div>

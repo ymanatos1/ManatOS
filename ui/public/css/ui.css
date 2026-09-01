@@ -1591,14 +1591,20 @@ body.anonymous .workspace {
  * theme-owned shade so chart/tree geometry remains visually distinct without
  * becoming an editable-looking white panel.
  */
-[data-metadata-component='ctx-hierarchy'] {
+[data-metadata-component='hierarchy-tree'] {
   background: var(--manatos-visualization-bg);
   border: 1px solid var(--manatos-border);
   border-radius: .55rem;
   padding: .9rem;
 }
 
-.metadata-hierarchy-toolbar .btn { min-width: 5rem; }
+.metadata-hierarchy-toolbar .btn {
+  /*
+   * Icon-only visualization-mode controls should stay compact. 2.5rem keeps
+   * a comfortable pointer target while avoiding the legacy caption-sized width.
+   */
+  min-width: 2.5rem;
+}
 
 .metadata-hierarchy-root,
 .metadata-hierarchy-children {

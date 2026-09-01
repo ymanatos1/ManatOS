@@ -14,6 +14,7 @@ import {
   type SysBOFieldMetadata,
   sysBOUsersMetadata,
   calculatedContextField,
+  contextPointer,
   compileExpression,
   type SysPlatform,
 } from '@manatos/shared';
@@ -61,20 +62,38 @@ function sysBOContext(entries: CompanyInfo['entities'] | SysPlatform['entities']
 export function contextField<T>(
   value: T,
   metadata?: SysBOFieldMetadata,
-  referenceOptions: readonly Readonly<Record<string, unknown>>[] = [],
+  referenceOptions?: readonly Readonly<Record<string, unknown>>[],
 ): ManatOSContextField<T> {
   if (metadata?.type === 'enum') {
     /*
      * Enum fields expose the same stable `options` shape as references so
      * evaluator-backed defaults can reason about available choices without
      * knowing whether the control is an enum or a relationship selector.
-     * Rich enumItems win; plain enumValues are normalized to {value,label}.
+     *
+     * A caller may provide contextual enum options (for example a create page
+     * that must omit values already represented by existing records). Those
+     * options are a generic CTX concern, not an entity-renderer exception.
+     * Canonical enumItems still provide the fallback label/icon/tone contract,
+     * while contextual properties may enrich or narrow the available choices.
      */
     const richItems = metadata.enumItems ?? [];
+    const hasContextualOptions = referenceOptions !== undefined;
+    const contextualItems = (referenceOptions ?? []).filter(
+      (option) => typeof option.value === 'string' || typeof option.value === 'number',
+    );
+    const availableValues = hasContextualOptions
+      ? contextualItems.map((option) => option.value)
+      : (metadata.enumValues ?? []);
     const options = Object.freeze(
-      (metadata.enumValues ?? []).map((enumValue) => {
-        const rich = richItems.find((item) => item.value === enumValue);
-        return Object.freeze(rich ? { ...rich } : { value: enumValue, label: enumValue });
+      availableValues.map((enumValue) => {
+        const canonical = richItems.find((item) => item.value === enumValue);
+        const contextual = contextualItems.find((item) => item.value === enumValue);
+        return Object.freeze({
+          ...(canonical ? { ...canonical } : { value: enumValue, label: String(enumValue) }),
+          ...(contextual ? { ...contextual } : {}),
+          value: enumValue,
+          label: String(contextual?.label ?? canonical?.label ?? enumValue),
+        });
       }),
     );
     const selected = options.find((option) => option.value === value) ?? null;
@@ -82,7 +101,7 @@ export function contextField<T>(
   }
 
   if (metadata?.type === 'reference') {
-    const options = Object.freeze(referenceOptions.map((option) => Object.freeze({ ...option })));
+    const options = Object.freeze((referenceOptions ?? []).map((option) => Object.freeze({ ...option })));
     const selected = options.find((option) => option.id === value) ?? null;
     return {
       value,
@@ -109,7 +128,11 @@ export function contextFields(
   return Object.fromEntries(
     Object.entries(values).map(([key, value]) => [
       assertContextIdentifier(key, 'field'),
-      contextField(value, fieldDefinition[key], referenceData[key] ?? []),
+      contextField(
+        value,
+        fieldDefinition[key],
+        Object.prototype.hasOwnProperty.call(referenceData, key) ? referenceData[key] : undefined,
+      ),
     ]),
   );
 }
@@ -129,6 +152,11 @@ function userContext(user: SysBOUser | null, currentPlatform: SysPlatform, scope
   return {
     scope,
     entityName: entityContextName('sys-users'),
+    // Node-power rule: descendants resolve contextual values from their nearest
+    // semantic owner before walking farther up the CTX tree. ctx.user represents
+    // the already-authenticated User, so it exposes its own stable mode pointer
+    // instead of borrowing the active page's unrelated create/edit/view state.
+    mode: contextPointer('view'),
     fields,
     permissions: {
       userRole: user.role,
@@ -149,6 +177,7 @@ export function createManatOSContext(
   user: SysBOUser | null = null,
   clientFeatures: Readonly<Record<string, boolean>> = {},
   scope = 'sys',
+  runtimeMode = 'development',
 ): ManatOSContext {
   const foundPlatformIndex = company.platforms.findIndex(
     (candidate) => candidate.id === currentPlatform.id,
@@ -177,6 +206,10 @@ export function createManatOSContext(
     // for these string-keyed object properties.
     system: Object.freeze({
       scope,
+      runtime: Object.freeze({
+        mode: runtimeMode,
+        developerMode: runtimeMode !== 'production',
+      }),
       server: Object.freeze({ apiBaseUrl }),
       client: Object.freeze({
         kind: 'web-ejs',

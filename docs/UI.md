@@ -194,6 +194,8 @@ Horizontal platform navigation is derived from the shared `CompanyInfo.platforms
 
 `/platform/:platformId` is a generic platform landing route driven by `SysPlatform` metadata. A platform may provide a hero image, subtitle, introductory copy and capability cards. mCRM is presented as the **ManatOS Dynamic Customer Relationship Management Platform**: a platform for defining and evolving CRM applications with configurable business models, relationships and processes, licensing-controlled access, Playground testing and a path toward independent delivery as applications mature. Its current presentation includes a connected customer-relationship network plus Customer 360°, Opportunities, Activities, Communications, Documents and Analytics. Future platforms reuse the same page structure rather than introducing hard-coded mCRM routes.
 
+Platform-owned feature code is isolated by platform. mCRM catalogue metadata lives under `shared/src/platforms/mcrm/`, mCRM routes under `ui/src/platforms/mcrm/`, and mCRM pages under `ui/views/pages/platforms/mcrm/`, and platform assets/styles under `ui/public/assets/platforms/mcrm/` and `ui/public/css/platforms/mcrm.css`. The generic `ui/src/platforms/routes.ts` composes platform route modules, keeping the general page and SysBO routers free of mCRM-specific feature branches. The platform presentation metadata may declare its stylesheet so the shell does not hard-code platform IDs.
+
 ## 5. Generic SysBO UI
 
 The UI defines website-specific metadata for business-object presentation separately from the shared BO metadata. Current UI model concepts include:
@@ -209,7 +211,7 @@ Generic SysBO pages provide sorting, filtering, pagination, create/edit/delete b
 
 ### 5.1 Canonical metadata + UI metadata renderer
 
-The metadata-driven renderer consumes two contracts: canonical SysBO metadata (fields, constraints, derived fields and relationships) and framework-neutral UI metadata (tabs, list fields, field overrides, related collections and entry actions). The API exposes these as `/$metadata` and `/$metadata-ui`. During #16 migration the remaining participating SysBOs can switch between the Current EJS implementation and the metadata-driven implementation through persisted `SysConfiguration` settings. **SysUsers and SysPrincipals are already locked to the metadata-driven implementation** and no longer expose the comparison selector; their retired migration settings are hidden/immutable pending final historical cleanup. The only active migration switches are now Applications, Licenses and External authentication providers. The remaining switches are temporary; engine behavior and metadata conventions are architectural contracts shared by **all existing and future** metadata-driven entities and must not depend on a particular entity key.
+The metadata-driven renderer consumes two contracts: canonical SysBO metadata (fields, constraints, derived fields and relationships) and framework-neutral UI metadata (tabs, list fields, field overrides, related collections, reusable components and entry actions). The API exposes these as `/$metadata` and `/$metadata-ui`. **#16 is complete:** the generic SysBO UI has one metadata-driven engine for Users, Principals, Applications, Licenses and External authentication providers. The temporary Current-EJS comparison selector and per-entity renderer settings are retired. Engine behavior and metadata conventions are architectural contracts shared by **all existing and future** metadata-driven entities and must not depend on a particular entity key.
 
 SysUser is the first full acceptance target. Authenticated non-Admin users can reach their own SysUser entry, while authorization and evaluator-backed field metadata keep administrative properties such as Role protected. The owner may view Authentication/external-identity information; self-deletion remains prohibited.
 
@@ -229,11 +231,21 @@ Entry pages expose an immutable normalized `dataOriginal` baseline and a live `d
 
 Canonical `derivedFields` are non-persisted by default. A derived field may opt into `persisted: true`; the generic service layer then recalculates it before authoritative persistence so UI forms, direct API calls and automatic/background creation use the same rule. `SysPrincipal.rootPrincipalId` is the current acceptance example and uses the generic `TraverseCtx(...)` evaluator function to follow the parent hierarchy by IDs.
 
+
+
+### 5.3.1 Field components, UI components and calendar duration
+
+Entity-field controls live under `views/pages/metadata-driven/field-components/`. Text, date, datetime, enum, reference, number, boolean and structured **duration** fields use the same canonical dispatcher; read-only/calculated controls retain their field-tool button, with mutating actions disabled rather than hiding the component surface. A duration is one canonical field value with `years`, `months` and `days`, not three unrelated persisted properties.
+
+Reusable non-field/compound visualizations live under `views/pages/metadata-driven/ui-components/`. Examples include contextual help, related collections, list filters, Debugging and compound workflows. A compound component composes canonical field-components instead of recreating their controls. The License `date-duration-range` component is the acceptance example: `validFrom` and `validUntil` are date-only fields, `validityDuration` is a structured calendar duration, and the three values remain ordinary CTX fields.
+
+Causal recalculation is generic. Native field mutations may carry the originating field path/provenance through the CTX event pipeline; dependent writes preserve that cause and do not become a new user-authoritative source. The expression/dependency infrastructure owns cycle/runaway protection. Components may choose which field is authoritative for an interaction, but they must not invent a private evaluator or a component-specific settling loop.
+
 ### 5.4 Development Debugging tab and CTX debugger
 
 Development builds add a read-only **Debugging** tab to metadata-driven entry forms. It lists calculated element name, source formula and current value without displaying the AST. The hierarchy is generated dynamically from metadata: entity-level calculations, entity fields (value/other properties and provenance), related-entity calculations, and UI calculations (tabs, fields, related collections and actions). Repeated dotted prefixes are grouped/compressed as a diagnostic tree instead of being hard-coded for SysUser.
 
-The separate **CTX DEBUGGER** exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. Root CTX traversal presents `system` first, followed by `entities`, `company`, `user` and `page`; `system` contains the `server` and `client` runtime branches. It uses lazy DOM rendering and a resizable width. Transient debugger state remains UI-boot/session scoped so a server restart can reset selections/expansion/history, while the user's explicit debugger **open/closed** preference is browser-persisted and therefore survives a normal patch/server restart. Properties-panel visibility is preserved independently while selecting or expanding nodes.
+The separate **CTX VIEWER** exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. Root CTX traversal presents `system` first, followed by `entities`, `company`, `user` and `page`; `system` contains the `server` and `client` runtime branches. It uses lazy DOM rendering and a resizable width. Transient debugger state remains UI-boot/session scoped so a server restart can reset selections/expansion/history, while the user's explicit debugger **open/closed** preference is browser-persisted and therefore survives a normal patch/server restart. Properties-panel visibility is preserved independently while selecting or expanding nodes.
 
 ### 5.5 Relationship-aware delete confirmation
 
@@ -249,7 +261,8 @@ The CSS is intentionally split by concern:
 | `layout.css` | application shell, navigation, workspace, details and major responsive geometry |
 | `ui.css` | reusable UI components, authentication/modal structures and controls |
 | `theme.css` | theme-dependent appearance, user preference presentation and selected shell refinements |
-| `pages.css` | page-specific presentation |
+| `pages.css` | generic page-specific presentation |
+| `platforms/<platform>.css` | platform-owned page presentation, selected from platform presentation metadata |
 
 New reusable component styles should normally go to `ui.css`; shell geometry belongs in `layout.css`; genuinely page-specific rules belong in `pages.css`. Avoid putting page-specific fixes into global component rules merely because they happen to use the same Bootstrap primitive.
 

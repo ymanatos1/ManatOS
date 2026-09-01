@@ -116,6 +116,8 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         // can now resolve this without templates duplicating config branches.
         allowAdminEmailVerification: config.ALLOW_ADMIN_EMAIL_VERIFICATION,
       },
+      'sys',
+      config.NODE_ENV,
     );
 
     /*
@@ -128,7 +130,6 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         res.locals.ctx,
         definition.key,
         definition.boMetadata,
-        definition.uiMetadata,
       );
     }
 
@@ -175,7 +176,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         navigationStatePersistence: config.UI_NAVIGATION_STATE_PERSISTENCE,
 
         /** Developer inspector is never rendered in production. */
-        debugTools: config.NODE_ENV !== 'production',
+        debugTools: res.locals.ctx.system.runtime.developerMode,
 
         allowAdminEmailVerification: config.ALLOW_ADMIN_EMAIL_VERIFICATION,
 

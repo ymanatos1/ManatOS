@@ -122,6 +122,16 @@
     if (option) {
       option.checked = true;
     }
+    const preview = preferencesModal.querySelector('[data-ui-theme-preview]');
+    if (preview instanceof HTMLElement) preview.dataset.previewTheme = currentTheme;
+  });
+
+  preferencesModal?.querySelectorAll('[data-ui-theme-option]').forEach((option) => {
+    option.addEventListener('change', () => {
+      if (!(option instanceof HTMLInputElement) || !option.checked) return;
+      const preview = preferencesModal.querySelector('[data-ui-theme-preview]');
+      if (preview instanceof HTMLElement) preview.dataset.previewTheme = normalizeTheme(option.value);
+    });
   });
 
   savePreferencesButton?.addEventListener('click', () => {

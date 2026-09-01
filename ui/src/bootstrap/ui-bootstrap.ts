@@ -1,5 +1,4 @@
 import { apiClient } from '../api-client.js';
-import { applyRuntimeUiConfiguration } from '../sysbo/definitions.js';
 import { config } from '../config.js';
 const configFallback = { pageSizeOptions:config.UI_PAGE_SIZE_OPTIONS, defaultPageSize:config.UI_DEFAULT_PAGE_SIZE, showTechnicalErrorDetails:config.SHOW_TECHNICAL_ERROR_DETAILS, sessionErrorLogMaxEntries:config.SESSION_ERROR_LOG_MAX_ENTRIES }; 
 
@@ -53,7 +52,6 @@ export async function refreshUiBootstrap(): Promise<boolean> {
       ui: Object.freeze({ ...response.data.ui, pageSizeOptions:[...response.data.ui.pageSizeOptions] }),
     });
 
-    applyRuntimeUiConfiguration(currentState.ui);
     return true;
   } catch {
     currentState = Object.freeze({

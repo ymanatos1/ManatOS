@@ -25,13 +25,13 @@ Metadata can carry decisions as expressions rather than hard-coded renderer bran
 
 Expression source is parsed by the shared engine into a typed AST when context metadata is materialized. The runtime evaluator resolves variables through the ManatOS CTX lexical scope. The metadata-driven browser renderer receives the AST and performs dependency-aware reevaluation without reparsing the expression source. This keeps one expression contract usable by EJS rendering, browser reactivity, diagnostics and future clients. Entry pages keep `dataOriginal` (immutable normalized baseline) and `dataCurrent` (live working record), while list pages expose a keyed `dataList` contextual collection. AST dependencies subscribe to CTX value changes, and calculated mutations re-enter the same CTX setter/event path as user mutations so cascades settle generically. `TraverseCtx(...)` is a registry function for reusable keyed-context hierarchy traversal; SysPrincipals use it to calculate persisted `rootPrincipalId`.
 
-Delete behavior follows the same metadata-first principle: canonical relationships describe cascade/unlink/set-null/restrict semantics, the service builds a non-mutating `$delete-impact` plan, and the UI displays that plan before a destructive operation.
+Delete behavior follows the same metadata-first principle: canonical relationships describe cascade/unlink/set-null/restrict/retain semantics, the service builds a non-mutating `$delete-impact` plan, and the UI displays that plan before a destructive operation. `retain` represents semantic impact without destructive mutation, such as keeping a user's external identity when the corresponding provider configuration is removed.
 
 ## Company and platform composition
 
 `CompanyInfo` owns Company-wide capabilities and a code-defined catalogue of enabled `SysPlatform` entries. The selected platform contributes its own SysBO capabilities and navigation entries on top of the Company baseline. The current implementation ships with mCRM, but horizontal navigation and platform landing pages are catalogue-driven so additional platforms do not require a separate shell design.
 
-Each platform can provide branding/hero artwork, descriptive copy and capability cards. The UI exposes the current platform both through the top-header badge and the horizontal **Platform** entry.
+Each platform can provide branding/hero artwork, descriptive copy, capability cards and presentation assets. The UI exposes the current platform both through the top-header badge and the horizontal **Platform** entry. Platform-owned metadata/routes/views/assets are isolated under platform subfolders (currently `shared/src/platforms/mcrm/`, `ui/src/platforms/mcrm/`, `ui/views/pages/platforms/mcrm/`, `ui/public/assets/platforms/mcrm/` and `ui/public/css/platforms/mcrm.css`) so future platforms do not add product-specific branches to generic routers/templates.
 
 ## Runtime configuration
 
@@ -112,6 +112,8 @@ External authentication deliberately keeps its rich internal lifecycle while exp
 4. **Runtime projection** — anonymous-safe provider availability used by sign-in/registration.
 
 This is a presentation/ownership boundary, not a reduction of domain behavior. It keeps secret handling and verification invariants intact while making Swagger, Postman and documentation easier to understand.
+
+The UI/Passport layer uses one executable provider-adapter registry under `ui/src/auth/providers/`. Provider definitions, labels, icons, scopes, callback paths and help remain declarative; executable differences that cannot be metadata (Passport strategy construction and native profile normalization) are isolated in one adapter per provider. Live sign-in and credential testing resolve the same adapter registry instead of maintaining parallel provider switch statements.
 
 ## API presentation order
 

@@ -1,0 +1,38 @@
+<%
+  /*
+   * Canonical entity-field renderer dispatcher. Keep type selection here so
+   * every metadata-driven entity receives the same controls and enhancements;
+   * entity-specific templates must not choose their own field widgets.
+   */
+%>
+<% if (field.type === 'boolean') { %>
+  <%- include('boolean-field', { key, field, value, editable, fieldLabel }) %>
+<% } else if (field.type === 'enum') { %>
+  <% const enumItems = enumItemsFor(field); %>
+  <%- include('enum-select', { key, field, value, editable, enumItems, fieldLabel }) %>
+<% } else if (field.type === 'reference') { %>
+  <%- include('reference-select', { key, field, value, editable, referenceValues, referenceEntityIcons, fieldLabel }) %>
+<% } else if (field.type === 'date') { %>
+  <%- include('date-field', { key, field, value, editable, fieldLabel, dateOnlyValue }) %>
+<% } else if (field.type === 'datetime') { %>
+  <%- include('datetime-field', { key, field, value, editable, fieldLabel, datetimeLocalValue }) %>
+<% } else if (field.type === 'duration') { %>
+  <%- include('duration-field', { key, field, value, editable, fieldLabel, durationParts, durationSerializedValue }) %>
+<% } else if (field.type === 'version') { %>
+  <%- include('version-field', { key, field, value, editable, fieldLabel }) %>
+<% } else if (field.type === 'string' || field.type === 'email') { %>
+  <%- include('text-field', { key, field, value, editable, fieldLabel }) %>
+<% } else if (field.type === 'number') { %>
+  <%- include('number-field', { key, field, value, editable, fieldLabel }) %>
+<% } else { %>
+  <input
+    class="form-control"
+    id="metadata-field-<%= key %>"
+    name="<%= key %>"
+    data-ctx-field="<%= key %>"
+    type="text"
+    value="<%= value %>"
+    <%= field.required ? 'required' : '' %>
+    <%= editable ? '' : 'readonly' %>
+  >
+<% } %>

@@ -501,3 +501,113 @@ body[data-ui-theme='lighter'] .current-platform-badge {
 
 .horizontal-debug-nav .dropdown-menu { min-width: 16rem; }
 .horizontal-debug-nav .debug-menu-check { width: 1rem; text-align: center; }
+
+/* =========================================================================
+   Metadata entity-field component palette
+
+   Field-type identity is a Preferences-theme concern. Components consume only
+   these semantic variables; no field component owns literal colours.
+   Read-only/calculated controls deliberately share one neutral surface so
+   editability remains immediately recognisable regardless of field type.
+   ========================================================================= */
+html[data-ui-theme='lighter'],
+body[data-ui-theme='lighter'] {
+  --manatos-field-tool-text-bg: #f1fbff;
+  --manatos-field-tool-text-hover-bg: #e4f7ff;
+  --manatos-field-tool-email-bg: #f3f0ff;
+  --manatos-field-tool-email-hover-bg: #e8e2ff;
+  --manatos-field-tool-enum-bg: #eef5ff;
+  --manatos-field-tool-enum-hover-bg: #e0edff;
+  --manatos-field-tool-reference-bg: #eefaf6;
+  --manatos-field-tool-reference-hover-bg: #ddf4eb;
+  --manatos-field-tool-date-bg: #fff5ea;
+  --manatos-field-tool-date-hover-bg: #ffe9d2;
+  --manatos-field-tool-datetime-bg: #fff8df;
+  --manatos-field-tool-datetime-hover-bg: #fff0bd;
+  --manatos-field-tool-duration-bg: #f7f0ff;
+  --manatos-field-tool-duration-hover-bg: #ecddff;
+  --manatos-field-tool-number-bg: #fffbe8;
+  --manatos-field-tool-number-hover-bg: #fff4bf;
+  --manatos-field-tool-boolean-bg: #eef9ef;
+  --manatos-field-tool-boolean-hover-bg: #ddf2df;
+  --manatos-field-tool-readonly-bg: #f1f3f5;
+  --manatos-field-tool-readonly-hover-bg: #e5e8ec;
+  --manatos-field-tool-readonly-border: #aab4bf;
+  --manatos-field-tool-border: #79a8de;
+  --manatos-field-tool-color: #175ea8;
+  --manatos-field-tool-focus-ring: rgba(13, 110, 253, .22);
+}
+
+html[data-ui-theme='darker'],
+body[data-ui-theme='darker'] {
+  --manatos-field-tool-text-bg: #e8f7fc;
+  --manatos-field-tool-text-hover-bg: #d9f0f8;
+  --manatos-field-tool-email-bg: #ece8fa;
+  --manatos-field-tool-email-hover-bg: #ddd5f4;
+  --manatos-field-tool-enum-bg: #e4eefb;
+  --manatos-field-tool-enum-hover-bg: #d4e3f7;
+  --manatos-field-tool-reference-bg: #e4f3ed;
+  --manatos-field-tool-reference-hover-bg: #d1e9df;
+  --manatos-field-tool-date-bg: #f8ecde;
+  --manatos-field-tool-date-hover-bg: #f1ddc7;
+  --manatos-field-tool-datetime-bg: #f7efd4;
+  --manatos-field-tool-datetime-hover-bg: #eddfad;
+  --manatos-field-tool-duration-bg: #eee5f8;
+  --manatos-field-tool-duration-hover-bg: #dfd1f0;
+  --manatos-field-tool-number-bg: #f7f1d8;
+  --manatos-field-tool-number-hover-bg: #eee3b6;
+  --manatos-field-tool-boolean-bg: #e3f1e5;
+  --manatos-field-tool-boolean-hover-bg: #cee6d1;
+  --manatos-field-tool-readonly-bg: #e3e6e9;
+  --manatos-field-tool-readonly-hover-bg: #d5dade;
+  --manatos-field-tool-readonly-border: #929eaa;
+  --manatos-field-tool-border: #668fbf;
+  --manatos-field-tool-color: #124f91;
+  --manatos-field-tool-focus-ring: rgba(66, 133, 214, .28);
+}
+
+/* Compact, non-destructive theme preview inside Preferences. These swatches
+   deliberately use local variables so previewing a radio option never changes
+   the live page before Save preferences is pressed. */
+.preferences-theme-preview {
+  --preview-header: #142d4c;
+  --preview-title: #dce7f5;
+  --preview-text: #eef7ff;
+  --preview-date: #eaf7ef;
+  --preview-enum: #fff4dc;
+  --preview-reference: #f2ecff;
+}
+.preferences-theme-preview[data-preview-theme="lighter"] {
+  --preview-header: #d9ebfb;
+  --preview-title: #eaf4fd;
+  --preview-text: #f3fbff;
+  --preview-date: #f0fbf4;
+  --preview-enum: #fff8e8;
+  --preview-reference: #f7f2ff;
+}
+.preferences-theme-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.preferences-theme-preview-swatch {
+  min-height: 3.2rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.55rem;
+  display: flex;
+  align-items: end;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #24364a;
+}
+.preferences-theme-preview-swatch.is-header { background: var(--preview-header); color: #fff; }
+.preferences-theme-preview[data-preview-theme="lighter"] .preferences-theme-preview-swatch.is-header { color: #17324f; }
+.preferences-theme-preview-swatch.is-title { background: var(--preview-title); }
+.preferences-theme-preview-swatch.is-text { background: var(--preview-text); }
+.preferences-theme-preview-swatch.is-date { background: var(--preview-date); }
+.preferences-theme-preview-swatch.is-enum { background: var(--preview-enum); }
+.preferences-theme-preview-swatch.is-reference { background: var(--preview-reference); }
+@media (max-width: 575.98px) {
+  .preferences-theme-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

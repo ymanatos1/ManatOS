@@ -704,178 +704,318 @@ body.manatos-busy {
   line-height: 1;
 }
 
-/* ============================================================
-   #16 SysBO UI-engine migration scaffolding
-   ============================================================ */
-.sysbo-ui-implementation-switch {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 2rem;
-  padding: 0.65rem 0.8rem;
-  margin-bottom: 0.75rem;
-  border: 1px dashed var(--bs-border-color);
-  border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--bs-primary-bg-subtle) 35%, transparent);
-}
-
-.sysbo-ui-implementation-copy {
-  display: flex;
-  align-items: baseline;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-  flex: 0 1 auto;
-}
-
-.sysbo-ui-engine-toggle-form {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  white-space: nowrap;
-}
-
-.sysbo-ui-engine-mode-label {
-  color: var(--bs-secondary-color);
-  font-size: 0.82rem;
-  transition: color 0.15s ease, font-weight 0.15s ease;
-}
-
-.sysbo-ui-engine-mode-label.is-selected {
-  color: var(--bs-success);
-  font-weight: 700;
-}
-
-.sysbo-ui-engine-mode-label.is-unselected {
-  color: var(--bs-danger);
-  font-weight: 600;
-  opacity: 0.9;
-}
-
-.sysbo-ui-engine-toggle {
-  position: relative;
-  width: 2.85rem;
-  height: 1.5rem;
-  flex: 0 0 auto;
-  padding: 0;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 999px;
-  background: var(--bs-success);
-  cursor: pointer;
-  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.sysbo-ui-engine-toggle:hover {
-  border-color: var(--bs-primary);
-}
-
-.sysbo-ui-engine-toggle:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--bs-primary) 24%, transparent);
-}
-
-.sysbo-ui-engine-toggle.is-metadata {
-  border-color: var(--bs-success);
-  background: var(--bs-success);
-}
-
-.sysbo-ui-engine-toggle-thumb {
-  position: absolute;
-  top: 0.17rem;
-  left: 0.18rem;
-  width: 1.02rem;
-  height: 1.02rem;
-  border-radius: 50%;
-  background: var(--bs-body-bg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
-  transition: transform 0.18s ease;
-}
-
-.sysbo-ui-engine-toggle.is-metadata .sysbo-ui-engine-toggle-thumb {
-  transform: translateX(1.35rem);
-}
-
-.metadata-sysbo-placeholder {
-  display: grid;
-  gap: 1rem;
-}
-
-.metadata-sysbo-placeholder-intro {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.metadata-placeholder-block {
-  padding: 1rem;
-  border: 1px dashed var(--bs-border-color);
-  border-radius: 0.5rem;
-  background: var(--bs-tertiary-bg);
-}
-
-.metadata-placeholder-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.65rem;
-  font-weight: 600;
-}
-
-.metadata-placeholder-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 0.75rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.35rem;
-  overflow: hidden;
-}
-
-.metadata-placeholder-grid span {
-  min-height: 2.35rem;
-  padding: 0.55rem 0.7rem;
-  border-right: 1px solid var(--bs-border-color);
-  background: var(--bs-secondary-bg);
-  color: var(--bs-secondary-color);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.metadata-placeholder-grid span:last-child {
-  border-right: 0;
-}
-
-.metadata-placeholder-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin-bottom: 0.8rem;
-}
-
-.metadata-placeholder-fields div {
-  min-height: 2.5rem;
-  border: 1px dashed var(--bs-border-color);
-  border-radius: 0.35rem;
-  background: var(--bs-body-bg);
-}
-
-@media (max-width: 767.98px) {
-  .sysbo-ui-implementation-switch,
-  .metadata-sysbo-placeholder-intro {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .metadata-placeholder-grid,
-  .metadata-placeholder-fields {
-    grid-template-columns: 1fr;
-  }
-}
-
-
 /* Metadata-driven read-only controls are intentionally visually distinct from
    editable values while remaining fully legible in both themes. */
 .metadata-driven-record-form .form-control[readonly],
 .metadata-driven-record-form .form-select:disabled {
   background-color: var(--bs-secondary-bg);
   opacity: 1;
+}
+
+/* Metadata-driven canonical entity-field components. */
+.metadata-field-input > .metadata-field-input-menu-toggle {
+  flex: 0 0 auto;
+  width: 2.5rem;
+  padding-inline: 0;
+}
+
+/*
+ * Field-tool menus visually belong to the compact type/tool button rather than
+ * to the value editor beside it. Their palette comes from Preferences themes.
+ */
+.metadata-field-input-menu {
+  width: max-content;
+  min-width: 13.5rem;
+  max-width: calc(100vw - 2rem);
+}
+
+.metadata-field-input-menu .dropdown-item {
+  white-space: normal;
+}
+
+/* One neutral treatment for every read-only/calculated field component. */
+.metadata-field-input-menu.is-readonly {
+  --bs-dropdown-bg: var(--manatos-field-tool-readonly-bg);
+  --bs-dropdown-link-hover-bg: var(--manatos-field-tool-readonly-hover-bg);
+  --bs-dropdown-link-active-bg: var(--manatos-field-tool-readonly-hover-bg);
+  border-color: var(--manatos-field-tool-readonly-border);
+}
+
+/* Editable field-tool menus inherit the semantic field-type surface. */
+.metadata-field-input[data-field-component='text'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-text-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-text-hover-bg); }
+.metadata-field-input[data-field-component='email'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-email-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-email-hover-bg); }
+.metadata-field-input[data-field-component='enum'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-enum-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-enum-hover-bg); }
+.metadata-field-input[data-field-component='reference'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-reference-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-reference-hover-bg); }
+.metadata-field-input[data-field-component='date'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-date-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-date-hover-bg); }
+.metadata-field-input[data-field-component='datetime'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-datetime-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-datetime-hover-bg); }
+.metadata-field-input[data-field-component='duration'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-duration-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-duration-hover-bg); }
+.metadata-field-input[data-field-component='version'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-number-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-number-hover-bg); }
+.metadata-field-input[data-field-component='number'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-number-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-number-hover-bg); }
+.metadata-field-input[data-field-component='boolean'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-boolean-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-boolean-hover-bg); }
+
+.metadata-field-input-menu.is-enabled {
+  --bs-dropdown-bg: var(--manatos-current-field-tool-bg, var(--manatos-field-tool-text-bg));
+  --bs-dropdown-link-hover-bg: var(--manatos-current-field-tool-hover-bg, var(--manatos-field-tool-text-hover-bg));
+  --bs-dropdown-link-active-bg: var(--manatos-current-field-tool-hover-bg, var(--manatos-field-tool-text-hover-bg));
+  border-color: var(--manatos-field-tool-border);
+}
+
+/* Keep compound component content visually aligned with normal field rows. */
+[data-metadata-tab-contents] > [data-metadata-content-component] > .alert:last-child {
+  margin-bottom: 0;
+}
+
+/*
+ * Canonical metadata entity-field type buttons. Editable buttons use their
+ * semantic type colour; read-only/calculated buttons share one neutral colour.
+ */
+.metadata-driven-record-form .metadata-field-input-menu-toggle {
+  flex: 0 0 auto;
+  width: 2.5rem;
+  padding-inline: 0;
+  border-color: var(--manatos-field-tool-readonly-border);
+  background: var(--manatos-field-tool-readonly-bg);
+  color: #687789;
+}
+
+.metadata-driven-record-form .metadata-field-input-menu-toggle.is-enabled {
+  border-color: var(--manatos-field-tool-border);
+  background: var(--manatos-current-field-tool-bg, var(--manatos-field-tool-text-bg));
+  color: var(--manatos-field-tool-color);
+}
+
+.metadata-driven-record-form .metadata-field-input-menu-toggle.is-enabled:hover,
+.metadata-driven-record-form .metadata-field-input-menu-toggle.is-enabled:focus,
+.metadata-driven-record-form .metadata-field-input-menu-toggle.is-enabled.show {
+  border-color: var(--manatos-field-tool-border);
+  background: var(--manatos-current-field-tool-hover-bg, var(--manatos-field-tool-text-hover-bg));
+  color: var(--manatos-field-tool-color);
+}
+
+.metadata-driven-record-form .metadata-field-input-menu-toggle.is-readonly,
+.metadata-driven-record-form .metadata-field-input-menu-toggle.is-readonly.show,
+.metadata-driven-record-form .metadata-field-input-menu-toggle.is-readonly:focus {
+  opacity: 1;
+  border-color: var(--manatos-field-tool-readonly-border);
+  background: var(--manatos-field-tool-readonly-bg);
+  color: #788593;
+}
+
+/* Opening the compact tool menu highlights the complete field, just as focus
+   highlights the value editor. This state is independent of value menus. */
+.metadata-field-input.is-tools-open {
+  position: relative;
+  z-index: 4;
+  border-radius: var(--bs-border-radius);
+  box-shadow: 0 0 0 .2rem var(--manatos-field-tool-focus-ring);
+}
+
+.metadata-field-type-glyph {
+  display: inline-block;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+
+.metadata-boolean-field {
+  position: relative;
+  min-height: 2.4rem;
+}
+
+.metadata-boolean-field .metadata-field-input-menu {
+  top: 100%;
+  left: 0;
+}
+
+
+
+/*
+ * Calendar/time values have naturally compact native editors. Keep standalone
+ * date/time fields from expanding like free-form text while allowing datetime
+ * to remain wider because it carries both calendar and clock information.
+ * The selectors are field-type generic; `time` is ready for the canonical time
+ * field component when that type is introduced.
+ */
+.metadata-driven-record-form .metadata-field-input[data-field-component='date'] {
+  width: min(100%, 19rem);
+  max-width: 19rem;
+}
+
+.metadata-driven-record-form .metadata-field-input[data-field-component='time'] {
+  width: min(100%, 14rem);
+  max-width: 14rem;
+}
+
+.metadata-driven-record-form .metadata-field-input[data-field-component='datetime'] {
+  width: min(100%, 28rem);
+  max-width: 28rem;
+}
+
+/*
+ * Duration is structured, so it needs more room than one Date but should never
+ * inherit an arbitrary full-row width from a parent/composite layout.
+ */
+.metadata-driven-record-form .metadata-field-input[data-field-component='duration'] {
+  width: min(100%, 32rem);
+  max-width: 32rem;
+}
+
+/* Calendar-duration field: one canonical CTX value with convenient unit inputs. */
+.metadata-duration-editor {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(5.25rem, 1fr));
+  gap: .5rem;
+  align-items: end;
+  padding: .35rem .5rem;
+  min-width: 0;
+}
+
+.metadata-duration-editor.is-readonly {
+  background-color: var(--bs-secondary-bg);
+}
+
+.metadata-duration-part {
+  display: grid;
+  grid-template-columns: auto minmax(3.5rem, 1fr);
+  gap: .35rem;
+  align-items: center;
+  margin: 0;
+  color: var(--bs-secondary-color);
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.metadata-duration-part .form-control {
+  min-width: 0;
+}
+
+.metadata-date-duration-range {
+  width: 100%;
+}
+
+/*
+ * The row icon identifies the related entity instance; field-specific icons
+ * (for example Microsoft/Google provider identity) remain independent. Keep
+ * both visual identities on one baseline even when a field formatter uses flex.
+ */
+.metadata-related-primary-cell,
+.metadata-related-primary-value {
+  min-width: 0;
+}
+
+.metadata-related-primary-value {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.metadata-related-primary-value .authentication-provider {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 991.98px) {
+  .metadata-duration-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * Numeric entity fields are compact scalar editors, like dates and durations.
+ * Keep them naturally bounded across every metadata-driven entity instead of
+ * stretching to the complete Bootstrap column simply because room is present.
+ */
+.metadata-driven-record-form .metadata-field-input[data-field-component='number'] {
+  width: min(100%, 9rem);
+  max-width: 9rem;
+}
+
+/* Semantic versions are stored as one canonical string and edited as three compact numeric parts. */
+.metadata-driven-record-form .metadata-field-input[data-field-component='version'] {
+  width: min(100%, 20rem);
+  max-width: 20rem;
+}
+
+.metadata-version-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  /* The outer .form-control is the control chrome. Remove its padding so the
+   * nested numeric parts do not add a second Bootstrap control-height layer. */
+  padding: 0;
+  overflow: hidden;
+}
+
+.metadata-version-part {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+  height: 100%;
+}
+
+.metadata-version-separator {
+  color: var(--bs-secondary-color);
+  font-weight: 700;
+  text-align: center;
+}
+
+/*
+ * Password visibility enhancement wraps the native input after initial render.
+ * Inside an input-group that wrapper must retain the same fluid flex behaviour
+ * as the original .form-control; otherwise password/text components collapse to
+ * their intrinsic content width (notably External Provider Client secret).
+ */
+.metadata-driven-record-form .metadata-field-input > .password-visibility-field {
+  flex: 1 1 auto;
+  width: 1%;
+  min-width: 0;
+}
+
+.metadata-driven-record-form .metadata-field-input > .password-visibility-field > .form-control {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Generic metadata-driven information panels. */
+.metadata-information-panel-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: flex;
+  justify-content: space-between;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.metadata-information-panel-toggle .metadata-information-panel-chevron {
+  transition: transform 0.16s ease;
+}
+
+.metadata-information-panel-toggle[aria-expanded='true'] .metadata-information-panel-chevron {
+  transform: rotate(90deg);
+}
+
+/*
+ * Universal entry-field change language. The baseline comparison is reversible
+ * and CTX-driven, so direct edits and evaluator-calculated writes look alike.
+ */
+.metadata-driven-record-form .metadata-field-changed .metadata-field-change-marker {
+  color: var(--bs-primary-text-emphasis);
+  font-weight: 700;
+}
+
+.metadata-driven-record-form .metadata-field-changed :is(
+  .form-control,
+  .form-select,
+  [data-reference-selected],
+  .metadata-duration-editor,
+  .metadata-duration-part input
+) {
+  font-weight: 700;
 }

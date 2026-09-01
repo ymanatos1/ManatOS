@@ -35,12 +35,13 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     expect(sysBOPrincipalsMetadata.fieldDefinition.rootPrincipalId).toMatchObject({
       type: 'reference',
       readOnly: true,
+      nullable: true,
       applicationManaged: true,
       referenceBOKey: 'sys-principals',
     });
     expect(sysBOPrincipalsMetadata.derivedFields?.rootPrincipalId).toMatchObject({
       persisted: true,
-      expression: "parentId == null ? id : TraverseCtx(parentId, dataList, 'parentId', 'id')",
+      expression: "parentId == null ? null : TraverseCtx(parentId, dataList, 'parentId', 'id')",
     });
 
     const context = await createTestApi();
@@ -53,7 +54,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       },
       SYSTEM_AUDIT_ACTOR,
     );
-    expect(root.rootPrincipalId).toBe(root.id);
+    expect(root.rootPrincipalId).toBeNull();
 
     const team = await context.services.principals.create(
       {
@@ -84,7 +85,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       { parentId: null },
       SYSTEM_AUDIT_ACTOR,
     );
-    expect(movedTeam.rootPrincipalId).toBe(movedTeam.id);
+    expect(movedTeam.rootPrincipalId).toBeNull();
 
     const refreshedMember = await context.services.principals.get(member.id);
     expect(refreshedMember?.rootPrincipalId).toBe(movedTeam.id);

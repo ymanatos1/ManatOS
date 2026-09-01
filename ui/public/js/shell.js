@@ -35,6 +35,7 @@
   const toggleDebugPanelButton = document.getElementById('toggleDebugPanel');
   const toggleDebugDiagnosticsButton = document.getElementById('toggleDebugDiagnostics');
   const closeDebugPanelButton = document.getElementById('closeDebugPanel');
+  let debugReturnFocus = null;
 
   /* =======================================================================
    * Workspace-centered Bootstrap modals
@@ -88,12 +89,56 @@
     modal.dataset.bsBackdrop = 'static';
     modal.dataset.bsKeyboard = 'false';
 
-    modal.addEventListener('show.bs.modal', () => {
+    let returnFocusTarget = null;
+
+    modal.addEventListener('show.bs.modal', (event) => {
+      /*
+       * Bootstrap supplies relatedTarget when a normal data-bs-toggle trigger
+       * opened the modal. Keep a defensive activeElement fallback for
+       * programmatic opens so every popup has the same focus-return contract.
+       */
+      const trigger = event.relatedTarget instanceof HTMLElement
+        ? event.relatedTarget
+        : document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      returnFocusTarget = trigger && !modal.contains(trigger) ? trigger : null;
       centerModalInWorkspace(modal);
     });
 
     modal.addEventListener('shown.bs.modal', () => {
       centerModalInWorkspace(modal);
+    });
+
+    modal.addEventListener('hide.bs.modal', () => {
+      /*
+       * Bootstrap fires hide.bs.modal before it deactivates the modal's focus
+       * trap. Moving focus synchronously here can therefore be pulled straight
+       * back into the modal, leaving a focused descendant when Bootstrap later
+       * applies aria-hidden=true. Defer by one microtask: Modal.hide() has then
+       * deactivated its focus trap, while the fade transition has not yet reached
+       * the aria-hidden step. This keeps the fix generic for every ManatOS modal.
+       */
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement) || !modal.contains(active)) return;
+
+      queueMicrotask(() => {
+        const focused = document.activeElement;
+        if (!(focused instanceof HTMLElement) || !modal.contains(focused)) return;
+
+        if (returnFocusTarget?.isConnected) {
+          returnFocusTarget.focus({ preventScroll: true });
+        } else {
+          focused.blur();
+        }
+      });
+    });
+
+    modal.addEventListener('hidden.bs.modal', () => {
+      if (returnFocusTarget?.isConnected) {
+        returnFocusTarget.focus({ preventScroll: true });
+      }
+      returnFocusTarget = null;
     });
   });
 
@@ -323,17 +368,51 @@
       this.setDetailsVisible(!appShell.classList.contains('has-details'));
     },
 
-    /** Show/hide the development debugger as the shell's rightmost column. */
+    /**
+     * Show/hide the development debugger as the shell's rightmost column.
+     *
+     * Focus is moved out of the CTX Viewer *before* it becomes aria-hidden or
+     * inert. This keeps the shell accessible and avoids Chromium rejecting the
+     * aria-hidden transition while one of the Viewer's descendants owns focus.
+     */
     setDebugVisible(visible, persist = true) {
       if (!appShell || !debugPanel) {
         return;
       }
 
-      appShell.classList.toggle('has-debug', visible);
-      debugPanel.classList.toggle('d-none', !visible);
-      debugPanel.setAttribute('aria-hidden', String(!visible));
-      setCheckedMenuItem(toggleDebugPanelButton, visible);
+      if (visible) {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && !debugPanel.contains(active)) {
+          debugReturnFocus = active;
+        }
 
+        // Remove the focus barrier before exposing/using controls in the panel.
+        debugPanel.inert = false;
+        debugPanel.removeAttribute('inert');
+        appShell.classList.add('has-debug');
+        debugPanel.classList.remove('d-none');
+        debugPanel.setAttribute('aria-hidden', 'false');
+      } else {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && debugPanel.contains(active)) {
+          const fallback =
+            debugReturnFocus instanceof HTMLElement && debugReturnFocus.isConnected
+              ? debugReturnFocus
+              : toggleDebugPanelButton instanceof HTMLElement
+                ? toggleDebugPanelButton
+                : null;
+          fallback?.focus({ preventScroll: true });
+        }
+
+        // Only after focus has left the subtree may it become inaccessible.
+        debugPanel.inert = true;
+        debugPanel.setAttribute('inert', '');
+        debugPanel.setAttribute('aria-hidden', 'true');
+        debugPanel.classList.add('d-none');
+        appShell.classList.remove('has-debug');
+      }
+
+      setCheckedMenuItem(toggleDebugPanelButton, visible);
       refreshVisibleModalCenters();
 
       if (persist) {
@@ -475,6 +554,12 @@
    * -------------------------------------------------------------------- */
   toggleDebugPanelButton?.addEventListener('click', () => {
     shellState.toggleDebug();
+  });
+
+  // Generic developer navigation hook used by field/component inspectors.
+  // The requester does not need to know how the shell renders the CTX Viewer.
+  window.addEventListener('manatos:ctx-viewer-show', () => {
+    shellState.setDebugVisible(true);
   });
 
   toggleDebugDiagnosticsButton?.addEventListener('click', () => {

@@ -17,12 +17,6 @@
     const activeFilterCount = filterFields.filter((key) => String(query[`filter.${key}`] || '').trim() !== '').length;
     const hasActiveFilters = activeFilterCount > 0;
     const filterCollapseId = `metadata-filters-${definition.key}`;
-    const externalAuthProviderLabels = {
-      microsoft: 'Microsoft',
-      google: 'Google',
-      facebook: 'Facebook',
-      github: 'GitHub'
-    };
     const listReferenceValues = typeof referenceData !== 'undefined' && referenceData ? referenceData : {};
     const referenceLabel = (fieldKey, value) => {
       if (value === undefined || value === null || value === '') return '—';
@@ -38,6 +32,15 @@
       if (tone === 'danger' && item?.toneStrength === 'strong') return 'text-danger-emphasis';
       if (tone === 'warning') return 'text-warning-emphasis';
       return `text-${tone}`;
+    };
+    const durationLabel = (value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return '—';
+      const parts = [
+        ['year', Number(value.years || 0)],
+        ['month', Number(value.months || 0)],
+        ['day', Number(value.days || 0)],
+      ].filter(([, count]) => count > 0).map(([unit, count]) => `${count} ${unit}${count === 1 ? '' : 's'}`);
+      return parts.length ? parts.join(', ') : '0 days';
     };
     const rowActions = Object.entries(metadataUI.list.rowActions || {})
       .map(([key, action]) => ({ key, ...action }))
@@ -58,6 +61,14 @@
     data-default-page-size="<%= paging.pageSize %>"
     data-allowed-page-sizes="<%= pageSizeOptions.join(',') %>"
   >
+    <% if (metadataUI.list.notice) { %>
+      <div class="alert alert-<%= metadataUI.list.notice.tone || 'info' %> border d-flex gap-2 align-items-start mb-3" role="note" data-metadata-list-notice>
+        <% if (metadataUI.list.notice.icon) { %><i class="bi bi-<%= metadataUI.list.notice.icon %> mt-1" aria-hidden="true"></i><% } %>
+        <div>
+          <% if (metadataUI.list.notice.title) { %><strong><%= metadataUI.list.notice.title %></strong> <% } %><%= metadataUI.list.notice.text %>
+        </div>
+      </div>
+    <% } %>
     <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
       <div class="text-secondary">
         <strong class="text-body"><%= paging.total %></strong>
@@ -83,11 +94,11 @@
         <% } %>
 
         <% if (permissions.create && metadataUI.list.addAction.visible) { %>
-          <% const providerAddDisabled = definition.key === 'sys-ext-auth-providers' && allExternalProvidersConfigured; %>
           <a
-            class="btn btn-success <%= providerAddDisabled ? 'disabled' : '' %>"
-            href="<%= providerAddDisabled ? '#' : '/bo/' + definition.key + '/new' %>"
-            <%= providerAddDisabled ? 'aria-disabled="true" tabindex="-1" title="All supported providers are configured."' : '' %>
+            class="btn btn-success <%= addActionDisabled ? 'disabled' : '' %>"
+            href="<%= addActionDisabled ? '#' : '/bo/' + definition.key + '/new' %>"
+            <%= addActionDisabled ? 'aria-disabled="true" tabindex="-1"' : '' %>
+            title="<%= addActionDisabled ? (metadataUI.list.addAction.disabledReason || 'Creation is currently unavailable.') : metadataUI.list.addAction.label %>"
           >
             <i class="bi bi-plus-circle me-1"></i><%= metadataUI.list.addAction.label %>
           </a>
@@ -95,53 +106,7 @@
       </div>
     </div>
 
-    <% if (filterFields.length) { %>
-      <div class="collapse <%= hasActiveFilters ? 'show' : '' %>" id="<%= filterCollapseId %>">
-        <form class="filter-panel row g-2 mb-3" method="get">
-          <% for (const key of filterFields) { %>
-            <% const field = metadata.fieldDefinition[key]; %>
-            <% if (!field) continue; %>
-
-            <div class="col-xl-3 col-md-4">
-              <label class="form-label small" for="metadata-filter-<%= key %>">
-                <i class="bi bi-funnel me-1"></i>
-                <%= field.label %>
-              </label>
-
-              <% if (field.type === 'enum') { %>
-                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
-                  <option value="">All</option>
-                  <% for (const option of field.enumValues || []) { %>
-                    <% const richOption = enumItem(field, option); %>
-                    <option value="<%= option %>" <%= query[`filter.${key}`] === option ? 'selected' : '' %>><%= richOption?.label || option %></option>
-                  <% } %>
-                </select>
-              <% } else if (field.type === 'reference') { %>
-                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
-                  <option value="">All</option>
-                  <% for (const option of listReferenceValues[key] || []) { %>
-                    <option value="<%= option.id %>" <%= query[`filter.${key}`] === option.id ? 'selected' : '' %>><%= option.name ?? option.id %></option>
-                  <% } %>
-                </select>
-              <% } else if (field.type === 'boolean') { %>
-                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
-                  <option value="">All</option>
-                  <option value="true" <%= query[`filter.${key}`] === 'true' ? 'selected' : '' %>>Enabled</option>
-                  <option value="false" <%= query[`filter.${key}`] === 'false' ? 'selected' : '' %>>Disabled</option>
-                </select>
-              <% } else { %>
-                <input class="form-control" id="metadata-filter-<%= key %>" name="filter.<%= key %>" value="<%= query[`filter.${key}`] || '' %>">
-              <% } %>
-            </div>
-          <% } %>
-
-          <div class="col-xl-3 col-md-4 d-flex align-items-end gap-2">
-            <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
-            <a class="btn btn-outline-secondary" href="/bo/<%= definition.key %>"><i class="bi bi-x-circle me-1"></i>Clear</a>
-          </div>
-        </form>
-      </div>
-    <% } %>
+    <%- include('ui-components/list-filters', { filterFields, hasActiveFilters, filterCollapseId, metadata, query, enumItem, listReferenceValues, definition }) %>
 
     <div class="table-responsive">
       <table class="table table-hover align-middle">
@@ -188,17 +153,19 @@
                 <% const field = metadata.fieldDefinition[key]; %>
                 <% if (!field) continue; %>
                 <td>
-                  <% if (definition.key === 'sys-ext-auth-providers' && key === 'provider') { %>
-                    <% const providerKey = String(item[key] || '').toLowerCase(); %>
-                    <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= externalAuthProviderLabels[providerKey] || item[key] || '' %></a>
-                  <% } else if (key === metadata.primaryField) { %>
-                    <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>"><%= item[key] ?? '' %></a>
+                  <% if (key === metadata.primaryField) { %>
+                    <% const primaryEnumItem = field.type === 'enum' ? enumItem(field, item[key]) : null; %>
+                    <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>">
+                      <% if (primaryEnumItem?.icon) { %><i class="bi bi-<%= primaryEnumItem.icon %> <%= enumToneClass(primaryEnumItem) %> me-1" aria-hidden="true"></i><% } %><%= primaryEnumItem?.label || item[key] || '' %>
+                    </a>
                   <% } else if (field.type === 'reference') { %>
                     <%= referenceLabel(key, item[key]) %>
                   <% } else if (field.type === 'enum') { %>
                     <% const selectedEnumItem = enumItem(field, item[key]); %>
                     <% if (selectedEnumItem?.icon) { %><i class="bi bi-<%= selectedEnumItem.icon %> <%= enumToneClass(selectedEnumItem) %> me-1" aria-hidden="true"></i><% } %>
                     <%= selectedEnumItem?.label || item[key] || '' %>
+                  <% } else if (field.type === 'duration') { %>
+                    <%= durationLabel(item[key]) %>
                   <% } else if (field.type === 'boolean') { %>
                     <% const positive = Boolean(item[key]); %>
                     <% const positiveLabel = key === 'emailVerified' ? 'Verified' : (key === 'enabled' ? 'Enabled' : 'Yes'); %>

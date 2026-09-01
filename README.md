@@ -4,7 +4,7 @@
 
 A metadata-driven Express 5 + TypeScript application platform with independently runnable **API** and metadata-driven **Express/EJS UI** projects, common domain/metadata contracts, pluggable persistence boundaries, authentication and identity management, runtime configuration, Swagger, Postman and layered automated testing.
 
-Dynamic decisions are metadata-driven as well: canonical derived values and UI properties can carry built-in ManatOS expressions that are parsed once into ASTs, evaluated against the live CTX scope, and dependency-refreshed when their inputs change.
+Dynamic decisions are metadata-driven as well: canonical derived values and UI properties can carry built-in ManatOS expressions that are parsed once into ASTs, evaluated against the live CTX scope, and dependency-refreshed when their inputs change. Canonical field types now include date-only, datetime and structured calendar durations (`years` / `months` / `days`); reusable field- and UI-components compose those types without entity-specific renderers.
 
 ## Quick start
 
@@ -289,7 +289,7 @@ This is a baseline rather than a completed production system. In particular:
 - Microsoft/Google/Facebook/GitHub require real provider applications, credentials and callback URLs; credential pairs may be stored unverified, but must pass the ManatOS provider test before becoming available for sign-in.
 - Real-browser Playwright E2E tests are not yet part of the automated suite.
 - SysApplication playground internals are intentionally deferred.
-- The #16 Current EJS / Metadata-driven comparison switch remains temporary for the **remaining** SysBOs while they are migrated and regression-tested. SysUsers and SysPrincipals are already locked to Metadata-driven and their legacy EJS branches are disposable pending final #16 cleanup; active switches remain for Applications, Licenses and External authentication providers.
+- The #16 SysBO UI migration is complete: the generic SysBO UI now has a single metadata-driven renderer. The temporary Current-EJS comparison selector and per-entity view-mode settings are retired; stale persisted migration-setting names remain suppressed only as compatibility tombstones.
 
 ### API presentation groups
 

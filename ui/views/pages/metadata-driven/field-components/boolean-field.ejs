@@ -1,0 +1,7 @@
+<div class="metadata-boolean-field d-flex align-items-center gap-2" data-enhanced-field-input data-field-component="boolean">
+  <div class="dropdown">
+    <button class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="On/off field tools" aria-label="On/off field tools for <%= fieldLabel(field) %>"><i class="bi bi-toggle-on" aria-hidden="true"></i></button>
+    <%- include('field-tools-menu', { key, editable, actions: [{ action: 'toggle', icon: 'arrow-repeat', label: 'Toggle value' }] }) %>
+  </div>
+  <div class="form-check form-switch mb-0"><input class="form-check-input" id="metadata-field-<%= key %>" type="checkbox" name="<%= key %>" data-ctx-field="<%= key %>" <%= value === true ? 'checked' : '' %> <%= editable ? '' : 'disabled' %>></div>
+</div>

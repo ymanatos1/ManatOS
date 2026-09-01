@@ -71,7 +71,7 @@ describe('storage contract', () => {
   });
 
   it('creates GUID-keyed records and server-owned audit fields', async () => {
-    const created = await applications.create(applicationInput('Demo', 'demo'), SYSTEM_AUDIT_ACTOR);
+    const created = await applications.create(applicationInput('Demo'), SYSTEM_AUDIT_ACTOR);
 
     expect(created.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
@@ -86,28 +86,31 @@ describe('storage contract', () => {
   });
 
   it('enforces metadata-defined unique fields case-insensitively', async () => {
-    await applications.create(applicationInput('Demo', 'demo'), SYSTEM_AUDIT_ACTOR);
+    await applications.create(applicationInput('Demo'), SYSTEM_AUDIT_ACTOR);
 
+    // The canonical Application contract now has one user-supplied unique field:
+    // `name`. Verify case-insensitive duplicate protection without retaining the
+    // removed appName uniqueness assertion as a brittle historical test.
     await expect(
-      applications.create(applicationInput('demo', 'another-app-name'), SYSTEM_AUDIT_ACTOR),
+      applications.create(applicationInput('demo'), SYSTEM_AUDIT_ACTOR),
     ).rejects.toMatchObject({
       code: 'DUPLICATE_BO_VALUE',
     });
 
     await expect(
-      applications.create(applicationInput('Another Display Name', 'DEMO'), SYSTEM_AUDIT_ACTOR),
-    ).rejects.toMatchObject({
-      code: 'DUPLICATE_BO_VALUE',
+      applications.create(applicationInput('Another Display Name'), SYSTEM_AUDIT_ACTOR),
+    ).resolves.toMatchObject({
+      name: 'Another Display Name',
     });
 
     const result = await applications.list(defaultListQuery());
 
-    expect(result.total).toBe(1);
+    expect(result.total).toBe(2);
   });
 
   it('persists entity IDs only as JSON keys and reconstructs them on load', async () => {
     const created = await applications.create(
-      applicationInput('Persistence Demo', 'persistence-demo'),
+      applicationInput('Persistence Demo'),
       SYSTEM_AUDIT_ACTOR,
     );
 
@@ -145,16 +148,15 @@ describe('storage contract', () => {
 
     expect(reloaded?.name).toBe('Persistence Demo');
 
-    expect(reloaded?.appName).toBe('persistence-demo');
   });
 
   it('supports filtering, ordering and pagination through the repository contract', async () => {
-    await applications.create(applicationInput('Accounts', 'accounts'), SYSTEM_AUDIT_ACTOR);
+    await applications.create(applicationInput('Accounts'), SYSTEM_AUDIT_ACTOR);
 
-    await applications.create(applicationInput('Billing', 'billing'), SYSTEM_AUDIT_ACTOR);
+    await applications.create(applicationInput('Billing'), SYSTEM_AUDIT_ACTOR);
 
     await applications.create(
-      applicationInput('Accounts Reports', 'accounts-reports'),
+      applicationInput('Accounts Reports'),
       SYSTEM_AUDIT_ACTOR,
     );
 
@@ -178,7 +180,7 @@ describe('storage contract', () => {
   });
 
   it('protects technical audit fields during updates', async () => {
-    const created = await applications.create(applicationInput('Demo', 'demo'), SYSTEM_AUDIT_ACTOR);
+    const created = await applications.create(applicationInput('Demo'), SYSTEM_AUDIT_ACTOR);
 
     const originalCreatedAt = created.createdAt;
     const originalCreatedBy = created.createdBy;
@@ -216,7 +218,7 @@ describe('storage contract', () => {
 
   it('keeps existing service/repository references valid after transaction rollback', async () => {
     const created = await applications.create(
-      applicationInput('Survives Rollback', 'survives-rollback'),
+      applicationInput('Survives Rollback'),
       SYSTEM_AUDIT_ACTOR,
     );
 
@@ -230,7 +232,7 @@ describe('storage contract', () => {
     await expect(
       store.executeTransaction(async () => {
         await store.sysApplications.create(
-          applicationInput('Rolled Back', 'rolled-back'),
+          applicationInput('Rolled Back'),
           SYSTEM_AUDIT_ACTOR,
         );
 
@@ -247,7 +249,7 @@ describe('storage contract', () => {
     /** The failed transaction must not leak its temporary record. */
     const afterRollback = await applications.list(defaultListQuery());
 
-    expect(afterRollback.items.some((item) => item.appName === 'rolled-back')).toBe(false);
+    expect(afterRollback.items.some((item) => item.name === 'Rolled Back')).toBe(false);
 
     /** A subsequent mutation through the pre-existing service must also work. */
     const updated = await applications.update(
@@ -268,7 +270,7 @@ describe('storage contract', () => {
      * through executeTransaction(), which would not isolate flush().
      */
     const created = await store.sysApplications.create(
-      applicationInput('Flush Demo', 'flush-demo'),
+      applicationInput('Flush Demo'),
       SYSTEM_AUDIT_ACTOR,
     );
 
@@ -290,15 +292,13 @@ describe('storage contract', () => {
     expect(await reloadedStore.sysApplications.getById(created.id)).toMatchObject({
       id: created.id,
       name: 'Flush Demo',
-      appName: 'flush-demo',
     });
   });
 });
 
-function applicationInput(name: string, appName: string) {
+function applicationInput(name: string) {
   return {
     name,
-    appName,
 
     fullName: `${name} Application`,
 

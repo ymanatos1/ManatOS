@@ -24,8 +24,7 @@ export interface ExternalAuthProviderDefinition {
   secretsHelp: {
     title: string;
     introduction: string;
-    clientId: string[];
-    clientSecret: string[];
+    sections: Array<{ title: string; steps: string[] }>;
     warning?: string;
   };
 }
@@ -56,15 +55,23 @@ export const externalAuthProviderDefinitions: Record<
       title: 'Microsoft application credentials',
       introduction:
         'Create the OAuth application credentials in the same Microsoft Entra app registration used for the callback configuration.',
-      clientId: [
+      sections: [
+        {
+          title: 'Client ID',
+          steps: [
         'Open Microsoft Entra admin center → App registrations → your ManatOS application.',
         'On Overview, copy Application (client) ID into Client ID below.',
         'Do not use the Object ID or Directory (tenant) ID as the Client ID.',
-      ],
-      clientSecret: [
+          ],
+        },
+        {
+          title: 'Client secret',
+          steps: [
         'Open Certificates & secrets → Client secrets and choose New client secret.',
         'Choose an appropriate description and expiry, then create the secret.',
         'Copy the secret Value into Client secret below. The Secret ID is not the client secret.',
+          ],
+        },
       ],
       warning:
         'Microsoft displays the client-secret Value only when it is created. Store it in ManatOS before leaving the page, and plan to replace it before its configured expiry.',
@@ -91,14 +98,22 @@ export const externalAuthProviderDefinitions: Record<
       title: 'Google OAuth client credentials',
       introduction:
         'Use the Web application OAuth 2.0 client created for ManatOS in Google Cloud Console.',
-      clientId: [
+      sections: [
+        {
+          title: 'Client ID',
+          steps: [
         'Open Google Cloud Console → APIs & Services → Credentials.',
         'Open the OAuth 2.0 Client ID created for ManatOS.',
         'Copy its Client ID into Client ID below.',
-      ],
-      clientSecret: [
+          ],
+        },
+        {
+          title: 'Client secret',
+          steps: [
         'From the same OAuth client, copy the Client secret into Client secret below.',
         'If Google requires a new credential, create/rotate the OAuth client secret in the provider console and save the replacement here.',
+          ],
+        },
       ],
       warning:
         'Treat the Google Client secret as a credential. Never commit it to source control or place it in browser-side code.',
@@ -124,13 +139,21 @@ export const externalAuthProviderDefinitions: Record<
     secretsHelp: {
       title: 'Facebook application credentials',
       introduction: 'Use the Meta application configured for ManatOS Facebook Login.',
-      clientId: [
+      sections: [
+        {
+          title: 'Client ID',
+          steps: [
         'Open Meta for Developers → your application → App settings → Basic.',
         'Copy the App ID into Client ID below.',
-      ],
-      clientSecret: [
+          ],
+        },
+        {
+          title: 'Client secret',
+          steps: [
         'On the same App settings → Basic page, reveal the App secret when permitted.',
         'Copy the App secret into Client secret below.',
+          ],
+        },
       ],
       warning:
         'The Facebook App secret grants privileged access to the application configuration. Keep it server-side and rotate it if it is ever exposed.',
@@ -156,13 +179,21 @@ export const externalAuthProviderDefinitions: Record<
     secretsHelp: {
       title: 'GitHub OAuth App credentials',
       introduction: 'Use the GitHub OAuth App configured with the ManatOS callback URL.',
-      clientId: [
+      sections: [
+        {
+          title: 'Client ID',
+          steps: [
         'Open GitHub Settings → Developer settings → OAuth Apps → your ManatOS OAuth App.',
         'Copy Client ID into Client ID below.',
-      ],
-      clientSecret: [
+          ],
+        },
+        {
+          title: 'Client secret',
+          steps: [
         'In the same OAuth App, generate a new client secret when one is required.',
         'Copy the generated client-secret value into Client secret below.',
+          ],
+        },
       ],
       warning:
         'A newly generated GitHub client secret may not remain visible indefinitely. Save it in ManatOS when generated and revoke superseded secrets after confirming the replacement works.',

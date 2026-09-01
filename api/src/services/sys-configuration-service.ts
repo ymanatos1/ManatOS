@@ -21,10 +21,6 @@ export interface ConfigurationDefinition {
 export const CONFIGURATION_DEFINITIONS: ConfigurationDefinition[] = [
   { name:'UI_PAGE_SIZE_OPTIONS', group:'UI', description:'Page-size choices offered by SysBO list pages.', valueType:'string', envValue:process.env.UI_PAGE_SIZE_OPTIONS, defaultValue:'2,5,10,20,50,100' },
   { name:'UI_DEFAULT_PAGE_SIZE', group:'UI', description:'Default number of rows displayed on SysBO list pages.', valueType:'number', envValue:process.env.UI_DEFAULT_PAGE_SIZE, defaultValue:'10' },
-  // Temporary #16 migration controls. Remove after the metadata-driven SysBO UI fully replaces Current EJS.
-  // Completed #16 entities intentionally have no UI-engine configuration.
-  // SysUsers, SysPrincipals, SysApplications and SysLicenses are locked to MetadataDriven while #16 closes.
-  { name:'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE', group:'#16 SysBO UI migration', description:'Temporary External authentication providers UI engine selection used while comparing Current EJS with the metadata-driven renderer.', valueType:'enum', envValue:undefined, defaultValue:'CurrentEJS', allowedValues:['CurrentEJS','MetadataDriven'] },
   { name:'DONATIONS_SHOW', group:'Donations', description:'Show the global Donate action in the ManatOS header. The action remains disabled until donation processing is configured.', valueType:'boolean', envValue:process.env.DONATIONS_SHOW, defaultValue:'false' },
   { name:'SHOW_TECHNICAL_ERROR_DETAILS', group:'Errors & diagnostics', description:'Show technical diagnostic details in UI error dialogs.', valueType:'boolean', envValue:process.env.SHOW_TECHNICAL_ERROR_DETAILS, defaultValue:'false' },
   { name:'SESSION_ERROR_LOG_MAX_ENTRIES', group:'Sessions', description:'Maximum recent session errors retained for diagnostics.', valueType:'number', envValue:process.env.SESSION_ERROR_LOG_MAX_ENTRIES, defaultValue:'20' },
@@ -46,16 +42,17 @@ export const CONFIGURATION_DEFINITIONS: ConfigurationDefinition[] = [
 const seedActor: AuditActor = { userId:'system', userName:'System', source:'system' };
 
 /**
- * #16 closure marker. Historical databases may still contain the old Users
- * comparison setting even though SysUsers is now hard-locked to metadata UI.
- * Keep it inaccessible/read-only until the final #16 cleanup removes the
- * persisted row and all migration scaffolding.
+ * Historical #16 comparison settings may still exist in persisted development
+ * databases after the metadata-driven UI became authoritative. Keep every old
+ * migration setting hidden/read-only so stale rows cannot resurrect a retired
+ * UI engine or pollute the Configuration page.
  */
 const RETIRED_SYSBO_UI_MODES = new Set([
   'UI_SYSBO_USERS_VIEW_MODE',
   'UI_SYSBO_PRINCIPALS_VIEW_MODE',
   'UI_SYSBO_APPLICATIONS_VIEW_MODE',
   'UI_SYSBO_LICENSES_VIEW_MODE',
+  'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE',
 ]);
 
 export class SysBOConfigurationService extends GenericSysBOService<SysBOConfiguration> {

@@ -61,6 +61,60 @@ function checked(definition: ExpressionFunctionDefinition): ExpressionFunctionDe
   };
 }
 
+
+
+const durationDayMs = 24 * 60 * 60 * 1000;
+
+function parseCalendarDate(value: unknown): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(String(value ?? ''));
+  if (!match) return null;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatCalendarDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
+function daysInCalendarMonth(year: number, monthIndex: number): number {
+  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+}
+
+function withClampedCalendarYearMonth(date: Date, year: number, monthIndex: number): Date {
+  const day = Math.min(date.getUTCDate(), daysInCalendarMonth(year, monthIndex));
+  return new Date(Date.UTC(year, monthIndex, day));
+}
+
+function normalizeDurationValue(value: unknown): {years: number; months: number; days: number} | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const part = (key: string) => {
+    const numeric = Number(source[key] ?? 0);
+    return Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : 0;
+  };
+  return {years: part('years'), months: part('months'), days: part('days')};
+}
+
+function addCalendarDurationValue(start: Date, duration: {years: number; months: number; days: number}): Date {
+  let cursor = withClampedCalendarYearMonth(start, start.getUTCFullYear() + duration.years, start.getUTCMonth());
+  const monthTotal = cursor.getUTCFullYear() * 12 + cursor.getUTCMonth() + duration.months;
+  cursor = withClampedCalendarYearMonth(cursor, Math.floor(monthTotal / 12), monthTotal % 12);
+  return new Date(cursor.getTime() + duration.days * durationDayMs);
+}
+
+function calendarDurationBetweenValues(start: Date, end: Date): {years: number; months: number; days: number} | null {
+  if (end.getTime() < start.getTime()) return null;
+  let years = Math.max(0, end.getUTCFullYear() - start.getUTCFullYear());
+  while (years > 0 && addCalendarDurationValue(start, {years, months: 0, days: 0}).getTime() > end.getTime()) years -= 1;
+  let cursor = addCalendarDurationValue(start, {years, months: 0, days: 0});
+  let months = Math.max(0, (end.getUTCFullYear() - cursor.getUTCFullYear()) * 12 + end.getUTCMonth() - cursor.getUTCMonth());
+  while (months > 0 && addCalendarDurationValue(cursor, {years: 0, months, days: 0}).getTime() > end.getTime()) months -= 1;
+  cursor = addCalendarDurationValue(cursor, {years: 0, months, days: 0});
+  const days = Math.max(0, Math.round((end.getTime() - cursor.getTime()) / durationDayMs));
+  return {years, months, days};
+}
+
 /**
  * Hard-coded, keyed expression-function registry.
  *
@@ -152,6 +206,41 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}T00:00`;
+    },
+  }),
+
+
+  /** Calendar-aware date + {years,months,days}; months/years are never flattened to days. */
+  CalendarAddDuration: checked({
+    name: 'CalendarAddDuration',
+    signature: {
+      text: 'CalendarAddDuration(startDate: string, duration)',
+      minArguments: 2,
+      maxArguments: 2,
+      argumentTypes: ['string', 'any'],
+    },
+    evaluate: ([startValue, durationValue]) => {
+      const start = parseCalendarDate(startValue);
+      const duration = normalizeDurationValue(durationValue);
+      if (!start || !duration) return null;
+      return formatCalendarDate(addCalendarDurationValue(start, duration));
+    },
+  }),
+
+  /** Calendar-aware inverse of CalendarAddDuration, returning {years,months,days}. */
+  CalendarDurationBetween: checked({
+    name: 'CalendarDurationBetween',
+    signature: {
+      text: 'CalendarDurationBetween(startDate: string, endDate: string)',
+      minArguments: 2,
+      maxArguments: 2,
+      argumentTypes: ['string', 'string'],
+    },
+    evaluate: ([startValue, endValue]) => {
+      const start = parseCalendarDate(startValue);
+      const end = parseCalendarDate(endValue);
+      if (!start || !end) return null;
+      return calendarDurationBetweenValues(start, end);
     },
   }),
 

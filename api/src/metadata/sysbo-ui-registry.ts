@@ -1,14 +1,14 @@
-import type { SysBOMetadata, SysBOUIMetadata } from '@manatos/shared';
-
 import {
   sysBOUsersUIMetadata,
   sysBOPrincipalsUIMetadata,
   sysBOApplicationsUIMetadata,
   sysBOLicensesUIMetadata,
-  sysBOExtAuthProvidersUIMetadata
-} from './sysbo-ui-definitions.js';
+  sysBOExtAuthProvidersUIMetadata,
+  type SysBOMetadata,
+  type SysBOUIMetadata,
+} from '@manatos/shared';
 
-/** Registry for every SysBO participating in the #16 UI migration. */
+/** Authoritative framework-neutral UI metadata registry for generic SysBO pages. */
 export const allSysBOUIMetadata: Readonly<Record<string, SysBOUIMetadata>> = {
   [sysBOUsersUIMetadata.key]: sysBOUsersUIMetadata,
   [sysBOPrincipalsUIMetadata.key]: sysBOPrincipalsUIMetadata,

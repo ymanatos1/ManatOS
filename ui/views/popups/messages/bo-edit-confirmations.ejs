@@ -79,6 +79,15 @@
               };
             }
 
+            if (impact.action === 'retain') {
+              return {
+                icon: 'bi-person-check',
+                tone: 'text-warning-emphasis',
+                title: 'related record(s) will be retained',
+                detail: 'The related records remain unchanged. They may temporarily lose functionality that depends on this configuration until an equivalent configuration exists again.',
+              };
+            }
+
             return {
               icon: 'bi-ban',
               tone: 'text-danger',
@@ -92,6 +101,16 @@
             Are you sure you want to permanently delete
             <strong><%= deletePresentation.displayValue %></strong>?
           </p>
+
+          <div class="alert alert-warning mt-3 mb-0 d-none" role="alert" data-delete-unsaved-warning>
+            <div class="fw-semibold">
+              <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
+              Unsaved changes will also be lost
+            </div>
+            <div class="small mt-1">
+              You changed this entry after opening it. Continuing with Delete permanently discards both your unsaved changes and the saved record itself.
+            </div>
+          </div>
 
           <div
             class="border rounded-3 p-3 mt-3 <%= deleteBlocked ? 'border-danger-subtle bg-danger-subtle' : 'bg-body-tertiary' %>"
@@ -207,7 +226,8 @@
         <div class="modal-body">
           Remove the stored Client ID and Client secret for
           <strong><%= deletePresentation.displayValue %></strong>?
-          <p class="text-danger mt-2 mb-0">The provider will also be disabled. New credentials must be tested successfully before it can be enabled again.</p>
+          <p class="text-danger mt-2 mb-1">This command is applied immediately: the stored credential pair will be removed and the provider will also be disabled.</p>
+          <p class="text-danger mb-0">The Secrets tab will reopen ready for a replacement pair. New credentials must be tested successfully before the provider can be enabled again.</p>
         </div>
 
         <%- include('../partials/popup-footer', {

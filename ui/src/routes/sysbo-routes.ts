@@ -28,6 +28,7 @@ import { requireSignedIn } from '../middleware/auth.js';
 import { requireCsrf } from '../middleware/csrf.js';
 
 import { renderPage } from '../render.js';
+import { metadataComponentPartialFor } from '../presentation/metadata-component-registry.js';
 
 import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
 
@@ -35,10 +36,10 @@ import { addSessionError } from '../errors/session-error-log.js';
 
 import { getSysBODefinition } from '../sysbo/definitions.js';
 
-import type { SysBODefinition, SysBOEditTabDefinition } from '../sysbo/types.js';
+import type { SysBODefinition } from '../sysbo/types.js';
 
 import { externalIdentitiesForUser } from '../auth/user-authentication.js';
-import { refreshExternalProviderRegistry } from '../auth/external-providers.js';
+import { refreshExternalProviderRegistry } from '../auth/providers/runtime-registry.js';
 import { configurePassport } from '../auth/passport.js';
 import {
   contextFields,
@@ -65,8 +66,7 @@ interface ExternalAuthProviderDefinition {
   secretsHelp: {
     title: string;
     introduction: string;
-    clientId: string[];
-    clientSecret: string[];
+    sections: Array<{ title: string; steps: string[] }>;
     warning?: string;
   };
 }
@@ -83,29 +83,7 @@ const pathByKey: Record<string, string> = {
   'sys-ext-auth-providers': 'SysExtAuthProviders',
 };
 
-/**
- * Current generic SysBO list payload.
- */
-type SysBOUiImplementation = 'current' | 'metadata';
-
-const CURRENT_SYSBO_UI: SysBOUiImplementation = 'current';
-const METADATA_SYSBO_UI: SysBOUiImplementation = 'metadata';
-
-/**
- * Temporary persisted #16 selector settings. These live in SysConfiguration so
- * the comparison choice survives browser/server-session changes while the
- * migration is in progress. Remove the settings and this map when #16 closes.
- */
-const sysBOUiViewModeConfigurationNameByKey: Readonly<Record<string, string>> = {
-  'sys-ext-auth-providers': 'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE',
-};
-
-interface SysBOUiViewModeConfigurationItem {
-  id: string;
-  name: string;
-  value: string | null;
-}
-
+/** Generic SysBO list payload returned by the API. */
 interface SysBOListData<T> {
   items: T[];
 
@@ -140,12 +118,12 @@ function applySysBOListContext(
     ctx,
     definition.key,
     metadata ?? definition.boMetadata,
-    uiMetadata ?? definition.uiMetadata,
+    uiMetadata,
   );
 
   const effectiveUI = uiMetadata as SysBOUIMetadata | undefined;
   const filterFields = effectiveUI?.list?.filterFields
-    ?? definition.uiMetadata.filterDefinition.fields;
+    ?? [];
   const safeQuery = query && typeof query === 'object' && !Array.isArray(query)
     ? query as Readonly<Record<string, unknown>>
     : {};
@@ -192,7 +170,7 @@ function applySysBOEntryContext(
     ctx,
     definition.key,
     metadata ?? definition.boMetadata,
-    uiMetadata ?? definition.uiMetadata,
+    uiMetadata,
   );
 
   const runtimeEntryValues =
@@ -201,7 +179,7 @@ function applySysBOEntryContext(
       : entry ?? {};
 
   const canonical = (metadata ?? definition.boMetadata) as SysBOMetadata<Record<string, unknown>>;
-  const ui = (uiMetadata ?? definition.uiMetadata) as SysBOUIMetadata | undefined;
+  const ui = uiMetadata as SysBOUIMetadata | undefined;
 
   /*
    * Build one normalized record-shaped baseline before creating either the
@@ -248,7 +226,7 @@ function applySysBOEntryContext(
       initialRecordValues[key] = staticCreateDefault;
     } else if (field.type === 'boolean') {
       initialRecordValues[key] = false;
-    } else if (field.type === 'string' || field.type === 'email') {
+    } else if (field.type === 'string' || field.type === 'email' || field.type === 'version') {
       initialRecordValues[key] = '';
     } else {
       // guid/date/number/enum/reference have a natural empty CTX value of null.
@@ -357,7 +335,7 @@ function applySysBOEntryContext(
     ? parentList.query as Readonly<Record<string, unknown>>
     : {};
   const parentFilterFields = ui?.list?.filterFields
-    ?? definition.uiMetadata.filterDefinition.fields;
+    ?? [];
 
   /*
    * The entry page is a logical child of the list page, not a replacement for
@@ -395,287 +373,49 @@ export function createSysBORoutes() {
   router.use(requireSignedIn);
 
   /**
-   * Temporary #16 migration switch between the current entity-specific EJS
-   * implementation and the emerging shared metadata-driven SysBO UI engine.
-   *
-   * The choice is per SysBO and per authenticated browser session so the two
-   * implementations can be compared repeatedly without changing persisted
-   * application configuration. SysBOConfiguration is intentionally excluded.
+   * All generic SysBO administration pages now use the canonical metadata-driven
+   * renderer. The metadata-driven contract is the only generic SysBO page engine.
    */
-  router.post('/:key/ui-implementation', requireCsrf, async (req, res, next) => {
+  router.get('/:key', async (req, res, next) => {
     try {
-      const key = routeParam(req.params.key);
-      const definition = getSysBODefinition(key);
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      if (definition.key === 'sys-ext-auth-providers') delete req.session.pendingExtAuthCredentialTest;
       const currentUser = res.locals.currentUser as SysBOUser | null;
-
-      requireSysBOUiMigrationAccess(currentUser, definition);
-
-      const requested = String(req.body.implementation ?? '').trim();
-      if (requested !== CURRENT_SYSBO_UI && requested !== METADATA_SYSBO_UI) {
-        throw createError(400, 'Unknown SysBO UI implementation.');
-      }
-
-      await persistSysBOUiImplementation(req, definition, requested);
-
-      res.redirect(safeSysBOReturnPath(req.body.returnPath, definition.key));
+      const permissions = uiPermissions(currentUser, definition);
+      requirePermission(permissions.view, 'Read access is required for this entity.');
+      await renderMetadataDrivenList(req, res, definition, permissions);
     } catch (error) {
       next(error);
     }
   });
 
-  /**
-   * List one SysBO.
-   */
-  router.get(
-    '/:key',
+  router.get('/:key/new', async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition);
+      requirePermission(permissions.create, 'Create access is required for this entity.');
+      await renderMetadataDrivenRecord(req, res, definition, permissions, { isNew: true });
+    } catch (error) {
+      next(error);
+    }
+  });
 
-    async (req, res, next) => {
-      try {
-        const key = routeParam(req.params.key);
-
-        if (key === 'sys-ext-auth-providers') {
-          delete req.session.pendingExtAuthCredentialTest;
-        }
-
-        const definition = getSysBODefinition(key);
-
-        const currentUser = res.locals.currentUser as SysBOUser | null;
-
-        const permissions = uiPermissions(currentUser, definition);
-        requirePermission(permissions.view, 'Read access is required for this entity.');
-
-        const uiImplementation = await sysBOUiImplementation(req, currentUser, definition);
-        if (uiImplementation === METADATA_SYSBO_UI) {
-          await renderMetadataDrivenListPlaceholder(req, res, definition, permissions);
-          return;
-        }
-
-        const apiPath = apiPathFor(definition.key);
-
-        const query = listQuery(req, definition);
-
-        const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
-          `/api/v1/${apiPath}?${query}`,
-
-          apiSessionOptions(req),
-        );
-
-        let hasAnyEntries = response.data.paging.total > 0;
-        let allExternalProvidersConfigured = false;
-        if (definition.key === 'sys-ext-auth-providers') {
-          const defs = (await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>('/api/v1/SysExtAuthProviders/definitions', apiSessionOptions(req))).data.providers;
-          allExternalProvidersConfigured = response.data.paging.total >= defs.length;
-        }
-        const filtersActive = hasActiveFilters(req, definition);
-
-        // If a filtered result is empty, distinguish "entity is empty" from
-        // "entries exist but none match the current filters".
-        if (!hasAnyEntries && filtersActive) {
-          const unfiltered = await apiClient.get<SysBOListData<Record<string, unknown>>>(
-            `/api/v1/${apiPath}?page=1&pageSize=1`,
-            apiSessionOptions(req),
-          );
-
-          hasAnyEntries = unfiltered.data.paging.total > 0;
-        }
-
-        const listPage = applySysBOListContext(res, definition, {
-          metadata: definition.boMetadata,
-          uiMetadata: definition.uiMetadata,
-          items: response.data.items,
-          paging: response.data.paging,
-          query: { ...req.query, pageSize: String(response.data.paging.pageSize) },
-          permissions,
-        });
-        const listItems = listPage.dataList ?? [];
-
-        await renderPage(
-          res,
-          'pages/bo-list',
-
-          {
-            title: definition.uiMetadata.listViewModel.title,
-            titleIcon: definition.uiMetadata.icon,
-
-            definition,
-            permissions,
-            ...sysBOUiSelectorModel(req, currentUser, definition, CURRENT_SYSBO_UI),
-            hasAnyEntries,
-            allExternalProvidersConfigured,
-
-            items: listItems,
-
-            paging: response.data.paging,
-
-            query: {
-              ...req.query,
-
-              /**
-               * Keep the effective page size in the rendered query model even
-               * when it came from the current ManatOS UI session rather than
-               * explicitly from this request URL.
-               *
-               * This makes paging/sorting links and the Rows selector preserve
-               * the same session-wide selection consistently.
-               */
-              pageSize: String(response.data.paging.pageSize),
-            },
-          },
-        );
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
-  /**
-   * Display create form.
-   */
-  router.get(
-    '/:key/new',
-
-    async (req, res, next) => {
-      try {
-        const definition = getSysBODefinition(routeParam(req.params.key));
-        const currentUser = res.locals.currentUser as SysBOUser | null;
-        const permissions = uiPermissions(currentUser, definition);
-        requirePermission(permissions.create, 'Create access is required for this entity.');
-
-        const uiImplementation = await sysBOUiImplementation(req, currentUser, definition);
-        if (uiImplementation === METADATA_SYSBO_UI) {
-          await renderMetadataDrivenRecordPlaceholder(req, res, definition, permissions, {
-            isNew: true,
-          });
-          return;
-        }
-
-        const supplemental = await editPageSupplementalData(
-          req,
-          definition,
-          currentUser,
-          {},
-          true,
-        );
-
-        applySysBOEntryContext(res, definition, 'create', null, {
-          formValues: {},
-          metadata: definition.boMetadata,
-          uiMetadata: definition.uiMetadata,
-          permissions,
-          referenceData: supplemental.referenceData,
-          externalIdentities: supplemental.relatedData.externalIdentities,
-          activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
-        });
-
-        await renderPage(
-          res,
-          'pages/bo-edit',
-
-          {
-            title: definition.uiMetadata.editViewModel.createTitle,
-            titleIcon: definition.uiMetadata.icon,
-
-            definition,
-            permissions,
-            ...sysBOUiSelectorModel(req, currentUser, definition, CURRENT_SYSBO_UI),
-
-            item: {},
-
-            isNew: true,
-
-            ...supplemental,
-            ...credentialTestResultPresentation(req),
-          },
-        );
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
-  /**
-   * Display edit form.
-   */
-  router.get(
-    '/:key/:id',
-
-    async (req, res, next) => {
-      try {
-        const key = routeParam(req.params.key);
-
-        const id = routeParam(req.params.id);
-
-        const definition = getSysBODefinition(key);
-        const currentUser = res.locals.currentUser as SysBOUser | null;
-        const permissions = uiPermissions(currentUser, definition, id);
-        requirePermission(permissions.view, 'Read access is required for this entity.');
-
-        const uiImplementation = await sysBOUiImplementation(req, currentUser, definition);
-        if (uiImplementation === METADATA_SYSBO_UI) {
-          await renderMetadataDrivenRecordPlaceholder(req, res, definition, permissions, {
-            isNew: false,
-            recordId: id,
-          });
-          return;
-        }
-
-        const apiPath = apiPathFor(definition.key);
-
-        const item = (
-          await apiClient.get<Record<string, unknown>>(
-            `/api/v1/${apiPath}/${id}`,
-
-            apiSessionOptions(req),
-          )
-        ).data;
-
-        const supplemental = await editPageSupplementalData(
-          req,
-          definition,
-          currentUser,
-          item,
-          false,
-        );
-        const recordMode = permissions.edit ? 'edit' : 'view';
-
-        applySysBOEntryContext(res, definition, recordMode, item, {
-          recordId: id,
-          formValues: item,
-          metadata: definition.boMetadata,
-          uiMetadata: definition.uiMetadata,
-          permissions,
-          referenceData: supplemental.referenceData,
-          externalIdentities: supplemental.relatedData.externalIdentities,
-          activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
-        });
-
-        await renderPage(
-          res,
-          'pages/bo-edit',
-
-          {
-            title: `${permissions.edit
-              ? definition.uiMetadata.editViewModel.editTitle
-              : definition.uiMetadata.editViewModel.editTitle.replace(/^Edit\b/, 'View')} - ${supplemental.primaryDisplayValue}`,
-            titleIcon: definition.uiMetadata.icon,
-
-            definition,
-            permissions,
-            ...sysBOUiSelectorModel(req, currentUser, definition, CURRENT_SYSBO_UI),
-
-            item,
-
-            isNew: false,
-
-            ...supplemental,
-            ...credentialTestResultPresentation(req),
-          },
-        );
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
+  router.get('/:key/:id', async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const id = routeParam(req.params.id);
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition, id);
+      requirePermission(permissions.view, 'Read access is required for this entity.');
+      await renderMetadataDrivenRecord(req, res, definition, permissions, {
+        isNew: false,
+        recordId: id,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   /**
    * Allow an Admin to explicitly verify another SysBOUser email address.
@@ -937,7 +677,11 @@ export function createSysBORoutes() {
       delete req.session.pendingExtAuthCredentialTest;
       await refreshExternalProviderRegistry();
       configurePassport();
-      res.redirect(`/bo/sys-ext-auth-providers/${id}`);
+      // Credential removal is an immediate trusted command. Return to the
+      // workflow that initiated it instead of falling back to the entry's
+      // default General tab. The freshly rendered Secrets component will now
+      // enter empty credential-edit mode automatically.
+      res.redirect(`/bo/sys-ext-auth-providers/${id}?tab=secrets`);
     } catch (error) {
       next(error);
     }
@@ -970,15 +714,32 @@ export function createSysBORoutes() {
 
         if (definition.key === 'sys-ext-auth-providers') {
           const pending = req.session.pendingExtAuthCredentialTest;
-          const provider = String(req.body.provider ?? '').trim().toLowerCase();
-          const pendingMatches =
+
+          /*
+           * Provider is immutable after creation. Its enum control is therefore
+           * disabled on edit pages and, by HTML design, disabled controls are
+           * omitted from form submission. Never turn that browser omission into
+           * an empty/unsupported provider, and do not trust a tampered hidden
+           * value either: for existing records resolve the provider identity from
+           * the persisted record at the API boundary. Create mode still takes the
+           * explicitly selected provider from the submitted form.
+           */
+          let provider = String(req.body.provider ?? '').trim().toLowerCase();
+          if (id) {
+            const existingProvider = await apiClient.get<Record<string, unknown>>(
+              `/api/v1/${apiPath}/${encodeURIComponent(id)}`,
+              apiSessionOptions(req),
+            );
+            provider = String(existingProvider.data.provider ?? '').trim().toLowerCase();
+          }
+
+          const verifiedPendingMatches =
             pending?.status === 'verified' &&
             pending.provider === provider &&
             (pending.recordId ?? '') === id &&
-            Boolean(pending.clientSecret) &&
             Date.now() - Date.parse(pending.createdAt) <= 10 * 60 * 1000;
 
-          if (pendingMatches) {
+          if (verifiedPendingMatches && pending?.clientSecret) {
             await apiClient.post(
               '/api/v1/internal/external-auth-providers/verified-credentials',
               {
@@ -998,6 +759,23 @@ export function createSysBORoutes() {
             configurePassport();
             res.redirect('/bo/sys-ext-auth-providers');
             return;
+          }
+
+          /*
+           * Testing an already-stored pair commits its verified flag in the
+           * callback itself and intentionally erases the pending plaintext
+           * secret. Consume that completed session state before the ordinary
+           * settings save rather than letting a stale verified workflow linger.
+           */
+          if (verifiedPendingMatches && pending?.usesStoredCredentials) {
+            delete req.session.pendingExtAuthCredentialTest;
+          } else if (verifiedPendingMatches && !pending?.clientSecret) {
+            throw new AppError(
+              'VALIDATION_ERROR',
+              'Verified provider credential state is incomplete.',
+              'The credential test completed but the pending credential pair is no longer available. Test the credentials again before saving.',
+              false,
+            );
           }
 
           let proposedClientId = String(req.body.clientId ?? '').trim();
@@ -1024,7 +802,12 @@ export function createSysBORoutes() {
             proposedClientSecret ||= pending.clientSecret ?? '';
           }
 
-          if (Boolean(proposedClientId) !== Boolean(proposedClientSecret)) {
+          const credentialMutationRequested =
+            req.body.providerCredentialMutation === 'true' ||
+            Boolean(proposedClientSecret) ||
+            unverifiedPendingMatches;
+
+          if (credentialMutationRequested && Boolean(proposedClientId) !== Boolean(proposedClientSecret)) {
             throw new AppError(
               'VALIDATION_ERROR',
               'Client ID and Client secret must be stored together.',
@@ -1033,7 +816,7 @@ export function createSysBORoutes() {
             );
           }
 
-          if (proposedClientId && proposedClientSecret) {
+          if (credentialMutationRequested && proposedClientId && proposedClientSecret) {
             await apiClient.post(
               '/api/v1/internal/external-auth-providers/stored-credentials',
               {
@@ -1133,40 +916,12 @@ export function createSysBORoutes() {
 
         addSessionError(req, appError);
 
-        await renderPage(
-          res,
-          'pages/bo-edit',
-
-          {
-            title: id
-              ? definition.uiMetadata.editViewModel.editTitle
-              : definition.uiMetadata.editViewModel.createTitle,
-            titleIcon: definition.uiMetadata.icon,
-
-            definition,
-            permissions,
-
-            item: {
-              ...req.body,
-              id,
-            },
-
-            isNew: !id,
-
-            ...(await editPageSupplementalData(
-              req,
-              definition,
-              res.locals.currentUser as SysBOUser | null,
-              {
-                ...req.body,
-                id,
-              },
-              !id,
-            )),
-
-            applicationError: appError,
-          },
-        );
+        await renderMetadataDrivenRecord(req, res, definition, permissions, {
+          isNew: !id,
+          ...(id ? { recordId: id } : {}),
+          itemOverride: { ...req.body, ...(id ? { id } : {}) },
+          applicationError: appError,
+        });
       }
     },
   );
@@ -1233,56 +988,14 @@ export function createSysBORoutes() {
     },
   );
 
-  /**
-   * Open the future SysBOApplication playground.
-   */
-  router.get(
-    '/sys-applications/:id/play',
-
-    async (req, res, next) => {
-      try {
-        const id = routeParam(req.params.id);
-
-        const definition = getSysBODefinition('sys-applications');
-        const permissions = uiPermissions(res.locals.currentUser as SysBOUser | null, definition);
-        requirePermission(permissions.view, 'Read access is required for applications.');
-
-        req.session.activeApplicationId = id;
-
-        const application = (
-          await apiClient.get<Record<string, unknown>>(
-            `/api/v1/SysApplications/${id}`,
-
-            apiSessionOptions(req),
-          )
-        ).data;
-
-        await renderPage(
-          res,
-          'pages/application-playground',
-
-          {
-            title: `${String(application.name)} Playground`,
-
-            application,
-          },
-        );
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
 
   return router;
 }
 
 /**
- * Build the shared data required by the generic SysBO edit/review page.
- *
- * Keeping this in one place is important because bo-edit.ejs is rendered
- * from several paths: create, edit/view, and save-error redisplay. Every
- * path must receive the same tab, authentication, and reference-data
- * contract.
+ * Build supplemental data required by the canonical metadata-driven SysBO
+ * record page (references, related collections, delete impact and domain
+ * component data that is intentionally outside ordinary CRUD payloads).
  */
 async function editPageSupplementalData(
   req: Request,
@@ -1292,15 +1005,10 @@ async function editPageSupplementalData(
   isNew: boolean,
   effectiveUIMetadata?: SysBOUIMetadata,
 ) {
-  const tabs = visibleEditTabs(definition, currentUser, isNew);
-
-  const showAuthenticationTab = tabs.some((tab) => tab.id === 'authentication');
-
   const itemId = typeof item.id === 'string' ? item.id : '';
 
-  const maySeeOwnAuthentication = Boolean(currentUser && itemId && currentUser.id === itemId);
   const authenticationIdentities =
-    definition.key === 'sys-users' && !isNew && itemId && (showAuthenticationTab || maySeeOwnAuthentication)
+    definition.key === 'sys-users' && !isNew && itemId
       ? await externalIdentitiesForUser(itemId)
       : [];
 
@@ -1362,7 +1070,7 @@ async function editPageSupplementalData(
             objectName: string;
             relationship: string;
             count: number;
-            action: 'restrict' | 'cascade' | 'set-null' | 'unlink';
+            action: 'restrict' | 'cascade' | 'set-null' | 'unlink' | 'retain';
             confirmation: 'silent' | 'confirm' | 'inherit';
           }>;
         }>(
@@ -1392,19 +1100,32 @@ async function editPageSupplementalData(
     displayValue = providerDefinition?.label ?? displayValue.replace(/^./, (character) => character.toUpperCase());
   }
 
+  const pageReferenceData = await references(req, definition);
+  if (definition.key === 'sys-ext-auth-providers') {
+    /*
+     * Contextual enum options use the same generic CTX `.options` contract as
+     * references. In create mode this naturally removes already-configured
+     * providers without teaching the renderer about provider identities.
+     */
+    pageReferenceData.provider = externalAuthProviderDefinitions.map((providerDefinition) => ({
+      value: providerDefinition.provider,
+      label: providerDefinition.label,
+      icon: providerDefinition.icon.replace(/^bi-/, ''),
+      callbackPath: providerDefinition.callbackPath,
+      tenant: providerDefinition.tenant ?? null,
+    }));
+  }
+
   return {
-    tabs,
     authenticationIdentities,
     // Generic page-context bucket consumed by metadata-driven related collections.
     relatedData,
     relatedReferenceData,
-    referenceData: await references(req, definition),
+    referenceData: pageReferenceData,
     primaryDisplayValue: displayValue,
     deletePresentation: {
       displayValue,
-      entityLabel:
-        definition.uiMetadata.editViewModel.deleteEntityLabel ??
-        definition.uiMetadata.editViewModel.editTitle.replace(/^Edit\s+/i, ''),
+      entityLabel: definition.boMetadata.name,
     },
     deleteImpact,
 
@@ -1444,17 +1165,7 @@ function credentialTestResultPresentation(req: Request) {
   return {};
 }
 
-/**
- * Resolve the tabs visible to the current website role.
- *
- * visible:
- *   omitted/true  -> visible (default)
- *   false         -> hidden
- *   { roles: [] } -> visible only to one of the listed roles
- *
- * Authentication is meaningful only for an existing SysBOUser, so it is
- * suppressed automatically on the create page.
- */
+/** Return short-lived provider credential-test state for the current metadata page. */
 function credentialTestForPage(
   req: Request,
   item: Record<string, unknown>,
@@ -1475,36 +1186,6 @@ function credentialTestForPage(
     errorMessage: pending.errorMessage,
     hasPendingSecret: Boolean(pending.clientSecret),
   };
-}
-
-function visibleEditTabs(
-  definition: SysBODefinition,
-  user: SysBOUser | null,
-  isNew: boolean,
-): SysBOEditTabDefinition[] {
-  const configuredTabs = definition.uiMetadata.editViewModel.tabs ?? [
-    {
-      id: 'general',
-      title: 'General info',
-      icon: 'bi-info-circle',
-    },
-  ];
-
-  return configuredTabs.filter((tab) => {
-    if (isNew && tab.id === 'authentication') {
-      return false;
-    }
-
-    if (tab.visible === false) {
-      return false;
-    }
-
-    if (tab.visible === undefined || tab.visible === true) {
-      return true;
-    }
-
-    return Boolean(user && tab.visible.roles.includes(user.role));
-  });
 }
 
 interface UIEntityPermissions {
@@ -1556,77 +1237,6 @@ function requirePermission(allowed: boolean, message: string): void {
   }
 }
 
-function hasActiveFilters(req: Request, definition: SysBODefinition): boolean {
-  return definition.uiMetadata.filterDefinition.fields.some((field) => {
-    const value = req.query[`filter.${field}`];
-    return typeof value === 'string' && value.length > 0;
-  });
-}
-
-/**
- * Build list query parameters from the current UI request.
- */
-function listQuery(
-  req: Request,
-
-  definition: SysBODefinition,
-): string {
-  const params = new URLSearchParams();
-
-  params.set(
-    'page',
-
-    String(req.query.page ?? 1),
-  );
-
-  const pagination = definition.uiMetadata.paginationConfiguration;
-  const requestedPageSize = Number(req.query.pageSize);
-
-  /**
-   * Page size is a UI-session preference shared by every SysBO list.
-   *
-   * An explicit valid pageSize in the current request updates the session
-   * preference. Requests that omit pageSize (for example Filter/Clear or
-   * opening another entity list) reuse the current session preference.
-   *
-   * A newly authenticated ManatOS session has no stored value, so it starts
-   * from the configured default page size.
-   */
-  if (pagination.allowedPageSizes.includes(requestedPageSize)) {
-    req.session.uiPageSize = requestedPageSize;
-  }
-
-  const sessionPageSize = req.session.uiPageSize;
-  const pageSize =
-    typeof sessionPageSize === 'number' && pagination.allowedPageSizes.includes(sessionPageSize)
-      ? sessionPageSize
-      : pagination.defaultPageSize;
-
-  params.set(
-    'pageSize',
-
-    String(pageSize),
-  );
-
-  if (typeof req.query.sort === 'string') {
-    params.set('sort', req.query.sort);
-  }
-
-  if (req.query.direction === 'desc') {
-    params.set('direction', 'desc');
-  }
-
-  for (const field of definition.uiMetadata.filterDefinition.fields) {
-    const value = req.query[`filter.${field}`];
-
-    if (typeof value === 'string' && value) {
-      params.set(`filter.${field}`, value);
-    }
-  }
-
-  return params.toString();
-}
-
 /**
  * Convert posted form values into UI-neutral SysBO data.
  */
@@ -1651,12 +1261,64 @@ function formPayload(
       continue;
     }
 
+    // External-provider credentials are a trusted compound command, never
+    // ordinary CRUD fields. Client ID therefore travels only through the
+    // credential workflow together with its secret.
+    if (definition.key === 'sys-ext-auth-providers' && field.key === 'clientId') {
+      continue;
+    }
+
     const raw = body[field.key];
 
     if (field.type === 'boolean') {
       output[field.key] = raw === 'on' || raw === 'true' || raw === true;
     } else if (field.type === 'number') {
       output[field.key] = Number(raw ?? 0);
+    } else if (field.type === 'duration') {
+      if (raw === undefined || raw === '') {
+        if (field.nullable) output[field.key] = null;
+        continue;
+      }
+
+      let parsed: unknown = raw;
+      if (typeof raw === 'string') {
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          throw new AppError(
+            'VALIDATION_ERROR',
+            `Invalid duration payload for ${field.key}.`,
+            `${field.label} is not a valid duration.`,
+            false,
+          );
+        }
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new AppError(
+          'VALIDATION_ERROR',
+          `Invalid duration payload for ${field.key}.`,
+          `${field.label} is not a valid duration.`,
+          false,
+        );
+      }
+      const source = parsed as Record<string, unknown>;
+      const durationPart = (key: 'years' | 'months' | 'days') => {
+        const value = Number(source[key] ?? 0);
+        if (!Number.isInteger(value) || value < 0) {
+          throw new AppError(
+            'VALIDATION_ERROR',
+            `Duration ${field.key}.${key} must be a non-negative integer.`,
+            `${field.label} must use whole, non-negative years, months and days.`,
+            false,
+          );
+        }
+        return value;
+      };
+      output[field.key] = {
+        years: durationPart('years'),
+        months: durationPart('months'),
+        days: durationPart('days'),
+      };
     } else if (raw !== undefined && raw !== '') {
       output[field.key] = raw;
     } else if (field.nullable) {
@@ -1664,10 +1326,6 @@ function formPayload(
     }
   }
 
-  if (definition.key === 'sys-ext-auth-providers') {
-    const clientSecret = String(body.clientSecret ?? '').trim();
-    if (clientSecret) output.clientSecret = clientSecret;
-  }
 
   return output;
 }
@@ -1699,7 +1357,11 @@ async function references(
       apiSessionOptions(req),
     );
 
-    output[field.key] = response.data.items;
+    const referencedDefinition = getSysBODefinition(field.referenceBOKey);
+    output[field.key] = response.data.items.map((item) => ({
+      ...(item as Record<string, unknown>),
+      __entityIcon: referencedDefinition.icon.replace(/^bi-/, ''),
+    }));
   }
 
   return output;
@@ -1719,134 +1381,9 @@ function apiPathFor(key: string): string {
 }
 
 /**
- * SysBOConfiguration deliberately keeps its purpose-built administration page.
- * All other UI-visible SysBO definitions are eligible for the #16 migration.
- */
-function isMetadataDrivenUiEligible(definition: SysBODefinition): boolean {
-  return definition.key !== 'sys-configurations';
-}
-
-/**
- * The temporary comparison switch is Admin-only so incomplete target pages are
- * never exposed accidentally to ordinary application users during migration.
- */
-function canSelectSysBOUiImplementation(
-  currentUser: SysBOUser | null,
-  definition: SysBODefinition,
-): boolean {
-  // #16 closure stage: completed entities are locked to the metadata-driven engine.
-  // Keep the generic comparison infrastructure only for SysBOs still being migrated.
-  if (definition.key === 'sys-users' || definition.key === 'sys-principals' || definition.key === 'sys-applications' || definition.key === 'sys-licenses') return false;
-  return currentUser?.role === SysBOUserRole.Admin && isMetadataDrivenUiEligible(definition);
-}
-
-function requireSysBOUiMigrationAccess(
-  currentUser: SysBOUser | null,
-  definition: SysBODefinition,
-): void {
-  if (!canSelectSysBOUiImplementation(currentUser, definition)) {
-    throw createError(403, 'Admin access is required to switch the SysBO UI implementation.');
-  }
-}
-
-/**
- * #16-complete SysUsers, SysPrincipals, SysApplications and SysLicenses are hard-locked to Metadata-driven.
- * Current EJS remains the default only for SysBOs whose #16 migration is still
- * in progress, where Metadata-driven mode remains an Admin-selected comparison.
- */
-async function sysBOUiImplementation(
-  req: Request,
-  currentUser: SysBOUser | null,
-  definition: SysBODefinition,
-): Promise<SysBOUiImplementation> {
-  // #16 closure stage: completed entities no longer participate in the
-  // Current-EJS comparison. Their legacy entity-specific EJS metadata remains
-  // only as explicitly disposable compatibility code until final #16 cleanup.
-  if (definition.key === 'sys-users' || definition.key === 'sys-principals' || definition.key === 'sys-applications' || definition.key === 'sys-licenses') return METADATA_SYSBO_UI;
-
-  if (!canSelectSysBOUiImplementation(currentUser, definition)) {
-    return CURRENT_SYSBO_UI;
-  }
-
-  const configurationName = sysBOUiViewModeConfigurationNameByKey[definition.key];
-  if (!configurationName) {
-    return CURRENT_SYSBO_UI;
-  }
-
-  const items = await loadSysBOUiViewModeConfigurations(req);
-  const setting = items.find((item) => item.name === configurationName);
-
-  return setting?.value === 'MetadataDriven' ? METADATA_SYSBO_UI : CURRENT_SYSBO_UI;
-}
-
-async function loadSysBOUiViewModeConfigurations(
-  req: Request,
-): Promise<SysBOUiViewModeConfigurationItem[]> {
-  const response = await apiClient.get<{ items: SysBOUiViewModeConfigurationItem[] }>(
-    '/api/v1/SysConfigurations',
-    apiSessionOptions(req),
-  );
-
-  return response.data.items;
-}
-
-async function persistSysBOUiImplementation(
-  req: Request,
-  definition: SysBODefinition,
-  implementation: SysBOUiImplementation,
-): Promise<void> {
-  const configurationName = sysBOUiViewModeConfigurationNameByKey[definition.key];
-  if (!configurationName) {
-    throw createError(400, 'This SysBO does not participate in the #16 UI migration.');
-  }
-
-  const items = await loadSysBOUiViewModeConfigurations(req);
-  const setting = items.find((item) => item.name === configurationName);
-  if (!setting) {
-    throw createError(500, `Missing temporary #16 SysConfiguration setting '${configurationName}'.`);
-  }
-
-  await apiClient.patch(
-    `/api/v1/SysConfigurations/${encodeURIComponent(setting.id)}/value`,
-    { value: implementation === METADATA_SYSBO_UI ? 'MetadataDriven' : 'CurrentEJS' },
-    apiSessionOptions(req),
-  );
-}
-
-function sysBOUiSelectorModel(
-  req: Request,
-  currentUser: SysBOUser | null,
-  definition: SysBODefinition,
-  implementation: SysBOUiImplementation,
-) {
-  return {
-    sysBOUiImplementation: implementation,
-    sysBOUiImplementationSelectable: canSelectSysBOUiImplementation(currentUser, definition),
-    sysBOUiReturnPath: req.originalUrl,
-    sysBOUiActiveTab: typeof req.query.tab === 'string' ? req.query.tab : '',
-  };
-}
-
-/**
- * Keep the post-switch redirect inside the selected SysBO routes. This preserves
- * list query strings and record URLs without accepting an arbitrary redirect.
- */
-function safeSysBOReturnPath(value: unknown, key: string): string {
-  const candidate = String(value ?? '');
-  const prefix = `/bo/${key}`;
-
-  return candidate === prefix ||
-    candidate.startsWith(`${prefix}/`) ||
-    candidate.startsWith(`${prefix}?`)
-    ? candidate
-    : prefix;
-}
-
-/**
- * Load the canonical, UI-neutral SysBO metadata through the public API
- * boundary. The #16 renderer intentionally does not import entity-specific
- * UI definitions: even the current EJS implementation is treated as an API
- * client while the metadata-driven engine is developed.
+ * Load canonical, UI-neutral SysBO metadata through the public API boundary.
+ * Generic administration pages are metadata-driven only; no local Current-EJS
+ * presentation contract participates in this path anymore.
  */
 async function canonicalSysBOMetadata(
   req: Request,
@@ -1927,13 +1464,12 @@ function metadataDrivenListQuery(
   return { params, pageSizeOptions: safePageSizeOptions, query };
 }
 
-async function renderMetadataDrivenListPlaceholder(
+async function renderMetadataDrivenList(
   req: Request,
   res: Response,
   definition: SysBODefinition,
   permissions: ReturnType<typeof uiPermissions>,
 ): Promise<void> {
-  const currentUser = res.locals.currentUser as SysBOUser | null;
   const [metadata, metadataUI] = await Promise.all([
     canonicalSysBOMetadata(req, definition),
     canonicalSysBOUIMetadata(req, definition),
@@ -1958,15 +1494,21 @@ async function renderMetadataDrivenListPlaceholder(
     hasAnyEntries = unfiltered.data.paging.total > 0;
   }
 
-  let allExternalProvidersConfigured = false;
-  if (definition.key === 'sys-ext-auth-providers') {
-    const definitions = (
-      await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>(
-        '/api/v1/SysExtAuthProviders/definitions',
-        apiSessionOptions(req),
-      )
-    ).data.providers;
-    allExternalProvidersConfigured = response.data.paging.total >= definitions.length;
+  let addActionDisabled = false;
+  const addConstraintFieldKey = metadataUI.list.addAction.disableWhenAllEnumValuesExistForField;
+  if (addConstraintFieldKey) {
+    const constraintField = metadata.fieldDefinition[addConstraintFieldKey];
+    if (constraintField?.type === 'enum' && (constraintField.enumValues?.length ?? 0) > 0) {
+      let totalEntries = response.data.paging.total;
+      if (filtersActive) {
+        const unfiltered = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+          `/api/v1/${apiPath}?page=1&pageSize=1`,
+          apiSessionOptions(req),
+        );
+        totalEntries = unfiltered.data.paging.total;
+      }
+      addActionDisabled = totalEntries >= (constraintField.enumValues?.length ?? 0);
+    }
   }
 
   const listReferenceFields = [...new Set([
@@ -1992,19 +1534,19 @@ async function renderMetadataDrivenListPlaceholder(
 
   await renderPage(res, 'pages/metadata-driven/bo-list-metadata', {
     title: metadata.pluralName,
-    titleIcon: definition.uiMetadata.icon,
+    titleIcon: definition.icon,
     definition,
     metadata,
     metadataUI,
     permissions,
     hasAnyEntries,
-    allExternalProvidersConfigured,
+    addActionDisabled,
     referenceData: listReferenceData,
     items: listItems,
     paging: response.data.paging,
     pageSizeOptions: listQuery.pageSizeOptions,
     query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
-    ...sysBOUiSelectorModel(req, currentUser, definition, METADATA_SYSBO_UI),
+    metadataComponentPartialFor,
   });
 }
 
@@ -2068,12 +1610,17 @@ async function parentListContextForEntry(
   };
 }
 
-async function renderMetadataDrivenRecordPlaceholder(
+async function renderMetadataDrivenRecord(
   req: Request,
   res: Response,
   definition: SysBODefinition,
   permissions: ReturnType<typeof uiPermissions>,
-  record: { isNew: boolean; recordId?: string },
+  record: {
+    isNew: boolean;
+    recordId?: string;
+    itemOverride?: Record<string, unknown>;
+    applicationError?: AppError;
+  },
 ): Promise<void> {
   const currentUser = res.locals.currentUser as SysBOUser | null;
   const effectivePermissions = record.isNew
@@ -2091,14 +1638,14 @@ async function renderMetadataDrivenRecordPlaceholder(
     throw createError(500, `Primary field '${metadata.primaryField}' is missing from ${metadata.key} metadata.`);
   }
 
-  const item = record.recordId
+  const item = record.itemOverride ?? (record.recordId
     ? (
         await apiClient.get<Record<string, unknown>>(
           `/api/v1/${apiPathFor(definition.key)}/${record.recordId}`,
           apiSessionOptions(req),
         )
       ).data
-    : {};
+    : {});
 
   const supplemental = await editPageSupplementalData(
     req,
@@ -2127,9 +1674,9 @@ async function renderMetadataDrivenRecordPlaceholder(
       metadata,
       // applySysBOEntryContext expects the effective UI contract under the
       // uiMetadata key. Passing `metadataUI` as a shorthand property silently
-      // left that parameter undefined, causing the CTX entity registry to fall
-      // back to definition.uiMetadata. The renderer still received metadataUI,
-      // so server presentation looked correct, but the compiled browser AST for
+      // left that parameter undefined, so the CTX entity registry missed the
+      // effective UI metadata even though the renderer itself received it. The
+      // compiled browser AST for
       // reactive field rules (for example Parent principal editability) was absent.
       uiMetadata: metadataUI,
       permissions: effectivePermissions,
@@ -2146,7 +1693,7 @@ async function renderMetadataDrivenRecordPlaceholder(
 
   await renderPage(res, 'pages/metadata-driven/bo-entry-metadata', {
     title: `${modeLabel} ${metadata.name}${primaryDisplayValue}`,
-    titleIcon: definition.uiMetadata.icon,
+    titleIcon: definition.icon,
     definition,
     metadata,
     metadataUI,
@@ -2156,7 +1703,9 @@ async function renderMetadataDrivenRecordPlaceholder(
     recordId: record.recordId ?? null,
     item,
     ...supplemental,
-    ...sysBOUiSelectorModel(req, currentUser, definition, METADATA_SYSBO_UI),
+    ...credentialTestResultPresentation(req),
+    ...(record.applicationError ? { applicationError: record.applicationError } : {}),
+    metadataComponentPartialFor,
   });
 }
 

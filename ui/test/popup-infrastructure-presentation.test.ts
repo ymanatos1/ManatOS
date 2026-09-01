@@ -1,4 +1,5 @@
 import ejs from 'ejs';
+import { readFile } from 'node:fs/promises';
 import { load } from 'cheerio';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,4 +44,15 @@ describe('popup infrastructure presentation', () => {
     expect($('#preferencesModal .modal-header .modal-title').text()).toContain('Website user preferences');
     expect($('#preferencesModal .popup-footer-right #savePreferencesButton').length).toBe(1);
   });
+  it('moves focus outside a modal before Bootstrap applies aria-hidden and restores the opener afterwards', async () => {
+    const shellScript = await readFile(resolve(testDirectory, '../public/js/shell.js'), 'utf8');
+
+    expect(shellScript).toContain("modal.addEventListener('hide.bs.modal'");
+    expect(shellScript).toContain('modal.contains(active)');
+    expect(shellScript).toContain('queueMicrotask(() =>');
+    expect(shellScript).toContain('modal.contains(focused)');
+    expect(shellScript).toContain("modal.addEventListener('hidden.bs.modal'");
+    expect(shellScript).toContain('returnFocusTarget.focus({ preventScroll: true })');
+  });
+
 });

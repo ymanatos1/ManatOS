@@ -8,9 +8,7 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 describe('generic SysBO form state presentation', () => {
   it('starts the shared Save button disabled and marks it for generic state management', async () => {
-    const legacySource = await readFile(resolve(testDirectory, '../views/pages/bo-edit.ejs'), 'utf8');
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
-    expect(legacySource).toContain('data-form-save disabled');
     expect(metadataSource).toContain('data-form-save');
     expect(metadataSource).toContain('disabled');
     // The dirty-guard attribute must be emitted as actual markup, not through
@@ -41,14 +39,15 @@ describe('generic SysBO form state presentation', () => {
   });
 
   it('allows a complete external-provider credential pair to be stored before verification and supports later testing', async () => {
-    const source = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const source = await readFile(resolve(testDirectory, '../public/js/components/external-provider.js'), 'utf8');
     expect(source).toContain("credentialState.value = 'required'");
     expect(source).toContain('data-provider-test-credentials');
     expect(source).toContain('dataset.providerTestUrl');
     expect(source).toContain('body.set(\'clientId\', clientId.value.trim())');
     expect(source).toContain('body.set(\'clientSecret\', clientSecret.value)');
     expect(source).toContain('providerEnabled || anyCredentialValue');
-    expect(source).toContain('Credential verification is deliberately not a prerequisite for');
+    // Verification remains a separate action: a complete local pair can be submitted
+    // to the trusted test flow, while stored credentials can be retested later.
     expect(source).toContain("testCredentials.dataset.providerTestStored === 'true'");
     expect(source).toContain("window.open('', 'manatos-provider-credential-test'");
     expect(source).toContain("result.type !== 'manatos:provider-credential-test-result'");
@@ -58,8 +57,11 @@ describe('generic SysBO form state presentation', () => {
     expect(source).toContain("url.searchParams.set('tab', 'secrets')");
     expect(source).toContain('window.manatosAllowDirtyPageExit?.()');
     expect(source).toContain('const noReturnMessage = () =>');
-    expect(source).toContain('If it shows “App not active”');
-    expect(source).toContain('activate the Meta app or use an account that has an app role');
+    // Provider failure guidance is intentionally generic here. Provider-specific
+    // wording belongs in provider definitions, never in the compound runtime.
+    expect(source).toContain('confirm the provider application is active and available to this account');
+    expect(source).not.toContain('If it shows “App not active”');
+    expect(source).not.toContain('activate the Meta app or use an account that has an app role');
   });
 
   it('marks every tab with no editable fields as an informational read-only pane', async () => {
@@ -73,7 +75,7 @@ describe('generic SysBO form state presentation', () => {
 
 
   it('shows generated System details in create mode so the read-only tab remains visible', async () => {
-    const apiMetadata = await readFile(resolve(testDirectory, '../../api/src/metadata/sysbo-ui-definitions.ts'), 'utf8');
+    const apiMetadata = await readFile(resolve(testDirectory, '../../shared/src/bo-ui-metadata.ts'), 'utf8');
     const systemTabStart = apiMetadata.indexOf('const systemTab');
     const systemTabEnd = apiMetadata.indexOf('const systemFieldOverrides', systemTabStart);
     const systemTabSource = apiMetadata.slice(systemTabStart, systemTabEnd);
@@ -85,15 +87,16 @@ describe('generic SysBO form state presentation', () => {
 
   it('adds a development-only read-only Debugging tab with live formula values', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const debuggingPanelSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/ui-components/debugging-panel.ejs'), 'utf8');
     const formsSource = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
     const expressionFormatSource = await readFile(resolve(testDirectory, '../public/js/debugger/expression-format.js'), 'utf8');
 
     expect(metadataSource).toContain("const debuggingTabEnabled = Boolean(app?.ui?.debugTools)");
     expect(metadataSource).toContain("label: 'Debugging'");
     expect(metadataSource).toContain("layout: 'debug-calculations'");
-    expect(metadataSource).toContain('Element name');
-    expect(metadataSource).toContain('Calculation formula');
-    expect(metadataSource).toContain('Current value');
+    expect(debuggingPanelSource).toContain('Element name');
+    expect(debuggingPanelSource).toContain('Calculation formula');
+    expect(debuggingPanelSource).toContain('Current value');
     expect(metadataSource).toContain("'ENTITY'");
     expect(metadataSource).toContain("'ENTITY FIELDS'");
     expect(metadataSource).toContain("'FIELD VALUES'");
@@ -113,12 +116,12 @@ describe('generic SysBO form state presentation', () => {
     expect(metadataSource).toContain('const commonPrefixLength');
     expect(metadataSource).toContain('appendDebugNameTree');
     expect(metadataSource).toContain("row.name.split('.').filter(Boolean)");
-    expect(metadataSource).toContain('debugging-calculation-path-category');
-    expect(metadataSource).toContain('debugging-calculation-detail-category');
+    expect(debuggingPanelSource).toContain('debugging-calculation-path-category');
+    expect(debuggingPanelSource).toContain('debugging-calculation-detail-category');
 
     expect(metadataSource.indexOf("'TABS'")).toBeLessThan(metadataSource.indexOf("'FIELDS',"));
-    expect(metadataSource).toContain('data-debug-calculation-ast');
-    expect(metadataSource).toContain('data-debug-expression');
+    expect(debuggingPanelSource).toContain('data-debug-calculation-ast');
+    expect(debuggingPanelSource).toContain('data-debug-expression');
     expect(expressionFormatSource).toContain('window.ManatOSDebugExpression');
     expect(expressionFormatSource).toContain('const systemRoots = new Set');
     expect(expressionFormatSource).toContain("emit(identifier, 'path')");
@@ -127,8 +130,8 @@ describe('generic SysBO form state presentation', () => {
     expect(metadataSource).toContain("`[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`");
     expect(formsSource).toContain("`[ ${value.map(debugValueText).join(', ')} ]`");
     expect(metadataSource).toContain('debugElementNameParts');
-    expect(metadataSource).toContain('debugging-element-prefix');
-    expect(metadataSource).toContain('debugging-element-leaf');
+    expect(debuggingPanelSource).toContain('debugging-element-prefix');
+    expect(debuggingPanelSource).toContain('debugging-element-leaf');
     expect(metadataSource).toContain("typeof value === 'string'");
     expect(formsSource).toContain("typeof value === 'string'");
     expect(metadataSource).toContain("return `'${value.replaceAll");
@@ -183,6 +186,22 @@ describe('generic SysBO form state presentation', () => {
     expect(metadataSource).toContain('for (const key of missingKeys) row[key] = null;');
     expect(metadataSource).toContain('const expressionScope = relatedExpressionScope(row, relatedMetadata);');
     expect(metadataSource).toContain('const expressionScopes = rows.map((row) => relatedExpressionScope(row, relatedMetadata));');
+  });
+
+  it('keeps rich enum backing selects out of initial focus and separates date-only from datetime browser controls', async () => {
+    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const entry = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const dateField = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/field-components/date-field.ejs'), 'utf8');
+    const datetimeField = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/field-components/datetime-field.ejs'), 'utf8');
+
+    expect(forms).toContain('select:not([disabled]):not(.visually-hidden):not([aria-hidden="true"])');
+    expect(forms).toContain('[data-metadata-enum-toggle]:not([disabled])');
+    expect(entry).toContain('const dateOnlyValue = (value) =>');
+    expect(entry).toContain('const datetimeLocalValue = (value) =>');
+    expect(dateField).toContain('dateOnlyValue(value)');
+    expect(dateField).toContain('type="date"');
+    expect(datetimeField).toContain('datetimeLocalValue(value)');
+    expect(datetimeField).toContain('type="datetime-local"');
   });
 
 });

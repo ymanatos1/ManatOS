@@ -110,7 +110,7 @@ This is a rolling inactivity timeout. The value is intentionally specified in mi
 
 ## External authentication providers
 
-Microsoft, Google, Facebook and GitHub provider definitions are code-defined, while Admin-supplied Client ID/Client Secret pairs are stored by the API. Secrets are encrypted at rest. New or replacement credential pairs may be persisted securely without successful verification. They are marked `credentialsVerified=false` and remain unavailable to sign-in/registration until the stored pair successfully completes the real provider OAuth flow. Successful verification persists `credentialsVerified=true` together with `credentialsVerifiedAt`. The UI owns Passport/browser redirects; the API owns provider configuration and normalized external-identity persistence.
+Microsoft, Google, Facebook and GitHub provider definitions are code-defined/declarative, while the UI isolates unavoidable executable OAuth differences behind the shared `ui/src/auth/providers/` adapter registry. Admin-supplied Client ID/Client Secret pairs are stored by the API. Secrets are encrypted at rest. New or replacement credential pairs may be persisted securely without successful verification. They are marked `credentialsVerified=false` and remain unavailable to sign-in/registration until the stored pair successfully completes the real provider OAuth flow. Successful verification persists `credentialsVerified=true` together with `credentialsVerifiedAt`. The UI owns Passport/browser redirects; the API owns provider configuration and normalized external-identity persistence.
 
 For API consumers, keep the surface mentally separated into **Admin provider configuration**, **trusted Admin/BFF credential management**, **internal UI verification workflow**, and the **public runtime provider projection**. The Swagger descriptions state the required access for each operation. Endpoints requiring `x-internal-api-key` are server-to-server/BFF operations and are not intended for browser or third-party clients; where bearer authentication is also required, the bearer subject must be an Admin.
 
@@ -167,3 +167,10 @@ See `docs/Testing.md` for the coverage policy and detailed test responsibilities
 Swagger and Postman use the same responsibility order: **Server**, **Authentication**, **System Business Objects**, **System Configuration**, **Public UI**, **External Authentication**, **External Authentication Credentials**, then **Internal External Authentication Workflow**. The former untagged/default SysConfiguration operations are explicitly presented as **System Configuration**.
 
 Access remains operation-specific: public endpoints explicitly say so; Admin-only operations require an Admin Bearer token; trusted external-provider credential commands require both Admin Bearer authentication and `x-internal-api-key`; credential-test workflow endpoints are internal UI/BFF mechanics rather than routine client operations.
+
+
+### Platform-owned UI code
+
+Keep generic routers/templates platform-neutral. Platform catalogue metadata belongs under `shared/src/platforms/<platform>/`; platform-specific feature routes belong under `ui/src/platforms/<platform>/`, pages under `ui/views/pages/platforms/<platform>/`, assets under `ui/public/assets/platforms/<platform>/`, and platform-specific CSS under `ui/public/css/platforms/<platform>.css`. Register feature routers through `ui/src/platforms/routes.ts`; do not add mCRM-specific branches to `page-routes.ts`, `sysbo-routes.ts` or the shell. The platform catalogue/presentation metadata should select platform assets/styles where practical.
+
+The mCRM Apps Playground has two related surfaces: `app-playground.ejs` is the platform-level Apps Playground landing/workspace; `application-playground.ejs` is the selected-`SysBOApplication` playground reached by `/bo/sys-applications/:id/play`. Both are mCRM-owned and therefore live under the mCRM platform folder.

@@ -14,206 +14,18 @@ import {
   type SysBOUserPrincipal,
 } from './domain.js';
 import { MANATOS_COMPANY } from './company-platform.js';
+import type {
+  ManatOSValueObjectMetadata,
+  SysBOFieldMetadata,
+  SysBOMetadata,
+} from './bo-metadata-types.js';
 
-/**
- * Supported canonical business-object field types.
- *
- * These types describe the business object itself and are therefore
- * independent from any particular UI implementation.
+/*
+ * Keep the public import surface backward compatible while the implementation
+ * is split for readability: contracts live in bo-metadata-types.ts and this
+ * file contains only concrete canonical object/entity metadata declarations.
  */
-export type SysBOFieldType =
-  'guid' | 'string' | 'email' | 'boolean' | 'number' | 'date' | 'enum' | 'reference';
-
-/**
- * Metadata describing one field/property of a SysBO.
- *
- * The field definitions themselves are stored in a keyed object, where
- * the key is normally the corresponding property name:
- *
- *   fieldDefinition.name
- *   fieldDefinition.email
- *   fieldDefinition.principalType
- *
- * The separate `key` property is intentionally retained so that an
- * individual field definition still knows its own identity when it is
- * passed around independently of the containing object.
- */
-export interface SysBOEnumItemMetadata {
-  /** Stored enum value submitted to the domain/API. */
-  value: string;
-
-  /** Optional human-readable caption; value is the fallback. */
-  label?: string;
-
-  /** Optional semantic icon key consumed by capable UI renderers. */
-  icon?: string;
-
-  /** Optional renderer-neutral semantic tone for the enum item's visual cue. */
-  tone?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info';
-
-  /** Optional relative tone strength; renderers decide the concrete palette. */
-  toneStrength?: 'soft' | 'normal' | 'strong';
-
-  /**
-   * Enum-item traits are deliberately open-ended and evaluator-readable.
-   * Domain metadata can therefore attach facts such as `isContainer` without
-   * teaching the generic renderer about a particular enum or entity.
-   */
-  readonly [trait: string]: unknown;
-}
-
-export interface SysBOFieldMetadata {
-  key: string;
-  label: string;
-  type: SysBOFieldType;
-  order: number;
-
-  required?: boolean;
-  nullable?: boolean;
-
-  generated?: boolean;
-  readOnly?: boolean;
-
-  /**
-   * Persisted field maintained by application/domain logic rather than by a
-   * normal CRUD caller. Unlike generated fields, the value is stored and can
-   * therefore be filtered, indexed and audited by future storage providers.
-   */
-  applicationManaged?: boolean;
-
-  unique?: boolean;
-  sensitive?: boolean;
-
-  minLength?: number;
-  maxLength?: number;
-
-  enumValues?: readonly string[];
-
-  /** Optional rich metadata for enum values (labels, icons and declarative traits). */
-  enumItems?: readonly SysBOEnumItemMetadata[];
-
-  referenceBOKey?: string;
-}
-
-
-export type ManatOSRelationshipCardinality =
-  | 'one-to-one'
-  | 'many-to-one'
-  | 'one-to-many'
-  | 'many-to-many';
-
-export type ManatOSRelationshipDeleteAction =
-  | 'restrict'
-  | 'cascade'
-  | 'set-null'
-  | 'unlink';
-
-export type ManatOSRelationshipConfirmationPolicy =
-  | 'silent'
-  | 'confirm'
-  | 'inherit';
-
-export interface ManatOSRelationshipDeletePolicy {
-  /** Referential-integrity consequence when the referenced record is deleted. */
-  action: ManatOSRelationshipDeleteAction;
-
-  /** Interaction policy is independent from the integrity action itself. */
-  confirmation?: ManatOSRelationshipConfirmationPolicy;
-}
-
-export interface ManatOSRelationshipMetadata {
-  /** FK/source fields stored on this object; arrays also support future composite keys. */
-  fields: readonly string[];
-
-  /** Canonical target object and referenced fields. */
-  references: {
-    objectKey: string;
-    fields: readonly string[];
-  };
-
-  /** Physical/navigational cardinality. N:N normally uses an explicit junction object. */
-  cardinality: ManatOSRelationshipCardinality;
-
-  /** Optional semantic N:N navigation backed by a canonical junction object. */
-  through?: {
-    objectKey: string;
-    sourceRelationship: string;
-    targetRelationship: string;
-  };
-
-  /** Keyed policy collection leaves room for future relationship policies. */
-  policies?: Readonly<{
-    delete?: ManatOSRelationshipDeletePolicy;
-  }>;
-}
-
-/**
- * UI-neutral, hard-coded definition of a system business object.
- *
- * This metadata defines WHAT the business object is.
- *
- * It is intentionally separate from:
- *
- * 1. actual BO data;
- * 2. web/EJS UI metadata;
- * 3. possible future mobile UI metadata.
- *
- * `key` is the stable hard-coded identifier of the BO definition, for example:
- *
- *   sys-users
- *   sys-principals
- *   sys-applications
- *   sys-licenses
- *
- * Actual BO records have completely separate generated GUID `id` values.
- */
-/** Canonical, non-persisted value derived from an entity record/context. */
-export interface SysBODerivedFieldMetadata {
-  /** The parent Record key is the canonical derived-field name. */
-  label: string;
-  expression: string;
-
-  /**
-   * When true, the derived value is materialized into persisted entity data.
-   * The default is false, preserving the normal calculated-only behavior.
-   * Persistence infrastructure recalculates these values before commit so the
-   * same rule applies to UI, API and automatic/background creation paths.
-   */
-  persisted?: boolean;
-}
-
-export interface ManatOSObjectMetadata<T> {
-  /** Stable metadata identity; may describe a first-class SysBO or a related value object. */
-  key: string;
-  name: string;
-  pluralName: string;
-
-  /** Main human/business identifying property of one object instance. */
-  primaryField: keyof T & string;
-
-  /** Keyed canonical persisted/runtime field definitions. */
-  fieldDefinition: Record<string, SysBOFieldMetadata>;
-
-  /** Reusable object/domain calculations, independent from any particular UI. */
-  derivedFields?: Readonly<Record<string, SysBODerivedFieldMetadata>>;
-
-  /**
-   * Keyed canonical relationships registered on the referencing side. `fields`
-   * live on this object and point at `references.objectKey/references.fields`.
-   * Reverse navigation/delete impacts can therefore be derived centrally.
-   */
-  relationships?: Readonly<Record<string, ManatOSRelationshipMetadata>>;
-}
-
-/** Canonical metadata for a first-class SysBO exposed through generic SysBO CRUD. */
-export type SysBOMetadata<T> = ManatOSObjectMetadata<T>;
-
-/**
- * Canonical metadata for a related/domain object that is not independently
- * exposed as a generic SysBO CRUD endpoint. It still deserves the same field
- * and derived-value semantics so renderers, reports and expressions can reuse it.
- */
-export type ManatOSValueObjectMetadata<T> = ManatOSObjectMetadata<T>;
+export * from './bo-metadata-types.js';
 
 /**
  * Fields common to all first-class SysBO entities.
@@ -221,15 +33,15 @@ export type ManatOSValueObjectMetadata<T> = ManatOSObjectMetadata<T>;
  * Note:
  * Because this object is typed as Record<string, SysBOFieldMetadata>
  * and the project enables `noUncheckedIndexedAccess`, an indexed access
- * such as `common.name` is technically typed as:
+ * such as `commonSysBOFields.name` is technically typed as:
  *
  *   SysBOFieldMetadata | undefined
  *
- * Therefore, when we explicitly reuse `common.name` below, we use the
- * non-null assertion `common.name!`. We know statically that the property
+ * Therefore, when we explicitly reuse `commonSysBOFields.name` below, we use the
+ * non-null assertion `commonSysBOFields.name!`. We know statically that the property
  * exists because it is declared immediately here.
  */
-const common: Record<string, SysBOFieldMetadata> = {
+const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
   id: {
     key: 'id',
     label: 'Id',
@@ -267,7 +79,7 @@ const common: Record<string, SysBOFieldMetadata> = {
   createdAt: {
     key: 'createdAt',
     label: 'Created',
-    type: 'date',
+    type: 'datetime',
     order: 910,
 
     generated: true,
@@ -285,7 +97,7 @@ const common: Record<string, SysBOFieldMetadata> = {
   updatedAt: {
     key: 'updatedAt',
     label: 'Updated',
-    type: 'date',
+    type: 'datetime',
     order: 920,
 
     generated: true,
@@ -330,22 +142,22 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
     },
     localPasswordStatus: {
       label: 'Local password',
-      expression: "hasPassword ? 'Configured' : 'Not configured'",
+      expression: "mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'",
     },
   },
 
   fieldDefinition: {
-    ...common,
+    ...commonSysBOFields,
 
     /*
      * We customize the common `name` field label for SysBOUser.
      *
      * The `!` is required because `common` is a Record and
-     * noUncheckedIndexedAccess=true makes common.name potentially
+     * noUncheckedIndexedAccess=true makes commonSysBOFields.name potentially
      * undefined from TypeScript's point of view.
      */
     name: {
-      ...common.name!,
+      ...commonSysBOFields.name!,
       label: 'User name',
     },
 
@@ -375,7 +187,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
     emailVerifiedAt: {
       key: 'emailVerifiedAt',
       label: 'Email verified at',
-      type: 'date',
+      type: 'datetime',
       order: 31,
 
       nullable: true,
@@ -412,7 +224,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
     passwordChangedAt: {
       key: 'passwordChangedAt',
       label: 'Password changed',
-      type: 'date',
+      type: 'datetime',
       order: 50,
 
       nullable: true,
@@ -475,7 +287,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
   derivedFields: {
     rootPrincipalId: {
       label: 'Root principal',
-      expression: "parentId == null ? id : TraverseCtx(parentId, dataList, 'parentId', 'id')",
+      expression: "parentId == null ? null : TraverseCtx(parentId, dataList, 'parentId', 'id')",
       persisted: true,
     },
   },
@@ -483,14 +295,22 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
   relationships: {
     parent: {
       fields: ['parentId'],
-      references: {objectKey: 'sys-principals', fields: ['id']},
+      references: {
+        objectKey: 'sys-principals',
+        fields: ['id'],
+      },
       cardinality: 'many-to-one',
-      policies: {delete: {action: 'set-null', confirmation: 'confirm'}},
+      policies: {
+        delete: {
+          action: 'set-null',
+          confirmation: 'confirm',
+        },
+      },
     },
   },
 
   fieldDefinition: {
-    ...common,
+    ...commonSysBOFields,
 
     principalType: {
       key: 'principalType',
@@ -501,10 +321,34 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       required: true,
       enumValues: Object.values(SysBOPrincipalType),
       enumItems: [
-        { value: SysBOPrincipalType.Person, label: 'Person', icon: 'person', isContainer: false, canHaveParent: true },
-        { value: SysBOPrincipalType.Company, label: 'Company', icon: 'building', isContainer: true, canHaveParent: false },
-        { value: SysBOPrincipalType.Group, label: 'Group', icon: 'people', isContainer: true, canHaveParent: true },
-        { value: SysBOPrincipalType.System, label: 'System', icon: 'gear', isContainer: false, canHaveParent: false },
+        {
+          value: SysBOPrincipalType.Person,
+          label: 'Person',
+          icon: 'person',
+          isContainer: false,
+          canHaveParent: true,
+        },
+        {
+          value: SysBOPrincipalType.Company,
+          label: 'Company',
+          icon: 'building',
+          isContainer: true,
+          canHaveParent: false,
+        },
+        {
+          value: SysBOPrincipalType.Group,
+          label: 'Group',
+          icon: 'people',
+          isContainer: true,
+          canHaveParent: true,
+        },
+        {
+          value: SysBOPrincipalType.System,
+          label: 'System',
+          icon: 'gear',
+          isContainer: false,
+          canHaveParent: false,
+        },
       ],
     },
 
@@ -524,7 +368,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       type: 'reference',
       order: 35,
 
-      required: true,
+      nullable: true,
       readOnly: true,
       applicationManaged: true,
       referenceBOKey: 'sys-principals',
@@ -544,8 +388,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 /**
  * Managed/licensable application metadata.
  *
- * `name` is the generic unique BO name.
- * `appName` is an additional application-specific unique identifier.
+ * `name` is the canonical unique application name.
  */
 export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
   key: 'sys-applications',
@@ -555,20 +398,7 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
   primaryField: 'name',
 
   fieldDefinition: {
-    ...common,
-
-    appName: {
-      key: 'appName',
-      label: 'App name',
-      type: 'string',
-      order: 20,
-
-      required: true,
-      unique: true,
-
-      minLength: 2,
-      maxLength: 120,
-    },
+    ...commonSysBOFields,
 
     fullName: {
       key: 'fullName',
@@ -583,10 +413,11 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
     version: {
       key: 'version',
       label: 'Version',
-      type: 'string',
+      type: 'version',
       order: 40,
 
       maxLength: 50,
+      versionFormat: 'semver',
     },
 
     description: {
@@ -617,20 +448,36 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
   relationships: {
     principal: {
       fields: ['principalId'],
-      references: {objectKey: 'sys-principals', fields: ['id']},
+      references: {
+        objectKey: 'sys-principals',
+        fields: ['id'],
+      },
       cardinality: 'many-to-one',
-      policies: {delete: {action: 'restrict', confirmation: 'inherit'}},
+      policies: {
+        delete: {
+          action: 'restrict',
+          confirmation: 'inherit',
+        },
+      },
     },
     application: {
       fields: ['applicationId'],
-      references: {objectKey: 'sys-applications', fields: ['id']},
+      references: {
+        objectKey: 'sys-applications',
+        fields: ['id'],
+      },
       cardinality: 'many-to-one',
-      policies: {delete: {action: 'set-null', confirmation: 'confirm'}},
+      policies: {
+        delete: {
+          action: 'set-null',
+          confirmation: 'confirm',
+        },
+      },
     },
   },
 
   fieldDefinition: {
-    ...common,
+    ...commonSysBOFields,
 
     principalId: {
       key: 'principalId',
@@ -695,10 +542,32 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       required: true,
       enumValues: Object.values(SysBOLicenseStatus),
       enumItems: [
-        { value: SysBOLicenseStatus.Active, label: 'Active', icon: 'check-circle-fill', tone: 'success' },
-        { value: SysBOLicenseStatus.Suspended, label: 'Suspended', icon: 'pause-circle-fill', tone: 'warning' },
-        { value: SysBOLicenseStatus.Expired, label: 'Expired', icon: 'clock-history', tone: 'danger', toneStrength: 'soft' },
-        { value: SysBOLicenseStatus.Cancelled, label: 'Cancelled', icon: 'x-circle-fill', tone: 'danger', toneStrength: 'strong' },
+        {
+          value: SysBOLicenseStatus.Active,
+          label: 'Active',
+          icon: 'check-circle-fill',
+          tone: 'success',
+        },
+        {
+          value: SysBOLicenseStatus.Suspended,
+          label: 'Suspended',
+          icon: 'pause-circle-fill',
+          tone: 'warning',
+        },
+        {
+          value: SysBOLicenseStatus.Expired,
+          label: 'Expired',
+          icon: 'clock-history',
+          tone: 'danger',
+          toneStrength: 'soft',
+        },
+        {
+          value: SysBOLicenseStatus.Cancelled,
+          label: 'Cancelled',
+          icon: 'x-circle-fill',
+          tone: 'danger',
+          toneStrength: 'strong',
+        },
       ],
     },
 
@@ -709,6 +578,20 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       order: 70,
     },
 
+    validityDuration: {
+      key: 'validityDuration',
+      label: 'Validity duration',
+      type: 'duration',
+      order: 75,
+
+      nullable: true,
+      durationUnits: ['years', 'months', 'days'],
+      calculation: {
+        expression: 'CalendarDurationBetween(validFrom, validUntil)',
+        triggeredBy: ['validUntil'],
+      },
+    },
+
     validUntil: {
       key: 'validUntil',
       label: 'Valid until',
@@ -716,6 +599,10 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       order: 80,
 
       nullable: true,
+      calculation: {
+        expression: 'CalendarAddDuration(validFrom, validityDuration)',
+        triggeredBy: ['validFrom', 'validityDuration'],
+      },
     },
 
     quantity: {
@@ -754,9 +641,33 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
   relationships: {
     user: {
       fields: ['userId'],
-      references: {objectKey: 'sys-users', fields: ['id']},
+      references: {
+        objectKey: 'sys-users',
+        fields: ['id'],
+      },
       cardinality: 'many-to-one',
-      policies: {delete: {action: 'cascade', confirmation: 'confirm'}},
+      policies: {
+        delete: {
+          action: 'cascade',
+          confirmation: 'confirm',
+        },
+      },
+    },
+    providerConfiguration: {
+      fields: ['provider'],
+      references: {
+        objectKey: 'sys-ext-auth-providers',
+        fields: ['provider'],
+      },
+      cardinality: 'many-to-one',
+      // Removing provider configuration disables authentication through that
+      // provider but deliberately retains users' historical/existing identities.
+      policies: {
+        delete: {
+          action: 'retain',
+          confirmation: 'confirm',
+        },
+      },
     },
   },
   derivedFields: {
@@ -766,7 +677,7 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
     },
   },
   fieldDefinition: {
-    ...common,
+    ...commonSysBOFields,
     userId: {
       key: 'userId',
       label: 'User',
@@ -826,24 +737,78 @@ export const sysBOUserPrincipalMetadata: ManatOSValueObjectMetadata<SysBOUserPri
   relationships: {
     user: {
       fields: ['userId'],
-      references: {objectKey: 'sys-users', fields: ['id']},
+      references: {
+        objectKey: 'sys-users',
+        fields: ['id'],
+      },
       cardinality: 'many-to-one',
-      policies: {delete: {action: 'unlink', confirmation: 'confirm'}},
+      policies: {
+        delete: {
+          action: 'unlink',
+          confirmation: 'confirm',
+        },
+      },
     },
     principal: {
       fields: ['principalId'],
-      references: {objectKey: 'sys-principals', fields: ['id']},
+      references: {
+        objectKey: 'sys-principals',
+        fields: ['id'],
+      },
       cardinality: 'many-to-one',
-      policies: {delete: {action: 'unlink', confirmation: 'confirm'}},
+      policies: {
+        delete: {
+          action: 'unlink',
+          confirmation: 'confirm',
+        },
+      },
     },
   },
   fieldDefinition: {
-    ...common,
-    userId: {key: 'userId', label: 'User', type: 'reference', order: 20, required: true, referenceBOKey: 'sys-users'},
-    principalId: {key: 'principalId', label: 'Principal', type: 'reference', order: 30, required: true, referenceBOKey: 'sys-principals'},
-    relationship: {key: 'relationship', label: 'Relationship', type: 'string', order: 40, required: true},
-    isDefault: {key: 'isDefault', label: 'Default', type: 'boolean', order: 50, required: true},
-    description: {key: 'description', label: 'Description', type: 'string', order: 60, nullable: true, maxLength: 2000},
+    ...commonSysBOFields,
+    userId: {
+      key: 'userId',
+      label: 'User',
+      type: 'reference',
+      order: 20,
+
+      required: true,
+      referenceBOKey: 'sys-users',
+    },
+    principalId: {
+      key: 'principalId',
+      label: 'Principal',
+      type: 'reference',
+      order: 30,
+
+      required: true,
+      referenceBOKey: 'sys-principals',
+    },
+    relationship: {
+      key: 'relationship',
+      label: 'Relationship',
+      type: 'string',
+      order: 40,
+
+      required: true,
+    },
+    isDefault: {
+      key: 'isDefault',
+      label: 'Default',
+      type: 'boolean',
+      order: 50,
+
+      required: true,
+    },
+    description: {
+      key: 'description',
+      label: 'Description',
+      type: 'string',
+      order: 60,
+
+      nullable: true,
+      maxLength: 2000,
+    },
   },
 };
 
@@ -856,20 +821,80 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
   relationships: {
     principal: {
       fields: ['principalId'],
-      references: {objectKey: 'sys-principals', fields: ['id']},
+      references: {
+        objectKey: 'sys-principals',
+        fields: ['id'],
+      },
       cardinality: 'many-to-one',
-      policies: {delete: {action: 'cascade', confirmation: 'confirm'}},
+      policies: {
+        delete: {
+          action: 'cascade',
+          confirmation: 'confirm',
+        },
+      },
     },
   },
   fieldDefinition: {
-    ...common,
-    email: {key: 'email', label: 'Email', type: 'email', order: 20, required: true, maxLength: 320},
-    principalId: {key: 'principalId', label: 'Principal', type: 'reference', order: 30, required: true, referenceBOKey: 'sys-principals'},
-    relationship: {key: 'relationship', label: 'Relationship', type: 'string', order: 40, required: true},
-    requestedRole: {key: 'requestedRole', label: 'Requested role', type: 'string', order: 50, required: true},
-    tokenHash: {key: 'tokenHash', label: 'Token hash', type: 'string', order: 60, required: true, sensitive: true},
-    expiresAt: {key: 'expiresAt', label: 'Expires', type: 'date', order: 70, required: true},
-    usedAt: {key: 'usedAt', label: 'Used', type: 'date', order: 80, nullable: true},
+    ...commonSysBOFields,
+    email: {
+      key: 'email',
+      label: 'Email',
+      type: 'email',
+      order: 20,
+
+      required: true,
+      maxLength: 320,
+    },
+    principalId: {
+      key: 'principalId',
+      label: 'Principal',
+      type: 'reference',
+      order: 30,
+
+      required: true,
+      referenceBOKey: 'sys-principals',
+    },
+    relationship: {
+      key: 'relationship',
+      label: 'Relationship',
+      type: 'string',
+      order: 40,
+
+      required: true,
+    },
+    requestedRole: {
+      key: 'requestedRole',
+      label: 'Requested role',
+      type: 'string',
+      order: 50,
+
+      required: true,
+    },
+    tokenHash: {
+      key: 'tokenHash',
+      label: 'Token hash',
+      type: 'string',
+      order: 60,
+
+      required: true,
+      sensitive: true,
+    },
+    expiresAt: {
+      key: 'expiresAt',
+      label: 'Expires',
+      type: 'datetime',
+      order: 70,
+
+      required: true,
+    },
+    usedAt: {
+      key: 'usedAt',
+      label: 'Used',
+      type: 'datetime',
+      order: 80,
+
+      nullable: true,
+    },
   },
 };
 
@@ -887,18 +912,96 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
   pluralName: 'Configurations',
   primaryField: 'name',
   fieldDefinition: {
-    ...common,
-    name: { ...common.name!, label: 'Setting', readOnly: true },
-    value: { key: 'value', label: 'Value', type: 'string', order: 20, nullable: true },
-    valueEncrypted: { key: 'valueEncrypted', label: 'Encrypted value', type: 'string', order: 21, sensitive: true, readOnly: true, nullable: true },
-    group: { key: 'group', label: 'Group', type: 'string', order: 30, readOnly: true },
-    description: { key: 'description', label: 'Help', type: 'string', order: 40, readOnly: true },
-    valueType: { key: 'valueType', label: 'Type', type: 'string', order: 50, readOnly: true },
-    allowedValues: { key: 'allowedValues', label: 'Allowed values', type: 'string', order: 60, readOnly: true, nullable: true },
-    defaultValue: { key: 'defaultValue', label: 'Default', type: 'string', order: 70, readOnly: true, nullable: true },
-    restartRequired: { key: 'restartRequired', label: 'Restart required', type: 'boolean', order: 80, readOnly: true },
-    editable: { key: 'editable', label: 'Editable', type: 'boolean', order: 90, readOnly: true },
-    sensitive: { key: 'sensitive', label: 'Sensitive', type: 'boolean', order: 100, readOnly: true },
+    ...commonSysBOFields,
+    name: {
+      ...commonSysBOFields.name!,
+      label: 'Setting',
+      readOnly: true,
+    },
+    value: {
+      key: 'value',
+      label: 'Value',
+      type: 'string',
+      order: 20,
+
+      nullable: true,
+    },
+    valueEncrypted: {
+      key: 'valueEncrypted',
+      label: 'Encrypted value',
+      type: 'string',
+      order: 21,
+
+      sensitive: true,
+      readOnly: true,
+      nullable: true,
+    },
+    group: {
+      key: 'group',
+      label: 'Group',
+      type: 'string',
+      order: 30,
+
+      readOnly: true,
+    },
+    description: {
+      key: 'description',
+      label: 'Help',
+      type: 'string',
+      order: 40,
+
+      readOnly: true,
+    },
+    valueType: {
+      key: 'valueType',
+      label: 'Type',
+      type: 'string',
+      order: 50,
+
+      readOnly: true,
+    },
+    allowedValues: {
+      key: 'allowedValues',
+      label: 'Allowed values',
+      type: 'string',
+      order: 60,
+
+      readOnly: true,
+      nullable: true,
+    },
+    defaultValue: {
+      key: 'defaultValue',
+      label: 'Default',
+      type: 'string',
+      order: 70,
+
+      readOnly: true,
+      nullable: true,
+    },
+    restartRequired: {
+      key: 'restartRequired',
+      label: 'Restart required',
+      type: 'boolean',
+      order: 80,
+
+      readOnly: true,
+    },
+    editable: {
+      key: 'editable',
+      label: 'Editable',
+      type: 'boolean',
+      order: 90,
+
+      readOnly: true,
+    },
+    sensitive: {
+      key: 'sensitive',
+      label: 'Sensitive',
+      type: 'boolean',
+      order: 100,
+
+      readOnly: true,
+    },
   },
 };
 
@@ -910,26 +1013,120 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
   // Provider is the human/business identity shown as the clickable list value.
   primaryField: 'provider',
   fieldDefinition: {
-    ...common,
-    name: { ...common.name!, label: 'Provider name', readOnly: true },
+    ...commonSysBOFields,
+    name: {
+      ...commonSysBOFields.name!,
+      label: 'Provider name',
+      readOnly: true,
+    },
     provider: {
-      key: 'provider', label: 'Provider', type: 'enum', order: 20, required: true, unique: true,
+      key: 'provider',
+      label: 'Provider',
+      type: 'enum',
+      order: 20,
+
+      required: true,
+      unique: true,
       enumValues: Object.values(SysBOExtAuthProviderType),
       enumItems: [
-        { value: SysBOExtAuthProviderType.Microsoft, label: 'Microsoft', icon: 'microsoft' },
-        { value: SysBOExtAuthProviderType.Google, label: 'Google', icon: 'google' },
-        { value: SysBOExtAuthProviderType.Facebook, label: 'Facebook', icon: 'facebook' },
-        { value: SysBOExtAuthProviderType.GitHub, label: 'GitHub', icon: 'github' },
+        {
+          value: SysBOExtAuthProviderType.Microsoft,
+          label: 'Microsoft',
+          icon: 'microsoft',
+        },
+        {
+          value: SysBOExtAuthProviderType.Google,
+          label: 'Google',
+          icon: 'google',
+        },
+        {
+          value: SysBOExtAuthProviderType.Facebook,
+          label: 'Facebook',
+          icon: 'facebook',
+        },
+        {
+          value: SysBOExtAuthProviderType.GitHub,
+          label: 'GitHub',
+          icon: 'github',
+        },
       ],
     },
-    clientId: { key: 'clientId', label: 'Client ID', type: 'string', order: 30, maxLength: 500 },
-    clientSecretEncrypted: { key: 'clientSecretEncrypted', label: 'Client secret', type: 'string', order: 40, sensitive: true, readOnly: true, nullable: true },
-    callbackPath: { key: 'callbackPath', label: 'Callback path', type: 'string', order: 50, required: true, maxLength: 300, generated: true, readOnly: true },
-    tenant: { key: 'tenant', label: 'Tenant', type: 'string', order: 60, nullable: true, maxLength: 100 },
-    secretUpdatedAt: { key: 'secretUpdatedAt', label: 'Secret updated', type: 'date', order: 70, nullable: true, readOnly: true },
-    credentialsVerified: { key: 'credentialsVerified', label: 'Credentials verified', type: 'boolean', order: 75, required: true, readOnly: true, applicationManaged: true },
-    credentialsVerifiedAt: { key: 'credentialsVerifiedAt', label: 'Credentials verified at', type: 'date', order: 76, nullable: true, readOnly: true, applicationManaged: true },
-    hasClientSecret: { key: 'hasClientSecret', label: 'Secret stored', type: 'boolean', order: 80, generated: true, readOnly: true },
+    clientId: {
+      key: 'clientId',
+      label: 'Client ID',
+      type: 'string',
+      order: 30,
+
+      maxLength: 500,
+    },
+    clientSecretEncrypted: {
+      key: 'clientSecretEncrypted',
+      label: 'Client secret',
+      type: 'string',
+      order: 40,
+
+      sensitive: true,
+      readOnly: true,
+      nullable: true,
+    },
+    callbackPath: {
+      key: 'callbackPath',
+      label: 'Callback path',
+      type: 'string',
+      order: 50,
+
+      required: true,
+      maxLength: 300,
+      generated: true,
+      readOnly: true,
+    },
+    tenant: {
+      key: 'tenant',
+      label: 'Tenant',
+      type: 'string',
+      order: 60,
+
+      nullable: true,
+      maxLength: 100,
+    },
+    secretUpdatedAt: {
+      key: 'secretUpdatedAt',
+      label: 'Secret updated',
+      type: 'datetime',
+      order: 70,
+
+      nullable: true,
+      readOnly: true,
+    },
+    credentialsVerified: {
+      key: 'credentialsVerified',
+      label: 'Credentials verified',
+      type: 'boolean',
+      order: 75,
+
+      required: true,
+      readOnly: true,
+      applicationManaged: true,
+    },
+    credentialsVerifiedAt: {
+      key: 'credentialsVerifiedAt',
+      label: 'Credentials verified at',
+      type: 'datetime',
+      order: 76,
+
+      nullable: true,
+      readOnly: true,
+      applicationManaged: true,
+    },
+    hasClientSecret: {
+      key: 'hasClientSecret',
+      label: 'Secret stored',
+      type: 'boolean',
+      order: 80,
+
+      generated: true,
+      readOnly: true,
+    },
   },
 };
 

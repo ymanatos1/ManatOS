@@ -4,14 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { getSysBODefinition } from '../src/sysbo/definitions.js';
-
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 describe('generic SysBO delete presentation', () => {
-  it('uses friendly entity labels instead of implementation SysBO names', () => {
-    expect(getSysBODefinition('sys-ext-auth-providers').uiMetadata.editViewModel.deleteEntityLabel).toBe('External Provider');
-    expect(getSysBODefinition('sys-users').uiMetadata.editViewModel.deleteEntityLabel).toBe('User');
+  it('derives friendly delete labels from canonical metadata instead of legacy EJS view-model metadata', async () => {
+    const routes = await readFile(resolve(testDirectory, '../src/routes/sysbo-routes.ts'), 'utf8');
+    expect(routes).toContain('definition.boMetadata.name');
+    expect(routes).not.toContain('editViewModel.deleteEntityLabel');
   });
 
   it('suppresses the native dirty-page warning only after destructive confirmation submits', async () => {
@@ -20,6 +19,12 @@ describe('generic SysBO delete presentation', () => {
     expect(view).toContain('data-allow-dirty-page-exit="true"');
     expect(view).toContain('deletePresentation.displayValue');
     expect(view).toContain('deletePresentation.entityLabel');
+    expect(view).toContain("impact.action === 'retain'");
+    expect(view).toContain('related record(s) will be retained');
     expect(forms).toContain('form[data-allow-dirty-page-exit="true"]');
+    expect(view).toContain('data-delete-unsaved-warning');
+    expect(view).toContain('Unsaved changes will also be lost');
+    expect(forms).toContain("deleteModal?.addEventListener('show.bs.modal'");
+    expect(forms).toContain("warning?.classList.toggle('d-none', !dirty())");
   });
 });

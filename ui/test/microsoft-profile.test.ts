@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeMicrosoftProfile } from '../src/auth/microsoft-profile.js';
+import { normalizeMicrosoftProfile } from '../src/auth/providers/microsoft-provider.js';
 
 describe('Microsoft external profile normalization', () => {
   it('normalizes a Microsoft Graph profile into the common external profile', () => {

@@ -8,23 +8,24 @@
 <aside
   class="debug-panel d-none"
   id="debugPanel"
-  aria-label="ManatOS developer debugger"
+  aria-label="ManatOS CTX viewer"
   aria-hidden="true"
+  inert
 >
-  <div class="ctx-debug-panel-resize" id="ctxDebugPanelResize" title="Drag to resize debugger; double-click to reset" aria-hidden="true"></div>
+  <div class="ctx-debug-panel-resize" id="ctxDebugPanelResize" title="Drag to resize CTX viewer; double-click to reset" aria-hidden="true"></div>
 
   <div class="debug-panel-heading">
-    <strong>CTX DEBUGGER <span class="debug-panel-heading-hint">(live context tree)</span></strong>
+    <strong>CTX VIEWER <span class="debug-panel-heading-hint">(live context tree)</span></strong>
     <span
       class="ctx-debug-stats"
       id="ctxDebugStats"
       tabindex="0"
-      aria-label="CTX debugger statistics"
+      aria-label="CTX viewer statistics"
     ></span>
-    <button class="btn-close" type="button" id="closeDebugPanel" aria-label="Close debugger"></button>
+    <button class="btn-close" type="button" id="closeDebugPanel" aria-label="Close CTX viewer"></button>
   </div>
 
-  <div class="debug-panel-tools" role="toolbar" aria-label="CTX debugger navigation">
+  <div class="debug-panel-tools" role="toolbar" aria-label="CTX viewer navigation">
     <button class="debug-tool-button" id="ctxDebugBack" type="button" title="Previous CTX selection" aria-label="Previous CTX selection" disabled>
       <i class="bi bi-arrow-left"></i>
     </button>

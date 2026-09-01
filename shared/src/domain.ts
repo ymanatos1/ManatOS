@@ -129,6 +129,19 @@ export enum SysBOPrincipalType {
 /**
  * Supported license states.
  */
+
+/**
+ * Calendar-aware duration used by reusable metadata-driven duration fields.
+ *
+ * The parts deliberately preserve calendar semantics: one month is not reduced
+ * to a fixed number of days, and one year remains a calendar year.
+ */
+export interface SysBODurationValue {
+  years: number;
+  months: number;
+  days: number;
+}
+
 export enum SysBOLicenseStatus {
   Active = 'Active',
   Suspended = 'Suspended',
@@ -217,11 +230,6 @@ export interface SysBOPrincipal extends SysBOEntity {
  * Application known and managed by the platform.
  */
 export interface SysBOApplication extends SysBOEntity {
-  /**
-   * Unique application-specific name.
-   */
-  appName: string;
-
   fullName: string;
 
   description?: string;
@@ -256,6 +264,7 @@ export interface SysBOLicense extends SysBOEntity {
   status: SysBOLicenseStatus;
 
   validFrom?: string;
+  validityDuration?: SysBODurationValue | null;
   validUntil?: string | null;
 
   quantity: number;

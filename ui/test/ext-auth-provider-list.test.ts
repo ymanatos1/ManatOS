@@ -1,65 +1,27 @@
-import ejs from 'ejs';
-import { load } from 'cheerio';
+import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { getSysBODefinition } from '../src/sysbo/definitions.js';
-
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const listView = resolve(testDirectory, '../views/pages/bo-list.ejs');
+const source = (path: string) => readFile(resolve(testDirectory, '..', path), 'utf8');
 
-describe('external authentication provider list presentation', () => {
-  it('keeps the provider list operational and omits raw Client ID', () => {
-    const fields = getSysBODefinition('sys-ext-auth-providers').uiMetadata.gridConfiguration.visibleFields;
-
-    expect(fields).toEqual([
-      'provider',
-      'enabled',
-      'callbackPath',
-      'credentialsVerified',
-    ]);
+describe('external authentication provider metadata-driven list presentation', () => {
+  it('declares only safe provider list columns and the one-record-per-provider rule in metadata', async () => {
+    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    expect(metadata).toContain("visibleFields: ['provider', 'enabled', 'callbackPath', 'credentialsVerified']");
+    expect(metadata).toContain("disableWhenAllEnumValuesExistForField: 'provider'");
+    expect(metadata).toContain('One configuration record per provider.');
+    expect(metadata).not.toContain("visibleFields: ['provider', 'clientId'");
   });
 
-  it('renders provider corporate names as links to edit/review pages', async () => {
-    const definition = getSysBODefinition('sys-ext-auth-providers');
-    const html = await ejs.renderFile(listView, {
-      hasAnyEntries: true,
-      definition,
-      permissions: { view: true, create: true, edit: true, delete: true },
-      items: [
-        {
-          id: 'provider-microsoft',
-          provider: 'microsoft',
-          enabled: true,
-          callbackPath: '/auth/microsoft/callback',
-          clientId: 'client-id',
-          credentialsVerified: true,
-        },
-        {
-          id: 'provider-github',
-          provider: 'github',
-          enabled: true,
-          callbackPath: '/auth/github/callback',
-          clientId: 'github-client-id',
-          credentialsVerified: true,
-        },
-      ],
-      paging: { total: 2, page: 1, pageSize: 10, totalPages: 1 },
-      query: { pageSize: '10' },
-    });
-
-    const $ = load(html);
-    const rows = $('tbody tr');
-
-    expect(rows.eq(0).find('td').eq(0).text().trim()).toBe('Microsoft');
-    expect(rows.eq(0).find('td').eq(0).find('a').attr('href')).toBe(
-      '/bo/sys-ext-auth-providers/provider-microsoft',
-    );
-    expect(rows.eq(1).find('td').eq(0).text().trim()).toBe('GitHub');
-    expect(rows.eq(1).find('td').eq(0).find('a').attr('href')).toBe(
-      '/bo/sys-ext-auth-providers/provider-github',
-    );
+  it('uses the generic metadata list renderer for provider labels and navigation', async () => {
+    const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
+    expect(list).toContain('metadataUI.list.visibleFields');
+    expect(list).toContain("field.type === 'enum'");
+    expect(list).toContain('enumItem(field, item[key])');
+    expect(list).toContain('/bo/<%= definition.key %>/<%= item.id %>');
+    expect(list).not.toContain("definition.key === 'sys-ext-auth-providers'");
   });
 });

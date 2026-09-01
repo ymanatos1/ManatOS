@@ -239,7 +239,6 @@ describe('API integration - server and generic SysBO behavior', () => {
         )
         .send({
           name: 'Forbidden Guest App',
-          appName: 'forbidden-guest-app',
           fullName: 'Forbidden Guest Application',
           enabled: true,
         });
@@ -279,8 +278,8 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(metadataUI.body.data.metadataUI).toMatchObject({
         key: 'sys-applications',
         list: {
-          visibleFields: ['name', 'appName', 'fullName', 'version', 'enabled'],
-          filterFields: ['name', 'appName', 'fullName'],
+          visibleFields: ['name', 'fullName', 'version', 'enabled'],
+          filterFields: ['name', 'fullName'],
         },
       });
 
@@ -302,7 +301,6 @@ describe('API integration - server and generic SysBO behavior', () => {
         )
         .send({
           name: 'Accounts',
-          appName: 'accounts',
           fullName: 'Accounts Application',
           enabled: true,
         });
@@ -316,7 +314,6 @@ describe('API integration - server and generic SysBO behavior', () => {
 
       expect(create.body.data).toMatchObject({
         name: 'Accounts',
-        appName: 'accounts',
         createdBy: 'Admin',
         updatedBy: 'Admin',
       });
@@ -421,11 +418,11 @@ describe('API integration - server and generic SysBO behavior', () => {
       );
 
       for (
-        const [name, appName]
+        const name
         of [
-          ['Accounts', 'accounts'],
-          ['Billing', 'billing'],
-          ['Accounts Reports', 'accounts-reports'],
+          'Accounts',
+          'Billing',
+          'Accounts Reports',
         ] as const
       ) {
         const response = await request(
@@ -438,7 +435,6 @@ describe('API integration - server and generic SysBO behavior', () => {
           )
           .send({
             name,
-            appName,
             fullName: `${name} Application`,
             enabled: true,
           });
@@ -533,11 +529,7 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(response.body.tags.map((tag: { name: string }) => tag.name)).toEqual([
         'Server',
         'Authentication',
-        'System Business Objects · Users',
-        'System Business Objects · Principals',
-        'System Business Objects · Applications',
-        'System Business Objects · Licenses',
-        'System Business Objects · External Authentication Providers',
+        'System Business Objects',
         'System Configuration',
         'Public UI',
         'External Authentication',
@@ -545,11 +537,11 @@ describe('API integration - server and generic SysBO behavior', () => {
         'Internal External Authentication Workflow',
       ]);
 
-      expect(response.body.paths['/api/v1/SysUsers'].get.tags).toEqual(['System Business Objects · Users']);
-      expect(response.body.paths['/api/v1/SysUsers/{id}/verify-email'].post.tags).toEqual(['System Business Objects · Users']);
-      expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual(['System Business Objects · Principals']);
-      expect(response.body.paths['/api/v1/SysApplications'].get.tags).toEqual(['System Business Objects · Applications']);
-      expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual(['System Business Objects · Licenses']);
+      expect(response.body.paths['/api/v1/SysUsers'].get.tags).toEqual(['System Business Objects']);
+      expect(response.body.paths['/api/v1/SysUsers/{id}/verify-email'].post.tags).toEqual(['System Business Objects']);
+      expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual(['System Business Objects']);
+      expect(response.body.paths['/api/v1/SysApplications'].get.tags).toEqual(['System Business Objects']);
+      expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual(['System Business Objects']);
 
       expect(response.body.paths['/api/v1/SysConfigurations'].get).toMatchObject({
         tags: ['System Configuration'],
@@ -557,12 +549,12 @@ describe('API integration - server and generic SysBO behavior', () => {
       });
 
       expect(response.body.paths['/api/v1/SysExtAuthProviders'].get).toMatchObject({
-        tags: ['External Authentication'],
+        tags: ['System Business Objects'],
         description: expect.stringContaining('Admin only'),
       });
 
       expect(response.body.paths['/api/v1/SysExtAuthProviders/{id}'].patch).toMatchObject({
-        tags: ['External Authentication'],
+        tags: ['System Business Objects'],
         description: expect.stringContaining('Admin only'),
       });
 

@@ -4,7 +4,7 @@ import {
   availableProviders,
   externalProviderOption,
   externalVerificationSource,
-} from '../src/auth/external-providers.js';
+} from '../src/auth/providers/runtime-registry.js';
 
 describe('external provider runtime registry', () => {
   it('starts empty until the API supplies configured runtime providers', () => {

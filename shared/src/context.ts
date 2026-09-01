@@ -18,6 +18,12 @@ export interface ManatOSCompanyContext extends Omit<CompanyInfo, 'platforms'> {
 }
 
 export interface ManatOSServerContext { apiBaseUrl: string; }
+export interface ManatOSRuntimeContext {
+  /** Raw safe runtime mode (normally development/test/production). */
+  mode: string;
+  /** Stable declarative flag used by CTX/UI metadata for developer-only surfaces. */
+  developerMode: boolean;
+}
 export interface ManatOSClientContext {
   kind: string;
   version: string;
@@ -29,6 +35,7 @@ export interface ManatOSClientContext {
 export interface ManatOSSystemContext {
   /** Active runtime/application scope for the root ManatOS context. */
   scope: string;
+  runtime: ManatOSRuntimeContext;
   server: ManatOSServerContext;
   client: ManatOSClientContext;
 }
@@ -56,6 +63,23 @@ export type ManatOSEntitiesContext = Record<string, ManatOSEntityContext>;
  * Canonical metadata is resolved from ctx.entities on demand; it is not copied
  * into every field/page scope.
  */
+/**
+ * Small lexical pointer node used to expose contextual state to descendants.
+ *
+ * Pointer nodes deliberately use the same `value` contract as stored CTX fields,
+ * so the expression evaluator resolves them transparently while the CTX tree
+ * still makes the contextual value explicit at the nearest owning node.
+ */
+export interface ManatOSContextPointer<T = unknown> {
+  readonly kind: 'pointer';
+  readonly value: T;
+}
+
+/** Create an immutable CTX pointer node. */
+export function contextPointer<T>(value: T): ManatOSContextPointer<T> {
+  return Object.freeze({ kind: 'pointer' as const, value });
+}
+
 export interface ManatOSStoredContextField<T = unknown> {
   value: T;
 
@@ -104,6 +128,13 @@ export interface ManatOSUserContext {
   scope: string;
   /** Expression-safe ctx.entities key that supplies this user's metadata. */
   entityName: string;
+  /**
+   * Nearest lexical record-mode pointer for calculations owned by ctx.user.
+   * The authenticated-user branch represents an already-existing entity, so
+   * its stable lifecycle mode is `view`; page-entry branches expose their own
+   * create/edit/view mode and therefore shadow this pointer for page fields.
+   */
+  mode: ManatOSContextPointer<string>;
   fields: ManatOSContextFields;
   /** Effective authorization context available to expressions and DEBUG. */
   permissions: ManatOSUserPermissionsContext;

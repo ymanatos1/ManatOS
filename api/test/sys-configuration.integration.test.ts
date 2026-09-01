@@ -15,14 +15,13 @@ describe('SysBOConfiguration API', () => {
     expect(smtpPassword).not.toHaveProperty('valueEncrypted');
     expect(smtpPassword?.value).toBeNull();
     const viewModes = items.filter((item) => String(item.name).endsWith('_VIEW_MODE'));
-    // SysUsers, SysPrincipals, SysApplications and SysLicenses are locked
-    // to metadata-driven mode; only External Auth remains switchable.
-    expect(viewModes).toHaveLength(1);
-    expect(viewModes.every((item) => item.value === 'CurrentEJS')).toBe(true);
+    // #16 is closed: no temporary SysBO UI-engine selector remains exposed.
+    expect(viewModes).toHaveLength(0);
     expect(items.some((item) => item.name === 'UI_SYSBO_USERS_VIEW_MODE')).toBe(false);
     expect(items.some((item) => item.name === 'UI_SYSBO_PRINCIPALS_VIEW_MODE')).toBe(false);
     expect(items.some((item) => item.name === 'UI_SYSBO_APPLICATIONS_VIEW_MODE')).toBe(false);
     expect(items.some((item) => item.name === 'UI_SYSBO_LICENSES_VIEW_MODE')).toBe(false);
+    expect(items.some((item) => item.name === 'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE')).toBe(false);
 
     const pageSize = items.find((item) => item.name === 'API_DEFAULT_PAGE_SIZE');
     const update = await request(app).patch(`/api/v1/SysConfigurations/${pageSize?.id}/value`).set('Authorization', bearer(token)).send({ value:'25' });

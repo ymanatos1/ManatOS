@@ -1,0 +1,47 @@
+    <% if (filterFields.length) { %>
+      <div class="collapse <%= hasActiveFilters ? 'show' : '' %>" id="<%= filterCollapseId %>">
+        <form class="filter-panel row g-2 mb-3" method="get">
+          <% for (const key of filterFields) { %>
+            <% const field = metadata.fieldDefinition[key]; %>
+            <% if (!field) continue; %>
+
+            <div class="col-xl-3 col-md-4">
+              <label class="form-label small" for="metadata-filter-<%= key %>">
+                <i class="bi bi-funnel me-1"></i>
+                <%= field.label %>
+              </label>
+
+              <% if (field.type === 'enum') { %>
+                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
+                  <option value="">All</option>
+                  <% for (const option of field.enumValues || []) { %>
+                    <% const richOption = enumItem(field, option); %>
+                    <option value="<%= option %>" <%= query[`filter.${key}`] === option ? 'selected' : '' %>><%= richOption?.label || option %></option>
+                  <% } %>
+                </select>
+              <% } else if (field.type === 'reference') { %>
+                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
+                  <option value="">All</option>
+                  <% for (const option of listReferenceValues[key] || []) { %>
+                    <option value="<%= option.id %>" <%= query[`filter.${key}`] === option.id ? 'selected' : '' %>><%= option.name ?? option.id %></option>
+                  <% } %>
+                </select>
+              <% } else if (field.type === 'boolean') { %>
+                <select class="form-select" id="metadata-filter-<%= key %>" name="filter.<%= key %>">
+                  <option value="">All</option>
+                  <option value="true" <%= query[`filter.${key}`] === 'true' ? 'selected' : '' %>>Enabled</option>
+                  <option value="false" <%= query[`filter.${key}`] === 'false' ? 'selected' : '' %>>Disabled</option>
+                </select>
+              <% } else { %>
+                <input class="form-control" id="metadata-filter-<%= key %>" name="filter.<%= key %>" value="<%= query[`filter.${key}`] || '' %>">
+              <% } %>
+            </div>
+          <% } %>
+
+          <div class="col-xl-3 col-md-4 d-flex align-items-end gap-2">
+            <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+            <a class="btn btn-outline-secondary" href="/bo/<%= definition.key %>"><i class="bi bi-x-circle me-1"></i>Clear</a>
+          </div>
+        </form>
+      </div>
+    <% } %>

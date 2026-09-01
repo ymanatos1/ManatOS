@@ -38,6 +38,30 @@ function testCtx() {
 }
 
 describe('ManatOS expression parser/evaluator', () => {
+  it('supports generic calendar duration expressions used by metadata-declared components', () => {
+    const fields = {
+      validFrom: { value: '2026-09-01' },
+      validityDuration: { value: { years: 0, months: 1, days: 14 } },
+      validUntil: { value: '2026-10-15' },
+    };
+    const ctx = { page: { page: { fields } } };
+    expect(evaluateTest('CalendarAddDuration(validFrom, validityDuration)', ctx, fields)).toBe('2026-10-15');
+    expect(evaluateTest('CalendarDurationBetween(validFrom, validUntil)', ctx, fields)).toEqual({ years: 0, months: 1, days: 14 });
+  });
+
+  it('resolves value-pointer nodes from the nearest lexical owner before higher ancestors', () => {
+    const fields = { status: { value: 'ready' } };
+    const ctx = {
+      mode: { kind: 'pointer', value: 'root' },
+      user: {
+        mode: { kind: 'pointer', value: 'view' },
+        fields,
+      },
+    };
+
+    expect(evaluateTest("mode === 'view' ? status : 'wrong'", ctx, fields)).toBe('ready');
+  });
+
   it('inherits a one-level dataList symbol from the nearest parent page scope', () => {
     const entryFields = { parentId: { value: 'p2' } };
     const ctx = {

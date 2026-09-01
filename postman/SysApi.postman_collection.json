@@ -1854,7 +1854,8 @@
                       "const json = pm.response.json();",
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
-                      "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
+                      "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));",
+                      "pm.test('Validity duration is canonical duration metadata', () => pm.expect(json.data.metadata.fieldDefinition.validityDuration.type).to.eql('duration'));"
                     ]
                   }
                 }
@@ -1877,7 +1878,7 @@
                     "$metadata-ui"
                   ]
                 },
-                "description": "Framework-neutral UI metadata used by metadata-driven clients."
+                "description": "Framework-neutral UI metadata used by metadata-driven clients. The License General tab composes validFrom, validityDuration and validUntil through the reusable date-duration-range component."
               },
               "response": [],
               "event": [
@@ -1908,7 +1909,8 @@
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                       "if (json.data && json.data.id) pm.environment.set('testLicenseId', json.data.id);",
-                      "pm.test('License targets current platform', () => pm.expect(json.data.platformId).to.eql(pm.environment.get('currentPlatformId')));"
+                      "pm.test('License targets current platform', () => pm.expect(json.data.platformId).to.eql(pm.environment.get('currentPlatformId')));",
+                      "pm.test('Validity duration returned', () => pm.expect(json.data.validityDuration).to.be.an('object'));"
                     ]
                   }
                 }
@@ -1923,7 +1925,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Postman License\",\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"platformId\": \"{{currentPlatformId}}\",\n  \"licenseKey\": \"POSTMAN-TEST\",\n  \"status\": \"Active\",\n  \"quantity\": 1,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
+                  "raw": "{\n  \"name\": \"Postman License\",\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"platformId\": \"{{currentPlatformId}}\",\n  \"licenseKey\": \"POSTMAN-TEST\",\n  \"status\": \"Active\",\n  \"validFrom\": \"2026-09-01\",\n  \"validityDuration\": {\n    \"years\": 1,\n    \"months\": 0,\n    \"days\": 0\n  },\n  \"validUntil\": \"2027-09-01\",\n  \"quantity\": 1,\n  \"description\": \"Created from Postman\",\n  \"enabled\": true\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1940,7 +1942,8 @@
                     "{{apiVersion}}",
                     "SysLicenses"
                   ]
-                }
+                },
+                "description": "Creates a license using date-only validFrom/validUntil and the structured calendar-duration field validityDuration. Duration values preserve years/months/days semantics rather than converting months or years to fixed day counts."
               },
               "response": []
             },

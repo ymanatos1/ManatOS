@@ -1,0 +1,54 @@
+<%
+  /*
+   * Read-only calculated entity field. Calculated values retain the same type
+   * button language as editable fields. The component button remains clickable
+   * for non-mutating tools (copy/CTX inspection) even though the value is read-only. Reactive CTX attributes stay on the native input.
+   */
+  const type = field?.type || 'string';
+  const componentKind = type === 'reference' ? 'reference'
+    : type === 'enum' ? 'enum'
+    : type === 'number' ? 'number'
+    : type === 'boolean' ? 'boolean'
+    : type === 'date' ? 'date'
+    : type === 'datetime' ? 'datetime'
+    : type === 'duration' ? 'duration'
+    : 'text';
+  const icon = type === 'reference' ? 'link-45deg'
+    : type === 'enum' ? 'list-ul'
+    : type === 'number' ? '123'
+    : type === 'boolean' ? 'toggle-on'
+    : type === 'date' ? 'calendar3'
+    : type === 'datetime' ? 'calendar2-week'
+    : type === 'duration' ? 'hourglass-split'
+    : null;
+%>
+<div class="input-group metadata-field-input" data-enhanced-field-input data-field-component="<%= componentKind %>">
+  <button
+    class="btn metadata-field-input-menu-toggle is-readonly"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+    title="<%= componentKind %> field (calculated/read-only)"
+    aria-label="<%= componentKind %> field, calculated and read-only"
+  >
+    <% if (icon) { %><i class="bi bi-<%= icon %>" aria-hidden="true"></i><% } else { %><span class="metadata-field-type-glyph" aria-hidden="true">Tt</span><% } %>
+  </button>
+  <input
+    class="form-control"
+    id="metadata-field-<%= key %>"
+    type="text"
+    value="<%= calculatedDisplayValue ?? '' %>"
+    readonly
+    aria-readonly="true"
+    data-ctx-field="<%= key %>"
+    data-ctx-calculated-field="<%= key %>"
+    data-calculated-expression="<%= derived.expression %>"
+    data-calculated-ast="<%= JSON.stringify(ctxFields[key]?.ast ?? null) %>"
+    data-calculated-value="<%= JSON.stringify(calculatedValue ?? null) %>"
+    data-calculated-persisted="<%= derived.persisted === true ? 'true' : 'false' %>"
+    data-calculated-field-type="<%= type %>"
+    <% if (type === 'reference') { %>data-reference-values="<%= JSON.stringify(referenceValues[key] || []) %>"<% } %>
+    title="Calculated from: <%= derived.expression %>"
+  >
+  <%- include('field-tools-menu', { key, editable: false, actions: [] }) %>
+</div>

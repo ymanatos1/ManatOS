@@ -1,0 +1,362 @@
+# ManatOS Metadata-Driven UI Usage Guide
+
+This guide shows how to use the current ManatOS metadata-driven SysBO UI architecture. It is intentionally focused on reusable patterns: canonical BO metadata, CTX-driven calculations, field-components, UI-components, related collections, developer inspection, and platform-owned UI code.
+
+## 1. Golden rule
+
+Business meaning belongs in canonical metadata and domain services. Presentation belongs in UI metadata. Reusable controls belong in `field-components/` or `ui-components/`. Generic renderers must not branch on concrete entity keys when the behavior can be expressed through metadata.
+
+A reusable UI component may arrange canonical fields, but it must not own business calculations for those fields.
+
+## 2. Canonical field types
+
+Canonical fields are declared in shared BO metadata. Current reusable field types include:
+
+- `string`
+- `email`
+- `date`
+- `datetime`
+- `number`
+- `boolean`
+- `enum`
+- `reference`
+- `duration`
+- `version`
+
+`date` is calendar-date only. `datetime` keeps date plus time. `duration` is a structured calendar value rather than a scalar number. `version` is a canonical version value; the first reusable grammar is numeric semantic versioning (`major.minor.patch`).
+
+Example duration field:
+
+```ts
+validityDuration: {
+  key: 'validityDuration',
+  label: 'Validity duration',
+  type: 'duration',
+  order: 75,
+  nullable: true,
+  durationUnits: ['years', 'months', 'days'],
+}
+```
+
+The canonical duration value is conceptually:
+
+```ts
+{
+  years: 1,
+  months: 2,
+  days: 10,
+}
+```
+
+Calendar duration must not be flattened to an arbitrary number of days. Years and months retain calendar meaning.
+
+## 3. Canonical editable-field calculations
+
+A normal field can remain user-editable and still define a canonical calculation. This is different from a non-editable `derivedField`.
+
+Use `calculation.expression` for the formula and `calculation.triggeredBy` to declare which direct/user-authoritative field changes may recalculate the target.
+
+License example:
+
+```ts
+validityDuration: {
+  key: 'validityDuration',
+  label: 'Validity duration',
+  type: 'duration',
+  order: 75,
+  nullable: true,
+  durationUnits: ['years', 'months', 'days'],
+  calculation: {
+    expression: 'CalendarDurationBetween(validFrom, validUntil)',
+    triggeredBy: ['validUntil'],
+  },
+},
+
+validUntil: {
+  key: 'validUntil',
+  label: 'Valid until',
+  type: 'date',
+  order: 80,
+  nullable: true,
+  calculation: {
+    expression: 'CalendarAddDuration(validFrom, validityDuration)',
+    triggeredBy: ['validFrom', 'validityDuration'],
+  },
+},
+```
+
+The important part is that the calculation belongs to the fields, not to the visual component that happens to display them together.
+
+### Causal CTX behavior
+
+When a user changes a field, that field is the authoritative cause for the recalculation chain. Dependent writes preserve the original cause. A calculated write does not become a new user-authoritative trigger.
+
+For the License example:
+
+- change `validityDuration` -> `validUntil` recalculates;
+- change `validFrom` -> `validUntil` recalculates;
+- change `validUntil` -> `validityDuration` recalculates.
+
+The generic CTX/evaluator pipeline owns dependency propagation and cycle/runaway protection. UI components must not implement private settling loops or component-local calculation engines.
+
+## 4. Field-components
+
+Entity-field controls live under:
+
+```text
+ui/views/pages/metadata-driven/field-components/
+```
+
+The generic form-field dispatcher chooses the appropriate component from canonical field metadata. A field-component owns field-specific interaction and presentation, not entity-specific business logic.
+
+Examples include text, date, datetime, enum, reference, number, boolean, duration and version field components.
+
+### Field tool button
+
+Every enhanced entity-field component may expose the compact field-tools menu. Non-mutating actions remain available for read-only fields; mutating actions are disabled or omitted according to field state.
+
+Typical actions include:
+
+- Copy current value
+- Trim spaces
+- Clear value
+- Today / Now
+- Zero / Toggle
+- Inspect in CTX Viewer (developer mode only)
+
+The tool-button/menu color is field-type specific; read-only/calculated fields use one common read-only tone. These colors are theme-owned and differ between the Lighter and Darker Preferences themes.
+
+`Inspect in CTX Viewer` opens the viewer when needed, selects the corresponding CTX node, and expands the selected node when it has children.
+
+## 5. UI-components
+
+Reusable non-field or compound visuals live under:
+
+```text
+ui/views/pages/metadata-driven/ui-components/
+```
+
+Use UI-components for layout/composition or reusable visual behavior that is not itself a canonical field. Ordered form content may also use renderer-neutral layout primitives such as `break` (start the next row) and `spacer` (reserve grid width); neither carries field/data semantics.
+
+Examples include:
+
+- `date-duration-range`
+- `related-collections`
+- `contextual-help`
+- `list-filters`
+- `debugging-panel`
+- credential-pair workflows
+
+### Compound components must compose field-components
+
+A compound component should render canonical fields through the normal field-component infrastructure. It must not duplicate their native controls.
+
+The License `date-duration-range` component is a layout example. It binds three existing canonical fields:
+
+```ts
+{
+  kind: 'component',
+  span: 12,
+  component: {
+    key: 'date-duration-range',
+    readOnly: false,
+    options: {
+      startField: 'validFrom',
+      durationField: 'validityDuration',
+      endField: 'validUntil',
+    },
+  },
+}
+```
+
+The component only controls layout. Its calculation semantics remain in canonical field metadata.
+
+### Transient workflow controls
+
+A compound workflow may contain temporary browser inputs that are deliberately not canonical entity fields (for example a plaintext credential that is sent only through a trusted credential command). Such controls must opt out of `data-ctx-field` binding. They may use field-component presentation, but must not fabricate a `ctx.page.page.fields.<name>` node for transient or sensitive workflow state.
+
+## 6. Related-reference selector fields
+
+A `reference` field uses the common related-entry selector component. Real options are prefixed with the referenced entity icon. Sentinel choices such as `None`, `Choose...`, or `All` stay iconless so they are visually distinct from real records.
+
+This applies generically to Principal parent selection, License customer/application selection, and future single- or multi-entity relationships.
+
+## 7. Related collections
+
+Read-only related-record panels/tables are rendered by the common `related-collections` UI-component rather than by entity-specific EJS.
+
+Current examples include:
+
+- User -> External identities
+- Application -> Licenses
+- Principal -> Licenses
+
+A related collection can declare `rowIcon` to identify the related entity/record. Field-specific formatting remains independent.
+
+For example, an External Identity row may display:
+
+```text
+[External Identity entity icon] [Microsoft provider icon] account@example.com [status]
+```
+
+The first icon identifies the related entity; the provider icon comes from the field presentation (`auth-provider`). This distinction is especially important for future heterogeneous related collections.
+
+## 8. List-page reusable UI
+
+Generic SysBO lists consume UI metadata for:
+
+- visible fields;
+- sorting;
+- filters;
+- add action;
+- row actions;
+- paging;
+- optional list notice/banner.
+
+The Filters panel is a common UI-component. Entity-specific list renderers should not be introduced when the generic metadata contract can express the behavior.
+
+## 9. Debugging tab
+
+Developer mode adds the read-only **Debugging** tab to metadata-driven entry forms.
+
+The tab discovers calculations from metadata and displays:
+
+- element/path;
+- calculation formula;
+- current value.
+
+Inside Debugging, two nested provenance tabs keep the diagnostic surface readable:
+
+- **Entity** contains canonical/entity-field calculations and related-entity calculations;
+- **UI** contains UI metadata expressions such as field overrides, tab visibility, related presentation, and entry actions.
+
+The split is generic and provenance-driven; it must not depend on a concrete SysBO key.
+
+Canonical editable-field calculations appear as entity-field calculations, not as UI-component calculations.
+
+Calculation rows have a compact tools button with developer actions such as **Inspect in CTX Viewer**. This opens the viewer and navigates to the associated CTX node.
+
+The browser consumes ManatOS' precompiled expression AST. It must not repeatedly parse the expression source string for reactive recalculation.
+
+## 10. CTX runtime/developer facts
+
+Runtime facts belong under `ctx.system`. Developer-mode decisions should be represented as CTX facts rather than independently re-derived in unrelated UI features.
+
+Current runtime facts include the environment/runtime mode and developer-mode status. Developer-only surfaces should use the same resolved fact consistently:
+
+- CTX Viewer;
+- developer/debug menu;
+- entry Debugging tab;
+- `Inspect in CTX Viewer` field/debug-row actions.
+
+The CTX Viewer manages focus correctly when opening/closing and keeps hidden controls inert so accessibility state does not conflict with keyboard focus.
+
+## 11. Delete-impact and dirty deletion
+
+Existing records use the generic `$delete-impact` preflight before destructive deletion.
+
+The modal reports relationship consequences such as:
+
+- no related impact;
+- cascade deletion;
+- unlink;
+- set-null;
+- retained related records;
+- restricted deletion.
+
+If the entry form contains unsaved changes when Delete is requested, the modal additionally warns that both the unsaved edits and the saved record will be lost.
+
+## 12. Preferences themes
+
+The Preferences popup supports Lighter and Darker themes. Theme-specific tokens own the field-component palette rather than field components hard-coding colors.
+
+Selecting a theme displays a preview grid inside the popup before Save, including representative header/title/field surfaces. The website theme itself is not committed until the user saves preferences.
+
+## 13. Contextual help
+
+Use the generic `contextual-help` UI-component whenever a selected CTX/metadata value chooses one of several help blocks.
+
+The component must not be named for or know about the owning entity. External-authentication provider setup guidance is one consumer of this generic mechanism. Provider General help and Secrets help are separate declarative payloads and both reuse the same `contextual-help` component.
+
+## 14. External authentication provider executable boundary
+
+Provider labels, icons, callback/help/configuration presentation should be declarative where practical. Executable OAuth differences remain provider adapters under:
+
+```text
+ui/src/auth/providers/
+```
+
+The generic registry selects the adapter. Provider files should contain only behavior that is genuinely executable/provider-specific, such as Passport strategy construction or native profile normalization.
+
+Do not move executable strategy constructors into metadata.
+
+## 15. Platform-owned code
+
+Platform-specific feature code belongs below explicit platform folders.
+
+For mCRM:
+
+```text
+shared/src/platforms/mcrm/
+ui/src/platforms/mcrm/
+ui/views/pages/platforms/mcrm/
+ui/public/assets/platforms/mcrm/
+ui/public/css/platforms/mcrm.css
+```
+
+Generic routers/renderers should compose platform modules and must not accumulate mCRM-specific branches.
+
+`app-playground.ejs` is the mCRM Apps Playground landing/workspace. `application-playground.ejs` is the workspace for one selected SysApplication.
+
+## 16. Adding a new metadata-driven field
+
+1. Add the canonical field to shared BO metadata.
+2. Use an existing canonical field type whenever possible.
+3. If a new field type is genuinely reusable, extend the shared type contract and add one generic field-component.
+4. Add UI metadata only for presentation/layout differences.
+5. Add canonical `calculation` metadata when a user-editable field is recalculated from other fields.
+6. Keep calculation semantics out of UI-components.
+7. Add contract/regression coverage for the generic behavior, not only the first entity using it.
+
+## 17. Adding a reusable UI-component
+
+1. Place it under `metadata-driven/ui-components/`.
+2. Give it a semantic, entity-independent key/name.
+3. Bind fields/data through metadata options/bindings.
+4. Reuse canonical field-components internally when displaying editable entity fields.
+5. Keep business calculations/domain decisions outside the component.
+6. Register the component through the shared metadata-component registry.
+7. Add regression coverage proving the generic renderer remains entity-agnostic.
+
+
+### Dynamic grid spans
+
+Metadata-driven tab content may use a static grid span or an evaluator-backed span expression. Use this for conditional layout such as letting one field consume the complete row when its neighbour is not visible. The generic renderer evaluates and clamps the span to the 1..12 grid; entity/components must not hard-code layout branches.
+
+### Collapsible contextual help
+
+The generic contextual-help/information-panel component remains expanded by default. Individual metadata declarations may opt into `initiallyCollapsed: true`. Collapsible panels display a generic chevron beside the title so expandability is visible without entity-specific markup.
+
+### Provider credential-test callback resilience
+
+Credential testing remains provider-neutral. OAuth `state` is the primary callback correlation token; while a short-lived credential test is active, the same-session fresh pending provider/test record is also accepted as a fallback when a provider/strategy omits the returned state value. No provider name is hard-coded into the callback router for this behavior.
+
+## 18. Verification
+
+After applying source changes, run from the repository `src` root:
+
+```powershell
+npm run verifyrun
+```
+
+The full authoritative repository verification remains a local checkout step. A successful run builds Shared/API/UI, runs all API/UI tests, and starts ManatOS only after verification succeeds.
+
+### External-provider credentials are a compound command
+
+External-provider `clientId` + secret changes are not ordinary SysBO CRUD. The
+credential component explicitly marks a credential mutation; ordinary entry
+saves (for example toggling `enabled`) leave the stored credential pair
+untouched. Safe provider capabilities are consumed from the selected enum
+option/definition (`provider.option.*`), while plaintext secrets never enter
+CTX. Provider-specific literals must not be introduced into generic renderers
+or the compound credential runtime.

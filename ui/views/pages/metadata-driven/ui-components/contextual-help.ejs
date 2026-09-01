@@ -1,0 +1,36 @@
+<%#
+  Generic metadata-driven contextual-help selector.
+
+  Metadata chooses a data channel, item identity and help payload property.
+  The selected payload is rendered by the generic information-panel component,
+  keeping help selection separate from information presentation.
+%>
+<%
+  const options = component?.options || {};
+  const itemsDataKey = String(options.itemsDataKey || 'items');
+  const itemKey = String(options.itemKey || 'key');
+  const contentKey = String(options.contentKey || 'help');
+  const items = Array.isArray(componentData?.[itemsDataKey]) ? componentData[itemsDataKey] : [];
+  const selectedKey = String(componentBindings?.selectedKey ?? '');
+  const collapsible = options.collapsible === true;
+  const initiallyCollapsed = collapsible && options.initiallyCollapsed === true;
+%>
+<div class="metadata-contextual-help" data-contextual-help data-contextual-help-selected-key="<%= selectedKey %>">
+  <% for (const item of items) { %>
+    <% const itemValue = String(item?.[itemKey] ?? ''); %>
+    <% const help = item?.[contentKey] || {}; %>
+    <div
+      data-contextual-help-key="<%= itemValue %>"
+      <%= selectedKey !== itemValue ? 'hidden' : '' %>
+    >
+      <%- include('information-panel', {
+        panel: {
+          ...help,
+          id: `contextual-${contentKey}-${itemValue}`,
+          collapsible,
+          initiallyCollapsed,
+        },
+      }) %>
+    </div>
+  <% } %>
+</div>

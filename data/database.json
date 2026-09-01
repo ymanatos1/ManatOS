@@ -63,7 +63,7 @@
       "createdBy": "Admin",
       "updatedAt": "2026-08-30T12:07:58.426Z",
       "updatedBy": "Admin",
-      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+      "rootPrincipalId": null
     },
     "436c29bc-9361-4f01-b30e-06fd21e7642c": {
       "name": "Our Admin",
@@ -98,18 +98,42 @@
       "updatedAt": "2026-08-30T23:28:13.178Z",
       "updatedBy": "Admin",
       "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+    },
+    "f7e8b2ea-7b4b-4f63-85e0-e0c7977fbac5": {
+      "name": "Mitsos",
+      "enabled": true,
+      "principalType": "Person",
+      "parentId": "37d5a118-9568-4577-84fb-5b3a4706168a",
+      "description": "ff",
+      "createdAt": "2026-09-01T04:56:29.334Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T05:36:35.683Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+    },
+    "bb728ee8-dca2-4919-a456-bd2b5b9e138f": {
+      "name": "Maria Guest",
+      "enabled": true,
+      "principalType": "Person",
+      "parentId": "37d5a118-9568-4577-84fb-5b3a4706168a",
+      "createdAt": "2026-09-01T05:36:21.470Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T05:36:21.470Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
     }
   },
   "sysApplications": {
     "69cc1b80-326e-44f6-95d2-82d338486580": {
       "name": "Dikigoriko",
       "enabled": true,
-      "appName": "Dikigoriko App",
       "fullName": "Legal software",
       "createdAt": "2026-08-31T00:36:44.357Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-31T00:36:44.357Z",
-      "updatedBy": "Admin"
+      "updatedAt": "2026-09-01T06:41:57.117Z",
+      "updatedBy": "Admin",
+      "version": "0.0.2",
+      "description": "Legal services software."
     }
   },
   "sysConfigurations": {
@@ -517,7 +541,7 @@
       "enabled": true,
       "createdAt": "2026-08-28T18:21:24.573Z",
       "createdBy": "System",
-      "updatedAt": "2026-08-30T04:07:13.074Z",
+      "updatedAt": "2026-08-31T22:11:27.866Z",
       "updatedBy": "Admin",
       "valueEncrypted": null
     }
@@ -530,75 +554,80 @@
       "platformId": "mcrm",
       "applicationId": "69cc1b80-326e-44f6-95d2-82d338486580",
       "status": "Active",
-      "validFrom": "2026-08-31T00:00",
-      "validUntil": null,
+      "validFrom": "2026-08-31",
+      "validUntil": "2026-11-30",
       "quantity": 1,
       "createdAt": "2026-08-31T01:15:55.801Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-31T01:15:55.801Z",
-      "updatedBy": "Admin"
+      "updatedAt": "2026-09-01T00:58:10.469Z",
+      "updatedBy": "Admin",
+      "validityDuration": {
+        "years": 0,
+        "months": 3,
+        "days": 0
+      }
     }
   },
   "sysExtAuthProviders": {
-    "07ad1dcc-265f-4671-b220-b63b0f80c9ff": {
+    "0f3b9411-1351-41e2-bb70-73aa452b6bdf": {
       "name": "microsoft",
       "provider": "microsoft",
       "enabled": true,
       "clientId": "4bdce497-1ceb-4e80-9da9-65c3b6ac6eff",
-      "clientSecretEncrypted": "v1:v1:gvsGFjKv/xxwa71z:bjcGaDTvxdZgTPSXRnczYA==:zIHHVocB3qUzV/Qx4xPSu3YdZ0qhlk7Q/B/eSXtVMPb979dRifU2Ag==",
-      "secretUpdatedAt": "2026-08-27T13:26:38.493Z",
-      "credentialsVerifiedAt": "2026-08-27T13:26:38.493Z",
+      "clientSecretEncrypted": "v1:v1:YbLkTaGlWjcUtaZp:3Y6/qpCzzejeyrz4xKqi7A==:3g1dwMAKvg3+jSmrrCOUxhLBjCxPeC4poGJhP7iqVPzlHGUpZmPjWw==",
+      "secretUpdatedAt": "2026-09-01T05:58:29.868Z",
+      "credentialsVerified": true,
+      "credentialsVerifiedAt": "2026-09-01T05:58:29.868Z",
       "callbackPath": "/auth/microsoft/callback",
       "tenant": "common",
-      "createdAt": "2026-08-27T13:26:38.496Z",
+      "createdAt": "2026-09-01T05:58:29.869Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-27T13:26:38.496Z",
-      "updatedBy": "Admin",
-      "credentialsVerified": true
+      "updatedAt": "2026-09-01T05:58:29.869Z",
+      "updatedBy": "Admin"
     },
-    "cb144707-6133-4719-a7d6-6a546f0053f1": {
+    "8e5f216c-f746-44a0-b1ae-1151980b88e1": {
       "name": "google",
       "provider": "google",
       "enabled": true,
       "clientId": "1033930343776-mhjhqdq3r5lccr843mcbuot7c34c7sdf.apps.googleusercontent.com",
-      "clientSecretEncrypted": "v1:v1:pgHPWTTJukhsuoBX:2TF+U3HQgpVeTnfgRheYNw==:fqsxnr7HMF1RpbNvs83EHOgDRbQKsEnx8pUpp9gKZjhafUw=",
-      "secretUpdatedAt": "2026-08-27T14:56:15.401Z",
-      "credentialsVerifiedAt": "2026-08-27T14:56:15.401Z",
+      "clientSecretEncrypted": "v1:v1:I7X5FThJMHINV/Xo:iI0Q21KNFLmTGe3IOvbS8w==:gfCvdQqZIMbi77csiAmpz8lUvDXD/Pxy4Ftop1O8wuzXp7M=",
+      "secretUpdatedAt": "2026-09-01T07:36:44.205Z",
+      "credentialsVerified": true,
+      "credentialsVerifiedAt": "2026-09-01T07:36:44.205Z",
       "callbackPath": "/auth/google/callback",
-      "createdAt": "2026-08-27T14:56:15.403Z",
+      "createdAt": "2026-09-01T06:01:47.758Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-27T14:56:15.403Z",
-      "updatedBy": "Admin",
-      "credentialsVerified": true
+      "updatedAt": "2026-09-01T07:36:51.019Z",
+      "updatedBy": "Admin"
     },
-    "34bc58d2-df7e-4007-a997-2e8ef2b4d0d6": {
-      "name": "github",
-      "provider": "github",
-      "enabled": true,
-      "clientId": "Ov23lih8R9McBbOBJPlr",
-      "clientSecretEncrypted": "v1:v1:mF/YlraPT3+fH+KH:lOncoirvefcT9PS0g7prhw==:iI07GIUHzq16mLNh/q30yeeGUkUiUAcijjAdk6CcTk7qx2jbuqCxUQ==",
-      "secretUpdatedAt": "2026-08-27T20:38:32.965Z",
-      "credentialsVerifiedAt": "2026-08-27T20:38:32.965Z",
-      "callbackPath": "/auth/github/callback",
-      "createdAt": "2026-08-27T20:38:32.967Z",
-      "createdBy": "Admin",
-      "updatedAt": "2026-08-27T20:38:32.967Z",
-      "updatedBy": "Admin",
-      "credentialsVerified": true
-    },
-    "fd0a0ecc-791f-4650-94d4-0fa33f774053": {
+    "d3c737af-8503-45b2-b8e4-66031aee98de": {
       "name": "facebook",
       "provider": "facebook",
       "enabled": true,
       "clientId": "1056989580528954",
-      "clientSecretEncrypted": "v1:v1:4g0xs1wrxmVPXr4x:2+ZL38BnqgrGOwjB5RXUZw==:KiuJFsfAXyJ/eaIahbQgingii3LmtvGwBpm6jzq29BM=",
-      "secretUpdatedAt": "2026-08-28T12:28:43.435Z",
+      "clientSecretEncrypted": "v1:v1:q5lVKpr7Of6SkEFJ:neWzzR2jgKf1ZDijdmA5WQ==:PL9m2dIFurf8QPor3IoWm1+Ha4VESZK6+kgZ3Z989DY=",
+      "secretUpdatedAt": "2026-09-01T06:44:22.247Z",
       "credentialsVerified": false,
       "credentialsVerifiedAt": null,
       "callbackPath": "/auth/facebook/callback",
-      "createdAt": "2026-08-28T12:28:43.437Z",
+      "createdAt": "2026-09-01T06:44:22.248Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-28T12:28:43.437Z",
+      "updatedAt": "2026-09-01T06:44:22.248Z",
+      "updatedBy": "Admin"
+    },
+    "d8546109-664a-4801-852a-0d8a789b7167": {
+      "name": "github",
+      "provider": "github",
+      "enabled": true,
+      "clientId": "Ov23lih8R9McBbOBJPlr",
+      "clientSecretEncrypted": "v1:v1:IuWv/86iFFRu7aNn:43KM0M0tURYiB2TvtlMAvQ==:FhRq7p5/qDGn0s6Ca5DFj3zrupOsBw+RJn+DR9JjcrHcTEFwYHitiQ==",
+      "secretUpdatedAt": "2026-09-01T06:49:50.883Z",
+      "credentialsVerified": true,
+      "credentialsVerifiedAt": "2026-09-01T06:49:50.883Z",
+      "callbackPath": "/auth/github/callback",
+      "createdAt": "2026-09-01T06:49:50.883Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T06:49:50.883Z",
       "updatedBy": "Admin"
     }
   },
@@ -629,6 +658,20 @@
       "createdAt": "2026-08-30T05:43:29.148Z",
       "createdBy": "InternalApi",
       "updatedAt": "2026-08-30T05:43:29.148Z",
+      "updatedBy": "InternalApi"
+    },
+    "aee40fb8-4abd-4c05-bf61-5f17887e1c71": {
+      "name": "github:11259081",
+      "userId": "8cd7dbd9-5b00-4e27-b061-53b6d725c33c",
+      "provider": "github",
+      "providerSubject": "11259081",
+      "email": "yiannis@manatos.eu",
+      "emailVerified": true,
+      "displayName": "Yiannis Manatos",
+      "enabled": true,
+      "createdAt": "2026-09-01T06:50:07.384Z",
+      "createdBy": "InternalApi",
+      "updatedAt": "2026-09-01T06:50:07.384Z",
       "updatedBy": "InternalApi"
     }
   },

@@ -75,11 +75,11 @@ describe('AuthorizationService', () => {
       SYSTEM_AUDIT_ACTOR,
     );
     const allowedApp = await context.services.applications.create(
-      { name: 'Allowed App', appName: 'allowed-app', fullName: 'Allowed Application', enabled: true },
+      { name: 'Allowed App', fullName: 'Allowed Application', enabled: true },
       SYSTEM_AUDIT_ACTOR,
     );
     const otherApp = await context.services.applications.create(
-      { name: 'Other App', appName: 'other-app', fullName: 'Other Application', enabled: true },
+      { name: 'Other App', fullName: 'Other Application', enabled: true },
       SYSTEM_AUDIT_ACTOR,
     );
     await context.services.licenses.create(

@@ -1,0 +1,8 @@
+<div class="input-group metadata-field-input" data-enhanced-field-input data-field-component="date">
+  <button class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Date field tools" aria-label="Date field tools for <%= fieldLabel(field) %>"><i class="bi bi-calendar3" aria-hidden="true"></i></button>
+  <input class="form-control" id="metadata-field-<%= key %>" name="<%= key %>" data-ctx-field="<%= key %>" type="date" value="<%= dateOnlyValue(value) %>" <%= field.required ? 'required' : '' %> <%= editable ? '' : 'readonly' %>>
+  <%- include('field-tools-menu', { key, editable, actions: [
+    { action: 'today', icon: 'calendar-check', label: 'Today' },
+    { action: 'clear', icon: 'eraser', label: 'Clear value' },
+  ] }) %>
+</div>

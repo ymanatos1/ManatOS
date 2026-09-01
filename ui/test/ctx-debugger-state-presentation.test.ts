@@ -28,7 +28,35 @@ const shellViewSource = readFileSync(
   'utf8',
 );
 
+const debuggerViewSource = readFileSync(
+  resolve(process.cwd(), 'views/partials/debugger/ctx-debug.ejs'),
+  'utf8',
+);
+
+const horizontalNavSource = readFileSync(
+  resolve(process.cwd(), 'views/partials/horizontal-nav.ejs'),
+  'utf8',
+);
+
+const fieldRuntimeSource = readFileSync(
+  resolve(process.cwd(), 'public/js/field-components/runtime.js'),
+  'utf8',
+);
+
+const fieldToolsSource = readFileSync(
+  resolve(process.cwd(), 'views/pages/metadata-driven/field-components/field-tools-menu.ejs'),
+  'utf8',
+);
+
 describe('CTX debugger presentation state', () => {
+
+
+  it('shows company above system at the CTX root without mutating CTX semantics', () => {
+    expect(debuggerSource).toContain("const preferred = ['company', 'system', 'entities', 'user', 'page']");
+    expect(debuggerSource).toContain("const presentedEntries = path === 'ctx'");
+    expect(debuggerSource).toContain('return presentedEntries.map');
+  });
+
   it('keeps Properties visibility independent from node selection/history navigation', () => {
     const selectStart = debuggerSource.indexOf('const selectPath =');
     const selectEnd = debuggerSource.indexOf('const allRealNodePaths =', selectStart);
@@ -67,6 +95,35 @@ describe('CTX debugger presentation state', () => {
     expect(shellViewSource.indexOf('/js/debugger/expression-format.js')).toBeLessThan(
       shellViewSource.indexOf('/js/debugger/ctx-debug.js'),
     );
+  });
+
+
+  it('moves focus outside the CTX Viewer before hiding it and uses inert while hidden', () => {
+    expect(debuggerViewSource).toContain('inert');
+    expect(shellSource).toContain('debugPanel.contains(active)');
+    expect(shellSource).toContain('fallback?.focus({ preventScroll: true })');
+    expect(shellSource).toContain('debugPanel.inert = true');
+    expect(shellSource).toContain("debugPanel.setAttribute('aria-hidden', 'true')");
+    expect(shellSource.indexOf('fallback?.focus({ preventScroll: true })')).toBeLessThan(
+      shellSource.indexOf("debugPanel.setAttribute('aria-hidden', 'true')"),
+    );
+    expect(shellSource).toContain('debugPanel.inert = false');
+  });
+
+  it('keeps CTX inspection developer-only and reveals the viewer before selecting a field', () => {
+    expect(horizontalNavSource).toContain('app.ui?.debugTools');
+    expect(shellViewSource).toContain('app.ui?.debugTools');
+    expect(fieldToolsSource).toContain('showDeveloperTools');
+    expect(fieldToolsSource).toContain('Inspect in CTX Viewer');
+    expect(fieldRuntimeSource).toContain("manatos:ctx-viewer-show");
+    expect(fieldRuntimeSource.indexOf('manatos:ctx-viewer-show')).toBeLessThan(
+      fieldRuntimeSource.indexOf('manatos:ctx-viewer-select'),
+    );
+    expect(shellSource).toContain("window.addEventListener('manatos:ctx-viewer-show'");
+    expect(shellSource).toContain('shellState.setDebugVisible(true)');
+    expect(fieldRuntimeSource).toContain('expand: true');
+    expect(debuggerSource).toContain('expandSelected = false');
+    expect(debuggerSource).toContain('state.expanded.add(path)');
   });
 
 });

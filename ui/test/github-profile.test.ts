@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveGitHubEmail } from '../src/auth/github-profile.js';
+import { resolveGitHubEmail } from '../src/auth/providers/github-provider.js';
 
 describe('GitHub external profile email resolution', () => {
   it('prefers the primary verified GitHub email', async () => {

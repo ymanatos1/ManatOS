@@ -1,185 +1,123 @@
-import ejs from 'ejs';
-import { load } from 'cheerio';
+import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { getSysBODefinition } from '../src/sysbo/definitions.js';
-
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const generalView = resolve(testDirectory, '../views/partials/ext-auth-provider-fields.ejs');
-const secretsView = resolve(testDirectory, '../views/partials/ext-auth-provider-secrets.ejs');
+const source = (path: string) => readFile(resolve(testDirectory, '..', path), 'utf8');
 
-const externalAuthProviderDefinitions = [
-  {
-    provider: 'microsoft',
-    label: 'Microsoft',
-    icon: 'bi-microsoft',
-    scope: ['openid'],
-    callbackPath: '/auth/microsoft/callback',
-    tenant: 'common',
-    generalHelp: {
-      title: 'Microsoft setup help',
-      steps: ['Configure the Microsoft redirect URI.'],
-      configuredRule: 'Microsoft must be fully configured.',
-    },
-    secretsHelp: {
-      title: 'Microsoft application credentials',
-      introduction: 'Use the Entra application registration.',
-      clientId: ['Copy Application (client) ID.'],
-      clientSecret: ['Copy the secret Value. The Secret ID is not the client secret.'],
-      warning: 'Store the generated value safely.',
-    },
-  },
-  {
-    provider: 'github',
-    label: 'GitHub',
-    icon: 'bi-github',
-    scope: ['read:user'],
-    callbackPath: '/auth/github/callback',
-    generalHelp: {
-      title: 'GitHub setup help',
-      steps: ['Configure the GitHub callback URL.'],
-      configuredRule: 'GitHub must be fully configured.',
-    },
-    secretsHelp: {
-      title: 'GitHub OAuth App credentials',
-      introduction: 'Use the GitHub OAuth App.',
-      clientId: ['Copy Client ID.'],
-      clientSecret: ['Generate and copy a client secret.'],
-    },
-  },
-];
-
-describe('external authentication provider editor presentation', () => {
-  it('defines General info and Secrets tabs for provider administration', () => {
-    const tabs = getSysBODefinition('sys-ext-auth-providers').uiMetadata.editViewModel.tabs;
-
-    expect(tabs?.map((tab) => tab.id)).toEqual(['general', 'secrets']);
-    expect(tabs?.find((tab) => tab.id === 'secrets')?.partial).toBe(
-      '../partials/ext-auth-provider-secrets',
-    );
+describe('external authentication provider metadata-driven editor', () => {
+  it('declares provider General help and Secrets through reusable metadata components', async () => {
+    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    expect(metadata).toContain("key: 'contextual-help'");
+    expect(metadata).toContain("itemsDataKey: 'providerDefinitions'");
+    expect(metadata).toContain("component: { key: 'provider-credentials', readOnly: false }");
+    expect(metadata).toContain("contentKey: 'secretsHelp'");
+    expect(metadata).toContain('collapsible: true');
+    expect(metadata.match(/initiallyCollapsed: true/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(metadata).toContain("span: { expression: \"provider.option.tenant != null ? 6 : 12\" }");
+    expect(metadata).toContain("editable: { expression: \"mode === 'create'\" }");
+    expect(metadata).toContain("provider.option.tenant != null");
+    expect(metadata).not.toContain("provider.value === 'microsoft'");
   });
 
-  it('keeps credentials in Secrets and provider configuration in General info', async () => {
-    const locals = {
-      item: {
-        provider: 'github',
-        callbackPath: '/auth/github/callback',
-        clientId: 'github-client-id',
-        hasClientSecret: true,
-        credentialsVerified: true,
-        credentialsVerifiedAt: '2026-08-27T12:00:00.000Z',
-      },
-      isNew: false,
-      readOnly: false,
-      credentialTest: null,
-      externalAuthProviderDefinitions,
-    };
-
-    const general = load(await ejs.renderFile(generalView, locals));
-    const secrets = load(await ejs.renderFile(secretsView, locals));
-
-    expect(general('#provider').val()).toBe('github');
-    expect(general('#callbackPath').val()).toBe('/auth/github/callback');
-    expect(general('#callbackPath').is('[readonly]')).toBe(true);
-    expect(general('#callbackPath').attr('name')).toBe('callbackPath');
-    expect(general('#provider').closest('.input-group').find('[data-provider-icon] .bi-github').length).toBe(1);
-    expect(general('#provider').closest('.col-md-6').length).toBe(1);
-    expect(general('#callbackPath').closest('.col-md-6').length).toBe(1);
-    expect(general('#clientId').length).toBe(0);
-    expect(general('#clientSecret').length).toBe(0);
-
-    expect(secrets('#clientId').val()).toBe('github-client-id');
-    expect(secrets('#clientId').closest('.col-md-6').length).toBe(1);
-    expect(secrets('#clientSecret').length).toBe(1);
-    expect(secrets('#clientSecret').closest('.col-md-6').length).toBe(1);
-    expect(secrets('#clientId').is('[data-provider-client-id]')).toBe(true);
-    expect(secrets('#clientSecret').is('[data-provider-client-secret]')).toBe(true);
-    expect(secrets('[data-provider-secret-display]').text()).toContain('Secret stored securely');
-    expect(secrets('[data-provider-change-credentials]').length).toBe(1);
-    expect(secrets('[data-provider-credentials-verified-indicator]').text()).toContain('Yes');
-    expect(secrets('#clientId').is('[readonly]')).toBe(true);
-    expect(secrets('[data-provider-secrets-help="github"]').text()).toContain(
-      'GitHub OAuth App credentials',
-    );
+  it('keeps the credential workflow compound while reusing canonical field components internally', async () => {
+    const credentials = await source('views/pages/metadata-driven/ui-components/provider-credentials.ejs');
+    expect(credentials).toContain("include('../field-components/text-field'");
+    expect(credentials).toContain("key: 'clientId'");
+    expect(credentials).toContain('data-provider-client-secret');
+    expect(credentials).toContain('data-provider-test-credentials');
+    expect(credentials).toContain('data-provider-change-credentials');
+    expect(credentials).toContain('data-provider-credential-mutation');
+    expect(credentials).not.toContain("|| 'microsoft'");
+    expect(credentials).toContain('const hasStoredPair = Boolean(item.clientId) && hasStoredSecret;');
+    expect(credentials).toContain("title: 'No credentials stored'");
+    expect(credentials).toContain('data-bs-target="#removeProviderCredentialsModal"');
+    expect(credentials).not.toContain("include('contextual-help'");
+    expect(credentials).toContain("include('information-panel'");
+    expect(credentials).not.toContain('class="ms-auto d-flex align-items-center gap-2 small"');
   });
 
-  it('shows stored-but-unverified credentials and allows testing them without re-entering the secret', async () => {
-    const locals = {
-      item: {
-        id: 'facebook-record',
-        provider: 'github',
-        callbackPath: '/auth/github/callback',
-        clientId: 'stored-client-id',
-        hasClientSecret: true,
-        credentialsVerified: false,
-        credentialsVerifiedAt: null,
-      },
-      isNew: false,
-      readOnly: false,
-      credentialTest: null,
-      externalAuthProviderDefinitions,
-    };
+  it('uses one provider runtime and one canonical dirty predicate for Save and Cancel navigation', async () => {
+    const forms = await source('public/js/forms.js');
+    const runtime = await source('public/js/components/external-provider.js');
 
-    const secrets = load(await ejs.renderFile(secretsView, locals));
-    expect(secrets.text()).toContain('Credentials stored, not verified');
-    expect(secrets.text()).toContain('treated as not configured for sign-in');
-    expect(secrets('[data-provider-credentials-verified-indicator]').text()).toContain('No');
-    expect(secrets('[data-provider-test-credentials]').attr('data-provider-test-stored')).toBe('true');
-    expect(secrets('[data-provider-test-credentials]').is('[disabled]')).toBe(false);
-    expect(secrets('#clientId').is('[readonly]')).toBe(true);
-    expect(secrets('[data-provider-secret-display]').text()).toContain('Secret stored securely');
+    // Provider behavior belongs exclusively to its compound component runtime.
+    // A stale second implementation in forms.js used to register duplicate
+    // credential-test/change handlers and allowed the two paths to drift.
+    expect(forms).not.toContain('External-auth provider editor: provider defaults, credential lifecycle and help content.');
+    expect(runtime).toContain('External-auth provider compound UI component.');
+
+    // Save enablement and the unsaved-navigation modal must agree. Compound
+    // components can own posted values that are not projected into dataCurrent.
+    expect(forms).toContain("const changed = typeof sharedState.isDirty === 'function'");
+    expect(forms).not.toContain('const ctxDirty =');
+    expect(forms).toContain("document.addEventListener('hide.bs.modal'");
   });
 
-  it('renders provider-specific help for existing Microsoft records', async () => {
-    const locals = {
-      item: {
-        provider: 'microsoft',
-        callbackPath: '/auth/microsoft/callback',
-        tenant: 'common',
-        hasClientSecret: true,
-        credentialsVerified: true,
-        credentialsVerifiedAt: '2026-08-27T12:00:00.000Z',
-      },
-      isNew: false,
-      readOnly: true,
-      credentialTest: null,
-      externalAuthProviderDefinitions,
-    };
-
-    const general = load(await ejs.renderFile(generalView, locals));
-    const secrets = load(await ejs.renderFile(secretsView, locals));
-
-    expect(general('#tenant').closest('.col-md-6').length).toBe(1);
-    expect(general('#enabled').closest('.col-md-6').length).toBe(1);
-    expect(general('[data-provider-general-help="microsoft"]').text()).toContain(
-      'Microsoft setup help',
-    );
-    expect(secrets('[data-provider-secrets-help="microsoft"]').text()).toContain(
-      'Application (client) ID',
-    );
-    expect(secrets('[data-provider-secrets-help="microsoft"]').text()).toContain(
-      'Secret ID is not the client secret',
-    );
-  });
-  it('renders a verified pending credential pair as locked until Save', async () => {
-    const locals = {
-      item: { provider: 'github', enabled: true, callbackPath: '/auth/github/callback' },
-      isNew: true,
-      readOnly: false,
-      credentialTest: {
-        provider: 'github', enabled: true, clientId: 'tested-client', status: 'verified',
-        verifiedAt: '2026-08-27T12:00:00.000Z', hasPendingSecret: true,
-      },
-      externalAuthProviderDefinitions,
-    };
-    const secrets = load(await ejs.renderFile(secretsView, locals));
-    expect(secrets('#clientId').val()).toBe('tested-client');
-    expect(secrets('#clientId').is('[readonly]')).toBe(true);
-    expect(secrets('[data-provider-pending-credential-save]').val()).toBe('true');
-    expect(secrets('[data-provider-secret-display]').text()).toContain('ready to save');
+  it('keeps provider-specific behavior in component/runtime data rather than generic entity renderer branches', async () => {
+    const runtime = await source('public/js/components/external-provider.js');
+    const renderer = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    expect(runtime).toContain('data-contextual-help-key');
+    expect(runtime).toContain("url.searchParams.set('tab', 'secrets')");
+    expect(runtime).toContain('payload.statusUrl');
+    expect(runtime).toContain('setVerificationIndicator(true)');
+    expect(runtime).not.toContain("provider.value === 'facebook'");
+    expect(runtime).not.toContain("key === 'microsoft'");
+    expect(runtime).not.toContain('data-microsoft-tenant');
+    expect(renderer).not.toContain("definition.key === 'sys-ext-auth-providers'");
   });
 
+  it('creates only from unconfigured provider options and applies provider defaults live', async () => {
+    const routes = await source('src/routes/sysbo-routes.ts');
+    const renderer = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const runtime = await source('public/js/components/external-provider.js');
+
+    expect(routes).toContain('const configuredKeys = new Set');
+    expect(routes).toContain('externalAuthProviderDefinitions.filter');
+    expect(routes).toContain('pageReferenceData.provider = externalAuthProviderDefinitions.map');
+    expect(renderer).toContain('referenceValues[field.key]');
+    expect(runtime).toContain('option.dataset.enumItem');
+    expect(runtime).toContain('optionMetadata(option).callbackPath');
+    expect(runtime).toContain('find((option) => option.value && !option.disabled)');
+    expect(runtime).toContain("callback.dispatchEvent(new Event('change', { bubbles: true }))");
+  });
+
+  it('resolves immutable provider identity server-side when saving an existing record', async () => {
+    const routes = await source('src/routes/sysbo-routes.ts');
+
+    // Read-only enum/select controls are disabled in the browser and therefore
+    // are not part of FormData. Existing provider saves must resolve the immutable
+    // provider from the persisted record instead of treating a missing posted
+    // value as provider ''.
+    expect(routes).toContain('let provider = String(req.body.provider');
+    expect(routes).toContain('if (id) {');
+    expect(routes).toContain('existingProvider = await apiClient.get<Record<string, unknown>>');
+    expect(routes).toContain('provider = String(existingProvider.data.provider');
+    expect(routes).toContain('?tab=secrets');
+    expect(routes).toContain("req.body.providerCredentialMutation === 'true'");
+    expect(routes).toContain("field.key === 'clientId'");
+  });
+
+  it('keeps callback, verification and secret material server-controlled', async () => {
+    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    const credentials = await source('views/pages/metadata-driven/ui-components/provider-credentials.ejs');
+    expect(metadata).toContain('administrators cannot override it');
+    expect(metadata).toContain('clientId: { editable: false }');
+    expect(credentials).toContain('Secret stored securely');
+    expect(credentials).not.toContain('value="<%= item.clientSecret');
+  });
+
+  it('preserves provider-specific contextual guidance without a provider-specific help renderer', async () => {
+    const help = await source('views/pages/metadata-driven/ui-components/contextual-help.ejs');
+    const confirmations = await source('views/popups/messages/bo-edit-confirmations.ejs');
+    expect(help).toContain('component?.options');
+    expect(help).toContain('componentBindings');
+    expect(help).toContain("include('information-panel'");
+    expect(help).not.toContain("'microsoft'");
+    expect(help).not.toContain("'google'");
+    expect(confirmations).toContain('This command is applied immediately');
+    expect(confirmations).toContain('Secrets tab will reopen ready for a replacement pair');
+  });
 });

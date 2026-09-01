@@ -249,7 +249,26 @@
     }
 
     const entries = Object.entries(value).filter(([key]) => !(isCalculatedContextField(value) && key === 'ast'));
-    return entries.map(([key, item]) => ({
+
+    /*
+     * Root CTX ordering is presentation-only. Keep company first for the
+     * business-context-first debugger view without mutating the runtime object
+     * or changing evaluator/path semantics. Unknown future root nodes retain
+     * their original relative order after the known roots.
+     */
+    const presentedEntries = path === 'ctx'
+      ? [...entries].sort(([leftKey], [rightKey]) => {
+          const preferred = ['company', 'system', 'entities', 'user', 'page'];
+          const leftIndex = preferred.indexOf(leftKey);
+          const rightIndex = preferred.indexOf(rightKey);
+          if (leftIndex < 0 && rightIndex < 0) return 0;
+          if (leftIndex < 0) return 1;
+          if (rightIndex < 0) return -1;
+          return leftIndex - rightIndex;
+        })
+      : entries;
+
+    return presentedEntries.map(([key, item]) => ({
       key: Array.isArray(item) ? `${key}[]` : key,
       path: `${path}.${key}`,
       value: item,
@@ -567,9 +586,16 @@
     selectedRow?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
 
-  const selectPath = (requestedPath, { remember = true } = {}) => {
+  const selectPath = (requestedPath, { remember = true, expandSelected = false } = {}) => {
     const path = nearestExistingPath(requestedPath);
     expandAncestors(path);
+    if (expandSelected) {
+      let selectedValue;
+      try { selectedValue = path === 'ctx' ? ctx : getExact(path); } catch { selectedValue = undefined; }
+      if (isObject(selectedValue) && !isCalculatedContextField(selectedValue) && objectChildren(path, selectedValue).length > 0) {
+        state.expanded.add(path);
+      }
+    }
     state.selected = path;
     if (remember) rememberSelection(path);
 
@@ -581,6 +607,12 @@
     saveState();
     render({ revealSelection: true });
   };
+
+  window.addEventListener('manatos:ctx-viewer-select', (event) => {
+    const requestedPath = event instanceof CustomEvent ? event.detail?.path : null;
+    if (typeof requestedPath !== 'string' || !requestedPath) return;
+    selectPath(requestedPath, { expandSelected: event.detail?.expand === true });
+  });
 
   const allRealNodePaths = () => {
     const paths = [];
