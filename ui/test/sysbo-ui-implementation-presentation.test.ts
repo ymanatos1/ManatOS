@@ -35,6 +35,7 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     const routes = await source('src/routes/sysbo-routes.ts');
     const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
     const edit = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const tabContent = await source('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
     const related = await source('views/pages/metadata-driven/ui-components/related-collections.ejs');
 
     expect(routes).toContain('canonicalSysBOMetadata');
@@ -46,8 +47,9 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     expect(list).toContain('resolvedAddAction');
     expect(edit).toContain('metadataUI.record.tabs');
     expect(edit).toContain('metadataUI.record.fieldOverrides');
-    expect(edit).toContain('tab.content');
-    expect(edit).toContain('metadataComponentPartialFor');
+    expect(edit).toContain("include('ui-components/entry-tab-content', {");
+    expect(tabContent).toContain('tab.content');
+    expect(tabContent).toContain('metadataComponentPartialFor');
     expect(related).toContain("collection.layout === 'table-list'");
     expect(edit).not.toContain("definition.key === 'sys-ext-auth-providers'");
   });

@@ -9,7 +9,8 @@ describe('generic related-collection presentation', () => {
     expect(view).toContain('relatedRowIcon');
     expect(view).toContain('metadata-related-primary-value');
     expect(view).toContain('metadata-related-primary-cell');
-    expect(view).toContain("collectionField.format === 'auth-provider'");
+    expect(view).toContain('optionItemForField(canonicalField, renderedValue.raw)');
+    expect(view).not.toContain("collectionField.format === 'auth-provider'");
     expect(metadata).toContain("rowIcon: 'person-badge'");
     expect(metadata).toContain("rowIcon: 'key'");
     expect(view).not.toContain("definition.key === 'sys-users'");

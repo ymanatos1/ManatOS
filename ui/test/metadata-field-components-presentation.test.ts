@@ -14,6 +14,7 @@ describe('metadata-driven field/content component infrastructure', () => {
     const contract = await sharedSource('src/bo-ui-metadata-types.ts');
     const metadata = await sharedSource('src/bo-ui-metadata.ts');
     const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
     const forms = await uiSource('public/js/forms.js');
 
     expect(contract).toContain('SysBOUITabContentMetadata');
@@ -25,32 +26,33 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(metadata).toContain("key: 'contextual-help'");
     expect(metadata).toContain("key: 'provider-credentials'");
     expect(metadata).toContain("key: 'hierarchy-tree'");
-    expect(renderer).toContain('metadataComponentPartialFor(String(component.key))');
-    expect(renderer).toContain("content.kind === 'break'");
-    expect(renderer).toContain('data-metadata-layout-break');
-    expect(renderer).toContain("content.kind === 'spacer'");
-    expect(renderer).toContain('resolve metadata grid span');
-    expect(renderer).toContain('resolveContentSpan(6)');
-    expect(renderer).toContain('data-ui-grid-span-ast');
+    expect(tabContent).toContain('metadataComponentPartialFor(String(component.key))');
+    expect(tabContent).toContain("content.kind === 'break'");
+    expect(tabContent).toContain('data-metadata-layout-break');
+    expect(tabContent).toContain("content.kind === 'spacer'");
+    expect(tabContent).toContain('resolve metadata grid span');
+    expect(tabContent).toContain('resolveContentSpan(6)');
+    expect(tabContent).toContain('data-ui-grid-span-ast');
     expect(forms).toContain("kind: 'grid-span'");
     expect(forms).toContain('expressionDependencyPaths(spanAst)');
-    expect(renderer).toContain('data-metadata-layout-spacer');
+    expect(tabContent).toContain('data-metadata-layout-spacer');
     expect(renderer).toContain('const metadataComponentContext = {');
-    expect(renderer).toContain('...metadataComponentContext, component, componentBindings');
+    expect(tabContent).toContain('...metadataComponentContext, component, componentBindings');
     expect(renderer).not.toContain("definition.key === 'sys-ext-auth-providers'");
     expect(renderer).not.toContain("component.key === 'provider-credentials'");
   });
 
   it('passes canonical renderer context explicitly across EJS include boundaries', async () => {
     const pageRenderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
     const formField = await uiSource('views/pages/metadata-driven/field-components/form-field.ejs');
     const entityField = await uiSource('views/pages/metadata-driven/field-components/entity-field.ejs');
 
     expect(pageRenderer).toContain('const fieldComponentContext = {');
     expect(pageRenderer).toContain('const metadataComponentContext = {');
-    expect(pageRenderer).toContain('...fieldComponentContext, key, span: resolveContentSpan(6)');
-    expect(pageRenderer).toContain('...fieldComponentContext, key, span: 6');
-    expect(pageRenderer).toContain('...metadataComponentContext, component, componentBindings');
+    expect(tabContent).toContain('...fieldComponentContext, key, span: resolveContentSpan(6)');
+    expect(tabContent).toContain('...fieldComponentContext, key, span: 6');
+    expect(tabContent).toContain('...metadataComponentContext, component, componentBindings');
     expect(formField).toContain('dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue');
     expect(formField).toContain("include('calculated-field'");
     expect(entityField).toContain("include('text-field'");
@@ -177,9 +179,10 @@ describe('metadata-driven field/content component infrastructure', () => {
     const contextualHelp = await uiSource('views/pages/metadata-driven/ui-components/contextual-help.ejs');
     const registry = await uiSource('src/presentation/metadata-component-registry.ts');
 
-    expect(entry).toContain("include('ui-components/debugging-panel'");
-    expect(entry).toContain('readOnly: isViewMode || component.readOnly === true');
-    expect(entry).toContain("include('ui-components/related-collections'");
+    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
+    expect(tabContent).toContain("include('debugging-panel'");
+    expect(tabContent).toContain('readOnly: isViewMode || component.readOnly === true');
+    expect(tabContent).toContain("include('related-collections'");
     expect(list).toContain("include('ui-components/list-filters'");
     expect(uiMetadata).toContain('notice: {');
     expect(uiMetadata).toContain('disableWhenAllEnumValuesExistForField');
@@ -189,6 +192,7 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(contextualHelp).toContain('data-contextual-help-key');
     expect(contextualHelp).toContain('itemsDataKey');
     expect(registry).toContain("'contextual-help': 'ui-components/contextual-help'");
+    expect(tabContent).toContain("include('../' + componentPartial");
   });
 
   it('keeps field tool menus compact, content-sized and visually tied to their component button', async () => {

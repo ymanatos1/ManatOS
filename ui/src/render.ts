@@ -5,6 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
 import { popupContent } from './presentation/popup-content.js';
+import { buildMetadataDebuggingModel } from './presentation/metadata-debugging-model.js';
+import {
+  formatMetadataValue,
+  metadataOptionItemForField,
+  metadataOptionToneClass,
+} from './presentation/metadata-value-presentation.js';
 import {
   contextFields,
   currentPageContext,
@@ -193,6 +199,10 @@ export async function renderPage(
     ctxFieldValue,
     ctxUserFieldValue,
     ctxExpressionValue,
+    buildMetadataDebuggingModel,
+    formatMetadataValue,
+    metadataOptionItemForField,
+    metadataOptionToneClass,
     breadcrumbItems: ctx ? pageBreadcrumbItems(ctx) : [],
     relatedEntityMetadata: allManatOSObjectMetadata,
     ctxDiagnostics,

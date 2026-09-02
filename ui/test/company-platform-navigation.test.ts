@@ -2,8 +2,37 @@ import { describe, expect, it } from 'vitest';
 
 import { MANATOS_COMPANY, SysBOUserRole, resolvePlatform } from '@manatos/shared';
 
+import { createManatOSContext } from '../src/context/manatos-context.js';
 import { navigationFor } from '../src/navigation.js';
 import { effectiveSysBODefinitions } from '../src/sysbo/definitions.js';
+
+
+const navigationCtx = (role: SysBOUserRole, platformAccess: boolean) => {
+  const platform = resolvePlatform(MANATOS_COMPANY);
+  const now = new Date().toISOString();
+  return createManatOSContext(
+    MANATOS_COMPANY,
+    platform,
+    'http://localhost:3000',
+    '0.1.0',
+    {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'navigation-test',
+      email: 'navigation@example.test',
+      role,
+      enabled: true,
+      emailVerified: true,
+      createdAt: now,
+      createdBy: 'test',
+      updatedAt: now,
+      updatedBy: 'test',
+    } as any,
+    {},
+    'sys',
+    'test',
+    { platformAccess },
+  );
+};
 
 describe('company/platform navigation composition', () => {
   it('places Platform immediately after Company in horizontal navigation', () => {
@@ -145,7 +174,7 @@ describe('company/platform navigation composition', () => {
         true,
         MANATOS_COMPANY,
         resolvePlatform(MANATOS_COMPANY),
-        { platformEntitled: true },
+        { ctx: navigationCtx(role, true) },
       );
       expect(licensed.vertical.some((item) => item.id === 'app-playground')).toBe(true);
       expect(licensed.horizontal.some((item) => item.id === 'app-playground')).toBe(true);

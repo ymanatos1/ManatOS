@@ -19,8 +19,8 @@ describe('external authentication provider metadata-driven list presentation', (
   it('uses the generic metadata list renderer for provider labels and navigation', async () => {
     const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
     expect(list).toContain('metadataUI.list.visibleFields');
-    expect(list).toContain("field.type === 'enum'");
-    expect(list).toContain('enumItem(field, item[key])');
+    expect(list).toContain('const optionItem = metadataOptionItemForField');
+    expect(list).toContain('primaryOptionItem');
     expect(list).toContain('/bo/<%= definition.key %>/<%= item.id %>');
     expect(list).not.toContain("definition.key === 'sys-ext-auth-providers'");
   });

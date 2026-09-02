@@ -40,9 +40,7 @@
                 <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
                   <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
                   <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
-                  <% const selectedEnumItem = canonicalField?.type === 'enum'
-                    ? (canonicalField.enumItems || []).find((candidate) => candidate?.value === renderedValue.raw)
-                    : null; %>
+                  <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
                   <td>
                     <% if (relatedFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
                     <% if (relatedFieldIndex === 0 && relatedRowIcon) { %><i class="bi bi-<%= relatedRowIcon %> text-secondary" aria-hidden="true"></i><% } %>
@@ -50,9 +48,9 @@
                       <a class="fw-semibold" href="<%= rowHref %>"><%= renderedValue.raw ?? '—' %></a>
                     <% } else if (canonicalField?.type === 'reference') { %>
                       <%= relatedReferenceLabel(collectionSourceKey, collectionFieldKey, renderedValue.raw) %>
-                    <% } else if (canonicalField?.type === 'enum') { %>
-                      <% if (selectedEnumItem?.icon) { %><i class="bi bi-<%= selectedEnumItem.icon %> <%= enumToneClass(selectedEnumItem) %> me-1" aria-hidden="true"></i><% } %>
-                      <%= selectedEnumItem?.label || renderedValue.raw || '—' %>
+                    <% } else if (selectedOptionItem) { %>
+                      <% if (selectedOptionItem.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
+                      <%= selectedOptionItem.label || renderedValue.raw || '—' %>
                     <% } else if (canonicalField?.type === 'boolean') { %>
                       <% const positive = Boolean(renderedValue.raw); %>
                       <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
@@ -65,12 +63,6 @@
                       <span class="badge text-bg-<%= renderedValue.tone || 'secondary' %>">
                         <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
                         <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
-                      </span>
-                    <% } else if (collectionField.format === 'auth-provider') { %>
-                      <% const provider = providerFor(renderedValue.raw); %>
-                      <span class="authentication-provider">
-                        <i class="bi <%= provider?.icon || 'bi-box-arrow-in-right' %>" aria-hidden="true"></i>
-                        <strong><%= provider?.label || renderedValue.raw || '—' %></strong>
                       </span>
                     <% } else { %>
                       <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
@@ -90,7 +82,9 @@
           <div class="authentication-identity-row">
             <% let relatedPanelFieldIndex = 0; %>
             <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
+              <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
               <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
+              <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
               <div class="<%= relatedPanelFieldIndex === 0 ? 'metadata-related-primary-cell' : '' %>">
                 <% if (relatedPanelFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
                 <% if (relatedPanelFieldIndex === 0 && relatedRowIcon) { %><i class="bi bi-<%= relatedRowIcon %> text-secondary" aria-hidden="true"></i><% } %>
@@ -99,12 +93,9 @@
                     <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
                     <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
                   </span>
-                <% } else if (collectionField.format === 'auth-provider') { %>
-                  <% const provider = providerFor(renderedValue.raw); %>
-                  <span class="authentication-provider">
-                    <i class="bi <%= provider?.icon || 'bi-box-arrow-in-right' %>" aria-hidden="true"></i>
-                    <strong><%= provider?.label || renderedValue.raw || '—' %></strong>
-                  </span>
+                <% } else if (selectedOptionItem) { %>
+                  <% if (selectedOptionItem.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
+                  <%= selectedOptionItem.label || renderedValue.raw || '—' %>
                 <% } else { %>
                   <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
                 <% } %>

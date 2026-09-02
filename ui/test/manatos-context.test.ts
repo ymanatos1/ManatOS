@@ -11,6 +11,7 @@ import {
 
 import {
   contextFields,
+  contextPlatformAccess,
   createManatOSContext,
   currentPageContext,
   currentPagePath,
@@ -343,6 +344,7 @@ describe('ManatOS ctx tree', () => {
 
     expect(ctx.user?.permissions.userRole).toBe('Guest');
     expect(ctx.user?.permissions[platform.id]).toEqual({ capabilities: { platformAccess: false } });
+    expect(contextPlatformAccess(ctx, platform.id)).toBe(false);
 
     const entitled = createManatOSContext(
       MANATOS_COMPANY,
@@ -356,6 +358,7 @@ describe('ManatOS ctx tree', () => {
       { platformAccess: true },
     );
     expect(entitled.user?.permissions[platform.id]).toEqual({ capabilities: { platformAccess: true } });
+    expect(contextPlatformAccess(entitled, platform.id)).toBe(true);
   });
 
 });

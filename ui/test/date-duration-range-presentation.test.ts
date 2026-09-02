@@ -50,13 +50,15 @@ describe('generic date-duration-range component', () => {
 
   it('exposes canonical field calculations generically in the Debugging tab with CTX tools', async () => {
     const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const debuggingModel = await uiSource('src/presentation/metadata-debugging-model.ts');
     const panel = await uiSource('views/pages/metadata-driven/ui-components/debugging-panel.ejs');
     const forms = await uiSource('public/js/forms.js');
 
-    expect(renderer).toContain('FIELD CALCULATIONS');
-    expect(renderer).toContain('fieldMetadata?.calculation');
-    expect(renderer).not.toContain('COMPONENT CALCULATIONS');
-    expect(renderer).not.toContain('component.calculations');
+    expect(renderer).toContain('buildMetadataDebuggingModel({');
+    expect(debuggingModel).toContain('FIELD CALCULATIONS');
+    expect(debuggingModel).toContain('expressionOf(fieldMetadata.calculation)');
+    expect(debuggingModel).not.toContain('COMPONENT CALCULATIONS');
+    expect(debuggingModel).not.toContain('component.calculations');
     expect(panel).toContain('data-debug-inspect-ctx');
     expect(panel).toContain('Inspect formula in CTX Viewer');
     expect(panel).toContain('Inspect current value in CTX Viewer');

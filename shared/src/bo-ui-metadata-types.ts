@@ -75,7 +75,7 @@ export type SysBOUIStatusTone =
   | 'warning'
   | 'info';
 
-export type SysBOUIValueFormat = 'text' | 'datetime' | 'datetime-elapsed' | 'verification-source' | 'auth-provider';
+export type SysBOUIValueFormat = 'text' | 'datetime' | 'datetime-elapsed';
 
 /**
  * A UI scalar may be static or evaluated dynamically against the caller's

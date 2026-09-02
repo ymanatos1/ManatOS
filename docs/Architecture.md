@@ -58,7 +58,7 @@ ctx
 
 `ctx.system` contains safe runtime/host facts, `ctx.entities` is the canonical metadata registry, `ctx.user.permissions` is the evaluator-visible authorization fact branch, and `ctx.page` contains the active lexical page chain. Platform permission branches expose resolved capabilities such as `ctx.user.permissions.mcrm.capabilities.platformAccess`; that fact already includes the Admin bypass and license-derived entitlement result. Record/list page CTX exposes operation facts such as `permissions.create`, `permissions.edit` and `permissions.delete`. These are facts, not presentation policy: metadata expressions decide whether a particular navigation item or action is visible/enabled. This makes UI decisions declarative without exposing server secrets or duplicating authorization policy in renderers.
 
-The older `app.scopes` tree still carries session/request/workspace shell state; selecting Play on a SysApplication adds the selected application to workspace scope. Scope/CTX state is runtime context, not business persistence. A future consolidation can remove duplicated facts from `app.*` once all consumers read CTX consistently.
+The older `app.scopes` tree still carries session/request/workspace shell state; selecting Play on a SysApplication adds the selected application to workspace scope. Scope/CTX state is runtime context, not business persistence. Platform access is no longer duplicated as `app.currentPlatformEntitled`: navigation and the UI route guard consume the trusted server-built `ctx.user.permissions.<platform>.capabilities.platformAccess` fact. This keeps CTX as the single decision-fact surface while `app.scopes` remains responsible only for shell/workspace state that has not yet moved into CTX.
 
 ## Security domains
 

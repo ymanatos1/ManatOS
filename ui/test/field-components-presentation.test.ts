@@ -27,7 +27,7 @@ describe('metadata-driven entity field components', () => {
   });
 
   it('keeps generic tab rendering entity-agnostic while allowing ordered field/component content', async () => {
-    const renderer = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const renderer = await source('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
     const registry = await source('src/presentation/metadata-component-registry.ts');
 
     expect(renderer).toContain('const tabContents = Array.isArray(tab.content)');

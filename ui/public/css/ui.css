@@ -831,7 +831,7 @@ body.anonymous .workspace {
 }
 
 /* =========================================================================
-   Company and Apps Playground pages
+   Company pages
    ========================================================================= */
 
 .company-hero-image {
@@ -842,35 +842,6 @@ body.anonymous .workspace {
   box-shadow: var(--manatos-shadow);
 }
 
-.app-playground-welcome {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.25rem;
-  width: 100%;
-  padding: clamp(1.5rem, 3vw, 2.5rem);
-  border: 1px solid #d7e3f2;
-  border-radius: 0.8rem;
-  background: linear-gradient(145deg, #ffffff, #f1f6fc);
-  box-shadow: var(--manatos-shadow);
-}
-
-.app-playground-welcome-icon {
-  width: 64px;
-  height: 64px;
-  flex: 0 0 64px;
-  display: grid;
-  place-items: center;
-  border-radius: 0.9rem;
-  background: var(--manatos-navy);
-  color: #fff;
-  font-size: 1.8rem;
-}
-
-@media (max-width: 575.98px) {
-  .app-playground-welcome {
-    flex-direction: column;
-  }
-}
 
 /* Email registration is the second step of the registration journey. */
 .auth-email-form-dialog {

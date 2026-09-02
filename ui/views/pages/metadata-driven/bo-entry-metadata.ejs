@@ -147,9 +147,6 @@
     typeof externalAuthProviderDefinitions !== 'undefined' && Array.isArray(externalAuthProviderDefinitions)
       ? externalAuthProviderDefinitions
       : [];
-  const availableAuthProviders = typeof authProviders !== 'undefined' && Array.isArray(authProviders)
-    ? authProviders
-    : [];
   const ctxActiveTab = ctxValue('activeTab');
   const requestedTabId = typeof ctxActiveTab === 'string' ? ctxActiveTab : '';
   const activeTabId = tabs.some((tab) => tab.id === requestedTabId) ? requestedTabId : (tabs[0]?.id || '');
@@ -218,63 +215,10 @@
     });
   };
 
-  const formatElapsed = (dateValue) => {
-    const elapsedMs = Date.now() - dateValue.getTime();
-    if (!Number.isFinite(elapsedMs)) return '';
-    const future = elapsedMs < 0;
-    const absolute = Math.abs(elapsedMs);
-    const units = [
-      ['d', 24 * 60 * 60 * 1000],
-      ['h', 60 * 60 * 1000],
-      ['m', 60 * 1000],
-      ['s', 1000],
-    ];
-    const parts = [];
-    let remaining = absolute;
-    for (const [suffix, size] of units) {
-      const amount = Math.floor(remaining / size);
-      if (amount > 0 || (suffix === 's' && parts.length === 0)) {
-        parts.push(`${amount}${suffix}`);
-        remaining -= amount * size;
-      }
-      if (parts.length === 2) break;
-    }
-    return future ? `in ${parts.join(' ')}` : `${parts.join(' ')} ago`;
-  };
-
-  const formatValue = (value, presentation = {}) => {
-    if (value === undefined || value === null || value === '') {
-      return presentation.emptyText || '—';
-    }
-
-    if (value && typeof value === 'object' && !Array.isArray(value)
-      && ['years', 'months', 'days'].every((key) => Object.prototype.hasOwnProperty.call(value, key))) {
-      const parts = [
-        ['year', Number(value.years || 0)],
-        ['month', Number(value.months || 0)],
-        ['day', Number(value.days || 0)],
-      ].filter(([, amount]) => amount > 0)
-        .map(([unit, amount]) => `${amount} ${unit}${amount === 1 ? '' : 's'}`);
-      return parts.length ? parts.join(', ') : '0 days';
-    }
-
-    if (presentation.format === 'datetime' || presentation.format === 'datetime-elapsed') {
-      const parsed = new Date(String(value));
-      if (Number.isNaN(parsed.getTime())) return String(value);
-      const rendered = parsed.toLocaleString();
-      return presentation.format === 'datetime-elapsed'
-        ? `${rendered} (${formatElapsed(parsed)})`
-        : rendered;
-    }
-
-    if (presentation.format === 'verification-source') {
-      if (value === 'internal') return 'ManatOS';
-      const provider = availableAuthProviders.find((candidate) => candidate.key === value);
-      return provider?.label || String(value);
-    }
-
-    return String(value);
-  };
+  // Generic display formatting and option presentation are supplied by render.ts.
+  const formatValue = formatMetadataValue;
+  const optionItemForField = metadataOptionItemForField;
+  const enumToneClass = metadataOptionToneClass;
 
   /*
    * HTML datetime-local accepts a local wall-clock value without a timezone
@@ -389,18 +333,6 @@
 
   metadataComponentContext.fieldComponentContext = fieldComponentContext;
 
-  const providerFor = (providerKey) =>
-    availableAuthProviders.find((candidate) => candidate.key === providerKey);
-
-  const enumToneClass = (item) => {
-    const tone = item?.tone;
-    if (!tone) return '';
-    if (tone === 'danger' && item?.toneStrength === 'soft') return 'text-danger opacity-75';
-    if (tone === 'danger' && item?.toneStrength === 'strong') return 'text-danger-emphasis';
-    if (tone === 'warning') return 'text-warning-emphasis';
-    return `text-${tone}`;
-  };
-
   const relatedMetadataRegistry =
     typeof relatedEntityMetadata !== 'undefined' && relatedEntityMetadata
       ? relatedEntityMetadata
@@ -504,22 +436,6 @@
    * Admin edits the form. This follows the same no-browser-reparse contract as
    * calculated fields and evaluator-driven UI properties.
    * --------------------------------------------------------------------- */
-  const debuggingRows = [];
-  const debugValueText = (value) => {
-    // Debugging displays raw evaluator values rather than presentation labels.
-    // Keeping null/undefined/empty-string distinct is important when inspecting
-    // conditional calculations such as Root Principal.
-    if (value === undefined) return 'undefined';
-    if (value === null) return 'null';
-    if (value === '') return "''";
-    if (Array.isArray(value)) return value.length ? `[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]` : '[]';
-    if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
-    if (typeof value === 'object') {
-      try { return JSON.stringify(value); } catch { return String(value); }
-    }
-    return String(value);
-  };
-
   /*
    * Element-name paths are intentionally much quieter than formulas. Only the
    * terminal member is emphasized, so `fieldOverrides.role.editable` renders
@@ -533,430 +449,24 @@
       : { prefix: value.slice(0, lastDot + 1), leaf: value.slice(lastDot + 1) };
   };
 
-  /* Formula syntax colouring is applied client-side by the shared developer helper. */
-
-  /*
-   * `detailGroup` is optional provenance/classification beneath the semantic
-   * category/subcategory. This lets the debugger distinguish values declared
-   * by the entity, inherited values (when metadata exposes that provenance),
-   * and UI-only calculated values without knowing any concrete SysBO.
-   */
-  const addDebugRow = (
-    group,
-    subgroup,
-    name,
-    formula,
-    value,
-    ast = null,
-    detailGroup = null,
-    definitionPath = null,
-    valuePath = null,
-  ) => {
-    if (!debuggingTabEnabled || typeof formula !== 'string' || !formula) return;
-    debuggingRows.push({
-      group,
-      subgroup,
-      detailGroup,
-      name,
-      formula,
-      value: debugValueText(value),
-      ast,
-      definitionPath,
-      valuePath,
-    });
-  };
-
-  const collectDynamicExpressions = (
-    group,
-    subgroup,
-    prefix,
-    source,
-    compiled,
-    scope = ctxFields,
-    detailGroup = null,
-  ) => {
-    if (!source || typeof source !== 'object') return;
-    for (const [key, child] of Object.entries(source)) {
-      const name = prefix ? `${prefix}.${key}` : key;
-      if (child && typeof child === 'object' && typeof child.expression === 'string') {
-        const caller = {
-          source: 'debugging-tab',
-          sourcePath: name,
-          targetPath: name,
-          purpose: 'inspect calculated property',
-        };
-        const debugValue = Array.isArray(scope)
-          ? scope.map((currentScope) => dynamicUIValue(child, currentScope, caller))
-          : dynamicUIValue(child, scope, caller);
-
-        addDebugRow(
-          group,
-          subgroup,
-          name,
-          child.expression,
-          debugValue,
-          Array.isArray(scope) ? null : (compiled?.[key]?.ast ?? null),
-          detailGroup,
-        );
-        continue;
-      }
-      if (child && typeof child === 'object' && !Array.isArray(child)) {
-        collectDynamicExpressions(
-          group,
-          subgroup,
-          name,
-          child,
-          compiled?.[key],
-          scope,
-          detailGroup,
-        );
-      }
-    }
-  };
-
-  if (debuggingTabEnabled) {
-    /*
-     * ENTITY is reserved for calculations belonging to the entity itself,
-     * rather than to one of its fields. This scan deliberately excludes field
-     * collections; they are classified beneath ENTITY FIELDS below.
-     */
-    const entityMetadataForDebug = Object.fromEntries(
-      Object.entries(metadata || {}).filter(([key]) => !['fieldDefinition', 'derivedFields'].includes(key)),
-    );
-    collectDynamicExpressions(
-      'ENTITY',
-      null,
-      '',
-      entityMetadataForDebug,
-      compiledEntityContext?.metadata,
-      ctxFields,
-    );
-
-    /*
-     * Calculated field values are classified by provenance. Current metadata
-     * explicitly declares SysUser calculations, so they appear under DECLARED
-     * FIELDS. If a future metadata contract marks a derived field with
-     * `inheritedFrom`, it automatically moves to INHERITED FIELDS. UI-only
-     * derived values remain visibly distinct as UI-DEFINED FIELDS.
-     */
-    for (const [key, derived] of Object.entries(metadata.derivedFields || {})) {
-      addDebugRow(
-        'ENTITY FIELDS',
-        'FIELD VALUES',
-        key,
-        derived.expression,
-        ctxValue(key),
-        compiledEntityContext?.metadata?.derivedFields?.[key]?.ast ?? null,
-        derived?.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
-        `ctx.page.page.fields.${key}.expression`,
-        `ctx.page.page.dataCurrent.${key}`,
-      );
-    }
-
-    for (const [key, derived] of Object.entries(derivedFields || {})) {
-      if (metadata.derivedFields?.[key]?.expression === derived.expression) continue;
-      addDebugRow(
-        'ENTITY FIELDS',
-        'FIELD VALUES',
-        key,
-        derived.expression,
-        ctxValue(key),
-        compiledUIRecord?.derivedFields?.[key]?.ast ?? null,
-        derived?.inheritedFrom ? 'INHERITED FIELDS' : 'UI-DEFINED FIELDS',
-        `ctx.page.page.fields.${key}.expression`,
-        `ctx.page.page.dataCurrent.${key}`,
-      );
-    }
-
-    /*
-     * Canonical calculations on ordinary editable/stored fields are different
-     * from derived fields: the field persists a normal value, while CTX/evaluator
-     * causality recalculates it only for the metadata-declared triggers. Keep
-     * these visible as FIELD CALCULATIONS so DEBUG reflects the same canonical
-     * metadata that drives forms.js, without knowing any specific component or
-     * entity such as License/date-duration-range.
-     */
-    for (const [fieldKey, fieldMetadata] of Object.entries(metadata.fieldDefinition || {})) {
-      const calculation = fieldMetadata?.calculation;
-      if (!calculation || typeof calculation.expression !== 'string') continue;
-      addDebugRow(
-        'ENTITY FIELDS',
-        'FIELD CALCULATIONS',
-        `${fieldKey}.calculation`,
-        calculation.expression,
-        ctxValue(fieldKey),
-        compiledEntityContext?.metadata?.fieldDefinition?.[fieldKey]?.calculation?.ast ?? null,
-        fieldMetadata?.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
-        compiledEntityContextName
-          ? `ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`
-          : null,
-        `ctx.page.page.dataCurrent.${fieldKey}`,
-      );
-    }
-
-    /*
-     * Field-state calculations belong under FIELD OTHER. This separates the
-     * field's calculated value from calculations controlling visibility,
-     * editability/read-only state, required/nullable state, etc.
-     */
-    const fieldStatePropertyNames = new Set([
-      'visible', 'editable', 'readOnly', 'readonly', 'required', 'nullable', 'enabled', 'disabled'
-    ]);
-    for (const [fieldKey, fieldMetadata] of Object.entries(metadata.fieldDefinition || {})) {
-      for (const propertyName of fieldStatePropertyNames) {
-        const property = fieldMetadata?.[propertyName];
-        if (property && typeof property === 'object' && typeof property.expression === 'string') {
-          addDebugRow(
-            'ENTITY FIELDS',
-            'FIELD OTHER',
-            `fieldDefinition.${fieldKey}.${propertyName}`,
-            property.expression,
-            dynamicUIValue(property, ctxFields, {
-              source: 'debugging-tab',
-              sourcePath: `fieldDefinition.${fieldKey}.${propertyName}`,
-              targetPath: `fields.${fieldKey}.${propertyName}`,
-              purpose: 'inspect calculated field property',
-            }),
-            compiledEntityContext?.metadata?.fieldDefinition?.[fieldKey]?.[propertyName]?.ast ?? null,
-            fieldMetadata?.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
-          );
-        }
-      }
-    }
-    for (const [fieldKey, override] of Object.entries(overrides || {})) {
-      for (const propertyName of fieldStatePropertyNames) {
-        const property = override?.[propertyName];
-        if (property && typeof property === 'object' && typeof property.expression === 'string') {
-          addDebugRow(
-            'ENTITY FIELDS',
-            'FIELD OTHER',
-            `fieldOverrides.${fieldKey}.${propertyName}`,
-            property.expression,
-            dynamicUIValue(property, ctxFields, {
-              source: 'debugging-tab',
-              sourcePath: `fieldOverrides.${fieldKey}.${propertyName}`,
-              targetPath: `fields.${fieldKey}.${propertyName}`,
-              purpose: 'inspect calculated field property',
-            }),
-            compiledUIRecord?.fieldOverrides?.[fieldKey]?.[propertyName]?.ast ?? null,
-            'UI OVERRIDES',
-          );
-        }
-      }
-    }
-
-    for (const [collectionKey, collection] of Object.entries(relatedCollections || {})) {
-      const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
-      const sourceKey = collection.sourceKey ?? collectionKey;
-      const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
-      for (const [fieldKey, field] of Object.entries(collection.fields || {})) {
-        const canonicalDerived = relatedMetadata?.derivedFields?.[fieldKey];
-        const formula = field.expression || canonicalDerived?.expression;
-        if (!formula) continue;
-        const values = rows.map((row) => collectionValue(row, collectionKey, collection, fieldKey, field).raw);
-        addDebugRow(
-          'RELATED ENTITY',
-          null,
-          `${collectionKey}.${fieldKey}`,
-          formula,
-          values,
-          null,
-        );
-      }
-    }
-
-    /*
-     * UI is one top-level group. TABS deliberately comes first, followed by
-     * field presentation, related presentation and actions.
-     */
-    for (let index = 0; index < metadataUI.record.tabs.length; index += 1) {
-      const tab = metadataUI.record.tabs[index];
-      if (tab?.visible && typeof tab.visible === 'object' && typeof tab.visible.expression === 'string') {
-        addDebugRow(
-          'UI',
-          'TABS',
-          `tabs.${tab.id}.visible`,
-          tab.visible.expression,
-          dynamicUIValue(tab.visible, ctxFields, {
-            source: 'debugging-tab',
-            sourcePath: `tabs.${tab.id}.visible`,
-            targetPath: `tabs.${tab.id}.visible`,
-            purpose: 'inspect tab visibility calculation',
-          }),
-          compiledUIRecord?.tabs?.[index]?.visible?.ast ?? null,
-        );
-      }
-    }
-
-    /* Field-state properties were already classified under FIELD OTHER. */
-    const uiFieldOverrides = {};
-    for (const [fieldKey, override] of Object.entries(overrides || {})) {
-      if (!override || typeof override !== 'object') continue;
-      uiFieldOverrides[fieldKey] = Object.fromEntries(
-        Object.entries(override).filter(([key]) => !fieldStatePropertyNames.has(key)),
-      );
-    }
-    collectDynamicExpressions(
-      'UI',
-      'FIELDS',
-      'fieldOverrides',
-      uiFieldOverrides,
-      compiledUIRecord?.fieldOverrides,
-    );
-
-    for (const [collectionKey, collection] of Object.entries(relatedCollections || {})) {
-      const sourceKey = collection.sourceKey ?? collectionKey;
-      const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
-      const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
-      const expressionScopes = rows.map((row) => relatedExpressionScope(row, relatedMetadata));
-      for (const [fieldKey, field] of Object.entries(collection.fields || {})) {
-        collectDynamicExpressions(
-          'UI',
-          'RELATED',
-          `relatedCollections.${collectionKey}.fields.${fieldKey}.presentation`,
-          field.presentation,
-          compiledUIRecord?.relatedCollections?.[collectionKey]?.fields?.[fieldKey]?.presentation,
-          expressionScopes,
-        );
-      }
-    }
-
-    for (const [actionKey, action] of Object.entries(metadataUI.record.entryActions || {})) {
-      for (const propertyKey of ['visible', 'enabled', 'disabledReason']) {
-        const dynamicValue = action?.[propertyKey];
-        if (!dynamicValue || typeof dynamicValue !== 'object' || typeof dynamicValue.expression !== 'string') {
-          continue;
-        }
-
-        addDebugRow(
-          'UI',
-          'ACTIONS',
-          `entryActions.${actionKey}.${propertyKey}`,
-          dynamicValue.expression,
-          dynamicUIValue(dynamicValue, ctxFields, {
-            source: 'debugging-tab',
-            sourcePath: `entryActions.${actionKey}.${propertyKey}`,
-            targetPath: `entryActions.${actionKey}.${propertyKey}`,
-            purpose: `inspect action ${propertyKey} calculation`,
-          }),
-          compiledUIRecord?.entryActions?.[actionKey]?.[propertyKey]?.ast ?? null,
-        );
-      }
-    }
-  }
-
-  /*
-   * Convert raw calculation rows into a compact hierarchy for display.
-   *
-   * Repeated dotted prefixes become headings automatically:
-   *
-   *   fieldOverrides.emailVerificationStatus.presentation.tone
-   *   fieldOverrides.localPasswordStatus.presentation.tone
-   *   fieldOverrides.localPasswordStatus.presentation.icon
-   *
-   * renders as:
-   *
-   *   fieldOverrides
-   *     emailVerificationStatus.presentation.tone
-   *     localPasswordStatus.presentation
-   *       tone
-   *       icon
-   *
-   * Single-use prefixes are intentionally collapsed into the leaf label so the
-   * grid remains compact. No SysBO-specific path names are known here.
-   */
-  /**
-   * Build the hierarchical display rows for one debugging provenance scope.
-   * Entity and UI expressions are deliberately separated before grouping so
-   * the Debugging surface can expose them as independent internal tabs while
-   * keeping the same generic path-compaction behaviour in both views.
-   */
-  const buildDebuggingDisplayRows = (sourceRows) => {
-    const displayRows = [];
-    const orderedUnique = (values) => [...new Set(values)];
-    const commonPrefixLength = (rows, fromIndex) => {
-      if (!rows.length) return fromIndex;
-      let index = fromIndex;
-      while (true) {
-        const segment = rows[0].segments[index];
-        if (segment === undefined) return index;
-        if (rows.some((row) => row.segments[index] !== segment)) return index;
-        index += 1;
-      }
-    };
-
-    const appendDebugNameTree = (rows, fromIndex = 0, depth = 1) => {
-      if (!rows.length) return;
-
-      if (rows.length === 1) {
-        displayRows.push({
-          type: 'value',
-          row: rows[0].row,
-          displayName: rows[0].segments.slice(fromIndex).join('.'),
-        });
-        return;
-      }
-
-      const commonEnd = commonPrefixLength(rows, fromIndex);
-      if (commonEnd > fromIndex) {
-        displayRows.push({
-          type: 'path',
-          label: rows[0].segments.slice(fromIndex, commonEnd).join('.'),
-          depth,
-        });
-        appendDebugNameTree(rows, commonEnd, depth + 1);
-        return;
-      }
-
-      const bySegment = new Map();
-      for (const row of rows) {
-        const segment = row.segments[fromIndex] ?? '';
-        if (!bySegment.has(segment)) bySegment.set(segment, []);
-        bySegment.get(segment).push(row);
-      }
-
-      for (const branchRows of bySegment.values()) {
-        if (branchRows.length === 1) {
-          const only = branchRows[0];
-          displayRows.push({
-            type: 'value',
-            row: only.row,
-            displayName: only.segments.slice(fromIndex).join('.'),
-          });
-        } else {
-          appendDebugNameTree(branchRows, fromIndex, depth);
-        }
-      }
-    };
-
-    for (const group of orderedUnique(sourceRows.map((row) => row.group))) {
-      displayRows.push({ type: 'group', label: group });
-      const groupRows = sourceRows.filter((row) => row.group === group);
-
-      for (const subgroup of orderedUnique(groupRows.map((row) => row.subgroup ?? ''))) {
-        const subgroupRows = groupRows.filter((row) => (row.subgroup ?? '') === subgroup);
-        if (subgroup) displayRows.push({ type: 'subgroup', label: subgroup });
-
-        for (const detailGroup of orderedUnique(subgroupRows.map((row) => row.detailGroup ?? ''))) {
-          const detailRows = subgroupRows.filter((row) => (row.detailGroup ?? '') === detailGroup);
-          if (detailGroup) displayRows.push({ type: 'detail', label: detailGroup });
-
-          appendDebugNameTree(
-            detailRows.map((row) => ({ row, segments: row.name.split('.').filter(Boolean) })),
-          );
-        }
-      }
-    }
-
-    return displayRows;
-  };
-
-  const entityDebuggingDisplayRows = buildDebuggingDisplayRows(
-    debuggingRows.filter((row) => row.group !== 'UI'),
-  );
-  const uiDebuggingDisplayRows = buildDebuggingDisplayRows(
-    debuggingRows.filter((row) => row.group === 'UI'),
-  );
+  const { entityDebuggingDisplayRows, uiDebuggingDisplayRows } = buildMetadataDebuggingModel({
+    debuggingTabEnabled,
+    metadata,
+    metadataUI,
+    compiledEntityContext,
+    compiledEntityContextName,
+    compiledUIRecord,
+    ctxFields,
+    ctxValue,
+    dynamicUIValue,
+    derivedFields,
+    overrides,
+    relatedCollections,
+    relatedMetadataRegistry,
+    pageRelatedData,
+    collectionValue,
+    relatedExpressionScope,
+  });
 
 %>
 
@@ -973,376 +483,62 @@
     <% if (!isNew && recordId) { %>
       <input type="hidden" name="id" value="<%= recordId %>">
     <% } %>
-    <ul class="nav nav-tabs entity-tabs" role="tablist" aria-label="Metadata-driven record tabs">
-      <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
-        <% const tab = tabs[tabIndex]; %>
-        <li class="nav-item" role="presentation">
-          <button
-            class="nav-link <%= tab.id === activeTabId ? 'active' : '' %>"
-            id="metadata-<%= tab.id %>-tab"
-            data-bs-toggle="tab"
-            data-bs-target="#metadata-<%= tab.id %>-pane"
-            type="button"
-            role="tab"
-            aria-controls="metadata-<%= tab.id %>-pane"
-            aria-selected="<%= tab.id === activeTabId ? 'true' : 'false' %>"
-          >
-            <% if (tab.icon) { %>
-              <i class="bi bi-<%= tab.icon %> me-1" aria-hidden="true"></i>
-            <% } %>
-            <%= tab.label %>
-          </button>
-        </li>
-      <% } %>
-    </ul>
+    <%- include('ui-components/entry-tabs-nav', { tabs, activeTabId }) %>
 
-    <div class="tab-content entity-tab-content">
-      <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
-        <% const tab = tabs[tabIndex]; %>
-        <%
-          /*
-           * A tab that contains no changeable controls is informational only.
-           * Mark the whole pane in both create and edit/view flows so every
-           * metadata-driven entity gets the same visual cue without hard-coding
-           * System details, Authentication, or any particular entity.
-           * Summary tabs are inherently non-editable; form tabs are considered
-           * editable when at least one visible, non-sensitive canonical field
-           * can be changed according to the same metadata/evaluator rule used
-           * by the controls themselves.
-           */
-          const tabContents = Array.isArray(tab.content) && tab.content.length
-            ? tab.content
-            : (tab.fields || []).map((field) => ({ kind: 'field', field, span: 6 }));
-          const formLikeTab = !tab.layout || tab.layout === 'form';
-          const tabHasEditableFields = tabContents.some((content) => {
-            if (content?.kind !== 'field') return false;
-            const key = content.field;
-            if (derivedFields[key] || relatedCollections[key]) return false;
-            const field = metadata.fieldDefinition[key];
-            return Boolean(field && fieldVisible(field) && !field.sensitive && fieldEditable(field));
-          });
-          const tabHasInteractiveComponents = tabContents.some(
-            (content) => content?.kind === 'component' && content.component?.readOnly === false,
-          );
-          const tabComponentInteractive = tab.layout === 'component' && tab.component?.readOnly === false;
-          const readOnlyTab = tab.layout === 'summary'
-            || tab.layout === 'debug-calculations'
-            || (!tabHasEditableFields && !tabHasInteractiveComponents && !tabComponentInteractive);
-        %>
-        <div
-          class="tab-pane fade <%= tab.id === activeTabId ? 'show active' : '' %> <%= readOnlyTab ? 'entity-readonly-tab' : '' %>"
-          <%= readOnlyTab ? 'data-readonly-tab="true"' : '' %>
-          id="metadata-<%= tab.id %>-pane"
-          role="tabpanel"
-          aria-labelledby="metadata-<%= tab.id %>-tab"
-          tabindex="0"
-        >
-          <% if (tab.layout === 'debug-calculations') { %>
-            <%- include('ui-components/debugging-panel', { entityDebuggingDisplayRows, uiDebuggingDisplayRows, debugElementNameParts, debuggingEntityKey: definition.key, debuggingCsrfToken: csrfToken }) %>
-          <% } else if (Array.isArray(tab.content) && tab.content.length) { %>
-            <!--
-              Ordered mixed content is metadata-driven. The registry maps semantic
-              component keys to renderer implementations; this template never
-              derives filenames from entity names or component names directly.
-            -->
-            <div class="row g-3" data-metadata-tab-contents>
-              <% for (let contentIndex = 0; contentIndex < tab.content.length; contentIndex += 1) { %>
-                <% const content = tab.content[contentIndex]; %>
-                <%
-                  /*
-                   * Grid span is itself presentation metadata and may therefore
-                   * be evaluator-backed. This keeps conditional row layout out
-                   * of entity/component renderers. Clamp to Bootstrap's 1..12
-                   * grid contract after generic expression evaluation.
-                   */
-                  const compiledTabContent = compiledUIRecord?.tabs?.[tabIndex]?.content?.[contentIndex] || {};
-                  const contentSpanExpression = expressionText(content.span);
-                  const contentSpanAst = compiledTabContent?.span?.ast ?? null;
-                  const resolveContentSpan = (fallbackSpan) => {
-                    const resolvedSpan = dynamicUIValue(content.span ?? fallbackSpan, ctxFields, {
-                      source: 'ui-metadata',
-                      sourcePath: `tabs.${tab.id}.content.span`,
-                      targetPath: `tabs.${tab.id}.content.span`,
-                      purpose: 'resolve metadata grid span',
-                    });
-                    const numericSpan = Number(resolvedSpan);
-                    return Number.isFinite(numericSpan)
-                      ? Math.max(1, Math.min(12, Math.trunc(numericSpan)))
-                      : fallbackSpan;
-                  };
-                %>
-                <% if (content.kind === 'field') { %>
-                  <% const key = content.field; %>
-                  <%- include('field-components/form-field', { ...fieldComponentContext, key, span: resolveContentSpan(6), spanExpression: contentSpanExpression, spanAst: contentSpanAst }) %>
-                <% } else if (content.kind === 'break') { %>
-                  <!-- Generic metadata-declared row break; it carries no field/data semantics. -->
-                  <div class="w-100" data-metadata-layout-break aria-hidden="true"></div>
-                <% } else if (content.kind === 'spacer') { %>
-                  <!-- Generic metadata-declared grid spacer; it carries no field/data semantics. -->
-                  <div
-                    class="col-md-<%= resolveContentSpan(12) %>"
-                    data-metadata-layout-spacer
-                    <% if (contentSpanExpression && contentSpanAst) { %>
-                      data-ui-grid-span-ast="<%= JSON.stringify(contentSpanAst) %>"
-                      data-ui-grid-span-fallback="12"
-                    <% } %>
-                    aria-hidden="true"
-                  ></div>
-                <% } else if (content.kind === 'component' && content.component?.key) { %>
-                  <%
-                    const component = content.component;
-                    const componentBindings = Object.fromEntries(
-                      Object.entries(component.bindings || {}).map(([bindingKey, bindingValue]) => [
-                        bindingKey,
-                        dynamicUIValue(bindingValue, ctxFields, {
-                          source: 'ui-metadata',
-                          sourcePath: `tabs.${tab.id}.components.${component.key}.bindings.${bindingKey}`,
-                          targetPath: `tabs.${tab.id}.components.${component.key}.bindings.${bindingKey}`,
-                          purpose: 'resolve metadata component binding',
-                        }),
-                      ]),
-                    );
-                    const componentPartial = typeof metadataComponentPartialFor === 'function'
-                      ? metadataComponentPartialFor(String(component.key))
-                      : null;
-                  %>
-                  <div
-                    class="col-md-<%= resolveContentSpan(12) %>"
-                    data-metadata-content-component="<%= component.key %>"
-                    <% if (contentSpanExpression && contentSpanAst) { %>
-                      data-ui-grid-span-ast="<%= JSON.stringify(contentSpanAst) %>"
-                      data-ui-grid-span-fallback="12"
-                    <% } %>
-                    data-metadata-component-bindings="<%= JSON.stringify(componentBindings) %>"
-                  >
-                    <% if (componentPartial) { %>
-                      <%- include(componentPartial, { ...metadataComponentContext, component, componentBindings, readOnly: isViewMode || component.readOnly === true }) %>
-                    <% } else { %>
-                      <div
-                        data-metadata-component="<%= component.key %>"
-                        data-metadata-component-options="<%= JSON.stringify(component.options || {}) %>"
-                        data-metadata-component-bindings="<%= JSON.stringify(componentBindings) %>"
-                        data-entity-key="<%= definition.key %>"
-                        data-record-mode="<%= recordMode %>"
-                      ></div>
-                    <% } %>
-                  </div>
-                <% } %>
-              <% } %>
-            </div>
-          <% } else if (tab.layout === 'component' && tab.component) { %>
-            <%
-              const component = tab.component;
-              const componentKey = String(component.key || '');
-              const componentOptions = component.options || {};
-              const componentBindings = Object.fromEntries(
-                Object.entries(component.bindings || {}).map(([bindingKey, bindingValue]) => [
-                  bindingKey,
-                  dynamicUIValue(bindingValue, ctxFields, {
-                    source: 'ui-metadata',
-                    sourcePath: `tabs.${tab.id}.component.bindings.${bindingKey}`,
-                    targetPath: `tabs.${tab.id}.component.bindings.${bindingKey}`,
-                    purpose: 'resolve metadata component binding',
-                  }),
-                ]),
-              );
-              const componentPartial = typeof metadataComponentPartialFor === 'function'
-                ? metadataComponentPartialFor(componentKey)
-                : null;
-            %>
-            <% if (componentPartial) { %>
-              <div
-                data-metadata-component="<%= componentKey %>"
-                data-metadata-component-options="<%= JSON.stringify(componentOptions) %>"
-                data-metadata-component-bindings="<%= JSON.stringify(componentBindings) %>"
-                data-entity-key="<%= definition.key %>"
-                data-record-mode="<%= recordMode %>"
-              >
-                <%- include(componentPartial, { ...metadataComponentContext, component, componentBindings, readOnly: isViewMode || component.readOnly === true }) %>
-              </div>
-            <% } else { %>
-              <div
-                data-metadata-component="<%= componentKey %>"
-                data-metadata-component-options="<%= JSON.stringify(componentOptions) %>"
-                data-metadata-component-bindings="<%= JSON.stringify(componentBindings) %>"
-                data-entity-key="<%= definition.key %>"
-                data-record-mode="<%= recordMode %>"
-              ></div>
-            <% } %>
-          <% } else if (tab.layout === 'summary') { %>
-            <div class="account-summary-grid authentication-summary-grid">
-              <% for (const key of tab.fields) { %>
-                <% const derived = derivedFields[key]; %>
-                <% const collection = relatedCollections[key]; %>
-                <% const field = metadata.fieldDefinition[key]; %>
-                <% if (collection) continue; %>
+    <%- include('ui-components/entry-tab-content', {
+      tabs,
+      activeTabId,
+      derivedFields,
+      relatedCollections,
+      metadata,
+      compiledUIRecord,
+      ctxFields,
+      expressionText,
+      dynamicUIValue,
+      fieldVisible,
+      fieldEditable,
+      fieldComponentContext,
+      metadataComponentContext,
+      metadataComponentPartialFor,
+      isViewMode,
+      definition,
+      recordMode,
+      entityDebuggingDisplayRows,
+      uiDebuggingDisplayRows,
+      debugElementNameParts,
+      csrfToken,
+      pageRelatedData,
+      relatedMetadataRegistry,
+      collectionValue,
+      relatedRowHref,
+      relatedReferenceLabel,
+      optionItemForField,
+      enumToneClass,
+      formatValue,
+      overrides,
+      ctxValue,
+      referenceLabel,
+      fieldLabel,
+      valueFor
+    }) %>
 
-                <% if (derived) { %>
-                  <% const rawValue = derived.expression ? ctxValue(key) : undefined; %>
-                  <% const presentation = overrides[key]?.presentation || {}; %>
-                  <% const tone = dynamicUIValue(presentation.tone, ctxFields, {
-                    source: 'ui-metadata',
-                    sourcePath: `fieldOverrides.${key}.presentation.tone`,
-                    targetPath: `fields.${key}.tone`,
-                    purpose: 'resolve calculated-field presentation tone',
-                  }); %>
-                  <% const stateIcon = dynamicUIValue(presentation.icon, ctxFields, {
-                    source: 'ui-metadata',
-                    sourcePath: `fieldOverrides.${key}.presentation.icon`,
-                    targetPath: `fields.${key}.icon`,
-                    purpose: 'resolve calculated-field presentation icon',
-                  }); %>
-                  <% const derivedField = metadata.fieldDefinition[key]; %>
-                  <% const renderedDerivedValue = derivedField?.type === 'reference'
-                    ? referenceLabel(key, rawValue)
-                    : formatValue(rawValue, {...derived, ...presentation}); %>
-                  <div class="account-summary-label"><% if (derived.icon) { %><i class="bi bi-<%= derived.icon %> me-1" aria-hidden="true"></i><% } %><%= overrides[key]?.label || derived.label %>:</div>
-                  <div class="account-summary-value">
-                    <% if (stateIcon) { %>
-                      <span class="status-value <%= tone === 'success' ? 'status-positive' : 'status-neutral' %>">
-                        <i class="bi bi-<%= stateIcon %>" aria-hidden="true"></i>
-                        <%= renderedDerivedValue %>
-                      </span>
-                    <% } else if (tone) { %>
-                      <span class="badge text-bg-<%= tone %>"><%= renderedDerivedValue %></span>
-                    <% } else { %>
-                      <span class="text-secondary"><%= renderedDerivedValue %></span>
-                    <% } %>
-                  </div>
-                <% } else if (field && fieldVisible(field) && !field.sensitive) { %>
-                  <% const presentation = overrides[key]?.presentation || {}; %>
-                  <div class="account-summary-label"><%= fieldLabel(field) %>:</div>
-                  <div class="account-summary-value">
-                    <% const rendered = formatValue(valueFor(key), presentation); %>
-                    <% if (rendered === (presentation.emptyText || '—')) { %>
-                      <span class="text-secondary"><%= rendered %></span>
-                    <% } else { %>
-                      <%= rendered %>
-                    <% } %>
-                  </div>
-                <% } %>
-              <% } %>
-            </div>
-
-            <%- include('ui-components/related-collections', { tab, relatedCollections, pageRelatedData, relatedMetadataRegistry, collectionValue, relatedRowHref, relatedReferenceLabel, enumToneClass, formatValue, providerFor }) %>
-          <% } else { %>
-            <div class="row g-3">
-              <% for (const key of tab.fields) { %>
-                <%- include('field-components/form-field', { ...fieldComponentContext, key, span: 6 }) %>
-              <% } %>
-            </div>
-          <% } %>
-
-        </div>
-      <% } %>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <% for (const [actionKey, action] of leadingCommandActionEntries) { %>
-          <% if (!isNew && recordId && action.command) { %>
-            <button
-              class="<%= actionClass(action, 'primary') %>"
-              type="submit"
-              form="metadata-command-<%= actionKey %>"
-              <%= action.resolvedEnabled === false ? 'disabled' : '' %>
-              <% if (action.resolvedDisabledReason) { %>title="<%= action.resolvedDisabledReason %>"<% } %>
-            >
-              <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %>
-              <%= action.label %>
-            </button>
-          <% } %>
-        <% } %>
-
-        <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-leading') { %>
-          <%- include('ui-components/save-split-action', { saveAction, actionClass }) %>
-        <% } %>
-
-        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
-          <button
-            class="<%= actionClass(deleteAction, 'danger') %>"
-            type="button"
-            <%= deleteEnabled ? '' : 'disabled' %>
-            <% if (deleteEnabled) { %>
-              data-bs-toggle="modal"
-              data-bs-target="#deleteEntryModal"
-            <% } %>
-            <% if (deleteDisabledReason) { %>title="<%= deleteDisabledReason %>"<% } %>
-          >
-            <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
-            <%= deleteAction.label %>
-          </button>
-        <% } %>
-      </div>
-
-      <div class="d-flex gap-2 align-items-center">
-        <% if (!isViewMode && saveAction) { %>
-          <span
-            class="form-state-indicator small text-secondary me-1"
-            data-form-state-indicator
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            <i class="bi bi-check-circle me-1" data-form-state-icon aria-hidden="true"></i>
-            <span data-form-state-text><%= isNew ? 'New entry · incomplete' : 'No changes' %></span>
-          </span>
-        <% } %>
-
-        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-trailing') { %>
-          <button
-            class="<%= actionClass(deleteAction, 'danger') %>"
-            type="button"
-            <%= deleteEnabled ? '' : 'disabled' %>
-            <% if (deleteEnabled) { %>
-              data-bs-toggle="modal"
-              data-bs-target="#deleteEntryModal"
-            <% } %>
-            <% if (deleteDisabledReason) { %>title="<%= deleteDisabledReason %>"<% } %>
-          >
-            <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
-            <%= deleteAction.label %>
-          </button>
-        <% } %>
-
-        <% for (const [actionKey, action] of trailingCommandActionEntries) { %>
-          <% if (!isNew && recordId && action.command) { %>
-            <button
-              class="<%= actionClass(action, 'primary') %>"
-              type="submit"
-              form="metadata-command-<%= actionKey %>"
-              <%= action.resolvedEnabled === false ? 'disabled' : '' %>
-              <% if (action.resolvedDisabledReason) { %>title="<%= action.resolvedDisabledReason %>"<% } %>
-            >
-              <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %>
-              <%= action.label %>
-            </button>
-          <% } %>
-        <% } %>
-
-        <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>" <%= isViewMode ? '' : 'data-form-close-cancel' %>>
-          <i class="bi bi-x-circle me-1"></i>
-          <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
-        </a>
-
-        <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-trailing') { %>
-          <%- include('ui-components/save-split-action', { saveAction, actionClass }) %>
-        <% } %>
-      </div>
-    </div>
+    <%- include('ui-components/entry-actions-footer', {
+      isNew,
+      isViewMode,
+      recordId,
+      definition,
+      leadingCommandActionEntries,
+      trailingCommandActionEntries,
+      deleteAction,
+      deleteEnabled,
+      deleteDisabledReason,
+      saveAction,
+      actionClass
+    }) %>
   </form>
 </section>
 
-<% for (const [actionKey, action] of commandActionEntries) { %>
-  <% if (!isNew && recordId && action.command) { %>
-    <form
-      id="metadata-command-<%= actionKey %>"
-      method="post"
-      action="/bo/<%= definition.key %>/<%= recordId %>/<%= action.command %>"
-    >
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    </form>
-  <% } %>
-<% } %>
+<%- include('ui-components/entry-command-forms', { commandActionEntries, isNew, recordId, definition, csrfToken }) %>
 
 <%- include('../../popups/messages/bo-edit-confirmations', {
   isNew,

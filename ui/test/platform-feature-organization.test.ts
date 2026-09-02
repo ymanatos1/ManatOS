@@ -27,7 +27,30 @@ describe('platform feature organization', () => {
     expect(pageRoutes).not.toContain("'pages/app-playground'");
     expect(sysboRoutes).not.toContain("'pages/application-playground'");
     expect(appPlayground).toContain('/assets/platforms/mcrm/app-playground-professional.png');
+    expect(appPlayground).toContain('No applications available yet');
+    expect(appPlayground).not.toContain('Ready to play?');
+    expect(appPlayground).not.toContain('Complete your registration');
+    expect(appPlayground).not.toContain('Application license required');
+    expect(appPlayground).not.toContain("currentUser.role === 'Guest'");
     expect(applicationPlayground).toContain('app.scopes.workspace.application');
+  });
+
+
+  it('keeps the current-platform access decision authoritative in CTX without app mirrors', async () => {
+    const pageContext = await source('src/middleware/page-context.ts');
+    const access = await source('src/platforms/access.ts');
+    const navigation = await source('src/navigation.ts');
+    const context = await source('src/context/manatos-context.ts');
+
+    expect(pageContext).toContain('platformAccess: Boolean(resolvedPlatformAccess)');
+    expect(pageContext).toContain('{ ctx: res.locals.ctx }');
+    expect(pageContext).not.toContain('currentPlatformEntitled');
+    expect(pageContext).not.toContain('platformEntitled:');
+    expect(access).toContain('contextPlatformAccess(res.locals.ctx, platformId)');
+    expect(access).not.toContain('app?.currentPlatformEntitled');
+    expect(navigation).toContain('contextPlatformAccess(access.ctx, platform.id)');
+    expect(navigation).not.toContain('platformEntitled?:');
+    expect(context).toContain('export function contextPlatformAccess');
   });
 
   it('declares platform-specific styling through platform presentation metadata', async () => {
@@ -35,10 +58,14 @@ describe('platform feature organization', () => {
     const mcrmPlatform = await source('../shared/src/platforms/mcrm/platform.ts');
     const shell = await source('views/layout/shell.ejs');
     const css = await source('public/css/platforms/mcrm.css');
+    const genericPagesCss = await source('public/css/pages.css');
+    const genericUiCss = await source('public/css/ui.css');
 
     expect(platformTypes).toContain('stylesheet?: string');
     expect(mcrmPlatform).toContain("stylesheet: '/css/platforms/mcrm.css'");
     expect(shell).toContain('app.currentPlatform?.presentation?.stylesheet');
     expect(css).toContain('.app-playground-welcome');
+    expect(genericPagesCss).not.toContain('.app-playground-welcome');
+    expect(genericUiCss).not.toContain('.app-playground-welcome');
   });
 });

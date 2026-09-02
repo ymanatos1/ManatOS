@@ -1,0 +1,12 @@
+<% for (const [actionKey, action] of commandActionEntries) { %>
+  <% if (!isNew && recordId && action.command) { %>
+    <form
+      id="metadata-command-<%= actionKey %>"
+      method="post"
+      action="/bo/<%= definition.key %>/<%= recordId %>/<%= action.command %>"
+    >
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    </form>
+  <% } %>
+<% } %>
+

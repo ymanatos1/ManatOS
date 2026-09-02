@@ -225,7 +225,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       },
       emailVerificationSource: {
         label: 'Verification source',
-        presentation: { mode: 'summary', format: 'verification-source', emptyText: '—' },
+        presentation: { mode: 'summary', emptyText: '—' },
       },
 
       // Create-form behavior is UI-specific; persisted/entity semantics stay
@@ -262,10 +262,9 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         layout: 'panel-list',
         emptyText: 'No external authentication providers are linked.',
         fields: {
-          provider: {
-            // `auth-provider` remains a pure presentation formatter.
-            format: 'auth-provider',
-          },
+          // Provider label/icon presentation comes from the related field's
+          // generic canonical optionItems catalogue.
+          provider: {},
           email: {},
           providerEmailVerificationStatus: {
             // Value comes from canonical external-identities.derivedFields.

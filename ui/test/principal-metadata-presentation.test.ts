@@ -63,6 +63,7 @@ describe('metadata-driven Principal presentation', () => {
   it('lays out Contact as a metadata grid so reusable contact collections can share rows', async () => {
     const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
     const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
 
     expect(uiMetadata).toContain("tab('contact', 'Contact', 20, [], {");
     expect(uiMetadata).toContain("layout: 'form'");
@@ -72,8 +73,8 @@ describe('metadata-driven Principal presentation', () => {
     expect(uiMetadata).toContain("relationshipEntityKey: 'sys-principal-telephone-numbers'");
     expect(uiMetadata).toContain("identityFields: ['countryCode', 'number']");
     expect(uiMetadata).toContain("key: 'collection-editor'");
-    expect(renderer).toContain('class="col-md-<%= resolveContentSpan(12) %>"');
-    expect(renderer).toContain('data-metadata-content-component="<%= component.key %>"');
+    expect(tabContent).toContain('class="col-md-<%= resolveContentSpan(12) %>"');
+    expect(tabContent).toContain('data-metadata-content-component="<%= component.key %>"');
     expect(renderer).not.toContain("definition.key === 'sys-principals'");
   });
 
@@ -81,6 +82,7 @@ describe('metadata-driven Principal presentation', () => {
     const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
     const component = await uiSource('public/js/components/hierarchy-tree.js');
     const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
 
     expect(uiMetadata).toContain("tab('organization', 'Organization'");
     expect(uiMetadata).toContain("key: 'hierarchy-tree'");
@@ -107,7 +109,7 @@ describe('metadata-driven Principal presentation', () => {
     expect(component).not.toContain('sys-principals');
     expect(component).not.toContain("'parentId'");
     expect(component).not.toContain('rootPrincipalId');
-    expect(renderer).toContain('data-metadata-content-component="<%= component.key %>"');
+    expect(tabContent).toContain('data-metadata-content-component="<%= component.key %>"');
     expect(renderer).not.toContain("componentKey === 'hierarchy-tree'");
   });
 

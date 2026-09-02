@@ -8,6 +8,20 @@ This review covers the current source, metadata contracts, runtime CTX/evaluator
 
 Per request, it **does not count the temporary #16 Current-EJS entity list/edit implementations as refactoring targets**. Those are comparison/reference code and should be deleted after their metadata-driven counterparts are accepted. The excluded legacy EJS/definition area is already substantial (roughly 1,151 source lines across the obvious list/edit/provider partials and legacy SysBO UI definition registry), so the savings below are *in addition* to that eventual deletion.
 
+
+## Completion note — 2026-09-02
+
+The Phase-B recommendations from this audit have now been implemented and verified. In particular:
+
+- `ctx.user.permissions.<platform>.capabilities.platformAccess` is populated as the single trusted UI platform-access fact; the duplicate `app.currentPlatformEntitled` path has been removed.
+- navigation and metadata-driven standard actions consume evaluator-backed dynamic values against request/page CTX; API/domain authorization remains independently authoritative.
+- the metadata-driven entry renderer has been decomposed into reusable tab/content/action components, with EJS runtime-composition regression coverage.
+- Debugging inventory construction has moved from EJS into a reusable TypeScript presentation-model builder, preserving formula/current-value CTX inspection as separate capabilities.
+- generic option/value presentation has moved into a shared resolver; the renderer-specific `verification-source` concept has been removed in favor of metadata-declared option presentation.
+- mCRM-specific Playground styling is isolated in the platform stylesheet rather than duplicated in generic CSS.
+
+The historical findings below are intentionally retained as the record of the 2026-08-30 audit; statements describing then-current duplication should therefore be read as snapshot findings, not current architecture.
+
 ## Executive result
 
 The evaluator is already mature enough to remove a meaningful amount of UI decision code **without extending expression syntax**. The largest immediate opportunity is not adding more expressions indiscriminately; it is making resolved permission/capability facts first-class in CTX and letting metadata consume them consistently.

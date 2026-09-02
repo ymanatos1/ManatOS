@@ -1199,14 +1199,13 @@ async function editPageSupplementalData(
     suggestedProvider = externalAuthProviderDefinitions[0]?.provider ?? '';
   }
 
+  const primaryField = definition.boMetadata.fieldDefinition[definition.boMetadata.primaryField];
   const rawPrimaryValue = item[definition.boMetadata.primaryField];
-  let displayValue = String(rawPrimaryValue ?? 'entry');
-  if (definition.key === 'sys-ext-auth-providers') {
-    const providerDefinition = externalAuthProviderDefinitions.find(
-      (candidate) => candidate.provider === String(rawPrimaryValue ?? '').toLowerCase(),
-    );
-    displayValue = providerDefinition?.label ?? displayValue.replace(/^./, (character) => character.toUpperCase());
-  }
+  const primaryPresentationItem = [
+    ...(primaryField?.optionItems || []),
+    ...(primaryField?.enumItems || []),
+  ].find((candidate) => candidate?.value === rawPrimaryValue);
+  const displayValue = String(primaryPresentationItem?.label ?? rawPrimaryValue ?? 'entry');
 
   const pageReferenceData = await references(req, definition);
   if (definition.key === 'sys-ext-auth-providers') {

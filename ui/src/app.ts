@@ -49,7 +49,7 @@ export function createUiApp() {
   app.use(express.json());
 
   app.get('/favicon.ico', (_req, res) => {
-    res.sendFile(resolve(uiRoot, 'public/assets/favicon.ico'));
+    res.sendFile(resolve(uiRoot, 'public/assets/m1/favicon.ico'));
   });
 
   app.use('/assets', express.static(resolve(uiRoot, 'public/assets')));

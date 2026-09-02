@@ -2,6 +2,16 @@
   const providerFor = (providerKey) =>
     authProviders.find((candidate) => candidate.key === providerKey);
 
+  /*
+   * Status text comes from the same canonical SysUser derived fields used by
+   * metadata-driven SysUser forms. This partial owns presentation only; it must
+   * not duplicate those business/presentation calculations from raw booleans.
+   */
+  const resolvedEmailVerificationStatus = emailVerificationStatus || 'Not verified';
+  const resolvedLocalPasswordStatus = localPasswordStatus || 'Not configured';
+  const emailIsVerified = resolvedEmailVerificationStatus === 'Verified';
+  const localPasswordConfigured = resolvedLocalPasswordStatus === 'Configured';
+
   const verificationSourceDisplayName = (source) => {
     if (source === 'internal') {
       return 'ManatOS';
@@ -14,14 +24,14 @@
 <div class="account-summary-grid authentication-summary-grid">
   <div class="account-summary-label">Email verification</div>
   <div class="account-summary-value">
-    <span class="badge text-bg-<%= authenticationUser.emailVerified ? 'success' : 'secondary' %>">
-      <%= authenticationUser.emailVerified ? 'Verified' : 'Not verified' %>
+    <span class="badge text-bg-<%= emailIsVerified ? 'success' : 'secondary' %>">
+      <%= resolvedEmailVerificationStatus %>
     </span>
   </div>
 
   <div class="account-summary-label">Verification source</div>
   <div class="account-summary-value">
-    <% if (authenticationUser.emailVerified && authenticationUser.emailVerificationSource) { %>
+    <% if (emailIsVerified && authenticationUser.emailVerificationSource) { %>
       <%= verificationSourceDisplayName(authenticationUser.emailVerificationSource) %>
     <% } else { %>
       <span class="text-secondary">—</span>
@@ -40,18 +50,18 @@
   <div class="account-summary-label">Local password</div>
   <div class="account-summary-value account-password-status">
     <span
-      class="status-value <%= authenticationUser.hasPassword ? 'status-positive' : 'status-neutral' %>"
+      class="status-value <%= localPasswordConfigured ? 'status-positive' : 'status-neutral' %>"
     >
       <i
-        class="bi <%= authenticationUser.hasPassword ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"
+        class="bi <%= localPasswordConfigured ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"
       ></i>
-      <%= authenticationUser.hasPassword ? 'Configured' : 'Not configured' %>
+      <%= resolvedLocalPasswordStatus %>
     </span>
 
     <% if (showPasswordAction === true) { %>
       <a class="btn btn-outline-primary btn-sm" href="/account/password">
         <i class="bi bi-key me-1"></i>
-        <%= authenticationUser.hasPassword ? 'Change password' : 'Set password' %>
+        <%= localPasswordConfigured ? 'Change password' : 'Set password' %>
       </a>
     <% } %>
   </div>

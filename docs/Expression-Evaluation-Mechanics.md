@@ -282,7 +282,7 @@ This allows one CTX representation to support both concise policy expressions an
 
 ### 13.4 Navigation and action migration
 
-Navigation visibility now evaluates `ManatOSDynamicValue<boolean>` against the authoritative request CTX, with compiled expressions cached by source string. The previous role/auth/platform-entitlement flags remain only as a compatibility path for contributions not yet migrated.
+Navigation visibility now evaluates `ManatOSDynamicValue<boolean>` against the authoritative request CTX, with compiled expressions cached by source string. Legacy authentication/role contribution properties remain as a compatibility path for navigation items not yet migrated, but platform entitlement is no longer a parallel input: `ctx.user.permissions.<platform>.capabilities.platformAccess` is the single UI decision fact used by navigation and the platform route guard.
 
 Metadata-driven entry actions resolve `visible`, `enabled` and `disabledReason` generically. Standard Save/Delete rules therefore live in metadata rather than an entity renderer. List Add resolves the same style of dynamic `visible`, `enabled` and `disabledReason` properties. Renderers receive resolved action models and do not add a second permission gate.
 
@@ -301,6 +301,8 @@ The separation is intentional:
 - **the API/domain layer** remains authoritative for security and persistence.
 
 That structure makes decisions inspectable in the Debugging tab/CTX Viewer, removes duplicated renderer branches, and lets future renderers (Angular, React, mobile, etc.) consume the same metadata contract.
+
+The Debugging inventory itself now follows the same separation. A reusable presentation-model builder discovers formulas, provenance, definition CTX paths and current-value CTX paths from canonical/UI metadata; EJS only renders the resulting rows. Likewise, generic option/value presentation is resolved by a shared metadata presentation helper rather than by domain-specific formatter branches. These boundaries are deliberately renderer-independent so Apps Designer/Playground and future Angular/mobile clients can reuse the same semantics.
 
 ## 14. Diagnostics
 

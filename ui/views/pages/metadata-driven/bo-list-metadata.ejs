@@ -28,25 +28,11 @@
       const match = (listReferenceValues[fieldKey] || []).find((candidate) => candidate?.id === value);
       return match?.name ?? String(value);
     };
-    const enumItem = (field, value) =>
-      (field.enumItems || []).find((candidate) => candidate?.value === value) || null;
-    const enumToneClass = (item) => {
-      const tone = item?.tone;
-      if (!tone) return '';
-      if (tone === 'danger' && item?.toneStrength === 'soft') return 'text-danger opacity-75';
-      if (tone === 'danger' && item?.toneStrength === 'strong') return 'text-danger-emphasis';
-      if (tone === 'warning') return 'text-warning-emphasis';
-      return `text-${tone}`;
-    };
-    const durationLabel = (value) => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) return '—';
-      const parts = [
-        ['year', Number(value.years || 0)],
-        ['month', Number(value.months || 0)],
-        ['day', Number(value.days || 0)],
-      ].filter(([, count]) => count > 0).map(([unit, count]) => `${count} ${unit}${count === 1 ? '' : 's'}`);
-      return parts.length ? parts.join(', ') : '0 days';
-    };
+    const optionItem = metadataOptionItemForField;
+    // Filters still use canonical enum constraints, so retain this narrow alias.
+    const enumItem = (field, value) => optionItem({ enumItems: field.enumItems || [] }, value);
+    const enumToneClass = metadataOptionToneClass;
+    const durationLabel = (value) => formatMetadataValue(value);
     const rowActions = Object.entries(metadataUI.list.rowActions || {})
       .map(([key, action]) => ({ key, ...action }))
       .filter((action) => action.visible !== false)
@@ -159,16 +145,16 @@
                 <% if (!field) continue; %>
                 <td>
                   <% if (key === metadata.primaryField) { %>
-                    <% const primaryEnumItem = field.type === 'enum' ? enumItem(field, item[key]) : null; %>
+                    <% const primaryOptionItem = optionItem(field, item[key]); %>
                     <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>">
-                      <% if (primaryEnumItem?.icon) { %><i class="bi bi-<%= primaryEnumItem.icon %> <%= enumToneClass(primaryEnumItem) %> me-1" aria-hidden="true"></i><% } %><%= primaryEnumItem?.label || item[key] || '' %>
+                      <% if (primaryOptionItem?.icon) { %><i class="bi bi-<%= primaryOptionItem.icon %> <%= enumToneClass(primaryOptionItem) %> me-1" aria-hidden="true"></i><% } %><%= primaryOptionItem?.label || item[key] || '' %>
                     </a>
                   <% } else if (field.type === 'reference') { %>
                     <%= referenceLabel(key, item[key]) %>
-                  <% } else if (field.type === 'enum') { %>
-                    <% const selectedEnumItem = enumItem(field, item[key]); %>
-                    <% if (selectedEnumItem?.icon) { %><i class="bi bi-<%= selectedEnumItem.icon %> <%= enumToneClass(selectedEnumItem) %> me-1" aria-hidden="true"></i><% } %>
-                    <%= selectedEnumItem?.label || item[key] || '' %>
+                  <% } else if (optionItem(field, item[key])) { %>
+                    <% const selectedOptionItem = optionItem(field, item[key]); %>
+                    <% if (selectedOptionItem?.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
+                    <%= selectedOptionItem?.label || item[key] || '' %>
                   <% } else if (field.type === 'duration') { %>
                     <%= durationLabel(item[key]) %>
                   <% } else if (field.type === 'boolean') { %>

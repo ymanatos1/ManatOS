@@ -176,6 +176,24 @@ function userContext(
 }
 
 /** Build the safe root context that exists for every UI request. */
+/**
+ * Read the server-resolved platform-access capability from CTX.
+ *
+ * CTX is the authoritative request decision surface for renderer/navigation
+ * decisions. Callers should not mirror this fact into `app.*` or rebuild it
+ * from roles/licenses after the context has been created.
+ */
+export function contextPlatformAccess(
+  ctx: ManatOSContext | null | undefined,
+  platformId: string,
+): boolean {
+  if (!ctx?.user || !platformId) return false;
+  const permission = ctx.user.permissions[platformId];
+  return typeof permission !== 'string'
+    && permission?.capabilities.platformAccess === true;
+}
+
+
 export function createManatOSContext(
   company: CompanyInfo,
   currentPlatform: SysPlatform,

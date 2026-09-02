@@ -11,11 +11,13 @@ const api = (path: string) => readFile(resolve(here, '..', '..', 'api', path), '
 describe('metadata entry Save lifecycle and Principal addresses', () => {
   it('uses one shared split Save action and keeps Save-in-place distinct from Save-and-Close', async () => {
     const renderer = await ui('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const actionsFooter = await ui('views/pages/metadata-driven/ui-components/entry-actions-footer.ejs');
     const split = await ui('views/pages/metadata-driven/ui-components/save-split-action.ejs');
     const forms = await ui('public/js/forms.js');
     const routes = await ui('src/routes/sysbo-routes.ts');
 
-    expect(renderer).toContain("include('ui-components/save-split-action'");
+    expect(renderer).toContain("include('ui-components/entry-actions-footer'");
+    expect(actionsFooter).toContain("include('save-split-action'");
     expect(split).toContain('value="stay"');
     expect(split).toContain('Save and Close');
     expect(split).toContain('value="close"');

@@ -103,6 +103,15 @@ export interface SysBOFieldMetadata {
   /** Optional rich metadata for enum values (labels, icons and declarative traits). */
   enumItems?: readonly SysBOEnumItemMetadata[];
 
+  /**
+   * Optional presentation catalogue for discrete values that are not themselves
+   * canonical enums. Unlike `enumItems`, this does not constrain valid stored
+   * values; it only gives framework-neutral renderers a label/icon/tone when a
+   * matching value is known. This is useful for externally sourced categorical
+   * values while keeping entity-specific formatting out of generic renderers.
+   */
+  optionItems?: readonly SysBOEnumItemMetadata[];
+
   referenceBOKey?: string;
 
   /** Calendar duration units exposed by a duration field. Defaults to all units. */

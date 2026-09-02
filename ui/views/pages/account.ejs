@@ -180,6 +180,8 @@
       <%- include('../partials/authentication-summary', {
         authenticationUser: currentUser,
         authenticationIdentities,
+        emailVerificationStatus: ctxUserFieldValue('emailVerificationStatus'),
+        localPasswordStatus: ctxUserFieldValue('localPasswordStatus'),
         showPasswordAction: true
       }) %>
     </div>

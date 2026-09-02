@@ -186,7 +186,7 @@ Navigation definitions live in `src/navigation.ts`, not in individual EJS pages.
 - client-side UI actions;
 - bottom docking in the vertical navigation.
 
-`navigationFor(role, auth, company, platform, access)` recursively filters the navigation tree before rendering it. The current `access` facts include platform entitlement; presentation templates therefore receive only menu entries applicable to the current authenticated/licensed session. This filtering can later converge on evaluator-backed metadata visibility once resolved permission facts are projected into CTX.
+`navigationFor(role, auth, company, platform, ctx)` recursively resolves navigation contributions before rendering them. Authentication/role compatibility rules are still supported for contributions not yet migrated, but evaluator-backed `visible` metadata is resolved against the authoritative request CTX. Platform access comes only from `ctx.user.permissions.<platform>.capabilities.platformAccess`; there is no parallel `app.currentPlatformEntitled` or separately passed entitlement flag. Presentation templates therefore receive already-resolved menu entries without introducing another entitlement decision path.
 
 Horizontal platform navigation is derived from the shared `CompanyInfo.platforms` catalogue. Vertical navigation is composed from Company and current-Platform contributions, including shared containers such as Administration and Configuration.
 
@@ -249,9 +249,17 @@ Causal recalculation is generic. Native field mutations may carry the originatin
 
 ### 5.4 Development Debugging tab and CTX debugger
 
-Development builds add a read-only **Debugging** tab to metadata-driven entry forms. It lists calculated element name, source formula and current value without displaying the AST. The hierarchy is generated dynamically from metadata: entity-level calculations, entity fields (value/other properties and provenance), related-entity calculations, and UI calculations (tabs, fields, related collections and actions). Repeated dotted prefixes are grouped/compressed as a diagnostic tree instead of being hard-coded for SysUser.
+Development builds add a read-only **Debugging** tab to metadata-driven entry forms. It lists calculated element name, source formula and current value without displaying the AST. A reusable TypeScript Debugging-model builder (`src/presentation/metadata-debugging-model.ts`) discovers and groups entity-level calculations, entity fields (value/other properties and provenance), related-entity calculations, and UI calculations (tabs, fields, related collections and actions). The EJS view renders that model rather than rediscovering expression semantics itself, which makes the same diagnostic model reusable by future Apps Designer/Playground or alternate clients. Repeated dotted prefixes are grouped/compressed as a diagnostic tree instead of being hard-coded for SysUser.
+
+Debugging inspection distinguishes the **formula definition** from the **current evaluated value**. A row exposes **Inspect formula in CTX Viewer** only when it has a valid definition CTX path and **Inspect current value in CTX Viewer** only when it has a valid live-value path; the action menu is omitted when neither capability exists. This prevents empty diagnostic menus and preserves the distinction between metadata definition and runtime state.
 
 The **CTX VIEWER** is one tab of the unified Developer Tools dock and exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. Root CTX traversal presents `system` first, followed by `entities`, `company`, `user` and `page`; `system` contains the `server` and `client` runtime branches. It uses lazy DOM rendering while the dock itself owns the single outer resize boundary. Transient debugger state remains UI-boot/session scoped so a server restart can reset selections/expansion/history; the active Developer Tools tab is remembered without creating separate dock visibility/geometry for each tool. Properties-panel visibility is preserved independently while selecting or expanding nodes.
+
+### 5.4.1 Generic value presentation
+
+Generic value display is resolved through `src/presentation/metadata-value-presentation.ts` rather than entity-specific renderer branches. Option/enum labels, icons and semantic tones come from metadata `optionItems`/`enumItems`; generic date/datetime/duration/empty-value formatting is centralized there as well. Domain concepts such as an email verification source therefore do not require a renderer format token such as `verification-source`: the canonical/UI metadata supplies the presentation catalogue and every renderer consumes the same generic contract.
+
+This boundary is important for customer-designed mCRM applications. A future Apps Designer can persist entity/relationship/expression/presentation metadata, while Playground or another renderer consumes those contracts without adding application-specific EJS conditions. EJS is the current renderer, not the owner of application semantics.
 
 ### 5.5 Relationship-aware delete confirmation
 

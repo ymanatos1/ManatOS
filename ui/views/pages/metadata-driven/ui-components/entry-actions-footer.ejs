@@ -1,0 +1,92 @@
+<div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <% for (const [actionKey, action] of leadingCommandActionEntries) { %>
+          <% if (!isNew && recordId && action.command) { %>
+            <button
+              class="<%= actionClass(action, 'primary') %>"
+              type="submit"
+              form="metadata-command-<%= actionKey %>"
+              <%= action.resolvedEnabled === false ? 'disabled' : '' %>
+              <% if (action.resolvedDisabledReason) { %>title="<%= action.resolvedDisabledReason %>"<% } %>
+            >
+              <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %>
+              <%= action.label %>
+            </button>
+          <% } %>
+        <% } %>
+
+        <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-leading') { %>
+          <%- include('save-split-action', { saveAction, actionClass }) %>
+        <% } %>
+
+        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
+          <button
+            class="<%= actionClass(deleteAction, 'danger') %>"
+            type="button"
+            <%= deleteEnabled ? '' : 'disabled' %>
+            <% if (deleteEnabled) { %>
+              data-bs-toggle="modal"
+              data-bs-target="#deleteEntryModal"
+            <% } %>
+            <% if (deleteDisabledReason) { %>title="<%= deleteDisabledReason %>"<% } %>
+          >
+            <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
+            <%= deleteAction.label %>
+          </button>
+        <% } %>
+      </div>
+
+      <div class="d-flex gap-2 align-items-center">
+        <% if (!isViewMode && saveAction) { %>
+          <span
+            class="form-state-indicator small text-secondary me-1"
+            data-form-state-indicator
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <i class="bi bi-check-circle me-1" data-form-state-icon aria-hidden="true"></i>
+            <span data-form-state-text><%= isNew ? 'New entry · incomplete' : 'No changes' %></span>
+          </span>
+        <% } %>
+
+        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-trailing') { %>
+          <button
+            class="<%= actionClass(deleteAction, 'danger') %>"
+            type="button"
+            <%= deleteEnabled ? '' : 'disabled' %>
+            <% if (deleteEnabled) { %>
+              data-bs-toggle="modal"
+              data-bs-target="#deleteEntryModal"
+            <% } %>
+            <% if (deleteDisabledReason) { %>title="<%= deleteDisabledReason %>"<% } %>
+          >
+            <i class="bi bi-<%= deleteAction.icon || 'trash' %> me-1"></i>
+            <%= deleteAction.label %>
+          </button>
+        <% } %>
+
+        <% for (const [actionKey, action] of trailingCommandActionEntries) { %>
+          <% if (!isNew && recordId && action.command) { %>
+            <button
+              class="<%= actionClass(action, 'primary') %>"
+              type="submit"
+              form="metadata-command-<%= actionKey %>"
+              <%= action.resolvedEnabled === false ? 'disabled' : '' %>
+              <% if (action.resolvedDisabledReason) { %>title="<%= action.resolvedDisabledReason %>"<% } %>
+            >
+              <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %>
+              <%= action.label %>
+            </button>
+          <% } %>
+        <% } %>
+
+        <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>" <%= isViewMode ? '' : 'data-form-close-cancel' %>>
+          <i class="bi bi-x-circle me-1"></i>
+          <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
+        </a>
+
+        <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-trailing') { %>
+          <%- include('save-split-action', { saveAction, actionClass }) %>
+        <% } %>
+      </div>
+    </div>

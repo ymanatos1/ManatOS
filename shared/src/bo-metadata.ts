@@ -47,6 +47,13 @@ export * from './bo-metadata-types.js';
  * non-null assertion `commonSysBOFields.name!`. We know statically that the property
  * exists because it is declared immediately here.
  */
+const externalAuthProviderOptionItems = [
+  { value: SysBOExtAuthProviderType.Microsoft, label: 'Microsoft', icon: 'microsoft' },
+  { value: SysBOExtAuthProviderType.Google, label: 'Google', icon: 'google' },
+  { value: SysBOExtAuthProviderType.Facebook, label: 'Facebook', icon: 'facebook' },
+  { value: SysBOExtAuthProviderType.GitHub, label: 'GitHub', icon: 'github' },
+] as const;
+
 const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
   id: {
     key: 'id',
@@ -219,6 +226,12 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
       nullable: true,
       readOnly: true,
+      // Presentation-only catalogue: verification sources remain stored as a
+      // string while every renderer gets the same framework-neutral labels/icons.
+      optionItems: [
+        { value: 'internal', label: 'ManatOS', icon: 'shield-check' },
+        ...externalAuthProviderOptionItems,
+      ],
     },
 
     /**
@@ -847,6 +860,10 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
       order: 30,
       required: true,
       maxLength: 120,
+      // External identities store the provider as an open string because the
+      // identity adapter boundary is extensible. The known provider catalogue
+      // is therefore presentation metadata only, not a canonical enum constraint.
+      optionItems: externalAuthProviderOptionItems,
     },
     providerSubject: {
       key: 'providerSubject',
@@ -1182,28 +1199,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
       required: true,
       unique: true,
       enumValues: Object.values(SysBOExtAuthProviderType),
-      enumItems: [
-        {
-          value: SysBOExtAuthProviderType.Microsoft,
-          label: 'Microsoft',
-          icon: 'microsoft',
-        },
-        {
-          value: SysBOExtAuthProviderType.Google,
-          label: 'Google',
-          icon: 'google',
-        },
-        {
-          value: SysBOExtAuthProviderType.Facebook,
-          label: 'Facebook',
-          icon: 'facebook',
-        },
-        {
-          value: SysBOExtAuthProviderType.GitHub,
-          label: 'GitHub',
-          icon: 'github',
-        },
-      ],
+      enumItems: externalAuthProviderOptionItems,
     },
     clientId: {
       key: 'clientId',

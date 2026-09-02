@@ -95,8 +95,8 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
      * derive menu visibility from the same shared license semantics without
      * receiving another customer's license rows.
      */
-    let currentPlatformEntitled = user?.role === SysBOUserRole.Admin;
-    if (user && !currentPlatformEntitled) {
+    let resolvedPlatformAccess = user?.role === SysBOUserRole.Admin;
+    if (user && !resolvedPlatformAccess) {
       const licenses = (
         await apiClient.get<LicenseListData>(
           '/api/v1/SysLicenses?pageSize=1000',
@@ -104,7 +104,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         )
       ).data.items;
 
-      currentPlatformEntitled = licenses.some((license) =>
+      resolvedPlatformAccess = licenses.some((license) =>
         licenseGrantsPlatformAccess(license, currentPlatform.id),
       );
     }
@@ -127,7 +127,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       'sys',
       config.NODE_ENV,
       {
-        platformAccess: Boolean(currentPlatformEntitled),
+        platformAccess: Boolean(resolvedPlatformAccess),
       },
     );
 
@@ -161,8 +161,6 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       /** Shared, UI-neutral company/platform catalogue. */
       company: MANATOS_COMPANY,
       currentPlatform,
-      currentPlatformEntitled: Boolean(currentPlatformEntitled),
-
       scopes: buildRootScope(req, user, activeApplication, config.SESSION_IDLE_TIMEOUT_MINUTES),
 
       sysBO: effectiveSysBODefinitions(MANATOS_COMPANY, currentPlatform),
@@ -172,10 +170,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         Boolean(user),
         MANATOS_COMPANY,
         currentPlatform,
-        {
-          platformEntitled: Boolean(currentPlatformEntitled),
-          ctx: res.locals.ctx,
-        },
+        { ctx: res.locals.ctx },
       ),
 
       /**

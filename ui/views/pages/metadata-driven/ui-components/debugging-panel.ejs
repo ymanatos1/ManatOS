@@ -80,9 +80,11 @@
                 <% } else { %>
                   <% const debugRow = displayRow.row; %>
                   <% const elementNameParts = debugElementNameParts(displayRow.displayName); %>
+                  <% const hasInspectionActions = Boolean(debugRow.definitionPath || debugRow.valuePath); %>
                   <tr>
                     <td>
                       <div class="d-flex align-items-center gap-1">
+                        <% if (hasInspectionActions) { %>
                         <div class="dropdown debugging-row-tools">
                           <button
                             class="btn btn-sm btn-outline-secondary border-0 px-1 py-0"
@@ -117,6 +119,7 @@
                             <% } %>
                           </ul>
                         </div>
+                        <% } %>
                         <code class="debugging-element-name"><span class="debugging-element-prefix"><%= elementNameParts.prefix %></span><strong class="debugging-element-leaf"><%= elementNameParts.leaf %></strong></code>
                       </div>
                     </td>

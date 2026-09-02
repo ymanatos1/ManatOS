@@ -9,8 +9,10 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 describe('generic SysBO form state presentation', () => {
   it('starts the shared Save button disabled and marks it for generic state management', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const actionsFooterSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/ui-components/entry-actions-footer.ejs'), 'utf8');
     const saveActionSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/ui-components/save-split-action.ejs'), 'utf8');
-    expect(metadataSource).toContain("include('ui-components/save-split-action'");
+    expect(metadataSource).toContain("include('ui-components/entry-actions-footer'");
+    expect(actionsFooterSource).toContain("include('save-split-action'");
     expect(saveActionSource).toContain('data-form-save');
     expect(saveActionSource).toContain('data-form-save-menu-toggle');
     expect(saveActionSource).toContain('data-form-save-option');
@@ -21,8 +23,8 @@ describe('generic SysBO form state presentation', () => {
     expect(metadataSource).toContain('<% if (!isViewMode) { %>data-dirty-guard=\"true\"<% } %>');
     expect(metadataSource).not.toContain(`<%= isViewMode ? '' : 'data-dirty-guard=\"true\"' %>`);
     expect(metadataSource).toContain('data-record-mode="<%= recordMode %>"');
-    expect(metadataSource).toContain('data-form-state-indicator');
-    expect(metadataSource).toContain('data-form-state-text');
+    expect(actionsFooterSource).toContain('data-form-state-indicator');
+    expect(actionsFooterSource).toContain('data-form-state-text');
   });
 
   it('uses reversible dirty state and requires current form validity before enabling Save', async () => {
@@ -79,14 +81,13 @@ describe('generic SysBO form state presentation', () => {
   });
 
   it('marks every tab with no editable fields as an informational read-only pane', async () => {
-    const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
-    expect(metadataSource).toContain("const readOnlyTab = tab.layout === 'summary'");
-    expect(metadataSource).toContain("entity-readonly-tab");
-    expect(metadataSource).toContain("data-readonly-tab=\"true\"");
-    expect(metadataSource).toContain("fieldEditable(field)");
-    expect(metadataSource).not.toContain("isNew && !tabHasEditableFields");
+    const tabContentSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/ui-components/entry-tab-content.ejs'), 'utf8');
+    expect(tabContentSource).toContain("const readOnlyTab = tab.layout === 'summary'");
+    expect(tabContentSource).toContain("entity-readonly-tab");
+    expect(tabContentSource).toContain("data-readonly-tab=\"true\"");
+    expect(tabContentSource).toContain("fieldEditable(field)");
+    expect(tabContentSource).not.toContain("isNew && !tabHasEditableFields");
   });
-
 
   it('shows generated System details in create mode so the read-only tab remains visible', async () => {
     const apiMetadata = await readFile(resolve(testDirectory, '../../shared/src/bo-ui-metadata.ts'), 'utf8');
@@ -101,6 +102,7 @@ describe('generic SysBO form state presentation', () => {
 
   it('adds a development-only read-only Debugging tab with live formula values', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const debuggingModelSource = await readFile(resolve(testDirectory, '../src/presentation/metadata-debugging-model.ts'), 'utf8');
     const debuggingPanelSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/ui-components/debugging-panel.ejs'), 'utf8');
     const formsSource = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
     const expressionFormatSource = await readFile(resolve(testDirectory, '../public/js/debugger/expression-format.js'), 'utf8');
@@ -111,29 +113,32 @@ describe('generic SysBO form state presentation', () => {
     expect(debuggingPanelSource).toContain('Element name');
     expect(debuggingPanelSource).toContain('Calculation formula');
     expect(debuggingPanelSource).toContain('Current value');
-    expect(metadataSource).toContain("'ENTITY'");
-    expect(metadataSource).toContain("'ENTITY FIELDS'");
-    expect(metadataSource).toContain("'FIELD VALUES'");
-    expect(metadataSource).toContain("'DECLARED FIELDS'");
-    expect(metadataSource).toContain("'INHERITED FIELDS'");
-    expect(metadataSource).toContain("'UI-DEFINED FIELDS'");
-    expect(metadataSource).toContain("'FIELD OTHER'");
-    expect(metadataSource).toContain("'RELATED ENTITY'");
-    expect(metadataSource).toContain("'UI'");
-    expect(metadataSource).toContain("'TABS'");
-    expect(metadataSource).toContain("'RELATED'");
-    expect(metadataSource).toContain("'ACTIONS'");
-    expect(metadataSource).not.toContain("'UI · related'");
+    // The reusable TypeScript builder owns Debugging inventory semantics; EJS
+    // only opts into Debugging and renders the resulting model.
+    expect(metadataSource).toContain('buildMetadataDebuggingModel({');
+    expect(debuggingModelSource).toContain("'ENTITY'");
+    expect(debuggingModelSource).toContain("'ENTITY FIELDS'");
+    expect(debuggingModelSource).toContain("'FIELD VALUES'");
+    expect(debuggingModelSource).toContain("'DECLARED FIELDS'");
+    expect(debuggingModelSource).toContain("'INHERITED FIELDS'");
+    expect(debuggingModelSource).toContain("'UI-DEFINED FIELDS'");
+    expect(debuggingModelSource).toContain("'FIELD OTHER'");
+    expect(debuggingModelSource).toContain("'RELATED ENTITY'");
+    expect(debuggingModelSource).toContain("'UI'");
+    expect(debuggingModelSource).toContain("'TABS'");
+    expect(debuggingModelSource).toContain("'RELATED'");
+    expect(debuggingModelSource).toContain("'ACTIONS'");
+    expect(debuggingModelSource).not.toContain("'UI · related'");
 
     // Repeated metadata path prefixes are grouped dynamically rather than by
     // SysUser-specific names. Single-child prefixes remain collapsed.
-    expect(metadataSource).toContain('const commonPrefixLength');
-    expect(metadataSource).toContain('appendDebugNameTree');
-    expect(metadataSource).toContain("row.name.split('.').filter(Boolean)");
+    expect(debuggingModelSource).toContain('const commonPrefixLength');
+    expect(debuggingModelSource).toContain('appendDebugNameTree');
+    expect(debuggingModelSource).toContain("row.name.split('.').filter(Boolean)");
     expect(debuggingPanelSource).toContain('debugging-calculation-path-category');
     expect(debuggingPanelSource).toContain('debugging-calculation-detail-category');
 
-    expect(metadataSource.indexOf("'TABS'")).toBeLessThan(metadataSource.indexOf("'FIELDS',"));
+    expect(debuggingModelSource.indexOf("'TABS'")).toBeLessThan(debuggingModelSource.indexOf("'FIELDS',"));
     expect(debuggingPanelSource).toContain('data-debug-calculation-ast');
     expect(debuggingPanelSource).toContain('data-debug-expression');
     expect(expressionFormatSource).toContain('window.ManatOSDebugExpression');
@@ -141,22 +146,22 @@ describe('generic SysBO form state presentation', () => {
     expect(expressionFormatSource).toContain("emit(identifier, 'path')");
     expect(expressionFormatSource).toContain("systemRoots.has(identifier) ? 'system' : 'field'");
     expect(expressionFormatSource).toContain('debug-expression-${tokenClass}');
-    expect(metadataSource).toContain("`[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`");
+    expect(debuggingModelSource).toContain("`[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`");
     expect(formsSource).toContain("`[ ${value.map(debugValueText).join(', ')} ]`");
     expect(metadataSource).toContain('debugElementNameParts');
     expect(debuggingPanelSource).toContain('debugging-element-prefix');
     expect(debuggingPanelSource).toContain('debugging-element-leaf');
-    expect(metadataSource).toContain("if (value === null) return 'null'");
+    expect(debuggingModelSource).toContain("if (value === null) return 'null'");
     expect(formsSource).toContain("if (value === null) return 'null'");
-    expect(metadataSource).toContain("if (value === '') return \"''\"");
+    expect(debuggingModelSource).toContain("if (value === '') return \"''\"");
     expect(formsSource).toContain("if (value === '') return \"''\"");
-    expect(metadataSource).toContain("typeof value === 'string'");
+    expect(debuggingModelSource).toContain("typeof value === 'string'");
     expect(formsSource).toContain("typeof value === 'string'");
-    expect(metadataSource).toContain("return `'${value.replaceAll");
+    expect(debuggingModelSource).toContain("return `'${value.replaceAll");
     expect(formsSource).toContain("return `'${value.replaceAll");
-    expect(metadataSource).toContain('Array.isArray(scope)');
-    expect(metadataSource).toContain('rows,');
-    expect(metadataSource).toContain('Array.isArray(scope) ? null');
+    expect(debuggingModelSource).toContain('Array.isArray(scope)');
+    expect(debuggingModelSource).toContain('rows,');
+    expect(debuggingModelSource).toContain('Array.isArray(scope) ? null');
     expect(formsSource).toContain("kind: 'debug-value'");
     expect(formsSource).toContain("parseAst(cell, 'data-debug-calculation-ast')");
     expect(formsSource).toContain('dependencyPaths: expressionDependencyPaths(ast)');
@@ -200,10 +205,11 @@ describe('generic SysBO form state presentation', () => {
 
   it('normalizes absent optional related fields before related expression evaluation', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const debuggingModelSource = await readFile(resolve(testDirectory, '../src/presentation/metadata-debugging-model.ts'), 'utf8');
     expect(metadataSource).toContain('const relatedExpressionScope = (row, relatedMetadata) =>');
     expect(metadataSource).toContain('for (const key of missingKeys) row[key] = null;');
     expect(metadataSource).toContain('const expressionScope = relatedExpressionScope(row, relatedMetadata);');
-    expect(metadataSource).toContain('const expressionScopes = rows.map((row) => relatedExpressionScope(row, relatedMetadata));');
+    expect(debuggingModelSource).toContain('const expressionScopes = rows.map((row) => relatedExpressionScope(row, relatedMetadata));');
   });
 
   it('keeps rich enum backing selects out of initial focus and separates date-only from datetime browser controls', async () => {
@@ -225,10 +231,12 @@ describe('generic SysBO form state presentation', () => {
 
   it('uses Close for a clean entry and Cancel whenever the shared page transaction is dirty or internally editing', async () => {
     const renderer = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const actionsFooter = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/ui-components/entry-actions-footer.ejs'), 'utf8');
     const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
 
-    expect(renderer).toContain('data-form-close-cancel');
-    expect(renderer).toContain("data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %>");
+    expect(renderer).toContain("include('ui-components/entry-actions-footer'");
+    expect(actionsFooter).toContain('data-form-close-cancel');
+    expect(actionsFooter).toContain("data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %>");
     expect(forms).toContain("closeCancelLabel.textContent = changed || internalEditing ? 'Cancel' : 'Close'");
     expect(forms).toContain("changed || internalEditing ? 'Cancel editing' : 'Close entry'");
   });

@@ -12,6 +12,8 @@ import {
   type SysPlatform,
 } from '@manatos/shared';
 
+import { contextPlatformAccess } from './context/manatos-context.js';
+
 export interface AppNavMenuItem {
   id: string;
   text: string;
@@ -164,10 +166,7 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
 }
 
 export interface NavigationAccessContext {
-  /** Current user is licensed for the selected platform. Admin is implicit. */
-  platformEntitled?: boolean;
-
-  /** Authoritative request CTX used by evaluator-backed visibility. */
+  /** Authoritative request CTX used by evaluator-backed visibility/access. */
   ctx?: ManatOSContext;
 }
 
@@ -212,26 +211,27 @@ export function navigationFor(
   platform: SysPlatform = resolvePlatform(company),
   access: NavigationAccessContext = {},
 ) {
-  const platformEntitled = role === SysBOUserRole.Admin || access.platformEntitled === true;
-
   /*
    * Normal rendering supplies the real request CTX. The compact fallback is
-   * intentionally only for isolated navigation unit tests/consumers that have
-   * not yet adopted CTX; it exposes the same decision facts, not separate
-   * navigation policy.
+   * intentionally only for isolated navigation consumers without request CTX;
+   * it can represent the Admin baseline but never invents a licensed decision.
    */
+  const fallbackPlatformAccess = role === SysBOUserRole.Admin;
   const evaluationCtx = access.ctx ?? {
     user: auth && role
       ? {
           permissions: {
             userRole: role,
             [platform.id]: {
-              capabilities: { platformAccess: platformEntitled },
+              capabilities: { platformAccess: fallbackPlatformAccess },
             },
           },
         }
       : null,
   };
+  const platformEntitled = access.ctx
+    ? contextPlatformAccess(access.ctx, platform.id)
+    : fallbackPlatformAccess;
 
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {

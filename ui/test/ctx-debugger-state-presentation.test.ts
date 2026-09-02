@@ -52,6 +52,11 @@ const metadataEntrySource = readFileSync(
   'utf8',
 );
 
+const metadataDebuggingModelSource = readFileSync(
+  resolve(process.cwd(), 'src/presentation/metadata-debugging-model.ts'),
+  'utf8',
+);
+
 const fieldRuntimeSource = readFileSync(
   resolve(process.cwd(), 'public/js/field-components/runtime.js'),
   'utf8',
@@ -147,10 +152,13 @@ describe('CTX debugger presentation state', () => {
     expect(debuggingPanelSource).toContain('data-debug-inspect-kind="formula"');
     expect(debuggingPanelSource).toContain('data-debug-inspect-kind="value"');
     expect(debuggingPanelSource).not.toContain("debugRow.inspectPath || 'ctx.page.page'");
-    expect(metadataEntrySource).toContain('`ctx.page.page.fields.${key}.expression`');
-    expect(metadataEntrySource).toContain('`ctx.page.page.dataCurrent.${key}`');
-    expect(metadataEntrySource).toContain('definitionPath');
-    expect(metadataEntrySource).toContain('valuePath');
+    expect(metadataEntrySource).toContain('buildMetadataDebuggingModel({');
+    expect(metadataDebuggingModelSource).toContain('`ctx.page.page.fields.${key}.expression`');
+    expect(metadataDebuggingModelSource).toContain('`ctx.page.page.dataCurrent.${key}`');
+    expect(metadataDebuggingModelSource).toContain('definitionPath');
+    expect(metadataDebuggingModelSource).toContain('valuePath');
+    expect(debuggingPanelSource).toContain('const hasInspectionActions = Boolean(debugRow.definitionPath || debugRow.valuePath)');
+    expect(debuggingPanelSource).toContain('<% if (hasInspectionActions) { %>');
   });
 
 
