@@ -1563,6 +1563,10 @@ async function establishUiSession(
 
   req.session.userId = login.user.id;
 
+  // Reuse the user already returned by login instead of refetching the same
+  // SysUser during every subsequent page-context hydration.
+  req.session.currentUserSnapshot = login.user;
+
   req.session.authenticationMethod = authenticationMethod;
 
   req.session.apiAccessToken = login.accessToken;

@@ -108,6 +108,8 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(runtime).toContain("dispatch('input')");
     expect(runtime).toContain("dispatch('change')");
     expect(runtime).toContain("'manatosCause'");
+    expect(runtime).toContain("control.getAttribute?.('aria-hidden') !== 'true'");
+    expect(runtime).toContain("!control.classList?.contains('visually-hidden')");
     expect(runtime).not.toContain('manatosCtx');
   });
 
@@ -237,6 +239,15 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(informationPanel).toContain('data-bs-toggle="collapse"');
     expect(contextualHelp).toContain("include('information-panel'");
     expect(registry).toContain("'information-panel': 'ui-components/information-panel'");
+  });
+
+
+  it('renders null calculated references as None on initial and live updates', async () => {
+    const entry = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+
+    expect(entry).toContain("if (value === undefined || value === null || value === '') return 'None'");
+    expect(forms).toContain("element.value = value == null || value === '' ? 'None'");
   });
 
 });

@@ -1049,48 +1049,8 @@
     if (findBox && !findBox.contains(event.target) && event.target !== findButton) closeFindHistory();
   });
 
-  const panelResize = document.getElementById('ctxDebugPanelResize');
-  const debugPanel = document.getElementById('debugPanel');
-  const appShell = document.querySelector('.app-shell');
-  const DEFAULT_DEBUGGER_WIDTH = 430;
+  // The shared shell owns the outer Developer Tools dock resize.
 
-  const applyDebuggerWidth = (requested = state.debuggerWidth) => {
-    if (!debugPanel || !appShell) return;
-    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
-    const minWidth = 320;
-    const maxWidth = Math.max(minWidth, Math.floor(viewportWidth * 0.66));
-    const width = Math.max(minWidth, Math.min(Number(requested) || DEFAULT_DEBUGGER_WIDTH, maxWidth));
-    state.debuggerWidth = width;
-    appShell.style.setProperty('--manatos-debug-width', `${width}px`);
-  };
-
-  if (panelResize && debugPanel) {
-    let startX = 0;
-    let startWidth = 0;
-    panelResize.addEventListener('pointerdown', (event) => {
-      startX = event.clientX;
-      startWidth = debugPanel.getBoundingClientRect().width;
-      panelResize.setPointerCapture?.(event.pointerId);
-      event.preventDefault();
-    });
-    panelResize.addEventListener('pointermove', (event) => {
-      if (!panelResize.hasPointerCapture?.(event.pointerId)) return;
-      applyDebuggerWidth(startWidth + (startX - event.clientX));
-      requestAnimationFrame(ensureSelectedVisible);
-    });
-    panelResize.addEventListener('pointerup', (event) => {
-      panelResize.releasePointerCapture?.(event.pointerId);
-      persistState();
-      requestAnimationFrame(ensureSelectedVisible);
-    });
-    panelResize.addEventListener('dblclick', () => {
-      applyDebuggerWidth(DEFAULT_DEBUGGER_WIDTH);
-      persistState();
-      requestAnimationFrame(ensureSelectedVisible);
-    });
-  }
-
-  applyDebuggerWidth();
 
   const DEFAULT_PROPERTIES_HEIGHT = 256;
   const applyPropertiesHeight = (requested = state.propertiesHeight) => {

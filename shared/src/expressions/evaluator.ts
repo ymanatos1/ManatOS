@@ -7,6 +7,7 @@ import type {
   CompiledExpression,
   ExpressionEvaluationCaller,
   ExpressionEvaluationOptions,
+  ExpressionExecutionContext,
   ExpressionNode,
   ExpressionVariableNode,
 } from './types.js';
@@ -52,7 +53,7 @@ function evaluateCalculatedField(
   state.active.add(field);
   try {
     const compiled = field.ast
-      ? {source: field.expression, ast: field.ast}
+      ? {source: field.expression, ast: field.ast, requiredCapabilities: []}
       : compileExpression(field.expression, {
           ...(state.options.diagnosticSink ? {diagnosticSink: state.options.diagnosticSink} : {}),
         });
@@ -282,7 +283,7 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
       const definition = expressionFunctions[node.functionName];
       if (!definition) throw new ExpressionEvaluationError(`Unknown expression function ${node.functionName}.`);
       const args = node.arguments.map((argument) => evaluateNode(argument, state));
-      return definition.evaluate(args, {now: state.options.now ?? (() => new Date())});
+      return definition.evaluate(args, {now: state.options.now ?? (() => new Date()), owner: 'sync'});
     }
   }
 }
@@ -337,4 +338,169 @@ export function evaluateExpression(
     ...(options.diagnosticSink ? {diagnosticSink: options.diagnosticSink} : {}),
   });
   return evaluateCompiledExpression(compiled, ctxRoot, currentCtxNode, caller, options);
+}
+
+
+/**
+ * Asynchronous owner-aware evaluator.
+ *
+ * The expression owner supplies the lexical root/scope and the capabilities it
+ * can satisfy locally. Capability-backed functions are evaluated only when
+ * runtime lazy semantics actually reach them. In particular, a false ternary,
+ * `&&`, `||` or satisfied `??` branch never invokes EntityResolver merely
+ * because a resolver-capable function exists elsewhere in the AST.
+ *
+ * Browser owners normally delegate resolver-capable function nodes to the
+ * trusted API and then resume evaluation locally. Server owners can provide an
+ * EntityResolver directly and complete the same AST without a network hop.
+ */
+export async function evaluateCompiledExpressionAsync(
+  compiled: CompiledExpression,
+  execution: ExpressionExecutionContext,
+  caller: ExpressionEvaluationCaller,
+  options: ExpressionEvaluationOptions = {},
+): Promise<unknown> {
+  const id = correlationId();
+  const memo = new Map<object, unknown>();
+  const active = new Set<object>();
+  const chain = caller.targetPath ? [caller.targetPath] : [];
+
+  const evaluate = async (node: ExpressionNode, scope: unknown = execution.scope): Promise<unknown> => {
+    switch (node.kind) {
+      case 'literal': return node.value;
+      case 'group': return evaluate(node.expression, scope);
+      case 'variable': {
+        const resolved = resolveExpressionVariable(node, execution.root, scope);
+        if (!resolved.found) {
+          throw new ExpressionEvaluationError(
+            `Expression variable not found: ${node.path}`,
+            compiled.source,
+            node.path,
+            chain,
+          );
+        }
+        if (isCalculatedField(resolved.value)) {
+          const field = resolved.value;
+          if (memo.has(field)) return memo.get(field);
+          if (active.has(field)) return fieldFallbackValue(field);
+          active.add(field);
+          try {
+            const nested = field.ast
+              ? {source: field.expression, ast: field.ast, requiredCapabilities: []}
+              : compileExpression(field.expression);
+            const value = await evaluate(nested.ast, resolved.owner ?? scope);
+            memo.set(field, value);
+            return value;
+          } finally {
+            active.delete(field);
+          }
+        }
+        if (resolved.value && typeof resolved.value === 'object' && Object.prototype.hasOwnProperty.call(resolved.value, 'value')) {
+          return (resolved.value as ManatOSContextField).value;
+        }
+        return resolved.value;
+      }
+      case 'unary': {
+        const raw = await evaluate(node.operand, scope);
+        if (node.operator === '!') return !scalarTruthy(raw, '!');
+        if (node.operator === '~') return ~bitwiseOperand(raw, '~');
+        const value = numberOperand(raw, `unary ${node.operator}`);
+        return node.operator === '-' ? -value : value;
+      }
+      case 'binary': {
+        const left = await evaluate(node.left, scope);
+        if (node.operator === '??') return left == null ? evaluate(node.right, scope) : left;
+        if (node.operator === '&&') return scalarTruthy(left, '&&') ? evaluate(node.right, scope) : left;
+        if (node.operator === '||') return scalarTruthy(left, '||') ? left : evaluate(node.right, scope);
+        const right = await evaluate(node.right, scope);
+        switch (node.operator) {
+          case '+': return plus(left, right);
+          case '-': return numberOperand(left, '-') - numberOperand(right, '-');
+          case '*': return numberOperand(left, '*') * numberOperand(right, '*');
+          case '/': { const divisor = numberOperand(right, '/'); if (divisor === 0) throw new ExpressionEvaluationError('Division by zero.'); return numberOperand(left, '/') / divisor; }
+          case '%': { const divisor = numberOperand(right, '%'); if (divisor === 0) throw new ExpressionEvaluationError('Modulo by zero.'); return numberOperand(left, '%') % divisor; }
+          case '**': return numberOperand(left, '**') ** numberOperand(right, '**');
+          case '==': return looseEqual(left, right);
+          case '!=': return !looseEqual(left, right);
+          case '===': return strictEqual(left, right);
+          case '!==': return !strictEqual(left, right);
+          case '<': return relational(left, right, '<');
+          case '<=': return relational(left, right, '<=');
+          case '>': return relational(left, right, '>');
+          case '>=': return relational(left, right, '>=');
+          case '<<': return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
+          case '>>': return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
+          case '>>>': return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
+          case '&': return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
+          case '^': return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
+          case '|': return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
+          default: throw new ExpressionEvaluationError(`Unsupported binary operator: ${String(node.operator)}.`);
+        }
+      }
+      case 'conditional': {
+        const condition = await evaluate(node.condition, scope);
+        if (typeof condition !== 'boolean') {
+          throw new ExpressionEvaluationError(`?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`);
+        }
+        return condition ? evaluate(node.whenTrue, scope) : evaluate(node.whenFalse, scope);
+      }
+      case 'function': {
+        const definition = expressionFunctions[node.functionName];
+        if (!definition) throw new ExpressionEvaluationError(`Unknown expression function ${node.functionName}.`);
+        const args: unknown[] = [];
+        for (const argument of node.arguments) args.push(await evaluate(argument, scope));
+        const context = {
+          now: options.now ?? (() => new Date()),
+          owner: execution.owner,
+          ...(execution.entityResolver ? {entityResolver: execution.entityResolver} : {}),
+        };
+        if (definition.capability !== 'pure' && !execution.capabilities.includes(definition.capability)) {
+          throw new ExpressionEvaluationError(
+            `${node.functionName} requires capability '${definition.capability}', unavailable to evaluation owner '${execution.owner}'.`,
+          );
+        }
+        if (definition.capability === 'entityResolver') {
+          if (!execution.entityResolver) {
+            throw new ExpressionEvaluationError(
+              `${node.functionName} requires capability 'entityResolver', but owner '${execution.owner}' supplied no EntityResolver.`,
+            );
+          }
+          if (!definition.evaluateAsync) {
+            throw new ExpressionEvaluationError(`${node.functionName} has no asynchronous entityResolver implementation.`);
+          }
+          return definition.evaluateAsync(args, context);
+        }
+        return definition.evaluate(args, context);
+      }
+    }
+  };
+
+  try {
+    return await evaluate(compiled.ast);
+  } catch (error) {
+    if (error instanceof ExpressionEvaluationError) {
+      emitExpressionDiagnostic(options.diagnosticSink, {
+        phase: 'evaluate',
+        message: error.message,
+        expression: compiled.source,
+        ...(error.variablePath ? {variablePath: error.variablePath} : {}),
+        caller,
+        correlationId: id,
+        currentContextPath: contextPathOf(execution.root, execution.scope) ?? '<detached-context>',
+        ...(caller.targetPath ? {targetPath: caller.targetPath} : {}),
+        evaluationChain: error.evaluationChain ?? chain,
+      });
+    }
+    throw error;
+  }
+}
+
+/** Convenience wrapper for owner-aware asynchronous evaluation from source text. */
+export async function evaluateExpressionAsync(
+  expression: string,
+  execution: ExpressionExecutionContext,
+  caller: ExpressionEvaluationCaller,
+  options: ExpressionEvaluationOptions = {},
+): Promise<unknown> {
+  return evaluateCompiledExpressionAsync(compileExpression(expression), execution, caller, options);
 }

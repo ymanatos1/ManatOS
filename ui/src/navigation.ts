@@ -3,7 +3,11 @@ import {
   effectiveEntityKeys,
   resolvePlatform,
   SysBOUserRole,
+  compileExpression,
+  evaluateCompiledExpression,
   type CompanyInfo,
+  type ManatOSContext,
+  type ManatOSDynamicValue,
   type NavigationContribution,
   type SysPlatform,
 } from '@manatos/shared';
@@ -19,7 +23,13 @@ export interface AppNavMenuItem {
   roles?: SysBOUserRole[];
   action?: 'open-preferences';
   dockBottom?: boolean;
-  /** Platform-owned function that requires a current license entitlement. */
+  /** Static or evaluator-backed visibility against the current CTX root. */
+  visible?: ManatOSDynamicValue<boolean>;
+
+  /**
+   * Legacy access flags remain readable during metadata migration. New
+   * navigation contributions should declare `visible` instead.
+   */
   requiresPlatformEntitlement?: boolean;
 }
 
@@ -148,6 +158,7 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
     ...(item.roles ? { roles: item.roles } : {}),
     ...(item.action === 'open-preferences' ? { action: 'open-preferences' as const } : {}),
     ...(item.dockBottom ? { dockBottom: true } : {}),
+    ...(item.visible !== undefined ? { visible: item.visible } : {}),
     ...(item.requiresPlatformEntitlement ? { requiresPlatformEntitlement: true } : {}),
   };
 }
@@ -155,6 +166,43 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
 export interface NavigationAccessContext {
   /** Current user is licensed for the selected platform. Admin is implicit. */
   platformEntitled?: boolean;
+
+  /** Authoritative request CTX used by evaluator-backed visibility. */
+  ctx?: ManatOSContext;
+}
+
+const navigationExpressionCache = new Map<string, ReturnType<typeof compileExpression>>();
+
+function dynamicNavigationVisible(
+  value: ManatOSDynamicValue<boolean> | undefined,
+  ctx: unknown,
+  itemId: string,
+): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === 'boolean') return value;
+
+  try {
+    let compiled = navigationExpressionCache.get(value.expression);
+    if (!compiled) {
+      compiled = compileExpression(value.expression);
+      navigationExpressionCache.set(value.expression, compiled);
+    }
+    return evaluateCompiledExpression(
+      compiled,
+      ctx,
+      ctx,
+      {
+        source: 'navigation',
+        sourcePath: `navigation.${itemId}.visible`,
+        targetPath: `navigation.${itemId}.visible`,
+        purpose: 'resolve navigation visibility',
+      },
+    ) !== false;
+  } catch {
+    // Fail closed for access-related navigation. The API remains authoritative,
+    // but a malformed visibility expression must never reveal an extra action.
+    return false;
+  }
 }
 
 export function navigationFor(
@@ -166,11 +214,36 @@ export function navigationFor(
 ) {
   const platformEntitled = role === SysBOUserRole.Admin || access.platformEntitled === true;
 
+  /*
+   * Normal rendering supplies the real request CTX. The compact fallback is
+   * intentionally only for isolated navigation unit tests/consumers that have
+   * not yet adopted CTX; it exposes the same decision facts, not separate
+   * navigation policy.
+   */
+  const evaluationCtx = access.ctx ?? {
+    user: auth && role
+      ? {
+          permissions: {
+            userRole: role,
+            [platform.id]: {
+              capabilities: { platformAccess: platformEntitled },
+            },
+          },
+        }
+      : null,
+  };
+
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {
-      if (item.requiresAuthentication && !auth) return [];
-      if (item.roles && (!role || !item.roles.includes(role))) return [];
-      if (item.requiresPlatformEntitlement && !platformEntitled) return [];
+      const evaluatedVisible = dynamicNavigationVisible(item.visible, evaluationCtx, item.id);
+      if (evaluatedVisible === false) return [];
+
+      // Compatibility only for contributions not yet migrated to `visible`.
+      if (evaluatedVisible === undefined) {
+        if (item.requiresAuthentication && !auth) return [];
+        if (item.roles && (!role || !item.roles.includes(role))) return [];
+        if (item.requiresPlatformEntitlement && !platformEntitled) return [];
+      }
 
       const childItems = item.children ? filter(item.children) : undefined;
       return [{ ...item, ...(childItems ? { children: childItems } : {}) }];

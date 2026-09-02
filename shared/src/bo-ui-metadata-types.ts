@@ -1,3 +1,5 @@
+import type { ManatOSDynamicValue } from './dynamic-value.js';
+
 /**
  * Framework-neutral UI metadata contracts for SysBO presentation.
  *
@@ -5,12 +7,16 @@
  * renderer (EJS, Angular, React, mobile, etc.) should implement it.
  */
 export interface SysBOUIAddActionMetadata {
-  visible: boolean;
+  visible: SysBOUIDynamicValue<boolean>;
+
+  /** Static or evaluator-backed enabled state. Omitted means enabled. */
+  enabled?: SysBOUIDynamicValue<boolean>;
+
   label: string;
 
   /** Optional generic constraint: disable creation when every value of this enum field already exists. */
   disableWhenAllEnumValuesExistForField?: string;
-  disabledReason?: string;
+  disabledReason?: SysBOUIDynamicValue<string | null>;
 }
 
 export type SysBOUIListRowActionKind = 'navigate';
@@ -76,7 +82,7 @@ export type SysBOUIValueFormat = 'text' | 'datetime' | 'datetime-elapsed' | 'ver
  * current CTX scope. The evaluator knows nothing about tone/icon/visibility;
  * it simply returns the scalar requested by presentation metadata.
  */
-export type SysBOUIDynamicValue<T> = T | Readonly<{ expression: string }>;
+export type SysBOUIDynamicValue<T> = ManatOSDynamicValue<T>;
 
 /**
  * Renderer-neutral reusable UI component declaration.

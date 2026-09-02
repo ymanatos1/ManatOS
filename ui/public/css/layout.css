@@ -1139,3 +1139,33 @@ body.anonymous .workspace {
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--manatos-blue);
 }
+
+/* =========================================================================
+   Shell-owned Developer Tools dock
+   =========================================================================
+ * The original CTX-only debugger was robust because the shell owned exactly
+ * one right-hand grid item. Keep that contract: tabs never participate in the
+ * app-shell grid and therefore cannot alter the dock height or width.
+ */
+.developer-tools-dock {
+  grid-area: debug;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  max-height: calc(100vh - var(--top-header-height, 0px));
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8fafc;
+  border-left: 1px solid var(--manatos-border);
+}
+
+.developer-tools-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}

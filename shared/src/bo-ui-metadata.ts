@@ -65,11 +65,17 @@ const generalTab = (
       ?? fields.map((field) => ({ kind: 'field' as const, field, span: 6 })),
   });
 
+const standardAddAction = (label = 'Add new') => ({
+  visible: { expression: 'permissions.create === true' },
+  enabled: true,
+  label,
+}) as const;
+
 const standardEntryActions = {
   delete: {
     kind: 'delete' as const,
     order: 20,
-    visible: true,
+    visible: { expression: "mode !== 'create' && permissions.delete === true" },
     placement: 'footer-leading' as const,
     label: 'Delete entry',
     icon: 'trash',
@@ -78,7 +84,7 @@ const standardEntryActions = {
   save: {
     kind: 'save' as const,
     order: 100,
-    visible: { expression: "mode !== 'view'" },
+    visible: { expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)" },
     placement: 'footer-trailing' as const,
     label: 'Save',
     icon: 'check-circle',
@@ -143,7 +149,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
     visibleFields: ['name', 'email', 'role', 'emailVerified', 'enabled'],
     filterFields: ['name', 'email', 'role'],
     sortableFields: ['name', 'email', 'role', 'emailVerified', 'enabled'],
-    addAction: { visible: true, label: 'Add new' },
+    addAction: standardAddAction(),
   },
   record: {
     tabs: [
@@ -308,7 +314,7 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     visibleFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled'],
     filterFields: ['name', 'principalType', 'parentId', 'rootPrincipalId'],
     sortableFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled'],
-    addAction: { visible: true, label: 'Add new' },
+    addAction: standardAddAction(),
   },
   record: {
     tabs: [
@@ -558,7 +564,7 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
     visibleFields: ['name', 'fullName', 'version', 'enabled'],
     filterFields: ['name', 'fullName'],
     sortableFields: ['name', 'fullName', 'version', 'enabled'],
-    addAction: { visible: true, label: 'Add new' },
+    addAction: standardAddAction(),
     rowActions: {
       play: {
         kind: 'navigate',
@@ -611,7 +617,7 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
     visibleFields: ['name', 'principalId', 'platformId', 'applicationId', 'status', 'validUntil', 'enabled'],
     filterFields: ['name', 'principalId', 'platformId', 'applicationId', 'status', 'enabled'],
     sortableFields: ['name', 'principalId', 'platformId', 'applicationId', 'status', 'validUntil', 'enabled'],
-    addAction: { visible: true, label: 'Add new' },
+    addAction: standardAddAction(),
   },
   record: {
     tabs: [
@@ -704,8 +710,8 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
     filterFields: ['provider'],
     sortableFields: ['provider', 'enabled', 'callbackPath', 'credentialsVerified'],
     addAction: {
-      visible: true,
-      label: 'Add provider',
+      ...standardAddAction('Add provider'),
+      enabled: { expression: 'addConstraintReached !== true' },
       disableWhenAllEnumValuesExistForField: 'provider',
       disabledReason: 'All supported external authentication providers are already configured.',
     },

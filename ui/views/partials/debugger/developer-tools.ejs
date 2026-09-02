@@ -1,0 +1,60 @@
+<!--
+  One shell-owned developer dock.
+
+  CTX Viewer and API Traffic are tabs, not peer shell panels. This deliberately
+  restores the original CTX-only layout contract: one right-hand column, one
+  outer resize handle, one height calculation. Tool-specific state remains
+  alive while its tab is inactive.
+-->
+<section
+  class="developer-tools-dock d-none"
+  id="developerToolsDock"
+  aria-label="Developer tools"
+  aria-hidden="true"
+  inert
+>
+  <div
+    class="ctx-debug-panel-resize"
+    id="ctxDebugPanelResize"
+    title="Drag to resize Developer Tools; double-click to reset"
+    aria-hidden="true"
+  ></div>
+
+  <div class="developer-tools-tabs" role="tablist" aria-label="Developer tools">
+    <button
+      class="developer-tools-tab is-active"
+      id="developerToolsCtxTab"
+      type="button"
+      role="tab"
+      aria-selected="true"
+      aria-controls="debugPanel"
+      data-developer-tool-tab="ctx"
+    >
+      <strong>CTX VIEWER</strong>
+      <span>(live context tree)</span>
+    </button>
+    <button
+      class="developer-tools-tab"
+      id="developerToolsApiTrafficTab"
+      type="button"
+      role="tab"
+      aria-selected="false"
+      aria-controls="apiTrafficPanel"
+      data-developer-tool-tab="apiTraffic"
+    >
+      <strong>API TRAFFIC</strong>
+      <span>(UI → API)</span>
+    </button>
+    <button
+      class="btn-close developer-tools-close"
+      type="button"
+      id="closeDeveloperToolsDock"
+      aria-label="Close Developer Tools"
+    ></button>
+  </div>
+
+  <div class="developer-tools-body">
+    <%- include('./ctx-debug') %>
+    <%- include('./api-traffic') %>
+  </div>
+</section>

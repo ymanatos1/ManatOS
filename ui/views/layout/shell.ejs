@@ -71,6 +71,11 @@
     content="<%= typeof uiBootId !== 'undefined' ? uiBootId : 'unknown' %>"
   >
 
+  <meta
+    name="csrf-token"
+    content="<%= typeof csrfToken === 'string' ? csrfToken : '' %>"
+  >
+
 
   <!-- =========================================================
        Restore the user's theme before styles paint.
@@ -117,6 +122,27 @@
         );
 
         document.documentElement.dataset.manatosDebugVisible = String(debugVisible);
+
+        /*
+         * CTX Viewer and API Traffic are tabs of one developer-tools dock.
+         * Restore only the outer dock geometry here; individual tools must not
+         * participate in shell layout or maintain independent dock widths.
+         */
+        const developerToolTab =
+          localStorage.getItem('manatos.debug.activeTab.v1') === 'apiTraffic'
+            ? 'apiTraffic'
+            : 'ctx';
+        document.documentElement.dataset.manatosDebugTab = developerToolTab;
+
+        const developerDockWidth = Number(
+          sessionStorage.getItem(`manatos.debug.developerDock.width.${bootId}`),
+        );
+        if (Number.isFinite(developerDockWidth) && developerDockWidth >= 320) {
+          document.documentElement.style.setProperty(
+            '--manatos-debug-width',
+            `${developerDockWidth}px`,
+          );
+        }
 
         /*
          * The shell-level CTX CLI is developer-shell state, not page state.
@@ -479,7 +505,7 @@
 
 
       <% if (app.ui?.debugTools) { %>
-        <%- include('../partials/debugger/ctx-debug') %>
+        <%- include('../partials/debugger/developer-tools') %>
       <% } %>
 
     </main>
@@ -517,10 +543,12 @@
   <% } %>
   <script id="manatosCtxSnapshot" type="application/json"><%- JSON.stringify(ctx ?? null).replace(/</g, '\\u003c') %></script>
   <script src="/js/ctx-runtime.js"></script>
+  <script src="/js/system-connectivity.js"></script>
   <script src="/js/ui-bootstrap-runtime.js"></script>
   <% if (app.ui?.debugTools) { %>
     <script src="/js/debugger/expression-format.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
     <script src="/js/debugger/ctx-debug.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+    <script src="/js/debugger/api-traffic.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <% } %>
   <script src="/js/lists.js"></script>
   <script src="/js/busy.js"></script>

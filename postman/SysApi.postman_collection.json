@@ -842,6 +842,70 @@
       ]
     },
     {
+      "name": "Expression Runtime",
+      "item": [
+        {
+          "name": "Evaluate TraverseEntity capability",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"functionName\": \"TraverseEntity\",\n  \"args\": [\"{{principalId}}\", \"sys-principals\", \"parentId\", \"id\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/expressions/evaluate-function",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "expressions",
+                "evaluate-function"
+              ]
+            },
+            "description": "Capability-provider endpoint. The caller owns the full expression and delegates only a reached EntityResolver-backed function call."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authenticated expression capability-provider operations. These are not full-expression ownership transfers."
+    },
+    {
       "name": "System Business Objects",
       "description": "Metadata-driven system business-object APIs. Authorization is enforced per business object and operation.",
       "item": [
@@ -1261,7 +1325,18 @@
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
                       "const json = pm.response.json();",
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                      "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));"
+                      "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));",
+                      "pm.test('UI metadata exposes evaluator-backed standard action contracts', () => {",
+                      "  const ui = json.data.metadataUI;",
+                      "  pm.expect(ui.list.addAction).to.be.an('object');",
+                      "  pm.expect(ui.list.addAction.visible).to.be.an('object');",
+                      "  pm.expect(ui.list.addAction.visible.expression).to.be.a('string').and.not.empty;",
+                      "  pm.expect(ui.record.entryActions).to.be.an('object');",
+                      "  pm.expect(ui.record.entryActions.save.visible).to.be.an('object');",
+                      "  pm.expect(ui.record.entryActions.save.visible.expression).to.be.a('string').and.not.empty;",
+                      "  pm.expect(ui.record.entryActions.delete.visible).to.be.an('object');",
+                      "  pm.expect(ui.record.entryActions.delete.visible.expression).to.be.a('string').and.not.empty;",
+                      "});"
                     ]
                   }
                 }
@@ -2864,7 +2939,16 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
                   "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                  "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));"
+                  "pm.test('UI metadata is under data.metadataUI', () => pm.expect(json.data.metadataUI).to.be.an('object'));",
+                  "pm.test('Provider Add action exposes declarative enabled/disabled contract', () => {",
+                  "  const addAction = json.data.metadataUI.list.addAction;",
+                  "  pm.expect(addAction).to.be.an('object');",
+                  "  pm.expect(addAction.visible).to.be.an('object');",
+                  "  pm.expect(addAction.visible.expression).to.be.a('string').and.not.empty;",
+                  "  pm.expect(addAction.enabled).to.be.an('object');",
+                  "  pm.expect(addAction.enabled.expression).to.be.a('string').and.not.empty;",
+                  "  pm.expect(addAction.disabledReason).to.be.a('string').and.not.empty;",
+                  "});"
                 ]
               }
             }

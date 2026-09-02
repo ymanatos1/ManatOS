@@ -1,5 +1,6 @@
 import {
   evaluateExpression,
+  evaluateExpressionAsync,
   operationContext,
   type SysBOCreateInput,
   type SysBOEntity,
@@ -18,6 +19,7 @@ import type {
   ListResult,
 } from '../storage/in-memory-repository.js';
 
+import { DataStoreEntityResolver } from './entity-resolver.js';
 import { RelationshipIntegrityService, type DeleteImpactPlan } from './relationship-integrity-service.js';
 
 /**
@@ -165,10 +167,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
 
   /**
    * Materialize every metadata-declared persisted derived field against a
-   * minimal, entity-agnostic CTX. The current entity is the expression scope and
-   * the complete same-entity collection is exposed as the normal lexical
-   * `dataList`, so functions such as TraverseCtx need no Principal-specific
-   * persistence code.
+   * minimal, entity-agnostic execution scope. The current candidate entity is
+   * the lexical scope; persistence-backed functions use the generic EntityResolver
+   * capability rather than depending on a UI/list dataList snapshot.
    *
    * Several derived fields may depend on one another. Iterate to a fixed point
    * with a strict safety bound; no entity/field names are hard-coded here.
@@ -179,14 +180,12 @@ export class GenericSysBOService<T extends SysBOEntity> {
     if (!derived.length) return record;
 
     const candidate = { ...(record as unknown as Record<string, unknown>) };
-    const collection = this.store.collectionForObjectKey(this.metadata.key);
+    // One resolver per top-level materialization gives all fixed-point passes a
+    // request-local canonical lookup cache without leaking data across operations.
+    const entityResolver = new DataStoreEntityResolver(this.store);
 
     const maxPasses = Math.max(4, derived.length * 4);
     for (let pass = 0; pass < maxPasses; pass += 1) {
-      const dataList = [
-        ...(collection ? [...collection.values()].filter((item) => item.id !== candidate.id) : []),
-        candidate,
-      ];
       /*
        * Derived expressions resolve against the canonical field context, not
        * merely properties physically present on a partial input object. Optional
@@ -197,14 +196,19 @@ export class GenericSysBOService<T extends SysBOEntity> {
         Object.keys(this.metadata.fieldDefinition).map((key) => [key, { value: candidate[key] }]),
       );
       const entryPage = { fields, dataCurrent: candidate };
-      const ctx = { page: { dataList, page: entryPage } };
+      const ctx = { page: { page: entryPage } };
 
       let changed = false;
       for (const [key, field] of derived) {
-        const value = evaluateExpression(
+        const value = await evaluateExpressionAsync(
           field.expression,
-          ctx,
-          fields,
+          {
+            owner: 'api-domain',
+            root: ctx,
+            scope: fields,
+            capabilities: ['pure', 'clock', 'ctx', 'entityResolver'],
+            entityResolver,
+          },
           {
             source: 'calculated-field',
             sourcePath: `derivedFields.${key}`,

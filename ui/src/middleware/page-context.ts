@@ -53,13 +53,21 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
      * protected API using the server-side Bearer token.
      */
     if (req.session.userId) {
-      user = (
-        await apiClient.get<SysBOUser>(
-          `/api/v1/SysUsers/${req.session.userId}`,
+      if (req.session.currentUserSnapshot?.id === req.session.userId) {
+        user = req.session.currentUserSnapshot;
+      } else {
+        // Compatibility path for a pre-existing authenticated Express session
+        // created before currentUserSnapshot was introduced. Resolve once, then
+        // keep the authoritative API result with this server-side session.
+        user = (
+          await apiClient.get<SysBOUser>(
+            `/api/v1/SysUsers/${req.session.userId}`,
 
-          apiSessionOptions(req),
-        )
-      ).data;
+            apiSessionOptions(req),
+          )
+        ).data;
+        req.session.currentUserSnapshot = user;
+      }
     }
 
     /**
@@ -118,6 +126,9 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       },
       'sys',
       config.NODE_ENV,
+      {
+        platformAccess: Boolean(currentPlatformEntitled),
+      },
     );
 
     /*
@@ -158,11 +169,13 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
 
       navigation: navigationFor(
         user?.role ?? null,
-
         Boolean(user),
         MANATOS_COMPANY,
         currentPlatform,
-        { platformEntitled: Boolean(currentPlatformEntitled) },
+        {
+          platformEntitled: Boolean(currentPlatformEntitled),
+          ctx: res.locals.ctx,
+        },
       ),
 
       /**

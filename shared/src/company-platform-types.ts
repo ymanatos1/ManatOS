@@ -1,4 +1,5 @@
 import type { SysBOUserRole } from './domain.js';
+import type { ManatOSDynamicValue } from './dynamic-value.js';
 
 /**
  * Lightweight image reference used by shared company/platform branding.
@@ -40,6 +41,8 @@ export interface NavigationContribution {
   order: number;
   separatorBefore?: boolean;
   dockBottom?: boolean;
+  /** Static or evaluator-backed visibility against the current CTX root. */
+  visible?: ManatOSDynamicValue<boolean>;
   requiresAuthentication?: boolean;
   roles?: SysBOUserRole[];
 

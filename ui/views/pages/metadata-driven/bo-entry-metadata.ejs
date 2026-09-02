@@ -19,9 +19,11 @@
     value && typeof value === 'object' && typeof value.expression === 'string'
       ? value.expression
       : null;
-  const compiledEntityContext = typeof ctx !== 'undefined' && ctx?.entities
-    ? Object.values(ctx.entities).find((candidate) => candidate?.key === definition.key)
+  const compiledEntityContextEntry = typeof ctx !== 'undefined' && ctx?.entities
+    ? Object.entries(ctx.entities).find(([, candidate]) => candidate?.key === definition.key)
     : null;
+  const compiledEntityContextName = compiledEntityContextEntry?.[0] ?? null;
+  const compiledEntityContext = compiledEntityContextEntry?.[1] ?? null;
   // Field components consume canonical precompiled calculation metadata/ASTs.
   // Keep it explicit in the include contract rather than relying on EJS ambient scope.
   const compiledEntityMetadata = compiledEntityContext?.metadata || {};
@@ -137,7 +139,7 @@
 
   const referenceValues = referenceData || {};
   const referenceLabel = (fieldKey, value) => {
-    if (value === undefined || value === null || value === '') return '—';
+    if (value === undefined || value === null || value === '') return 'None';
     const match = (referenceValues[fieldKey] || []).find((candidate) => candidate?.id === value);
     return match?.name ?? String(value);
   };
@@ -151,11 +153,8 @@
   const ctxActiveTab = ctxValue('activeTab');
   const requestedTabId = typeof ctxActiveTab === 'string' ? ctxActiveTab : '';
   const activeTabId = tabs.some((tab) => tab.id === requestedTabId) ? requestedTabId : (tabs[0]?.id || '');
-  const deleteAuthorized = deleteImpact?.authorized !== false;
-  const deleteEnabled = Boolean(deleteAction && deleteAction.resolvedEnabled !== false && deleteAuthorized);
-  const deleteDisabledReason =
-    deleteAction?.resolvedDisabledReason ||
-    (!deleteAuthorized ? 'You are not authorized to delete this entry.' : null);
+  const deleteEnabled = Boolean(deleteAction && deleteAction.resolvedEnabled !== false);
+  const deleteDisabledReason = deleteAction?.resolvedDisabledReason || null;
 
   const valueFor = (key) => {
     // CTX is the live form-state source of truth. The renderer projects the
@@ -507,7 +506,12 @@
    * --------------------------------------------------------------------- */
   const debuggingRows = [];
   const debugValueText = (value) => {
-    if (value === undefined || value === null || value === '') return '—';
+    // Debugging displays raw evaluator values rather than presentation labels.
+    // Keeping null/undefined/empty-string distinct is important when inspecting
+    // conditional calculations such as Root Principal.
+    if (value === undefined) return 'undefined';
+    if (value === null) return 'null';
+    if (value === '') return "''";
     if (Array.isArray(value)) return value.length ? `[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]` : '[]';
     if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
     if (typeof value === 'object') {
@@ -545,6 +549,8 @@
     value,
     ast = null,
     detailGroup = null,
+    definitionPath = null,
+    valuePath = null,
   ) => {
     if (!debuggingTabEnabled || typeof formula !== 'string' || !formula) return;
     debuggingRows.push({
@@ -555,6 +561,8 @@
       formula,
       value: debugValueText(value),
       ast,
+      definitionPath,
+      valuePath,
     });
   };
 
@@ -640,6 +648,8 @@
         ctxValue(key),
         compiledEntityContext?.metadata?.derivedFields?.[key]?.ast ?? null,
         derived?.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
+        `ctx.page.page.fields.${key}.expression`,
+        `ctx.page.page.dataCurrent.${key}`,
       );
     }
 
@@ -653,6 +663,8 @@
         ctxValue(key),
         compiledUIRecord?.derivedFields?.[key]?.ast ?? null,
         derived?.inheritedFrom ? 'INHERITED FIELDS' : 'UI-DEFINED FIELDS',
+        `ctx.page.page.fields.${key}.expression`,
+        `ctx.page.page.dataCurrent.${key}`,
       );
     }
 
@@ -675,6 +687,10 @@
         ctxValue(fieldKey),
         compiledEntityContext?.metadata?.fieldDefinition?.[fieldKey]?.calculation?.ast ?? null,
         fieldMetadata?.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
+        compiledEntityContextName
+          ? `ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`
+          : null,
+        `ctx.page.page.dataCurrent.${fieldKey}`,
       );
     }
 
@@ -1242,7 +1258,7 @@
           <%- include('ui-components/save-split-action', { saveAction, actionClass }) %>
         <% } %>
 
-        <% if (!isNew && permissions.delete && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
+        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
           <button
             class="<%= actionClass(deleteAction, 'danger') %>"
             type="button"
@@ -1272,7 +1288,7 @@
           </span>
         <% } %>
 
-        <% if (!isNew && permissions.delete && deleteAction && deleteAction.resolvedPlacement === 'footer-trailing') { %>
+        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-trailing') { %>
           <button
             class="<%= actionClass(deleteAction, 'danger') %>"
             type="button"
@@ -1303,9 +1319,9 @@
           <% } %>
         <% } %>
 
-        <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>">
+        <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>" <%= isViewMode ? '' : 'data-form-close-cancel' %>>
           <i class="bi bi-x-circle me-1"></i>
-          <%= isViewMode ? 'Back' : 'Cancel' %>
+          <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
         </a>
 
         <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-trailing') { %>

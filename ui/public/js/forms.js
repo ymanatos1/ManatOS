@@ -396,6 +396,8 @@
     const indicator = form.querySelector('[data-form-state-indicator]');
     const indicatorIcon = indicator?.querySelector('[data-form-state-icon]');
     const indicatorText = indicator?.querySelector('[data-form-state-text]');
+    const closeCancel = form.querySelector('[data-form-close-cancel]');
+    const closeCancelLabel = closeCancel?.querySelector('[data-form-close-cancel-label]');
     const recordMode = form.dataset.recordMode || 'edit';
     const runtime = window.ManatOS?.ctx;
     const leafPagePath = () => {
@@ -466,6 +468,18 @@
       const internalEditors = [...form.querySelectorAll('[data-entry-child-editor][data-child-editor-active="true"]')];
       const internalEditorCount = internalEditors.length;
       const internalEditing = internalEditorCount > 0;
+
+      // The parent navigation action describes its consequence rather than
+      // keeping a permanently ambiguous label. A clean entry simply closes; a
+      // dirty entry (or one with an active child draft) is a Cancel operation
+      // and therefore participates in the unsaved-changes guard. This is shared
+      // metadata-entry behavior for every entity, never an entity-specific rule.
+      if (closeCancelLabel instanceof HTMLElement) {
+        closeCancelLabel.textContent = changed || internalEditing ? 'Cancel' : 'Close';
+      }
+      if (closeCancel instanceof HTMLElement) {
+        closeCancel.setAttribute('aria-label', changed || internalEditing ? 'Cancel editing' : 'Close entry');
+      }
 
       // Page state is itself CTX. Metadata/actions can therefore make live,
       // declarative decisions from state.dirty/state.valid without inspecting DOM.
@@ -891,13 +905,101 @@
     }
   };
 
+  const csrfToken = form.querySelector('input[name="_csrf"]')?.value || '';
+
+  /*
+   * One owner evaluation pass may contain several reactive consumers of the
+   * same resolver-backed subexpression (for example the actual calculated
+   * field plus its Debugging-tab value). Keep a pass-scoped promise cache so
+   * those consumers share one remote capability call without changing lazy
+   * AST semantics or leaking results across independent user events.
+   */
+  let ownedCapabilityPassCache = null;
+  const withOwnedCapabilityPass = async (action) => {
+    if (ownedCapabilityPassCache) return action();
+    ownedCapabilityPassCache = new Map();
+    try { return await action(); }
+    finally { ownedCapabilityPassCache = null; }
+  };
+
+  /**
+   * Browser-owned hybrid evaluation. The browser remains responsible for the
+   * complete AST and preserves lazy operators/conditionals. Only a function node
+   * whose parser-annotated capability is unavailable locally is delegated.
+   * Phase 1 delegates EntityResolver calls individually; later planning may batch
+   * compatible reached subtrees without changing ownership semantics.
+   */
+  const evaluateOwned = async (node) => {
+    if (!node) return undefined;
+    switch (node.kind) {
+      case 'literal':
+      case 'variable': return evaluate(node);
+      case 'group': return evaluateOwned(node.expression);
+      case 'unary': {
+        const value = await evaluateOwned(node.operand);
+        return evaluate({ ...node, operand: { kind: 'literal', value } });
+      }
+      case 'binary': {
+        const left = await evaluateOwned(node.left);
+        if (node.operator === '??') return left == null ? evaluateOwned(node.right) : left;
+        if (node.operator === '&&') return truthy(left) ? evaluateOwned(node.right) : left;
+        if (node.operator === '||') return truthy(left) ? left : evaluateOwned(node.right);
+        const right = await evaluateOwned(node.right);
+        return evaluate({ ...node, left: { kind: 'literal', value: left }, right: { kind: 'literal', value: right } });
+      }
+      case 'conditional': {
+        const condition = await evaluateOwned(node.condition);
+        if (typeof condition !== 'boolean') throw new Error(`?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`);
+        return condition ? evaluateOwned(node.whenTrue) : evaluateOwned(node.whenFalse);
+      }
+      case 'function': {
+        const args = [];
+        for (const argument of node.arguments || []) args.push(await evaluateOwned(argument));
+        const localCapabilities = new Set(['pure', 'clock', 'ctx']);
+        if (node.capability === 'entityResolver') {
+          const cacheKey = `${node.functionName}:${JSON.stringify(args)}`;
+          const executeRemote = async () => {
+            const response = await fetch('/bo/expression/evaluate-function', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ _csrf: csrfToken, functionName: node.functionName, args }),
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || payload.errorMessage || 'Remote expression capability failed.');
+            return payload.value;
+          };
+          if (!ownedCapabilityPassCache) return executeRemote();
+          if (!ownedCapabilityPassCache.has(cacheKey)) {
+            ownedCapabilityPassCache.set(cacheKey, executeRemote());
+          }
+          try { return await ownedCapabilityPassCache.get(cacheKey); }
+          catch (error) {
+            ownedCapabilityPassCache.delete(cacheKey);
+            throw error;
+          }
+        }
+        if (node.capability && !localCapabilities.has(node.capability)) {
+          throw new Error(`Function ${node.functionName} requires capability '${node.capability}', unavailable to browser evaluation owner.`);
+        }
+        return evaluate({ ...node, arguments: args.map((value) => ({ kind: 'literal', value })) });
+      }
+      default: return evaluate(node);
+    }
+  };
+
   window.ManatOS = window.ManatOS || {};
   window.ManatOS.expression = Object.freeze({
     evaluateAst: (ast) => evaluate(ast),
+    evaluateAstOwned: (ast) => evaluateOwned(ast),
     evaluateAstAt: (ast, scopePath) => {
       const previousScope = explicitEvaluationScopePath;
       explicitEvaluationScopePath = scopePath || null;
       try { return evaluate(ast); } finally { explicitEvaluationScopePath = previousScope; }
+    },
+    evaluateAstOwnedAt: async (ast, scopePath) => {
+      const previousScope = explicitEvaluationScopePath;
+      explicitEvaluationScopePath = scopePath || null;
+      try { return await evaluateOwned(ast); } finally { explicitEvaluationScopePath = previousScope; }
     },
     currentCtxPath: () => leafPagePath(),
     currentCtxNode: () => {
@@ -1012,7 +1114,7 @@
         if (Array.isArray(parsed)) values = parsed;
       } catch { /* keep empty */ }
       const match = values.find((candidate) => candidate?.id === value);
-      element.value = value == null || value === '' ? '' : String(match?.name ?? value);
+      element.value = value == null || value === '' ? 'None' : String(match?.name ?? value);
       return;
     }
     element.value = value == null ? '' : String(value);
@@ -1029,9 +1131,9 @@
       kind: 'calculated',
       key,
       dependencyPaths: expressionDependencyPaths(ast),
-      run: () => {
+      run: async () => {
         try {
-          const next = evaluate(ast);
+          const next = await evaluateOwned(ast);
           const current = calculatedRawValue(element);
           const changed = !Object.is(current, next);
 
@@ -1111,12 +1213,12 @@
       kind: 'field-calculation',
       key,
       dependencyPaths: expressionDependencyPaths(ast),
-      run: (change) => {
+      run: async (change) => {
         if (!change) return false;
         const authoritativePath = change.cause?.triggerPath || change.changedPath;
         if (![...triggerPaths].some((triggerPath) => pathsOverlap(triggerPath, authoritativePath))) return false;
         try {
-          const next = evaluate(ast);
+          const next = await evaluateOwned(ast);
           const pagePath = leafPagePath();
           const fieldsPath = leafPageFieldsPath();
           if (!pagePath || !fieldsPath || !runtime?.updateField) return false;
@@ -1144,7 +1246,11 @@
   });
 
   const debugValueText = (value) => {
-    if (value === undefined || value === null || value === '') return '—';
+    // The debugger must expose raw evaluator values, not field presentation
+    // placeholders, so null/undefined/empty-string remain distinguishable.
+    if (value === undefined) return 'undefined';
+    if (value === null) return 'null';
+    if (value === '') return "''";
     if (Array.isArray(value)) return value.length ? `[ ${value.map(debugValueText).join(', ')} ]` : '[]';
     if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
     if (typeof value === 'object') {
@@ -1165,9 +1271,9 @@
     registerEntry({
       kind: 'debug-value',
       dependencyPaths: expressionDependencyPaths(ast),
-      run: () => {
+      run: async () => {
         try {
-          const next = debugValueText(evaluate(ast));
+          const next = debugValueText(await evaluateOwned(ast));
           const changed = cell.textContent !== next;
           if (changed) cell.textContent = next;
           return changed;
@@ -1192,9 +1298,9 @@
     registerEntry({
       kind: 'grid-span',
       dependencyPaths: expressionDependencyPaths(spanAst),
-      run: () => {
+      run: async () => {
         try {
-          const evaluated = Number(evaluate(spanAst));
+          const evaluated = Number(await evaluateOwned(spanAst));
           const nextSpan = Number.isFinite(evaluated)
             ? Math.max(1, Math.min(12, Math.trunc(evaluated)))
             : fallback;
@@ -1220,9 +1326,9 @@
       registerEntry({
         kind: 'visible',
         dependencyPaths: expressionDependencyPaths(visibleAst),
-        run: () => {
+        run: async () => {
           try {
-            const nextHidden = evaluate(visibleAst) === false;
+            const nextHidden = (await evaluateOwned(visibleAst)) === false;
             const changed = container.hidden !== nextHidden;
             container.hidden = nextHidden;
             return changed;
@@ -1237,9 +1343,9 @@
       registerEntry({
         kind: 'editable',
         dependencyPaths: expressionDependencyPaths(editableAst),
-        run: () => {
+        run: async () => {
           try {
-            const editable = evaluate(editableAst) !== false;
+            const editable = (await evaluateOwned(editableAst)) !== false;
             const controls = [...container.querySelectorAll('[data-ctx-field]')];
             const readonlySubmit = container.querySelector('[data-readonly-submit]');
             const hasReadOnlyValue = container.dataset.uiHasReadonlyValue === 'true';
@@ -1319,33 +1425,19 @@
   const pendingChangeKeys = new Set();
   let processingChanges = false;
 
-  const enqueueChange = (change) => {
-    const paths = [change?.path, ...(Array.isArray(change?.relatedPaths) ? change.relatedPaths : [])]
-      .filter((path) => typeof path === 'string' && path);
-    if (!paths.length) return;
-    const cause = change?.cause || {};
-    for (const changedPath of paths) {
-      const key = `${cause.rootEventId || cause.eventId || 'event'}|${changedPath}`;
-      if (pendingChangeKeys.has(key)) continue;
-      pendingChangeKeys.add(key);
-      pendingChanges.push({ changedPath, cause, queueKey: key });
-    }
-
+  const processPendingChanges = async () => {
     if (processingChanges) return;
-
     processingChanges = true;
     let executions = 0;
     try {
+      await withOwnedCapabilityPass(async () => {
       while (pendingChanges.length) {
         const currentChange = pendingChanges.shift();
         pendingChangeKeys.delete(currentChange.queueKey);
 
         for (const entry of reactiveEntries) {
-          if (![...entry.dependencyPaths].some((dependencyPath) => pathsOverlap(dependencyPath, currentChange.changedPath))) {
-            continue;
-          }
-
-          entry.run(currentChange);
+          if (![...entry.dependencyPaths].some((dependencyPath) => pathsOverlap(dependencyPath, currentChange.changedPath))) continue;
+          await entry.run(currentChange);
           executions += 1;
           if (executions > 512) {
             console.error('[ManatOS CTX] Reactive calculation queue exceeded 512 executions; possible dependency cycle.', {
@@ -1359,13 +1451,37 @@
           }
         }
       }
+      });
     } finally {
       processingChanges = false;
+      // A change may arrive after the loop observed an empty queue but before
+      // this owner releases the scheduler flag. Start another drain without
+      // duplicating or rewriting the queued causal event.
+      if (pendingChanges.length) void processPendingChanges();
     }
   };
 
+  const enqueueChange = (change) => {
+    const paths = [change?.path, ...(Array.isArray(change?.relatedPaths) ? change.relatedPaths : [])]
+      .filter((path) => typeof path === 'string' && path);
+    if (!paths.length) return;
+    const cause = change?.cause || {};
+    for (const changedPath of paths) {
+      const key = `${cause.rootEventId || cause.eventId || 'event'}|${changedPath}`;
+      if (pendingChangeKeys.has(key)) continue;
+      pendingChangeKeys.add(key);
+      pendingChanges.push({ changedPath, cause, queueKey: key });
+    }
+    void processPendingChanges();
+  };
+
   const runAllReactiveEntries = () => {
-    reactiveEntries.forEach((entry) => entry.run());
+    // Preserve deterministic metadata order even though some entries may cross
+    // an async capability boundary. Dependent CTX writes still re-enter the
+    // normal causal event scheduler.
+    void withOwnedCapabilityPass(async () => {
+      for (const entry of reactiveEntries) await entry.run();
+    });
   };
 
   const syncSourceField = (control, eventCause = {}) => {

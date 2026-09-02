@@ -17,6 +17,7 @@ import { pageContextMiddleware } from './middleware/page-context.js';
 import { createAuthRouter } from './routes/auth-routes.js';
 import { createPageRoutes } from './routes/page-routes.js';
 import { createSysBORoutes } from './routes/sysbo-routes.js';
+import { createDebugRoutes } from './routes/debug-routes.js';
 import { createPlatformRoutes } from './platforms/routes.js';
 import { uiErrorHandler } from './error-handler.js';
 import { refreshUiBootstrap, uiBootstrapState } from './bootstrap/ui-bootstrap.js';
@@ -126,6 +127,10 @@ export function createUiApp() {
 
   app.use(passport.initialize());
   app.use(csrfTokenMiddleware);
+
+  /* Developer diagnostics intentionally bypass rendered-page context hydration. */
+  app.use('/bo/debug', createDebugRoutes());
+
   app.use(pageContextMiddleware);
 
   app.use('/auth', createAuthRouter());

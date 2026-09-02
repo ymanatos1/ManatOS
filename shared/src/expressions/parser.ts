@@ -6,6 +6,7 @@ import type {
   ExpressionBinaryOperator,
   ExpressionDiagnosticSink,
   ExpressionFunctionRegistry,
+  ExpressionCapability,
   ExpressionNode,
   ExpressionPathMember,
 } from './types.js';
@@ -237,8 +238,26 @@ class Parser {
       }
     });
 
-    return {kind: 'function', functionName, arguments: args};
+    return {kind: 'function', functionName, arguments: args, capability: definition.capability};
   }
+}
+
+
+export function expressionCapabilities(ast: ExpressionNode): readonly ExpressionCapability[] {
+  const capabilities = new Set<ExpressionCapability>();
+  const visit = (node: ExpressionNode): void => {
+    if (node.kind === 'function') {
+      capabilities.add(node.capability);
+      node.arguments.forEach(visit);
+      return;
+    }
+    if (node.kind === 'group') { visit(node.expression); return; }
+    if (node.kind === 'unary') { visit(node.operand); return; }
+    if (node.kind === 'binary') { visit(node.left); visit(node.right); return; }
+    if (node.kind === 'conditional') { visit(node.condition); visit(node.whenTrue); visit(node.whenFalse); }
+  };
+  visit(ast);
+  return [...capabilities];
 }
 
 export function compileExpression(
@@ -251,7 +270,8 @@ export function compileExpression(
   try {
     const tokens = tokenizeExpression(source);
     const parser = new Parser(source, tokens, options.functions ?? expressionFunctions);
-    return {source, ast: parser.parse()};
+    const ast = parser.parse();
+    return {source, ast, requiredCapabilities: expressionCapabilities(ast)};
   } catch (error) {
     if (error instanceof ExpressionParseError) {
       emitExpressionDiagnostic(options.diagnosticSink, {

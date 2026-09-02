@@ -32,6 +32,7 @@ import { renderPage } from '../render.js';
 import { metadataComponentPartialFor } from '../presentation/metadata-component-registry.js';
 
 import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
+import { clearApiTrafficEntries, listApiTrafficEntries } from '../debug/api-traffic-store.js';
 
 import { addSessionError } from '../errors/session-error-log.js';
 
@@ -384,6 +385,45 @@ export function createSysBORoutes() {
    * per route below. The API remains the ultimate authorization boundary.
    */
   router.use(requireSignedIn);
+
+  /**
+   * Browser-owned hybrid evaluation delegates only the reached resolver-backed
+   * function call. The UI server preserves the authenticated session boundary
+   * and forwards the request to the API capability provider.
+   */
+  router.post('/expression/evaluate-function', requireCsrf, async (req, res, next) => {
+    try {
+      const functionName = String(req.body?.functionName ?? '');
+      const args = Array.isArray(req.body?.args) ? req.body.args : [];
+      const response = await apiClient.post<{ value: unknown }>(
+        '/api/v1/expressions/evaluate-function',
+        { functionName, args },
+        apiSessionOptions(req),
+      );
+      res.set('Cache-Control', 'no-store');
+      res.json({ value: response.data.value });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  /**
+   * Development-only sanitized UI -> API transport trace. The store lives in
+   * the UI-server process, so it naturally resets when that process restarts.
+   */
+  router.get('/debug/api-traffic', (req, res) => {
+    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    const afterId = typeof req.query.after === 'string' ? req.query.after : undefined;
+    res.set('Cache-Control', 'no-store');
+    res.json({ entries: listApiTrafficEntries(afterId) });
+  });
+
+  router.post('/debug/api-traffic/clear', requireCsrf, (req, res) => {
+    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    clearApiTrafficEntries();
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true });
+  });
 
   /** Developer CLI compiles ad-hoc expressions with the canonical parser. */
   router.post('/debug/compile-expression', requireCsrf, (req, res) => {
@@ -895,6 +935,18 @@ export function createSysBORoutes() {
             if (definition.key === 'sys-ext-auth-providers') {
               await refreshExternalProviderRegistry();
               configurePassport();
+            }
+
+            // Keep page-context's server-side current-user snapshot coherent when
+            // the signed-in user edits their own SysUsers record. Other SysUsers
+            // saves must not alter this browser session's identity snapshot.
+            if (
+              definition.key === 'sys-users' &&
+              savedRecord &&
+              savedId &&
+              req.session.userId === savedId
+            ) {
+              req.session.currentUserSnapshot = savedRecord as unknown as SysBOUser;
             }
 
             await completeSave(savedId || undefined, savedRecord);
@@ -1567,7 +1619,7 @@ async function renderMetadataDrivenList(
     hasAnyEntries = unfiltered.data.paging.total > 0;
   }
 
-  let addActionDisabled = false;
+  let addConstraintReached = false;
   const addConstraintFieldKey = metadataUI.list.addAction.disableWhenAllEnumValuesExistForField;
   if (addConstraintFieldKey) {
     const constraintField = metadata.fieldDefinition[addConstraintFieldKey];
@@ -1580,7 +1632,7 @@ async function renderMetadataDrivenList(
         );
         totalEntries = unfiltered.data.paging.total;
       }
-      addActionDisabled = totalEntries >= (constraintField.enumValues?.length ?? 0);
+      addConstraintReached = totalEntries >= (constraintField.enumValues?.length ?? 0);
     }
   }
 
@@ -1601,9 +1653,36 @@ async function renderMetadataDrivenList(
     paging: response.data.paging,
     query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
     permissions,
+    // This is a CTX fact, not UI policy. Metadata decides whether reaching the
+    // generic constraint disables Add; the route only derives the fact from data.
+    addConstraintReached,
     referenceData: listReferenceData,
   });
   const listItems = listPage.dataList ?? [];
+
+  const resolveAddActionValue = (value: unknown, property: string): unknown => {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || typeof (value as { expression?: unknown }).expression !== 'string') {
+      return value;
+    }
+    return evaluateExpression(
+      (value as { expression: string }).expression,
+      res.locals.ctx as ManatOSContext,
+      listPage.fields,
+      {
+        source: 'ui-metadata',
+        sourcePath: `list.addAction.${property}`,
+        targetPath: `list.addAction.${property}`,
+        purpose: `resolve list Add ${property}`,
+      },
+    );
+  };
+
+  const resolvedAddAction = {
+    ...metadataUI.list.addAction,
+    resolvedVisible: resolveAddActionValue(metadataUI.list.addAction.visible, 'visible') !== false,
+    resolvedEnabled: resolveAddActionValue(metadataUI.list.addAction.enabled ?? true, 'enabled') !== false,
+    resolvedDisabledReason: resolveAddActionValue(metadataUI.list.addAction.disabledReason ?? null, 'disabledReason'),
+  };
 
   await renderPage(res, 'pages/metadata-driven/bo-list-metadata', {
     title: metadata.pluralName,
@@ -1613,7 +1692,7 @@ async function renderMetadataDrivenList(
     metadataUI,
     permissions,
     hasAnyEntries,
-    addActionDisabled,
+    resolvedAddAction,
     referenceData: listReferenceData,
     items: listItems,
     paging: response.data.paging,

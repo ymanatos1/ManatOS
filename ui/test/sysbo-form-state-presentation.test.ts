@@ -146,6 +146,10 @@ describe('generic SysBO form state presentation', () => {
     expect(metadataSource).toContain('debugElementNameParts');
     expect(debuggingPanelSource).toContain('debugging-element-prefix');
     expect(debuggingPanelSource).toContain('debugging-element-leaf');
+    expect(metadataSource).toContain("if (value === null) return 'null'");
+    expect(formsSource).toContain("if (value === null) return 'null'");
+    expect(metadataSource).toContain("if (value === '') return \"''\"");
+    expect(formsSource).toContain("if (value === '') return \"''\"");
     expect(metadataSource).toContain("typeof value === 'string'");
     expect(formsSource).toContain("typeof value === 'string'");
     expect(metadataSource).toContain("return `'${value.replaceAll");
@@ -216,6 +220,17 @@ describe('generic SysBO form state presentation', () => {
     expect(dateField).toContain('type="date"');
     expect(datetimeField).toContain('datetimeLocalValue(value)');
     expect(datetimeField).toContain('type="datetime-local"');
+  });
+
+
+  it('uses Close for a clean entry and Cancel whenever the shared page transaction is dirty or internally editing', async () => {
+    const renderer = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+
+    expect(renderer).toContain('data-form-close-cancel');
+    expect(renderer).toContain("data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %>");
+    expect(forms).toContain("closeCancelLabel.textContent = changed || internalEditing ? 'Cancel' : 'Close'");
+    expect(forms).toContain("changed || internalEditing ? 'Cancel editing' : 'Close entry'");
   });
 
 });

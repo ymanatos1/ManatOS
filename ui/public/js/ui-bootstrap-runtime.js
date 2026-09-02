@@ -80,13 +80,22 @@
     }
 
     try {
-      const response = await fetch('/runtime/ui-bootstrap', {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-        credentials: 'same-origin',
-      });
+      let response;
+      try {
+        response = await fetch('/runtime/ui-bootstrap', {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          credentials: 'same-origin',
+        });
+      } catch (error) {
+        window.ManatOSConnectivity?.reportFailure?.('ui-bootstrap');
+        throw error;
+      }
 
+      // Any HTTP response proves transport availability. Status-specific errors
+      // remain this runtime's concern and do not trip the system outage guard.
+      window.ManatOSConnectivity?.reportSuccess?.('ui-bootstrap');
       if (!response.ok) throw new Error(`UI bootstrap returned ${response.status}`);
 
       applyBootstrap(await response.json());
@@ -157,6 +166,12 @@
   ['pointerdown', 'keydown', 'touchstart', 'focus'].forEach((eventName) => {
     window.addEventListener(eventName, wakeFromUserActivity, { passive: true });
   });
+  window.addEventListener('manatos:system-unavailable', () => {
+    stopped = true;
+    window.clearTimeout(timer);
+    timer = null;
+  });
+
   window.addEventListener('pagehide', () => {
     stopped = true;
     window.clearTimeout(timer);

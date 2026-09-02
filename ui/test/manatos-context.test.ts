@@ -342,7 +342,20 @@ describe('ManatOS ctx tree', () => {
     const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0', user);
 
     expect(ctx.user?.permissions.userRole).toBe('Guest');
-    expect(ctx.user?.permissions[platform.id]).toEqual({ capabilities: {} });
+    expect(ctx.user?.permissions[platform.id]).toEqual({ capabilities: { platformAccess: false } });
+
+    const entitled = createManatOSContext(
+      MANATOS_COMPANY,
+      platform,
+      'http://localhost:3000',
+      '0.1.0',
+      user,
+      {},
+      'sys',
+      'development',
+      { platformAccess: true },
+    );
+    expect(entitled.user?.permissions[platform.id]).toEqual({ capabilities: { platformAccess: true } });
   });
 
 });

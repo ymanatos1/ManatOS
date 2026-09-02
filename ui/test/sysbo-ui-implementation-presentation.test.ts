@@ -43,7 +43,7 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     expect(routes).toContain('/$metadata-ui');
     expect(list).toContain('metadataUI.list.visibleFields');
     expect(list).toContain('metadataUI.list.filterFields');
-    expect(list).toContain('metadataUI.list.addAction');
+    expect(list).toContain('resolvedAddAction');
     expect(edit).toContain('metadataUI.record.tabs');
     expect(edit).toContain('metadataUI.record.fieldOverrides');
     expect(edit).toContain('tab.content');

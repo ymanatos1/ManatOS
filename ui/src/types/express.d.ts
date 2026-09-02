@@ -12,6 +12,16 @@ declare module 'express-session' {
     userId?: string;
 
     /**
+     * Server-side snapshot of the authenticated SysBOUser.
+     *
+     * The login/API-session response already supplies this record, so keeping it
+     * with the Express session prevents every page-context hydration from issuing
+     * another GET /SysUsers/{id}. It is refreshed when this same user is saved
+     * through the metadata-driven SysUsers editor and discarded with auth state.
+     */
+    currentUserSnapshot?: SysBOUser;
+
+    /**
      * Authentication mechanism used to establish the UI/API session.
      *
      * Examples:

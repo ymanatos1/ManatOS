@@ -1,0 +1,42 @@
+<!-- Development-only sanitized UI -> API traffic viewer. -->
+<aside class="api-traffic-panel d-none" id="apiTrafficPanel" aria-label="ManatOS API traffic viewer" aria-hidden="true" inert>
+  <div class="debug-panel-tools" role="toolbar" aria-label="API traffic controls">
+    <button class="debug-tool-button" id="apiTrafficPause" type="button" title="Pause live updates" aria-label="Pause live updates" aria-pressed="false"><i class="bi bi-pause"></i></button>
+    <button class="debug-tool-button" id="apiTrafficClear" type="button" title="Clear captured traffic" aria-label="Clear captured traffic"><i class="bi bi-trash"></i></button>
+    <button class="debug-tool-button" id="apiTrafficErrors" type="button" title="Show errors only" aria-label="Show errors only" aria-pressed="false"><i class="bi bi-exclamation-octagon"></i></button>
+    <div class="api-traffic-route-filter-wrap">
+      <button class="debug-tool-button" id="apiTrafficRoutes" type="button" title="Choose API calls to show" aria-label="Choose API calls to show" aria-expanded="false"><i class="bi bi-filter-square"></i></button>
+      <div class="api-traffic-route-menu d-none" id="apiTrafficRouteMenu" role="menu" aria-label="API call visibility">
+        <div class="api-traffic-route-menu-actions">
+          <button type="button" data-api-routes-all>All</button>
+          <button type="button" data-api-routes-none>None</button>
+        </div>
+        <div class="api-traffic-route-menu-list" id="apiTrafficRouteMenuList"></div>
+      </div>
+    </div>
+    <input class="api-traffic-filter" id="apiTrafficFilter" type="search" autocomplete="off" placeholder="Search traffic" aria-label="Search captured API traffic">
+    <span class="api-traffic-stats" id="apiTrafficStats">0 requests</span>
+  </div>
+
+  <section class="api-traffic-details d-none" id="apiTrafficDetails" aria-label="Selected API request details">
+    <div class="api-traffic-details-heading">
+      <strong id="apiTrafficDetailsTitle">Request details</strong>
+      <button class="btn-close" type="button" id="apiTrafficDetailsClose" aria-label="Close request details"></button>
+    </div>
+    <div class="api-traffic-details-tabs" role="tablist" aria-label="Request and response details">
+      <button class="api-traffic-details-tab is-active" id="apiTrafficRequestTab" type="button" role="tab" aria-selected="true">Request</button>
+      <button class="api-traffic-details-tab" id="apiTrafficResponseTab" type="button" role="tab" aria-selected="false">Response</button>
+    </div>
+    <div class="api-traffic-details-body" id="apiTrafficDetailsBody"></div>
+  </section>
+
+  <div class="api-traffic-columns" id="apiTrafficColumns" aria-hidden="true">
+    <span data-api-traffic-column="time">Time<i class="api-traffic-column-resize" data-api-traffic-column-resize="time"></i></span>
+    <span data-api-traffic-column="method">Method<i class="api-traffic-column-resize" data-api-traffic-column-resize="method"></i></span>
+    <span data-api-traffic-column="path">Path<i class="api-traffic-column-resize" data-api-traffic-column-resize="path"></i></span>
+    <span data-api-traffic-column="status">Status<i class="api-traffic-column-resize" data-api-traffic-column-resize="status"></i></span>
+    <span data-api-traffic-column="duration">Duration<i class="api-traffic-column-resize" data-api-traffic-column-resize="duration"></i></span>
+  </div>
+
+  <div class="api-traffic-list" id="apiTrafficList" role="list" aria-label="Captured API requests"></div>
+</aside>

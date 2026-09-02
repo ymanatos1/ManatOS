@@ -34,12 +34,32 @@ function findAncestry(root: unknown, target: unknown): readonly unknown[] | null
   return visit(root, [root]);
 }
 
+function resolveMemberForExpression(container: unknown, member: ExpressionPathMember): unknown {
+  const direct = resolveContextMember(container, member);
+  if (direct !== undefined) return direct;
+
+  /*
+   * CTX field/pointer nodes are transparent for ordinary nested fact access.
+   * Metadata should be able to say `permissions.create` even though the CTX tree
+   * stores `permissions` as a normal field node `{ value: { create, ... } }`.
+   * Explicit CTX members such as `.value`, `.option`, `.expression` and `.ast`
+   * still win above, so enum/reference/calculated-field introspection keeps its
+   * existing semantics.
+   */
+  if (container && typeof container === 'object' &&
+      Object.prototype.hasOwnProperty.call(container, 'value')) {
+    return resolveContextMember((container as { value?: unknown }).value, member);
+  }
+
+  return undefined;
+}
+
 function resolveDownward(start: unknown, members: readonly ExpressionPathMember[]): ResolvedExpressionVariable {
   let value = start;
   let owner: unknown = undefined;
   for (const member of members) {
     owner = value;
-    value = resolveContextMember(value, member);
+    value = resolveMemberForExpression(value, member);
     if (value === undefined) return {found: false, value: undefined, owner};
   }
   return {found: true, value, owner};

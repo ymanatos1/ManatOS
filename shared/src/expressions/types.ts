@@ -61,10 +61,14 @@ export interface ExpressionConditionalNode {
   whenFalse: ExpressionNode;
 }
 
+export type ExpressionCapability = 'pure' | 'clock' | 'ctx' | 'entityResolver';
+
 export interface ExpressionFunctionCallNode {
   kind: 'function';
   functionName: string;
   arguments: readonly ExpressionNode[];
+  /** Capability declared by the canonical function registry at parse time. */
+  capability: ExpressionCapability;
 }
 
 export type ExpressionNode =
@@ -79,6 +83,8 @@ export type ExpressionNode =
 export interface CompiledExpression {
   source: string;
   ast: ExpressionNode;
+  /** Static union of capabilities that may be needed by reachable AST branches. Runtime lazy semantics still decide which branches execute. */
+  requiredCapabilities: readonly ExpressionCapability[];
 }
 
 export type ExpressionFunctionArgumentType =
@@ -99,17 +105,44 @@ export interface ExpressionFunctionSignature {
   variadicType?: ExpressionFunctionArgumentType;
 }
 
+export interface EntityResolver {
+  /** Resolve one canonical entity by metadata key and identifier. Implementations may cache, batch, authorize or translate to SQL independently. */
+  getById(entityKey: string, id: unknown): Promise<Readonly<Record<string, unknown>> | null>;
+}
+
+export interface ExpressionExecutionContext {
+  /** Host that owns and must complete this evaluation (browser, api, worker, test, etc.). */
+  owner: string;
+  /** Lexical root visible to variable resolution. In a UI this is usually CTX; in a server process it may simply be the entity record. */
+  root: unknown;
+  /** Current lexical scope whose direct field names are used by entity-local formulas. */
+  scope: unknown;
+  /** Capabilities available locally to this owner. */
+  capabilities: readonly ExpressionCapability[];
+  /** Optional canonical persistence resolver; required only when entityResolver-capable functions are actually reached. */
+  entityResolver?: EntityResolver;
+}
+
 export interface ExpressionFunctionEvaluationContext {
   now: () => Date;
+  owner: string;
+  entityResolver?: EntityResolver;
 }
 
 export interface ExpressionFunctionDefinition {
   name: string;
   signature: ExpressionFunctionSignature;
+  /** Execution capability needed by this function. `pure` is available everywhere. */
+  capability: ExpressionCapability;
   evaluate: (
     args: readonly unknown[],
     context: ExpressionFunctionEvaluationContext,
   ) => unknown;
+  /** Optional asynchronous implementation for capability-backed functions such as database/entity traversal. */
+  evaluateAsync?: (
+    args: readonly unknown[],
+    context: ExpressionFunctionEvaluationContext,
+  ) => Promise<unknown>;
 }
 
 export type ExpressionFunctionRegistry = Readonly<Record<string, ExpressionFunctionDefinition>>;
@@ -121,6 +154,7 @@ export type ExpressionEvaluationSource =
   | 'field-normalization'
   | 'ctx-change'
   | 'ui-metadata'
+  | 'navigation'
   | 'test'
   | 'other';
 

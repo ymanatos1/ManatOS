@@ -118,6 +118,17 @@ describe('company/platform navigation composition', () => {
     ).toBe(false);
   });
 
+
+  it('uses evaluator-backed CTX visibility for migrated navigation decisions', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const playground = platform.navigation.find((item) => item.id === 'app-playground');
+    expect(playground?.visible).toEqual({
+      expression: 'user.permissions.mcrm.capabilities.platformAccess === true',
+    });
+    expect(playground?.requiresAuthentication).toBeUndefined();
+    expect(playground?.requiresPlatformEntitlement).toBeUndefined();
+  });
+
   it('gates mCRM application navigation by entitlement for every non-Admin role', () => {
     for (const role of [SysBOUserRole.Guest, SysBOUserRole.User, SysBOUserRole.Superuser]) {
       const unlicensed = navigationFor(role, true);

@@ -4,6 +4,9 @@ import swaggerUi from 'swagger-ui-express';
 
 import {
   SysBOUserRole,
+  ExpressionEvaluationError,
+  ValidationAppError,
+  expressionFunctions,
   sysBOApplicationsMetadata,
   sysBOExtAuthProvidersMetadata,
   sysBOEmailAddressesMetadata,
@@ -19,6 +22,7 @@ import {
 
 import { createSysBORouter } from './http/sysbo-router.js';
 import { GenericSysBOService } from './services/generic-sysbo-service.js';
+import { DataStoreEntityResolver } from './services/entity-resolver.js';
 import { API_IMPLEMENTATION_VERSION, API_VERSION } from './version.js';
 
 import { createInternalRouter } from './http/internal-router.js';
@@ -310,6 +314,36 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       sendQuery(res, { providers: services.extAuthProviders.providerDefinitions() });
     },
   );
+
+  /**
+   * Evaluate one capability-backed expression function for a remote owner.
+   *
+   * Browser/UI evaluators remain owners of their full expression. They locally
+   * evaluate ordinary/CTX arguments and call this endpoint only when runtime
+   * evaluation actually reaches a function whose capability is unavailable in
+   * the browser (currently EntityResolver functions such as TraverseEntity).
+   * The endpoint returns only the function result; it never exposes a database
+   * handle or the resolver's intermediate records.
+   */
+  app.post('/api/v1/expressions/evaluate-function', requireAuthenticated, async (req, res) => {
+    const functionName = String(req.body?.functionName ?? '');
+    const definition = expressionFunctions[functionName];
+    if (!definition) throw new ValidationAppError(`Unknown expression function ${functionName}.`);
+    if (definition.capability !== 'entityResolver' || !definition.evaluateAsync) {
+      throw new ValidationAppError(`${functionName} is not a remotely delegated EntityResolver function.`);
+    }
+    const args = Array.isArray(req.body?.args) ? req.body.args : [];
+    const subject = req.auth!;
+    const entityResolver = new DataStoreEntityResolver(_store, authorization, subject);
+    try {
+      const value = await definition.evaluateAsync(args, { now: () => new Date(), owner: 'api-capability-provider', entityResolver });
+      res.set('Cache-Control', 'no-store');
+      sendQuery(res, { value });
+    } catch (error) {
+      if (error instanceof ExpressionEvaluationError) throw new ValidationAppError(error.message);
+      throw error;
+    }
+  });
 
   /**
    * Standard metadata-driven SysBO CRUD endpoints.

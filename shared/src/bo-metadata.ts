@@ -441,7 +441,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
   derivedFields: {
     rootPrincipalId: {
       label: 'Root principal',
-      expression: "parentId == null ? null : TraverseCtx(parentId, dataList, 'parentId', 'id')",
+      expression: "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
       persisted: true,
     },
   },

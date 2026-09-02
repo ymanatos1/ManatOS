@@ -37,27 +37,37 @@ function valueMatches(type: ExpressionFunctionArgumentType, value: unknown): boo
  * arguments beyond the explicitly listed `argumentTypes`.
  */
 function checked(definition: ExpressionFunctionDefinition): ExpressionFunctionDefinition {
+  const validate = (args: readonly unknown[]) => {
+    const {signature} = definition;
+    if (args.length < signature.minArguments ||
+        (signature.maxArguments !== null && args.length > signature.maxArguments)) {
+      throw new ExpressionEvaluationError(
+        `${definition.name} expects ${signature.text}; received ${args.length} argument(s).`,
+      );
+    }
+
+    args.forEach((value, index) => {
+      const expected = signature.argumentTypes?.[index] ?? signature.variadicType;
+      if (expected && !valueMatches(expected, value)) {
+        throw new ExpressionEvaluationError(
+          `${definition.name} argument ${index + 1} must be ${expected}; received ${value === null ? 'null' : typeof value}.`,
+        );
+      }
+    });
+  };
+
   return {
     ...definition,
     evaluate(args, context) {
-      const {signature} = definition;
-      if (args.length < signature.minArguments ||
-          (signature.maxArguments !== null && args.length > signature.maxArguments)) {
-        throw new ExpressionEvaluationError(
-          `${definition.name} expects ${signature.text}; received ${args.length} argument(s).`,
-        );
-      }
-
-      args.forEach((value, index) => {
-        const expected = signature.argumentTypes?.[index] ?? signature.variadicType;
-        if (expected && !valueMatches(expected, value)) {
-          throw new ExpressionEvaluationError(
-            `${definition.name} argument ${index + 1} must be ${expected}; received ${value === null ? 'null' : typeof value}.`,
-          );
-        }
-      });
+      validate(args);
       return definition.evaluate(args, context);
     },
+    ...(definition.evaluateAsync ? {
+      async evaluateAsync(args, context) {
+        validate(args);
+        return definition.evaluateAsync!(args, context);
+      },
+    } : {}),
   };
 }
 
@@ -195,9 +205,11 @@ export function normalizeEmailAddress(value: unknown): string | null {
  * 1. add one keyed definition below using `checked(...)`;
  * 2. document purpose, examples and edge/null behaviour in JSDoc;
  * 3. describe its signature in human-readable `signature.text`;
- * 4. choose the narrowest useful runtime argument types;
- * 5. keep the implementation entity/field agnostic;
- * 6. add evaluator tests for normal, empty/null, and error behaviour as relevant.
+ * 4. choose the narrowest execution capability (`pure`, `clock`, `ctx`, or
+ *    `entityResolver`) and the narrowest useful runtime argument types;
+ * 5. keep the implementation entity/field agnostic; resolver-backed functions
+ *    consume `context.entityResolver` and never import a storage adapter;
+ * 6. add evaluator tests for normal, empty/null, lazy and error behaviour as relevant.
  *
  * The parser validates function existence/arity from this same registry; the
  * evaluator later invokes the registered implementation with already-evaluated
@@ -215,6 +227,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   EmailAddress: checked({
     name: 'EmailAddress',
+    capability: 'pure',
     signature: { text: 'EmailAddress(value: scalar)', minArguments: 1, maxArguments: 1, argumentTypes: ['scalar'] },
     evaluate: ([value]) => normalizeEmailAddress(value),
   }),
@@ -227,6 +240,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   TelephoneNbr: checked({
     name: 'TelephoneNbr',
+    capability: 'pure',
     signature: {
       text: 'TelephoneNbr(value: scalar) or TelephoneNbr(countryCode: scalar, number: scalar)',
       minArguments: 1,
@@ -248,6 +262,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   SqRoot: checked({
     name: 'SqRoot',
+    capability: 'pure',
     signature: {
       text: 'SqRoot(value: number)',
       minArguments: 1,
@@ -272,6 +287,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   FirstCtx: checked({
     name: 'FirstCtx',
+    capability: 'ctx',
     signature: {
       text: 'FirstCtx(collection, resultField?: string)',
       minArguments: 1,
@@ -304,6 +320,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   CurrentDay: checked({
     name: 'CurrentDay',
+    capability: 'clock',
     signature: {
       text: 'CurrentDay()',
       minArguments: 0,
@@ -327,6 +344,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   CalendarAddDuration: checked({
     name: 'CalendarAddDuration',
+    capability: 'pure',
     signature: {
       text: 'CalendarAddDuration(startDate: string, duration)',
       minArguments: 2,
@@ -348,6 +366,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   CalendarDurationBetween: checked({
     name: 'CalendarDurationBetween',
+    capability: 'pure',
     signature: {
       text: 'CalendarDurationBetween(startDate: string, endDate: string)',
       minArguments: 2,
@@ -381,6 +400,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   TraverseCtx: checked({
     name: 'TraverseCtx',
+    capability: 'ctx',
     signature: {
       text: "TraverseCtx(startId, collection, parentField: string, resultField?: string)",
       minArguments: 3,
@@ -419,6 +439,67 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     },
   }),
 
+  /**
+   * Follow a canonical persisted entity hierarchy through the EntityResolver.
+   *
+   * Unlike TraverseCtx(), this function never depends on a page/list snapshot.
+   * The evaluation owner supplies the starting value from its own execution
+   * scope; only the persistence-backed traversal itself requires the
+   * `entityResolver` capability. This makes the same declarative formula valid
+   * in browser-owned live calculations, API saves and background processes.
+   *
+   * Example:
+   * `TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')`
+   * walks the persisted Principal parent chain and returns the terminal id.
+   * Empty starts return null. Missing rows return null. Cycles and excessive
+   * depth are explicit evaluation errors.
+   */
+  TraverseEntity: checked({
+    name: 'TraverseEntity',
+    capability: 'entityResolver',
+    signature: {
+      text: "TraverseEntity(startId, entityKey: string, parentField: string, resultField?: string)",
+      minArguments: 3,
+      maxArguments: 4,
+      argumentTypes: ['scalar', 'string', 'string', 'string'],
+    },
+    evaluate: () => {
+      throw new ExpressionEvaluationError('TraverseEntity requires asynchronous entityResolver execution.');
+    },
+    async evaluateAsync([startId, entityKey, parentField, resultField], context) {
+      if (startId === null || startId === undefined || startId === '') return null;
+      const resolver = context.entityResolver;
+      if (!resolver) {
+        throw new ExpressionEvaluationError(
+          `TraverseEntity requires capability 'entityResolver', unavailable to evaluation owner '${context.owner}'.`,
+        );
+      }
+
+      const seen = new Set<string>();
+      let id: unknown = startId;
+      let root: Readonly<Record<string, unknown>> | null = null;
+
+      for (let depth = 0; depth < 256; depth += 1) {
+        const key = String(id);
+        if (seen.has(key)) {
+          throw new ExpressionEvaluationError(`TraverseEntity detected a parent cycle at ${key}.`);
+        }
+        seen.add(key);
+
+        root = await resolver.getById(entityKey as string, id);
+        if (!root) return null;
+
+        const parent = root[parentField as string];
+        if (parent === null || parent === undefined || parent === '') {
+          return resultField ? (root[resultField as string] ?? null) : root;
+        }
+        id = parent;
+      }
+
+      throw new ExpressionEvaluationError('TraverseEntity exceeded the maximum traversal depth of 256.');
+    },
+  }),
+
   /* ------------------------------------------------------------------------
    * Runtime and text utilities
    * --------------------------------------------------------------------- */
@@ -431,6 +512,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   GetTime: checked({
     name: 'GetTime',
+    capability: 'clock',
     signature: {
       text: 'GetTime()',
       minArguments: 0,
@@ -447,6 +529,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    */
   StrFormat: checked({
     name: 'StrFormat',
+    capability: 'pure',
     signature: {
       text: 'StrFormat(format: string, ...values)',
       minArguments: 1,

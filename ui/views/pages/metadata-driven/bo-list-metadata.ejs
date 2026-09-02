@@ -4,8 +4,13 @@
     <strong>No entries found</strong>
     <span>This entity does not contain any entries yet.</span>
 
-    <% if (permissions.create && metadataUI.list.addAction.visible) { %>
-      <a class="btn btn-success mt-2" href="/bo/<%= definition.key %>/new">
+    <% if (resolvedAddAction.resolvedVisible) { %>
+      <a
+        class="btn btn-success mt-2 <%= resolvedAddAction.resolvedEnabled ? '' : 'disabled' %>"
+        href="<%= resolvedAddAction.resolvedEnabled ? '/bo/' + definition.key + '/new' : '#' %>"
+        <%= resolvedAddAction.resolvedEnabled ? '' : 'aria-disabled="true" tabindex="-1"' %>
+        title="<%= resolvedAddAction.resolvedEnabled ? resolvedAddAction.label : (resolvedAddAction.resolvedDisabledReason || 'Creation is currently unavailable.') %>"
+      >
         <i class="bi bi-plus-circle me-1"></i>
         Add the first entry
       </a>
@@ -93,14 +98,14 @@
           </button>
         <% } %>
 
-        <% if (permissions.create && metadataUI.list.addAction.visible) { %>
+        <% if (resolvedAddAction.resolvedVisible) { %>
           <a
-            class="btn btn-success <%= addActionDisabled ? 'disabled' : '' %>"
-            href="<%= addActionDisabled ? '#' : '/bo/' + definition.key + '/new' %>"
-            <%= addActionDisabled ? 'aria-disabled="true" tabindex="-1"' : '' %>
-            title="<%= addActionDisabled ? (metadataUI.list.addAction.disabledReason || 'Creation is currently unavailable.') : metadataUI.list.addAction.label %>"
+            class="btn btn-success <%= resolvedAddAction.resolvedEnabled ? '' : 'disabled' %>"
+            href="<%= resolvedAddAction.resolvedEnabled ? '/bo/' + definition.key + '/new' : '#' %>"
+            <%= resolvedAddAction.resolvedEnabled ? '' : 'aria-disabled="true" tabindex="-1"' %>
+            title="<%= resolvedAddAction.resolvedEnabled ? resolvedAddAction.label : (resolvedAddAction.resolvedDisabledReason || 'Creation is currently unavailable.') %>"
           >
-            <i class="bi bi-plus-circle me-1"></i><%= metadataUI.list.addAction.label %>
+            <i class="bi bi-plus-circle me-1"></i><%= resolvedAddAction.label %>
           </a>
         <% } %>
       </div>

@@ -38,6 +38,12 @@ function testCtx() {
 }
 
 describe('ManatOS expression parser/evaluator', () => {
+  it('annotates function capabilities while preserving lazy execution semantics', () => {
+    const compiled = compileExpression("parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')");
+    expect(compiled.requiredCapabilities).toContain('entityResolver');
+    expect(JSON.stringify(compiled.ast)).toContain('\"capability\":\"entityResolver\"');
+  });
+
   it('supports generic calendar duration expressions used by metadata-declared components', () => {
     const fields = {
       validFrom: { value: '2026-09-01' },
@@ -47,6 +53,21 @@ describe('ManatOS expression parser/evaluator', () => {
     const ctx = { page: { page: { fields } } };
     expect(evaluateTest('CalendarAddDuration(validFrom, validityDuration)', ctx, fields)).toBe('2026-10-15');
     expect(evaluateTest('CalendarDurationBetween(validFrom, validUntil)', ctx, fields)).toEqual({ years: 0, months: 1, days: 14 });
+  });
+
+  it('resolves nested members transparently through CTX field values without hiding explicit field metadata', () => {
+    const fields = {
+      permissions: { value: { view: true, create: true, edit: false, delete: false } },
+      principalType: {
+        value: 'Person',
+        option: { value: 'Person', canHaveParent: true },
+      },
+    };
+    const ctx = { page: { fields } };
+
+    expect(evaluateTest('permissions.create === true', ctx, fields)).toBe(true);
+    expect(evaluateTest('permissions.edit === true', ctx, fields)).toBe(false);
+    expect(evaluateTest('principalType.option.canHaveParent === true', ctx, fields)).toBe(true);
   });
 
   it('resolves value-pointer nodes from the nearest lexical owner before higher ancestors', () => {

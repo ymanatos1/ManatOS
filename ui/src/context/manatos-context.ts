@@ -137,7 +137,12 @@ export function contextFields(
   );
 }
 
-function userContext(user: SysBOUser | null, currentPlatform: SysPlatform, scope: string): ManatOSUserContext | null {
+function userContext(
+  user: SysBOUser | null,
+  currentPlatform: SysPlatform,
+  scope: string,
+  platformCapabilities: Readonly<Record<string, unknown>>,
+): ManatOSUserContext | null {
   if (!user) return null;
 
   // passwordHash is intentionally never exposed to the browser/debug context.
@@ -161,8 +166,10 @@ function userContext(user: SysBOUser | null, currentPlatform: SysPlatform, scope
     permissions: {
       userRole: user.role,
       [currentPlatform.id]: Object.freeze({
-        // License/capability projection will populate this stable branch later.
-        capabilities: Object.freeze({}),
+        capabilities: Object.freeze({
+          platformAccess: platformCapabilities.platformAccess === true,
+          ...platformCapabilities,
+        }),
       }),
     },
   };
@@ -178,6 +185,7 @@ export function createManatOSContext(
   clientFeatures: Readonly<Record<string, boolean>> = {},
   scope = 'sys',
   runtimeMode = 'development',
+  platformCapabilities: Readonly<Record<string, unknown>> = {},
 ): ManatOSContext {
   const foundPlatformIndex = company.platforms.findIndex(
     (candidate) => candidate.id === currentPlatform.id,
@@ -219,7 +227,7 @@ export function createManatOSContext(
     }),
     entities: {},
     company: companyContext,
-    user: userContext(user, currentPlatform, scope),
+    user: userContext(user, currentPlatform, scope, platformCapabilities),
     page: null,
   };
 }

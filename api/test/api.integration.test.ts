@@ -1,9 +1,4 @@
-import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import request from 'supertest';
 
@@ -20,7 +15,6 @@ import {
 } from './test-helpers.js';
 
 describe('API integration - server and generic SysBO behavior', () => {
-
   it('public UI bootstrap reports server/API versions without authentication', async () => {
     const context = await createTestApi();
 
@@ -35,32 +29,23 @@ describe('API integration - server and generic SysBO behavior', () => {
     expect(response.headers['cache-control']).toBe('no-store');
   });
 
-
-  let context: Awaited<
-    ReturnType<typeof createTestApi>
-  >;
+  let context: Awaited<ReturnType<typeof createTestApi>>;
 
   beforeEach(async () => {
     context = await createTestApi();
 
-    await seedAdmin(
-      context.services.users,
-    );
+    await seedAdmin(context.services.users);
   });
 
   describe('server endpoints', () => {
     it('returns public liveness and readiness using query envelopes', async () => {
-      const health = await request(
-        context.app,
-      ).get('/health');
+      const health = await request(context.app).get('/health');
 
       expect(health.status).toBe(200);
       expectQuerySuccess(health.body);
       expect(health.body.data.status).toBe('ok');
 
-      const ready = await request(
-        context.app,
-      ).get('/ready');
+      const ready = await request(context.app).get('/ready');
 
       expect(ready.status).toBe(200);
       expectQuerySuccess(ready.body);
@@ -69,32 +54,21 @@ describe('API integration - server and generic SysBO behavior', () => {
     });
 
     it('requires an authenticated Admin to flush the datastore', async () => {
-      const anonymous = await request(
-        context.app,
-      ).post('/flush-db');
+      const anonymous = await request(context.app).post('/flush-db');
 
       expect(anonymous.status).toBe(401);
       expectFailure(anonymous.body);
 
-      const token = await loginAdmin(
-        context.app,
-      );
+      const token = await loginAdmin(context.app);
 
-      const response = await request(
-        context.app,
-      )
+      const response = await request(context.app)
         .post('/flush-db')
-        .set(
-          'Authorization',
-          bearer(token),
-        );
+        .set('Authorization', bearer(token));
 
       expect(response.status).toBe(200);
       expectCommandSuccess(response.body);
 
-      expect(response.body.message).toBe(
-        'Database flushed successfully.',
-      );
+      expect(response.body.message).toBe('Database flushed successfully.');
 
       expect(response.body.data).toMatchObject({
         provider: 'InMemory',
@@ -108,13 +82,11 @@ describe('API integration - server and generic SysBO behavior', () => {
     it('allows Admin email verification only when enabled by configuration', async () => {
       const token = await loginAdmin(context.app);
 
-      const registration = await request(context.app)
-        .post('/api/v1/auth/register')
-        .send({
-          name: 'NeedsVerification',
-          email: 'needs-verification@example.test',
-          password: 'VerifyMe!123',
-        });
+      const registration = await request(context.app).post('/api/v1/auth/register').send({
+        name: 'NeedsVerification',
+        email: 'needs-verification@example.test',
+        password: 'VerifyMe!123',
+      });
 
       expect(registration.status).toBe(201);
 
@@ -157,68 +129,41 @@ describe('API integration - server and generic SysBO behavior', () => {
 
   describe('generic SysBOApplication REST contract', () => {
     it('rejects anonymous access with the global failure envelope', async () => {
-      const response = await request(
-        context.app,
-      ).get('/api/v1/SysApplications');
+      const response = await request(context.app).get('/api/v1/SysApplications');
 
       expect(response.status).toBe(401);
       expectFailure(response.body);
 
-      expect(response.body.error.code).toBe(
-        'AUTHENTICATION_REQUIRED',
-      );
+      expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     });
 
-
     it('blocks a Guest from mCRM SysApplications, including generic creation', async () => {
-      const registration = await request(
-        context.app,
-      )
-        .post('/api/v1/auth/register')
-        .send({
-          name: 'ReadOnlyGuest',
-          email: 'readonly@example.test',
-          password: 'GuestPass!123',
-        });
+      const registration = await request(context.app).post('/api/v1/auth/register').send({
+        name: 'ReadOnlyGuest',
+        email: 'readonly@example.test',
+        password: 'GuestPass!123',
+      });
 
       expect(registration.status).toBe(201);
 
-      const guestId =
-        registration.body.data.id as string;
+      const guestId = registration.body.data.id as string;
 
-      const {
-        SYSTEM_AUDIT_ACTOR,
-      } = await import(
-        '../src/audit/audit-service.js'
-      );
+      const { SYSTEM_AUDIT_ACTOR } = await import('../src/audit/audit-service.js');
 
-      await context.services.users.setEmailVerified(
-        guestId,
-        SYSTEM_AUDIT_ACTOR,
-      );
+      await context.services.users.setEmailVerified(guestId, SYSTEM_AUDIT_ACTOR);
 
-      const signedIn = await request(
-        context.app,
-      )
-        .post('/api/v1/auth/login')
-        .send({
-          identity: 'ReadOnlyGuest',
-          password: 'GuestPass!123',
-        });
+      const signedIn = await request(context.app).post('/api/v1/auth/login').send({
+        identity: 'ReadOnlyGuest',
+        password: 'GuestPass!123',
+      });
 
       expect(signedIn.status).toBe(200);
 
-      const guestToken =
-        signedIn.body.data.accessToken as string;
+      const guestToken = signedIn.body.data.accessToken as string;
 
-      const read = await request(
-        context.app,
-      )
+      const read = await request(context.app)
         .get('/api/v1/SysApplications')
-        .set(
-          'Authorization',
-          bearer(guestToken),
-        );
+        .set('Authorization', bearer(guestToken));
 
       expect(read.status).toBe(403);
       expectFailure(read.body);
@@ -229,14 +174,9 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(metadata.status).toBe(403);
       expectFailure(metadata.body);
 
-      const create = await request(
-        context.app,
-      )
+      const create = await request(context.app)
         .post('/api/v1/SysApplications')
-        .set(
-          'Authorization',
-          bearer(guestToken),
-        )
+        .set('Authorization', bearer(guestToken))
         .send({
           name: 'Forbidden Guest App',
           fullName: 'Forbidden Guest Application',
@@ -248,18 +188,11 @@ describe('API integration - server and generic SysBO behavior', () => {
     });
 
     it('supports metadata, CRUD, audit fields and the global response envelopes', async () => {
-      const token = await loginAdmin(
-        context.app,
-      );
+      const token = await loginAdmin(context.app);
 
-      const metadata = await request(
-        context.app,
-      )
+      const metadata = await request(context.app)
         .get('/api/v1/SysApplications/$metadata')
-        .set(
-          'Authorization',
-          bearer(token),
-        );
+        .set('Authorization', bearer(token));
 
       expect(metadata.status).toBe(200);
       expectQuerySuccess(metadata.body);
@@ -291,14 +224,9 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(combinedMetadata.body.data.metadata).toMatchObject({ key: 'sys-applications' });
       expect(combinedMetadata.body.data.metadataUI).toMatchObject({ key: 'sys-applications' });
 
-      const create = await request(
-        context.app,
-      )
+      const create = await request(context.app)
         .post('/api/v1/SysApplications')
-        .set(
-          'Authorization',
-          bearer(token),
-        )
+        .set('Authorization', bearer(token))
         .send({
           name: 'Accounts',
           fullName: 'Accounts Application',
@@ -308,9 +236,7 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(create.status).toBe(201);
       expectCommandSuccess(create.body);
 
-      expect(create.body.message).toContain(
-        'Accounts',
-      );
+      expect(create.body.message).toContain('Accounts');
 
       expect(create.body.data).toMatchObject({
         name: 'Accounts',
@@ -318,121 +244,65 @@ describe('API integration - server and generic SysBO behavior', () => {
         updatedBy: 'Admin',
       });
 
-      const applicationId =
-        create.body.data.id as string;
+      const applicationId = create.body.data.id as string;
 
-      const read = await request(
-        context.app,
-      )
-        .get(
-          `/api/v1/SysApplications/${applicationId}`,
-        )
-        .set(
-          'Authorization',
-          bearer(token),
-        );
+      const read = await request(context.app)
+        .get(`/api/v1/SysApplications/${applicationId}`)
+        .set('Authorization', bearer(token));
 
       expect(read.status).toBe(200);
       expectQuerySuccess(read.body);
 
-      expect(read.body.data.id).toBe(
-        applicationId,
-      );
+      expect(read.body.data.id).toBe(applicationId);
 
-      const update = await request(
-        context.app,
-      )
-        .patch(
-          `/api/v1/SysApplications/${applicationId}`,
-        )
-        .set(
-          'Authorization',
-          bearer(token),
-        )
+      const update = await request(context.app)
+        .patch(`/api/v1/SysApplications/${applicationId}`)
+        .set('Authorization', bearer(token))
         .send({
-          description:
-            'Updated by integration test',
+          description: 'Updated by integration test',
 
           /**
            * Runtime audit-field tampering attempt.
            * The repository must discard these caller-supplied values.
            */
-          createdBy:
-            'Attacker',
+          createdBy: 'Attacker',
 
-          updatedBy:
-            'Attacker',
+          updatedBy: 'Attacker',
         });
 
       expect(update.status).toBe(200);
       expectCommandSuccess(update.body);
 
-      expect(update.body.data.description).toBe(
-        'Updated by integration test',
-      );
+      expect(update.body.data.description).toBe('Updated by integration test');
 
-      expect(update.body.data.createdBy).toBe(
-        'Admin',
-      );
+      expect(update.body.data.createdBy).toBe('Admin');
 
-      expect(update.body.data.updatedBy).toBe(
-        'Admin',
-      );
+      expect(update.body.data.updatedBy).toBe('Admin');
 
-      const remove = await request(
-        context.app,
-      )
-        .delete(
-          `/api/v1/SysApplications/${applicationId}`,
-        )
-        .set(
-          'Authorization',
-          bearer(token),
-        );
+      const remove = await request(context.app)
+        .delete(`/api/v1/SysApplications/${applicationId}`)
+        .set('Authorization', bearer(token));
 
       expect(remove.status).toBe(200);
       expectCommandSuccess(remove.body);
 
-      expect(remove.body.data.id).toBe(
-        applicationId,
-      );
+      expect(remove.body.data.id).toBe(applicationId);
 
-      const missing = await request(
-        context.app,
-      )
-        .get(
-          `/api/v1/SysApplications/${applicationId}`,
-        )
-        .set(
-          'Authorization',
-          bearer(token),
-        );
+      const missing = await request(context.app)
+        .get(`/api/v1/SysApplications/${applicationId}`)
+        .set('Authorization', bearer(token));
 
       expect(missing.status).toBe(404);
       expectFailure(missing.body);
     });
 
     it('returns items, paging and optional metadata for filtered/paged lists', async () => {
-      const token = await loginAdmin(
-        context.app,
-      );
+      const token = await loginAdmin(context.app);
 
-      for (
-        const name
-        of [
-          'Accounts',
-          'Billing',
-          'Accounts Reports',
-        ] as const
-      ) {
-        const response = await request(
-          context.app,
-        )
+      for (const name of ['Accounts', 'Billing', 'Accounts Reports'] as const) {
+        const response = await request(context.app)
           .post('/api/v1/SysApplications')
-          .set(
-            'Authorization',
-            bearer(token),
-          )
+          .set('Authorization', bearer(token))
           .send({
             name,
             fullName: `${name} Application`,
@@ -442,9 +312,7 @@ describe('API integration - server and generic SysBO behavior', () => {
         expect(response.status).toBe(201);
       }
 
-      const response = await request(
-        context.app,
-      )
+      const response = await request(context.app)
         .get('/api/v1/SysApplications')
         .query({
           page: 1,
@@ -453,25 +321,18 @@ describe('API integration - server and generic SysBO behavior', () => {
           sort: 'name',
           direction: 'desc',
 
-          'filter.name':
-            'accounts',
+          'filter.name': 'accounts',
 
-          includeMetadata:
-            'true',
+          includeMetadata: 'true',
         })
-        .set(
-          'Authorization',
-          bearer(token),
-        );
+        .set('Authorization', bearer(token));
 
       expect(response.status).toBe(200);
       expectQuerySuccess(response.body);
 
       expect(response.body.data.items).toHaveLength(1);
 
-      expect(response.body.data.items[0].name).toBe(
-        'Accounts Reports',
-      );
+      expect(response.body.data.items[0].name).toBe('Accounts Reports');
 
       expect(response.body.data.paging).toMatchObject({
         total: 2,
@@ -480,57 +341,38 @@ describe('API integration - server and generic SysBO behavior', () => {
         totalPages: 2,
       });
 
-      expect(response.body.data.metadata.key).toBe(
-        'sys-applications',
-      );
+      expect(response.body.data.metadata.key).toBe('sys-applications');
     });
   });
 
   describe('OpenAPI and fallback contract', () => {
     it('exposes the current server/auth/SysBO paths in OpenAPI', async () => {
-      const response = await request(
-        context.app,
-      ).get('/api/openapi.json');
+      const response = await request(context.app).get('/api/openapi.json');
 
       expect(response.status).toBe(200);
 
-      expect(response.body.paths).toHaveProperty(
-        '/health',
-      );
+      expect(response.body.paths).toHaveProperty('/health');
 
-      expect(response.body.paths).toHaveProperty(
-        '/ready',
-      );
+      expect(response.body.paths).toHaveProperty('/ready');
 
-      expect(response.body.paths).toHaveProperty(
-        '/flush-db',
-      );
+      expect(response.body.paths).toHaveProperty('/flush-db');
 
-      expect(response.body.paths).toHaveProperty(
-        '/api/v1/auth/login',
-      );
+      expect(response.body.paths).toHaveProperty('/api/v1/auth/login');
 
-      expect(response.body.paths).toHaveProperty(
-        '/api/v1/auth/sessions',
-      );
+      expect(response.body.paths).toHaveProperty('/api/v1/auth/sessions');
 
-      expect(response.body.paths).toHaveProperty(
-        '/api/v1/SysApplications',
-      );
+      expect(response.body.paths).toHaveProperty('/api/v1/SysApplications');
 
-      expect(response.body.paths).toHaveProperty(
-        '/api/v1/SysUsers/{id}/verify-email',
-      );
+      expect(response.body.paths).toHaveProperty('/api/v1/SysUsers/{id}/verify-email');
 
-      expect(response.body.components.securitySchemes).toHaveProperty(
-        'internalApiKey',
-      );
+      expect(response.body.components.securitySchemes).toHaveProperty('internalApiKey');
 
       expect(response.body.tags.map((tag: { name: string }) => tag.name)).toEqual([
         'Server',
         'Authentication',
         'System Business Objects',
         'System Business Objects (Aux)',
+        'Expression Runtime',
         'System Configuration',
         'Public UI',
         'External Authentication',
@@ -539,17 +381,37 @@ describe('API integration - server and generic SysBO behavior', () => {
       ]);
 
       expect(response.body.paths['/api/v1/SysUsers'].get.tags).toEqual(['System Business Objects']);
-      expect(response.body.paths['/api/v1/SysUsers/{id}/verify-email'].post.tags).toEqual(['System Business Objects']);
-      expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual(['System Business Objects']);
-      expect(response.body.paths['/api/v1/SysApplications'].get.tags).toEqual(['System Business Objects']);
-      expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual(['System Business Objects']);
+      expect(response.body.paths['/api/v1/SysUsers/{id}/verify-email'].post.tags).toEqual([
+        'System Business Objects',
+      ]);
+      expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual([
+        'System Business Objects',
+      ]);
+      expect(response.body.paths['/api/v1/SysApplications'].get.tags).toEqual([
+        'System Business Objects',
+      ]);
+      expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual([
+        'System Business Objects',
+      ]);
 
-      expect(response.body.paths['/api/v1/SysEmailAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
-      expect(response.body.paths['/api/v1/SysPrincipalEmailAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
-      expect(response.body.paths['/api/v1/SysTelephoneNumbers'].get.tags).toEqual(['System Business Objects (Aux)']);
-      expect(response.body.paths['/api/v1/SysPrincipalTelephoneNumbers'].get.tags).toEqual(['System Business Objects (Aux)']);
-      expect(response.body.paths['/api/v1/SysAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
-      expect(response.body.paths['/api/v1/SysPrincipalAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
+      expect(response.body.paths['/api/v1/SysEmailAddresses'].get.tags).toEqual([
+        'System Business Objects (Aux)',
+      ]);
+      expect(response.body.paths['/api/v1/SysPrincipalEmailAddresses'].get.tags).toEqual([
+        'System Business Objects (Aux)',
+      ]);
+      expect(response.body.paths['/api/v1/SysTelephoneNumbers'].get.tags).toEqual([
+        'System Business Objects (Aux)',
+      ]);
+      expect(response.body.paths['/api/v1/SysPrincipalTelephoneNumbers'].get.tags).toEqual([
+        'System Business Objects (Aux)',
+      ]);
+      expect(response.body.paths['/api/v1/SysAddresses'].get.tags).toEqual([
+        'System Business Objects (Aux)',
+      ]);
+      expect(response.body.paths['/api/v1/SysPrincipalAddresses'].get.tags).toEqual([
+        'System Business Objects (Aux)',
+      ]);
 
       expect(response.body.paths['/api/v1/SysConfigurations'].get).toMatchObject({
         tags: ['System Configuration'],
@@ -574,7 +436,8 @@ describe('API integration - server and generic SysBO behavior', () => {
       });
 
       expect(
-        response.body.paths['/api/v1/internal/external-auth-providers/{id}/credentials-for-test'].get,
+        response.body.paths['/api/v1/internal/external-auth-providers/{id}/credentials-for-test']
+          .get,
       ).toMatchObject({
         tags: ['Internal External Authentication Workflow'],
         'x-manatos-access': expect.stringContaining('Internal UI/BFF'),
@@ -582,16 +445,12 @@ describe('API integration - server and generic SysBO behavior', () => {
     });
 
     it('returns the global failure envelope for an unknown API route', async () => {
-      const response = await request(
-        context.app,
-      ).get('/this-route-does-not-exist');
+      const response = await request(context.app).get('/this-route-does-not-exist');
 
       expect(response.status).toBe(404);
       expectFailure(response.body);
 
-      expect(response.body.error.code).toBe(
-        'HTTP_NOT_FOUND',
-      );
+      expect(response.body.error.code).toBe('HTTP_NOT_FOUND');
     });
   });
 });

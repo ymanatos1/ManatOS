@@ -31,7 +31,15 @@
     };
     dispatch('input');
     dispatch('change');
-    if (focus && typeof control.focus === 'function' && !control.disabled && control.type !== 'hidden') control.focus();
+    // Enhanced enum/reference controls keep a native backing select for form/CTX
+    // semantics, but that select is intentionally aria-hidden and non-tabbable.
+    // Never move focus into a hidden backing control: doing so leaves focus inside
+    // an aria-hidden subtree when the rich dropdown closes and triggers browser
+    // accessibility warnings. Visible component controls own user focus.
+    const focusableBackingControl = control.getAttribute?.('aria-hidden') !== 'true'
+      && !control.classList?.contains('visually-hidden')
+      && control.tabIndex >= 0;
+    if (focus && focusableBackingControl && typeof control.focus === 'function' && !control.disabled && control.type !== 'hidden') control.focus();
   };
 
   const isReadOnly = (control) =>

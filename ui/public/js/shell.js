@@ -15,6 +15,7 @@
   const DETAILS_STORAGE_KEY = 'manatos.ui.details.visible';
   const debugBootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
   const DEBUG_STORAGE_KEY = 'manatos.debug.panel.visible.v1';
+  const DEVELOPER_TOOL_TAB_STORAGE_KEY = 'manatos.debug.activeTab.v1';
   const DEBUG_DIAGNOSTICS_STORAGE_KEY = `manatos.debug.diagnostics.visible.${debugBootId}`;
   // Debugger open/closed preference deliberately survives UI-server restarts;
   // deeper debugger navigation/width state remains boot-scoped in ctx-debug.js.
@@ -34,8 +35,79 @@
   const debugPanel = document.getElementById('debugPanel');
   const toggleDebugPanelButton = document.getElementById('toggleDebugPanel');
   const toggleDebugDiagnosticsButton = document.getElementById('toggleDebugDiagnostics');
-  const closeDebugPanelButton = document.getElementById('closeDebugPanel');
-  let debugReturnFocus = null;
+  const developerToolsDock = document.getElementById('developerToolsDock');
+  const closeDeveloperToolsDockButton = document.getElementById('closeDeveloperToolsDock');
+  const developerToolsCtxTabButton = document.getElementById('developerToolsCtxTab');
+  const developerToolsApiTrafficTabButton = document.getElementById('developerToolsApiTrafficTab');
+  const developerToolsResize = document.getElementById('ctxDebugPanelResize');
+  const apiTrafficPanel = document.getElementById('apiTrafficPanel');
+  let developerToolsReturnFocus = null;
+
+  /**
+   * The developer dock is one shell panel. CTX Viewer and API Traffic are
+   * content tabs inside it, so changing tools cannot affect shell geometry.
+   */
+  const normalizeDeveloperToolTab = (value) => value === 'apiTraffic' ? 'apiTraffic' : 'ctx';
+
+
+  const DEVELOPER_DOCK_WIDTH_KEY = `manatos.debug.developerDock.width.${debugBootId}`;
+  const DEFAULT_DEVELOPER_DOCK_WIDTH = 430;
+
+  const applyDeveloperDockWidth = (requested) => {
+    if (!appShell) return;
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const minWidth = 320;
+    const maxWidth = Math.max(minWidth, Math.min(Math.floor(viewportWidth * 0.66), viewportWidth - 420));
+    const width = Math.max(minWidth, Math.min(Number(requested) || DEFAULT_DEVELOPER_DOCK_WIDTH, maxWidth));
+    appShell.style.setProperty('--manatos-debug-width', `${Math.round(width)}px`);
+    document.documentElement.style.setProperty('--manatos-debug-width', `${Math.round(width)}px`);
+    return width;
+  };
+
+  const storedDeveloperDockWidth = Number(sessionStorage.getItem(DEVELOPER_DOCK_WIDTH_KEY));
+  if (Number.isFinite(storedDeveloperDockWidth)) applyDeveloperDockWidth(storedDeveloperDockWidth);
+
+  if (developerToolsResize && developerToolsDock) {
+    let startX = 0;
+    let startWidth = 0;
+    let currentWidth = Number.isFinite(storedDeveloperDockWidth)
+      ? storedDeveloperDockWidth
+      : DEFAULT_DEVELOPER_DOCK_WIDTH;
+    let dragging = false;
+
+    const onDeveloperDockResizeMove = (event) => {
+      if (!dragging) return;
+      currentWidth = applyDeveloperDockWidth(startWidth + (startX - event.clientX)) ?? currentWidth;
+      event.preventDefault();
+    };
+    const onDeveloperDockResizeEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      developerToolsResize.classList.remove('is-dragging');
+      document.body.classList.remove('is-resizing-developer-dock');
+      document.removeEventListener('pointermove', onDeveloperDockResizeMove);
+      document.removeEventListener('pointerup', onDeveloperDockResizeEnd);
+      document.removeEventListener('pointercancel', onDeveloperDockResizeEnd);
+      try { sessionStorage.setItem(DEVELOPER_DOCK_WIDTH_KEY, String(Math.round(currentWidth))); } catch { /* debugger only */ }
+    };
+
+    developerToolsResize.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      startX = event.clientX;
+      startWidth = developerToolsDock.getBoundingClientRect().width || currentWidth;
+      dragging = true;
+      developerToolsResize.classList.add('is-dragging');
+      document.body.classList.add('is-resizing-developer-dock');
+      document.addEventListener('pointermove', onDeveloperDockResizeMove, { passive: false });
+      document.addEventListener('pointerup', onDeveloperDockResizeEnd, { once: true });
+      document.addEventListener('pointercancel', onDeveloperDockResizeEnd, { once: true });
+      event.preventDefault();
+    });
+    developerToolsResize.addEventListener('dblclick', () => {
+      currentWidth = applyDeveloperDockWidth(DEFAULT_DEVELOPER_DOCK_WIDTH) ?? DEFAULT_DEVELOPER_DOCK_WIDTH;
+      try { sessionStorage.removeItem(DEVELOPER_DOCK_WIDTH_KEY); } catch { /* debugger only */ }
+    });
+  }
 
   /* =======================================================================
    * Workspace-centered Bootstrap modals
@@ -368,61 +440,88 @@
       this.setDetailsVisible(!appShell.classList.contains('has-details'));
     },
 
-    /**
-     * Show/hide the development debugger as the shell's rightmost column.
-     *
-     * Focus is moved out of the CTX Viewer *before* it becomes aria-hidden or
-     * inert. This keeps the shell accessible and avoids Chromium rejecting the
-     * aria-hidden transition while one of the Viewer's descendants owns focus.
-     */
-    setDebugVisible(visible, persist = true) {
-      if (!appShell || !debugPanel) {
-        return;
-      }
+    /** Select one tool without changing the dock's outer geometry. */
+    setDeveloperToolTab(tab, persist = true) {
+      if (!debugPanel || !apiTrafficPanel) return;
+      const activeTab = normalizeDeveloperToolTab(tab);
+      const ctxActive = activeTab === 'ctx';
+
+      debugPanel.classList.toggle('d-none', !ctxActive);
+      debugPanel.setAttribute('aria-hidden', String(!ctxActive));
+      debugPanel.inert = !ctxActive;
+      if (ctxActive) debugPanel.removeAttribute('inert'); else debugPanel.setAttribute('inert', '');
+
+      apiTrafficPanel.classList.toggle('d-none', ctxActive);
+      apiTrafficPanel.setAttribute('aria-hidden', String(ctxActive));
+      apiTrafficPanel.inert = ctxActive;
+      if (!ctxActive) apiTrafficPanel.removeAttribute('inert'); else apiTrafficPanel.setAttribute('inert', '');
+
+      developerToolsCtxTabButton?.classList.toggle('is-active', ctxActive);
+      developerToolsCtxTabButton?.setAttribute('aria-selected', String(ctxActive));
+      developerToolsApiTrafficTabButton?.classList.toggle('is-active', !ctxActive);
+      developerToolsApiTrafficTabButton?.setAttribute('aria-selected', String(!ctxActive));
+      document.documentElement.dataset.manatosDebugTab = activeTab;
+
+      window.dispatchEvent(new CustomEvent('manatos:api-traffic-visible', {
+        detail: { visible: !ctxActive && appShell?.classList.contains('has-debug') },
+      }));
+      if (persist) localStorage.setItem(DEVELOPER_TOOL_TAB_STORAGE_KEY, activeTab);
+    },
+
+    /** Show/hide the one docked Developer Tools panel. */
+    setDeveloperToolsVisible(visible, tab = null, persist = true) {
+      if (!appShell || !developerToolsDock) return;
 
       if (visible) {
         const active = document.activeElement;
-        if (active instanceof HTMLElement && !debugPanel.contains(active)) {
-          debugReturnFocus = active;
+        if (active instanceof HTMLElement && !developerToolsDock.contains(active)) {
+          developerToolsReturnFocus = active;
         }
-
-        // Remove the focus barrier before exposing/using controls in the panel.
-        debugPanel.inert = false;
-        debugPanel.removeAttribute('inert');
+        developerToolsDock.inert = false;
+        developerToolsDock.removeAttribute('inert');
+        developerToolsDock.classList.remove('d-none');
+        developerToolsDock.setAttribute('aria-hidden', 'false');
         appShell.classList.add('has-debug');
-        debugPanel.classList.remove('d-none');
-        debugPanel.setAttribute('aria-hidden', 'false');
+        setCheckedMenuItem(toggleDebugPanelButton, true);
+        const selectedTab = tab ?? localStorage.getItem(DEVELOPER_TOOL_TAB_STORAGE_KEY);
+        this.setDeveloperToolTab(selectedTab, persist);
       } else {
         const active = document.activeElement;
-        if (active instanceof HTMLElement && debugPanel.contains(active)) {
-          const fallback =
-            debugReturnFocus instanceof HTMLElement && debugReturnFocus.isConnected
-              ? debugReturnFocus
-              : toggleDebugPanelButton instanceof HTMLElement
-                ? toggleDebugPanelButton
-                : null;
+        if (active instanceof HTMLElement && developerToolsDock.contains(active)) {
+          const fallback = developerToolsReturnFocus instanceof HTMLElement && developerToolsReturnFocus.isConnected
+            ? developerToolsReturnFocus
+            : toggleDebugPanelButton instanceof HTMLElement ? toggleDebugPanelButton : null;
           fallback?.focus({ preventScroll: true });
         }
-
-        // Only after focus has left the subtree may it become inaccessible.
-        debugPanel.inert = true;
-        debugPanel.setAttribute('inert', '');
-        debugPanel.setAttribute('aria-hidden', 'true');
-        debugPanel.classList.add('d-none');
+        developerToolsDock.inert = true;
+        developerToolsDock.setAttribute('inert', '');
+        developerToolsDock.setAttribute('aria-hidden', 'true');
+        developerToolsDock.classList.add('d-none');
         appShell.classList.remove('has-debug');
+        setCheckedMenuItem(toggleDebugPanelButton, false);
+        window.dispatchEvent(new CustomEvent('manatos:api-traffic-visible', { detail: { visible: false } }));
       }
 
-      setCheckedMenuItem(toggleDebugPanelButton, visible);
       refreshVisibleModalCenters();
-
-      if (persist) {
-        localStorage.setItem(DEBUG_STORAGE_KEY, String(visible));
-      }
+      if (persist) localStorage.setItem(DEBUG_STORAGE_KEY, String(visible));
     },
 
-    toggleDebug() {
-      if (!appShell) return;
-      this.setDebugVisible(!appShell.classList.contains('has-debug'));
+    /** Compatibility entry point used by existing CTX inspector actions. */
+    setDebugVisible(visible, persist = true) {
+      if (visible) this.setDeveloperToolsVisible(true, 'ctx', persist);
+      else if (document.documentElement.dataset.manatosDebugTab === 'ctx') this.setDeveloperToolsVisible(false, null, persist);
+    },
+
+    /** Toggle the unified dock without changing whichever tool tab is active. */
+    toggleDeveloperTools() {
+      const dockOpen = appShell?.classList.contains('has-debug') === true;
+      this.setDeveloperToolsVisible(!dockOpen);
+    },
+
+    /** Compatibility entry point for code that explicitly opens API Traffic. */
+    setApiTrafficVisible(visible, persist = true) {
+      if (visible) this.setDeveloperToolsVisible(true, 'apiTraffic', persist);
+      else if (document.documentElement.dataset.manatosDebugTab === 'apiTraffic') this.setDeveloperToolsVisible(false, null, persist);
     },
   };
 
@@ -456,8 +555,11 @@
     shellState.setDetailsVisible(initialDetailsVisible, false);
 
     const initialDebugVisible =
-      Boolean(debugPanel) && localStorage.getItem(DEBUG_STORAGE_KEY) === 'true';
-    shellState.setDebugVisible(initialDebugVisible, false);
+      Boolean(developerToolsDock) && localStorage.getItem(DEBUG_STORAGE_KEY) === 'true';
+    const initialDeveloperToolTab = normalizeDeveloperToolTab(
+      localStorage.getItem(DEVELOPER_TOOL_TAB_STORAGE_KEY),
+    );
+    shellState.setDeveloperToolsVisible(initialDebugVisible, initialDeveloperToolTab, false);
     setDebugDiagnosticsVisible(debugDiagnosticsVisible, false);
   }
 
@@ -553,7 +655,7 @@
    * Development debugger events
    * -------------------------------------------------------------------- */
   toggleDebugPanelButton?.addEventListener('click', () => {
-    shellState.toggleDebug();
+    shellState.toggleDeveloperTools();
   });
 
   // Generic developer navigation hook used by field/component inspectors.
@@ -566,8 +668,8 @@
     setDebugDiagnosticsVisible(!debugDiagnosticsVisible);
   });
 
-  closeDebugPanelButton?.addEventListener('click', () => {
-    shellState.setDebugVisible(false);
-  });
+  developerToolsCtxTabButton?.addEventListener('click', () => shellState.setDeveloperToolTab('ctx'));
+  developerToolsApiTrafficTabButton?.addEventListener('click', () => shellState.setDeveloperToolTab('apiTraffic'));
+  closeDeveloperToolsDockButton?.addEventListener('click', () => shellState.setDeveloperToolsVisible(false));
 
 })();

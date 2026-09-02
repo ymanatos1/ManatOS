@@ -79,9 +79,10 @@ export const MCRM_PLATFORM: SysPlatform = {
       icon: 'bi-play-circle-fill',
       url: '/app-playground',
       order: 200,
-      requiresAuthentication: true,
       requiresEntityKeys: ['sys-applications'],
-      requiresPlatformEntitlement: true,
+      visible: {
+        expression: 'user.permissions.mcrm.capabilities.platformAccess === true',
+      },
     },
     {
       id: 'applications',
@@ -91,8 +92,9 @@ export const MCRM_PLATFORM: SysPlatform = {
       url: '/bo/sys-applications',
       order: 330,
       requiresEntityKeys: ['sys-applications'],
-      requiresAuthentication: true,
-      requiresPlatformEntitlement: true,
+      visible: {
+        expression: 'user.permissions.mcrm.capabilities.platformAccess === true',
+      },
     },
   ],
 };

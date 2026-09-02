@@ -32,9 +32,23 @@ const debuggerViewSource = readFileSync(
   resolve(process.cwd(), 'views/partials/debugger/ctx-debug.ejs'),
   'utf8',
 );
+const developerToolsViewSource = readFileSync(
+  resolve(process.cwd(), 'views/partials/debugger/developer-tools.ejs'),
+  'utf8',
+);
 
 const horizontalNavSource = readFileSync(
   resolve(process.cwd(), 'views/partials/horizontal-nav.ejs'),
+  'utf8',
+);
+
+const debuggingPanelSource = readFileSync(
+  resolve(process.cwd(), 'views/pages/metadata-driven/ui-components/debugging-panel.ejs'),
+  'utf8',
+);
+
+const metadataEntrySource = readFileSync(
+  resolve(process.cwd(), 'views/pages/metadata-driven/bo-entry-metadata.ejs'),
   'utf8',
 );
 
@@ -98,16 +112,17 @@ describe('CTX debugger presentation state', () => {
   });
 
 
-  it('moves focus outside the CTX Viewer before hiding it and uses inert while hidden', () => {
-    expect(debuggerViewSource).toContain('inert');
-    expect(shellSource).toContain('debugPanel.contains(active)');
+  it('moves focus outside the unified developer dock before hiding it and uses inert for inactive tabs', () => {
+    expect(developerToolsViewSource).toContain('inert');
+    expect(shellSource).toContain('developerToolsDock.contains(active)');
     expect(shellSource).toContain('fallback?.focus({ preventScroll: true })');
-    expect(shellSource).toContain('debugPanel.inert = true');
-    expect(shellSource).toContain("debugPanel.setAttribute('aria-hidden', 'true')");
+    expect(shellSource).toContain('developerToolsDock.inert = true');
+    expect(shellSource).toContain("developerToolsDock.setAttribute('aria-hidden', 'true')");
     expect(shellSource.indexOf('fallback?.focus({ preventScroll: true })')).toBeLessThan(
-      shellSource.indexOf("debugPanel.setAttribute('aria-hidden', 'true')"),
+      shellSource.indexOf("developerToolsDock.setAttribute('aria-hidden', 'true')"),
     );
-    expect(shellSource).toContain('debugPanel.inert = false');
+    expect(shellSource).toContain('debugPanel.inert = !ctxActive');
+    expect(shellSource).toContain('apiTrafficPanel.inert = ctxActive');
   });
 
   it('keeps CTX inspection developer-only and reveals the viewer before selecting a field', () => {
@@ -125,5 +140,18 @@ describe('CTX debugger presentation state', () => {
     expect(debuggerSource).toContain('expandSelected = false');
     expect(debuggerSource).toContain('state.expanded.add(path)');
   });
+
+  it('separates formula-definition inspection from the live calculated record value', () => {
+    expect(debuggingPanelSource).toContain('Inspect formula in CTX Viewer');
+    expect(debuggingPanelSource).toContain('Inspect current value in CTX Viewer');
+    expect(debuggingPanelSource).toContain('data-debug-inspect-kind="formula"');
+    expect(debuggingPanelSource).toContain('data-debug-inspect-kind="value"');
+    expect(debuggingPanelSource).not.toContain("debugRow.inspectPath || 'ctx.page.page'");
+    expect(metadataEntrySource).toContain('`ctx.page.page.fields.${key}.expression`');
+    expect(metadataEntrySource).toContain('`ctx.page.page.dataCurrent.${key}`');
+    expect(metadataEntrySource).toContain('definitionPath');
+    expect(metadataEntrySource).toContain('valuePath');
+  });
+
 
 });

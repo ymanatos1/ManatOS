@@ -1,6 +1,5 @@
 import {
   SysBOLicenseStatus,
-  SysBOUserRole,
   type SysBOLicense,
 } from './domain.js';
 import type {
@@ -66,18 +65,17 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-person-vcard',
       url: '/account',
       order: 100,
-      requiresAuthentication: true,
+      visible: { expression: 'user.permissions.userRole !== null' },
     },
     {
       id: 'administration',
       text: 'Administration',
       icon: 'bi-gear',
       order: 300,
-      requiresAuthentication: true,
       // Every authenticated role may reach at least the Users area. Child
-      // contributions carry their own role rules so Guest does not inherit
+      // contributions carry their own visibility rules so Guest does not inherit
       // unrelated administration entries.
-      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User, SysBOUserRole.Guest],
+      visible: { expression: 'user.permissions.userRole !== null' },
     },
     {
       id: 'users',
@@ -87,7 +85,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-users',
       order: 310,
       requiresEntityKeys: ['sys-users'],
-      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User, SysBOUserRole.Guest],
+      visible: { expression: 'user.permissions.userRole !== null' },
     },
     {
       id: 'principals',
@@ -97,7 +95,9 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-principals',
       order: 320,
       requiresEntityKeys: ['sys-principals'],
-      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User],
+      visible: {
+        expression: "user.permissions.userRole !== 'Guest'",
+      },
     },
     {
       id: 'configuration',
@@ -105,8 +105,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-sliders2',
       order: 890,
       separatorBefore: true,
-      requiresAuthentication: true,
-      roles: [SysBOUserRole.Admin],
+      visible: { expression: "user.permissions.userRole === 'Admin'" },
     },
     {
       id: 'system-configuration',
@@ -115,8 +114,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-sliders',
       url: '/configuration',
       order: 400,
-      requiresAuthentication: true,
-      roles: [SysBOUserRole.Admin],
+      visible: { expression: "user.permissions.userRole === 'Admin'" },
       requiresEntityKeys: ['sys-configurations'],
     },
     {
@@ -126,8 +124,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-globe2',
       url: '/bo/sys-ext-auth-providers',
       order: 410,
-      requiresAuthentication: true,
-      roles: [SysBOUserRole.Admin],
+      visible: { expression: "user.permissions.userRole === 'Admin'" },
       requiresEntityKeys: ['sys-ext-auth-providers'],
     },
     {
@@ -138,7 +135,9 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-licenses',
       order: 340,
       requiresEntityKeys: ['sys-licenses'],
-      roles: [SysBOUserRole.Admin, SysBOUserRole.Superuser, SysBOUserRole.User],
+      visible: {
+        expression: "user.permissions.userRole !== 'Guest'",
+      },
     },
     {
       id: 'preferences',
@@ -150,7 +149,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       // divider on Preferences itself so it remains visible when Admin-only
       // Configuration is filtered out for User/Superuser roles.
       separatorBefore: true,
-      requiresAuthentication: true,
+      visible: { expression: 'user.permissions.userRole !== null' },
     },
     {
       id: 'logout',
@@ -158,7 +157,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-box-arrow-right',
       url: '/auth/logout',
       order: 1000,
-      requiresAuthentication: true,
+      visible: { expression: 'user.permissions.userRole !== null' },
     },
   ],
   defaultPlatformId: MCRM_PLATFORM_ID,
@@ -231,9 +230,10 @@ export const MANATOS_COMPANY: CompanyInfo = {
           icon: 'bi-play-circle-fill',
           url: '/app-playground',
           order: 200,
-          requiresAuthentication: true,
           requiresEntityKeys: ['sys-applications'],
-          requiresPlatformEntitlement: true,
+          visible: {
+            expression: 'user.permissions.mcrm.capabilities.platformAccess === true',
+          },
         },
         {
           id: 'applications',
@@ -243,8 +243,9 @@ export const MANATOS_COMPANY: CompanyInfo = {
           url: '/bo/sys-applications',
           order: 330,
           requiresEntityKeys: ['sys-applications'],
-          requiresAuthentication: true,
-          requiresPlatformEntitlement: true,
+          visible: {
+            expression: 'user.permissions.mcrm.capabilities.platformAccess === true',
+          },
         },
       ],
     },

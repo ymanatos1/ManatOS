@@ -14,6 +14,8 @@ export * from './company-platform.js';
 
 export * from './context.js';
 
+export * from './dynamic-value.js';
+
 export * from './expressions/index.js';
 
 export * from './system-country-catalog.js';

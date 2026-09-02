@@ -31,9 +31,14 @@
    * It consumes the server-compiled AST; the browser never reparses expression text.
    * Entry pages continue to use the richer canonical form evaluator when available.
    */
-  const evaluateDebugAst = (node, scopePath) => {
+  const evaluateDebugAst = async (node, scopePath, csrfToken) => {
     const runtime = ctxRuntime();
-    const evaluate = (candidate) => {
+    const scalar = (value) => value == null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value) || value instanceof Date;
+    const truthy = (value) => {
+      if (!scalar(value)) throw new Error('Structured values are not supported by CLI scalar operators.');
+      return Boolean(value);
+    };
+    const evaluate = async (candidate) => {
       if (!candidate) return undefined;
       switch (candidate.kind) {
         case 'literal': return candidate.value;
@@ -44,19 +49,19 @@
         }
         case 'group': return evaluate(candidate.expression);
         case 'unary': {
-          const value = evaluate(candidate.operand);
-          if (candidate.operator === '!') return !value;
+          const value = await evaluate(candidate.operand);
+          if (candidate.operator === '!') return !truthy(value);
           if (candidate.operator === '~') return ~Number(value);
           if (candidate.operator === '+') return Number(value);
           if (candidate.operator === '-') return -Number(value);
           return undefined;
         }
         case 'binary': {
-          const left = evaluate(candidate.left);
+          const left = await evaluate(candidate.left);
           if (candidate.operator === '??') return left == null ? evaluate(candidate.right) : left;
-          if (candidate.operator === '&&') return left ? evaluate(candidate.right) : left;
-          if (candidate.operator === '||') return left ? left : evaluate(candidate.right);
-          const right = evaluate(candidate.right);
+          if (candidate.operator === '&&') return truthy(left) ? evaluate(candidate.right) : left;
+          if (candidate.operator === '||') return truthy(left) ? left : evaluate(candidate.right);
+          const right = await evaluate(candidate.right);
           switch (candidate.operator) {
             case '+': return typeof left === 'string' || typeof right === 'string' ? String(left) + String(right) : Number(left) + Number(right);
             case '-': return Number(left) - Number(right);
@@ -64,7 +69,6 @@
             case '/': return Number(left) / Number(right);
             case '%': return Number(left) % Number(right);
             case '**': return Number(left) ** Number(right);
-            // CLI equality deliberately mirrors the expression language's JS-style split.
             case '==': return left == right; // eslint-disable-line eqeqeq
             case '!=': return left != right; // eslint-disable-line eqeqeq
             case '===': return left === right;
@@ -79,17 +83,30 @@
             case '&': return Number(left) & Number(right);
             case '^': return Number(left) ^ Number(right);
             case '|': return Number(left) | Number(right);
-            default: return undefined;
+            default: throw new Error(`Unsupported binary operator: ${candidate.operator}`);
           }
         }
-        case 'conditional': return evaluate(candidate.condition) ? evaluate(candidate.whenTrue) : evaluate(candidate.whenFalse);
+        case 'conditional': {
+          const condition = await evaluate(candidate.condition);
+          if (typeof condition !== 'boolean') throw new Error(`?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`);
+          return condition ? evaluate(candidate.whenTrue) : evaluate(candidate.whenFalse);
+        }
         case 'function': {
-          const args = (candidate.arguments || []).map(evaluate);
+          const args = [];
+          for (const argument of candidate.arguments || []) args.push(await evaluate(argument));
+          if (candidate.capability === 'entityResolver') {
+            const response = await fetch('/bo/expression/evaluate-function', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ _csrf: csrfToken, functionName: candidate.functionName, args }),
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || payload.errorMessage || 'Remote expression capability failed.');
+            return payload.value;
+          }
           if (candidate.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
           if (candidate.functionName === 'GetTime') return Date.now();
-          if (candidate.functionName === 'StrFormat') {
-            return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) => Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match);
-          }
+          if (candidate.functionName === 'StrFormat') return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) => Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match);
           if (candidate.functionName === 'CurrentDay') {
             const now = new Date();
             const pad = (value) => String(value).padStart(2, '0');
@@ -263,11 +280,11 @@
         if (!response.ok) throw new Error(payload.error || 'Expression could not be compiled.');
 
         const pageRuntime = pageExpressionRuntime();
-        const value = pageRuntime?.evaluateAstAt
-          ? pageRuntime.evaluateAstAt(payload.ast, path)
-          : instanceKey === 'page' && pageRuntime?.evaluateAst
-            ? pageRuntime.evaluateAst(payload.ast)
-            : evaluateDebugAst(payload.ast, path);
+        const value = pageRuntime?.evaluateAstOwnedAt
+          ? await pageRuntime.evaluateAstOwnedAt(payload.ast, path)
+          : instanceKey === 'page' && pageRuntime?.evaluateAstOwned
+            ? await pageRuntime.evaluateAstOwned(payload.ast)
+            : await evaluateDebugAst(payload.ast, path, root.dataset.cliCsrf);
         append('result', pretty(value));
       } catch (error) {
         append('error', `Error: ${error instanceof Error ? error.message : String(error)}`);

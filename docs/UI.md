@@ -223,13 +223,19 @@ On opening a record, the first editable field on the first tab receives focus. I
 
 Metadata-driven breadcrumbs are projected from the logical CTX page chain, so an entry opened under a list is represented as `ManatOS > <List> > <Entry>` and the owning list remains navigable. Reusable component tabs are likewise CTX/data driven. The Principal Organization component is the first example: it combines the parent page `dataList` with the entry `dataCurrent` (current entry wins over its persisted list snapshot), redraws on relevant CTX changes/tab activation, and offers Tree/Chart presentations with Chart as the Principal default.
 
+### 5.2.1 Null reference presentation
+
+Metadata-driven entity entry pages render a null reference as `None` consistently, including editable reference selectors and calculated/read-only reference fields. Reactive recalculation uses the same rule, so an initially-null reference and a reference that becomes null during editing have identical presentation. Developer debugging deliberately remains different: it shows raw evaluator values (`null`, `undefined`, and `''`) rather than UI presentation labels.
+
 ### 5.3 Metadata-driven decisions and reactive expressions
 
 Calculated field values and evaluator-driven UI properties share the same expression/dependency mechanism. Expressions are compiled into ASTs during context construction; the browser consumes the AST already supplied by ManatOS and never reparses expression source for each change. Dependencies are extracted from the AST and subscribed to CTX value changes. Every user or calculated mutation goes through the same CTX setter/event path, so dependent calculations may cascade until the affected graph settles without entity-specific event wiring. Dynamic properties currently include field editability/visibility and presentation decisions such as tones/icons, plus tab/action visibility.
 
+`ManatOSDynamicValue<T>` generalizes this beyond SysBO forms: a metadata property is either a static `T` or `{ expression }`, and `SysBOUIDynamicValue<T>` aliases the same contract. CTX owns resolved facts (`mode`, `permissions.*`, `user.permissions.<platform>.capabilities.*`, runtime constraints); metadata owns presentation policy (`visible`, `enabled`, `disabledReason`, `editable`, etc. Navigation, standard Save/Delete actions and list Add decisions now use this pipeline. Generic renderers consume the resolved state and do not add a second role/permission/entitlement gate. API/domain authorization remains authoritative regardless of what the UI renders.
+
 Entry pages expose an immutable normalized `dataOriginal` baseline and a live `dataCurrent` working projection; `dataCurrent` starts as a clone of `dataOriginal` for both create and edit flows. The owning list page exposes its keyed contextual collection as `dataList`, allowing child entry calculations/components to resolve surrounding records without duplicating that collection. Dirty state is derived from the original/current record state rather than from one-off DOM wiring.
 
-Canonical `derivedFields` are non-persisted by default. A derived field may opt into `persisted: true`; the generic service layer then recalculates it before authoritative persistence so UI forms, direct API calls and automatic/background creation use the same rule. `SysPrincipal.rootPrincipalId` is the current acceptance example and uses the generic `TraverseCtx(...)` evaluator function to follow the parent hierarchy by IDs.
+Canonical `derivedFields` are non-persisted by default. A derived field may opt into `persisted: true`; the generic service layer then recalculates it before authoritative persistence so UI forms, direct API calls and automatic/background creation use the same rule. `SysPrincipal.rootPrincipalId` is the current acceptance example and uses resolver-capable `TraverseEntity(...)` to follow canonical persisted parent relationships independently of the current list snapshot.
 
 
 
@@ -245,7 +251,7 @@ Causal recalculation is generic. Native field mutations may carry the originatin
 
 Development builds add a read-only **Debugging** tab to metadata-driven entry forms. It lists calculated element name, source formula and current value without displaying the AST. The hierarchy is generated dynamically from metadata: entity-level calculations, entity fields (value/other properties and provenance), related-entity calculations, and UI calculations (tabs, fields, related collections and actions). Repeated dotted prefixes are grouped/compressed as a diagnostic tree instead of being hard-coded for SysUser.
 
-The separate **CTX VIEWER** exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. Root CTX traversal presents `system` first, followed by `entities`, `company`, `user` and `page`; `system` contains the `server` and `client` runtime branches. It uses lazy DOM rendering and a resizable width. Transient debugger state remains UI-boot/session scoped so a server restart can reset selections/expansion/history, while the user's explicit debugger **open/closed** preference is browser-persisted and therefore survives a normal patch/server restart. Properties-panel visibility is preserved independently while selecting or expanding nodes.
+The **CTX VIEWER** is one tab of the unified Developer Tools dock and exposes the live context tree, logical node count, approximate logical payload size and rendered-row count. Root CTX traversal presents `system` first, followed by `entities`, `company`, `user` and `page`; `system` contains the `server` and `client` runtime branches. It uses lazy DOM rendering while the dock itself owns the single outer resize boundary. Transient debugger state remains UI-boot/session scoped so a server restart can reset selections/expansion/history; the active Developer Tools tab is remembered without creating separate dock visibility/geometry for each tool. Properties-panel visibility is preserved independently while selecting or expanding nodes.
 
 ### 5.5 Relationship-aware delete confirmation
 
@@ -618,3 +624,17 @@ Reusable `collection-editor` instances may declare `collapsible: true`. Their he
 ### Parent/child entry editing state
 
 Reusable inline editors register themselves with the owning metadata-driven entry page. While any child editor is active, `ctx.page...state.internalEditing` is true and `internalEditorCount` reports the active-editor count. Parent Save/Save-and-Close controls are disabled until each draft is explicitly committed with Add/Update or discarded with the child Cancel action. Parent Cancel and Delete remain parent-level actions and are not blocked by child-field validation. This state contract is entity-agnostic and applies to future editable collections as well as Principal contacts.
+
+## Developer API Traffic Viewer
+
+Development builds expose **CTX Viewer** and **API Traffic** as tabs of one shell-owned **Developer Tools dock**. There is one dock visibility state, one outer application/dock resize boundary and one active-tab state. Switching tabs does not recreate either tool's internal state. Additional developer tools should be added as tabs rather than as new docked peer panels.
+
+The API Traffic tab shows sanitized UI-server -> API transport traffic, including method, compact API path (`/api/v1/` is displayed as `./`), HTTP status, duration, request correlation id, request payload and response payload. Newest requests appear first. The selected request inspector is above the list and exposes separate **Request** and **Response** tabs. In the path column only the resource/entity segment is emphasized (for example `./` + **`SysUsers/`** + `<id>`), leaving ids/query/operation suffixes visually secondary.
+
+The toolbar provides pause, clear, errors-only filtering, text search and a distinct-call checklist. The checklist normalizes volatile ids/query variants into route patterns, remembers each route's show/hide selection, and displays a boot-lifetime counter for each pattern. Counters accumulate across ordinary navigation for the current UI-server boot and are not durable local preferences; known zero-count routes remain below a separator so prior visibility choices are still available. Hidden calls remain captured and may be re-enabled. Sensitive values are redacted before they enter the in-memory trace buffer; authorization headers and process secrets are never captured.
+
+API Traffic polling is sequential: a new diagnostic poll is not started while the previous one is still pending. The shared connectivity watchdog counts transport failures rather than HTTP error responses. After three consecutive connection failures ManatOS renders a local **System unavailable** workspace, stops automatic polling, and waits for an explicit page refresh or navigation click before retrying. This prevents an unavailable API/UI service from producing an unbounded console/request storm.
+
+### Developer dock placement invariant
+
+The shell reserves one right-side column for the Developer Tools dock. The dock fills the available shell height and never participates as another application-shell row. CTX Viewer/API Traffic are tab contents, so there is no internal CTX/API resize divider and no peer-panel width/height negotiation. The only horizontal developer resize is the outer application/dock boundary.

@@ -58,7 +58,8 @@ describe('generic date-duration-range component', () => {
     expect(renderer).not.toContain('COMPONENT CALCULATIONS');
     expect(renderer).not.toContain('component.calculations');
     expect(panel).toContain('data-debug-inspect-ctx');
-    expect(panel).toContain('Inspect in CTX Viewer');
+    expect(panel).toContain('Inspect formula in CTX Viewer');
+    expect(panel).toContain('Inspect current value in CTX Viewer');
     expect(forms).toContain('data-debug-inspect-ctx');
     expect(forms).toContain('manatos:ctx-viewer-show');
     expect(forms).toContain('expand: true');

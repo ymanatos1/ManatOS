@@ -16,6 +16,7 @@ import {
   allManatOSObjectMetadata,
   contextPathOf,
   evaluateCompiledExpression,
+  expressionCapabilities,
   evaluateExpression,
   type ExpressionDiagnostic,
   type ExpressionEvaluationCaller,
@@ -102,8 +103,9 @@ export async function renderPage(
       const calculated = field as ManatOSCalculatedContextField;
       try {
         const fieldsPath = contextPathOf(ctx, ctxPage.fields) ?? 'ctx.page.fields';
+        if (expressionCapabilities(calculated.ast).includes('entityResolver')) return calculated.value;
         return evaluateCompiledExpression(
-          { source: calculated.expression, ast: calculated.ast },
+          { source: calculated.expression, ast: calculated.ast, requiredCapabilities: expressionCapabilities(calculated.ast) },
           ctx,
           ctxPage.fields,
           evaluationCaller({
@@ -132,8 +134,9 @@ export async function renderPage(
       const calculated = field as ManatOSCalculatedContextField;
       try {
         const fieldsPath = contextPathOf(ctx, ctx.user?.fields ?? null) ?? 'ctx.user.fields';
+        if (expressionCapabilities(calculated.ast).includes('entityResolver')) return calculated.value;
         return evaluateCompiledExpression(
-          { source: calculated.expression, ast: calculated.ast },
+          { source: calculated.expression, ast: calculated.ast, requiredCapabilities: expressionCapabilities(calculated.ast) },
           ctx,
           ctx.user?.fields ?? null,
           evaluationCaller({

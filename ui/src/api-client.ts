@@ -1,6 +1,7 @@
-import { AppError, type OperationNodeSnapshot } from '@manatos/shared';
+import { AppError, operationContext, type OperationNodeSnapshot } from '@manatos/shared';
 
 import { config } from './config.js';
+import { addApiTrafficEntry, sanitizeTrafficValue } from './debug/api-traffic-store.js';
 
 /**
  * Standard successful API envelope.
@@ -223,7 +224,21 @@ export class ApiClient {
 
     options: ApiRequestOptions,
   ): Promise<ApiResponse<T>> {
-    const response = await fetch(
+    const startedAt = new Date();
+    const started = performance.now();
+    const method = String(init.method ?? 'GET').toUpperCase();
+    let requestBody: unknown;
+    if (typeof init.body === 'string' && init.body) {
+      try { requestBody = JSON.parse(init.body); } catch { requestBody = init.body; }
+    }
+
+    const recordTraffic = (entry: Parameters<typeof addApiTrafficEntry>[0]) => {
+      if (config.NODE_ENV !== 'production') addApiTrafficEntry(entry);
+    };
+
+    let response: Response;
+    try {
+      response = await fetch(
       config.API_BASE_URL + path,
 
       {
@@ -282,6 +297,41 @@ export class ApiClient {
         },
       },
     );
+    } catch (error) {
+      recordTraffic({
+        requestId: operationContext.getRequestId(),
+        startedAt: startedAt.toISOString(),
+        durationMs: Math.max(0, Math.round((performance.now() - started) * 10) / 10),
+        method,
+        path,
+        status: null,
+        ok: false,
+        ...(requestBody === undefined ? {} : { requestBody: sanitizeTrafficValue(requestBody) }),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+
+    let responseBody: unknown;
+    try {
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) responseBody = await response.clone().json();
+      else responseBody = await response.clone().text();
+    } catch {
+      responseBody = undefined;
+    }
+
+    recordTraffic({
+      requestId: operationContext.getRequestId(),
+      startedAt: startedAt.toISOString(),
+      durationMs: Math.max(0, Math.round((performance.now() - started) * 10) / 10),
+      method,
+      path,
+      status: response.status,
+      ok: response.ok,
+      ...(requestBody === undefined ? {} : { requestBody: sanitizeTrafficValue(requestBody) }),
+      ...(responseBody === undefined ? {} : { responseBody: sanitizeTrafficValue(responseBody) }),
+    });
 
     if (!response.ok) {
       await this.fail(response, options);

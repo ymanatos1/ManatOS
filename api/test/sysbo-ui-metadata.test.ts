@@ -106,6 +106,23 @@ describe('metadata-driven SysBO UI conventions', () => {
     }
   });
 
+  it('keeps standard entry and list lifecycle authorization declarative in evaluator-backed metadata', () => {
+    for (const metadata of Object.values(allSysBOUIMetadata)) {
+      const deleteAction = Object.values(metadata.record.entryActions || {}).find((action) => action.kind === 'delete');
+      const saveAction = Object.values(metadata.record.entryActions || {}).find((action) => action.kind === 'save');
+
+      expect(deleteAction?.visible).toEqual({
+        expression: "mode !== 'create' && permissions.delete === true",
+      });
+      expect(saveAction?.visible).toEqual({
+        expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)",
+      });
+      expect(metadata.list.addAction.visible).toEqual({
+        expression: 'permissions.create === true',
+      });
+    }
+  });
+
   it('keeps common action placement generic and lets SysUser own-record delete policy stay declarative', () => {
     for (const metadata of Object.values(allSysBOUIMetadata)) {
       const deleteAction = Object.values(metadata.record.entryActions || {}).find((action) => action.kind === 'delete');

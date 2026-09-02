@@ -177,7 +177,7 @@ The mCRM Apps Playground has two related surfaces: `app-playground.ejs` is the p
 
 ## Expression/debugging regression expectations
 
-Changes to the expression grammar, precedence, registered functions, CTX path resolution, field normalization, or Debugging CLI must include regression coverage. Numeric and semantic indexing of CTX collections are both contracts. The browser reactive evaluator must consume server-compiled ASTs and remain behaviorally aligned with the canonical evaluator; UI components must not hardcode registered normalization function names.
+Changes to the expression grammar, precedence, registered functions, CTX path resolution, field normalization, dynamic-value resolution, navigation/action policy, or Debugging CLI must include regression coverage. Numeric and semantic indexing of CTX collections are both contracts. The browser reactive evaluator must consume server-compiled ASTs and remain behaviorally aligned with the canonical evaluator; UI components must not hardcode registered normalization function names. Tests should protect the ownership split: CTX provides facts, metadata provides policy, the evaluator resolves it, and renderers must not add duplicate permission/entitlement gates.
 
 
 ### In-place metadata entry Save
@@ -188,3 +188,16 @@ For an existing metadata-driven record, the primary **Save** action uses the nor
 ### Child-editor lifecycle contract
 
 Reusable inline/collection editors must register through the generic child-editor DOM/event contract (`data-entry-child-editor` plus `manatos:child-editor-state`). Opening an editor sets the page's internal-editing state; Add/Update or child Cancel clears it. Parent Save controls must consume that state in addition to ordinary dirty/valid state. Do not add entity-specific Save guards for collections.
+
+
+## Adding expression functions
+
+Every registered expression function must document and declare the narrowest capability it requires (`pure`, `clock`, `ctx`, or `entityResolver`). Functions must remain entity-agnostic and must never import storage adapters directly. Persistence-backed behavior belongs behind `EntityResolver`; browser-owned formulas delegate only reached unavailable-capability calls and then resume locally. See [Expression Parsing and Evaluation Mechanics](Expression-Evaluation-Mechanics.md).
+
+## API traffic diagnostics
+
+`ui/src/debug/api-traffic-store.ts` is the development-only **UI-server** sanitized trace buffer for the ManatOS UI -> API boundary. `ApiClient` records requests centrally so entity routes and individual features must not implement their own traffic logging. This is intentionally different from the CTX Viewer: live CTX state is browser-owned and therefore has no corresponding UI-server trace store. Both visual tools are tabs of the one shell-owned Developer Tools dock; do not reintroduce independent CTX/API dock panels or an internal split divider. The traffic viewer is transport-generic; future expression/resolver diagnostics may enrich entries without coupling the panel to `TraverseEntity` or any particular SysBO.
+
+The browser diagnostic poll must remain singleton-safe and sequential. Route-pattern show/hide choices may persist as user preferences, while route counters are scoped to the current UI-server boot. The shared connectivity watchdog owns consecutive transport-failure handling; after three sequential transport failures, automatic polls stop until explicit user refresh/navigation.
+
+Never add raw authentication headers, cookies, tokens, credentials or secrets to developer traces. Sanitization must happen before a trace is stored, not only when it is rendered.

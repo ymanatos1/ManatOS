@@ -122,11 +122,11 @@ Typical actions include:
 - Clear value
 - Today / Now
 - Zero / Toggle
-- Inspect in CTX Viewer (developer mode only)
+- Inspect current field value in CTX Viewer (developer mode only)
 
 The tool-button/menu color is field-type specific; read-only/calculated fields use one common read-only tone. These colors are theme-owned and differ between the Lighter and Darker Preferences themes.
 
-`Inspect in CTX Viewer` opens the viewer when needed, selects the corresponding CTX node, and expands the selected node when it has children.
+Field inspection opens the Developer Tools dock on the CTX Viewer tab, selects the exact CTX value node, and expands it when appropriate. Calculated-expression rows additionally expose separate **Inspect formula in CTX Viewer** and **Inspect current value in CTX Viewer** actions so definition and live value are never conflated.
 
 ## 5. UI-components
 
@@ -215,7 +215,44 @@ Generic SysBO lists consume UI metadata for:
 
 The Filters panel is a common UI-component. Entity-specific list renderers should not be introduced when the generic metadata contract can express the behavior.
 
-## 9. Debugging tab
+List Add policy uses the same dynamic-value contract as other metadata decisions. A normal Add action can declare:
+
+```ts
+addAction: {
+  visible: { expression: 'permissions.create === true' },
+  enabled: true,
+  label: 'Add new',
+}
+```
+
+A route may project neutral runtime facts needed by policy, but must not decide the UI result itself. For example, External Authentication derives `addConstraintReached` from the current provider data, while metadata declares `enabled: { expression: 'addConstraintReached !== true' }` plus the disabled reason.
+
+## 9. Declarative UI decision values
+
+Use `ManatOSDynamicValue<T>` whenever a framework-neutral metadata property may be either static or evaluator-backed:
+
+```ts
+type ManatOSDynamicValue<T> = T | Readonly<{ expression: string }>;
+```
+
+`SysBOUIDynamicValue<T>` is an alias for that generic contract. The ownership rule is:
+
+```text
+CTX/runtime facts -> metadata policy -> evaluator -> resolved renderer state
+```
+
+Do not put presentation decisions into CTX. Prefer facts such as `permissions.create`, `mode`, `user.permissions.mcrm.capabilities.platformAccess` or `addConstraintReached`; let metadata decide `visible`, `enabled`, `disabledReason`, `editable`, etc.
+
+Standard entry actions illustrate the pattern:
+
+```ts
+delete.visible = { expression: "mode !== 'create' && permissions.delete === true" }
+save.visible   = { expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)" }
+```
+
+Entity-specific policy may add evaluator-backed `enabled` and `disabledReason` without teaching the renderer about that entity. UI policy is not authorization: API/domain permission checks remain mandatory.
+
+## 10. Debugging tab
 
 Developer mode adds the read-only **Debugging** tab to metadata-driven entry forms.
 
@@ -234,11 +271,11 @@ The split is generic and provenance-driven; it must not depend on a concrete Sys
 
 Canonical editable-field calculations appear as entity-field calculations, not as UI-component calculations.
 
-Calculation rows have a compact tools button with developer actions such as **Inspect in CTX Viewer**. This opens the viewer and navigates to the associated CTX node.
+Calculation rows have a compact tools button with two precise actions when both targets exist: **Inspect formula in CTX Viewer** selects the expression/definition node, while **Inspect current value in CTX Viewer** selects the live calculated value node. The action carries the exact CTX path and must not fall back to the owning page node.
 
 The browser consumes ManatOS' precompiled expression AST. It must not repeatedly parse the expression source string for reactive recalculation.
 
-## 10. CTX runtime/developer facts
+## 11. CTX runtime/developer facts
 
 Runtime facts belong under `ctx.system`. Developer-mode decisions should be represented as CTX facts rather than independently re-derived in unrelated UI features.
 
@@ -247,11 +284,11 @@ Current runtime facts include the environment/runtime mode and developer-mode st
 - CTX Viewer;
 - developer/debug menu;
 - entry Debugging tab;
-- `Inspect in CTX Viewer` field/debug-row actions.
+- exact formula/value inspection actions from field/debug rows.
 
 The CTX Viewer manages focus correctly when opening/closing and keeps hidden controls inert so accessibility state does not conflict with keyboard focus.
 
-## 11. Delete-impact and dirty deletion
+## 12. Delete-impact and dirty deletion
 
 Existing records use the generic `$delete-impact` preflight before destructive deletion.
 
@@ -266,19 +303,19 @@ The modal reports relationship consequences such as:
 
 If the entry form contains unsaved changes when Delete is requested, the modal additionally warns that both the unsaved edits and the saved record will be lost.
 
-## 12. Preferences themes
+## 13. Preferences themes
 
 The Preferences popup supports Lighter and Darker themes. Theme-specific tokens own the field-component palette rather than field components hard-coding colors.
 
 Selecting a theme displays a preview grid inside the popup before Save, including representative header/title/field surfaces. The website theme itself is not committed until the user saves preferences.
 
-## 13. Contextual help
+## 14. Contextual help
 
 Use the generic `contextual-help` UI-component whenever a selected CTX/metadata value chooses one of several help blocks.
 
 The component must not be named for or know about the owning entity. External-authentication provider setup guidance is one consumer of this generic mechanism. Provider General help and Secrets help are separate declarative payloads and both reuse the same `contextual-help` component.
 
-## 14. External authentication provider executable boundary
+## 15. External authentication provider executable boundary
 
 Provider labels, icons, callback/help/configuration presentation should be declarative where practical. Executable OAuth differences remain provider adapters under:
 
@@ -290,7 +327,7 @@ The generic registry selects the adapter. Provider files should contain only beh
 
 Do not move executable strategy constructors into metadata.
 
-## 15. Platform-owned code
+## 16. Platform-owned code
 
 Platform-specific feature code belongs below explicit platform folders.
 
@@ -308,7 +345,7 @@ Generic routers/renderers should compose platform modules and must not accumulat
 
 `app-playground.ejs` is the mCRM Apps Playground landing/workspace. `application-playground.ejs` is the workspace for one selected SysApplication.
 
-## 16. Adding a new metadata-driven field
+## 17. Adding a new metadata-driven field
 
 1. Add the canonical field to shared BO metadata.
 2. Use an existing canonical field type whenever possible.
@@ -318,7 +355,7 @@ Generic routers/renderers should compose platform modules and must not accumulat
 6. Keep calculation semantics out of UI-components.
 7. Add contract/regression coverage for the generic behavior, not only the first entity using it.
 
-## 17. Adding a reusable UI-component
+## 18. Adding a reusable UI-component
 
 1. Place it under `metadata-driven/ui-components/`.
 2. Give it a semantic, entity-independent key/name.
@@ -341,7 +378,7 @@ The generic contextual-help/information-panel component remains expanded by defa
 
 Credential testing remains provider-neutral. OAuth `state` is the primary callback correlation token; while a short-lived credential test is active, the same-session fresh pending provider/test record is also accepted as a fallback when a provider/strategy omits the returned state value. No provider name is hard-coded into the callback router for this behavior.
 
-## 18. Verification
+## 19. Verification
 
 After applying source changes, run from the repository `src` root:
 

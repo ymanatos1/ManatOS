@@ -93,14 +93,28 @@
                             aria-label="Calculation tools"
                           ><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                           <ul class="dropdown-menu metadata-field-input-menu is-enabled">
-                            <li>
-                              <button
-                                class="dropdown-item"
-                                type="button"
-                                data-debug-inspect-ctx
-                                data-debug-inspect-path="<%= debugRow.inspectPath || 'ctx.page.page' %>"
-                              ><i class="bi bi-bug me-2" aria-hidden="true"></i>Inspect in CTX Viewer</button>
-                            </li>
+                            <% if (debugRow.definitionPath) { %>
+                              <li>
+                                <button
+                                  class="dropdown-item"
+                                  type="button"
+                                  data-debug-inspect-ctx
+                                  data-debug-inspect-kind="formula"
+                                  data-debug-inspect-path="<%= debugRow.definitionPath %>"
+                                ><i class="bi bi-code-slash me-2" aria-hidden="true"></i>Inspect formula in CTX Viewer</button>
+                              </li>
+                            <% } %>
+                            <% if (debugRow.valuePath) { %>
+                              <li>
+                                <button
+                                  class="dropdown-item"
+                                  type="button"
+                                  data-debug-inspect-ctx
+                                  data-debug-inspect-kind="value"
+                                  data-debug-inspect-path="<%= debugRow.valuePath %>"
+                                ><i class="bi bi-bug me-2" aria-hidden="true"></i>Inspect current value in CTX Viewer</button>
+                              </li>
+                            <% } %>
                           </ul>
                         </div>
                         <code class="debugging-element-name"><span class="debugging-element-prefix"><%= elementNameParts.prefix %></span><strong class="debugging-element-leaf"><%= elementNameParts.leaf %></strong></code>

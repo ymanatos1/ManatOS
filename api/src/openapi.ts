@@ -153,6 +153,10 @@ export function buildOpenApiSpec() {
         description: 'Supporting/internal SysBO resources used by primary business objects, including reusable contact values and relationship rows.',
       },
       {
+        name: 'Expression Runtime',
+        description: 'Authenticated capability-provider operations used by expression owners to delegate only reached AST work that requires server-side capabilities such as EntityResolver.',
+      },
+      {
         name: 'System Configuration',
         description: 'Admin-only persisted runtime configuration. Sensitive values are never returned as plaintext.',
       },
@@ -239,6 +243,8 @@ export function buildOpenApiSpec() {
       '/api/v1/SysUsers/$metadata-ui': sysBOUIMetadataOperation('User', 'System Business Objects'),
 
       '/api/v1/SysUsers/{id}/verify-email': adminVerifyEmailOperation('System Business Objects'),
+
+      '/api/v1/expressions/evaluate-function': expressionFunctionOperation(),
 
       '/api/v1/SysPrincipals': genericOperations('Principal', 'System Business Objects'),
 
@@ -523,6 +529,36 @@ const sysBOUIMetadataOperation = (name: string, tag: string) => ({
  * Standard OpenAPI operations currently shared by generic SysBO
  * collection endpoints.
  */
+const expressionFunctionOperation = () => ({
+  post: {
+    summary: 'Evaluate one delegated expression capability function',
+    tags: ['Expression Runtime'],
+    description: 'Access: authenticated Bearer session. The caller remains owner of the complete expression and sends only a reached function call whose capability is unavailable locally. Phase 1 supports EntityResolver-backed functions such as TraverseEntity. Raw resolver records are never returned; resolver-visible entities are metadata-projected with sensitive fields excluded.',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['functionName', 'args'],
+            properties: {
+              functionName: { type: 'string', example: 'TraverseEntity' },
+              args: { type: 'array', items: {}, example: ['principal-id', 'sys-principals', 'parentId', 'id'] },
+            },
+          },
+        },
+      },
+    },
+    responses: {
+      '200': { description: 'Delegated function result.' },
+      '400': { description: 'Unknown/non-delegable function or invalid arguments.' },
+      '401': { description: 'Authentication required.' },
+      '403': { description: 'Resolver access to a referenced entity is not authorized.' },
+    },
+  },
+});
+
 const genericOperations = (name: string, tag = 'System Business Objects') => ({
   get: {
     summary: `List ${name} entries`,

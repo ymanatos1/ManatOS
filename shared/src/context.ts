@@ -109,11 +109,14 @@ export type ManatOSContextFields = Record<string, ManatOSContextField>;
 
 export interface ManatOSPlatformPermissionContext {
   /**
-   * Reserved capability bucket for the selected platform.  The structure is
-   * intentionally present even before individual license-derived capabilities
-   * are projected into CTX, so expressions/debugging have a stable location.
+   * Trusted UI decision facts resolved by the server for this platform.
+   * `platformAccess` is the first universal capability: it already includes
+   * the Admin bypass and license-derived entitlement result.
    */
-  capabilities: Readonly<Record<string, unknown>>;
+  capabilities: Readonly<{
+    platformAccess: boolean;
+    [capability: string]: unknown;
+  }>;
 }
 
 export interface ManatOSUserPermissionsContext {

@@ -31,7 +31,7 @@ describe('metadata-driven Principal presentation', () => {
     expect(uiMetadata).toContain('readOnlyValue: null');
     expect(canonical).toContain("rootPrincipalId: {");
     expect(canonical).toContain("persisted: true");
-    expect(canonical).toContain("parentId == null ? null : TraverseCtx(parentId, dataList, 'parentId', 'id')");
+    expect(canonical).toContain("parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')");
     expect(entry).toContain('data-enum-items');
     expect(entry).toContain('data-enum-selected-icon');
     expect(entry).toContain('data-enum-item');

@@ -131,7 +131,7 @@ TraverseCtx(parentId, dataList, 'parentId', 'name')
 A persisted Principal root-id calculation can therefore remain completely declarative:
 
 ```text
-parentId == null ? null : TraverseCtx(parentId, dataList, 'parentId', 'id')
+parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')
 ```
 
 ### `GetTime()`
@@ -168,7 +168,7 @@ mode != 'create'
 id != user.fields.id.value
 
 # Null-safe decision using an explicit comparison
-parentId == null ? null : TraverseCtx(parentId, dataList, 'parentId', 'id')
+parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')
 
 # Create default from the first available CTX option
 FirstCtx(platformId.options, 'value')
@@ -184,8 +184,28 @@ hasClientSecret ? 'lock-fill' : 'lock'
 
 # String composition
 StrFormat('{0} / {1}', name, version)
+
+# Platform capability decision
+user.permissions.mcrm.capabilities.platformAccess === true
+
+# List Add visibility
+permissions.create === true
+
+# Entry Delete visibility
+mode !== 'create' && permissions.delete === true
+
+# Entry Save visibility
+mode !== 'view' && (permissions.create === true || permissions.edit === true)
+
+# Runtime constraint decision
+addConstraintReached !== true
 ```
 
 ## Design rules for metadata expressions
 
-Expressions should describe domain/UI relationships, not reproduce renderer logic. Prefer one-level CTX names such as `dataList` when a value is intentionally made available for upward resolution. Reusable entity calculations belong in canonical business-object metadata; UI-only visibility, editability, decoration, and create defaults belong in UI metadata. Functions must remain entity/field agnostic so the same evaluator can serve system pages, future application pages, server-side persistence calculations, and other renderers.
+Expressions should describe domain/UI relationships, not reproduce renderer logic. Prefer one-level CTX names such as `dataList` when a value is intentionally made available for upward resolution. Reusable entity calculations belong in canonical business-object metadata; UI-only visibility, editability, decoration, create defaults, navigation visibility and action state belong in metadata. Prefer resolved scalar facts from CTX (`permissions.create`, platform capabilities, mode, constraint facts) over testing whole structured objects or recreating entitlement/role logic in metadata. Keep facts and policy separate: CTX should expose `addConstraintReached`, not `disableAddButton`; metadata decides how that fact affects presentation. Evaluator-backed UI decisions never replace API/domain authorization. Functions must remain entity/field agnostic so the same evaluator can serve system pages, future application pages, server-side persistence calculations, and other renderers.
+
+
+## Execution ownership and capabilities
+
+Expressions are execution-context independent. The current owner supplies the lexical scope and available capabilities. `TraverseCtx()` operates only on materialized context data; `TraverseEntity()` requires the canonical `entityResolver` capability and can be delegated by a browser owner when its lazy branch is actually reached. See [Expression Parsing and Evaluation Mechanics](Expression-Evaluation-Mechanics.md).

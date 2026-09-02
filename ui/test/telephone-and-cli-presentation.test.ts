@@ -49,6 +49,8 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(cli).toContain('owner-page');
     expect(cli).toContain('ownerPage !== currentPageKey');
     expect(routes).toContain("router.post('/debug/compile-expression'");
+    expect(routes).toContain("router.post('/expression/evaluate-function'");
+    expect(cli).toContain("candidate.capability === 'entityResolver'");
     expect(routes).toContain('compileExpression(expression)');
   });
 

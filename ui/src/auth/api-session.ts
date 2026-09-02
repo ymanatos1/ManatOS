@@ -64,6 +64,8 @@ export function isApiSessionExpired(req: Request): boolean {
 export function clearApiSession(req: Request): void {
   delete req.session.userId;
 
+  delete req.session.currentUserSnapshot;
+
   delete req.session.authenticationMethod;
 
   delete req.session.apiAccessToken;

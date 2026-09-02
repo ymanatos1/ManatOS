@@ -72,9 +72,11 @@
   user-select: none;
 }
 
-.ctx-debug-row:hover,
+.ctx-debug-row:hover {
+  background: rgba(13, 110, 253, 0.10);
+}
 .ctx-debug-row.is-selected {
-  background: rgba(13, 110, 253, 0.09);
+  background: rgba(13, 110, 253, 0.20);
 }
 
 .ctx-debug-toggle {
@@ -614,7 +616,7 @@
  * these narrowly scoped rules are also !important and disappear in effect as
  * soon as shell/debugger JS applies the persisted normal classes.
  */
-html[data-manatos-debug-visible='true'] #debugPanel.d-none {
+html[data-manatos-debug-visible='true'] #developerToolsDock.d-none {
   display: flex !important;
 }
 
@@ -807,4 +809,297 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
 .metadata-collection-select-picker .metadata-collection-select-menu {
   width: max(100%, 19rem) !important;
   min-width: 19rem;
+}
+
+/* =========================================================================
+   API Traffic developer viewer
+   ========================================================================= */
+.api-traffic-panel {
+  grid-area: apiTraffic;
+  min-width: 0;
+  height: auto;
+  max-height: calc(100vh - var(--top-header-height, 0px));
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8fafc;
+  border-left: 1px solid var(--manatos-border);
+}
+
+.api-traffic-stats {
+  margin-left: auto;
+  color: #6c757d;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.api-traffic-filter {
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 1.65rem;
+  border: 1px solid #c8d3df;
+  border-radius: 0.25rem;
+  padding: 0 0.45rem;
+  background: #fff;
+  color: #24364b;
+  font-size: 0.72rem;
+}
+
+.api-traffic-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: #fff;
+}
+
+.api-traffic-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns:
+    var(--api-traffic-col-time, 4.7rem)
+    var(--api-traffic-col-method, 3.5rem)
+    var(--api-traffic-col-path, minmax(7rem, 1fr))
+    var(--api-traffic-col-status, 3.2rem)
+    var(--api-traffic-col-duration, 4.2rem);
+  gap: 0.35rem;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid #e4eaf0;
+  padding: 0.42rem 0.55rem;
+  background: #fff;
+  color: #26384d;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.68rem;
+}
+.api-traffic-row:hover { background: #eef5ff; }
+.api-traffic-row.is-selected { background: #cfe2ff; box-shadow: inset 3px 0 0 #0d6efd; }
+.api-traffic-row.is-error { background: #fff3f3; color: #a61e2c; }
+.api-traffic-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-traffic-method { color: #315f9b; }
+.api-traffic-status,
+.api-traffic-duration { text-align: right; }
+.api-traffic-empty { padding: 1rem; color: #7a8795; font-size: 0.75rem; }
+
+.api-traffic-columns {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns:
+    var(--api-traffic-col-time, 4.7rem)
+    var(--api-traffic-col-method, 3.5rem)
+    var(--api-traffic-col-path, minmax(7rem, 1fr))
+    var(--api-traffic-col-status, 3.2rem)
+    var(--api-traffic-col-duration, 4.2rem);
+  gap: .35rem;
+  padding: .25rem .55rem;
+  border-top: 1px solid #dbe3ec;
+  border-bottom: 1px solid #cbd6e2;
+  background: #edf2f7;
+  color: #52606d;
+  font: 600 .62rem/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  text-transform: uppercase;
+  user-select: none;
+}
+.api-traffic-columns > span { position: relative; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-traffic-column-resize {
+  position: absolute;
+  z-index: 2;
+  top: -.25rem;
+  right: -.25rem;
+  bottom: -.25rem;
+  width: .5rem;
+  cursor: col-resize;
+  touch-action: none;
+}
+.api-traffic-column-resize:hover { background: rgba(13, 110, 253, .18); }
+
+.api-traffic-details {
+  flex: 0 0 auto;
+  max-height: 46%;
+  overflow: auto;
+  border-bottom: 1px solid #b8c7d9;
+  background: #f8fafc;
+}
+.api-traffic-details-heading {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--manatos-border);
+  background: #f8fafc;
+  font-size: 0.72rem;
+}
+.api-traffic-details-tabs { display: flex; gap: .25rem; padding: .35rem .55rem 0; background: #f8fafc; }
+.api-traffic-details-tab { border: 1px solid #b8c7d9; border-bottom: 0; border-radius: .25rem .25rem 0 0; padding: .25rem .65rem; background: #eef2f6; color: #425466; font-size: .7rem; }
+.api-traffic-details-tab.is-active { background: #fff; color: #0d6efd; font-weight: 600; }
+.api-traffic-details-body { padding: 0.55rem 0.65rem 0.75rem; font-size: 0.72rem; }
+.api-traffic-details-body h4 { margin: 0.7rem 0 0.3rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.api-traffic-details-body pre { max-height: 14rem; overflow: auto; margin: 0; padding: 0.5rem; background: #111c2e; color: #dce8f7; border-radius: 0.25rem; font-size: 0.68rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.api-traffic-meta { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.25rem 0.5rem; margin: 0; }
+.api-traffic-meta dt { color: #52606d; }
+.api-traffic-meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+.api-traffic-route-filter-wrap { position: relative; flex: 0 0 auto; }
+.api-traffic-route-menu {
+  position: fixed;
+  z-index: 2147483000;
+  right: auto;
+  width: min(28rem, 70vw);
+  max-height: min(28rem, 60vh);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #b8c7d9;
+  border-radius: .35rem;
+  background: #fff;
+  box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .18);
+  overflow: hidden;
+}
+.api-traffic-route-menu-actions {
+  display: flex;
+  gap: .4rem;
+  padding: .4rem .5rem;
+  border-bottom: 1px solid #d9e2ec;
+  background: #f8fafc;
+}
+.api-traffic-route-menu-actions button {
+  border: 0;
+  padding: .1rem .25rem;
+  background: transparent;
+  color: #0d6efd;
+  font-size: .7rem;
+}
+.api-traffic-route-menu-list { overflow: auto; padding: .3rem 0; }
+.api-traffic-route-option {
+  display: flex;
+  align-items: flex-start;
+  gap: .45rem;
+  padding: .3rem .55rem;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .68rem;
+  line-height: 1.3;
+}
+.api-traffic-route-option:hover { background: #eef5ff; }
+.api-traffic-route-option input { margin-top: .08rem; }
+.api-traffic-route-call { min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
+.api-traffic-route-method { color: #425466; font-weight: 400; }
+.api-traffic-route-path { color: #172b4d; font-weight: 700; }
+.api-traffic-route-count {
+  flex: 0 0 auto;
+  min-width: 1.55rem;
+  margin-left: .35rem;
+  padding: .02rem .28rem;
+  border-radius: 999px;
+  background: #eef2f6;
+  color: #7a8795;
+  text-align: center;
+  font-size: .64rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.api-traffic-route-count.is-active { background: #e7f1ff; color: #0d6efd; }
+.api-traffic-route-separator { margin: .25rem 0; border-top: 1px solid #cbd5e1; }
+.api-traffic-route-empty { padding: .7rem; color: #6c757d; font-size: .7rem; }
+
+
+/* =========================================================================
+   Unified Developer Tools dock
+   =========================================================================
+ * The dock itself uses the original single-debugger geometry. The active tool
+ * fills its body; inactive tabs are display:none and therefore cannot create
+ * another row/column or influence the outer panel's height.
+ */
+.developer-tools-tabs {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--manatos-border);
+  background: #f8fafc;
+}
+
+.developer-tools-tab {
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid var(--manatos-border);
+  border-bottom: 2px solid transparent;
+  padding: .48rem .62rem .4rem;
+  background: transparent;
+  color: #52606d;
+  text-align: left;
+  font-size: .72rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.developer-tools-tab strong { color: #172b4d; }
+.developer-tools-tab span { margin-left: .2rem; color: #7a8796; font-size: .66rem; font-weight: 400; }
+.developer-tools-tab:hover { background: #eef5ff; }
+.developer-tools-tab.is-active {
+  border-bottom-color: #0d6efd;
+  background: #fff;
+  color: #0d6efd;
+}
+.developer-tools-tab.is-active strong { color: #0d6efd; }
+
+.developer-tools-close {
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0 .5rem 0 auto;
+  font-size: .7rem;
+}
+
+.developer-tools-body > .debug-panel,
+.developer-tools-body > .api-traffic-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  position: relative;
+  top: auto;
+  border-left: 0;
+  overflow: hidden;
+}
+
+/* Tool chrome stays tight to the dock edges. */
+.developer-tools-body .debug-panel-tools { padding-left: .38rem; padding-right: .38rem; }
+.developer-tools-body .ctx-debug-tree { padding: .38rem; }
+
+.ctx-debug-stats,
+.api-traffic-stats { margin-left: auto; margin-right: 0; }
+
+/* One generous invisible outer hit zone, one thin visible divider. */
+.developer-tools-dock > .ctx-debug-panel-resize {
+  z-index: 60;
+  left: -5px;
+  width: 10px;
+  background: linear-gradient(to right, transparent 4px, rgba(69, 94, 122, .32) 4px, rgba(69, 94, 122, .32) 5px, transparent 5px);
+  cursor: col-resize;
+  touch-action: none;
+}
+.developer-tools-dock > .ctx-debug-panel-resize:hover,
+.developer-tools-dock > .ctx-debug-panel-resize.is-dragging {
+  background: linear-gradient(to right, transparent 3px, #0d6efd 3px, #0d6efd 6px, transparent 6px);
+}
+
+body.is-resizing-developer-dock,
+body.is-resizing-developer-dock * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* First-paint tab restoration: expose exactly one tool inside the restored dock. */
+html[data-manatos-debug-visible='true'][data-manatos-debug-tab='ctx'] #debugPanel.d-none {
+  display: flex !important;
+}
+html[data-manatos-debug-visible='true'][data-manatos-debug-tab='apiTraffic'] #apiTrafficPanel.d-none {
+  display: flex !important;
 }

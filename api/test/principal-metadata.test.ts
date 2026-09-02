@@ -18,11 +18,15 @@ describe('SysBOPrincipal declarative enum metadata', () => {
 
   it('declares the standard metadata-driven record actions required by the shared entry renderer', () => {
     expect(sysBOPrincipalsUIMetadata.record.entryActions).toMatchObject({
-      delete: { kind: 'delete', visible: true, label: 'Delete entry' },
+      delete: {
+        kind: 'delete',
+        visible: { expression: "mode !== 'create' && permissions.delete === true" },
+        label: 'Delete entry',
+      },
       save: { kind: 'save', label: 'Save' },
     });
     expect(sysBOPrincipalsUIMetadata.record.entryActions?.save?.visible).toEqual({
-      expression: "mode !== 'view'",
+      expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)",
     });
   });
   it('declares icon, containment and parentability traits for every principal type', () => {
@@ -46,7 +50,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     });
     expect(sysBOPrincipalsMetadata.derivedFields?.rootPrincipalId).toMatchObject({
       persisted: true,
-      expression: "parentId == null ? null : TraverseCtx(parentId, dataList, 'parentId', 'id')",
+      expression: "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
     });
 
     const context = await createTestApi();
