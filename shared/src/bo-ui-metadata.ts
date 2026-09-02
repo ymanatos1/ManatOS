@@ -1,6 +1,32 @@
 import type { SysBOUIMetadata, SysBOUIRecordTabMetadata } from './bo-ui-metadata-types.js';
+import { systemCountryCatalog } from './system-country-catalog.js';
 
 export * from './bo-ui-metadata-types.js';
+
+
+/** Shared projections of canonical country reference data for reusable editors. */
+const telephoneCountryOptions = (() => {
+  const byCallingCode = new Map<string, { label: string; value: string; flagSrc?: string }>();
+  for (const country of systemCountryCatalog) {
+    const existing = byCallingCode.get(country.callingCode);
+    if (existing) {
+      existing.label = `${existing.label} / ${country.name}`;
+      continue;
+    }
+    byCallingCode.set(country.callingCode, {
+      label: country.name,
+      value: country.callingCode,
+      ...(country.languageFlagSrc ? { flagSrc: country.languageFlagSrc } : {}),
+    });
+  }
+  return [...byCallingCode.values()];
+})();
+
+const addressCountryOptions = systemCountryCatalog.map((country) => ({
+  label: country.name,
+  value: country.name,
+  ...(country.languageFlagSrc ? { flagSrc: country.languageFlagSrc } : {}),
+}));
 
 
 /**
@@ -125,7 +151,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         'general',
         'General',
         10,
-        ['name', 'enabled', 'email', 'description', 'firstName', 'lastName', 'fullName', 'role'],
+        ['name', 'enabled', 'email', 'telephoneNumber', 'description', 'firstName', 'lastName', 'fullName', 'role'],
         {
           icon: 'info-circle',
           layout: 'form',
@@ -136,6 +162,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
             { kind: 'field', field: 'name', span: 6 },
             { kind: 'field', field: 'enabled', span: 6 },
             { kind: 'field', field: 'email', span: 6 },
+            { kind: 'field', field: 'telephoneNumber', span: 6 },
             { kind: 'break' },
             { kind: 'field', field: 'description', span: 12 },
             { kind: 'field', field: 'firstName', span: 6 },
@@ -279,7 +306,7 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     // Root/Parent are shown first for hierarchy scanning; `name` remains the
     // canonical primary/clickable field in the generic list renderer.
     visibleFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled'],
-    filterFields: ['name', 'principalType'],
+    filterFields: ['name', 'principalType', 'parentId', 'rootPrincipalId'],
     sortableFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled'],
     addAction: { visible: true, label: 'Add new' },
   },
@@ -310,7 +337,133 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
           ],
         },
       ),
-      tab('organization', 'Organization', 20, [], {
+      tab('contact', 'Contact', 20, [], {
+        icon: 'person-lines-fill',
+        layout: 'form',
+        /*
+         * Contact is an ordinary metadata grid rather than a one-off component
+         * tab. Each contact channel declares its own span, so multiple reusable
+         * collection editors can share a row and future richer contact blocks
+         * can use the full width without changing the renderer.
+         *
+         * Planned layout:
+         *   Email addresses  6  | Telephone numbers 6
+         *   Main addresses  12
+         */
+        content: [
+          {
+            kind: 'component',
+            span: 6,
+            component: {
+              key: 'collection-editor',
+              options: {
+                sourceKey: 'emailAddresses',
+                collapsible: true,
+                itemEntityKey: 'sys-email-addresses',
+                relationshipEntityKey: 'sys-principal-email-addresses',
+                ownerField: 'principalId',
+                targetField: 'emailAddressId',
+                valueField: 'address',
+                fieldType: 'email',
+                itemLabel: 'Email address',
+                required: true,
+                label: 'Email addresses',
+                emptyText: 'No email addresses.',
+                allowAdd: true,
+                allowRemove: true,
+                selectionMode: 'multiple',
+                duplicateComparison: 'case-insensitive',
+                duplicateText: 'This email address is already in the list.',
+              },
+            },
+          },
+          {
+            kind: 'component',
+            span: 6,
+            component: {
+              key: 'collection-editor',
+              options: {
+                sourceKey: 'telephoneNumbers',
+                collapsible: true,
+                itemEntityKey: 'sys-telephone-numbers',
+                relationshipEntityKey: 'sys-principal-telephone-numbers',
+                ownerField: 'principalId',
+                targetField: 'telephoneNumberId',
+                label: 'Telephone numbers',
+                emptyText: 'No telephone numbers.',
+                rowIcon: 'telephone',
+                allowAdd: true,
+                allowRemove: true,
+                selectionMode: 'multiple',
+                duplicateComparison: 'structured',
+                duplicateText: 'This telephone number is already in the list.',
+                identityFields: ['countryCode', 'number'],
+                itemFields: [
+                  {
+                    key: 'countryCode',
+                    label: 'Country code',
+                    inputType: 'select',
+                    placeholder: 'Choose country',
+                    validation: 'country-code',
+                    required: true,
+                    inputSpan: 5,
+                    options: telephoneCountryOptions,
+                  },
+                  {
+                    key: 'number',
+                    label: 'Telephone number',
+                    inputType: 'tel',
+                    placeholder: 'Telephone number',
+                    maxLength: 40,
+                    validation: 'telephone-number',
+                    normalization: 'digits',
+                    required: true,
+                    inputSpan: 7,
+                  },
+                ],
+              },
+            },
+          },
+          {
+            kind: 'component',
+            span: 12,
+            component: {
+              key: 'collection-editor',
+              options: {
+                sourceKey: 'addresses',
+                collapsible: true,
+                itemEntityKey: 'sys-addresses',
+                relationshipEntityKey: 'sys-principal-addresses',
+                ownerField: 'principalId',
+                targetField: 'addressId',
+                label: 'Addresses',
+                emptyText: 'No addresses.',
+                rowIcon: 'geo-alt',
+                allowAdd: true,
+                allowRemove: true,
+                selectionMode: 'multiple',
+                duplicateComparison: 'structured',
+                duplicateText: 'This address is already in the list.',
+                identityFields: ['recipientOrAttention', 'organization', 'addressLine1', 'addressLine2', 'addressLine3', 'poBox', 'postalCode', 'city', 'stateOrProvince', 'country'],
+                displayField: 'formattedAddress',
+                itemFields: [
+                  { key: 'recipientOrAttention', label: 'Recipient / attention', inputType: 'text', placeholder: 'Recipient or attention', maxLength: 160, required: false, inputSpan: 6 },
+                  { key: 'organization', label: 'Organization', inputType: 'text', placeholder: 'Organization', maxLength: 180, required: false, inputSpan: 6 },
+                  { key: 'addressLine1', label: 'Address line 1', inputType: 'text', placeholder: 'Street and number', maxLength: 200, required: true, inputSpan: 12 },
+                  { key: 'addressLine2', label: 'Address line 2', inputType: 'text', placeholder: 'Building, suite, unit, etc.', maxLength: 200, required: false, inputSpan: 6 },
+                  { key: 'addressLine3', label: 'Address line 3', inputType: 'text', placeholder: 'Additional address information', maxLength: 200, required: false, inputSpan: 6 },
+                  { key: 'poBox', label: 'PO Box', inputType: 'text', placeholder: 'PO Box', maxLength: 80, required: false, inputSpan: 3 },
+                  { key: 'postalCode', label: 'Postal code', inputType: 'text', placeholder: 'Postal code', maxLength: 40, required: false, inputSpan: 3 },
+                  { key: 'city', label: 'City', inputType: 'text', placeholder: 'City', maxLength: 120, required: true, inputSpan: 3 },
+                  { key: 'stateOrProvince', label: 'State / province', inputType: 'text', placeholder: 'State / province', maxLength: 120, required: false, inputSpan: 3 },
+                  { key: 'country', label: 'Country', inputType: 'select', placeholder: 'Choose country', maxLength: 120, required: true, inputSpan: 3, options: addressCountryOptions },
+                ],
+              },
+            },
+          },
+        ],
+      }),
+      tab('organization', 'Organization', 30, [], {
         icon: 'diagram-3',
         layout: 'component',
         readOnly: true,
@@ -365,6 +518,36 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     entryActions: standardEntryActions,
     relatedCollections: {
       licenses: relatedLicensesCollection('principalId'),
+      emailAddresses: {
+        label: 'Email addresses',
+        icon: 'envelope',
+        entityKey: 'sys-principal-email-addresses',
+        sourceKey: 'emailAddresses',
+        // Required read/presentation shape for the related source. The Contact
+        // tab's collection-editor owns edit semantics; this layout simply keeps
+        // the canonical related-collection contract complete and generic.
+        layout: 'panel-list',
+        source: { kind: 'entity-query', filterField: 'principalId', currentField: 'id', pageSize: 100 },
+        fields: { emailAddressId: {} },
+      },
+      telephoneNumbers: {
+        label: 'Telephone numbers',
+        icon: 'telephone',
+        entityKey: 'sys-principal-telephone-numbers',
+        sourceKey: 'telephoneNumbers',
+        layout: 'panel-list',
+        source: { kind: 'entity-query', filterField: 'principalId', currentField: 'id', pageSize: 100 },
+        fields: { telephoneNumberId: {} },
+      },
+      addresses: {
+        label: 'Addresses',
+        icon: 'geo-alt',
+        entityKey: 'sys-principal-addresses',
+        sourceKey: 'addresses',
+        layout: 'panel-list',
+        source: { kind: 'entity-query', filterField: 'principalId', currentField: 'id', pageSize: 100 },
+        fields: { addressId: {} },
+      },
     },
   },
 };
@@ -541,14 +724,12 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
         content: [
           { kind: 'field', field: 'provider' },
           { kind: 'field', field: 'enabled' },
-          {
-            kind: 'field',
-            field: 'callbackPath',
-            // Layout is metadata-driven: providers without a visible Tenant
-            // field let Callback path consume the complete row.
-            span: { expression: "provider.option.tenant != null ? 6 : 12" },
-          },
-          { kind: 'field', field: 'tenant' },
+          // Callback path shares its row with provider-specific Tenant when that
+          // field exists; otherwise it consumes the full row. Grid-span remains
+          // evaluator-backed metadata so the generic renderer/component has no
+          // provider-specific layout branch.
+          { kind: 'field', field: 'callbackPath', span: { expression: "provider.option.tenant != null ? 6 : 12" } },
+          { kind: 'field', field: 'tenant', span: 6 },
           {
             kind: 'component',
             span: 12,
@@ -613,9 +794,9 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
       // Callback path is provider/application managed canonically; Tenant is
       // currently fixed by provider definitions and is presentation-readonly.
       tenant: {
-        visible: { expression: "provider.option.tenant != null" },
+        visible: { expression: 'provider.option.tenant != null' },
         editable: false,
-        helpText: 'Provider-defined tenant value; administrators cannot override it.',
+        helpText: "Provider-defined tenant value. Hidden when the selected provider does not define a tenant.",
       },
 
       /*

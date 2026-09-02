@@ -1005,8 +1005,14 @@ body.manatos-busy {
  * Universal entry-field change language. The baseline comparison is reversible
  * and CTX-driven, so direct edits and evaluator-calculated writes look alike.
  */
-.metadata-driven-record-form .metadata-field-changed .metadata-field-change-marker {
-  color: var(--bs-primary-text-emphasis);
+.metadata-driven-record-form .metadata-field-required-marker {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.metadata-driven-record-form .metadata-field-changed > .form-label,
+.metadata-driven-record-form .metadata-collection-field.metadata-field-changed .form-label,
+.metadata-driven-record-form [data-collection-scalar-label].metadata-field-changed {
   font-weight: 700;
 }
 
@@ -1018,4 +1024,74 @@ body.manatos-busy {
   .metadata-duration-part input
 ) {
   font-weight: 700;
+}
+
+
+/* Shared split-Save dropdown keeps the primary action's visual language. */
+.metadata-save-dropdown-menu {
+  --bs-dropdown-bg: var(--bs-primary);
+  --bs-dropdown-border-color: var(--bs-primary);
+  --bs-dropdown-link-color: #fff;
+  --bs-dropdown-link-hover-color: #fff;
+  --bs-dropdown-link-hover-bg: color-mix(in srgb, var(--bs-primary) 82%, #000);
+  --bs-dropdown-link-active-color: #fff;
+  --bs-dropdown-link-active-bg: color-mix(in srgb, var(--bs-primary) 72%, #000);
+}
+.metadata-save-dropdown-menu .dropdown-item:disabled { color: rgba(255, 255, 255, .65); }
+
+/* Collection editor items use the same changed-value language as entity fields. */
+.metadata-collection-field.metadata-field-changed :is(.form-control, .form-select, [data-collection-select-label]) {
+  font-weight: 700;
+}
+
+
+/* Generic compact/expanded state for reusable related-contact collections. */
+.metadata-collection-title-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.metadata-collection-title-toggle:hover:not(:disabled) > span,
+.metadata-collection-title-toggle:focus-visible:not(:disabled) > span {
+  text-decoration: underline dotted;
+  text-underline-offset: .18rem;
+}
+.metadata-collection-title-toggle:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 3px; border-radius: .15rem; }
+.metadata-collection-title-toggle:disabled { cursor: default; opacity: 1; }
+.metadata-collection-title-toggle:disabled .metadata-collection-title-chevron { opacity: .35; }
+.metadata-collection-title-chevron { font-size: .68rem; opacity: .62; transition: transform .12s ease-in-out; }
+.metadata-collection-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .4rem;
+  min-width: 0;
+  line-height: 1.45;
+}
+.metadata-collection-summary-item {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+  max-width: 100%;
+  padding: .16rem .42rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .28rem;
+  background: rgba(var(--bs-secondary-rgb), .045);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+button.metadata-collection-summary-item { cursor: pointer; }
+button.metadata-collection-summary-item:hover,
+button.metadata-collection-summary-item:focus-visible {
+  border-color: rgba(var(--bs-primary-rgb), .45);
+  background: rgba(var(--bs-primary-rgb), .08);
+  outline: 0;
 }

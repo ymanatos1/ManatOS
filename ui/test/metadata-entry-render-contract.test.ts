@@ -24,4 +24,20 @@ describe('metadata-driven entry render contract', () => {
       /include\(['\"]field-components\/form-field['\"],\s*\{\s*\.\.\.fieldComponentContext/,
     );
   });
+  it('keeps the split Debugging panel data contract in sync with its partial', async () => {
+    const source = await readFile(entryTemplatePath, 'utf8');
+    const panel = await readFile(
+      resolve(testDirectory, '../views/pages/metadata-driven/ui-components/debugging-panel.ejs'),
+      'utf8',
+    );
+
+    expect(source).toContain('const entityDebuggingDisplayRows = buildDebuggingDisplayRows(');
+    expect(source).toContain('const uiDebuggingDisplayRows = buildDebuggingDisplayRows(');
+    expect(source).toContain(
+      "include('ui-components/debugging-panel', { entityDebuggingDisplayRows, uiDebuggingDisplayRows, debugElementNameParts, debuggingEntityKey: definition.key, debuggingCsrfToken: csrfToken })",
+    );
+    expect(panel).toContain('rows: entityDebuggingDisplayRows || []');
+    expect(panel).toContain('rows: uiDebuggingDisplayRows || []');
+  });
+
 });

@@ -409,5 +409,5 @@ it('keeps dataOriginal/dataCurrent entry values directly on the child entry page
     id: 'p2', name: 'Our Admin', principalType: 'Person', parentId: 'p1',
   });
   expect(ctx.page?.page?.dataCurrent).toEqual(ctx.page?.page?.dataOriginal);
-  expect(ctx.page?.page?.state).toEqual({ dirty: false, valid: true, saving: false, deleting: false });
+  expect(ctx.page?.page?.state).toEqual({ dirty: false, valid: true, internalEditing: false, internalEditorCount: 0, saving: false, deleting: false });
 });

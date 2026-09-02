@@ -6,7 +6,7 @@ REM  ManatOS Documentation Archiver
 REM
 REM  Creates one documentation.zip containing:
 REM    - README.md
-REM    - DEVELOPMENT.md
+REM    - docs/Development.md
 REM    - docs folder and all of its contents
 REM    - postman folder and all of its contents
 REM ============================================================
@@ -89,8 +89,8 @@ if not exist "README.md" (
     call :Finish 1 "README.md could not be found."
 )
 
-if not exist "DEVELOPMENT.md" (
-    call :Finish 1 "DEVELOPMENT.md could not be found."
+if not exist "docs/Development.md" (
+    call :Finish 1 "docs/Development.md could not be found."
 )
 
 if not exist "docs\" (
@@ -121,7 +121,7 @@ echo ------------------------------------------------------------
 
 "%SEVENZIP%" a -tzip "documentation.zip" ^
     "README.md" ^
-    "DEVELOPMENT.md" ^
+    "docs/Development.md" ^
     "docs\*" ^
     "postman\*"
 

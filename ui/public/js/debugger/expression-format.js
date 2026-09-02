@@ -94,7 +94,7 @@
         continue;
       }
 
-      const operatorMatch = source.slice(index).match(/^(===|!==|==|!=|<=|>=|&&|\|\||\?\?|=>|\+\+|--|\+|-|\*|\/|%|<|>|!|\?|:|=)/);
+      const operatorMatch = source.slice(index).match(/^(>>>|<<|>>|===|!==|==|!=|<=|>=|&&|\|\||\?\?|=>|\+\+|--|\+|-|\*|\/|%|&|\||\^|~|<|>|!|\?|:|=)/);
       if (operatorMatch) {
         emit(operatorMatch[0], 'operator');
         index += operatorMatch[0].length;

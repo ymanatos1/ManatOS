@@ -488,6 +488,7 @@
   const backButton = document.getElementById('ctxDebugBack');
   const forwardButton = document.getElementById('ctxDebugForward');
   const watchButton = document.getElementById('ctxDebugWatch');
+  const cliButton = document.getElementById('ctxDebugCli');
   const selectionElement = document.getElementById('ctxDebugSelection');
   const statsElement = document.getElementById('ctxDebugStats');
 
@@ -562,6 +563,10 @@
       selectionElement.textContent = nodeNameFromPath(state.selected);
       selectionElement.title = state.selected;
     }
+    if (cliButton) {
+      cliButton.title = `Open CLI at ${state.selected}`;
+      cliButton.setAttribute('aria-label', `Open CLI at ${state.selected}`);
+    }
     if (watchButton) {
       const isDerived = state.selected.endsWith('()') || state.selected.endsWith('.__source');
       watchButton.disabled = isDerived;
@@ -607,6 +612,20 @@
     saveState();
     render({ revealSelection: true });
   };
+
+  cliButton?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('manatos:debug-cli-toggle', {
+      detail: { instanceKey: 'ctx-viewer', path: state.selected },
+    }));
+  });
+
+  window.addEventListener('manatos:debug-cli-state', (event) => {
+    if (!(event instanceof CustomEvent) || event.detail?.instanceKey !== 'ctx-viewer' || !cliButton) return;
+    const open = event.detail?.open === true;
+    cliButton.classList.toggle('is-active', open);
+    cliButton.setAttribute('aria-pressed', String(open));
+    cliButton.title = open ? 'CTX CLI is open; click to hide or retarget from another node' : `Open CLI at ${state.selected}`;
+  });
 
   window.addEventListener('manatos:ctx-viewer-select', (event) => {
     const requestedPath = event instanceof CustomEvent ? event.detail?.path : null;

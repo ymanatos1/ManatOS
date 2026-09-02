@@ -1,0 +1,13 @@
+<%
+  const effectiveValue = String(value ?? '');
+%>
+<div class="input-group metadata-field-input" data-enhanced-field-input data-field-component="telephone">
+  <button class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Telephone field tools" aria-label="Telephone field tools for <%= fieldLabel(field) %>">
+    <i class="bi bi-telephone" aria-hidden="true"></i>
+  </button>
+  <input class="form-control" id="metadata-field-<%= key %>" name="<%= key %>" data-field-control data-ctx-field="<%= key %>" type="tel" autocomplete="tel" value="<%= effectiveValue %>" placeholder="+30 694 438 6714" <%= field.required ? 'required' : '' %> <% if (field.maxLength !== undefined) { %>maxlength="<%= field.maxLength %>"<% } %> <%= editable ? '' : 'readonly' %>>
+  <%- include('field-tools-menu', { key, editable, ctxBound: true, actions: [
+    { action: 'trim', icon: 'text-indent-left', label: 'Trim spaces' },
+    { action: 'clear', icon: 'eraser', label: 'Clear value' },
+  ] }) %>
+</div>

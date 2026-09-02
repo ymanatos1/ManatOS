@@ -172,6 +172,8 @@ export enum SysBOUserPrincipalRelationship {
  */
 export interface SysBOUser extends SysBOEntity {
   email: string;
+  /** Optional single canonical international telephone number (for example +306944386714). */
+  telephoneNumber?: string;
   emailVerified: boolean;
 
   /** When and how the current email address became verified. */
@@ -224,6 +226,57 @@ export interface SysBOPrincipal extends SysBOEntity {
   rootPrincipalId?: string | null;
 
   description?: string;
+}
+
+/** Canonical reusable email address. */
+export interface SysEmailAddress extends SysBOEntity {
+  address: string;
+}
+
+/** Many-to-many Principal <-> EmailAddress association. */
+export interface SysPrincipalEmailAddress extends SysBOEntity {
+  principalId: string;
+  emailAddressId: string;
+}
+
+/** Canonical reusable telephone number with an explicit international country code. */
+export interface SysTelephoneNumber extends SysBOEntity {
+  /** E.164-style calling code, including the leading plus sign (for example +30). */
+  countryCode: string;
+
+  /** Subscriber/national number as entered for presentation. */
+  number: string;
+
+  /** Canonical normalized full number, materialized for lookup/uniqueness. */
+  fullNumber: string;
+}
+
+/** Many-to-many Principal <-> TelephoneNumber association. */
+export interface SysPrincipalTelephoneNumber extends SysBOEntity {
+  principalId: string;
+  telephoneNumberId: string;
+}
+
+/** Canonical reusable postal/street address. */
+export interface SysAddress extends SysBOEntity {
+  recipientOrAttention?: string;
+  organization?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  addressLine3?: string;
+  poBox?: string;
+  postalCode?: string;
+  city: string;
+  stateOrProvince?: string;
+  country: string;
+  /** Canonical calculated compact presentation used by contact lists. */
+  formattedAddress: string;
+}
+
+/** Many-to-many Principal <-> Address association. */
+export interface SysPrincipalAddress extends SysBOEntity {
+  principalId: string;
+  addressId: string;
 }
 
 /**

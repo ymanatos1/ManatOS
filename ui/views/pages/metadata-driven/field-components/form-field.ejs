@@ -30,7 +30,7 @@
     <% } %>
     <%= !derivedInitiallyVisible ? 'hidden' : '' %>
   >
-    <label class="form-label" for="metadata-field-<%= key %>" data-metadata-field-label="<%= key %>"><%= overrides[key]?.label || derived.label %>:<span class="metadata-field-change-marker" data-field-change-marker hidden> (*)</span></label>
+    <label class="form-label" for="metadata-field-<%= key %>" data-metadata-field-label="<%= key %>"><%= overrides[key]?.label || derived.label %>:<% if (field?.required) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
     <%- include('calculated-field', {
       key,
       field,
@@ -52,10 +52,20 @@
     <% const editableExpression = expressionText(overrides[key]?.editable); %>
     <% const compiledOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
     <% const calculation = field.calculation; %>
+    <% const normalization = field.normalize; %>
+    <% const compiledNormalization = compiledEntityMetadata?.fieldDefinition?.[key]?.normalize; %>
     <% const compiledCalculation = compiledEntityMetadata?.fieldDefinition?.[key]?.calculation; %>
     <div
       class="col-md-<%= span || 6 %>"
       data-ctx-field-container="<%= key %>"
+      <% if (typeof spanExpression !== 'undefined' && spanExpression && typeof spanAst !== 'undefined' && spanAst) { %>
+        data-ui-grid-span-ast="<%= JSON.stringify(spanAst) %>"
+        data-ui-grid-span-fallback="<%= span || 6 %>"
+      <% } %>
+      <% if (normalization?.expression) { %>
+        data-field-normalize-expression="<%= normalization.expression %>"
+        data-field-normalize-ast="<%= JSON.stringify(compiledNormalization?.ast ?? null) %>"
+      <% } %>
       <% if (calculation?.expression) { %>
         data-field-calculation-expression="<%= calculation.expression %>"
         data-field-calculation-ast="<%= JSON.stringify(compiledCalculation?.ast ?? null) %>"
@@ -75,7 +85,7 @@
       <% } %>
       <%= !fieldVisible(field) ? 'hidden' : '' %>
     >
-      <label class="form-label" for="metadata-field-<%= key %>" data-metadata-field-label="<%= key %>"><%= fieldLabel(field) %>:<span class="metadata-field-change-marker" data-field-change-marker hidden> (*)</span></label>
+      <label class="form-label" for="metadata-field-<%= key %>" data-metadata-field-label="<%= key %>"><%= fieldLabel(field) %>:<% if (field.required) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
       <%- include('entity-field', { key, field, value, editable, fieldLabel, enumItemsFor, referenceValues, referenceEntityIcons, dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue }) %>
       <% if (overrides[key]?.helpText) { %>
         <div class="form-text"><%= overrides[key].helpText %></div>

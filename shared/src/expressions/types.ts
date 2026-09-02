@@ -30,6 +30,8 @@ export type ExpressionBinaryOperator =
   | '+' | '-' | '*' | '/' | '%' | '**'
   | '==' | '!=' | '===' | '!=='
   | '<' | '<=' | '>' | '>='
+  | '<<' | '>>' | '>>>'
+  | '&' | '^' | '|'
   | '&&' | '||'
   | '??';
 export interface ExpressionBinaryOperationNode {
@@ -39,7 +41,7 @@ export interface ExpressionBinaryOperationNode {
   right: ExpressionNode;
 }
 
-export type ExpressionUnaryOperator = '+' | '-' | '!';
+export type ExpressionUnaryOperator = '+' | '-' | '!' | '~';
 export interface ExpressionUnaryOperationNode {
   kind: 'unary';
   operator: ExpressionUnaryOperator;
@@ -116,6 +118,7 @@ export type ExpressionEvaluationSource =
   | 'renderer'
   | 'ctx-debugger'
   | 'calculated-field'
+  | 'field-normalization'
   | 'ctx-change'
   | 'ui-metadata'
   | 'test'

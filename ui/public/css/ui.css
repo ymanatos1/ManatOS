@@ -1711,15 +1711,11 @@ body.anonymous .workspace {
   border: 0;
 }
 
-.metadata-hierarchy-view-chart .metadata-hierarchy-children::before {
-  content: '';
-  position: absolute;
-  top: .75rem;
-  left: 1rem;
-  right: 1rem;
-  border-top: 1px solid var(--bs-border-color);
-}
-
+/*
+ * Chart connectors are drawn from child-center to child-center rather than as
+ * one full-width rule on the children container. This prevents the horizontal
+ * branch from overshooting the first/last child while still spanning flex gaps.
+ */
 .metadata-hierarchy-view-chart .metadata-hierarchy-node > .metadata-hierarchy-children::after {
   content: '';
   position: absolute;
@@ -1730,6 +1726,23 @@ body.anonymous .workspace {
 }
 
 .metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node::before {
+  content: '';
+  position: absolute;
+  top: -.85rem;
+  left: -.625rem;
+  right: -.625rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node:first-child::before {
+  left: 50%;
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node:last-child::before {
+  right: 50%;
+}
+
+.metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node::after {
   content: '';
   position: absolute;
   top: -.85rem;

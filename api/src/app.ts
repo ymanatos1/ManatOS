@@ -6,12 +6,19 @@ import {
   SysBOUserRole,
   sysBOApplicationsMetadata,
   sysBOExtAuthProvidersMetadata,
+  sysBOEmailAddressesMetadata,
+  sysBOPrincipalEmailAddressesMetadata,
+  sysBOTelephoneNumbersMetadata,
+  sysBOPrincipalTelephoneNumbersMetadata,
+  sysBOAddressesMetadata,
+  sysBOPrincipalAddressesMetadata,
   sysBOLicensesMetadata,
   sysBOPrincipalsMetadata,
   sysBOUsersMetadata,
 } from '@manatos/shared';
 
 import { createSysBORouter } from './http/sysbo-router.js';
+import { GenericSysBOService } from './services/generic-sysbo-service.js';
 import { API_IMPLEMENTATION_VERSION, API_VERSION } from './version.js';
 
 import { createInternalRouter } from './http/internal-router.js';
@@ -206,6 +213,8 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
 
             email: String(body.email ?? ''),
 
+            ...(body.telephoneNumber ? { telephoneNumber: String(body.telephoneNumber) } : {}),
+
             ...(body.password
               ? {
                   password: String(body.password),
@@ -324,6 +333,42 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     const item = await services.configurations.setValue(String(req.params.id ?? ''), req.body?.value == null ? null : String(req.body.value), actor);
     sendCommand(res, 'Configuration updated successfully.', { item });
   });
+
+  app.use(
+    '/api/v1/SysEmailAddresses',
+    requireAuthenticated,
+    createSysBORouter(new GenericSysBOService(_store, _store.sysEmailAddresses, sysBOEmailAddressesMetadata), sysBOEmailAddressesMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysPrincipalEmailAddresses',
+    requireAuthenticated,
+    createSysBORouter(new GenericSysBOService(_store, _store.sysPrincipalEmailAddresses, sysBOPrincipalEmailAddressesMetadata), sysBOPrincipalEmailAddressesMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysTelephoneNumbers',
+    requireAuthenticated,
+    createSysBORouter(new GenericSysBOService(_store, _store.sysTelephoneNumbers, sysBOTelephoneNumbersMetadata), sysBOTelephoneNumbersMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysPrincipalTelephoneNumbers',
+    requireAuthenticated,
+    createSysBORouter(new GenericSysBOService(_store, _store.sysPrincipalTelephoneNumbers, sysBOPrincipalTelephoneNumbersMetadata), sysBOPrincipalTelephoneNumbersMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysAddresses',
+    requireAuthenticated,
+    createSysBORouter(new GenericSysBOService(_store, _store.sysAddresses, sysBOAddressesMetadata), sysBOAddressesMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysPrincipalAddresses',
+    requireAuthenticated,
+    createSysBORouter(new GenericSysBOService(_store, _store.sysPrincipalAddresses, sysBOPrincipalAddressesMetadata), sysBOPrincipalAddressesMetadata, authorization),
+  );
 
   app.use(
     '/api/v1/SysApplications',

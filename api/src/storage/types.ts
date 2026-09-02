@@ -4,6 +4,12 @@ import type {
   SysBOExternalIdentity,
   SysBOExtAuthProvider,
   SysBOLicense,
+  SysEmailAddress,
+  SysPrincipalEmailAddress,
+  SysTelephoneNumber,
+  SysPrincipalTelephoneNumber,
+  SysAddress,
+  SysPrincipalAddress,
   SysBOPrincipal,
   SysBOUser,
   SysBOUserInvitation,
@@ -19,6 +25,13 @@ export interface DatabaseState {
   sysUsers: Map<string, SysBOUser>;
 
   sysPrincipals: Map<string, SysBOPrincipal>;
+
+  sysEmailAddresses: Map<string, SysEmailAddress>;
+  sysPrincipalEmailAddresses: Map<string, SysPrincipalEmailAddress>;
+  sysTelephoneNumbers: Map<string, SysTelephoneNumber>;
+  sysPrincipalTelephoneNumbers: Map<string, SysPrincipalTelephoneNumber>;
+  sysAddresses: Map<string, SysAddress>;
+  sysPrincipalAddresses: Map<string, SysPrincipalAddress>;
 
   sysApplications: Map<string, SysBOApplication>;
 
@@ -64,6 +77,13 @@ export interface PersistedDatabaseState {
 
   sysPrincipals: Record<string, PersistedEntity<SysBOPrincipal>>;
 
+  sysEmailAddresses: Record<string, PersistedEntity<SysEmailAddress>>;
+  sysPrincipalEmailAddresses: Record<string, PersistedEntity<SysPrincipalEmailAddress>>;
+  sysTelephoneNumbers: Record<string, PersistedEntity<SysTelephoneNumber>>;
+  sysPrincipalTelephoneNumbers: Record<string, PersistedEntity<SysPrincipalTelephoneNumber>>;
+  sysAddresses: Record<string, PersistedEntity<SysAddress>>;
+  sysPrincipalAddresses: Record<string, PersistedEntity<SysPrincipalAddress>>;
+
   sysApplications: Record<string, PersistedEntity<SysBOApplication>>;
 
   sysConfigurations: Record<string, PersistedEntity<SysBOConfiguration>>;
@@ -86,6 +106,13 @@ export const emptyDatabaseState = (): DatabaseState => ({
   sysUsers: new Map(),
 
   sysPrincipals: new Map(),
+
+  sysEmailAddresses: new Map(),
+  sysPrincipalEmailAddresses: new Map(),
+  sysTelephoneNumbers: new Map(),
+  sysPrincipalTelephoneNumbers: new Map(),
+  sysAddresses: new Map(),
+  sysPrincipalAddresses: new Map(),
 
   sysApplications: new Map(),
 

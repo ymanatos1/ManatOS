@@ -35,16 +35,17 @@ describe('metadata-driven SysBO UI conventions', () => {
   });
 
 
-  it('keeps the User General tab identity/state first, then Email before a dedicated Description row', () => {
+  it('keeps the User General tab identity/state first, then Email and Telephone before a dedicated Description row', () => {
     const user = allSysBOUIMetadata['sys-users'];
     const general = user.record.tabs.find((tab) => tab.id === 'general');
 
-    expect(general?.fields.slice(0, 4)).toEqual(['name', 'enabled', 'email', 'description']);
+    expect(general?.fields.slice(0, 5)).toEqual(['name', 'enabled', 'email', 'telephoneNumber', 'description']);
     expect(general?.fields.indexOf('description')).toBeLessThan(general?.fields.indexOf('firstName') ?? -1);
-    expect(general?.content?.slice(0, 5)).toEqual([
+    expect(general?.content?.slice(0, 6)).toEqual([
       { kind: 'field', field: 'name', span: 6 },
       { kind: 'field', field: 'enabled', span: 6 },
       { kind: 'field', field: 'email', span: 6 },
+      { kind: 'field', field: 'telephoneNumber', span: 6 },
       { kind: 'break' },
       { kind: 'field', field: 'description', span: 12 },
     ]);

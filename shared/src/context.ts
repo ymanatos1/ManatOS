@@ -297,6 +297,10 @@ export interface ManatOSPageEntryRuntimeContext extends ManatOSPageRuntimeContex
 export interface ManatOSPageStateContext {
   dirty: boolean;
   valid: boolean;
+  /** True while one or more inline/child editors own an uncommitted draft. */
+  internalEditing: boolean;
+  /** Number of active inline/child editors on the page. Useful to diagnostics/UI. */
+  internalEditorCount: number;
   saving: boolean;
   deleting: boolean;
 }

@@ -118,6 +118,15 @@
 
         document.documentElement.dataset.manatosDebugVisible = String(debugVisible);
 
+        /*
+         * The shell-level CTX CLI is developer-shell state, not page state.
+         * Persist it under the same server-boot identity so full navigation and
+         * reloads keep it open, while restarting the UI server resets it.
+         */
+        const debugCliOpen =
+          localStorage.getItem(`manatos.debug.cli.open.ctx-viewer.${bootId}`) === 'true';
+        document.documentElement.dataset.manatosDebugCliOpen = String(debugCliOpen);
+
         if (Number.isFinite(debugState?.debuggerWidth)) {
           document.documentElement.style.setProperty(
             '--manatos-debug-width',
@@ -392,6 +401,15 @@
 
         </div>
 
+        <% if (app.ui?.debugTools) { %>
+          <%- include('../pages/metadata-driven/ui-components/debugging-cli', {
+            instanceKey: 'ctx-viewer',
+            startPath: 'ctx',
+            csrfToken,
+            docked: true,
+          }) %>
+        <% } %>
+
       </section>
 
 
@@ -507,6 +525,7 @@
   <script src="/js/lists.js"></script>
   <script src="/js/busy.js"></script>
   <script src="/js/forms.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/debugger/cli.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/field-components/runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/components/external-provider.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/components/hierarchy-tree.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>

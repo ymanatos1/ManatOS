@@ -1,0 +1,505 @@
+<%
+  const o = component.options || {};
+  const rows = componentData?.relatedData?.[o.sourceKey] || [];
+  const refs = componentData?.relatedReferenceData?.[o.sourceKey]?.[o.targetField] || [];
+  const itemFields = Array.isArray(o.itemFields) ? o.itemFields : [];
+  const structured = itemFields.length > 0;
+
+  const referenceFor = (id) => refs.find((candidate) =>
+    String(candidate?.value ?? candidate?.id ?? '') === String(id ?? '')
+  );
+
+  /*
+   * Persisted relationship rows contain only the target id. Hydrate the editor
+   * from the generic reference projection supplied by the route. Scalar editors
+   * keep their simple value contract; structured editors project only the
+   * metadata-declared item fields from the referenced canonical record.
+   */
+  const ctxCollection = Array.isArray(ctxPage?.dataCurrent?.[o.sourceKey]) ? ctxPage.dataCurrent[o.sourceKey] : null;
+  const initialValues = ctxCollection || rows.map((row) => {
+    const id = row[o.targetField];
+    const reference = referenceFor(id);
+    if (structured) {
+      if (!reference) return null;
+      const projected = Object.fromEntries(itemFields.map((field) => [field.key, String(reference?.[field.key] ?? '')]));
+      if (o.displayField && reference?.[o.displayField] != null) projected.__display = String(reference[o.displayField]);
+      return projected;
+    }
+    return String(reference?.[o.valueField] ?? reference?.label ?? id ?? '');
+  }).filter((value) => value != null && (structured || Boolean(value)));
+
+  const editorId = `collection-editor-${o.sourceKey}`;
+  const collapsible = o.collapsible === true;
+%>
+<section class="metadata-collection-editor" id="<%= editorId %>"
+  data-collection-editor
+  data-entry-child-editor
+  data-child-editor-active="false"
+  data-child-editor-dirty="false"
+  data-field-type="<%= o.fieldType || 'string' %>"
+  data-duplicate-comparison="<%= o.duplicateComparison || 'exact' %>">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <% if (collapsible) { %>
+      <button
+        class="metadata-collection-title-toggle h6 mb-0"
+        type="button"
+        data-collection-collapse-toggle
+        aria-expanded="true"
+        title="Collapse or expand <%= o.label || 'items' %>"
+      >
+        <i class="bi bi-<%= component.icon || o.rowIcon || 'list-ul' %> me-2"></i>
+        <span><%= o.label || 'Items' %></span>
+        <i class="bi bi-chevron-down metadata-collection-title-chevron ms-1" aria-hidden="true"></i>
+      </button>
+    <% } else { %>
+      <h3 class="h6 mb-0"><i class="bi bi-<%= component.icon || o.rowIcon || 'list-ul' %> me-2"></i><%= o.label || 'Items' %></h3>
+    <% } %>
+    <% if (!isViewMode && o.allowAdd !== false) { %>
+      <button class="btn btn-sm btn-outline-primary" type="button" data-collection-add><i class="bi bi-plus-lg me-1"></i>Add</button>
+    <% } %>
+  </div>
+
+  <div class="metadata-collection-summary d-none mb-2" data-collection-summary aria-hidden="true"></div>
+  <div class="list-group mb-2" data-collection-items></div>
+
+  <div class="d-none" data-collection-new>
+    <% if (structured) { %>
+      <div class="row g-2 align-items-end">
+        <% for (const field of itemFields) { %>
+          <div class="col-md-<%= Number(field.inputSpan || 12) %> metadata-collection-field" data-collection-field-container="<%= field.key %>">
+            <label class="form-label small mb-1"><%= field.label || field.key %>:<% if (field.required !== false) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
+            <% if (field.inputType === 'select' && Array.isArray(field.options)) { %>
+              <% const visualOptions = field.options.some((option) => Boolean(option?.flagSrc)); %>
+              <% if (visualOptions) { %>
+                <div class="dropdown metadata-collection-select-picker" data-collection-select-picker>
+                  <button class="form-select form-select-sm text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-collection-select-toggle>
+                    <span data-collection-select-label><%= field.placeholder || 'Choose...' %></span>
+                  </button>
+                  <ul class="dropdown-menu w-100 metadata-collection-select-menu">
+                    <li><button class="dropdown-item" type="button" data-collection-select-option data-value="" data-label="<%= field.placeholder || 'Choose...' %>"><span class="metadata-country-flag-space"></span><%= field.placeholder || 'Choose...' %></button></li>
+                    <% for (const option of field.options) { %>
+                      <% const optionDisplay = String(option.label) === String(option.value) ? String(option.label) : `${option.label} (${option.value})`; %>
+                      <li><button class="dropdown-item" type="button" data-collection-select-option data-value="<%= option.value %>" data-label="<%= optionDisplay %>" data-flag-src="<%= option.flagSrc || '' %>">
+                        <% if (option.flagSrc) { %><img src="<%= option.flagSrc %>" class="metadata-country-flag" alt="" aria-hidden="true"><% } else { %><span class="metadata-country-flag-space"></span><% } %>
+                        <%= optionDisplay %>
+                      </button></li>
+                    <% } %>
+                  </ul>
+                  <input type="hidden" data-collection-item-field="<%= field.key %>" autocomplete="tel-country-code">
+                </div>
+              <% } else { %>
+                <select class="form-select form-select-sm" data-collection-item-field="<%= field.key %>" autocomplete="tel-country-code">
+                  <option value=""><%= field.placeholder || 'Choose...' %></option>
+                  <% for (const option of field.options) { %><option value="<%= option.value %>"><%= String(option.label) === String(option.value) ? option.label : `${option.label} (${option.value})` %></option><% } %>
+                </select>
+              <% } %>
+            <% } else { %>
+              <input class="form-control form-control-sm" type="<%= field.inputType || 'text' %>" placeholder="<%= field.placeholder || '' %>" maxlength="<%= Number(field.maxLength || 254) %>" <% if (field.validation === 'telephone-number') { %>autocomplete="tel-national"<% } %> data-collection-item-field="<%= field.key %>">
+            <% } %>
+          </div>
+        <% } %>
+        <div class="col-12 d-flex gap-2">
+          <button class="btn btn-sm btn-primary" type="button" data-collection-accept>Add</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-collection-cancel>Cancel</button>
+        </div>
+      </div>
+    <% } else { %>
+      <label class="form-label small mb-1" data-collection-scalar-label><%= o.itemLabel || String(o.label || 'Item').replace(/s$/, '') %>:<% if (o.required !== false) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
+      <div class="input-group input-group-sm metadata-collection-field" data-collection-scalar-field>
+        <input class="form-control" type="<%= o.fieldType === 'email' ? 'email' : 'text' %>" maxlength="254" placeholder="Enter <%= String(o.label || 'item').toLowerCase() %>" data-collection-input>
+        <button class="btn btn-primary" type="button" data-collection-accept>Add</button>
+        <button class="btn btn-outline-secondary" type="button" data-collection-cancel>Cancel</button>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="invalid-feedback d-block d-none" data-collection-error></div>
+  <div class="text-muted small d-none" data-collection-empty><%= o.emptyText || 'No items.' %></div>
+  <input type="hidden" name="relatedChanges.<%= o.sourceKey %>" data-collection-payload>
+</section>
+<script>
+(() => {
+  const root = document.getElementById(<%- JSON.stringify(editorId) %>);
+  if (!root || root.dataset.bound === 'true') return;
+  root.dataset.bound = 'true';
+
+  const itemFields = <%- JSON.stringify(itemFields) %>;
+  const identityFields = <%- JSON.stringify(Array.isArray(o.identityFields) ? o.identityFields : []) %>;
+  const structured = itemFields.length > 0;
+  const initial = <%- JSON.stringify(initialValues) %>;
+  let values = structured
+    ? initial.map((value) => ({ ...value }))
+    : [...initial];
+
+  const items = root.querySelector('[data-collection-items]');
+  const summary = root.querySelector('[data-collection-summary]');
+  const collapseToggle = root.querySelector('[data-collection-collapse-toggle]');
+  const empty = root.querySelector('[data-collection-empty]');
+  const box = root.querySelector('[data-collection-new]');
+  const scalarInput = root.querySelector('[data-collection-input]');
+  const structuredInputs = [...root.querySelectorAll('[data-collection-item-field]')];
+  const syncVisualSelect = (input) => {
+    if (!(input instanceof HTMLInputElement) || input.type !== 'hidden') return;
+    const picker = input.closest('[data-collection-select-picker]');
+    const label = picker?.querySelector('[data-collection-select-label]');
+    const option = [...(picker?.querySelectorAll('[data-collection-select-option]') || [])]
+      .find((candidate) => candidate.dataset.value === input.value);
+    if (!label || !option) return;
+    label.textContent = '';
+    const flagSrc = option.dataset.flagSrc;
+    if (flagSrc) {
+      const img = document.createElement('img');
+      img.src = flagSrc; img.alt = ''; img.setAttribute('aria-hidden', 'true'); img.className = 'metadata-country-flag';
+      label.append(img);
+    } else if (input.value) {
+      const spacer = document.createElement('span'); spacer.className = 'metadata-country-flag-space'; label.append(spacer);
+    }
+    label.append(document.createTextNode(option.dataset.label || option.textContent.trim()));
+  };
+  const focusStructuredInput = (input) => {
+    if (input instanceof HTMLInputElement && input.type === 'hidden') {
+      input.closest('[data-collection-select-picker]')?.querySelector('[data-collection-select-toggle]')?.focus();
+      return;
+    }
+    input?.focus();
+  };
+  root.querySelectorAll('[data-collection-select-picker]').forEach((picker) => {
+    const hidden = picker.querySelector('input[type="hidden"][data-collection-item-field]');
+
+    /*
+     * Country/flag options are ordered at presentation time rather than in
+     * canonical metadata. The active UI language comes first, then other
+     * language-supported flagged countries, then the remaining catalogue.
+     */
+    const menu = picker.querySelector('[data-collection-select-menu], .metadata-collection-select-menu');
+    if (menu) {
+      const language = document.documentElement.dataset.uiLanguage || document.documentElement.lang || 'en';
+      const preferredFlag = language === 'el' ? '/assets/flags/el.svg' : '/assets/flags/en.svg';
+      const optionRows = [...menu.querySelectorAll('li')].filter((row) => row.querySelector('[data-collection-select-option][data-value]:not([data-value=""])'));
+      optionRows.sort((left, right) => {
+        const a = left.querySelector('[data-collection-select-option]');
+        const b = right.querySelector('[data-collection-select-option]');
+        const aFlag = a?.dataset.flagSrc || '';
+        const bFlag = b?.dataset.flagSrc || '';
+        const aRank = aFlag === preferredFlag ? 0 : aFlag ? 1 : 2;
+        const bRank = bFlag === preferredFlag ? 0 : bFlag ? 1 : 2;
+        if (aRank !== bRank) return aRank - bRank;
+        return String(a?.dataset.label || '').localeCompare(String(b?.dataset.label || ''));
+      });
+      optionRows.forEach((row) => menu.append(row));
+    }
+
+    picker.querySelectorAll('[data-collection-select-option]').forEach((option) => {
+      option.addEventListener('click', () => {
+        hidden.value = option.dataset.value || '';
+        syncVisualSelect(hidden);
+        hidden.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+    syncVisualSelect(hidden);
+  });
+  const payload = root.querySelector('[data-collection-payload]');
+  const error = root.querySelector('[data-collection-error]');
+  const readOnly = <%= isViewMode ? 'true' : 'false' %>;
+  const rowIcon = <%- JSON.stringify(o.rowIcon || (o.fieldType === 'email' ? 'envelope' : 'list-ul')) %>;
+  const duplicateText = <%- JSON.stringify(o.duplicateText || 'This item is already in the list.') %>;
+  const collapsible = <%= collapsible ? 'true' : 'false' %>;
+  // A fresh entry-page visit starts compact. The state lives only in this DOM
+  // instance, so tab switching preserves it while navigation naturally resets it.
+  let collapsed = collapsible;
+
+  const fieldDefinition = (key) => itemFields.find((field) => field.key === key) || {};
+  const scalarValue = (value) => value && typeof value === 'object' ? String(value[<%- JSON.stringify(o.valueField || 'value') %>] ?? value.label ?? '') : String(value ?? '');
+  const normalizeField = (field, raw) => {
+    const value = String(raw ?? '').trim();
+    switch (field.normalization) {
+      case 'lowercase': return value.toLocaleLowerCase();
+      case 'digits': return value.replace(/\D/g, '');
+      default: return value;
+    }
+  };
+
+  const scalarNorm = (value) => root.dataset.duplicateComparison === 'case-insensitive'
+    ? String(value).trim().toLocaleLowerCase()
+    : String(value).trim();
+
+  const identity = (value) => {
+    if (!structured) return scalarNorm(scalarValue(value));
+    const keys = identityFields.length ? identityFields : itemFields.map((field) => field.key);
+    return keys.map((key) => normalizeField(fieldDefinition(key), value?.[key])).join('\u001f');
+  };
+
+  const validateStructuredField = (field, raw) => {
+    const value = String(raw ?? '').trim();
+    if (!value) return field.required === false ? null : `${field.label || field.key} is required.`;
+    if (field.validation === 'country-code' && !/^\+\d{1,4}$/.test(value)) {
+      return field.invalidText || 'Enter a valid country code, for example +30.';
+    }
+    if (field.validation === 'telephone-number') {
+      const digits = value.replace(/\D/g, '');
+      if (digits.length < 3 || digits.length > 15) {
+        return field.invalidText || 'Enter a valid telephone number.';
+      }
+    }
+    return null;
+  };
+
+  const displayValue = (value) => structured
+    ? String(value?.[<%- JSON.stringify(o.displayField || '') %>] || value?.__display || itemFields.map((field) => String(value?.[field.key] ?? '').trim()).filter(Boolean).join(', '))
+    : scalarValue(value);
+
+  const renderSummary = () => {
+    if (!summary) return;
+    summary.replaceChildren();
+    values.forEach((value, index) => {
+      const item = document.createElement(readOnly ? 'span' : 'button');
+      item.className = 'metadata-collection-summary-item';
+      if (!readOnly) {
+        item.type = 'button';
+        item.title = 'Expand and edit';
+        item.addEventListener('click', () => beginEdit(index));
+      }
+      const icon = document.createElement('i');
+      icon.className = `bi bi-${rowIcon} me-1`;
+      item.append(icon, document.createTextNode(displayValue(value)));
+      summary.append(item);
+    });
+  };
+
+  const setCollapsed = (next) => {
+    if (!collapsible || !collapseToggle) return;
+    // An active inline editor owns unsaved local input. Never collapse it or
+    // reinterpret a title click as Update/Cancel.
+    if (!box.classList.contains('d-none') && next) return;
+    collapsed = Boolean(next);
+    items.classList.toggle('d-none', collapsed);
+    summary?.classList.toggle('d-none', !collapsed);
+    summary?.setAttribute('aria-hidden', String(!collapsed));
+    collapseToggle.setAttribute('aria-expanded', String(!collapsed));
+    collapseToggle.classList.toggle('is-collapsed', collapsed);
+    const chevron = collapseToggle.querySelector('.metadata-collection-title-chevron');
+    chevron?.classList.toggle('bi-chevron-down', !collapsed);
+    chevron?.classList.toggle('bi-chevron-right', collapsed);
+  };
+
+  const setCollapseEnabled = (enabled) => {
+    if (!collapseToggle) return;
+    collapseToggle.disabled = !enabled;
+    collapseToggle.setAttribute('aria-disabled', String(!enabled));
+  };
+
+  const dirty = () => {
+    const payloadValues = structured
+      ? values.map((value) => Object.fromEntries(itemFields.map((field) => [field.key, value?.[field.key] ?? ''])))
+      : values.map((value) => scalarValue(value));
+    payload.value = JSON.stringify({ current: payloadValues });
+    const runtime = window.ManatOS?.ctx;
+    if (runtime?.value?.page && runtime?.replace) {
+      let node = runtime.value.page;
+      let path = 'ctx.page';
+      while (node?.page) { node = node.page; path += '.page'; }
+      runtime.replace(`${path}.dataCurrent.<%= o.sourceKey %>`, values.map((value) => value && typeof value === 'object' ? { ...value } : value), { source: 'collection-editor' });
+    }
+    payload.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  const render = () => {
+    items.innerHTML = '';
+    empty.classList.toggle('d-none', values.length > 0);
+    renderSummary();
+    values.forEach((value, index) => {
+      const row = document.createElement('div');
+      row.className = 'list-group-item d-flex align-items-center justify-content-between gap-2';
+      const text = document.createElement('span');
+      const icon = document.createElement('i');
+      icon.className = `bi bi-${rowIcon} me-2`;
+      text.append(icon, document.createTextNode(displayValue(value)));
+      if (!readOnly) {
+        text.classList.add('metadata-collection-editable-value');
+        text.tabIndex = 0;
+        text.title = 'Edit';
+        text.addEventListener('click', () => beginEdit(index));
+        text.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            beginEdit(index);
+          }
+        });
+      }
+      row.append(text);
+      if (!readOnly) {
+        const actions = document.createElement('div');
+        actions.className = 'd-flex gap-1';
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'btn btn-sm btn-outline-primary';
+        edit.innerHTML = '<i class="bi bi-pencil"></i><span class="visually-hidden">Edit</span>';
+        edit.addEventListener('click', () => beginEdit(index));
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-sm btn-outline-danger';
+        remove.innerHTML = '<i class="bi bi-trash"></i><span class="visually-hidden">Remove</span>';
+        remove.addEventListener('click', () => { values.splice(index, 1); render(); dirty(); });
+        actions.append(edit, remove);
+        row.append(actions);
+      }
+      items.append(row);
+    });
+    setCollapsed(collapsed);
+  };
+
+  let editingIndex = null;
+  let editorBaseline = null;
+
+  const editorFieldValue = (input) => String(input?.value ?? '');
+  const captureEditorBaseline = () => {
+    editorBaseline = structured
+      ? Object.fromEntries(structuredInputs.map((input) => [input.dataset.collectionItemField, editorFieldValue(input)]))
+      : { value: editorFieldValue(scalarInput) };
+  };
+  const updateEditorFieldChanges = () => {
+    if (!editorBaseline) return;
+    if (structured) {
+      structuredInputs.forEach((input) => {
+        const key = input.dataset.collectionItemField;
+        const changed = editorFieldValue(input) !== String(editorBaseline?.[key] ?? '');
+        input.closest('[data-collection-field-container]')?.classList.toggle('metadata-field-changed', changed);
+      });
+    } else if (scalarInput) {
+      const changed = editorFieldValue(scalarInput) !== String(editorBaseline?.value ?? '');
+      root.querySelector('[data-collection-scalar-field]')?.classList.toggle('metadata-field-changed', changed);
+      root.querySelector('[data-collection-scalar-label]')?.classList.toggle('metadata-field-changed', changed);
+    }
+  };
+
+  const editorDraftDirty = () => {
+    if (!editorBaseline || box.classList.contains('d-none')) return false;
+    const current = structured
+      ? Object.fromEntries(structuredInputs.map((input) => [input.dataset.collectionItemField, editorFieldValue(input)]))
+      : { value: editorFieldValue(scalarInput) };
+    return JSON.stringify(current) !== JSON.stringify(editorBaseline);
+  };
+
+  /**
+   * Publish child-editor ownership to the parent entry form. Parent Save is
+   * disabled while any registered child editor is active, regardless of page
+   * dirtiness, because a draft has not yet joined the parent's dataCurrent.
+   */
+  const publishEditorState = () => {
+    const active = !box.classList.contains('d-none');
+    const draftDirty = active && editorDraftDirty();
+    root.dataset.childEditorActive = String(active);
+    root.dataset.childEditorDirty = String(draftDirty);
+    root.dispatchEvent(new CustomEvent('manatos:child-editor-state', {
+      bubbles: true,
+      detail: { active, dirty: draftDirty, sourceKey: <%- JSON.stringify(o.sourceKey) %> },
+    }));
+  };
+
+  const clearEditor = () => {
+    editingIndex = null;
+    editorBaseline = null;
+    root.querySelectorAll('.metadata-field-changed').forEach((element) => element.classList.remove('metadata-field-changed'));
+    const acceptButton = root.querySelector('[data-collection-accept]');
+    if (acceptButton) acceptButton.textContent = 'Add';
+    if (scalarInput) scalarInput.value = '';
+    structuredInputs.forEach((input) => { input.value = ''; syncVisualSelect(input); });
+    error.classList.add('d-none');
+    box.classList.add('d-none');
+    setCollapseEnabled(true);
+    publishEditorState();
+  };
+
+
+  const beginEdit = (index) => {
+    const value = values[index];
+    editingIndex = index;
+    setCollapsed(false);
+    box.classList.remove('d-none');
+    setCollapseEnabled(false);
+    publishEditorState();
+    const acceptButton = root.querySelector('[data-collection-accept]');
+    if (acceptButton) acceptButton.textContent = 'Update';
+    if (structured) {
+      structuredInputs.forEach((input) => { input.value = String(value?.[input.dataset.collectionItemField] ?? ''); syncVisualSelect(input); });
+      captureEditorBaseline();
+      updateEditorFieldChanges();
+      focusStructuredInput(structuredInputs[0]);
+    } else if (scalarInput) {
+      scalarInput.value = scalarValue(value);
+      captureEditorBaseline();
+      updateEditorFieldChanges();
+      scalarInput.focus();
+    }
+  };
+
+  collapseToggle?.addEventListener('click', () => {
+    if (!box.classList.contains('d-none')) return;
+    setCollapsed(!collapsed);
+  });
+
+  root.querySelector('[data-collection-add]')?.addEventListener('click', () => {
+    editingIndex = null;
+    setCollapsed(false);
+    setCollapseEnabled(false);
+    if (scalarInput) scalarInput.value = '';
+    structuredInputs.forEach((input) => { input.value = ''; syncVisualSelect(input); });
+    root.querySelectorAll('.metadata-field-changed').forEach((element) => element.classList.remove('metadata-field-changed'));
+    box.classList.remove('d-none');
+    captureEditorBaseline();
+    publishEditorState();
+    structuredInputs.length ? focusStructuredInput(structuredInputs[0]) : scalarInput?.focus();
+  });
+  root.querySelector('[data-collection-cancel]')?.addEventListener('click', clearEditor);
+
+  const accept = () => {
+    let value;
+    if (structured) {
+      value = Object.fromEntries(structuredInputs.map((input) => [input.dataset.collectionItemField, input.value.trim()]));
+      for (const field of itemFields) {
+        const validationError = validateStructuredField(field, value[field.key]);
+        if (validationError) {
+          error.textContent = validationError;
+          error.classList.remove('d-none');
+          focusStructuredInput(root.querySelector(`[data-collection-item-field="${CSS.escape(field.key)}"]`));
+          return;
+        }
+      }
+    } else {
+      const scalarText = scalarInput.value.trim();
+      value = <%- o.valueField ? `{ ${JSON.stringify(o.valueField)}: scalarText }` : 'scalarText' %>;
+      if (root.dataset.fieldType === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(scalarValue(value))) {
+        error.textContent = 'Enter a valid email address.';
+        error.classList.remove('d-none');
+        return;
+      }
+    }
+
+    if (values.some((existing, index) => index !== editingIndex && identity(existing) === identity(value))) {
+      error.textContent = duplicateText;
+      error.classList.remove('d-none');
+      return;
+    }
+
+    if (editingIndex === null) values.push(value);
+    else values[editingIndex] = value;
+    clearEditor();
+    render();
+    dirty();
+  };
+
+  root.querySelector('[data-collection-accept]')?.addEventListener('click', accept);
+  [...structuredInputs, ...(scalarInput ? [scalarInput] : [])].forEach((input) => {
+    input.addEventListener('input', () => { updateEditorFieldChanges(); publishEditorState(); });
+    input.addEventListener('change', () => { updateEditorFieldChanges(); publishEditorState(); });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); accept(); }
+      if (event.key === 'Escape') { event.preventDefault(); clearEditor(); }
+    });
+  });
+
+  setCollapseEnabled(box.classList.contains('d-none'));
+  render();
+  publishEditorState();
+})();
+</script>

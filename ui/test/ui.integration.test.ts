@@ -82,7 +82,7 @@ describe('UI integration - SysBOUser delete behavior', () => {
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/bo/sys-users');
+    expect(response.headers.location).toBe(`/bo/sys-users/${currentUser.id}`);
     expect(patchSpy).toHaveBeenCalledWith(
       `/api/v1/SysUsers/${currentUser.id}`,
       expect.any(Object),

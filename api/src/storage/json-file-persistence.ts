@@ -31,6 +31,13 @@ export class JsonFilePersistence {
 
         sysPrincipals: fromPersistedRecords(raw.sysPrincipals),
 
+        sysEmailAddresses: fromPersistedRecords(raw.sysEmailAddresses),
+        sysPrincipalEmailAddresses: fromPersistedRecords(raw.sysPrincipalEmailAddresses),
+        sysTelephoneNumbers: fromPersistedRecords(raw.sysTelephoneNumbers),
+        sysPrincipalTelephoneNumbers: fromPersistedRecords(raw.sysPrincipalTelephoneNumbers),
+        sysAddresses: fromPersistedRecords(raw.sysAddresses),
+        sysPrincipalAddresses: fromPersistedRecords(raw.sysPrincipalAddresses),
+
         sysApplications: fromPersistedRecords(raw.sysApplications),
 
         sysConfigurations: fromPersistedRecords(raw.sysConfigurations),
@@ -70,6 +77,13 @@ export class JsonFilePersistence {
       sysUsers: toPersistedRecords(state.sysUsers),
 
       sysPrincipals: toPersistedRecords(state.sysPrincipals),
+
+      sysEmailAddresses: toPersistedRecords(state.sysEmailAddresses),
+      sysPrincipalEmailAddresses: toPersistedRecords(state.sysPrincipalEmailAddresses),
+      sysTelephoneNumbers: toPersistedRecords(state.sysTelephoneNumbers),
+      sysPrincipalTelephoneNumbers: toPersistedRecords(state.sysPrincipalTelephoneNumbers),
+      sysAddresses: toPersistedRecords(state.sysAddresses),
+      sysPrincipalAddresses: toPersistedRecords(state.sysPrincipalAddresses),
 
       sysApplications: toPersistedRecords(state.sysApplications),
 

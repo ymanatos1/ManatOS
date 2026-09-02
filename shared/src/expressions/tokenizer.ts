@@ -104,6 +104,13 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       continue;
     }
 
+    if ((char === '<' || char === '>') && source[index + 1] === char) {
+      const unsignedRightShift = char === '>' && source[index + 2] === '>';
+      tokens.push({kind: 'operator', text: unsignedRightShift ? '>>>' : `${char}${char}`, position: index});
+      index += unsignedRightShift ? 3 : 2;
+      continue;
+    }
+
     if ((char === '=' || char === '!') && source[index + 1] === '=') {
       const strict = source[index + 2] === '=';
       tokens.push({kind: 'operator', text: strict ? `${char}==` : `${char}=`, position: index});
@@ -135,7 +142,7 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       continue;
     }
 
-    if ('+-*/%!'.includes(char)) {
+    if ('+-*/%!~&|^'.includes(char)) {
       tokens.push({kind: 'operator', text: char, position: index});
       index += 1;
       continue;

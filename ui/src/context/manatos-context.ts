@@ -397,7 +397,7 @@ export function pageContextNode(
     mode,
     fields,
     ...runtime,
-    state: { dirty: false, valid: true, saving: false, deleting: false },
+    state: { dirty: false, valid: true, internalEditing: false, internalEditorCount: 0, saving: false, deleting: false },
     page,
   };
 }

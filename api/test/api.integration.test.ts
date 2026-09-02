@@ -530,6 +530,7 @@ describe('API integration - server and generic SysBO behavior', () => {
         'Server',
         'Authentication',
         'System Business Objects',
+        'System Business Objects (Aux)',
         'System Configuration',
         'Public UI',
         'External Authentication',
@@ -542,6 +543,13 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual(['System Business Objects']);
       expect(response.body.paths['/api/v1/SysApplications'].get.tags).toEqual(['System Business Objects']);
       expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual(['System Business Objects']);
+
+      expect(response.body.paths['/api/v1/SysEmailAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
+      expect(response.body.paths['/api/v1/SysPrincipalEmailAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
+      expect(response.body.paths['/api/v1/SysTelephoneNumbers'].get.tags).toEqual(['System Business Objects (Aux)']);
+      expect(response.body.paths['/api/v1/SysPrincipalTelephoneNumbers'].get.tags).toEqual(['System Business Objects (Aux)']);
+      expect(response.body.paths['/api/v1/SysAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
+      expect(response.body.paths['/api/v1/SysPrincipalAddresses'].get.tags).toEqual(['System Business Objects (Aux)']);
 
       expect(response.body.paths['/api/v1/SysConfigurations'].get).toMatchObject({
         tags: ['System Configuration'],

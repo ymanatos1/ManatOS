@@ -4,8 +4,14 @@
 .debug-panel {
   grid-area: debug;
   min-width: 0;
-  height: calc(100vh - var(--top-header-height, 0px));
-  max-height: 100vh;
+  /*
+   * The debugger follows the workspace row height instead of imposing a
+   * viewport-sized minimum on the whole application shell. On short pages it
+   * therefore contracts with the workspace/footer; on tall pages sticky +
+   * max-height keeps the viewer viewport-bounded and its tree scrollable.
+   */
+  height: auto;
+  max-height: calc(100vh - var(--top-header-height, 0px));
   position: sticky;
   top: 0;
   background: #f8fafc;
@@ -638,3 +644,167 @@ html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none 
 
 /* Shared formula syntax palette for calculated-expression properties. */
 .ctx-debug-expression .debug-expression-path { color: var(--manatos-debug-path); }
+
+
+/* Metadata entry Debugging > CLI. */
+.debugging-cli-console { min-height: 14rem; max-height: 28rem; overflow: auto; background: #111827; color: #d1d5db; border-color: #374151 !important; }
+.debugging-cli-console pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.debugging-cli-input-line { display: flex; align-items: center; gap: .45rem; border-top: 1px solid #374151; margin: .5rem -.5rem -.5rem; padding: .5rem; }
+.debugging-cli-prompt { color: #93c5fd; font-weight: 600; white-space: nowrap; }
+.debugging-cli-input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; color: #f9fafb; font: inherit; caret-color: #f9fafb; }
+.debugging-cli-run { border: 0; background: transparent; color: #93c5fd; padding: .1rem .25rem; }
+.debugging-cli-run:hover, .debugging-cli-run:focus { color: #fff; }
+.metadata-collection-editable-value { cursor: pointer; }
+.metadata-collection-editable-value:hover { text-decoration: underline; text-decoration-style: dotted; }
+.metadata-collection-editable-value:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; border-radius: .15rem; }
+.debugging-cli-command { color: #93c5fd; font-weight: 600; }
+.debugging-cli-result { margin-left: 1rem; color: #d1fae5; }
+.debugging-cli-error { margin-left: 1rem; color: var(--bs-danger); }
+
+.metadata-collection-select-menu { max-height: 20rem; overflow-y: auto; }
+.metadata-collection-select-menu .dropdown-item { display: flex; align-items: center; gap: .45rem; }
+.metadata-country-flag, .metadata-country-flag-space { width: 1.15rem; height: .8rem; flex: 0 0 1.15rem; display: inline-block; object-fit: cover; }
+.metadata-country-flag { border: 1px solid rgba(0,0,0,.1); }
+[data-collection-select-label] { display: inline-flex; align-items: center; gap: .45rem; }
+
+/* -------------------------------------------------------------------------
+ * Shared developer CLI component (page Debugging tab + persistent CTX dock)
+ * ---------------------------------------------------------------------- */
+.debugging-cli-console {
+  min-height: 12rem;
+  max-height: 36rem;
+  overflow: auto;
+  background: #111827;
+  color: #d1d5db;
+  border-color: #374151 !important;
+}
+
+.debugging-cli-console pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.debugging-cli-input-line {
+  display: flex;
+  align-items: flex-start;
+  gap: .45rem;
+  border-top: 1px solid #374151;
+  margin: .5rem -.5rem -.5rem;
+  padding: .5rem;
+}
+
+.debugging-cli-prompt-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.debugging-cli-prompt {
+  display: block;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #93c5fd;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+}
+
+.debugging-cli-prompt:hover,
+.debugging-cli-prompt:focus-visible {
+  color: #fff;
+  outline: 0;
+}
+
+.debugging-cli-input {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 1.4em;
+  height: 1.4em;
+  overflow: hidden;
+  resize: none;
+  border: 0;
+  padding: 0;
+  outline: 0;
+  background: transparent;
+  color: #f9fafb;
+  font: inherit;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  caret-color: #f9fafb;
+}
+
+.debugging-cli-history {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + .35rem);
+  left: 0;
+  min-width: min(36rem, 70vw);
+  max-width: min(48rem, 80vw);
+  max-height: 16rem;
+  overflow: auto;
+  border: 1px solid #94a3b8;
+  border-radius: .3rem;
+  background: #e2e8f0;
+  box-shadow: 0 .45rem 1rem rgba(0, 0, 0, .35);
+}
+
+.debugging-cli-history-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, .16);
+  padding: .38rem .55rem;
+  background: #e2e8f0;
+  color: #1e293b;
+  font: inherit;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.debugging-cli-history-item:hover,
+.debugging-cli-history-item:focus {
+  background: #cbd5e1;
+  color: #0f172a;
+  outline: 0;
+}
+
+.debugging-cli-dock {
+  margin: 0 1.5rem 1rem;
+  padding-top: .65rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.debugging-cli-dock-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .4rem;
+  font-size: .82rem;
+}
+
+.debugging-cli-dock .debugging-cli-console {
+  min-height: 12rem;
+  max-height: 36rem;
+}
+
+
+/* Shell-level CTX CLI first-paint restoration. The boot-keyed local state is
+ * applied before JS so a console intentionally kept open does not disappear
+ * during full page navigation and then flash back into view. */
+html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
+  display: block !important;
+}
+
+/* Country-code pickers need enough width for country name + calling code.
+ * The field itself stays compact; only its popup is widened. */
+.metadata-collection-select-picker .metadata-collection-select-menu {
+  width: max(100%, 19rem) !important;
+  min-width: 19rem;
+}

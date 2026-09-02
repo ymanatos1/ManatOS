@@ -1,0 +1,55 @@
+<%
+  /*
+   * Reusable developer CLI component.
+   *
+   * The metadata-entry Debugging tab and the shell-level CTX Viewer console are
+   * deliberately two instances of this one component. Instance identity owns
+   * local command history; startPath owns only the initial evaluation scope.
+   */
+  const cliInstanceKey = typeof instanceKey === 'string' && instanceKey ? instanceKey : 'page';
+  const cliStartPath = typeof startPath === 'string' && startPath ? startPath : 'ctx.page.page';
+  const cliDocked = typeof docked !== 'undefined' && docked === true;
+%>
+<section
+  class="debugging-cli<%= cliDocked ? ' debugging-cli-dock d-none' : '' %>"
+  data-debugging-cli
+  data-cli-instance-key="<%= cliInstanceKey %>"
+  data-cli-start-path="<%= cliStartPath %>"
+  data-cli-csrf="<%= csrfToken %>"
+  <% if (cliDocked) { %>data-cli-persistent-open="true" aria-hidden="true"<% } %>
+>
+  <% if (cliDocked) { %>
+    <div class="debugging-cli-dock-heading">
+      <span><i class="bi bi-terminal me-1" aria-hidden="true"></i>CTX CLI</span>
+      <small class="text-secondary">Persistent developer console</small>
+    </div>
+  <% } else { %>
+    <div class="small text-secondary mb-2">Expression context: <code data-cli-context-label><%= cliStartPath %></code>. Enter <code>.</code> for the current node, <code>..</code> for its parent, or <code>cls</code> to clear the transcript.</div>
+  <% } %>
+
+  <div class="border rounded p-2 font-monospace small debugging-cli-console" data-cli-console aria-live="polite">
+    <div data-cli-transcript></div>
+    <div class="debugging-cli-input-line">
+      <div class="debugging-cli-prompt-wrap">
+        <button
+          class="debugging-cli-prompt"
+          type="button"
+          data-cli-prompt
+          title="Command history"
+          aria-label="Current CTX path; show command history"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+        ><%= cliStartPath %> &gt;</button>
+        <div class="debugging-cli-history d-none" data-cli-history role="listbox" aria-label="CLI command history"></div>
+      </div>
+      <textarea
+        class="debugging-cli-input"
+        rows="1"
+        autocomplete="off"
+        spellcheck="false"
+        data-cli-input
+        aria-label="Debug expression"
+      ></textarea>
+    </div>
+  </div>
+</section>

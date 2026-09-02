@@ -86,10 +86,23 @@ export type SysBOUIDynamicValue<T> = T | Readonly<{ expression: string }>;
  * The component key remains semantic and reusable; it must not encode the
  * owning entity name.
  */
+export type SysBOUIOptionValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly SysBOUIOptionValue[]
+  | Readonly<{ [key: string]: SysBOUIOptionValue }>;
+
 export interface SysBOUIComponentMetadata {
   key: string;
   readOnly?: boolean;
-  options?: Readonly<Record<string, string | number | boolean | null>>;
+  /**
+   * Renderer-neutral JSON-like component options. Nested arrays/objects allow
+   * reusable editors to declare structured items (for example a country code +
+   * telephone number) without creating entity-specific renderer branches.
+   */
+  options?: Readonly<Record<string, SysBOUIOptionValue>>;
   bindings?: Readonly<Record<string, SysBOUIDynamicValue<string | number | boolean | null>>>;
 }
 

@@ -20,6 +20,8 @@
   <%- include('duration-field', { key, field, value, editable, fieldLabel, durationParts, durationSerializedValue }) %>
 <% } else if (field.type === 'version') { %>
   <%- include('version-field', { key, field, value, editable, fieldLabel }) %>
+<% } else if (field.type === 'telephone') { %>
+  <%- include('telephone-field', { key, field, value, editable, fieldLabel }) %>
 <% } else if (field.type === 'string' || field.type === 'email') { %>
   <%- include('text-field', { key, field, value, editable, fieldLabel }) %>
 <% } else if (field.type === 'number') { %>

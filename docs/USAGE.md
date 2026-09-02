@@ -360,3 +360,24 @@ untouched. Safe provider capabilities are consumed from the selected enum
 option/definition (`provider.option.*`), while plaintext secrets never enter
 CTX. Provider-specific literals must not be introduced into generic renderers
 or the compound credential runtime.
+
+## External-provider screen transaction
+
+External-provider credential tools follow the same entry transaction as ordinary metadata-driven fields. `Change credentials` and `Remove credentials` mutate only pending screen/component state. `Test credentials` may perform the external OAuth round trip, but it does not persist the candidate pair; success returns an opaque, short-lived verification proof that is submitted by the ordinary Save action. Save is the sole credential persistence boundary and applies `unchanged`, `replace`, or `remove` atomically from the editor's pending intent.
+
+The plaintext Client secret remains confined to the password control and the short-lived trusted server verification session; it is deliberately not copied into the traversable CTX tree. Safe workflow facts (credential action, verification state/proof handle) are transient screen state and must never be treated as persisted SysBO fields. Provider-specific capabilities remain provider-definition metadata; generic renderer/component code must not branch on Microsoft/Google/Facebook/GitHub identities.
+
+
+## Transactional editable collections
+
+Use the generic `collection-editor` UI component for small metadata-declared child/relationship collections that must participate in the owning entry's Save/Cancel transaction. The component must remain entity-agnostic: item entity, relationship entity, owner/target fields, canonical field type, duplicate comparison and selection behavior are metadata options.
+
+The Principal Contact tab uses this pattern for three canonical contact kinds:
+
+- `SysEmailAddress` + `SysPrincipalEmailAddress`
+- `SysTelephoneNumber` + `SysPrincipalTelephoneNumber`
+- `SysAddress` + `SysPrincipalAddress`
+
+Principal Save performs resolve-or-create plus association synchronization atomically. Removing a contact value from one Principal removes only that association and never deletes a shared canonical value.
+
+Metadata-driven field captions use one universal editing language: labels end with `:`, required fields append `(*)`, and requiredness alone does not bold the marker. A changed field bolds the entire label (including `(*)` when present) and the changed value; reverting to the persisted/current baseline removes that emphasis. Collection editors follow the same convention.

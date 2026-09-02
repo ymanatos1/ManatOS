@@ -236,6 +236,39 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest('!emailVerified', ctx, ctx.page.fields)).toBe(true);
   });
 
+  it('uses JavaScript-like precedence for logical, bitwise, arithmetic, comparison and conditional operators', () => {
+    const ctx = { page: { fields: { enabled: { value: true } } } };
+    const fields = ctx.page.fields;
+
+    expect(evaluateTest('1 | 2 & 4', ctx, fields)).toBe(1);
+    expect(evaluateTest('1 ^ 3 & 1', ctx, fields)).toBe(0);
+    expect(evaluateTest('1 + 2 << 1', ctx, fields)).toBe(6);
+    expect(evaluateTest('8 >> 1 + 1', ctx, fields)).toBe(2);
+    expect(evaluateTest('-1 >>> 1', ctx, fields)).toBe(2147483647);
+    expect(evaluateTest('~0', ctx, fields)).toBe(-1);
+    expect(evaluateTest('1 + 2 > 2 && enabled ? 10 : 20', ctx, fields)).toBe(10);
+
+    const compiled = compileExpression('1 + 2 > 2 ? 10 : 20');
+    expect(compiled.ast).toMatchObject({
+      kind: 'conditional',
+      condition: {
+        kind: 'binary',
+        operator: '>',
+        left: { kind: 'binary', operator: '+' },
+      },
+    });
+  });
+
+  it('keeps bitwise operands numeric while applying JavaScript 32-bit bitwise semantics', () => {
+    const ctx = { page: { fields: {} } };
+    expect(evaluateTest('5 & 3', ctx, ctx.page.fields)).toBe(1);
+    expect(evaluateTest('5 | 2', ctx, ctx.page.fields)).toBe(7);
+    expect(evaluateTest('5 ^ 1', ctx, ctx.page.fields)).toBe(4);
+    expect(evaluateTest('16 << 2', ctx, ctx.page.fields)).toBe(64);
+    expect(evaluateTest('16 >> 2', ctx, ctx.page.fields)).toBe(4);
+    expect(() => evaluateTest("'5' & 3", ctx, ctx.page.fields)).toThrow(/requires numeric operands/i);
+  });
+
   it('parses function calls against the hard-coded registry and evaluates nested arguments', () => {
     const ctx = testCtx();
     expect(evaluateTest('SqRoot(9)', ctx, ctx.page.fields)).toBe(3);
@@ -263,10 +296,32 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest('ctx.page.fields.amount.value * 2', ctx, ctx.page.fields)).toBe(24);
   });
 
-  it('resolves keyed arrays both by zero-based index and semantic member id', () => {
-    const ctx = testCtx();
-    expect(evaluateTest('ctx.company.platforms[0].name', ctx, ctx.page.fields)).toBe('ManatOS CRM Platform');
-    expect(evaluateTest('ctx.company.platforms.mcrm.name', ctx, ctx.page.fields)).toBe('ManatOS CRM Platform');
+  it('resolves arrays both by zero-based index and semantic member id wherever they occur in CTX', () => {
+    const ctx = {
+      ...testCtx(),
+      page: {
+        ...testCtx().page,
+        page: {
+          dataCurrent: {
+            emailAddresses: [
+              { id: 'mail-a', address: 'first@example.com' },
+              { id: 'mail-b', address: 'second@example.com' },
+            ],
+            telephoneNumbers: [
+              { id: 'tel-a', fullNumber: '+301111111111' },
+              { id: 'tel-b', fullNumber: '+302222222222' },
+            ],
+          },
+        },
+      },
+    };
+    const entry = ctx.page.page;
+    expect(evaluateTest('ctx.company.platforms[0].name', ctx, entry)).toBe('ManatOS CRM Platform');
+    expect(evaluateTest('ctx.company.platforms.mcrm.name', ctx, entry)).toBe('ManatOS CRM Platform');
+    expect(evaluateTest('dataCurrent.emailAddresses[1].address', ctx, entry)).toBe('second@example.com');
+    expect(evaluateTest("dataCurrent.emailAddresses['mail-b'].address", ctx, entry)).toBe('second@example.com');
+    expect(evaluateTest('dataCurrent.telephoneNumbers[1].fullNumber', ctx, entry)).toBe('+302222222222');
+    expect(evaluateTest("dataCurrent.telephoneNumbers['tel-b'].fullNumber", ctx, entry)).toBe('+302222222222');
   });
 
   it('evaluates the SysUser Full name expression against camelCase page fields', () => {

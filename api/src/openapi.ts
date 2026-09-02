@@ -149,6 +149,10 @@ export function buildOpenApiSpec() {
         description: 'Metadata-driven system business-object CRUD, UI metadata and entity-specific SysBO commands.',
       },
       {
+        name: 'System Business Objects (Aux)',
+        description: 'Supporting/internal SysBO resources used by primary business objects, including reusable contact values and relationship rows.',
+      },
+      {
         name: 'System Configuration',
         description: 'Admin-only persisted runtime configuration. Sensitive values are never returned as plaintext.',
       },
@@ -238,6 +242,18 @@ export function buildOpenApiSpec() {
 
       '/api/v1/SysPrincipals': genericOperations('Principal', 'System Business Objects'),
 
+      '/api/v1/SysEmailAddresses': genericOperations('Email address', 'System Business Objects (Aux)'),
+
+      '/api/v1/SysPrincipalEmailAddresses': genericOperations('Principal email address', 'System Business Objects (Aux)'),
+
+      '/api/v1/SysTelephoneNumbers': genericOperations('Telephone number', 'System Business Objects (Aux)'),
+
+      '/api/v1/SysPrincipalTelephoneNumbers': genericOperations('Principal telephone number', 'System Business Objects (Aux)'),
+
+      '/api/v1/SysAddresses': genericOperations('Address', 'System Business Objects (Aux)'),
+
+      '/api/v1/SysPrincipalAddresses': genericOperations('Principal address', 'System Business Objects (Aux)'),
+
       '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation('Principal', 'System Business Objects'),
 
       '/api/v1/SysApplications': genericOperations('Application', 'System Business Objects'),
@@ -324,7 +340,7 @@ function verifiedExternalAuthCredentialsOperation() {
   return {
     post: {
       summary: 'Persist an externally tested Client ID + Client secret pair',
-      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used only after the real provider OAuth flow succeeds for credentials that have not yet been persisted.',
+      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used by the ordinary provider Save transaction after a non-persisting OAuth test succeeds. The proof/test state is short-lived; verification itself does not persist the candidate pair.',
       tags: ['Internal External Authentication Workflow'],
       'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -342,7 +358,7 @@ function storedExternalAuthCredentialsOperation() {
   return {
     post: {
       summary: 'Persist an unverified Client ID + Client secret pair securely',
-      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Stores the complete pair encrypted at rest, sets credentialsVerified=false and clears credentialsVerifiedAt. The provider remains unavailable to sign-in until verification succeeds.',
+      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used by the ordinary provider Save transaction when replacing a complete pair without a valid verification proof. Stores the complete pair encrypted at rest, sets credentialsVerified=false and clears credentialsVerifiedAt. The provider remains unavailable to sign-in until verification succeeds.',
       tags: ['External Authentication Credentials'],
       'x-manatos-access': 'Trusted Admin/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -378,7 +394,7 @@ function markStoredExternalAuthCredentialsVerifiedOperation() {
   return {
     post: {
       summary: 'Mark the exact tested stored credential version as verified',
-      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used after OAuth succeeds for an already-stored pair. Client ID and secret update timestamp are checked so a stale test cannot verify credentials replaced by another Admin.',
+      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Legacy/internal support for verification of an already-stored pair; the metadata-driven editor now verifies current screen values and defers persistence to Save. Client ID and secret update timestamp are checked so a stale test cannot verify credentials replaced by another Admin.',
       tags: ['Internal External Authentication Workflow'],
       'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -397,7 +413,7 @@ function removeExternalAuthCredentialsOperation() {
   return {
     delete: {
       summary: 'Remove external-provider credentials and disable provider',
-      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Removes Client ID and encrypted Client Secret, clears verification state and disables the provider atomically.',
+      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Invoked by the ordinary provider Save transaction when the pending credential action is remove. Removes Client ID and encrypted Client Secret, clears verification state and disables the provider atomically.',
       tags: ['External Authentication Credentials'],
       'x-manatos-access': 'Trusted Admin/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],

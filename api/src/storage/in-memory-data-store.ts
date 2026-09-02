@@ -2,6 +2,12 @@ import {
   sysBOApplicationsMetadata,
   sysBOConfigurationsMetadata,
   sysBOExtAuthProvidersMetadata,
+  sysBOEmailAddressesMetadata,
+  sysBOPrincipalEmailAddressesMetadata,
+  sysBOTelephoneNumbersMetadata,
+  sysBOPrincipalTelephoneNumbersMetadata,
+  sysBOAddressesMetadata,
+  sysBOPrincipalAddressesMetadata,
   sysBOLicensesMetadata,
   sysBOPrincipalsMetadata,
   sysBOUsersMetadata,
@@ -9,6 +15,12 @@ import {
   type SysBOConfiguration,
   type SysBOExternalIdentity,
   type SysBOExtAuthProvider,
+  type SysEmailAddress,
+  type SysPrincipalEmailAddress,
+  type SysTelephoneNumber,
+  type SysPrincipalTelephoneNumber,
+  type SysAddress,
+  type SysPrincipalAddress,
   type SysBOLicense,
   type SysBOPrincipal,
   type SysBOUser,
@@ -39,6 +51,13 @@ export class InMemoryDataStore implements StorageAdapter {
   public sysUsers!: InMemoryRepository<SysBOUser>;
 
   public sysPrincipals!: InMemoryRepository<SysBOPrincipal>;
+
+  public sysEmailAddresses!: InMemoryRepository<SysEmailAddress>;
+  public sysPrincipalEmailAddresses!: InMemoryRepository<SysPrincipalEmailAddress>;
+  public sysTelephoneNumbers!: InMemoryRepository<SysTelephoneNumber>;
+  public sysPrincipalTelephoneNumbers!: InMemoryRepository<SysPrincipalTelephoneNumber>;
+  public sysAddresses!: InMemoryRepository<SysAddress>;
+  public sysPrincipalAddresses!: InMemoryRepository<SysPrincipalAddress>;
 
   public sysApplications!: InMemoryRepository<SysBOApplication>;
 
@@ -96,6 +115,12 @@ export class InMemoryDataStore implements StorageAdapter {
       switch (objectKey) {
         case 'sys-users': return this.state.sysUsers;
         case 'sys-principals': return this.state.sysPrincipals;
+        case 'sys-email-addresses': return this.state.sysEmailAddresses;
+        case 'sys-principal-email-addresses': return this.state.sysPrincipalEmailAddresses;
+        case 'sys-telephone-numbers': return this.state.sysTelephoneNumbers;
+        case 'sys-principal-telephone-numbers': return this.state.sysPrincipalTelephoneNumbers;
+        case 'sys-addresses': return this.state.sysAddresses;
+        case 'sys-principal-addresses': return this.state.sysPrincipalAddresses;
         case 'sys-applications': return this.state.sysApplications;
         case 'sys-configurations': return this.state.sysConfigurations;
         case 'sys-licenses': return this.state.sysLicenses;
@@ -150,6 +175,12 @@ export class InMemoryDataStore implements StorageAdapter {
        */
       restoreMap(this.state.sysUsers, snapshot.sysUsers);
       restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
+      restoreMap(this.state.sysEmailAddresses, snapshot.sysEmailAddresses);
+      restoreMap(this.state.sysPrincipalEmailAddresses, snapshot.sysPrincipalEmailAddresses);
+      restoreMap(this.state.sysTelephoneNumbers, snapshot.sysTelephoneNumbers);
+      restoreMap(this.state.sysPrincipalTelephoneNumbers, snapshot.sysPrincipalTelephoneNumbers);
+      restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
+      restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
       restoreMap(this.state.sysApplications, snapshot.sysApplications);
       restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
       restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
@@ -228,6 +259,12 @@ export class InMemoryDataStore implements StorageAdapter {
     this.sysUsers = new InMemoryRepository(this.state.sysUsers, sysBOUsersMetadata);
 
     this.sysPrincipals = new InMemoryRepository(this.state.sysPrincipals, sysBOPrincipalsMetadata);
+    this.sysEmailAddresses = new InMemoryRepository(this.state.sysEmailAddresses, sysBOEmailAddressesMetadata);
+    this.sysPrincipalEmailAddresses = new InMemoryRepository(this.state.sysPrincipalEmailAddresses, sysBOPrincipalEmailAddressesMetadata);
+    this.sysTelephoneNumbers = new InMemoryRepository(this.state.sysTelephoneNumbers, sysBOTelephoneNumbersMetadata);
+    this.sysPrincipalTelephoneNumbers = new InMemoryRepository(this.state.sysPrincipalTelephoneNumbers, sysBOPrincipalTelephoneNumbersMetadata);
+    this.sysAddresses = new InMemoryRepository(this.state.sysAddresses, sysBOAddressesMetadata);
+    this.sysPrincipalAddresses = new InMemoryRepository(this.state.sysPrincipalAddresses, sysBOPrincipalAddressesMetadata);
 
     this.sysApplications = new InMemoryRepository(
       this.state.sysApplications,

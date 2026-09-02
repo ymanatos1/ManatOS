@@ -47,9 +47,10 @@
       "enabled": true,
       "createdAt": "2026-08-30T05:43:29.131Z",
       "createdBy": "InternalApi",
-      "updatedAt": "2026-08-30T09:38:47.736Z",
-      "updatedBy": "YiannisManatos",
-      "description": "hey"
+      "updatedAt": "2026-09-01T21:29:08.925Z",
+      "updatedBy": "Admin",
+      "description": "hey",
+      "telephoneNumber": "+309344550"
     }
   },
   "sysPrincipals": {
@@ -84,9 +85,10 @@
       "parentId": "37d5a118-9568-4577-84fb-5b3a4706168a",
       "createdAt": "2026-08-30T12:10:41.692Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-08-30T23:28:33.541Z",
+      "updatedAt": "2026-09-02T02:25:42.894Z",
       "updatedBy": "Admin",
-      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad",
+      "description": "fdfff"
     },
     "37d5a118-9568-4577-84fb-5b3a4706168a": {
       "name": "ManatOS Guests Group",
@@ -121,6 +123,206 @@
       "updatedAt": "2026-09-01T05:36:21.470Z",
       "updatedBy": "Admin",
       "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+    }
+  },
+  "sysEmailAddresses": {
+    "1a451aab-b5d3-4c6f-a32d-a71039554c85": {
+      "name": "yiannis@manatos.gr",
+      "address": "yiannis@manatos.gr",
+      "enabled": true,
+      "createdAt": "2026-09-01T10:44:31.154Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T10:44:31.154Z",
+      "updatedBy": "Admin"
+    },
+    "77e1e5cc-5ae3-4264-9378-d246eaaa819b": {
+      "name": "yiannis@manatos.online",
+      "address": "yiannis@manatos.online",
+      "enabled": true,
+      "createdAt": "2026-09-01T10:44:31.154Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T10:44:31.154Z",
+      "updatedBy": "Admin"
+    },
+    "2b8f7232-c605-4c66-94b3-50f4c7d6a576": {
+      "name": "yiannis@manatos.eu",
+      "address": "yiannis@manatos.eu",
+      "enabled": true,
+      "createdAt": "2026-09-01T22:24:25.628Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T22:24:25.628Z",
+      "updatedBy": "Admin"
+    }
+  },
+  "sysPrincipalEmailAddresses": {
+    "2f32e971-566f-4f44-a7ea-90e7317ab899": {
+      "name": "00ca6124-5764-420c-830c-ff288dd1faea:2b8f7232-c605-4c66-94b3-50f4c7d6a576",
+      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea",
+      "emailAddressId": "2b8f7232-c605-4c66-94b3-50f4c7d6a576",
+      "enabled": true,
+      "createdAt": "2026-09-01T22:24:25.628Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T22:24:25.628Z",
+      "updatedBy": "Admin"
+    },
+    "17c73971-7213-4847-8751-cae16d1d8d3e": {
+      "name": "00ca6124-5764-420c-830c-ff288dd1faea:1a451aab-b5d3-4c6f-a32d-a71039554c85",
+      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea",
+      "emailAddressId": "1a451aab-b5d3-4c6f-a32d-a71039554c85",
+      "enabled": true,
+      "createdAt": "2026-09-01T22:58:16.512Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T22:58:16.512Z",
+      "updatedBy": "Admin"
+    }
+  },
+  "sysTelephoneNumbers": {
+    "982bd2d4-f41c-4b16-985f-7bc5b1655b9d": {
+      "name": "+306944386714",
+      "countryCode": "+30",
+      "number": "6944386714",
+      "enabled": true,
+      "createdAt": "2026-09-01T19:26:33.936Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T21:35:17.009Z",
+      "updatedBy": "Admin",
+      "fullNumber": "+306944386714"
+    },
+    "a8c05f93-9dab-425b-bb7a-aa65729805f2": {
+      "name": "+309344550",
+      "countryCode": "+30",
+      "number": "9344550",
+      "enabled": true,
+      "createdAt": "2026-09-01T19:26:33.936Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T21:35:17.009Z",
+      "updatedBy": "Admin",
+      "fullNumber": "+309344550"
+    },
+    "f2061b28-c986-4e0b-84fb-52101ae0be95": {
+      "name": "+3578830559",
+      "countryCode": "+357",
+      "number": "8830559",
+      "fullNumber": "+3578830559",
+      "enabled": true,
+      "createdAt": "2026-09-01T21:35:17.009Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T21:35:17.009Z",
+      "updatedBy": "Admin"
+    },
+    "3241af9b-ff57-4499-8353-6e329ae5aac9": {
+      "name": "+307344550",
+      "countryCode": "+30",
+      "number": "7344550",
+      "fullNumber": "+307344550",
+      "enabled": true,
+      "createdAt": "2026-09-01T22:24:25.629Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T22:24:25.629Z",
+      "updatedBy": "Admin"
+    }
+  },
+  "sysPrincipalTelephoneNumbers": {
+    "cf4534c4-fff3-4906-9872-78dd9d489292": {
+      "name": "00ca6124-5764-420c-830c-ff288dd1faea:982bd2d4-f41c-4b16-985f-7bc5b1655b9d",
+      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea",
+      "telephoneNumberId": "982bd2d4-f41c-4b16-985f-7bc5b1655b9d",
+      "enabled": true,
+      "createdAt": "2026-09-01T19:26:33.936Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T19:26:33.936Z",
+      "updatedBy": "Admin"
+    },
+    "a2bb0fa9-f1ad-4e45-88fc-b2c9432a2a50": {
+      "name": "00ca6124-5764-420c-830c-ff288dd1faea:f2061b28-c986-4e0b-84fb-52101ae0be95",
+      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea",
+      "telephoneNumberId": "f2061b28-c986-4e0b-84fb-52101ae0be95",
+      "enabled": true,
+      "createdAt": "2026-09-01T21:35:17.009Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T21:35:17.009Z",
+      "updatedBy": "Admin"
+    },
+    "9a4e30ae-c565-4d56-b2cf-ee0ae707bd2f": {
+      "name": "00ca6124-5764-420c-830c-ff288dd1faea:3241af9b-ff57-4499-8353-6e329ae5aac9",
+      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea",
+      "telephoneNumberId": "3241af9b-ff57-4499-8353-6e329ae5aac9",
+      "enabled": true,
+      "createdAt": "2026-09-01T22:24:25.629Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-01T22:24:25.629Z",
+      "updatedBy": "Admin"
+    }
+  },
+  "sysAddresses": {
+    "d31a9928-6455-4e22-8e61-d408463ebf38": {
+      "name": "mr.\u001f\u001f43 ipeirou str.\u001f3rd\u001f\u001f\u001f10439\u001fathens\u001f\u001fgreece",
+      "recipientOrAttention": "Mr.",
+      "organization": "",
+      "addressLine1": "43 Ipeirou Str.",
+      "addressLine2": "3rd",
+      "addressLine3": "",
+      "poBox": "",
+      "postalCode": "10439",
+      "city": "Athens",
+      "stateOrProvince": "",
+      "country": "Greece",
+      "formattedAddress": "Mr., 43 Ipeirou Str., 3rd, 10439, Athens, Greece",
+      "enabled": true,
+      "createdAt": "2026-09-02T01:09:17.202Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-02T01:09:17.202Z",
+      "updatedBy": "Admin"
+    },
+    "0659e5ee-a906-4dbc-b40e-af2e796ded0a": {
+      "name": "mr.\u001f\u001f43 ipeirou str.\u001f3rd\u001f\u001f\u001f10439\u001fathens\u001fattica\u001fgreece",
+      "recipientOrAttention": "Mr.",
+      "organization": "",
+      "addressLine1": "43 Ipeirou Str.",
+      "addressLine2": "3rd",
+      "addressLine3": "",
+      "poBox": "",
+      "postalCode": "10439",
+      "city": "Athens",
+      "stateOrProvince": "Attica",
+      "country": "Greece",
+      "formattedAddress": "Mr., 43 Ipeirou Str., 3rd, 10439, Athens, Attica, Greece",
+      "enabled": true,
+      "createdAt": "2026-09-02T01:11:23.087Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-02T01:11:23.087Z",
+      "updatedBy": "Admin"
+    },
+    "d72e43d7-8c29-4dec-b9ce-bec1fd6e7cbf": {
+      "name": "\u001f\u001f43 ipeirou str.\u001f3rd\u001f\u001f\u001f10439\u001fathens\u001fattica\u001fgreece",
+      "recipientOrAttention": "",
+      "organization": "",
+      "addressLine1": "43 Ipeirou Str.",
+      "addressLine2": "3rd",
+      "addressLine3": "",
+      "poBox": "",
+      "postalCode": "10439",
+      "city": "Athens",
+      "stateOrProvince": "Attica",
+      "country": "Greece",
+      "formattedAddress": "43 Ipeirou Str., 3rd, 10439, Athens, Attica, Greece",
+      "enabled": true,
+      "createdAt": "2026-09-02T02:09:46.111Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-02T02:09:46.111Z",
+      "updatedBy": "Admin"
+    }
+  },
+  "sysPrincipalAddresses": {
+    "f23541f6-fb6d-4005-a2cb-5f108a64d395": {
+      "name": "00ca6124-5764-420c-830c-ff288dd1faea:d72e43d7-8c29-4dec-b9ce-bec1fd6e7cbf",
+      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea",
+      "addressId": "d72e43d7-8c29-4dec-b9ce-bec1fd6e7cbf",
+      "enabled": true,
+      "createdAt": "2026-09-02T02:09:46.112Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-02T02:09:46.112Z",
+      "updatedBy": "Admin"
     }
   },
   "sysApplications": {
@@ -569,65 +771,65 @@
     }
   },
   "sysExtAuthProviders": {
-    "0f3b9411-1351-41e2-bb70-73aa452b6bdf": {
+    "e5bd5ab4-33e2-457a-9dda-719ba85da50c": {
       "name": "microsoft",
       "provider": "microsoft",
       "enabled": true,
       "clientId": "4bdce497-1ceb-4e80-9da9-65c3b6ac6eff",
-      "clientSecretEncrypted": "v1:v1:YbLkTaGlWjcUtaZp:3Y6/qpCzzejeyrz4xKqi7A==:3g1dwMAKvg3+jSmrrCOUxhLBjCxPeC4poGJhP7iqVPzlHGUpZmPjWw==",
-      "secretUpdatedAt": "2026-09-01T05:58:29.868Z",
+      "clientSecretEncrypted": "v1:v1:sNzEolPzY4bKu1Qb:EEFr/zVSQ3zpEtzfKBHo3w==:DMwTn1snh/vj/TEi76C4s5on4IkqzLLSIaYS4XNwlyY3F3C9l2uTNw==",
+      "secretUpdatedAt": "2026-09-01T09:05:38.757Z",
       "credentialsVerified": true,
-      "credentialsVerifiedAt": "2026-09-01T05:58:29.868Z",
+      "credentialsVerifiedAt": "2026-09-01T09:05:38.757Z",
       "callbackPath": "/auth/microsoft/callback",
       "tenant": "common",
-      "createdAt": "2026-09-01T05:58:29.869Z",
+      "createdAt": "2026-09-01T08:43:47.541Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T05:58:29.869Z",
+      "updatedAt": "2026-09-01T09:05:38.759Z",
       "updatedBy": "Admin"
     },
-    "8e5f216c-f746-44a0-b1ae-1151980b88e1": {
+    "8c9f6b70-e947-4c6c-9e17-056b2af8d6c3": {
       "name": "google",
       "provider": "google",
       "enabled": true,
       "clientId": "1033930343776-mhjhqdq3r5lccr843mcbuot7c34c7sdf.apps.googleusercontent.com",
-      "clientSecretEncrypted": "v1:v1:I7X5FThJMHINV/Xo:iI0Q21KNFLmTGe3IOvbS8w==:gfCvdQqZIMbi77csiAmpz8lUvDXD/Pxy4Ftop1O8wuzXp7M=",
-      "secretUpdatedAt": "2026-09-01T07:36:44.205Z",
+      "clientSecretEncrypted": "v1:v1:3231JMjY7Jr+ykoq:XakXabJtmWQ5OL5deda/iA==:odByin0BtRyfkNpmsCH1g4fo/Z6Y3KTssSmhwyUP/0ABP0I=",
+      "secretUpdatedAt": "2026-09-01T08:45:54.827Z",
       "credentialsVerified": true,
-      "credentialsVerifiedAt": "2026-09-01T07:36:44.205Z",
+      "credentialsVerifiedAt": "2026-09-01T08:45:54.827Z",
       "callbackPath": "/auth/google/callback",
-      "createdAt": "2026-09-01T06:01:47.758Z",
+      "createdAt": "2026-09-01T08:45:54.828Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T07:36:51.019Z",
+      "updatedAt": "2026-09-01T08:45:54.828Z",
       "updatedBy": "Admin"
     },
-    "d3c737af-8503-45b2-b8e4-66031aee98de": {
+    "4e7f97ea-744c-457e-919d-979c9c85b98a": {
       "name": "facebook",
       "provider": "facebook",
       "enabled": true,
       "clientId": "1056989580528954",
-      "clientSecretEncrypted": "v1:v1:q5lVKpr7Of6SkEFJ:neWzzR2jgKf1ZDijdmA5WQ==:PL9m2dIFurf8QPor3IoWm1+Ha4VESZK6+kgZ3Z989DY=",
-      "secretUpdatedAt": "2026-09-01T06:44:22.247Z",
+      "clientSecretEncrypted": "v1:v1:Yn3AaixNsdNs4/66:I9emTHqFlGBbiiSEMasrgQ==:WFCctZbfGtCc7owDdDvY8pNK3EcTK1mNtqWYH+nYb8E=",
+      "secretUpdatedAt": "2026-09-01T08:49:30.539Z",
       "credentialsVerified": false,
       "credentialsVerifiedAt": null,
       "callbackPath": "/auth/facebook/callback",
-      "createdAt": "2026-09-01T06:44:22.248Z",
+      "createdAt": "2026-09-01T08:49:30.540Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T06:44:22.248Z",
+      "updatedAt": "2026-09-01T08:49:30.540Z",
       "updatedBy": "Admin"
     },
-    "d8546109-664a-4801-852a-0d8a789b7167": {
+    "1dd38d05-d272-4722-b9ea-e4ecb93e222a": {
       "name": "github",
       "provider": "github",
       "enabled": true,
       "clientId": "Ov23lih8R9McBbOBJPlr",
-      "clientSecretEncrypted": "v1:v1:IuWv/86iFFRu7aNn:43KM0M0tURYiB2TvtlMAvQ==:FhRq7p5/qDGn0s6Ca5DFj3zrupOsBw+RJn+DR9JjcrHcTEFwYHitiQ==",
-      "secretUpdatedAt": "2026-09-01T06:49:50.883Z",
+      "clientSecretEncrypted": "v1:v1:LVyhZK8Nz6G1+XMw:QjXrTTG00gpFRltWa7RM8A==:pJBi96aIrvNXbx7dk74RV4rko5uZIOAWDCHPPOyX8o7UwIfgq4YM1A==",
+      "secretUpdatedAt": "2026-09-01T08:54:33.071Z",
       "credentialsVerified": true,
-      "credentialsVerifiedAt": "2026-09-01T06:49:50.883Z",
+      "credentialsVerifiedAt": "2026-09-01T08:54:33.071Z",
       "callbackPath": "/auth/github/callback",
-      "createdAt": "2026-09-01T06:49:50.883Z",
+      "createdAt": "2026-09-01T08:54:33.071Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T06:49:50.883Z",
+      "updatedAt": "2026-09-01T08:54:33.071Z",
       "updatedBy": "Admin"
     }
   },

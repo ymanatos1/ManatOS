@@ -1,9 +1,9 @@
 /**
  * External-auth provider compound UI component.
  *
- * This file owns the provider credential workflow while the generic metadata
- * renderer only resolves the component key. Provider capabilities/defaults are
- * consumed from metadata definitions rather than provider-name branches.
+ * This file owns provider-specific credential workflow behaviour while the
+ * generic metadata renderer only resolves the component key. Provider-specific
+ * behavior remains encapsulated here while page structure stays declarative.
  */
 /** External-auth provider editor: provider defaults, credential lifecycle and help content. */
 (() => {
@@ -14,7 +14,7 @@
   const callback = form.querySelector('#metadata-field-callbackPath');
   const tenant = form.querySelector('[data-ctx-field-container="tenant"]');
   const tenantSelect = form.querySelector('#metadata-field-tenant');
-    const providerIcon = form.querySelector('[data-provider-icon] i, [data-metadata-enum-toggle] [data-enum-selected-icon]');
+  const providerIcon = form.querySelector('[data-provider-icon] i, [data-metadata-enum-toggle] [data-enum-selected-icon]');
   const enabled = form.querySelector('#metadata-field-enabled');
   const clientId = form?.querySelector('[data-provider-client-id]');
   const clientSecret = form?.querySelector('[data-provider-client-secret]');
@@ -23,9 +23,10 @@
   const changeCredentials = form?.querySelector('[data-provider-change-credentials]');
   const testCredentials = form?.querySelector('[data-provider-test-credentials]');
   const credentialState = form?.querySelector('[data-provider-credential-test-state]');
-  const pendingCredentialSave = form?.querySelector('[data-provider-pending-credential-save]');
   const verificationIndicator = form?.querySelector('[data-provider-credentials-verified-indicator]');
-  const credentialMutation = form?.querySelector('[data-provider-credential-mutation]');
+  const credentialAction = form?.querySelector('[data-provider-credential-action]');
+  const verificationProof = form?.querySelector('[data-provider-verification-proof]');
+  const removeCredentials = form?.querySelector('[data-provider-remove-credentials]');
 
   if (!(provider instanceof HTMLSelectElement) || !(callback instanceof HTMLInputElement)) return;
 
@@ -55,6 +56,9 @@
   ].filter(([, value]) => value));
   const allowedProviders = new Set(metadataDefinitions.map((definition) => String(definition.provider || '')));
   const createMode = form.dataset.recordMode === 'create';
+  const CREDENTIAL_TEST_POLL_MS = 750;
+  const CREDENTIAL_TEST_SETTLE_POLL_MS = 250;
+  const POPUP_CLOSE_SETTLEMENT_MS = 5000;
 
   // The API already filters provider definitions for a create page to the
   // providers that do not yet have a configuration record. Mirror that source
@@ -140,7 +144,8 @@
       testCredentials.dataset.providerTestStored = 'false';
     }
     if (credentialState instanceof HTMLInputElement) credentialState.value = 'required';
-    if (pendingCredentialSave instanceof HTMLInputElement) pendingCredentialSave.value = 'false';
+    if (credentialAction instanceof HTMLInputElement) credentialAction.value = 'replace';
+    if (verificationProof instanceof HTMLInputElement) verificationProof.value = '';
     setVerificationIndicator(false);
     updateTestButton();
     notifyFormState();
@@ -148,8 +153,32 @@
   };
 
   changeCredentials?.addEventListener('click', beginCredentialChange);
-  clientId?.addEventListener('input', () => { if (credentialMutation instanceof HTMLInputElement) credentialMutation.value = 'true'; updateTestButton(); });
-  clientSecret?.addEventListener('input', () => { if (credentialMutation instanceof HTMLInputElement) credentialMutation.value = 'true'; updateTestButton(); });
+  const invalidateProof = () => {
+    if (credentialAction instanceof HTMLInputElement) credentialAction.value = 'replace';
+    if (verificationProof instanceof HTMLInputElement) verificationProof.value = '';
+    if (credentialState instanceof HTMLInputElement) credentialState.value = 'required';
+    setVerificationIndicator(false);
+    updateTestButton();
+    notifyFormState();
+  };
+  clientId?.addEventListener('input', invalidateProof);
+  clientSecret?.addEventListener('input', invalidateProof);
+
+  removeCredentials?.addEventListener('click', () => {
+    if (!(credentialAction instanceof HTMLInputElement)) return;
+    credentialAction.value = 'remove';
+    if (verificationProof instanceof HTMLInputElement) verificationProof.value = '';
+    if (clientId instanceof HTMLInputElement) { clientId.value = ''; clientId.readOnly = false; clientId.required = false; }
+    if (clientSecret instanceof HTMLInputElement) { clientSecret.value = ''; clientSecret.disabled = false; clientSecret.required = false; }
+    if (enabled instanceof HTMLInputElement) { enabled.checked = false; enabled.dispatchEvent(new Event('change', { bubbles: true })); }
+    if (secretEditor instanceof HTMLElement) secretEditor.hidden = false;
+    if (secretDisplay instanceof HTMLElement) secretDisplay.hidden = true;
+    if (changeCredentials instanceof HTMLElement) changeCredentials.hidden = true;
+    if (testCredentials instanceof HTMLButtonElement) { testCredentials.hidden = false; testCredentials.disabled = true; }
+    if (credentialState instanceof HTMLInputElement) credentialState.value = 'required';
+    setVerificationIndicator(false);
+    notifyFormState();
+  });
 
   /*
    * Provider credential testing uses a dedicated OAuth popup for the provider
@@ -167,7 +196,6 @@
     ) return;
 
     const feedback = form.querySelector('[data-provider-credential-test-feedback]');
-    const testStoredCredentials = testCredentials.dataset.providerTestStored === 'true';
     const providerLabel = () => provider.options[provider.selectedIndex]?.text || provider.value || 'Provider';
     const noReturnMessage = () => providerLabel() + ' did not return a credential-test result to ManatOS. Check the provider window for an error, confirm the provider application is active and available to this account, then retry. Your values were not changed.';
     const showFeedback = (message, success = false) => {
@@ -178,7 +206,8 @@
       feedback.hidden = false;
     };
 
-    if (!testStoredCredentials && (!clientId.value.trim() || !clientSecret.value.trim())) {
+    const testStoredPair = testCredentials.dataset.providerTestStored === 'true';
+    if (!testStoredPair && (!clientId.value.trim() || !clientSecret.value.trim())) {
       showFeedback('Enter both Client ID and Client secret before testing.');
       return;
     }
@@ -203,21 +232,25 @@
     testWindow.document.body.innerHTML = '<p style="font-family:sans-serif;padding:1.5rem">Preparing secure provider credential test…</p>';
 
     const body = new URLSearchParams(new FormData(form));
-    if (!testStoredCredentials) {
+    body.set('provider', provider.value);
+    if (testStoredPair) {
+      body.set('useStoredCredentials', 'true');
+    } else {
       body.set('clientId', clientId.value.trim());
       body.set('clientSecret', clientSecret.value);
-    } else {
-      body.delete('clientId');
-      body.delete('clientSecret');
     }
-    body.set('provider', provider.value);
     if (enabled instanceof HTMLInputElement) body.set('enabled', enabled.checked ? 'true' : 'false');
 
     let pollTimer = null;
     let completed = false;
+    let popupClosedAt = null;
+    let providerReturnObserved = false;
+    let providerReturnHandler = null;
+
     const finishWaiting = () => {
       completed = true;
       if (pollTimer) window.clearTimeout(pollTimer);
+      if (providerReturnHandler) window.removeEventListener('message', providerReturnHandler);
       window.manatosBusy?.hide();
     };
 
@@ -306,23 +339,15 @@
               showFeedback(statusPayload.message, verified);
 
               if (verified) {
-                // Update the visible state immediately as well as after the
-                // authoritative server refresh. This avoids a stale "No"
-                // badge while the verified pending state is being rendered.
                 setVerificationIndicator(true);
                 if (credentialState instanceof HTMLInputElement) credentialState.value = 'verified';
-                if (pendingCredentialSave instanceof HTMLInputElement) pendingCredentialSave.value = 'true';
-                if (credentialMutation instanceof HTMLInputElement) credentialMutation.value = 'true';
 
-                // Verified credentials live only in the server-side pending
-                // test state, so refresh the editor to render them locked and
-                // ready to save. Failed credentials stay on the current page
-                // so the Admin can correct the still-local input values.
-                window.manatosAllowDirtyPageExit?.();
-                const url = new URL(window.location.href);
-                url.searchParams.set('credentialsTest', 'verified');
-                url.searchParams.set('tab', 'secrets');
-                window.setTimeout(() => window.location.replace(url.toString()), 180);
+                // The successful test is a non-persistent screen fact. The opaque
+                // proof is submitted by the ordinary Save transaction; no page
+                // reload and no datastore mutation occurs here.
+                if (verificationProof instanceof HTMLInputElement) verificationProof.value = statusPayload.verificationProofId || payload.testId;
+                if (credentialAction instanceof HTMLInputElement) credentialAction.value = 'replace';
+                notifyFormState();
               } else {
                 updateTestButton();
               }
@@ -334,14 +359,42 @@
         }
 
         if (testWindow.closed) {
-          // One final server check has just completed. If still pending, the Admin closed the provider window.
-          finishWaiting();
-          showFeedback(noReturnMessage());
-          updateTestButton();
+          // Popup lifetime is not the verification result. Some providers close
+          // their OAuth window immediately before the callback/session result is
+          // observable by this polling request. Keep polling for a short generic
+          // settlement window before declaring that the provider returned no result.
+          popupClosedAt ??= Date.now();
+          const settlementElapsed = Date.now() - popupClosedAt;
+          if (settlementElapsed >= POPUP_CLOSE_SETTLEMENT_MS) {
+            finishWaiting();
+            showFeedback(providerReturnObserved
+              ? providerLabel() + ' returned from its authentication window, but ManatOS did not receive the final credential-test state in time. Retry the test; your values were not changed.'
+              : noReturnMessage());
+            updateTestButton();
+            return;
+          }
+
+          pollTimer = window.setTimeout(pollStatus, CREDENTIAL_TEST_SETTLE_POLL_MS);
           return;
         }
-        pollTimer = window.setTimeout(pollStatus, 750);
+
+        popupClosedAt = null;
+        pollTimer = window.setTimeout(pollStatus, CREDENTIAL_TEST_POLL_MS);
       };
+
+      // postMessage is only a wake-up hint. The same-session status endpoint
+      // remains authoritative, but a provider callback can ask us to poll again
+      // immediately instead of waiting for the next normal polling interval.
+      providerReturnHandler = (event) => {
+        if (event.origin !== window.location.origin) return;
+        const result = event.data;
+        if (!result || result.type !== 'manatos:provider-credential-test-result') return;
+        providerReturnObserved = true;
+        if (completed) return;
+        if (pollTimer) window.clearTimeout(pollTimer);
+        pollTimer = window.setTimeout(pollStatus, 0);
+      };
+      window.addEventListener('message', providerReturnHandler);
 
       pollTimer = window.setTimeout(pollStatus, 400);
       window.setTimeout(() => {
@@ -359,12 +412,6 @@
     }
   });
 
-  window.addEventListener('message', (event) => {
-    if (event.origin !== window.location.origin) return;
-    const result = event.data;
-    if (!result || result.type !== 'manatos:provider-credential-test-result') return;
-    // Fast-path only. Polling remains authoritative.
-  });
   const apply = () => {
     const key = provider.value;
     const nextCallback = defaults[key] || callback.value;

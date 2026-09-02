@@ -6,15 +6,74 @@ Current scalar literals are `string`, `number`, `boolean`, and `null`. Runtime s
 
 ## Operators
 
-- `+`: numeric addition when both operands are numbers. If either operand is a string, the other supported scalar is converted with `String(...)` and concatenated. Arrays/objects are intentionally rejected until their semantics are explicitly defined.
-- `-`, `*`, `/`, `%`, `**`: numeric only for now.
+ManatOS uses JavaScript-like precedence for the supported operator subset. Parentheses remain recommended whenever a business rule would otherwise be difficult to scan. Unlike JavaScript, ManatOS deliberately keeps numeric operators type-safe: arithmetic and bitwise operators require numeric operands rather than silently coercing strings/booleans.
+
+From higher to lower binding strength (with `**` above the prefix operators in the same relationship used by JavaScript):
+
+1. `**`
+2. prefix `!`, `~`, unary `+`, unary `-`
+3. `*`, `/`, `%`
+4. `+`, `-`
+5. `<<`, `>>`, `>>>`
+6. `<`, `<=`, `>`, `>=`
+7. `==`, `!=`, `===`, `!==`
+8. `&`
+9. `^`
+10. `|`
+11. `&&`
+12. `??`
+13. `||`
+14. `condition ? whenTrue : whenFalse`
+
+Supported semantics:
+
+- `+`: numeric addition when both operands are numbers. If either operand is a string, the other supported scalar is converted with `String(...)` and concatenated. Arrays/objects are intentionally rejected.
+- `-`, `*`, `/`, `%`, `**`: numeric only.
+- `!`: scalar logical NOT.
+- `&&`, `||`: lazy scalar logical operators; the right operand is evaluated only when required.
+- `??`: lazy nullish coalescing.
+- `&`, `|`, `^`: numeric bitwise AND/OR/XOR using JavaScript-compatible 32-bit integer results.
+- `~`: numeric 32-bit bitwise NOT.
+- `<<`, `>>`, `>>>`: numeric 32-bit left, signed-right, and unsigned-right shifts. Shift counts use the JavaScript 0-31 range.
 - `==`, `!=`: JavaScript-like coercive scalar equality.
 - `===`, `!==`: strict JavaScript/TypeScript equality.
 - `<`, `<=`, `>`, `>=`: JavaScript-like scalar relational comparison; valid `Date` values compare by timestamp.
-- `??`: lazy nullish coalescing.
-- `condition ? a : b`: lazy ternary conditional; the condition must currently resolve to boolean.
+- `condition ? a : b`: lazy ternary conditional. The condition must resolve to boolean in the canonical server evaluator.
 
-Future candidates intentionally reserved for deliberate design include `contains`, `in`, optional/safe navigation (`?.`), date/date-time/time arithmetic, and structured array/object operations.
+Examples:
+
+```text
+!enabled
+enabled && user.fields.role.value === 'Admin'
+flags & 4
+flags | 2
+flags ^ 1
+~mask
+value << 2
+value >>> 1
+1 + 2 > 2 ? 10 : 20
+```
+
+### CTX array addressing
+
+Every CTX array remains a normal ordered array and supports zero-based numeric indexing wherever it occurs:
+
+```text
+dataCurrent.emailAddresses[0]
+dataCurrent.emailAddresses[1].address
+dataCurrent.telephoneNumbers[1].fullNumber
+```
+
+When members expose a stable `id` or `key`, the same array also supports semantic keyed lookup without duplicating it into a second object:
+
+```text
+dataCurrent.emailAddresses['2b8f7232-c605-4c66-94b3-50f4c7d6a576'].address
+dataCurrent.telephoneNumbers['<telephone-number-id>'].fullNumber
+```
+
+Numeric indexing is positional; semantic lookup is stable across reordering. Both syntaxes use the same generic CTX resolver.
+
+Future candidates intentionally reserved for deliberate design include `contains`, `in`, optional/safe navigation (`?.`), richer date/time arithmetic, and general structured array/object operators.
 
 ## Registered functions
 

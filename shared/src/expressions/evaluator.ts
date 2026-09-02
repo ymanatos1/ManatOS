@@ -109,6 +109,14 @@ function numberOperand(value: unknown, operator: string): number {
   return value;
 }
 
+function bitwiseOperand(value: unknown, operator: string): number {
+  const numeric = numberOperand(value, operator);
+  // JavaScript bitwise operators operate on 32-bit integers. Keep ManatOS'
+  // existing numeric-only type discipline while using the same 32-bit result
+  // semantics once an operand has been accepted.
+  return numeric | 0;
+}
+
 function isDate(value: unknown): value is Date {
   return value instanceof Date && !Number.isNaN(value.getTime());
 }
@@ -202,6 +210,7 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
     case 'unary': {
       const raw = evaluateNode(node.operand, state);
       if (node.operator === '!') return !scalarTruthy(raw, '!');
+      if (node.operator === '~') return ~bitwiseOperand(raw, '~');
       const value = numberOperand(raw, `unary ${node.operator}`);
       return node.operator === '-' ? -value : value;
     }
@@ -247,6 +256,14 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
         case '<=': return relational(left, right, '<=');
         case '>': return relational(left, right, '>');
         case '>=': return relational(left, right, '>=');
+        case '<<': return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
+        case '>>': return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
+        case '>>>': return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
+        case '&': return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
+        case '^': return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
+        case '|': return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
+        default:
+          throw new ExpressionEvaluationError(`Unsupported binary operator: ${String(node.operator)}.`);
       }
     }
 

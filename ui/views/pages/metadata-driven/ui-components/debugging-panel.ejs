@@ -5,6 +5,7 @@
    * separate without teaching this generic component any SysBO-specific paths.
    */
   const debuggingSections = [
+    { id: 'cli', label: 'CLI', rows: [] },
     { id: 'entity', label: 'Entity', rows: entityDebuggingDisplayRows || [] },
     { id: 'ui', label: 'UI', rows: uiDebuggingDisplayRows || [] },
   ];
@@ -38,6 +39,9 @@
       aria-labelledby="debugging-<%= section.id %>-tab"
       tabindex="0"
     >
+      <% if (section.id === 'cli') { %>
+        <%- include('debugging-cli', { instanceKey: 'page', startPath: (typeof debuggingStartPath !== 'undefined' && debuggingStartPath) ? debuggingStartPath : 'ctx.page.page', csrfToken: debuggingCsrfToken, docked: false }) %>
+      <% } else { %>
       <div class="table-responsive debugging-calculations-wrap">
         <table class="table table-sm align-middle mb-0 debugging-calculations-table">
           <thead>
@@ -115,6 +119,7 @@
           </tbody>
         </table>
       </div>
+      <% } %>
     </div>
   <% } %>
 </div>

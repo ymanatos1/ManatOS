@@ -16,10 +16,8 @@ describe('Account developer debugging presentation', () => {
     expect(source).toContain('id="account-debugging-tab"');
     expect(source).toContain('id="account-debugging-pane"');
     expect(source).toContain('data-readonly-tab="true"');
-    expect(source).toContain('Calculation formula');
-    expect(source).toContain('data-debug-expression');
-    expect(source).toContain('ENTITY FIELDS');
-    expect(source).toContain('FIELD VALUES');
-    expect(source).toContain('DECLARED FIELDS');
+    expect(source).toContain("include('metadata-driven/ui-components/debugging-panel'");
+    expect(source).toContain("debuggingStartPath: 'ctx.user'");
+    expect(source).toContain('accountDebuggingDisplayRows');
   });
 });

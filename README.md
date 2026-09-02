@@ -42,13 +42,12 @@ Before committing significant changes, run `npm run verify`. It builds all three
 ```text
 Project/
 ├── README.md
-├── DEVELOPMENT.md
 ├── shared/                 common BO/domain/error/operation contracts
 ├── api/                    Express 5 REST API
 ├── ui/                     Express 5 + EJS website
 ├── data/database.json      demo business persistence
 ├── postman/                API collection/environment
-├── docs/                   focused technical documentation
+├── docs/                   focused technical/developer documentation
 ├── scripts/                initialization/reset helpers
 └── deploy/                 reverse-proxy example
 ```
@@ -142,7 +141,7 @@ Local sign-in accepts **email or user-name + password**. External-provider sign-
 
 The UI contains no SMTP credentials. Its email gateway delegates verification, password-reset and password-change delivery to trusted internal API endpoints. The API supports real SMTP delivery through Nodemailer when mail configuration is enabled.
 
-The **Forgot or set password** flow uses one-time hashed transient tokens, keeps only the newest outstanding reset token usable per user, and deliberately returns a privacy-neutral public response to avoid account enumeration. Detailed flow/storage semantics are documented in `docs/authentication-flows.md`.
+The **Forgot or set password** flow uses one-time hashed transient tokens, keeps only the newest outstanding reset token usable per user, and deliberately returns a privacy-neutral public response to avoid account enumeration. Detailed flow/storage semantics are documented in `docs/Authentication-Flows.md`.
 
 ## API authentication sessions
 
@@ -268,12 +267,14 @@ Future SQL/database adapters can replace the current implementation without chan
 
 ## Documentation
 
-- [Developer Guide](DEVELOPMENT.md)
+- [Developer Guide](docs/Development.md)
+- [Expression Engine](docs/Expressions.md)
+- [Relationship Metadata](docs/Relationships.md)
 - [Architecture](docs/Architecture.md)
 - [Runtime Configuration](docs/Configuration.md)
 - [Storage](docs/Storage.md)
 - [Authentication](docs/Authentication.md)
-- [Authentication Flows](docs/authentication-flows.md)
+- [Authentication Flows](docs/Authentication-Flows.md)
 - [UI Architecture](docs/UI.md)
 - [Error Handling](docs/Error-Handling.md)
 - [Testing](docs/Testing.md)
@@ -293,4 +294,15 @@ This is a baseline rather than a completed production system. In particular:
 
 ### API presentation groups
 
-Swagger, Postman and the technical documentation use a consistent API order: **Server → Authentication → System Business Objects → System Configuration → Public UI → External Authentication → External Authentication Credentials → Internal External Authentication Workflow**. Each operation documents its intended access level (public, authenticated/role-controlled, Admin-only, trusted Admin/BFF, or internal UI/BFF). `SysConfiguration` is therefore no longer shown under Swagger's generic `default` group.
+Swagger, Postman and the technical documentation use a consistent API order: **Server → Authentication → System Business Objects → System Business Objects (Aux) → System Configuration → Public UI → External Authentication → External Authentication Credentials → Internal External Authentication Workflow**. Each operation documents its intended access level (public, authenticated/role-controlled, Admin-only, trusted Admin/BFF, or internal UI/BFF). `SysConfiguration` is therefore no longer shown under Swagger's generic `default` group.
+
+
+### Metadata entry Save and contact collections
+
+Metadata-driven entry pages expose one split Save action. **Save** persists an existing record in place, preserving the active tab, scroll position, CTX Viewer and developer CLI; **Save and Close** persists and returns to the owning list. The first Save of a new record still performs a canonical navigation to the generated record URL so identity-dependent title/breadcrumb and server-derived presentation state are established cleanly.
+
+Reusable Principal contact values are modeled as auxiliary SysBOs rather than Principal-owned scalar fields. `SysEmailAddress`, `SysTelephoneNumber` and `SysAddress` are canonical values; the corresponding `SysPrincipal*` entities are relationship rows. Their Swagger operations are grouped under **System Business Objects (Aux)** because they support primary SysBOs and do not represent direct top-level administration surfaces. In Postman, that Aux section is further grouped by **Email Addresses**, **Telephone Numbers**, and **Postal Addresses**; each domain contains separate **Canonical ...** and **Principal ... Links** folders so value creation and relationship creation remain visibly distinct.
+The reusable Contact collection renderer also supports a metadata-declared compact state: clicking a collection title collapses its rows into wrapped, individually separated summary objects. The toggle is disabled while that collection's inline Add/Edit editor is open, so a heading click can never imply Update or Cancel. Each fresh entry visit starts these collections compact; tab changes preserve the current DOM state, and clicking a compact summary item expands the collection directly into that item's editor.
+
+
+Metadata entry state also distinguishes ordinary page dirtiness from active inline editing. Parent Save is disabled while any generic child/collection editor is open; the child must be committed with Add/Update or discarded with its own Cancel first. This rule is exposed through CTX page state and applies universally to future editable collections.

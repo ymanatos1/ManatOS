@@ -8,6 +8,7 @@ export type SysBOFieldType =
   | 'guid'
   | 'string'
   | 'email'
+  | 'telephone'
   | 'boolean'
   | 'number'
   | 'date'
@@ -109,6 +110,14 @@ export interface SysBOFieldMetadata {
 
   /** Canonical version grammar. `semver` currently means numeric major.minor.patch. */
   versionFormat?: 'semver';
+
+  /**
+   * Optional canonical normalization formula for an editable field. The UI and
+   * API evaluate this through the normal expression engine; field components
+   * never name or implement the normalizer themselves. `value` is the current
+   * candidate field value in the normalization scope.
+   */
+  normalize?: Readonly<{ expression: string }>;
 
   /** Optional CTX/evaluator-driven calculation for a normal editable field. */
   calculation?: Readonly<SysBOFieldCalculationMetadata>;
@@ -225,8 +234,23 @@ export interface ManatOSObjectMetadata<T> {
   relationships?: Readonly<Record<string, ManatOSRelationshipMetadata>>;
 }
 
+/**
+ * Canonical exposure intent for a first-class SysBO.
+ *
+ * `standard` (the implicit default) means clients may offer the object as an
+ * independently managed resource when suitable UI metadata exists. `internal`
+ * marks a supporting/canonical entity that participates in storage, API and
+ * relationships but should not acquire standalone administration UI merely
+ * because it is a SysBO. It can still be edited through another object's
+ * metadata-driven component.
+ */
+export type SysBOExposure = 'standard' | 'internal';
+
 /** Canonical metadata for a first-class SysBO exposed through generic SysBO CRUD. */
-export type SysBOMetadata<T> = ManatOSObjectMetadata<T>;
+export interface SysBOMetadata<T> extends ManatOSObjectMetadata<T> {
+  /** Omitted means `standard`, preserving all existing entity behavior. */
+  exposure?: SysBOExposure;
+}
 
 /**
  * Canonical metadata for a related/domain object that is not independently

@@ -13,6 +13,7 @@ import {
   type SysBOUIMetadata,
   type SysBOUser,
   calculatedContextField,
+  compileExpression,
   evaluateExpression,
   type ManatOSContext,
 } from '@manatos/shared';
@@ -75,6 +76,13 @@ const pathByKey: Record<string, string> = {
   'sys-users': 'SysUsers',
 
   'sys-principals': 'SysPrincipals',
+
+  'sys-email-addresses': 'SysEmailAddresses',
+  'sys-principal-email-addresses': 'SysPrincipalEmailAddresses',
+  'sys-telephone-numbers': 'SysTelephoneNumbers',
+  'sys-principal-telephone-numbers': 'SysPrincipalTelephoneNumbers',
+  'sys-addresses': 'SysAddresses',
+  'sys-principal-addresses': 'SysPrincipalAddresses',
 
   'sys-applications': 'SysApplications',
 
@@ -164,7 +172,7 @@ function applySysBOEntryContext(
   values: Readonly<Record<string, unknown>>,
 ) {
   const ctx = res.locals.ctx as ManatOSContext;
-  const { metadata, uiMetadata, formValues, parentListContext, ...pageValues } = values;
+  const { metadata, uiMetadata, formValues, parentListContext, editingCollections, ...pageValues } = values;
 
   registerContextEntity(
     ctx,
@@ -203,9 +211,14 @@ function applySysBOEntryContext(
    * builder entity/field agnostic and avoids teaching it about hasPassword,
    * hasClientSecret, or any future projection-specific field.
    */
-  const initialRecordValues: Record<string, unknown> = Object.fromEntries(
-    Object.entries(runtimeEntryValues).filter(([key]) => canonical.fieldDefinition[key]?.sensitive !== true),
-  );
+  const initialRecordValues: Record<string, unknown> = {
+    ...Object.fromEntries(
+      Object.entries(runtimeEntryValues).filter(([key]) => canonical.fieldDefinition[key]?.sensitive !== true),
+    ),
+    ...((editingCollections && typeof editingCollections === 'object' && !Array.isArray(editingCollections))
+      ? editingCollections as Record<string, unknown>
+      : {}),
+  };
 
   for (const [key, field] of Object.entries(canonical.fieldDefinition)) {
     if (field.sensitive) continue;
@@ -372,6 +385,20 @@ export function createSysBORoutes() {
    */
   router.use(requireSignedIn);
 
+  /** Developer CLI compiles ad-hoc expressions with the canonical parser. */
+  router.post('/debug/compile-expression', requireCsrf, (req, res) => {
+    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    try {
+      const expression = String(req.body?.expression ?? '').trim();
+      if (!expression) { res.status(400).json({ error: 'Expression is required.' }); return; }
+      const compiled = compileExpression(expression);
+      res.set('Cache-Control', 'no-store');
+      res.json({ expression: compiled.source, ast: compiled.ast });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Expression could not be parsed.' });
+    }
+  });
+
   /**
    * All generic SysBO administration pages now use the canonical metadata-driven
    * renderer. The metadata-driven contract is the only generic SysBO page engine.
@@ -498,52 +525,21 @@ export function createSysBORoutes() {
       let clientId = String(req.body.clientId ?? '').trim();
       let clientSecret = String(req.body.clientSecret ?? '').trim();
       const recordId = String(req.body.id ?? '').trim();
-      let usesStoredCredentials = false;
-      let storedSecretUpdatedAt: string | undefined;
-
-      if (Boolean(clientId) !== Boolean(clientSecret)) {
-        res.status(400).json({
-          success: false,
-          errorMessage: 'Client ID and Client secret must be tested together.',
-        });
-        return;
+      const useStoredCredentials = req.body.useStoredCredentials === 'true';
+      if (useStoredCredentials && recordId) {
+        const stored = await apiClient.get<{ clientId: string; clientSecret: string }>(
+          `/api/v1/internal/external-auth-providers/${encodeURIComponent(recordId)}/credentials-for-test`,
+          { ...apiSessionOptions(req), internal: true },
+        );
+        clientId = String(stored.data.clientId ?? '').trim();
+        clientSecret = String(stored.data.clientSecret ?? '');
       }
-
-      /*
-       * Existing unverified records can be tested without asking the Admin to
-       * re-enter a secret that ManatOS already stores encrypted. Only the
-       * trusted UI server receives the decrypted pair from the internal API;
-       * it is never sent to browser JavaScript.
-       */
-      if (!clientId && !clientSecret && recordId) {
-        const stored = (
-          await apiClient.get<{
-            id: string;
-            provider: ExternalProviderKey;
-            clientId: string;
-            clientSecret: string;
-            secretUpdatedAt: string;
-          }>(
-            `/api/v1/internal/external-auth-providers/${encodeURIComponent(recordId)}/credentials-for-test`,
-            { ...apiSessionOptions(req), internal: true },
-          )
-        ).data;
-
-        if (stored.provider !== provider) {
-          res.status(400).json({ success: false, errorMessage: 'The stored credentials do not match this provider.' });
-          return;
-        }
-
-        clientId = stored.clientId;
-        clientSecret = stored.clientSecret;
-        usesStoredCredentials = true;
-        storedSecretUpdatedAt = stored.secretUpdatedAt;
-      }
-
       if (!clientId || !clientSecret) {
         res.status(400).json({
           success: false,
-          errorMessage: 'Enter both Client ID and Client secret before testing.',
+          errorMessage: useStoredCredentials
+            ? 'No complete stored credential pair is available to verify.'
+            : 'Enter both Client ID and Client secret before testing.',
         });
         return;
       }
@@ -573,8 +569,6 @@ export function createSysBORoutes() {
         enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
         clientId,
         clientSecret,
-        ...(usesStoredCredentials ? { usesStoredCredentials: true } : {}),
-        ...(usesStoredCredentials && storedSecretUpdatedAt ? { storedSecretUpdatedAt } : {}),
         scope: providerDefinition.scope,
         callbackPath: providerDefinition.callbackPath,
         ...(providerDefinition.tenant ? { tenant: providerDefinition.tenant } : {}),
@@ -639,13 +633,12 @@ export function createSysBORoutes() {
         provider: pending.provider,
         status: pending.status,
         message: pending.status === 'verified'
-          ? (pending.usesStoredCredentials
-              ? 'Stored provider credentials tested successfully and are now verified.'
-              : 'Provider credentials tested successfully. They are ready to save.')
+          ? 'Provider credentials tested successfully. Save to commit this verified credential pair.'
           : pending.status === 'failed'
             ? (pending.errorMessage ?? 'The provider rejected the proposed credentials.')
             : 'Waiting for the provider credential test to complete.',
         ...(pending.verifiedAt ? { verifiedAt: pending.verifiedAt } : {}),
+        ...(pending.status === 'verified' ? { verificationProofId: pending.testId } : {}),
       });
     } catch (error) {
       next(error);
@@ -658,33 +651,6 @@ export function createSysBORoutes() {
       delete req.session.pendingExtAuthCredentialTest;
     }
     res.json({ success:true, status:'cancelled' });
-  });
-
-  /** Remove the complete provider credential pair and disable the provider. */
-  router.post('/sys-ext-auth-providers/:id/remove-credentials', requireCsrf, async (req, res, next) => {
-    try {
-      const definition = getSysBODefinition('sys-ext-auth-providers');
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition);
-      requirePermission(permissions.edit, 'Edit access is required for external authentication providers.');
-      const id = routeParam(req.params.id);
-
-      await apiClient.delete(
-        `/api/v1/internal/external-auth-providers/${id}/credentials`,
-        { ...apiSessionOptions(req), internal: true },
-      );
-
-      delete req.session.pendingExtAuthCredentialTest;
-      await refreshExternalProviderRegistry();
-      configurePassport();
-      // Credential removal is an immediate trusted command. Return to the
-      // workflow that initiated it instead of falling back to the entry's
-      // default General tab. The freshly rendered Secrets component will now
-      // enter empty credential-edit mode automatically.
-      res.redirect(`/bo/sys-ext-auth-providers/${id}?tab=secrets`);
-    } catch (error) {
-      next(error);
-    }
   });
 
   /**
@@ -701,6 +667,43 @@ export function createSysBORoutes() {
       const apiPath = apiPathFor(definition.key);
 
       const id = String(req.body.id ?? '');
+      const saveMode = req.body._saveMode === 'close' ? 'close' : 'stay';
+      const inPlaceSave = saveMode === 'stay'
+        && req.get('X-Requested-With') === 'ManatOS-InPlace-Save';
+
+      /*
+       * Existing-entry Save can finish without replacing the current document.
+       * Save-and-Close and create-mode Save keep normal navigation semantics.
+       */
+      const completeSave = async (
+        savedId?: string,
+        savedRecord?: Record<string, unknown>,
+      ) => {
+        const listUrl = `/bo/${definition.key}`;
+        const entryUrl = savedId ? `${listUrl}/${encodeURIComponent(savedId)}` : listUrl;
+        if (!inPlaceSave || !savedId) {
+          res.redirect(saveMode === 'close' ? listUrl : entryUrl);
+          return;
+        }
+
+        /*
+         * The CRUD response is already the authoritative persisted record. Reuse
+         * it for in-place reconciliation instead of issuing a second GET after a
+         * successful write. This keeps Save atomic from the UI's perspective and
+         * avoids turning a successful mutation into a failed Save merely because
+         * a follow-up read is denied or unavailable.
+         */
+        const record = savedRecord ?? (await apiClient.get<Record<string, unknown>>(
+          `/api/v1/${apiPath}/${encodeURIComponent(savedId)}`,
+          apiSessionOptions(req),
+        )).data;
+
+        res.set('Cache-Control', 'no-store');
+        res.json({
+          success: true,
+          data: { id: savedId, record, entryUrl },
+        });
+      };
       const currentUser = res.locals.currentUser as SysBOUser | null;
       const permissions = uiPermissions(currentUser, definition, id || undefined);
 
@@ -714,16 +717,11 @@ export function createSysBORoutes() {
 
         if (definition.key === 'sys-ext-auth-providers') {
           const pending = req.session.pendingExtAuthCredentialTest;
+          const action = String(req.body.providerCredentialAction ?? 'unchanged');
+          const proofId = String(req.body.providerVerificationProofId ?? '');
 
-          /*
-           * Provider is immutable after creation. Its enum control is therefore
-           * disabled on edit pages and, by HTML design, disabled controls are
-           * omitted from form submission. Never turn that browser omission into
-           * an empty/unsupported provider, and do not trust a tampered hidden
-           * value either: for existing records resolve the provider identity from
-           * the persisted record at the API boundary. Create mode still takes the
-           * explicitly selected provider from the submitted form.
-           */
+          // Existing provider identity is server-authoritative because its disabled
+          // enum control is intentionally omitted from HTML form submission.
           let provider = String(req.body.provider ?? '').trim().toLowerCase();
           if (id) {
             const existingProvider = await apiClient.get<Record<string, unknown>>(
@@ -733,110 +731,64 @@ export function createSysBORoutes() {
             provider = String(existingProvider.data.provider ?? '').trim().toLowerCase();
           }
 
-          const verifiedPendingMatches =
-            pending?.status === 'verified' &&
-            pending.provider === provider &&
-            (pending.recordId ?? '') === id &&
-            Date.now() - Date.parse(pending.createdAt) <= 10 * 60 * 1000;
+          if (!['unchanged', 'replace', 'remove'].includes(action)) {
+            throw new AppError('VALIDATION_ERROR', 'Unsupported provider credential action.', 'The credential change could not be saved.', false);
+          }
 
-          if (verifiedPendingMatches && pending?.clientSecret) {
-            await apiClient.post(
-              '/api/v1/internal/external-auth-providers/verified-credentials',
+          if (action === 'remove') {
+            if (id) {
+              await apiClient.delete(
+                `/api/v1/internal/external-auth-providers/${encodeURIComponent(id)}/credentials`,
+                { ...apiSessionOptions(req), internal: true },
+              );
+            }
+            delete req.session.pendingExtAuthCredentialTest;
+            await refreshExternalProviderRegistry();
+            configurePassport();
+            await completeSave(id || undefined);
+            return;
+          }
+
+          if (action === 'replace') {
+            const clientId = String(req.body.clientId ?? '').trim();
+            const clientSecret = String(req.body.clientSecret ?? '');
+            if (!clientId || !clientSecret) {
+              throw new AppError('VALIDATION_ERROR', 'Client ID and Client secret must be saved together.', 'Enter both Client ID and Client secret.', false);
+            }
+
+            const proofMatches =
+              Boolean(proofId) &&
+              pending?.status === 'verified' &&
+              pending.testId === proofId &&
+              pending.provider === provider &&
+              (pending.recordId ?? '') === id &&
+              pending.clientId === clientId &&
+              pending.clientSecret === clientSecret &&
+              Date.now() - Date.parse(pending.createdAt) <= 10 * 60 * 1000;
+
+            const credentialEndpoint = proofMatches
+              ? '/api/v1/internal/external-auth-providers/verified-credentials'
+              : '/api/v1/internal/external-auth-providers/stored-credentials';
+
+            const credentialSave = await apiClient.post<{ id?: string }>(
+              credentialEndpoint,
               {
-                ...(id ? { id } : {}),
-                provider,
+                ...(id ? { id } : {}), provider,
                 enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
-                clientId: pending.clientId,
-                clientSecret: pending.clientSecret,
-                callbackPath: req.body.callbackPath,
+                clientId, clientSecret, callbackPath: req.body.callbackPath,
                 ...(req.body.tenant ? { tenant: req.body.tenant } : {}),
               },
               { ...apiSessionOptions(req), internal: true },
             );
-
             delete req.session.pendingExtAuthCredentialTest;
             await refreshExternalProviderRegistry();
             configurePassport();
-            res.redirect('/bo/sys-ext-auth-providers');
+            await completeSave(id || String(credentialSave.data.id ?? '') || undefined);
             return;
           }
 
-          /*
-           * Testing an already-stored pair commits its verified flag in the
-           * callback itself and intentionally erases the pending plaintext
-           * secret. Consume that completed session state before the ordinary
-           * settings save rather than letting a stale verified workflow linger.
-           */
-          if (verifiedPendingMatches && pending?.usesStoredCredentials) {
-            delete req.session.pendingExtAuthCredentialTest;
-          } else if (verifiedPendingMatches && !pending?.clientSecret) {
-            throw new AppError(
-              'VALIDATION_ERROR',
-              'Verified provider credential state is incomplete.',
-              'The credential test completed but the pending credential pair is no longer available. Test the credentials again before saving.',
-              false,
-            );
-          }
-
-          let proposedClientId = String(req.body.clientId ?? '').trim();
-          let proposedClientSecret = String(req.body.clientSecret ?? '').trim();
-
-          /*
-           * A failed provider test must not force the Admin to re-enter the
-           * credential pair merely to store it unverified. Keep the exact
-           * proposed pair in the short-lived server session and use it as a
-           * fallback if a browser/password-manager omits either field on the
-           * subsequent Save. The pair is still committed only through the
-           * trusted stored-credentials API command and encrypted immediately.
-           */
-          const unverifiedPendingMatches =
-            (pending?.status === 'failed' || pending?.status === 'pending') &&
-            pending.provider === provider &&
-            (pending.recordId ?? '') === id &&
-            Boolean(pending.clientId) &&
-            Boolean(pending.clientSecret) &&
-            Date.now() - Date.parse(pending.createdAt) <= 10 * 60 * 1000;
-
-          if (unverifiedPendingMatches) {
-            proposedClientId ||= pending.clientId;
-            proposedClientSecret ||= pending.clientSecret ?? '';
-          }
-
-          const credentialMutationRequested =
-            req.body.providerCredentialMutation === 'true' ||
-            Boolean(proposedClientSecret) ||
-            unverifiedPendingMatches;
-
-          if (credentialMutationRequested && Boolean(proposedClientId) !== Boolean(proposedClientSecret)) {
-            throw new AppError(
-              'VALIDATION_ERROR',
-              'Client ID and Client secret must be stored together.',
-              'Enter both Client ID and Client secret, or leave both unchanged.',
-              false,
-            );
-          }
-
-          if (credentialMutationRequested && proposedClientId && proposedClientSecret) {
-            await apiClient.post(
-              '/api/v1/internal/external-auth-providers/stored-credentials',
-              {
-                ...(id ? { id } : {}),
-                provider,
-                enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
-                clientId: proposedClientId,
-                clientSecret: proposedClientSecret,
-                callbackPath: req.body.callbackPath,
-                ...(req.body.tenant ? { tenant: req.body.tenant } : {}),
-              },
-              { ...apiSessionOptions(req), internal: true },
-            );
-
-            delete req.session.pendingExtAuthCredentialTest;
-            await refreshExternalProviderRegistry();
-            configurePassport();
-            res.redirect('/bo/sys-ext-auth-providers');
-            return;
-          }
+          // unchanged deliberately falls through to normal metadata-driven CRUD;
+          // credentials are not read, validated, rewritten or re-verified.
         }
 
         await operationContext.runRoot(
@@ -850,23 +802,94 @@ export function createSysBORoutes() {
             });
 
             const payload = formPayload(req.body, definition);
+            if (definition.key === 'sys-principals') {
+              const relatedChanges: Record<string, { current: unknown[] }> = {};
 
+              const rawEmailChanges = req.body['relatedChanges.emailAddresses'];
+              if (typeof rawEmailChanges === 'string' && rawEmailChanges) {
+                try {
+                  const parsed = JSON.parse(rawEmailChanges) as { current?: unknown[] };
+                  relatedChanges.emailAddresses = {
+                    current: Array.isArray(parsed.current) ? parsed.current.map(String) : [],
+                  };
+                } catch {
+                  throw new AppError('VALIDATION_ERROR', 'Invalid email-address collection payload.', 'The Contact email-address list could not be saved.', false);
+                }
+              }
+
+              const rawTelephoneChanges = req.body['relatedChanges.telephoneNumbers'];
+              if (typeof rawTelephoneChanges === 'string' && rawTelephoneChanges) {
+                try {
+                  const parsed = JSON.parse(rawTelephoneChanges) as { current?: unknown[] };
+                  relatedChanges.telephoneNumbers = {
+                    current: Array.isArray(parsed.current)
+                      ? parsed.current.map((item) => {
+                          const record = item && typeof item === 'object' && !Array.isArray(item)
+                            ? item as Record<string, unknown>
+                            : {};
+                          return {
+                            countryCode: String(record.countryCode ?? ''),
+                            number: String(record.number ?? ''),
+                          };
+                        })
+                      : [],
+                  };
+                } catch {
+                  throw new AppError('VALIDATION_ERROR', 'Invalid telephone-number collection payload.', 'The Contact telephone-number list could not be saved.', false);
+                }
+              }
+
+              const rawAddressChanges = req.body['relatedChanges.addresses'];
+              if (typeof rawAddressChanges === 'string' && rawAddressChanges) {
+                try {
+                  const parsed = JSON.parse(rawAddressChanges) as { current?: unknown[] };
+                  relatedChanges.addresses = {
+                    current: Array.isArray(parsed.current)
+                      ? parsed.current.map((item) => {
+                          const record = item && typeof item === 'object' && !Array.isArray(item)
+                            ? item as Record<string, unknown>
+                            : {};
+                          return {
+                            recipientOrAttention: String(record.recipientOrAttention ?? ''),
+                            organization: String(record.organization ?? ''),
+                            addressLine1: String(record.addressLine1 ?? ''),
+                            addressLine2: String(record.addressLine2 ?? ''),
+                            addressLine3: String(record.addressLine3 ?? ''),
+                            poBox: String(record.poBox ?? ''),
+                            postalCode: String(record.postalCode ?? ''),
+                            city: String(record.city ?? ''),
+                            stateOrProvince: String(record.stateOrProvince ?? ''),
+                            country: String(record.country ?? ''),
+                          };
+                        })
+                      : [],
+                  };
+                } catch {
+                  throw new AppError('VALIDATION_ERROR', 'Invalid address collection payload.', 'The Contact address list could not be saved.', false);
+                }
+              }
+
+              if (Object.keys(relatedChanges).length) payload.relatedChanges = relatedChanges;
+            }
+
+            let savedId = id;
+            let savedRecord: Record<string, unknown> | undefined;
             if (id) {
-              await apiClient.patch(
+              const saved = await apiClient.patch<Record<string, unknown>>(
                 `/api/v1/${apiPath}/${id}`,
-
                 payload,
-
                 apiSessionOptions(req),
               );
+              savedRecord = saved.data;
+              savedId = String(saved.data.id ?? id);
             } else {
-              await apiClient.post(
+              const saved = await apiClient.post<Record<string, unknown>>(
                 `/api/v1/${apiPath}`,
-
                 payload,
-
                 apiSessionOptions(req),
               );
+              savedRecord = saved.data;
+              savedId = String(saved.data.id ?? '');
             }
 
             if (definition.key === 'sys-ext-auth-providers') {
@@ -874,7 +897,7 @@ export function createSysBORoutes() {
               configurePassport();
             }
 
-            res.redirect(`/bo/${definition.key}`);
+            await completeSave(savedId || undefined, savedRecord);
           },
 
           `Saving ${definition.boMetadata.name}`,
@@ -919,7 +942,22 @@ export function createSysBORoutes() {
         await renderMetadataDrivenRecord(req, res, definition, permissions, {
           isNew: !id,
           ...(id ? { recordId: id } : {}),
-          itemOverride: { ...req.body, ...(id ? { id } : {}) },
+          /*
+           * Posted compound-editor/control names such as
+           * `relatedChanges.emailAddresses` are transport fields, not CTX field
+           * identifiers. Preserve only canonical entity fields on a failed Save
+           * re-render; related collections are reloaded by their normal metadata
+           * loaders. This keeps the error path inside the same CTX contract as a
+           * normal record render.
+           */
+          itemOverride: {
+            ...Object.fromEntries(
+              Object.keys(definition.boMetadata.fieldDefinition)
+                .filter((fieldKey) => Object.prototype.hasOwnProperty.call(req.body, fieldKey))
+                .map((fieldKey) => [fieldKey, req.body[fieldKey]]),
+            ),
+            ...(id ? { id } : {}),
+          },
           applicationError: appError,
         });
       }
@@ -1022,6 +1060,7 @@ async function editPageSupplementalData(
     externalIdentities: authenticationIdentities,
   };
   const relatedReferenceData: Record<string, Record<string, unknown[]>> = {};
+  const relatedEditingData: Record<string, unknown[]> = {};
   if (!isNew) {
     for (const [collectionKey, collection] of Object.entries(effectiveUIMetadata?.record.relatedCollections ?? {})) {
       if (collection.source?.kind !== 'entity-query') continue;
@@ -1054,6 +1093,23 @@ async function editPageSupplementalData(
       );
       if (needsReferenceData) {
         relatedReferenceData[sourceKey] = await references(req, relatedDefinition);
+        // Hydrate relationship rows into canonical child records for the entry
+        // page editing buffer. Persistence ids are preserved under both the
+        // canonical generic id and the relationship-target field name, while
+        // new browser-created rows may simply omit them until Save.
+        const referenceFields = relatedReferenceData[sourceKey];
+        const referenceField = Object.keys(collection.fields || {}).find(
+          (fieldKey) => relatedDefinition.boMetadata.fieldDefinition[fieldKey]?.type === 'reference',
+        );
+        if (referenceField) {
+          const refs = (referenceFields?.[referenceField] ?? []) as Record<string, unknown>[];
+          relatedEditingData[sourceKey] = response.data.items.map((link) => {
+            const targetId = link[referenceField];
+            const referenced = refs.find((candidate) => String(candidate?.value ?? candidate?.id ?? '') === String(targetId ?? ''));
+            if (!referenced || typeof referenced !== 'object') return null;
+            return { ...referenced, [referenceField]: targetId };
+          }).filter((value): value is Record<string, unknown> => Boolean(value));
+        }
       }
     }
   }
@@ -1121,6 +1177,7 @@ async function editPageSupplementalData(
     // Generic page-context bucket consumed by metadata-driven related collections.
     relatedData,
     relatedReferenceData,
+    relatedEditingData,
     referenceData: pageReferenceData,
     primaryDisplayValue: displayValue,
     deletePresentation: {
@@ -1358,10 +1415,26 @@ async function references(
     );
 
     const referencedDefinition = getSysBODefinition(field.referenceBOKey);
-    output[field.key] = response.data.items.map((item) => ({
-      ...(item as Record<string, unknown>),
-      __entityIcon: referencedDefinition.icon.replace(/^bi-/, ''),
-    }));
+    const referencedPrimaryField = referencedDefinition.boMetadata.primaryField;
+    output[field.key] = response.data.items.map((item) => {
+      const record = item as Record<string, unknown>;
+      const id = record.id;
+      const primaryValue = record[referencedPrimaryField];
+
+      /*
+       * Reference data keeps the complete canonical record for ordinary
+       * reference controls, while also exposing a small generic value/label
+       * projection for metadata components that resolve relationship rows.
+       * The label comes from the referenced SysBO's canonical primaryField; no
+       * component needs to know that an EmailAddress happens to use `address`.
+       */
+      return {
+        ...record,
+        value: id,
+        label: primaryValue ?? record.name ?? id,
+        __entityIcon: referencedDefinition.icon.replace(/^bi-/, ''),
+      };
+    });
   }
 
   return output;
@@ -1681,6 +1754,7 @@ async function renderMetadataDrivenRecord(
       uiMetadata: metadataUI,
       permissions: effectivePermissions,
       referenceData: supplemental.referenceData,
+      editingCollections: supplemental.relatedEditingData,
       ...supplemental.relatedData,
       activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
       parentListContext,

@@ -9,8 +9,12 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 describe('generic SysBO form state presentation', () => {
   it('starts the shared Save button disabled and marks it for generic state management', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
-    expect(metadataSource).toContain('data-form-save');
-    expect(metadataSource).toContain('disabled');
+    const saveActionSource = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/ui-components/save-split-action.ejs'), 'utf8');
+    expect(metadataSource).toContain("include('ui-components/save-split-action'");
+    expect(saveActionSource).toContain('data-form-save');
+    expect(saveActionSource).toContain('data-form-save-menu-toggle');
+    expect(saveActionSource).toContain('data-form-save-option');
+    expect(saveActionSource).toContain('disabled');
     // The dirty-guard attribute must be emitted as actual markup, not through
     // EJS escaped interpolation. Escaped quotes become part of the attribute
     // value (\"true\"), so forms.js cannot match [data-dirty-guard=\"true\"].
@@ -31,31 +35,41 @@ describe('generic SysBO form state presentation', () => {
     expect(source).not.toContain('latchUserDirty');
     expect(source).toContain('const formDataChanged = sharedState.baseline !== null');
     expect(source).toContain('const valid = typeof sharedState.isValid');
-    expect(source).toContain('save.disabled = !(changed && valid && credentialStateAllowsSave)');
+    expect(source).toContain('const saveDisabled = !(changed && valid && credentialStateAllowsSave && !internalEditing)');
+    expect(source).toContain('saveButtons.forEach((button) =>');
+    expect(source).toContain('button.disabled = saveDisabled');
+    expect(source).toContain("[data-entry-child-editor][data-child-editor-active=\"true\"]");
+    expect(source).toContain('state.internalEditing');
+    expect(source).toContain('state.internalEditorCount');
+    expect(source).toContain('manatos:child-editor-state');
     expect(source).toContain("indicatorText.textContent = 'Unsaved changes · incomplete'");
     expect(source).toContain("indicatorText.textContent = 'Unsaved changes'");
     expect(source).toContain("form.addEventListener('input', scheduleUpdate)");
     expect(source).toContain("form.addEventListener('change', scheduleUpdate)");
   });
 
-  it('allows a complete external-provider credential pair to be stored before verification and supports later testing', async () => {
+  it('keeps provider credential tools screen-local and carries an ephemeral proof into Save', async () => {
     const source = await readFile(resolve(testDirectory, '../public/js/components/external-provider.js'), 'utf8');
     expect(source).toContain("credentialState.value = 'required'");
     expect(source).toContain('data-provider-test-credentials');
     expect(source).toContain('dataset.providerTestUrl');
     expect(source).toContain('body.set(\'clientId\', clientId.value.trim())');
     expect(source).toContain('body.set(\'clientSecret\', clientSecret.value)');
-    expect(source).toContain('providerEnabled || anyCredentialValue');
-    // Verification remains a separate action: a complete local pair can be submitted
-    // to the trusted test flow, while stored credentials can be retested later.
-    expect(source).toContain("testCredentials.dataset.providerTestStored === 'true'");
+    expect(source).toContain("credentialAction.value = 'replace'");
+    expect(source).toContain("credentialAction.value = 'remove'");
+    // Verify communicates with the provider but never persists or reloads the entry.
     expect(source).toContain("window.open('', 'manatos-provider-credential-test'");
     expect(source).toContain("result.type !== 'manatos:provider-credential-test-result'");
     expect(source).toContain('payload.statusUrl');
     expect(source).toContain('const pollStatus = async () =>');
+    expect(source).toContain('POPUP_CLOSE_SETTLEMENT_MS = 5000');
+    expect(source).toContain('popupClosedAt ??= Date.now()');
+    expect(source).toContain('CREDENTIAL_TEST_SETTLE_POLL_MS');
+    expect(source).toContain("window.addEventListener('message', providerReturnHandler)");
     expect(source).toContain('window.manatosBusy?.show');
-    expect(source).toContain("url.searchParams.set('tab', 'secrets')");
-    expect(source).toContain('window.manatosAllowDirtyPageExit?.()');
+    expect(source).toContain('verificationProof.value = statusPayload.verificationProofId');
+    expect(source).not.toContain("url.searchParams.set('credentialsTest'");
+    expect(source).not.toContain('window.manatosAllowDirtyPageExit?.()');
     expect(source).toContain('const noReturnMessage = () =>');
     // Provider failure guidance is intentionally generic here. Provider-specific
     // wording belongs in provider definitions, never in the compound runtime.

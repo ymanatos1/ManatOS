@@ -36,6 +36,7 @@ import {
 export interface CreateSysBOUserInput {
   name: string;
   email: string;
+  telephoneNumber?: string;
 
   password?: string;
 
@@ -96,6 +97,8 @@ export class SysBOUserService extends GenericSysBOService<SysBOUser> {
             name: input.name.trim(),
 
             email: input.email.trim().toLowerCase(),
+
+            ...(input.telephoneNumber ? { telephoneNumber: input.telephoneNumber } : {}),
 
             emailVerified: input.emailVerified ?? false,
 

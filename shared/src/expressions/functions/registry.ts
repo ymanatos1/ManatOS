@@ -115,6 +115,70 @@ function calendarDurationBetweenValues(start: Date, end: Date): {years: number; 
   return {years, months, days};
 }
 
+/* ==========================================================================
+ * Contact normalization helpers
+ *
+ * These helpers implement canonical contact-value normalization used by both
+ * metadata expressions and trusted domain code. Keep them entity agnostic:
+ * they normalize values, never decide which SysBO owns or may edit them.
+ * ======================================================================== */
+
+/**
+ * Normalize a telephone number to canonical E.164-like `+<digits>` form.
+ *
+ * Accepted forms:
+ * - `TelephoneNbr('+306944386714')` for an already-composed international number;
+ * - `TelephoneNbr('+30', '6944386714')` when UI metadata captures country code
+ *   and national number separately.
+ *
+ * Formatting characters are removed, the leading international `+` is
+ * mandatory, and the final value is bounded by the 15-digit E.164 maximum.
+ * Empty input returns null so optional contact fields remain nullable.
+ */
+export function normalizeTelephoneNumber(...rawArgs: unknown[]): string | null {
+  if (rawArgs.length !== 1 && rawArgs.length !== 2) {
+    throw new ExpressionEvaluationError('TelephoneNbr expects one full-number value or countryCode + number.');
+  }
+  const clean = (value: unknown) => String(value ?? '').trim();
+  if (rawArgs.length === 1) {
+    const raw = clean(rawArgs[0]);
+    if (!raw) return null;
+    const hasPlus = raw.startsWith('+');
+    const digits = raw.replace(/\D/g, '');
+    if (!hasPlus || digits.length < 4 || digits.length > 15) {
+      throw new ExpressionEvaluationError('TelephoneNbr requires an international number beginning with + and containing 4-15 digits.');
+    }
+    return `+${digits}`;
+  }
+  const countryRaw = clean(rawArgs[0]);
+  const numberRaw = clean(rawArgs[1]);
+  const countryDigits = countryRaw.replace(/\D/g, '');
+  const numberDigits = numberRaw.replace(/\D/g, '');
+  if (!countryRaw.startsWith('+') || countryDigits.length < 1 || countryDigits.length > 4 || numberDigits.length < 3) {
+    throw new ExpressionEvaluationError('TelephoneNbr requires a +country code and a valid national number.');
+  }
+  const full = `${countryDigits}${numberDigits}`;
+  if (full.length > 15) throw new ExpressionEvaluationError('TelephoneNbr exceeds the 15-digit international telephone limit.');
+  return `+${full}`;
+}
+
+/**
+ * Normalize an email address for canonical identity/deduplication use.
+ *
+ * Leading/trailing whitespace is removed and the value is lower-cased before
+ * a deliberately small structural validation (`local@domain.tld`). This is not
+ * an SMTP deliverability check; it keeps storage/deduplication deterministic
+ * without embedding provider-specific policy in the expression language.
+ */
+export function normalizeEmailAddress(value: unknown): string | null {
+  const normalized = String(value ?? '').trim().toLocaleLowerCase();
+  if (!normalized) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw new ExpressionEvaluationError('EmailAddress requires a valid email address.');
+  }
+  return normalized;
+}
+
 /**
  * Hard-coded, keyed expression-function registry.
  *
@@ -123,18 +187,59 @@ function calendarDurationBetweenValues(start: Date, end: Date): {years: number; 
  * PascalCase and become part of the metadata language, so rename them only as
  * a deliberate metadata-contract migration.
  *
+ * Functions are grouped below by semantic area. Keep new registrations in the
+ * narrowest existing group (or add a clearly named new group) instead of
+ * appending unrelated functions at the end.
+ *
  * To add a function:
  * 1. add one keyed definition below using `checked(...)`;
- * 2. describe its signature in human-readable `signature.text`;
- * 3. choose the narrowest useful runtime argument types;
- * 4. keep the implementation entity/field agnostic;
- * 5. add evaluator tests for normal, empty/null, and error behaviour as relevant.
+ * 2. document purpose, examples and edge/null behaviour in JSDoc;
+ * 3. describe its signature in human-readable `signature.text`;
+ * 4. choose the narrowest useful runtime argument types;
+ * 5. keep the implementation entity/field agnostic;
+ * 6. add evaluator tests for normal, empty/null, and error behaviour as relevant.
  *
  * The parser validates function existence/arity from this same registry; the
  * evaluator later invokes the registered implementation with already-evaluated
  * arguments and the evaluation context (`context.now()`, etc.).
  */
 export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
+  /* ------------------------------------------------------------------------
+   * Contact values
+   * --------------------------------------------------------------------- */
+  /**
+   * Canonical email-address normalization.
+   * Example: `EmailAddress('  USER@Example.COM ')` -> `user@example.com`.
+   * Empty input becomes null; structurally invalid input raises an evaluator
+   * error so metadata/domain validation can surface one consistent failure.
+   */
+  EmailAddress: checked({
+    name: 'EmailAddress',
+    signature: { text: 'EmailAddress(value: scalar)', minArguments: 1, maxArguments: 1, argumentTypes: ['scalar'] },
+    evaluate: ([value]) => normalizeEmailAddress(value),
+  }),
+
+  /**
+   * Canonical telephone normalization from either a complete international
+   * value or a separate country-code/national-number pair.
+   * Examples: `TelephoneNbr('+30 694 438 6714')` and
+   * `TelephoneNbr('+30', '6944386714')` -> `+306944386714`.
+   */
+  TelephoneNbr: checked({
+    name: 'TelephoneNbr',
+    signature: {
+      text: 'TelephoneNbr(value: scalar) or TelephoneNbr(countryCode: scalar, number: scalar)',
+      minArguments: 1,
+      maxArguments: 2,
+      argumentTypes: ['scalar', 'scalar'],
+    },
+    evaluate: (args) => normalizeTelephoneNumber(...args),
+  }),
+
+  /* ------------------------------------------------------------------------
+   * General numeric and CTX helpers
+   * --------------------------------------------------------------------- */
+
   /**
    * Numeric square root.
    * Example: `SqRoot(81)` -> `9`.
@@ -185,6 +290,10 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     },
   }),
 
+  /* ------------------------------------------------------------------------
+   * Calendar and clock functions
+   * --------------------------------------------------------------------- */
+
   /**
    * Return the current local calendar day at midnight in `datetime-local`
    * wire/display form (`YYYY-MM-DDT00:00`).
@@ -210,7 +319,12 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
   }),
 
 
-  /** Calendar-aware date + {years,months,days}; months/years are never flattened to days. */
+  /**
+   * Add a structured `{years, months, days}` duration to a calendar date.
+   * Month/year arithmetic is calendar-aware (including end-of-month clamping)
+   * and is never flattened into an approximate number of days.
+   * Example: `CalendarAddDuration('2024-01-31', duration)`.
+   */
   CalendarAddDuration: checked({
     name: 'CalendarAddDuration',
     signature: {
@@ -227,7 +341,11 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     },
   }),
 
-  /** Calendar-aware inverse of CalendarAddDuration, returning {years,months,days}. */
+  /**
+   * Calendar-aware inverse of `CalendarAddDuration`.
+   * Returns the largest non-negative `{years, months, days}` duration that
+   * reaches `endDate` from `startDate`; returns null when end precedes start.
+   */
   CalendarDurationBetween: checked({
     name: 'CalendarDurationBetween',
     signature: {
@@ -243,6 +361,10 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
       return calendarDurationBetweenValues(start, end);
     },
   }),
+
+  /* ------------------------------------------------------------------------
+   * CTX hierarchy/navigation
+   * --------------------------------------------------------------------- */
 
   /**
    * Follow an id-based parent chain inside a CTX collection until the root row.
@@ -296,6 +418,10 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
       throw new ExpressionEvaluationError('TraverseCtx exceeded the maximum traversal depth of 256.');
     },
   }),
+
+  /* ------------------------------------------------------------------------
+   * Runtime and text utilities
+   * --------------------------------------------------------------------- */
 
   /**
    * Current evaluator-clock timestamp in Unix milliseconds.

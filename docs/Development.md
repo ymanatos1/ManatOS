@@ -164,7 +164,7 @@ See `docs/Testing.md` for the coverage policy and detailed test responsibilities
 
 ## API presentation and access groups
 
-Swagger and Postman use the same responsibility order: **Server**, **Authentication**, **System Business Objects**, **System Configuration**, **Public UI**, **External Authentication**, **External Authentication Credentials**, then **Internal External Authentication Workflow**. The former untagged/default SysConfiguration operations are explicitly presented as **System Configuration**.
+Swagger and Postman use the same responsibility order: **Server**, **Authentication**, **System Business Objects**, **System Business Objects (Aux)**, **System Configuration**, **Public UI**, **External Authentication**, **External Authentication Credentials**, then **Internal External Authentication Workflow**. The former untagged/default SysConfiguration operations are explicitly presented as **System Configuration**. Within the Aux Postman folder, reusable contacts are grouped by domain (email, telephone, postal address) and then split into canonical-value requests versus Principal-link requests; this mirrors the domain ownership boundary rather than flattening six supporting SysBOs into one long list.
 
 Access remains operation-specific: public endpoints explicitly say so; Admin-only operations require an Admin Bearer token; trusted external-provider credential commands require both Admin Bearer authentication and `x-internal-api-key`; credential-test workflow endpoints are internal UI/BFF mechanics rather than routine client operations.
 
@@ -174,3 +174,17 @@ Access remains operation-specific: public endpoints explicitly say so; Admin-onl
 Keep generic routers/templates platform-neutral. Platform catalogue metadata belongs under `shared/src/platforms/<platform>/`; platform-specific feature routes belong under `ui/src/platforms/<platform>/`, pages under `ui/views/pages/platforms/<platform>/`, assets under `ui/public/assets/platforms/<platform>/`, and platform-specific CSS under `ui/public/css/platforms/<platform>.css`. Register feature routers through `ui/src/platforms/routes.ts`; do not add mCRM-specific branches to `page-routes.ts`, `sysbo-routes.ts` or the shell. The platform catalogue/presentation metadata should select platform assets/styles where practical.
 
 The mCRM Apps Playground has two related surfaces: `app-playground.ejs` is the platform-level Apps Playground landing/workspace; `application-playground.ejs` is the selected-`SysBOApplication` playground reached by `/bo/sys-applications/:id/play`. Both are mCRM-owned and therefore live under the mCRM platform folder.
+
+## Expression/debugging regression expectations
+
+Changes to the expression grammar, precedence, registered functions, CTX path resolution, field normalization, or Debugging CLI must include regression coverage. Numeric and semantic indexing of CTX collections are both contracts. The browser reactive evaluator must consume server-compiled ASTs and remain behaviorally aligned with the canonical evaluator; UI components must not hardcode registered normalization function names.
+
+
+### In-place metadata entry Save
+
+For an existing metadata-driven record, the primary **Save** action uses the normal UI save route but requests an in-place JSON completion. The route persists through the same API/domain path, then returns the authoritative persisted record. The browser promotes its current form snapshot to the new baseline and reconciles `dataCurrent`/`dataOriginal` in CTX without replacing the document. **Save and Close** and first-save create flows retain navigation semantics. This behavior belongs to shared form infrastructure and must not be reimplemented per entity.
+
+
+### Child-editor lifecycle contract
+
+Reusable inline/collection editors must register through the generic child-editor DOM/event contract (`data-entry-child-editor` plus `manatos:child-editor-state`). Opening an editor sets the page's internal-editing state; Add/Update or child Cancel clears it. Parent Save controls must consume that state in addition to ordinary dirty/valid state. Do not add entity-specific Save guards for collections.

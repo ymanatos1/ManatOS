@@ -12,6 +12,7 @@ const componentPartials: Readonly<Record<string, string>> = {
   'contextual-help': 'ui-components/contextual-help',
   'provider-credentials': 'ui-components/provider-credentials',
   'date-duration-range': 'ui-components/date-duration-range',
+  'collection-editor': 'ui-components/collection-editor',
 };
 
 /** Resolve a server-rendered metadata component, or null for browser-mounted components. */

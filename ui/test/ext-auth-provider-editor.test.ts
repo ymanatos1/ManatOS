@@ -29,11 +29,13 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(credentials).toContain('data-provider-client-secret');
     expect(credentials).toContain('data-provider-test-credentials');
     expect(credentials).toContain('data-provider-change-credentials');
-    expect(credentials).toContain('data-provider-credential-mutation');
+    expect(credentials).toContain('data-provider-credential-action');
+    expect(credentials).toContain('data-provider-verification-proof');
     expect(credentials).not.toContain("|| 'microsoft'");
     expect(credentials).toContain('const hasStoredPair = Boolean(item.clientId) && hasStoredSecret;');
     expect(credentials).toContain("title: 'No credentials stored'");
-    expect(credentials).toContain('data-bs-target="#removeProviderCredentialsModal"');
+    expect(credentials).toContain('data-provider-remove-credentials');
+    expect(credentials).not.toContain('removeProviderCredentialsModal');
     expect(credentials).not.toContain("include('contextual-help'");
     expect(credentials).toContain("include('information-panel'");
     expect(credentials).not.toContain('class="ms-auto d-flex align-items-center gap-2 small"');
@@ -60,9 +62,14 @@ describe('external authentication provider metadata-driven editor', () => {
     const runtime = await source('public/js/components/external-provider.js');
     const renderer = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
     expect(runtime).toContain('data-contextual-help-key');
-    expect(runtime).toContain("url.searchParams.set('tab', 'secrets')");
+    expect(runtime).toContain('verificationProof.value = statusPayload.verificationProofId');
+    expect(runtime).not.toContain("url.searchParams.set('credentialsTest'");
     expect(runtime).toContain('payload.statusUrl');
     expect(runtime).toContain('setVerificationIndicator(true)');
+    expect(runtime).toContain('POPUP_CLOSE_SETTLEMENT_MS = 5000');
+    expect(runtime).toContain('CREDENTIAL_TEST_SETTLE_POLL_MS = 250');
+    expect(runtime).toContain("window.addEventListener('message', providerReturnHandler)");
+    expect(runtime).toContain("window.removeEventListener('message', providerReturnHandler)");
     expect(runtime).not.toContain("provider.value === 'facebook'");
     expect(runtime).not.toContain("key === 'microsoft'");
     expect(runtime).not.toContain('data-microsoft-tenant');
@@ -95,8 +102,9 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(routes).toContain('if (id) {');
     expect(routes).toContain('existingProvider = await apiClient.get<Record<string, unknown>>');
     expect(routes).toContain('provider = String(existingProvider.data.provider');
-    expect(routes).toContain('?tab=secrets');
-    expect(routes).toContain("req.body.providerCredentialMutation === 'true'");
+    expect(routes).toContain("req.body.providerCredentialAction ?? 'unchanged'");
+    expect(routes).toContain('req.body.providerVerificationProofId');
+    expect(routes).not.toContain("router.post('/sys-ext-auth-providers/:id/remove-credentials'");
     expect(routes).toContain("field.key === 'clientId'");
   });
 
@@ -109,15 +117,16 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(credentials).not.toContain('value="<%= item.clientSecret');
   });
 
-  it('preserves provider-specific contextual guidance without a provider-specific help renderer', async () => {
-    const help = await source('views/pages/metadata-driven/ui-components/contextual-help.ejs');
-    const confirmations = await source('views/popups/messages/bo-edit-confirmations.ejs');
-    expect(help).toContain('component?.options');
-    expect(help).toContain('componentBindings');
-    expect(help).toContain("include('information-panel'");
-    expect(help).not.toContain("'microsoft'");
-    expect(help).not.toContain("'google'");
-    expect(confirmations).toContain('This command is applied immediately');
-    expect(confirmations).toContain('Secrets tab will reopen ready for a replacement pair');
+  it('keeps credential tools screen-local and Save as the only persistence boundary', async () => {
+    const runtime = await source('public/js/components/external-provider.js');
+    const routes = await source('src/routes/sysbo-routes.ts');
+    expect(runtime).toContain("credentialAction.value = 'remove'");
+    expect(runtime).toContain("credentialAction.value = 'replace'");
+    expect(runtime).not.toContain('window.location.replace(url.toString())');
+    expect(routes).toContain("const action = String(req.body.providerCredentialAction ?? 'unchanged')");
+    expect(routes).toContain("if (action === 'remove')");
+    expect(routes).toContain("if (action === 'replace')");
+    expect(routes).toContain("pending.testId === proofId");
+    expect(routes).toContain("credentialEndpoint = proofMatches");
   });
 });

@@ -8,6 +8,12 @@ import {
   sysBOApplicationsMetadata,
   sysBOConfigurationsMetadata,
   sysBOExtAuthProvidersMetadata,
+  sysBOEmailAddressesMetadata,
+  sysBOPrincipalEmailAddressesMetadata,
+  sysBOTelephoneNumbersMetadata,
+  sysBOPrincipalTelephoneNumbersMetadata,
+  sysBOAddressesMetadata,
+  sysBOPrincipalAddressesMetadata,
   sysBOLicensesMetadata,
   sysBOPrincipalsMetadata,
   sysBOUsersMetadata,
@@ -48,6 +54,42 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
     // People is intentionally broader than a hierarchy-only icon: a Principal
     // may be a Company, Group, Person or System identity.
     icon: 'bi-people-fill',
+    permissions,
+  },
+  'sys-email-addresses': {
+    key: 'sys-email-addresses',
+    boMetadata: sysBOEmailAddressesMetadata,
+    icon: 'bi-envelope',
+    permissions,
+  },
+  'sys-principal-email-addresses': {
+    key: 'sys-principal-email-addresses',
+    boMetadata: sysBOPrincipalEmailAddressesMetadata,
+    icon: 'bi-link-45deg',
+    permissions,
+  },
+  'sys-telephone-numbers': {
+    key: 'sys-telephone-numbers',
+    boMetadata: sysBOTelephoneNumbersMetadata,
+    icon: 'bi-telephone',
+    permissions,
+  },
+  'sys-principal-telephone-numbers': {
+    key: 'sys-principal-telephone-numbers',
+    boMetadata: sysBOPrincipalTelephoneNumbersMetadata,
+    icon: 'bi-link-45deg',
+    permissions,
+  },
+  'sys-addresses': {
+    key: 'sys-addresses',
+    boMetadata: sysBOAddressesMetadata,
+    icon: 'bi-geo-alt',
+    permissions,
+  },
+  'sys-principal-addresses': {
+    key: 'sys-principal-addresses',
+    boMetadata: sysBOPrincipalAddressesMetadata,
+    icon: 'bi-link-45deg',
     permissions,
   },
   'sys-applications': {

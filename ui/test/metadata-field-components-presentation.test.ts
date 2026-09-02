@@ -227,7 +227,7 @@ describe('metadata-driven field/content component infrastructure', () => {
     const registry = await uiSource('src/presentation/metadata-component-registry.ts');
 
     expect(formField).toContain('data-metadata-field-label="<%= key %>"');
-    expect(formField).toContain(':<span class="metadata-field-change-marker"');
+    expect(formField).toContain(':<% if (field.required) { %><span class="metadata-field-required-marker"');
     expect(forms).toContain('Metadata-driven per-field change highlighting');
     expect(forms).toContain("window.addEventListener('manatos:ctx-change', schedule)");
     expect(forms).toContain("container.classList.toggle('metadata-field-changed', changed)");

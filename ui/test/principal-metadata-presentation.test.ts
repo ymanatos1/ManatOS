@@ -54,9 +54,27 @@ describe('metadata-driven Principal presentation', () => {
     const list = await uiSource('views/pages/metadata-driven/bo-list-metadata.ejs');
 
     expect(uiMetadata).toContain("visibleFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled']");
+    expect(uiMetadata).toContain("filterFields: ['name', 'principalType', 'parentId', 'rootPrincipalId']");
     expect(list).toContain("key === metadata.primaryField");
     expect(list).toContain("field.type === 'reference'");
     expect(list).toContain('referenceLabel(key, item[key])');
+  });
+
+  it('lays out Contact as a metadata grid so reusable contact collections can share rows', async () => {
+    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
+    const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
+
+    expect(uiMetadata).toContain("tab('contact', 'Contact', 20, [], {");
+    expect(uiMetadata).toContain("layout: 'form'");
+    expect(uiMetadata).toMatch(/sourceKey: 'emailAddresses'[\s\S]*?span: 6|span: 6[\s\S]*?sourceKey: 'emailAddresses'/);
+    expect(uiMetadata).toMatch(/sourceKey: 'telephoneNumbers'[\s\S]*?span: 6|span: 6[\s\S]*?sourceKey: 'telephoneNumbers'/);
+    expect(uiMetadata).toContain("itemEntityKey: 'sys-telephone-numbers'");
+    expect(uiMetadata).toContain("relationshipEntityKey: 'sys-principal-telephone-numbers'");
+    expect(uiMetadata).toContain("identityFields: ['countryCode', 'number']");
+    expect(uiMetadata).toContain("key: 'collection-editor'");
+    expect(renderer).toContain('class="col-md-<%= resolveContentSpan(12) %>"');
+    expect(renderer).toContain('data-metadata-content-component="<%= component.key %>"');
+    expect(renderer).not.toContain("definition.key === 'sys-principals'");
   });
 
   it('declares the reusable CTX-driven Organization visualization without Principal-specific component code', async () => {
@@ -80,6 +98,9 @@ describe('metadata-driven Principal presentation', () => {
     const uiCss = await uiSource('public/css/ui.css');
     expect(uiCss).toContain('.metadata-hierarchy-toolbar .btn');
     expect(uiCss).toContain('min-width: 2.5rem');
+    expect(uiCss).toContain('.metadata-hierarchy-children > .metadata-hierarchy-node:first-child::before');
+    expect(uiCss).toContain('.metadata-hierarchy-children > .metadata-hierarchy-node:last-child::before');
+    expect(uiCss).not.toContain('.metadata-hierarchy-view-chart .metadata-hierarchy-children::before');
     expect(component).toContain('aria-label="${mode === \'chart\' ? \'Chart\' : \'Tree\'}"');
     expect(component).not.toContain('<span class="ms-1">');
     expect(component).toContain('runtime.resolvePath');

@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   SysBOPrincipalType,
   sysBOPrincipalsMetadata,
+  sysBOTelephoneNumbersMetadata,
+  sysBOPrincipalTelephoneNumbersMetadata,
+  type SysBOCreateInput,
+  type SysBOUpdateInput,
+  type SysBOPrincipal,
 } from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
@@ -145,4 +150,72 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     );
     expect(changed.parentId).toBeNull();
   });
+
+  it('stores Principal telephone numbers through canonical reusable rows and many-to-many links', async () => {
+    expect(sysBOTelephoneNumbersMetadata.exposure).toBe('internal');
+    expect(sysBOTelephoneNumbersMetadata.fieldDefinition.countryCode).toMatchObject({
+      required: true,
+      label: 'Country code',
+    });
+    expect(sysBOPrincipalTelephoneNumbersMetadata.relationships?.telephoneNumber?.references.objectKey)
+      .toBe('sys-telephone-numbers');
+
+    const context = await createTestApi();
+    const input = {
+      name: 'Telephone contact principal',
+      principalType: SysBOPrincipalType.Person,
+      parentId: null,
+      enabled: true,
+      relatedChanges: {
+        telephoneNumbers: {
+          current: [
+            { countryCode: '+30', number: '210 123 4567' },
+            // Same canonical number with different punctuation must resolve to
+            // one shared telephone row/link rather than a duplicate.
+            { countryCode: '+30', number: '210-123-4567' },
+          ],
+        },
+      },
+    };
+
+    const principal = await context.services.principals.create(
+      input as SysBOCreateInput<SysBOPrincipal>,
+      SYSTEM_AUDIT_ACTOR,
+    );
+
+    const telephones = await context.store.sysTelephoneNumbers.list({
+      page: 1, pageSize: 100, direction: 'asc', filters: {},
+    });
+    const links = await context.store.sysPrincipalTelephoneNumbers.list({
+      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id },
+    });
+
+    expect(telephones.items).toHaveLength(1);
+    expect(telephones.items[0]).toMatchObject({
+      countryCode: '+30',
+      number: '210 123 4567',
+      name: '+302101234567',
+      fullNumber: '+302101234567',
+    });
+    expect(links.items).toHaveLength(1);
+    expect(links.items[0]?.telephoneNumberId).toBe(telephones.items[0]?.id);
+
+    await context.services.principals.update(
+      principal.id,
+      {
+        relatedChanges: { telephoneNumbers: { current: [] } },
+      } as SysBOUpdateInput<SysBOPrincipal>,
+      SYSTEM_AUDIT_ACTOR,
+    );
+
+    const linksAfterRemove = await context.store.sysPrincipalTelephoneNumbers.list({
+      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id },
+    });
+    expect(linksAfterRemove.items).toHaveLength(0);
+    // Canonical shared value survives unlinking, matching EmailAddress semantics.
+    expect((await context.store.sysTelephoneNumbers.list({
+      page: 1, pageSize: 100, direction: 'asc', filters: {},
+    })).items).toHaveLength(1);
+  });
+
 });

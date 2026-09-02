@@ -347,7 +347,7 @@
     externalAuthProviderDefinitions: providerDefinitions,
     // Named component-data channels let reusable UI components consume page
     // data without hard-coding an owning entity in the generic renderer.
-    componentData: { providerDefinitions },
+    componentData: { providerDefinitions, relatedData: pageRelatedData, relatedReferenceData: pageRelatedReferenceData },
     credentialTest: typeof credentialTest !== 'undefined' ? credentialTest : null,
     suggestedProvider: typeof suggestedProvider !== 'undefined' ? suggestedProvider : null,
     // Composite UI components orchestrate canonical field-components rather
@@ -1022,7 +1022,7 @@
           tabindex="0"
         >
           <% if (tab.layout === 'debug-calculations') { %>
-            <%- include('ui-components/debugging-panel', { entityDebuggingDisplayRows, uiDebuggingDisplayRows, debugElementNameParts }) %>
+            <%- include('ui-components/debugging-panel', { entityDebuggingDisplayRows, uiDebuggingDisplayRows, debugElementNameParts, debuggingEntityKey: definition.key, debuggingCsrfToken: csrfToken }) %>
           <% } else if (Array.isArray(tab.content) && tab.content.length) { %>
             <!--
               Ordered mixed content is metadata-driven. The registry maps semantic
@@ -1239,15 +1239,7 @@
         <% } %>
 
         <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-leading') { %>
-          <button
-            class="<%= actionClass(saveAction, 'primary') %>"
-            type="submit"
-            data-form-save
-            disabled
-          >
-            <% if (saveAction.icon) { %><i class="bi bi-<%= saveAction.icon %> me-1"></i><% } %>
-            <%= saveAction.label %>
-          </button>
+          <%- include('ui-components/save-split-action', { saveAction, actionClass }) %>
         <% } %>
 
         <% if (!isNew && permissions.delete && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
@@ -1317,15 +1309,7 @@
         </a>
 
         <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-trailing') { %>
-          <button
-            class="<%= actionClass(saveAction, 'primary') %>"
-            type="submit"
-            data-form-save
-            disabled
-          >
-            <% if (saveAction.icon) { %><i class="bi bi-<%= saveAction.icon %> me-1"></i><% } %>
-            <%= saveAction.label %>
-          </button>
+          <%- include('ui-components/save-split-action', { saveAction, actionClass }) %>
         <% } %>
       </div>
     </div>

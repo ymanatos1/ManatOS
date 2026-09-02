@@ -340,9 +340,21 @@
       }
     });
 
-    form.addEventListener('submit', () => {
-      allowPageExit = true;
-      window.manatosRetry = null;
+    form.addEventListener('submit', (event) => {
+      const submitter = event.submitter;
+      const inPlaceSave = form.dataset.recordMode !== 'create'
+        && submitter instanceof HTMLButtonElement
+        && submitter.name === '_saveMode'
+        && submitter.value === 'stay';
+      allowPageExit = !inPlaceSave;
+      if (!inPlaceSave) window.manatosRetry = null;
+    });
+
+    form.addEventListener('manatos:form-saved', () => {
+      state.baseline = state.snapshot();
+      allowPageExit = false;
+      window.manatosRetry = () => form.requestSubmit();
+      form.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     queueMicrotask(() => {
@@ -356,20 +368,23 @@
  *
  * Every metadata-driven entity edit/create form uses one reversible rule:
  *
- *   Save enabled = form changed AND form currently valid
+ *   Save enabled = form changed AND form currently valid AND no child editor active
  *
  * The dirty comparison is based on the values that would actually be posted,
  * not on a one-way "the user typed once" latch. Reverting an edit back to its
  * baseline therefore returns the form to clean state and disables Save again.
  * Native HTML constraints (required/email/minlength/etc.) and any custom
- * validity participate before Save becomes actionable; API validation remains
+ * validity participate before Save becomes actionable. Inline/child editors own
+ * drafts outside the parent dataCurrent until Add/Update, so parent persistence
+ * is blocked while any registered child editor is active. API validation remains
  * authoritative after submission.
  * ======================================================================== */
 (() => {
   document.querySelectorAll('form[data-dirty-guard="true"]').forEach((form) => {
+    const saveButtons = [...form.querySelectorAll('[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]')].filter((button) => button instanceof HTMLButtonElement);
     const save = form.querySelector('[data-form-save]');
 
-    if (!(save instanceof HTMLButtonElement)) return;
+    if (!(save instanceof HTMLButtonElement) || !saveButtons.length) return;
 
     const snapshot = () => new URLSearchParams(new FormData(form)).toString();
     const sharedState = window.manatosSysBOFormState || {
@@ -395,10 +410,19 @@
       catch { return false; }
     };
 
-    const setIndicator = ({ changed, valid }) => {
+    const setIndicator = ({ changed, valid, internalEditing, internalEditorCount }) => {
       if (!(indicator instanceof HTMLElement) || !(indicatorText instanceof HTMLElement)) return;
 
       indicator.classList.remove('text-secondary', 'text-primary', 'text-warning-emphasis');
+
+      if (internalEditing) {
+        indicator.classList.add('text-warning-emphasis');
+        indicatorText.textContent = internalEditorCount > 1
+          ? `Editing ${internalEditorCount} related entries`
+          : 'Editing related entry';
+        if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-pencil-square me-1';
+        return;
+      }
 
       if (!changed) {
         indicator.classList.add('text-secondary');
@@ -422,9 +446,6 @@
     };
 
     const update = () => {
-      const pendingCredentialSave = form.querySelector('[data-provider-pending-credential-save]');
-      const hasPendingCredentialSave = pendingCredentialSave instanceof HTMLInputElement
-        && pendingCredentialSave.value === 'true';
       const formDataChanged = sharedState.baseline !== null
         && snapshot() !== sharedState.baseline;
       const pagePath = leafPagePath();
@@ -438,10 +459,13 @@
       // unsaved credential edits.
       const changed = typeof sharedState.isDirty === 'function'
         ? sharedState.isDirty()
-        : (hasPendingCredentialSave || formDataChanged);
+        : formDataChanged;
       const valid = typeof sharedState.isValid === 'function'
         ? sharedState.isValid()
         : form.checkValidity();
+      const internalEditors = [...form.querySelectorAll('[data-entry-child-editor][data-child-editor-active="true"]')];
+      const internalEditorCount = internalEditors.length;
+      const internalEditing = internalEditorCount > 0;
 
       // Page state is itself CTX. Metadata/actions can therefore make live,
       // declarative decisions from state.dirty/state.valid without inspecting DOM.
@@ -452,20 +476,31 @@
         if (runtime.get?.(`${pagePath}.state.valid`) !== valid) {
           runtime.replace(`${pagePath}.state.valid`, valid, { source: 'page-state' });
         }
+        if (runtime.get?.(`${pagePath}.state.internalEditing`) !== internalEditing) {
+          runtime.replace(`${pagePath}.state.internalEditing`, internalEditing, { source: 'page-state' });
+        }
+        if (runtime.get?.(`${pagePath}.state.internalEditorCount`) !== internalEditorCount) {
+          runtime.replace(`${pagePath}.state.internalEditorCount`, internalEditorCount, { source: 'page-state' });
+        }
       }
 
-      // Credential verification is deliberately not a prerequisite for
-      // persistence. A complete pair may be stored encrypted with verification
-      // state = No, while only verified pairs are exposed to sign-in/runtime.
+      // Compound workflow intent/proof fields participate in the same FormData
+      // snapshot, so Save/Cancel share one reversible dirty predicate.
       const credentialStateAllowsSave = true;
 
-      save.disabled = !(changed && valid && credentialStateAllowsSave);
-      save.title = !changed
-        ? 'No changes to save.'
-        : !valid
-          ? 'Complete or correct the required fields before saving.'
-          : '';
-      setIndicator({ changed, valid });
+      const saveDisabled = !(changed && valid && credentialStateAllowsSave && !internalEditing);
+      const saveTitle = internalEditing
+        ? 'Finish or cancel the related-entry editor before saving the page.'
+        : !changed
+          ? 'No changes to save.'
+          : !valid
+            ? 'Complete or correct the required fields before saving.'
+            : '';
+      saveButtons.forEach((button) => {
+        button.disabled = saveDisabled;
+        button.title = saveTitle;
+      });
+      setIndicator({ changed, valid, internalEditing, internalEditorCount });
     };
 
     // Run after the current event turn as well, so evaluator-driven visibility
@@ -473,9 +508,11 @@
     const scheduleUpdate = () => queueMicrotask(update);
     form.addEventListener('input', scheduleUpdate);
     form.addEventListener('change', scheduleUpdate);
+    form.addEventListener('manatos:child-editor-state', scheduleUpdate);
     // Programmatic/calculated mutations also flow through CTX and must update
     // dirtiness/validity even when no native DOM event initiated the change.
     window.addEventListener('manatos:ctx-change', scheduleUpdate);
+    form.addEventListener('manatos:form-saved', scheduleUpdate);
 
     queueMicrotask(update);
   });
@@ -624,9 +661,12 @@
    * debugger/runtime is disabled. This keeps reactive UI decisions independent
    * from developer tooling and mirrors the server evaluator's field semantics.
    */
+  let normalizationValueActive = false;
+  let normalizationValue;
   const resolveLocalFieldVariable = (members) => {
     if (!Array.isArray(members) || !members.length || typeof members[0] !== 'string') return undefined;
     const key = members[0];
+    if (normalizationValueActive && key === 'value' && members.length === 1) return normalizationValue;
     const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
     const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
     const calculated = form.querySelector(`[data-ctx-calculated-field="${escaped}"]`);
@@ -654,20 +694,22 @@
     return value;
   };
 
+  let explicitEvaluationScopePath = null;
+
   const resolveVariable = (node) => {
     if (!node || !Array.isArray(node.members) || !node.members.length) return undefined;
 
     // Non-absolute expressions resolve local form fields first. This includes
     // rich enum option traits and therefore works in production even when the
     // development CTX runtime is not loaded.
-    if (!node.absolute) {
+    if (!node.absolute && !explicitEvaluationScopePath) {
       const local = resolveLocalFieldVariable(node.members);
       if (local !== undefined) return local;
     }
 
     // Root/page/user/system paths continue through the generic CTX resolver.
     if (runtime?.resolve) {
-      const scopePath = leafPageFieldsPath()?.replace(/\.fields$/, '') ?? undefined;
+      const scopePath = explicitEvaluationScopePath ?? leafPageFieldsPath()?.replace(/\.fields$/, '') ?? undefined;
       const resolved = runtime.resolve(node.path, scopePath);
       if (resolved !== undefined) return resolved;
     }
@@ -740,6 +782,7 @@
       case 'unary': {
         const value = evaluate(node.operand);
         if (node.operator === '!') return !truthy(value);
+        if (node.operator === '~') return ~num(value, '~');
         if (node.operator === '+') return num(value, '+');
         if (node.operator === '-') return -num(value, '-');
         return undefined;
@@ -766,12 +809,44 @@
           case '<=': return left <= right;
           case '>': return left > right;
           case '>=': return left >= right;
+          case '<<': return num(left, '<<') << (num(right, '<<') & 31);
+          case '>>': return num(left, '>>') >> (num(right, '>>') & 31);
+          case '>>>': return (num(left, '>>>') >>> (num(right, '>>>') & 31)) >>> 0;
+          case '&': return num(left, '&') & num(right, '&');
+          case '^': return num(left, '^') ^ num(right, '^');
+          case '|': return num(left, '|') | num(right, '|');
           default: return undefined;
         }
       }
       case 'conditional': return truthy(evaluate(node.condition)) ? evaluate(node.whenTrue) : evaluate(node.whenFalse);
       case 'function': {
         const args = (node.arguments || []).map(evaluate);
+        if (node.functionName === 'CurrentDay') {
+          const now = new Date();
+          const pad = (v) => String(v).padStart(2, '0');
+          return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T00:00`;
+        }
+        if (node.functionName === 'EmailAddress') {
+          const normalized = String(args[0] ?? '').trim().toLocaleLowerCase();
+          if (!normalized) return null;
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) throw new Error('EmailAddress requires a valid email address.');
+          return normalized;
+        }
+        if (node.functionName === 'TelephoneNbr') {
+          const clean = (value) => String(value ?? '').trim();
+          if (args.length === 1) {
+            const raw = clean(args[0]);
+            if (!raw) return null;
+            const digits = raw.replace(/\D/g, '');
+            if (!raw.startsWith('+') || digits.length < 4 || digits.length > 15) throw new Error('TelephoneNbr requires an international number beginning with + and containing 4-15 digits.');
+            return `+${digits}`;
+          }
+          const country = clean(args[0]);
+          const countryDigits = country.replace(/\D/g, '');
+          const numberDigits = clean(args[1]).replace(/\D/g, '');
+          if (!country.startsWith('+') || !countryDigits || numberDigits.length < 3 || `${countryDigits}${numberDigits}`.length > 15) throw new Error('TelephoneNbr requires a valid country code and national number.');
+          return `+${countryDigits}${numberDigits}`;
+        }
         if (node.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
         if (node.functionName === 'TraverseCtx') {
           const [startId, collection, parentField, resultField] = args;
@@ -815,6 +890,54 @@
       default: return undefined;
     }
   };
+
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.expression = Object.freeze({
+    evaluateAst: (ast) => evaluate(ast),
+    evaluateAstAt: (ast, scopePath) => {
+      const previousScope = explicitEvaluationScopePath;
+      explicitEvaluationScopePath = scopePath || null;
+      try { return evaluate(ast); } finally { explicitEvaluationScopePath = previousScope; }
+    },
+    currentCtxPath: () => leafPagePath(),
+    currentCtxNode: () => {
+      const path = leafPagePath();
+      return path && runtime?.get ? runtime.get(path) : null;
+    },
+  });
+
+  // Normalization is a canonical field-metadata concern. Components merely
+  // edit values; this generic pipeline evaluates the field's precompiled
+  // normalize AST on blur and publishes the normalized value through CTX.
+  form.addEventListener('focusout', (event) => {
+    const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) return;
+    const container = control.closest('[data-ctx-field-container]');
+    if (!container?.dataset.fieldNormalizeAst) return;
+    try {
+      const ast = JSON.parse(container.dataset.fieldNormalizeAst || 'null');
+      if (!ast) return;
+      const previous = control.value;
+      normalizationValueActive = true;
+      normalizationValue = previous;
+      let normalized;
+      try { normalized = evaluate(ast); }
+      finally { normalizationValueActive = false; normalizationValue = undefined; }
+      if (normalized == null && previous === '') return;
+      const next = normalized == null ? '' : String(normalized);
+      if (next !== previous) {
+        control.value = next;
+        syncSourceField(control, { source: 'field-normalization', triggerField: control.dataset.ctxField });
+      }
+    } catch (error) {
+      control.setCustomValidity(error instanceof Error ? error.message : 'Invalid value.');
+      control.reportValidity();
+    }
+  });
+  form.addEventListener('input', (event) => {
+    const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
+    if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) control.setCustomValidity('');
+  });
 
   /*
    * Compile the browser-side reactive plan once from the ASTs embedded by the
@@ -1370,6 +1493,15 @@
 
   const baselines = new Map();
 
+  const captureBaselines = () => {
+    baselines.clear();
+    for (const container of containers) {
+      if (!(container instanceof HTMLElement)) continue;
+      const key = container.dataset.ctxFieldContainer;
+      if (key) baselines.set(key, cloneValue(fieldValue(container, key)));
+    }
+  };
+
   const update = () => {
     for (const container of containers) {
       if (!(container instanceof HTMLElement)) continue;
@@ -1377,8 +1509,6 @@
       if (!key || !baselines.has(key)) continue;
       const changed = !sameValue(baselines.get(key), fieldValue(container, key));
       container.classList.toggle('metadata-field-changed', changed);
-      const marker = container.querySelector('[data-field-change-marker]');
-      if (marker instanceof HTMLElement) marker.hidden = !changed;
     }
   };
 
@@ -1386,16 +1516,124 @@
   form.addEventListener('input', schedule);
   form.addEventListener('change', schedule);
   window.addEventListener('manatos:ctx-change', schedule);
+  form.addEventListener('manatos:form-saved', () => {
+    captureBaselines();
+    update();
+  });
 
   // Wait until create defaults and first-pass calculations have settled. They
   // are the visual baseline; only subsequent user/causal changes are marked.
   requestAnimationFrame(() => {
-    for (const container of containers) {
-      if (!(container instanceof HTMLElement)) continue;
-      const key = container.dataset.ctxFieldContainer;
-      if (key) baselines.set(key, cloneValue(fieldValue(container, key)));
-    }
+    captureBaselines();
     update();
+  });
+})();
+
+/* ==========================================================================
+ * Metadata-driven in-place Save
+ *
+ * Existing records use fetch for the primary Save action so the page/tab,
+ * scroll position, debugger state and shell-level CLI survive persistence.
+ * Save-and-Close and first Save of a new record keep normal navigation.
+ * ======================================================================== */
+(() => {
+  const form = document.querySelector('form.metadata-driven-record-form[data-dirty-guard="true"]');
+  if (!(form instanceof HTMLFormElement)) return;
+
+  const runtime = window.ManatOS?.ctx;
+  const leafPagePath = () => {
+    if (!runtime?.value?.page) return null;
+    let node = runtime.value.page;
+    let path = 'ctx.page';
+    while (node?.page) { node = node.page; path += '.page'; }
+    return path;
+  };
+
+  const mergePersistedCtx = (record) => {
+    if (!record || typeof record !== 'object' || Array.isArray(record) || !runtime?.replace) return;
+    const pagePath = leafPagePath();
+    if (!pagePath) return;
+
+    const current = runtime.get?.(`${pagePath}.dataCurrent`);
+    const original = runtime.get?.(`${pagePath}.dataOriginal`);
+    const mergedCurrent = current && typeof current === 'object' && !Array.isArray(current)
+      ? { ...current, ...record }
+      : { ...record };
+    const mergedOriginal = original && typeof original === 'object' && !Array.isArray(original)
+      ? { ...original, ...record }
+      : { ...mergedCurrent };
+
+    runtime.replace(`${pagePath}.dataCurrent`, mergedCurrent, { source: 'save-reconcile' });
+    runtime.replace(`${pagePath}.dataOriginal`, mergedOriginal, { source: 'save-reconcile' });
+
+    for (const [key, value] of Object.entries(record)) {
+      const fieldPath = `${pagePath}.fields.${key}.value`;
+      if (runtime.get?.(fieldPath) !== undefined && runtime.get(fieldPath) !== value) {
+        runtime.replace(fieldPath, value, { source: 'save-reconcile', triggerPath: fieldPath });
+      }
+    }
+  };
+
+  let saving = false;
+  form.addEventListener('submit', async (event) => {
+    const submitter = event.submitter;
+    const isStay = submitter instanceof HTMLButtonElement
+      && submitter.name === '_saveMode'
+      && submitter.value === 'stay';
+    if (!isStay || form.dataset.recordMode === 'create' || saving) return;
+
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+
+    saving = true;
+    const saveControls = [...form.querySelectorAll('[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]')]
+      .filter((control) => control instanceof HTMLButtonElement);
+    saveControls.forEach((control) => { control.disabled = true; });
+
+    try {
+      /*
+       * Match the native form submission encoding. Express parses urlencoded
+       * bodies globally, while a raw FormData body would become multipart and
+       * reach the CSRF middleware without req.body populated. Keep this generic
+       * for every metadata-driven entry form and preserve repeated controls.
+       */
+      const body = new URLSearchParams();
+      for (const [name, value] of new FormData(form).entries()) {
+        if (typeof value === 'string') body.append(name, value);
+      }
+      body.set('_saveMode', 'stay');
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body,
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'ManatOS-InPlace-Save',
+        },
+      });
+      const contentType = response.headers.get('content-type') || '';
+      const payload = contentType.includes('application/json') ? await response.json() : null;
+      if (!response.ok || !payload?.success) throw new Error('Save could not be completed in place.');
+
+      mergePersistedCtx(payload.data?.record);
+      form.dispatchEvent(new CustomEvent('manatos:form-saved', {
+        bubbles: true,
+        detail: payload.data || {},
+      }));
+    } catch (error) {
+      /*
+       * Plain Save is an in-place operation by contract. Never fall back to a
+       * full form submission here: doing so fires the dirty-page guard, loses
+       * the active tab/scroll position, and can repeat an already-successful
+       * mutation. Keep the current document intact and let the normal form state
+       * remain dirty so the user can retry safely.
+       */
+      console.error('[ManatOS] In-place Save failed.', error);
+    } finally {
+      saving = false;
+      // Re-evaluate Save enablement after a failed request; on success the
+      // manatos:form-saved event has already promoted the new baseline.
+      form.dispatchEvent(new Event('change', { bubbles: true }));
+    }
   });
 })();
 

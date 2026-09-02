@@ -2106,6 +2106,540 @@
       ]
     },
     {
+      "name": "System Business Objects (Aux)",
+      "description": "Supporting/internal SysBO resources used by primary business objects. Contact values are canonical reusable records; Principal link rows associate those values with Principals. Organized by contact domain rather than by raw table/entity name.",
+      "item": [
+        {
+          "name": "Email Addresses",
+          "description": "Canonical reusable email addresses and Principal-to-email relationship rows.",
+          "item": [
+            {
+              "name": "Canonical Email Addresses",
+              "item": [
+                {
+                  "name": "List SysEmailAddresses",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysEmailAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysEmailAddresses"
+                      ]
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create SysEmailAddress",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysEmailAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysEmailAddresses"
+                      ]
+                    },
+                    "description": "Creates/reuses a canonical email value. The service normalizes the address according to metadata.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"address\": \"postman.contact@example.com\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                          "if (json.data && json.data.id) pm.environment.set('testEmailAddressId', json.data.id);"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Principal Email Links",
+              "item": [
+                {
+                  "name": "List SysPrincipalEmailAddresses",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalEmailAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipalEmailAddresses"
+                      ]
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create SysPrincipalEmailAddress",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalEmailAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipalEmailAddresses"
+                      ]
+                    },
+                    "description": "Associates the current test Principal with the canonical email address created above.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"emailAddressId\": \"{{testEmailAddressId}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                          "if (json.data && json.data.id) pm.environment.set('testPrincipalEmailAddressId', json.data.id);"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Telephone Numbers",
+          "description": "Canonical reusable telephone numbers and Principal-to-telephone relationship rows.",
+          "item": [
+            {
+              "name": "Canonical Telephone Numbers",
+              "item": [
+                {
+                  "name": "List SysTelephoneNumbers",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysTelephoneNumbers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysTelephoneNumbers"
+                      ]
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create SysTelephoneNumber",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysTelephoneNumbers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysTelephoneNumbers"
+                      ]
+                    },
+                    "description": "Creates/reuses a canonical telephone value. fullNumber is application-managed/derived and is intentionally omitted.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"countryCode\": \"+30\",\n  \"number\": \"2101234567\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                          "if (json.data && json.data.id) pm.environment.set('testTelephoneNumberId', json.data.id);"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Principal Telephone Links",
+              "item": [
+                {
+                  "name": "List SysPrincipalTelephoneNumbers",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalTelephoneNumbers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipalTelephoneNumbers"
+                      ]
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create SysPrincipalTelephoneNumber",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalTelephoneNumbers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipalTelephoneNumbers"
+                      ]
+                    },
+                    "description": "Associates the current test Principal with the canonical telephone number created above.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"telephoneNumberId\": \"{{testTelephoneNumberId}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                          "if (json.data && json.data.id) pm.environment.set('testPrincipalTelephoneNumberId', json.data.id);"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Postal Addresses",
+          "description": "Canonical structured postal addresses and Principal-to-address relationship rows.",
+          "item": [
+            {
+              "name": "Canonical Addresses",
+              "item": [
+                {
+                  "name": "List SysAddresses",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysAddresses"
+                      ]
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create SysAddress",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysAddresses"
+                      ]
+                    },
+                    "description": "Creates/reuses a canonical structured address. formattedAddress is application-managed/derived and is intentionally omitted.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"recipientOrAttention\": \"Postman Contact\",\n  \"organization\": \"ManatOS\",\n  \"addressLine1\": \"43 Ipeirou Str.\",\n  \"postalCode\": \"10439\",\n  \"city\": \"Athens\",\n  \"stateOrProvince\": \"Attica\",\n  \"country\": \"Greece\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                          "if (json.data && json.data.id) pm.environment.set('testAddressId', json.data.id);"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Principal Address Links",
+              "item": [
+                {
+                  "name": "List SysPrincipalAddresses",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipalAddresses"
+                      ]
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create SysPrincipalAddress",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalAddresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipalAddresses"
+                      ]
+                    },
+                    "description": "Associates the current test Principal with the canonical address created above.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"addressId\": \"{{testAddressId}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                          "const json = pm.response.json();",
+                          "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                          "if (json.data && json.data.id) pm.environment.set('testPrincipalAddressId', json.data.id);"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "System Configuration",
       "description": "Admin-only persisted runtime configuration. Sensitive values are stored securely and are never returned as plaintext.",
       "item": [
@@ -3007,6 +3541,30 @@
       "value": "",
       "type": "string",
       "description": "Exact stored credential-version timestamp captured by the internal credentials-for-test workflow."
+    },
+    {
+      "key": "testEmailAddressId",
+      "value": ""
+    },
+    {
+      "key": "testPrincipalEmailAddressId",
+      "value": ""
+    },
+    {
+      "key": "testTelephoneNumberId",
+      "value": ""
+    },
+    {
+      "key": "testPrincipalTelephoneNumberId",
+      "value": ""
+    },
+    {
+      "key": "testAddressId",
+      "value": ""
+    },
+    {
+      "key": "testPrincipalAddressId",
+      "value": ""
     }
   ]
 }

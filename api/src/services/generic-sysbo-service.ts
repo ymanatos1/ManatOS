@@ -92,8 +92,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
 
           scope.comment('createdBy', actor.userName);
 
+          const normalizedInput = this.normalizeFields(input as unknown as Record<string, unknown>) as SysBOCreateInput<T>;
           const created = await this.repository.create(
-            input,
+            normalizedInput,
             actor,
             (record) => this.materializePersistedDerivedFields(record),
           );
@@ -125,9 +126,10 @@ export class GenericSysBOService<T extends SysBOEntity> {
             updatedBy: actor.userName,
           });
 
+          const normalizedChanges = this.normalizeFields(changes as unknown as Record<string, unknown>) as SysBOUpdateInput<T>;
           const updated = await this.repository.update(
             id,
-            changes,
+            normalizedChanges,
             actor,
             (record) => this.materializePersistedDerivedFields(record),
           );
@@ -136,6 +138,24 @@ export class GenericSysBOService<T extends SysBOEntity> {
         },
       ),
     );
+  }
+
+  /** Apply metadata-declared field normalization at the authoritative API boundary. */
+  protected normalizeFields(values: Record<string, unknown>): Record<string, unknown> {
+    const candidate = { ...values };
+    for (const [key, field] of Object.entries(this.metadata.fieldDefinition)) {
+      const expression = field.normalize?.expression;
+      if (!expression || !Object.prototype.hasOwnProperty.call(candidate, key)) continue;
+      const value = candidate[key];
+      if (value === null || value === undefined || value === '') continue;
+      candidate[key] = evaluateExpression(
+        expression,
+        { value },
+        { value },
+        { source: 'field-normalization', sourcePath: `fieldDefinition.${key}.normalize`, targetPath: key, purpose: 'normalize field before persistence' },
+      );
+    }
+    return candidate;
   }
 
   /** Whether this entity declares any derived value that must be stored. */
@@ -153,7 +173,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
    * Several derived fields may depend on one another. Iterate to a fixed point
    * with a strict safety bound; no entity/field names are hard-coded here.
    */
-  private async materializePersistedDerivedFields(record: T): Promise<T> {
+  protected async materializePersistedDerivedFields(record: T): Promise<T> {
     const derived = Object.entries(this.metadata.derivedFields ?? {})
       .filter(([, field]) => field.persisted === true);
     if (!derived.length) return record;
@@ -167,8 +187,14 @@ export class GenericSysBOService<T extends SysBOEntity> {
         ...(collection ? [...collection.values()].filter((item) => item.id !== candidate.id) : []),
         candidate,
       ];
+      /*
+       * Derived expressions resolve against the canonical field context, not
+       * merely properties physically present on a partial input object. Optional
+       * fields therefore remain addressable with value=undefined and can safely
+       * participate in conditional calculations without becoming required.
+       */
       const fields = Object.fromEntries(
-        Object.entries(candidate).map(([key, value]) => [key, { value }]),
+        Object.keys(this.metadata.fieldDefinition).map((key) => [key, { value: candidate[key] }]),
       );
       const entryPage = { fields, dataCurrent: candidate };
       const ctx = { page: { dataList, page: entryPage } };
@@ -208,7 +234,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
    * The sweep is metadata-driven and therefore applies equally to future
    * entities with persisted derived fields.
    */
-  private async refreshPersistedDerivedCollection(): Promise<void> {
+  protected async refreshPersistedDerivedCollection(): Promise<void> {
     if (!this.hasPersistedDerivedFields()) return;
     const collection = this.store.collectionForObjectKey(this.metadata.key);
     if (!collection?.size) return;

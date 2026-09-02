@@ -121,13 +121,19 @@ Swagger, Postman and the developer documentation present API responsibilities in
 
 1. **Server** — liveness/readiness are public; datastore flush is Admin-only.
 2. **Authentication** — registration, sign-in, sessions and related trusted authentication commands; access is documented per operation.
-3. **System Business Objects** — metadata-driven SysBO resources; authorization depends on the BO and operation.
+3. **System Business Objects** — primary metadata-driven SysBO resources; authorization depends on the BO and operation.
+4. **System Business Objects (Aux)** — supporting/internal SysBO resources such as canonical contact values and Principal relationship rows.
 
 For platform-owned entities, authorization may also be license scoped. `SysApplication` belongs to mCRM: Admin has unrestricted access; non-Admin collection and record reads require a current effective mCRM `SysLicense` reached through a linked `SysPrincipal`, and an optional `applicationId` restriction narrows visibility to that application. The current in-memory adapter filters materialized rows before client filtering/paging; future RDBMS adapters should push the same predicate into the database query.
-4. **System Configuration** — Admin-only persisted runtime configuration; sensitive values are never returned as plaintext.
-5. **Public UI** — anonymous-safe bootstrap/runtime projections used before sign-in.
-6. **External Authentication** — Admin provider configuration and supported-provider metadata.
-7. **External Authentication Credentials** — trusted Admin/BFF secret lifecycle; requires Admin Bearer authentication plus `x-internal-api-key`.
-8. **Internal External Authentication Workflow** — UI/BFF-only OAuth credential-test mechanics, not a general client API.
+5. **System Configuration** — Admin-only persisted runtime configuration; sensitive values are never returned as plaintext.
+6. **Public UI** — anonymous-safe bootstrap/runtime projections used before sign-in.
+7. **External Authentication** — Admin provider configuration and supported-provider metadata.
+8. **External Authentication Credentials** — trusted Admin/BFF secret lifecycle; requires Admin Bearer authentication plus `x-internal-api-key`.
+9. **Internal External Authentication Workflow** — UI/BFF-only OAuth credential-test mechanics, not a general client API.
 
 The ordering is presentation-only: it does not collapse domain boundaries or weaken authorization rules.
+
+
+### Nested editing state
+
+Metadata entry pages distinguish parent dirtiness from active child-editor ownership. Registered inline editors publish an internal-editing state into the page CTX (`state.internalEditing` and `state.internalEditorCount`). A child draft is not part of the parent `dataCurrent` transaction until Add/Update commits it locally, therefore parent Save is universally disabled while any child editor is active. This contract is shared infrastructure rather than a Principal/Contact special case.

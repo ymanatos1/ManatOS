@@ -11,23 +11,31 @@ import type {
 } from './types.js';
 
 const PRECEDENCE: Readonly<Record<ExpressionBinaryOperator, number>> = {
+  // Increasing numbers bind more tightly. The ordering mirrors JavaScript for
+  // the supported operator subset so metadata formulas remain unsurprising.
   '||': 2,
   '??': 3,
   '&&': 4,
-  '==': 5,
-  '!=': 5,
-  '===': 5,
-  '!==': 5,
-  '<': 6,
-  '<=': 6,
-  '>': 6,
-  '>=': 6,
-  '+': 10,
-  '-': 10,
-  '*': 20,
-  '/': 20,
-  '%': 20,
-  '**': 30,
+  '|': 5,
+  '^': 6,
+  '&': 7,
+  '==': 8,
+  '!=': 8,
+  '===': 8,
+  '!==': 8,
+  '<': 9,
+  '<=': 9,
+  '>': 9,
+  '>=': 9,
+  '<<': 10,
+  '>>': 10,
+  '>>>': 10,
+  '+': 11,
+  '-': 11,
+  '*': 12,
+  '/': 12,
+  '%': 12,
+  '**': 14,
 };
 
 class Parser {
@@ -100,14 +108,14 @@ class Parser {
   private parsePrefix(): ExpressionNode {
     const token = this.current();
 
-    if (token.kind === 'operator' && (token.text === '+' || token.text === '-' || token.text === '!')) {
+    if (token.kind === 'operator' && (token.text === '+' || token.text === '-' || token.text === '!' || token.text === '~')) {
       this.advance();
-      // Exponentiation binds more tightly than unary +/-; logical NOT behaves
-      // as a conventional high-precedence prefix operator.
+      // Exponentiation binds more tightly than unary operators, matching the
+      // JavaScript precedence relationship for the supported prefix subset.
       return {
         kind: 'unary',
         operator: token.text,
-        operand: token.text === '!' ? this.parseExpression(31) : this.parseExpression(25),
+        operand: token.text === '!' || token.text === '~' ? this.parseExpression(13) : this.parseExpression(13),
       };
     }
 

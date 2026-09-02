@@ -217,7 +217,7 @@ SysUser is the first full acceptance target. Authenticated non-Admin users can r
 
 ### 5.2 Entry-form state and interaction
 
-Metadata-driven entry forms use one generic state rule: **Save is enabled only when the form is both dirty and valid**. Dirty state compares current editable/submitted values with the captured baseline, so reverting every edit to its original value returns the form to clean and disables Save again. Calculated/read-only fields do not independently make the form dirty. Native HTML constraints provide immediate validity feedback, while server/API validation remains authoritative.
+Metadata-driven entry forms use one generic state rule: **Save is enabled only when the form is dirty, valid, and no registered child editor currently owns an uncommitted draft**. Dirty state compares current editable/submitted values with the captured baseline, so reverting every edit to its original value returns the form to clean and disables Save again. Calculated/read-only fields do not independently make the form dirty. Native HTML constraints provide immediate validity feedback, while server/API validation remains authoritative.
 
 On opening a record, the first editable field on the first tab receives focus. If that tab contains no editable field, the renderer activates the first later tab that contains one and focuses its first editable field. Tabs whose visible fields are entirely read-only use a very light informational-grey pane; individual read-only/calculated controls use the slightly darker read-only control grey. Create forms still show System details as generated/empty information rather than hiding the tab.
 
@@ -488,7 +488,7 @@ This avoids both markup duplication and premature “universal component” abst
 
 Authentication presentation is split across server routes, provider metadata and popup/page templates. Current external provider choices are Microsoft, Google, Facebook and GitHub. Providers remain visible even when not configured. The UI may store an Admin-supplied credential pair before verification, but the provider is treated as not configured for sign-in until it is enabled and the current stored pair has `credentialsVerified=true`.
 
-Password recovery deliberately uses a privacy-neutral public confirmation so the UI does not disclose whether an entered identity exists. Password/reset links use transient one-time tokens; the detailed token/storage semantics are documented in `docs/authentication-flows.md`.
+Password recovery deliberately uses a privacy-neutral public confirmation so the UI does not disclose whether an entered identity exists. Password/reset links use transient one-time tokens; the detailed token/storage semantics are documented in `docs/Authentication-Flows.md`.
 
 ## 10. Preferences and themes
 
@@ -585,3 +585,36 @@ Current or planned areas include:
 - further popup families only when new real use cases justify them.
 
 Keep this document updated when a new reusable UI architecture is introduced.
+
+## Metadata-driven contact collection editors
+
+Principal Contact collections use the generic transactional `collection-editor` component. The component edits `ctx.page.page.dataCurrent` only; persistence remains bounded by the parent entry **Save** operation. Email-address and telephone-number rows can be edited either through the pencil action or by activating the displayed value itself. Delete removes the relationship from the editing buffer; canonical shared contact rows are not immediately destroyed.
+
+Telephone country selection is presentation metadata. The visible option may include a country flag when ManatOS already has a corresponding presentation asset/representation; currently Greece uses `/assets/flags/el.svg` and the United Kingdom uses `/assets/flags/en.svg`; unflagged countries reserve the same visual space without inventing an asset. Only the calling code and telephone data participate in persistence.
+
+## Debugging CLI
+
+The metadata entry Debugging area opens on **CLI**, followed by **Entity** and **UI**. The CLI prompt is rendered inside the dark terminal surface and evaluates canonical ManatOS ASTs against `currentCtxNode` (initially `ctx.page.page`).
+
+Commands:
+
+```text
+.       print currentCtxNode, formatted
+..      print its parent CTX node, formatted
+cls     clear the visible transcript
+clear   alias of cls
+```
+
+`cls`/`clear` affect only the transcript and are not added to history. Expression history is stored in browser `localStorage`, scoped by entity type, capped at 9,999 commands per entity type, and stores commands only (never results). Arrow Up/Down navigate that history across different entries of the same entity type.
+
+Expressions themselves are compiled by the canonical server parser and evaluated from the returned AST; the browser does not implement a second expression parser.
+
+
+### Compact related-contact collections
+
+Reusable `collection-editor` instances may declare `collapsible: true`. Their heading then toggles between the ordinary row list and a compact wrapped summary whose values remain visually separated objects. When an inline Add/Edit editor is open, the heading toggle is disabled; collapsing never commits or cancels editor state. A fresh entry-page visit starts collapsible collections compact. The state then lives only in that page DOM instance, so tab switching preserves the user's choice while navigation away/back naturally restores the compact default. Clicking a compact summary object expands the collection and opens that exact item for editing.
+
+
+### Parent/child entry editing state
+
+Reusable inline editors register themselves with the owning metadata-driven entry page. While any child editor is active, `ctx.page...state.internalEditing` is true and `internalEditorCount` reports the active-editor count. Parent Save/Save-and-Close controls are disabled until each draft is explicitly committed with Add/Update or discarded with the child Cancel action. Parent Cancel and Delete remain parent-level actions and are not blocked by child-field validation. This state contract is entity-agnostic and applies to future editable collections as well as Principal contacts.
