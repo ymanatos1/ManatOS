@@ -1141,6 +1141,24 @@ body.anonymous .workspace {
 }
 
 /* =========================================================================
+   Universal popup interaction layer
+   =========================================================================
+ * ManatOS popups are explicit interactions. Custom popup surfaces use this
+ * backdrop contract; Bootstrap modals receive the equivalent behavior from
+ * shell.js. Developer Tools remain below popup layers unless explicitly exposed
+ * for on-demand popup inspection.
+ */
+.manatos-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, .28);
+}
+
+/* =========================================================================
    Shell-owned Developer Tools dock
    =========================================================================
  * The original CTX-only debugger was robust because the shell owned exactly
@@ -1155,11 +1173,27 @@ body.anonymous .workspace {
   max-height: calc(100vh - var(--top-header-height, 0px));
   position: sticky;
   top: 0;
+  /*
+   * Keep Developer Tools above ordinary shell content and nav dropdowns, but
+   * below Bootstrap/custom popup backdrops. A popup CTX action temporarily adds
+   * .is-popup-inspection to expose the dock on demand.
+   */
+  z-index: 1010;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: #f8fafc;
   border-left: 1px solid var(--manatos-border);
+}
+
+
+.developer-tools-dock.is-popup-inspection {
+  z-index: 1200;
+}
+
+/* Shell menus must remain usable above the dock during normal (non-popup) use. */
+.horizontal-nav .dropdown-menu {
+  z-index: 1020;
 }
 
 .developer-tools-body {

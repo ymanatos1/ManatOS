@@ -39,7 +39,7 @@ describe('metadata Debugging model', () => {
     expect(valueRow?.row.value).toBe("'Ada Test'");
     expect(valueRow?.row.detailGroup).toBe('DECLARED FIELDS');
     expect(valueRow?.row.definitionPath).toBe('ctx.page.page.fields.fullName.expression');
-    expect(valueRow?.row.valuePath).toBe('ctx.page.page.dataCurrent.fullName');
+    expect(valueRow?.row.valuePath).toBe('ctx.page.page.entry.fullName');
   });
 
   it('returns no expression rows when developer Debugging is disabled', () => {

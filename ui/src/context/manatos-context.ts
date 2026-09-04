@@ -8,6 +8,7 @@ import {
   type ManatOSPageContextNode,
   type ManatOSPageRuntimeContext,
   type ManatOSPageEntryRuntimeContext,
+  type ManatOSPageCollectionRuntimeContext,
   type ManatOSPageListRuntimeContext,
   type ManatOSUserContext,
   type SysBOUser,
@@ -388,7 +389,7 @@ export function pageBreadcrumbItems(ctx: ManatOSContext): ManatOSBreadcrumbItem[
       const primaryField = typeof metadata?.primaryField === 'string'
         ? metadata.primaryField
         : null;
-      const current = node.dataCurrent ?? node.dataOriginal ?? {};
+      const current = node.entry ?? node.entryOriginal ?? {};
       const primaryValue = primaryField ? current[primaryField] : null;
       const modeLabel = node.mode === 'create' ? 'Add' : node.mode === 'view' ? 'View' : 'Edit';
       const suffix = primaryValue != null && String(primaryValue).trim()
@@ -439,32 +440,56 @@ export function pageListRuntimeContext(
   filterFields: readonly string[],
   query: Readonly<Record<string, unknown>>,
 ): ManatOSPageListRuntimeContext {
-  const filters = Object.fromEntries(
-    filterFields.map((field) => [
-      assertContextIdentifier(field, 'filter field'),
-      query[`filter.${field}`] ?? null,
-    ]),
-  );
+  const filters = {
+    ...Object.fromEntries(
+      filterFields.map((field) => [
+        assertContextIdentifier(field, 'filter field'),
+        query[`filter.${field}`] ?? null,
+      ]),
+    ),
+    // Every list-like CTX exposes the same exclusion-predicate slot. Normal
+    // browse pages usually carry null; selectors/search callers may supply the
+    // same canonical formula through the API/storage query contract.
+    listExceptions: typeof query.listExceptions === 'string' && query.listExceptions.trim()
+      ? query.listExceptions.trim()
+      : null,
+  };
 
+  const entriesOriginal = Object.freeze(items.map((item) => Object.freeze({ ...item })));
   return {
     filters: Object.freeze(filters),
-    dataList: Object.freeze(items.map((item) => Object.freeze({ ...item }))),
+    entriesOriginal,
+    entries: Object.freeze(entriesOriginal.map((item) => Object.freeze({ ...item }))),
   };
 }
 
 /**
- * Build the flattened runtime values owned by a SysBO entry page. `dataOriginal`
- * is the immutable baseline and `dataCurrent` is the working record. Both intentionally
+ * Build the flattened runtime values owned by a SysBO entry page. `entryOriginal`
+ * is the immutable baseline and `entry` is the working record. Both intentionally
  * have the same record shape so dirtiness is a direct structural comparison.
  */
 export function pageEntryRuntimeContext(
   entry: Readonly<Record<string, unknown>>,
 ): ManatOSPageEntryRuntimeContext {
-  const dataOriginal = Object.freeze({ ...entry });
+  const entryOriginal = Object.freeze({ ...entry });
   return {
-    dataOriginal,
+    entryOriginal,
     // The working record always starts strictly from the finalized baseline,
     // for both create defaults and existing persisted data.
-    dataCurrent: Object.freeze({ ...dataOriginal }),
+    entry: Object.freeze({ ...entryOriginal }),
   };
+}
+
+/**
+ * Build an ID-keyed transactional workspace snapshot. Unlike entries, the
+ * collection has no ordering semantics: each member is addressed by stable
+ * entity identity (or later by a draft identity) and the whole graph can be
+ * compared/committed as one logical unit.
+ */
+export function pageCollectionRuntimeContext(
+  items: readonly Readonly<Record<string, unknown>>[],
+): ManatOSPageCollectionRuntimeContext {
+  const entriesOriginal = Object.freeze(items.map((item) => Object.freeze({ ...item })));
+  const entries = Object.freeze(entriesOriginal.map((item) => Object.freeze({ ...item })));
+  return { entriesOriginal, entries, selections: Object.freeze({}) };
 }

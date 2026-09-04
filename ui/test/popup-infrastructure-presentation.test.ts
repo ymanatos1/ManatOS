@@ -44,6 +44,19 @@ describe('popup infrastructure presentation', () => {
     expect($('#preferencesModal .modal-header .modal-title').text()).toContain('Website user preferences');
     expect($('#preferencesModal .popup-footer-right #savePreferencesButton').length).toBe(1);
   });
+  it('keeps every popup explicit while leaving Developer Tools interactive above popup layers', async () => {
+    const shellScript = await readFile(resolve(testDirectory, '../public/js/shell.js'), 'utf8');
+    const layoutCss = await readFile(resolve(testDirectory, '../public/css/layout.css'), 'utf8');
+
+    expect(shellScript).toContain("modal.dataset.bsBackdrop = 'static'");
+    expect(shellScript).toContain("modal.dataset.bsKeyboard = 'false'");
+    expect(shellScript).toContain("modal.dataset.bsFocus = 'false'");
+    expect(layoutCss).toContain('.manatos-popup-backdrop {');
+    expect(layoutCss).toContain('z-index: 1100');
+    expect(layoutCss).toContain('.developer-tools-dock {');
+    expect(layoutCss).toContain('z-index: 1200');
+  });
+
   it('moves focus outside a modal before Bootstrap applies aria-hidden and restores the opener afterwards', async () => {
     const shellScript = await readFile(resolve(testDirectory, '../public/js/shell.js'), 'utf8');
 

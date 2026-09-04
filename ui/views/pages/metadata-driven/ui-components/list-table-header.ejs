@@ -1,0 +1,28 @@
+<%
+  /* One canonical metadata-driven list header. Browse mode may expose sortable
+     links; selection mode intentionally keeps the same columns without turning
+     labels into navigation. */
+  const headerSelectorMode = typeof selectorMode !== 'undefined' && selectorMode === true;
+  const headerRowActions = typeof rowActions !== 'undefined' && Array.isArray(rowActions) ? rowActions : [];
+%>
+<tr>
+  <% for (const key of metadataUI.list.visibleFields) { %>
+    <% const field = metadata.fieldDefinition[key]; %>
+    <% if (!field) continue; %>
+    <th>
+      <% if (!headerSelectorMode && metadataUI.list.sortableFields.includes(key)) { %>
+        <a class="table-sort-link" href="?<%= new URLSearchParams({...query, sort: key, direction: query.sort === key && query.direction !== 'desc' ? 'desc' : 'asc'}).toString() %>">
+          <%= field.label %>
+          <% if (query.sort === key) { %>
+            <i class="bi <%= query.direction === 'desc' ? 'bi-sort-down' : 'bi-sort-up' %>"></i>
+          <% } else { %>
+            <i class="bi bi-arrow-down-up table-sort-muted"></i>
+          <% } %>
+        </a>
+      <% } else { %>
+        <%= field.label %>
+      <% } %>
+    </th>
+  <% } %>
+  <% if (!headerSelectorMode && headerRowActions.length) { %><th class="text-end">Actions</th><% } %>
+</tr>

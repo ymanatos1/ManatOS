@@ -466,6 +466,7 @@
     pageRelatedData,
     collectionValue,
     relatedExpressionScope,
+    entryContextPath: ownerEditing ? 'ctx.page.page.page' : 'ctx.page.page',
   });
 
 %>
@@ -474,14 +475,22 @@
   <form
     class="metadata-driven-record-form"
     method="post"
-    action="/bo/<%= definition.key %>/save"
+    action="/bo/<%= definition.key %>/<%= ownerEditing ? 'owned/save' : 'save' %>"
     data-record-mode="<%= recordMode %>"
     data-entity-key="<%= definition.key %>"
+    data-owner-editing="<%= ownerEditing ? 'true' : 'false' %>"
     <% if (!isViewMode) { %>data-dirty-guard="true"<% } %>
   >
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <% if (!isNew && recordId) { %>
       <input type="hidden" name="id" value="<%= recordId %>">
+    <% } %>
+    <% if (ownerEditing && ownerContext) { %>
+      <input type="hidden" name="_ownerEntries" value="<%= JSON.stringify(ownerContext.entries || []) %>">
+      <input type="hidden" name="_ownerEntriesOriginal" value="<%= JSON.stringify(ownerContext.entriesOriginal || []) %>">
+      <input type="hidden" name="_ownerMode" value="<%= ownerContext.mode || 'edit' %>">
+      <input type="hidden" name="_ownerFocusedMemberId" value="<%= recordId || '' %>">
+      <input type="hidden" name="_ownerIdentityField" value="<%= ownerContext.identityField || 'id' %>">
     <% } %>
     <%- include('ui-components/entry-tabs-nav', { tabs, activeTabId }) %>
 
@@ -528,6 +537,7 @@
       recordId,
       definition,
       leadingCommandActionEntries,
+      ownerEditing,
       trailingCommandActionEntries,
       deleteAction,
       deleteEnabled,

@@ -19,3 +19,5 @@ export * from './dynamic-value.js';
 export * from './expressions/index.js';
 
 export * from './system-country-catalog.js';
+
+export * from './entry-representation.js';

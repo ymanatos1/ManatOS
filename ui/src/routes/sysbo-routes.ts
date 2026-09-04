@@ -15,6 +15,8 @@ import {
   calculatedContextField,
   compileExpression,
   evaluateExpression,
+  resolveEntryRepresentation,
+  entryTypeSource,
   type ManatOSContext,
 } from '@manatos/shared';
 
@@ -30,6 +32,13 @@ import { requireCsrf } from '../middleware/csrf.js';
 
 import { renderPage } from '../render.js';
 import { metadataComponentPartialFor } from '../presentation/metadata-component-registry.js';
+import { metadataOptionItemForField } from '../presentation/metadata-value-presentation.js';
+import {
+  hierarchyFinalizationState,
+  hierarchyRootIdForMember,
+  keyedHierarchySnapshot,
+  metadataHierarchyWorkspaceDescriptor,
+} from '../presentation/metadata-hierarchy-workspace.js';
 
 import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
 import { clearApiTrafficEntries, listApiTrafficEntries } from '../debug/api-traffic-store.js';
@@ -48,6 +57,7 @@ import {
   entityContextName,
   pageContextNode,
   pageEntryRuntimeContext,
+  pageCollectionRuntimeContext,
   pageListRuntimeContext,
   registerContextEntity,
   setPageContext,
@@ -173,7 +183,7 @@ function applySysBOEntryContext(
   values: Readonly<Record<string, unknown>>,
 ) {
   const ctx = res.locals.ctx as ManatOSContext;
-  const { metadata, uiMetadata, formValues, parentListContext, editingCollections, ...pageValues } = values;
+  const { metadata, uiMetadata, formValues, parentListContext, parentOwnerContext, editingCollections, ...pageValues } = values;
 
   registerContextEntity(
     ctx,
@@ -192,7 +202,7 @@ function applySysBOEntryContext(
 
   /*
    * Build one normalized record-shaped baseline before creating either the
-   * field contexts or dataOriginal/dataCurrent. This is especially important
+   * field contexts or entryOriginal/entry. This is especially important
    * in create mode: an empty API item still renders real field values (for
    * example enabled=true and null enum/reference selections), so CTX must start
    * with those same logical values rather than empty record snapshots.
@@ -266,7 +276,7 @@ function applySysBOEntryContext(
    * field CTX that the page will expose. This lets metadata say things such as
    * `FirstCtx(platformId.options, 'value')` or `CurrentDay()` without teaching the
    * route about License, Platform, dates, or any other entity-specific rule.
-   * The evaluated values become part of dataOriginal first; dataCurrent then
+   * The evaluated values become part of entryOriginal first; entry then
    * starts as its strict clone, preserving the page-state golden rule.
    */
   if (mode === 'create') {
@@ -354,9 +364,34 @@ function applySysBOEntryContext(
   /*
    * The entry page is a logical child of the list page, not a replacement for
    * it. Rebuild the parent with its own runtime data so expressions in the
-   * child can still inspect ctx.page.filters/dataList while the entry scope is
+   * child can still inspect ctx.page.filters/entries while the entry scope is
    * active. The parent is discarded only when navigation leaves this hierarchy.
    */
+  let childPage = entryPage;
+  if (parentOwnerContext && typeof parentOwnerContext === 'object' && !Array.isArray(parentOwnerContext)) {
+    const owner = parentOwnerContext as Readonly<Record<string, unknown>>;
+    const ownerEntries = Array.isArray(owner.entries)
+      ? owner.entries.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      : [];
+    const ownerEntriesOriginal = Array.isArray(owner.entriesOriginal)
+      ? owner.entriesOriginal.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      : [];
+    const ownerFieldValues = owner.fields && typeof owner.fields === 'object' && !Array.isArray(owner.fields)
+      ? owner.fields as Readonly<Record<string, unknown>>
+      : {};
+    childPage = pageContextNode(
+      String(owner.name ?? 'organization'),
+      String(owner.kind ?? 'sysbo-hierarchy'),
+      String(owner.mode ?? 'edit'),
+      contextFields(ownerFieldValues),
+      entryPage,
+      {
+        entriesOriginal: Object.freeze(ownerEntriesOriginal.map((item) => Object.freeze({ ...item }))),
+        entries: Object.freeze(ownerEntries.map((item) => Object.freeze({ ...item }))),
+      },
+    );
+  }
+
   const listPage = pageContextNode(
     entityContextName(definition.key),
     'sysbo-list',
@@ -367,7 +402,7 @@ function applySysBOEntryContext(
       ...(parentList.permissions !== undefined ? { permissions: parentList.permissions } : {}),
       ...(parentList.referenceData !== undefined ? { referenceData: parentList.referenceData } : {}),
     }),
-    entryPage,
+    childPage,
     pageListRuntimeContext(parentItems, parentFilterFields, parentQuery),
   );
 
@@ -463,6 +498,171 @@ export function createSysBORoutes() {
       const permissions = uiPermissions(currentUser, definition);
       requirePermission(permissions.create, 'Create access is required for this entity.');
       await renderMetadataDrivenRecord(req, res, definition, permissions, { isNew: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  /**
+   * Generic self-referencing hierarchy workspace routes.
+   *
+   * Entities opt in through metadata by declaring a hierarchy-tree component
+   * with workspaceKey/options. The route therefore receives only an entity key
+   * plus an optional initial/focus member; it contains no Principal-specific
+   * relationship or type knowledge.
+   */
+  router.get('/:key/hierarchy/new', async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition);
+      requirePermission(permissions.create, 'Create access is required for this entity.');
+      await renderMetadataDrivenHierarchyWorkspace(req, res, definition, permissions, null);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/:key/hierarchy/commit', requireCsrf, async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition);
+      requirePermission(permissions.create || permissions.edit || permissions.delete, 'Write access is required to commit this hierarchy.');
+
+      const entries = Array.isArray(req.body?.entries)
+        ? req.body.entries.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+        : [];
+      const entriesOriginal = Array.isArray(req.body?.entriesOriginal)
+        ? req.body.entriesOriginal.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+        : [];
+      const identityField = String(req.body?.identityField || 'id');
+      const apiPath = apiPathFor(definition.key);
+      const committed = await apiClient.post<{ items?: Record<string, unknown>[]; idMap?: Record<string, string> }>(
+        `/api/v1/${apiPath}/$aggregate-commit`,
+        { entries, entriesOriginal, identityField },
+        apiSessionOptions(req),
+      );
+      const items = Array.isArray(committed.data.items) ? committed.data.items : [];
+      const [metadata, metadataUI] = await Promise.all([
+        canonicalSysBOMetadata(req, definition),
+        canonicalSysBOUIMetadata(req, definition),
+      ]);
+      const descriptor = metadataHierarchyWorkspaceDescriptor(metadata, metadataUI);
+      const root = descriptor
+        ? items.find((row) => row[descriptor.parentField] == null || String(row[descriptor.parentField] ?? '') === '')
+        : null;
+      res.json({ success: true, data: { items, idMap: committed.data.idMap ?? {}, rootId: root && descriptor ? String(root[descriptor.idField] ?? '') : '' } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/:key/:id/hierarchy', async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const id = routeParam(req.params.id);
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition, id);
+      requirePermission(permissions.view, 'Read access is required for this entity.');
+      await renderMetadataDrivenHierarchyWorkspace(req, res, definition, permissions, id);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+
+  /**
+   * Open a full metadata-driven entry whose immediate owner is an in-memory
+   * aggregate page. The complete owner snapshot is posted by the browser, so
+   * the selected record is resolved from owner.entries[] and never fetched by
+   * record id from the API. This route is generic for any future owner page.
+   */
+  router.post('/:key/owned-entry/:id', requireCsrf, async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const id = routeParam(req.params.id);
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition, id);
+      requirePermission(permissions.view, 'Read access is required for this entity.');
+
+      const parseRows = (value: unknown): Record<string, unknown>[] => {
+        if (typeof value !== 'string') return [];
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed)
+          ? parsed.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+          : [];
+      };
+      const entries = parseRows(req.body._ownerEntries);
+      const entriesOriginal = parseRows(req.body._ownerEntriesOriginal);
+      const ownerFields = typeof req.body._ownerFields === 'string'
+        ? JSON.parse(req.body._ownerFields) as Record<string, unknown>
+        : {};
+      const identityField = String(req.body._ownerIdentityField || 'id');
+      const item = entries.find((candidate) => String(candidate[identityField] ?? '') === id);
+      if (!item) throw createError(404, 'The requested owner-managed entry could not be found.');
+
+      await renderMetadataDrivenRecord(req, res, definition, permissions, {
+        isNew: false,
+        recordId: id,
+        itemOverride: { ...item },
+        parentOwnerContext: {
+          name: String(req.body._ownerName || 'organization'),
+          kind: String(req.body._ownerKind || 'sysbo-hierarchy'),
+          mode: String(req.body._ownerMode || 'edit'),
+          fields: ownerFields,
+          entries,
+          entriesOriginal,
+          identityField,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  /**
+   * Save a child record back to its owning aggregate. This deliberately does
+   * not call the entity CRUD API: persistence belongs to the owner workspace.
+   */
+  router.post('/:key/owned/save', requireCsrf, async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const id = String(req.body.id ?? '');
+      const identityField = String(req.body._ownerIdentityField || 'id');
+      const currentUser = res.locals.currentUser as SysBOUser | null;
+      const permissions = uiPermissions(currentUser, definition, id || undefined);
+      requirePermission(permissions.edit, 'Edit access is required for this entity.');
+
+      const parseRows = (value: unknown): Record<string, unknown>[] => {
+        if (typeof value !== 'string') return [];
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed)
+          ? parsed.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+          : [];
+      };
+      const entries = parseRows(req.body._ownerEntries);
+      const entriesOriginal = parseRows(req.body._ownerEntriesOriginal);
+      const metadata = await canonicalSysBOMetadata(req, definition);
+      const edited = Object.fromEntries(
+        Object.keys(metadata.fieldDefinition)
+          .filter((key) => metadata.fieldDefinition[key]?.sensitive !== true && Object.prototype.hasOwnProperty.call(req.body, key))
+          .map((key) => [key, req.body[key]]),
+      );
+      const nextEntries = entries.map((candidate) => String(candidate[identityField] ?? '') === id
+        ? { ...candidate, ...edited, [identityField]: id }
+        : { ...candidate });
+      const focusedMemberId = String(req.body._ownerFocusedMemberId || id || '') || null;
+      const mode = req.body._ownerMode === 'create' ? 'create' : 'edit';
+
+      await renderMetadataDrivenHierarchyWorkspace(
+        req,
+        res,
+        definition,
+        permissions,
+        focusedMemberId,
+        { entries: nextEntries, entriesOriginal, mode, focusedMemberId },
+      );
     } catch (error) {
       next(error);
     }
@@ -1205,9 +1405,16 @@ async function editPageSupplementalData(
     ...(primaryField?.optionItems || []),
     ...(primaryField?.enumItems || []),
   ].find((candidate) => candidate?.value === rawPrimaryValue);
-  const displayValue = String(primaryPresentationItem?.label ?? rawPrimaryValue ?? 'entry');
 
   const pageReferenceData = await references(req, definition);
+  const entryRepresentation = resolveEntryRepresentation(
+    definition.boMetadata,
+    effectiveUIMetadata,
+    item,
+    { entityIcon: definition.icon, referenceData: pageReferenceData },
+  );
+  const displayValue = entryRepresentation.name
+    || String(primaryPresentationItem?.label ?? rawPrimaryValue ?? 'entry');
   if (definition.key === 'sys-ext-auth-providers') {
     /*
      * Contextual enum options use the same generic CTX `.options` contract as
@@ -1445,8 +1652,8 @@ async function references(
   req: Request,
 
   definition: SysBODefinition,
-): Promise<Record<string, unknown[]>> {
-  const output: Record<string, unknown[]> = {};
+): Promise<Record<string, Readonly<Record<string, unknown>>[]>> {
+  const output: Record<string, Readonly<Record<string, unknown>>[]> = {};
 
   for (const field of Object.values(definition.boMetadata.fieldDefinition)) {
     if (!field.referenceBOKey) {
@@ -1479,16 +1686,57 @@ async function references(
        * The label comes from the referenced SysBO's canonical primaryField; no
        * component needs to know that an EmailAddress happens to use `address`.
        */
+      const representation = resolveEntryRepresentation(
+        referencedDefinition.boMetadata,
+        null,
+        record,
+        { entityIcon: referencedDefinition.icon },
+      );
       return {
         ...record,
         value: id,
-        label: primaryValue ?? record.name ?? id,
+        label: representation.name || primaryValue || record.name || id,
+        __entryIcon: representation.icons.at(-1) ?? null,
         __entityIcon: referencedDefinition.icon.replace(/^bi-/, ''),
       };
     });
   }
 
   return output;
+}
+
+/**
+ * Compile reusable entry-representation formulas once for browser consumers.
+ * The returned object is pure JSON metadata + AST + owner-supplied reference
+ * data; components never reparse formulas or perform hidden I/O.
+ */
+function compiledEntryRepresentationRuntime(
+  metadata: SysBOMetadata<Record<string, unknown>>,
+  metadataUI: SysBOUIMetadata,
+  referenceData: Readonly<Record<string, unknown>> = {},
+): Readonly<Record<string, unknown>> {
+  const compileSource = (source: NonNullable<typeof metadata.entry>['name'] | undefined) => source
+    ? {
+        ...source,
+        ast: compileExpression('expression' in source ? source.expression : source.field).ast,
+      }
+    : null;
+
+  return {
+    name: compileSource(metadata.entry?.name ?? (metadata.fieldDefinition.name ? { field: 'name' } : { field: metadata.primaryField })),
+    type: compileSource(metadata.entry?.type ?? (metadata.fieldDefinition.type ? { field: 'type' } : undefined)),
+    description: compileSource(metadata.entry?.description),
+    status: compileSource(metadata.entry?.status),
+    derived: Object.fromEntries(Object.entries(metadata.derivedFields ?? {}).map(([key, derived]) => [
+      key,
+      compileExpression(derived.expression).ast,
+    ])),
+    relationships: Object.fromEntries(Object.entries(metadata.relationships ?? {})
+      .filter(([, relationship]) => relationship.fields.length === 1)
+      .map(([key, relationship]) => [key, { field: relationship.fields[0] }])),
+    referenceData,
+    icon: metadataUI.entry?.icon ?? { mode: metadata.entry?.type ? 'composed' : 'entity' },
+  };
 }
 
 /**
@@ -1537,10 +1785,23 @@ async function canonicalSysBOUIMetadata(
   return response.data.metadataUI;
 }
 
+function metadataEntrySearchField(metadata: SysBOMetadata<Record<string, unknown>>): string {
+  const entryNameSource = metadata.entry?.name;
+  if (entryNameSource && 'field' in entryNameSource && metadata.fieldDefinition[entryNameSource.field]) {
+    return entryNameSource.field;
+  }
+  if (entryNameSource && 'expression' in entryNameSource) {
+    const expression = entryNameSource.expression.trim();
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(expression) && metadata.fieldDefinition[expression]) return expression;
+  }
+  return metadata.primaryField;
+}
+
 function metadataDrivenListQuery(
   req: Request,
   metadataUI: SysBOUIMetadata,
   sourceQuery: Readonly<Record<string, unknown>> = req.query,
+  searchField?: string,
 ): {
   params: URLSearchParams;
   pageSizeOptions: number[];
@@ -1567,6 +1828,16 @@ function metadataDrivenListQuery(
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   const query: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
+
+  const requestedSearch = typeof sourceQuery.search === 'string' ? sourceQuery.search.trim() : '';
+  if (requestedSearch && searchField) {
+    // Search is a universal list-surface affordance. For now it deliberately
+    // maps onto the canonical entry-name/primary field so the UI/API contract
+    // remains the existing generic filter contract rather than inventing a
+    // second repository search protocol.
+    params.set(`filter.${searchField}`, requestedSearch);
+    query.search = requestedSearch;
+  }
 
   const requestedSort = typeof sourceQuery.sort === 'string' ? sourceQuery.sort : '';
   if (requestedSort && metadataUI.list.sortableFields.includes(requestedSort)) {
@@ -1599,14 +1870,14 @@ async function renderMetadataDrivenList(
     canonicalSysBOUIMetadata(req, definition),
   ]);
   const apiPath = apiPathFor(definition.key);
-  const listQuery = metadataDrivenListQuery(req, metadataUI);
+  const listQuery = metadataDrivenListQuery(req, metadataUI, req.query, metadataEntrySearchField(metadata));
   const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
     `/api/v1/${apiPath}?${listQuery.params.toString()}`,
     apiSessionOptions(req),
   );
 
   let hasAnyEntries = response.data.paging.total > 0;
-  const filtersActive = metadataUI.list.filterFields.some(
+  const filtersActive = Boolean(listQuery.query.search) || metadataUI.list.filterFields.some(
     (field) => Boolean(listQuery.query[`filter.${field}`]),
   );
 
@@ -1635,13 +1906,23 @@ async function renderMetadataDrivenList(
     }
   }
 
+  const entryType = entryTypeSource<Record<string, unknown>>(metadata);
+  const entryTypeField = entryType && 'field' in entryType
+    ? entryType.field
+    : (entryType && 'expression' in entryType && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entryType.expression.trim())
+        ? entryType.expression.trim()
+        : null);
+  const entryUsesRelations = Object.values(metadata.entry ?? {}).some(
+    (source) => source && 'expression' in source && source.expression.includes('relations.'),
+  );
   const listReferenceFields = [...new Set([
     ...metadataUI.list.visibleFields,
     ...metadataUI.list.filterFields,
+    ...(entryTypeField ? [entryTypeField] : []),
   ])];
   const listReferenceData = listReferenceFields.some(
     (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
-  )
+  ) || entryUsesRelations
     ? await references(req, definition)
     : {};
 
@@ -1657,7 +1938,16 @@ async function renderMetadataDrivenList(
     addConstraintReached,
     referenceData: listReferenceData,
   });
-  const listItems = listPage.dataList ?? [];
+  const listItems = listPage.entries ?? [];
+  const entryRepresentations = new Map(
+    listItems.map((item) => [
+      String(item.id ?? ''),
+      resolveEntryRepresentation<Record<string, unknown>>(metadata, metadataUI, item, {
+        entityIcon: definition.icon,
+        referenceData: listReferenceData,
+      }),
+    ]),
+  );
 
   const resolveAddActionValue = (value: unknown, property: string): unknown => {
     if (!value || typeof value !== 'object' || Array.isArray(value) || typeof (value as { expression?: unknown }).expression !== 'string') {
@@ -1683,6 +1973,32 @@ async function renderMetadataDrivenList(
     resolvedDisabledReason: resolveAddActionValue(metadataUI.list.addAction.disabledReason ?? null, 'disabledReason'),
   };
 
+  const resolvedPageActions = Object.entries(metadataUI.list.pageActions ?? {})
+    .map(([key, action]) => {
+      const visible = !action.visible || typeof action.visible !== 'object'
+        ? action.visible !== false
+        : evaluateExpression(
+            action.visible.expression,
+            res.locals.ctx as ManatOSContext,
+            listPage.fields,
+            {
+              source: 'ui-metadata',
+              sourcePath: `list.pageActions.${key}.visible`,
+              targetPath: `list.pageActions.${key}.visible`,
+              purpose: 'resolve list page action visibility',
+            },
+          ) !== false;
+      const tone = action.tone || 'secondary';
+      const outline = action.emphasis === 'outline';
+      return {
+        key,
+        ...action,
+        resolvedVisible: visible,
+        cssClass: `btn ${outline ? `btn-outline-${tone}` : `btn-${tone}`}`,
+      };
+    })
+    .sort((left, right) => (left.order || 0) - (right.order || 0));
+
   await renderPage(res, 'pages/metadata-driven/bo-list-metadata', {
     title: metadata.pluralName,
     titleIcon: definition.icon,
@@ -1692,12 +2008,14 @@ async function renderMetadataDrivenList(
     permissions,
     hasAnyEntries,
     resolvedAddAction,
+    resolvedPageActions,
     referenceData: listReferenceData,
     items: listItems,
     paging: response.data.paging,
     pageSizeOptions: listQuery.pageSizeOptions,
     query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
     metadataComponentPartialFor,
+    entryRepresentations,
   });
 }
 
@@ -1737,18 +2055,28 @@ async function parentListContextForEntry(
   permissions: ReturnType<typeof uiPermissions>,
 ): Promise<Readonly<Record<string, unknown>>> {
   const sourceQuery = parentListQueryForEntry(req, definition);
-  const listQuery = metadataDrivenListQuery(req, metadataUI, sourceQuery);
+  const listQuery = metadataDrivenListQuery(req, metadataUI, sourceQuery, metadataEntrySearchField(metadata));
   const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
     `/api/v1/${apiPathFor(definition.key)}?${listQuery.params.toString()}`,
     apiSessionOptions(req),
   );
+  const entryType = entryTypeSource<Record<string, unknown>>(metadata);
+  const entryTypeField = entryType && 'field' in entryType
+    ? entryType.field
+    : (entryType && 'expression' in entryType && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entryType.expression.trim())
+        ? entryType.expression.trim()
+        : null);
+  const entryUsesRelations = Object.values(metadata.entry ?? {}).some(
+    (source) => source && 'expression' in source && source.expression.includes('relations.'),
+  );
   const referenceFields = [...new Set([
     ...metadataUI.list.visibleFields,
     ...metadataUI.list.filterFields,
+    ...(entryTypeField ? [entryTypeField] : []),
   ])];
   const referenceData = referenceFields.some(
     (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
-  )
+  ) || entryUsesRelations
     ? await references(req, definition)
     : {};
 
@@ -1761,6 +2089,266 @@ async function parentListContextForEntry(
   };
 }
 
+/**
+ * Render a metadata-declared hierarchy workspace.
+ *
+ * The initial member is only the invocation/focus parameter. When its
+ * calculated root field is populated that fact identifies the persisted
+ * hierarchy to load; otherwise the member itself is the root candidate. Create
+ * mode has no initial member and starts with an empty keyed working graph.
+ *
+ * CTX deliberately mirrors normal navigation nesting:
+ *   ctx.page              -> entity/list context
+ *   ctx.page.page         -> hierarchy workspace
+ *   ctx.page.page.page    -> reserved for a member editor opened in-workspace
+ *
+ * entriesOriginal[]/entries[] on the workspace contain the complete hierarchy.
+ * Record identity, never array position, carries business meaning.
+ */
+async function renderMetadataDrivenHierarchyWorkspace(
+  req: Request,
+  res: Response,
+  definition: SysBODefinition,
+  permissions: ReturnType<typeof uiPermissions>,
+  initialMemberId: string | null,
+  workspaceOverride?: {
+    entries: Record<string, unknown>[];
+    entriesOriginal: Record<string, unknown>[];
+    mode: 'create' | 'edit';
+    focusedMemberId?: string | null;
+  },
+): Promise<void> {
+  const [metadata, metadataUI] = await Promise.all([
+    canonicalSysBOMetadata(req, definition),
+    canonicalSysBOUIMetadata(req, definition),
+  ]);
+  const hierarchyDescriptor = metadataHierarchyWorkspaceDescriptor(metadata, metadataUI);
+  if (!hierarchyDescriptor) {
+    throw createError(404, `${metadata.name} does not declare a hierarchy workspace.`);
+  }
+
+  const parentListContext = await parentListContextForEntry(
+    req,
+    definition,
+    metadata,
+    metadataUI,
+    permissions,
+  );
+
+  let focusedMember: Record<string, unknown> | null = null;
+  let hierarchyItems: Record<string, unknown>[] = [];
+  let hierarchyRootId: string | null = null;
+
+  if (workspaceOverride) {
+    hierarchyItems = workspaceOverride.entries.map((item) => ({ ...item }));
+    const overrideFocusedId = workspaceOverride.focusedMemberId ?? initialMemberId;
+    focusedMember = overrideFocusedId
+      ? hierarchyItems.find((item) => String(item[hierarchyDescriptor.idField] ?? '') === String(overrideFocusedId)) ?? null
+      : null;
+    hierarchyRootId = focusedMember ? hierarchyRootIdForMember(focusedMember, hierarchyDescriptor) : null;
+  } else if (initialMemberId) {
+    // Keep the freshly loaded member in a non-null local. Besides making the
+    // invariant explicit, this preserves TypeScript narrowing throughout the
+    // asynchronous hierarchy-discovery branch.
+    const loadedFocusedMember = await apiClient.get<Record<string, unknown>>(
+      `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(initialMemberId)}`,
+      apiSessionOptions(req),
+    ).then((response) => response.data);
+    focusedMember = loadedFocusedMember;
+    hierarchyRootId = hierarchyRootIdForMember(loadedFocusedMember, hierarchyDescriptor);
+
+    if (!hierarchyRootId) {
+      throw createError(500, `The selected ${metadata.name} does not expose a valid hierarchy identity.`);
+    }
+
+    const hierarchyById = new Map<string, Record<string, unknown>>();
+    const addRow = (row: Record<string, unknown> | null | undefined) => {
+      if (!row) return;
+      const id = row[hierarchyDescriptor.idField];
+      if (id !== null && id !== undefined && String(id) !== '') {
+        hierarchyById.set(String(id), row);
+      }
+    };
+
+    if (hierarchyDescriptor.rootField) {
+      const params = new URLSearchParams({
+        page: '1',
+        pageSize: '10000',
+        sort: hierarchyDescriptor.labelField,
+        direction: 'asc',
+      });
+      params.set(`filter.${hierarchyDescriptor.rootField}`, hierarchyRootId);
+
+      const [membersResponse, rootMember] = await Promise.all([
+        apiClient.get<SysBOListData<Record<string, unknown>>>(
+          `/api/v1/${apiPathFor(definition.key)}?${params.toString()}`,
+          apiSessionOptions(req),
+        ),
+        String(loadedFocusedMember[hierarchyDescriptor.idField] ?? '') === hierarchyRootId
+          ? Promise.resolve(loadedFocusedMember)
+          : apiClient.get<Record<string, unknown>>(
+              `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(hierarchyRootId)}`,
+              apiSessionOptions(req),
+            ).then((response) => response.data),
+      ]);
+
+      addRow(rootMember);
+      for (const row of membersResponse.data.items) addRow(row);
+      addRow(loadedFocusedMember);
+    } else {
+      /*
+       * A future self-referencing entity may not materialize a root field. In
+       * that case load the entity snapshot and derive only the connected tree
+       * containing the initial member from the declared parent field.
+       */
+      const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
+        `/api/v1/${apiPathFor(definition.key)}?page=1&pageSize=10000&sort=${encodeURIComponent(hierarchyDescriptor.labelField)}&direction=asc`,
+        apiSessionOptions(req),
+      );
+      const allById = new Map(
+        response.data.items
+          .map((row) => [String(row[hierarchyDescriptor.idField] ?? ''), row] as const)
+          .filter(([id]) => Boolean(id)),
+      );
+
+      let rootCandidate: Record<string, unknown> | null = loadedFocusedMember;
+      const visited = new Set<string>();
+      while (rootCandidate) {
+        const currentId = String(rootCandidate[hierarchyDescriptor.idField] ?? '');
+        if (!currentId || visited.has(currentId)) break;
+        visited.add(currentId);
+        const parentId = rootCandidate[hierarchyDescriptor.parentField];
+        if (parentId === null || parentId === undefined || String(parentId) === '') break;
+        const parent = allById.get(String(parentId));
+        if (!parent) break;
+        rootCandidate = parent;
+      }
+      hierarchyRootId = String(rootCandidate?.[hierarchyDescriptor.idField] ?? hierarchyRootId);
+
+      const pending = hierarchyRootId ? [hierarchyRootId] : [];
+      const included = new Set<string>();
+      while (pending.length) {
+        const id = pending.shift()!;
+        if (included.has(id)) continue;
+        included.add(id);
+        addRow(allById.get(id));
+        for (const [candidateId, candidate] of allById) {
+          if (String(candidate[hierarchyDescriptor.parentField] ?? '') === id) pending.push(candidateId);
+        }
+      }
+      addRow(focusedMember);
+    }
+
+    hierarchyItems = [...hierarchyById.values()].sort((left, right) =>
+      String(left[hierarchyDescriptor.labelField] ?? '').localeCompare(
+        String(right[hierarchyDescriptor.labelField] ?? ''),
+        undefined,
+        { sensitivity: 'base' },
+      ),
+    );
+  }
+
+  const hierarchyRuntime = workspaceOverride
+    ? {
+        entriesOriginal: Object.freeze(workspaceOverride.entriesOriginal.map((item) => Object.freeze({ ...item }))),
+        entries: Object.freeze(hierarchyItems.map((item) => Object.freeze({ ...item }))),
+      }
+    : pageCollectionRuntimeContext(hierarchyItems);
+  const finalization = hierarchyFinalizationState(hierarchyItems, metadata, hierarchyDescriptor);
+  const hierarchyMode = workspaceOverride?.mode ?? (initialMemberId ? 'edit' : 'create');
+  const breadcrumbTitle = `${hierarchyMode === 'create' ? 'Create' : 'Edit'} ${hierarchyDescriptor.label}`;
+  const focusedId = focusedMember
+    ? String(focusedMember[hierarchyDescriptor.idField] ?? workspaceOverride?.focusedMemberId ?? initialMemberId ?? '') || null
+    : (workspaceOverride?.focusedMemberId ?? null);
+
+  const ctx = res.locals.ctx as ManatOSContext;
+  registerContextEntity(ctx, definition.key, metadata, metadataUI);
+
+  const hierarchyPage = pageContextNode(
+    hierarchyDescriptor.key,
+    'sysbo-hierarchy',
+    hierarchyMode,
+    contextFields({
+      title: breadcrumbTitle,
+      entity: entityContextName(definition.key),
+      initialMemberId: focusedId,
+      focusedMemberId: focusedId,
+      hierarchyRootId,
+      identityField: hierarchyDescriptor.idField,
+      parentField: hierarchyDescriptor.parentField,
+      rootField: hierarchyDescriptor.rootField,
+      typeField: hierarchyDescriptor.typeField,
+      containerTrait: hierarchyDescriptor.containerTrait,
+      canHaveParentTrait: hierarchyDescriptor.canHaveParentTrait,
+      rootEligibleTrait: hierarchyDescriptor.rootEligibleTrait,
+      standAloneEligibleTrait: hierarchyDescriptor.standAloneEligibleTrait,
+      hierarchyStatus: finalization.complete ? 'complete' : 'incomplete',
+      finalizable: finalization.complete,
+      draftStatus: 'none',
+    }),
+    null,
+    hierarchyRuntime,
+  );
+
+  const parentItems = Array.isArray(parentListContext.items)
+    ? parentListContext.items.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    : [];
+  const parentQuery = parentListContext.query && typeof parentListContext.query === 'object' && !Array.isArray(parentListContext.query)
+    ? parentListContext.query as Readonly<Record<string, unknown>>
+    : {};
+  const listPage = pageContextNode(
+    entityContextName(definition.key),
+    'sysbo-list',
+    'list',
+    contextFields({
+      entity: entityContextName(definition.key),
+      ...(parentListContext.paging !== undefined ? { paging: parentListContext.paging } : {}),
+      ...(parentListContext.permissions !== undefined ? { permissions: parentListContext.permissions } : {}),
+      ...(parentListContext.referenceData !== undefined ? { referenceData: parentListContext.referenceData } : {}),
+    }),
+    hierarchyPage,
+    pageListRuntimeContext(parentItems, metadataUI.list.filterFields, parentQuery),
+  );
+
+  res.locals.ctx = setPageContext(ctx, listPage);
+
+  const entryRepresentationRuntime = compiledEntryRepresentationRuntime(
+    metadata,
+    metadataUI,
+    parentListContext.referenceData && typeof parentListContext.referenceData === 'object'
+      ? parentListContext.referenceData as Readonly<Record<string, unknown>>
+      : {},
+  );
+  const focusedRepresentation = focusedMember
+    ? resolveEntryRepresentation<Record<string, unknown>>(metadata, metadataUI, focusedMember, {
+        entityIcon: definition.icon,
+        ...(parentListContext.referenceData && typeof parentListContext.referenceData === 'object'
+          ? { referenceData: parentListContext.referenceData as Readonly<Record<string, readonly Readonly<Record<string, unknown>>[]>> }
+          : {}),
+      })
+    : null;
+  const focusedLabel = focusedRepresentation?.name ?? '';
+  await renderPage(res, 'pages/metadata-driven/ui-components/hierarchy-workspace', {
+    title: focusedLabel ? `${breadcrumbTitle} - ${focusedLabel}` : breadcrumbTitle,
+    titleIcon: 'bi-diagram-3',
+    definition,
+    metadata,
+    metadataUI,
+    permissions,
+    focusedMember,
+    hierarchyDescriptor,
+    hierarchyFinalization: finalization,
+    hierarchyMode,
+    entryRepresentationRuntime,
+    focusedRepresentation,
+    selectorReferenceData: parentListContext.referenceData && typeof parentListContext.referenceData === 'object'
+      ? parentListContext.referenceData
+      : {},
+    selectorPageSizeOptions: metadataDrivenListQuery(req, metadataUI, {}).pageSizeOptions,
+    metadataOptionItemForField,
+  });
+}
+
 async function renderMetadataDrivenRecord(
   req: Request,
   res: Response,
@@ -1771,6 +2359,7 @@ async function renderMetadataDrivenRecord(
     recordId?: string;
     itemOverride?: Record<string, unknown>;
     applicationError?: AppError;
+    parentOwnerContext?: Readonly<Record<string, unknown>>;
   },
 ): Promise<void> {
   const currentUser = res.locals.currentUser as SysBOUser | null;
@@ -1798,12 +2387,13 @@ async function renderMetadataDrivenRecord(
       ).data
     : {});
 
+  const ownerDraft = Boolean(record.parentOwnerContext) && String(record.recordId ?? '').startsWith('draft:');
   const supplemental = await editPageSupplementalData(
     req,
     definition,
     currentUser,
     item,
-    record.isNew,
+    record.isNew || ownerDraft,
     metadataUI,
   );
   const parentListContext = await parentListContextForEntry(
@@ -1836,6 +2426,7 @@ async function renderMetadataDrivenRecord(
       ...supplemental.relatedData,
       activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
       parentListContext,
+      ...(record.parentOwnerContext ? { parentOwnerContext: record.parentOwnerContext } : {}),
     },
   );
 
@@ -1858,6 +2449,9 @@ async function renderMetadataDrivenRecord(
     ...credentialTestResultPresentation(req),
     ...(record.applicationError ? { applicationError: record.applicationError } : {}),
     metadataComponentPartialFor,
+    ownerEditing: Boolean(record.parentOwnerContext),
+    ownerContext: record.parentOwnerContext ?? null,
+    entryRepresentationRuntime: compiledEntryRepresentationRuntime(metadata, metadataUI, supplemental.referenceData),
   });
 }
 

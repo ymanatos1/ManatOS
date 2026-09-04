@@ -16,6 +16,7 @@ const PRECEDENCE: Readonly<Record<ExpressionBinaryOperator, number>> = {
   // the supported operator subset so metadata formulas remain unsurprising.
   '||': 2,
   '??': 3,
+  'IN': 8,
   '&&': 4,
   '|': 5,
   '^': 6,
@@ -124,6 +125,15 @@ class Parser {
       const expression = this.parseConditional();
       this.expect('punctuation', ')');
       return {kind: 'group', expression};
+    }
+
+    if (this.match('[')) {
+      const items: ExpressionNode[] = [];
+      if (!this.match(']')) {
+        do { items.push(this.parseConditional()); } while (this.match(','));
+        this.expect('punctuation', ']');
+      }
+      return {kind: 'array', items};
     }
 
     if (token.kind === 'number') {

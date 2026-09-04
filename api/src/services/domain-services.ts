@@ -45,6 +45,12 @@ function principalTypeCanHaveParent(principalType: SysBOPrincipal['principalType
   return item?.canHaveParent === true;
 }
 
+function principalTypeCanContainChildren(principalType: SysBOPrincipal['principalType']): boolean {
+  const field = sysBOPrincipalsMetadata.fieldDefinition.principalType!;
+  const item = field.enumItems?.find((candidate) => candidate.value === principalType);
+  return item?.isContainer === true;
+}
+
 /**
  * Application service for customer/commercial principals.
  */
@@ -100,9 +106,10 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
   }
 
   /**
-   * Canonical enum-item metadata owns the parentability rule. Principal types
-   * whose selected enum item has canHaveParent=false can never persist a parent, even if a caller bypasses the
-   * browser and posts directly to the API.
+   * Canonical enum-item metadata owns both sides of the hierarchy contract.
+   * The child type decides whether it may have a parent; the selected parent
+   * type decides whether it may contain children. Direct API callers therefore
+   * cannot bypass the same structural facts exposed to metadata-driven UIs.
    */
   override async create(
     input: SysBOCreateInput<SysBOPrincipal>,
@@ -112,8 +119,16 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       ? input
       : { ...input, parentId: null };
 
-    if (normalized.parentId && !(await this.repository.getById(normalized.parentId))) {
-      throw new NotFoundError('SysBOPrincipal parent', normalized.parentId);
+    if (normalized.parentId) {
+      const parent = await this.repository.getById(normalized.parentId);
+      if (!parent) throw new NotFoundError('SysBOPrincipal parent', normalized.parentId);
+      if (!principalTypeCanContainChildren(parent.principalType)) {
+        throw new ConflictError(
+          'PRINCIPAL_PARENT_NOT_CONTAINER',
+          'The selected Principal cannot contain members.',
+          'Choose a Principal type that is allowed to act as a parent.',
+        );
+      }
     }
 
     const split = principalPayload(normalized);
@@ -158,6 +173,22 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       ? split.entity
       : { ...split.entity, parentId: null };
 
+    if (!principalTypeCanContainChildren(effectiveType)) {
+      const children = await this.repository.list({
+        page: 1,
+        pageSize: 1,
+        direction: 'asc',
+        filters: { parentId: id },
+      });
+      if (children.total > 0) {
+        throw new ConflictError(
+          'PRINCIPAL_TYPE_CANNOT_CONTAIN_EXISTING_MEMBERS',
+          'The selected Principal type cannot contain members.',
+          "Move or remove this Principal\'s children before changing it to a non-container type.",
+        );
+      }
+    }
+
     /*
      * A principal cannot be its own parent.
      */
@@ -174,8 +205,16 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     /*
      * When a parent is supplied, that principal must exist.
      */
-    if (normalizedChanges.parentId && !(await this.repository.getById(normalizedChanges.parentId))) {
-      throw new NotFoundError('SysBOPrincipal parent', normalizedChanges.parentId);
+    if (normalizedChanges.parentId) {
+      const parent = await this.repository.getById(normalizedChanges.parentId);
+      if (!parent) throw new NotFoundError('SysBOPrincipal parent', normalizedChanges.parentId);
+      if (!principalTypeCanContainChildren(parent.principalType)) {
+        throw new ConflictError(
+          'PRINCIPAL_PARENT_NOT_CONTAINER',
+          'The selected Principal cannot contain members.',
+          'Choose a Principal type that is allowed to act as a parent.',
+        );
+      }
     }
 
     return this.store.executeTransaction(async () => {

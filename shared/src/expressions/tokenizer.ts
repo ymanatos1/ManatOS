@@ -93,7 +93,11 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       index += 1;
       while (index < source.length && identifierPart.test(source[index] ?? '')) index += 1;
       const text = source.slice(start, index);
-      tokens.push({kind: 'identifier', text, position: start, value: text});
+      if (text.toUpperCase() === 'IN') {
+        tokens.push({kind: 'operator', text: 'IN', position: start});
+      } else {
+        tokens.push({kind: 'identifier', text, position: start, value: text});
+      }
       continue;
     }
 

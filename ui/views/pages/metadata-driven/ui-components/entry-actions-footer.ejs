@@ -19,7 +19,7 @@
           <%- include('save-split-action', { saveAction, actionClass }) %>
         <% } %>
 
-        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
+        <% if (!ownerEditing && !isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-leading') { %>
           <button
             class="<%= actionClass(deleteAction, 'danger') %>"
             type="button"
@@ -49,7 +49,7 @@
           </span>
         <% } %>
 
-        <% if (!isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-trailing') { %>
+        <% if (!ownerEditing && !isNew && deleteAction && deleteAction.resolvedPlacement === 'footer-trailing') { %>
           <button
             class="<%= actionClass(deleteAction, 'danger') %>"
             type="button"
@@ -80,10 +80,17 @@
           <% } %>
         <% } %>
 
-        <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>" <%= isViewMode ? '' : 'data-form-close-cancel' %>>
-          <i class="bi bi-x-circle me-1"></i>
-          <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
-        </a>
+        <% if (ownerEditing) { %>
+          <button class="btn btn-secondary dirty-navigation" type="button" onclick="history.back()" <%= isViewMode ? '' : 'data-form-close-cancel' %>>
+            <i class="bi bi-x-circle me-1"></i>
+            <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
+          </button>
+        <% } else { %>
+          <a class="btn btn-secondary dirty-navigation" href="/bo/<%= definition.key %>" <%= isViewMode ? '' : 'data-form-close-cancel' %>>
+            <i class="bi bi-x-circle me-1"></i>
+            <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
+          </a>
+        <% } %>
 
         <% if (!isViewMode && saveAction && saveAction.resolvedPlacement === 'footer-trailing') { %>
           <%- include('save-split-action', { saveAction, actionClass }) %>

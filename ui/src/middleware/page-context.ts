@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { MANATOS_COMPANY, SysBOUserRole, allManatOSValueObjectMetadata, licenseGrantsPlatformAccess, resolvePlatform, type SysBOApplication, type SysBOLicense, type SysBOUser } from '@manatos/shared';
+import { MANATOS_COMPANY, SysBOUserRole, allManatOSObjectMetadata, licenseGrantsPlatformAccess, resolvePlatform, type SysBOApplication, type SysBOLicense, type SysBOUser } from '@manatos/shared';
 
 import { config } from '../config.js';
 
@@ -132,22 +132,13 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     );
 
     /*
-     * Seed ctx.entities with metadata already available locally. This registry
-     * is the canonical cross-page metadata location; route/API metadata loaded
-     * later can enrich/replace an entry through registerContextEntity().
+     * ctx.entities is the complete canonical object/entity registry, not the
+     * navigation/exposure catalogue. Internal contact objects and relationship
+     * entities therefore remain discoverable by CTX/evaluator/debugging clients
+     * even when they intentionally have no top-level Administration page.
+     * Route-owned UI metadata loaded later may enrich the matching CTX entry.
      */
-    for (const definition of Object.values(effectiveSysBODefinitions(MANATOS_COMPANY, currentPlatform))) {
-      registerContextEntity(
-        res.locals.ctx,
-        definition.key,
-        definition.boMetadata,
-      );
-    }
-
-    // Related/value-object metadata is canonical too, even though these objects
-    // are not exposed as top-level generic SysBO CRUD pages. Registering it at
-    // ctx.entities makes it available to expressions, DEBUG and future clients.
-    for (const metadata of Object.values(allManatOSValueObjectMetadata)) {
+    for (const metadata of Object.values(allManatOSObjectMetadata)) {
       registerContextEntity(res.locals.ctx, metadata.key, metadata);
     }
 

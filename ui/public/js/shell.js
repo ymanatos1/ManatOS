@@ -153,6 +153,41 @@
     });
   };
 
+  const popupCtxPath = (modal) => {
+    const explicit = modal.getAttribute('data-popup-ctx-path') || modal.dataset?.popupCtxPath;
+    if (explicit) return explicit;
+    const runtime = window.ManatOS?.ctx;
+    let node = runtime?.value?.page;
+    if (!node) return null;
+    let path = 'ctx.page';
+    while (node?.page) { node = node.page; path += '.page'; }
+    return path;
+  };
+
+  const ensurePopupCtxButton = (modal) => {
+    if (!developerToolsDock || developerToolsDock.classList.contains('d-none')) return null;
+    const header = modal.querySelector('.modal-header');
+    if (!(header instanceof HTMLElement)) return null;
+    let button = header.querySelector('[data-popup-ctx-inspect]');
+    if (!(button instanceof HTMLButtonElement)) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-sm btn-outline-secondary ms-auto me-2';
+      button.dataset.popupCtxInspect = '';
+      button.innerHTML = '<i class="bi bi-bug me-1" aria-hidden="true"></i>CTX';
+      const close = header.querySelector('.btn-close');
+      if (close) header.insertBefore(button, close); else header.append(button);
+      button.addEventListener('click', () => {
+        developerToolsDock.classList.add('is-popup-inspection');
+        window.ManatOS?.shell?.setDeveloperToolTab?.('ctx', false);
+        const path = popupCtxPath(modal);
+        if (path) window.dispatchEvent(new CustomEvent('manatos:ctx-viewer-select', { detail: { path, expand: true } }));
+      });
+    }
+    button.classList.remove('d-none');
+    return button;
+  };
+
   document.querySelectorAll('.modal').forEach((modal) => {
     /*
      * ManatOS popups are deliberate interactions: clicking the shaded page
@@ -160,6 +195,13 @@
      */
     modal.dataset.bsBackdrop = 'static';
     modal.dataset.bsKeyboard = 'false';
+    /*
+     * Keep Bootstrap's focus trap disabled so the existing Developer Tools dock
+     * can be exposed on demand by a popup CTX action. The dock normally remains
+     * below the popup backdrop, so the application and developer surface are both
+     * blocked until the explicit inspection action is used.
+     */
+    modal.dataset.bsFocus = 'false';
 
     let returnFocusTarget = null;
 
@@ -175,6 +217,7 @@
           ? document.activeElement
           : null;
       returnFocusTarget = trigger && !modal.contains(trigger) ? trigger : null;
+      ensurePopupCtxButton(modal);
       centerModalInWorkspace(modal);
     });
 
@@ -207,6 +250,8 @@
     });
 
     modal.addEventListener('hidden.bs.modal', () => {
+      developerToolsDock?.classList.remove('is-popup-inspection');
+      modal.querySelector('[data-popup-ctx-inspect]')?.classList.add('d-none');
       if (returnFocusTarget?.isConnected) {
         returnFocusTarget.focus({ preventScroll: true });
       }
@@ -491,8 +536,13 @@
           const fallback = developerToolsReturnFocus instanceof HTMLElement && developerToolsReturnFocus.isConnected
             ? developerToolsReturnFocus
             : toggleDebugPanelButton instanceof HTMLElement ? toggleDebugPanelButton : null;
-          fallback?.focus({ preventScroll: true });
+          // Remove focus from the subtree synchronously before aria-hidden/inert.
+          // Some menu triggers are themselves transient, so blur first and then
+          // restore focus only when the target remains connected and visible.
+          active.blur();
+          if (fallback && fallback.getClientRects().length) fallback.focus({ preventScroll: true });
         }
+        developerToolsDock.classList.remove('is-popup-inspection');
         developerToolsDock.inert = true;
         developerToolsDock.setAttribute('inert', '');
         developerToolsDock.setAttribute('aria-hidden', 'true');

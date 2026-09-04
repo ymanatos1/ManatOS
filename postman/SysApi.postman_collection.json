@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "116a6257-0413-4473-ab8a-eed1e069313c",
     "name": "ManatOS Multi-Platform API",
-    "description": "Postman collection for the ManatOS Multi-Platform API: server operations, authentication, metadata-driven SysBO CRUD, canonical/UI metadata, relationship delete-impact preflight, runtime configuration, public UI bootstrap, external authentication and security tests.",
+    "description": "Postman collection for the ManatOS Multi-Platform API: server operations, authentication, metadata-driven SysBO CRUD, canonical/UI metadata, relationship delete-impact preflight, runtime configuration, public UI bootstrap, external authentication and security tests.\n\nHierarchy/Organization workspace note: the Principal Organization editor is a metadata-driven UI aggregate over owner-context entries[]. recordQuick edits, drag/drop/detach and Create Organization drafts are intentionally not separate REST resources. The authoritative persistence boundary is the generic SysBO $aggregate-commit endpoint. Create drafts remain browser-local and are cleared only after a successful commit. List-like candidate surfaces use the generic listExceptions exclude-when-true query predicate, which is passed through the API into storage before paging.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1253976",
     "_collection_link": "https://go.postman.co/collection/1253976-116a6257-0413-4473-ab8a-eed1e069313c?source=collection_link"
@@ -1262,6 +1262,37 @@
               ]
             },
             {
+              "name": "List SysPrincipals with list exceptions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals?listExceptions=principalType%20IN%20%5B%27Person%27%5D&pageSize=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals"
+                  ],
+                  "query": [
+                    {
+                      "key": "listExceptions",
+                      "value": "principalType IN ['Person']",
+                      "description": "Exclude-when-true canonical ManatOS expression; applied by storage before paging."
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Demonstrates the generic listExceptions query contract used by list-like selectors. Rows for which the canonical expression evaluates true are excluded in storage before totals/paging are calculated. A future RDBMS adapter translates the same structured query semantics to parameterized SQL."
+              },
+              "response": []
+            },
+            {
               "name": "SysPrincipals metadata",
               "request": {
                 "method": "GET",
@@ -1545,6 +1576,41 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Commit SysPrincipal aggregate",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identityField\": \"id\",\n  \"entriesOriginal\": [],\n  \"entries\": [\n    {\n      \"id\": \"draft:root\",\n      \"name\": \"Draft organization\",\n      \"principalType\": \"Group\",\n      \"enabled\": true,\n      \"parentId\": null\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$aggregate-commit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "$aggregate-commit"
+                  ]
+                },
+                "description": "Atomically commits one owner-managed Principal aggregate. Temporary draft:* ids are resolved server-side. The UI clears any Create Organization browser draft and returns to the Principals list only after this request succeeds; failed commits keep the working state."
+              },
+              "response": []
             }
           ]
         },

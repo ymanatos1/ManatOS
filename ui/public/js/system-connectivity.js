@@ -21,6 +21,37 @@
     lastFailureSource: null,
   };
 
+  /**
+   * Dismiss short-lived UI chrome before replacing the application workspace.
+   * Persistent editors/popups are deliberately not part of this protocol: only
+   * menus, dropdowns, tooltips and popovers that cannot remain meaningful once
+   * the owning page has become unavailable are removed/hidden.
+   */
+  const dismissTransientUi = () => {
+    window.dispatchEvent(new CustomEvent('manatos:dismiss-transient-ui'));
+
+    const bootstrapApi = window.bootstrap;
+    if (bootstrapApi?.Dropdown) {
+      document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((toggle) => {
+        bootstrapApi.Dropdown.getInstance(toggle)?.hide();
+      });
+    }
+    if (bootstrapApi?.Tooltip) {
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((toggle) => {
+        bootstrapApi.Tooltip.getInstance(toggle)?.hide();
+      });
+    }
+    if (bootstrapApi?.Popover) {
+      document.querySelectorAll('[data-bs-toggle="popover"]').forEach((toggle) => {
+        bootstrapApi.Popover.getInstance(toggle)?.hide();
+      });
+    }
+
+    // Custom components may portal transient chrome to <body>. Marking those
+    // surfaces keeps connectivity cleanup generic and component-independent.
+    document.querySelectorAll('[data-manatos-transient-ui]').forEach((surface) => surface.remove());
+  };
+
   const localErrorPage = () => {
     const workspace = document.querySelector('#appShell .workspace');
     if (!(workspace instanceof HTMLElement)) return;
@@ -49,6 +80,7 @@
     if (state.unavailable) return;
     state.unavailable = true;
     document.documentElement.dataset.manatosSystemUnavailable = 'true';
+    dismissTransientUi();
     localErrorPage();
     window.dispatchEvent(new CustomEvent(UNAVAILABLE_EVENT, {
       detail: {

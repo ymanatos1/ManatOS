@@ -15,7 +15,7 @@
    * keep their simple value contract; structured editors project only the
    * metadata-declared item fields from the referenced canonical record.
    */
-  const ctxCollection = Array.isArray(ctxPage?.dataCurrent?.[o.sourceKey]) ? ctxPage.dataCurrent[o.sourceKey] : null;
+  const ctxCollection = Array.isArray(ctxPage?.entry?.[o.sourceKey]) ? ctxPage.entry[o.sourceKey] : null;
   const initialValues = ctxCollection || rows.map((row) => {
     const id = row[o.targetField];
     const reference = referenceFor(id);
@@ -298,7 +298,7 @@
       let node = runtime.value.page;
       let path = 'ctx.page';
       while (node?.page) { node = node.page; path += '.page'; }
-      runtime.replace(`${path}.dataCurrent.<%= o.sourceKey %>`, values.map((value) => value && typeof value === 'object' ? { ...value } : value), { source: 'collection-editor' });
+      runtime.replace(`${path}.entry.<%= o.sourceKey %>`, values.map((value) => value && typeof value === 'object' ? { ...value } : value), { source: 'collection-editor' });
     }
     payload.dispatchEvent(new Event('change', { bubbles: true }));
   };
@@ -383,7 +383,7 @@
   /**
    * Publish child-editor ownership to the parent entry form. Parent Save is
    * disabled while any registered child editor is active, regardless of page
-   * dirtiness, because a draft has not yet joined the parent's dataCurrent.
+   * dirtiness, because a draft has not yet joined the parent's entry.
    */
   const publishEditorState = () => {
     const active = !box.classList.contains('d-none');

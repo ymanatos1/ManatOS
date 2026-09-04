@@ -451,6 +451,16 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
   primaryField: 'name',
 
+  entry: {
+    // Direct single-field identity stays explicit; calculated combinations should
+    // use an expression instead of introducing concatenation-specific metadata.
+    name: { field: 'name' },
+    // Expression form is supported even for direct fields and still preserves
+    // enum/reference metadata discovery for simple field expressions.
+    type: { expression: 'principalType' },
+    description: { field: 'description' },
+  },
+
   derivedFields: {
     rootPrincipalId: {
       label: 'Root principal',
@@ -494,6 +504,8 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
           icon: 'person',
           isContainer: false,
           canHaveParent: true,
+          canBeOrganizationRoot: false,
+          canStandAloneOrganization: true,
         },
         {
           value: SysBOPrincipalType.Company,
@@ -501,6 +513,8 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
           icon: 'building',
           isContainer: true,
           canHaveParent: false,
+          canBeOrganizationRoot: true,
+          canStandAloneOrganization: false,
         },
         {
           value: SysBOPrincipalType.Group,
@@ -508,13 +522,17 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
           icon: 'people',
           isContainer: true,
           canHaveParent: true,
+          canBeOrganizationRoot: true,
+          canStandAloneOrganization: false,
         },
         {
           value: SysBOPrincipalType.System,
           label: 'System',
           icon: 'gear',
           isContainer: false,
-          canHaveParent: false,
+          canHaveParent: true,
+          canBeOrganizationRoot: false,
+          canStandAloneOrganization: true,
         },
       ],
     },
@@ -1183,6 +1201,12 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
   pluralName: 'External authentication providers',
   // Provider is the human/business identity shown as the clickable list value.
   primaryField: 'provider',
+  entry: {
+    name: { field: 'provider' },
+    // `provider` is the semantic entry type even though its field is not named
+    // `type`. Its canonical enum option supplies both the display label and icon.
+    type: { field: 'provider' },
+  },
   fieldDefinition: {
     ...commonSysBOFields,
     name: {

@@ -130,7 +130,7 @@
                     <% } else { %>
                       <div
                         data-metadata-component="<%= component.key %>"
-                        data-metadata-component-options="<%= JSON.stringify(component.options || {}) %>"
+                        data-metadata-component-options="<%= JSON.stringify({ ...(component.options || {}), ...(component.key === 'hierarchy-tree' && typeof entryRepresentationRuntime !== 'undefined' ? { entryRepresentation: entryRepresentationRuntime, entityIcon: component.options?.entityIcon || String(definition.icon || '').replace(/^bi-/, '') } : {}) }) %>"
                         data-metadata-component-bindings="<%= JSON.stringify(componentBindings) %>"
                         data-entity-key="<%= definition.key %>"
                         data-record-mode="<%= recordMode %>"
@@ -144,7 +144,13 @@
             <%
               const component = tab.component;
               const componentKey = String(component.key || '');
-              const componentOptions = component.options || {};
+              const componentOptions = {
+                ...(component.options || {}),
+                entityIcon: component.options?.entityIcon || String(definition.icon || '').replace(/^bi-/, ''),
+                ...(component.key === 'hierarchy-tree' && typeof entryRepresentationRuntime !== 'undefined'
+                  ? { entryRepresentation: entryRepresentationRuntime }
+                  : {}),
+              };
               const componentBindings = Object.fromEntries(
                 Object.entries(component.bindings || {}).map(([bindingKey, bindingValue]) => [
                   bindingKey,

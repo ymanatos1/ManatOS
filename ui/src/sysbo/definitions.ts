@@ -51,9 +51,9 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
   'sys-principals': {
     key: 'sys-principals',
     boMetadata: sysBOPrincipalsMetadata,
-    // People is intentionally broader than a hierarchy-only icon: a Principal
-    // may be a Company, Group, Person or System identity.
-    icon: 'bi-people-fill',
+    // Canonical Principal entity icon. Organization-node composition is a
+    // visualization concern and must never alter this page/navigation identity.
+    icon: 'bi-diagram-3-fill',
     permissions,
   },
   'sys-email-addresses': {

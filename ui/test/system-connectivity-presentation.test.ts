@@ -19,6 +19,11 @@ describe('system connectivity watchdog', () => {
     expect(watchdog).toContain('Automatic polling has been stopped');
     expect(watchdog).toContain("target.closest('a[href]')");
     expect(watchdog).toContain('manatos:system-unavailable');
+    expect(watchdog).toContain('dismissTransientUi();');
+    expect(watchdog).toContain("manatos:dismiss-transient-ui");
+    expect(watchdog).toContain('[data-manatos-transient-ui]');
+    expect(watchdog).toContain("document.querySelectorAll('[data-bs-toggle=\"dropdown\"]')");
+    expect(watchdog).toContain('bootstrapApi.Dropdown.getInstance(toggle)?.hide()');
     expect(shell.indexOf('/js/system-connectivity.js')).toBeLessThan(shell.indexOf('/js/ui-bootstrap-runtime.js'));
 
     expect(bootstrap).toContain("reportFailure?.('ui-bootstrap')");

@@ -22,6 +22,17 @@ import type {
 import { DataStoreEntityResolver } from './entity-resolver.js';
 import { RelationshipIntegrityService, type DeleteImpactPlan } from './relationship-integrity-service.js';
 
+export interface AggregateCommitInput {
+  entries: ReadonlyArray<Record<string, unknown>>;
+  entriesOriginal: ReadonlyArray<Record<string, unknown>>;
+  identityField?: string;
+}
+
+export interface AggregateCommitResult<T extends SysBOEntity> {
+  items: T[];
+  idMap: Record<string, string>;
+}
+
 /**
  * Generic application/service layer for metadata-driven SysBOs.
  *
@@ -169,7 +180,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
    * Materialize every metadata-declared persisted derived field against a
    * minimal, entity-agnostic execution scope. The current candidate entity is
    * the lexical scope; persistence-backed functions use the generic EntityResolver
-   * capability rather than depending on a UI/list dataList snapshot.
+   * capability rather than depending on a UI/list entries snapshot.
    *
    * Several derived fields may depend on one another. Iterate to a fixed point
    * with a strict safety bound; no entity/field names are hard-coded here.
@@ -195,7 +206,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
       const fields = Object.fromEntries(
         Object.keys(this.metadata.fieldDefinition).map((key) => [key, { value: candidate[key] }]),
       );
-      const entryPage = { fields, dataCurrent: candidate };
+      const entryPage = { fields, entry: candidate };
       const ctx = { page: { page: entryPage } };
 
       let changed = false;
@@ -266,6 +277,113 @@ export class GenericSysBOService<T extends SysBOEntity> {
     throw new Error(
       `Persisted derived collection for ${this.metadata.key} did not settle within ${maxPasses} passes.`,
     );
+  }
+
+
+  /**
+   * Atomically persist an owner-managed working collection. Temporary `draft:*`
+   * identities are resolved inside the transaction and same-entity references
+   * are rewritten before persistence. This is intentionally entity-agnostic so
+   * hierarchy/aggregate workspaces do not need bespoke persistence code.
+   */
+  async commitAggregate(input: AggregateCommitInput, actor: AuditActor): Promise<AggregateCommitResult<T>> {
+    const identityField = String(input.identityField || 'id');
+    const current = input.entries.map((row) => ({ ...row }));
+    const original = input.entriesOriginal.map((row) => ({ ...row }));
+    const originalIds = new Set(original.map((row) => String(row[identityField] ?? '')).filter(Boolean));
+    const originalById = new Map(original.map((row) => [String(row[identityField] ?? ''), row] as const));
+    const currentIds = new Set(current.map((row) => String(row[identityField] ?? '')).filter(Boolean));
+    const draftRows = current.filter((row) => String(row[identityField] ?? '').startsWith('draft:'));
+    const existingRows = current.filter((row) => !String(row[identityField] ?? '').startsWith('draft:'));
+    const deletedIds = [...originalIds].filter((id) => !currentIds.has(id));
+    const idMap: Record<string, string> = {};
+
+    const sameEntityReferenceFields = Object.values(this.metadata.fieldDefinition)
+      .filter((field) => field.type === 'reference' && field.referenceBOKey === this.metadata.key)
+      .map((field) => field.key);
+    const editableFieldKeys = Object.values(this.metadata.fieldDefinition)
+      .filter((field) => field.generated !== true && field.readOnly !== true && field.applicationManaged !== true)
+      .map((field) => field.key);
+
+    const persistenceValues = (row: Record<string, unknown>) => {
+      const values: Record<string, unknown> = {};
+      for (const key of editableFieldKeys) {
+        if (Object.prototype.hasOwnProperty.call(row, key)) values[key] = row[key];
+      }
+      for (const key of sameEntityReferenceFields) {
+        const value = values[key];
+        if (typeof value === 'string' && idMap[value]) values[key] = idMap[value];
+      }
+      return this.normalizeFields(values);
+    };
+
+    return this.store.executeTransaction(() => operationContext.run(
+      `Commit ${this.metadata.name} aggregate`,
+      async (scope) => {
+        scope.addContext({ created: draftRows.length, updated: existingRows.length, deleted: deletedIds.length, actor: actor.userName });
+
+        // Create drafts in dependency order so same-entity draft references can
+        // be rewritten to real generated IDs before each repository insert.
+        const pending = [...draftRows];
+        while (pending.length) {
+          const index = pending.findIndex((row) => sameEntityReferenceFields.every((key) => {
+            const value = row[key];
+            return !(typeof value === 'string' && value.startsWith('draft:')) || Boolean(idMap[value]);
+          }));
+          if (index < 0) throw new Error(`Aggregate ${this.metadata.name} contains unresolved/cyclic draft references.`);
+          const row = pending.splice(index, 1)[0];
+          if (!row) throw new Error(`Aggregate ${this.metadata.name} draft queue changed unexpectedly.`);
+          const draftId = String(row[identityField] ?? '');
+          const created = await this.repository.create(
+            persistenceValues(row) as SysBOCreateInput<T>,
+            actor,
+            (record) => this.materializePersistedDerivedFields(record),
+          );
+          idMap[draftId] = created.id;
+        }
+
+        // Apply working values to records that already existed when the owner
+        // workspace opened. Draft references are resolved through idMap.
+        for (const row of existingRows) {
+          const id = String(row[identityField] ?? '');
+          if (!id || !originalIds.has(id)) continue;
+          const nextValues = persistenceValues(row);
+          const baseline = originalById.get(id);
+          const baselineValues = baseline ? persistenceValues(baseline) : {};
+          if (JSON.stringify(nextValues) === JSON.stringify(baselineValues)) continue;
+          await this.repository.update(
+            id,
+            nextValues as SysBOUpdateInput<T>,
+            actor,
+            (record) => this.materializePersistedDerivedFields(record),
+          );
+        }
+
+        // Delete members removed from the working aggregate after reparenting
+        // and updates have already been applied. Relationship policies remain
+        // authoritative for every deletion.
+        for (const id of deletedIds) {
+          new RelationshipIntegrityService(this.store).applyDeletePolicies(this.metadata.key, id);
+          await this.repository.delete(id, actor);
+        }
+
+        await this.refreshPersistedDerivedCollection();
+        const finalIds: string[] = current
+          .map((row) => {
+            const id = String(row[identityField] ?? '');
+            return idMap[id] || id;
+          })
+          .filter((id): id is string => Boolean(id));
+
+        const items: T[] = [];
+        for (const id of finalIds) {
+          const item = await this.repository.getById(id);
+          if (item) items.push(item);
+        }
+
+        return { items, idMap };
+      },
+    ));
   }
 
   /** Preview relationship-driven consequences before deleting this record. */

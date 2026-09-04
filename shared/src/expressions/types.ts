@@ -7,13 +7,18 @@ export type ExpressionLiteralValue = string | number | boolean | null;
  * comparisons without pretending that Date is a grammar literal.
  */
 export type ExpressionScalarValue = ExpressionLiteralValue | Date;
-export type ExpressionValue = ExpressionScalarValue;
+export type ExpressionValue = ExpressionScalarValue | readonly ExpressionScalarValue[];
 
 export type ExpressionPathMember = string | number;
 
 export interface ExpressionLiteralNode {
   kind: 'literal';
   value: ExpressionLiteralValue;
+}
+
+export interface ExpressionArrayNode {
+  kind: 'array';
+  items: readonly ExpressionNode[];
 }
 
 export interface ExpressionVariableNode {
@@ -33,7 +38,8 @@ export type ExpressionBinaryOperator =
   | '<<' | '>>' | '>>>'
   | '&' | '^' | '|'
   | '&&' | '||'
-  | '??';
+  | '??'
+  | 'IN';
 export interface ExpressionBinaryOperationNode {
   kind: 'binary';
   operator: ExpressionBinaryOperator;
@@ -73,6 +79,7 @@ export interface ExpressionFunctionCallNode {
 
 export type ExpressionNode =
   | ExpressionLiteralNode
+  | ExpressionArrayNode
   | ExpressionVariableNode
   | ExpressionBinaryOperationNode
   | ExpressionUnaryOperationNode

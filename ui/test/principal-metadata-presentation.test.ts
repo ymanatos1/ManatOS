@@ -21,11 +21,13 @@ describe('metadata-driven Principal presentation', () => {
     const forms = await uiSource('public/js/forms.js');
     const ctxRuntime = await uiSource('public/js/ctx-runtime.js');
     const routes = await uiSource('src/routes/sysbo-routes.ts');
+    const definitions = await uiSource('src/sysbo/definitions.ts');
 
-    expect(canonical).toMatch(/value: SysBOPrincipalType\.Person,[\s\S]*?icon: 'person',[\s\S]*?isContainer: false,[\s\S]*?canHaveParent: true/);
-    expect(canonical).toMatch(/value: SysBOPrincipalType\.Company,[\s\S]*?icon: 'building',[\s\S]*?isContainer: true,[\s\S]*?canHaveParent: false/);
-    expect(canonical).toMatch(/value: SysBOPrincipalType\.Group,[\s\S]*?icon: 'people',[\s\S]*?isContainer: true,[\s\S]*?canHaveParent: true/);
-    expect(canonical).toMatch(/value: SysBOPrincipalType\.System,[\s\S]*?icon: 'gear',[\s\S]*?isContainer: false,[\s\S]*?canHaveParent: false/);
+    expect(definitions).toContain("icon: 'bi-diagram-3-fill'");
+    expect(canonical).toMatch(/value: SysBOPrincipalType\.Person,[\s\S]*?isContainer: false,[\s\S]*?canHaveParent: true,[\s\S]*?canBeOrganizationRoot: false,[\s\S]*?canStandAloneOrganization: true/);
+    expect(canonical).toMatch(/value: SysBOPrincipalType\.Company,[\s\S]*?isContainer: true,[\s\S]*?canHaveParent: false,[\s\S]*?canBeOrganizationRoot: true/);
+    expect(canonical).toMatch(/value: SysBOPrincipalType\.Group,[\s\S]*?isContainer: true,[\s\S]*?canHaveParent: true,[\s\S]*?canBeOrganizationRoot: true/);
+    expect(canonical).toMatch(/value: SysBOPrincipalType\.System,[\s\S]*?isContainer: false,[\s\S]*?canHaveParent: true,[\s\S]*?canBeOrganizationRoot: false,[\s\S]*?canStandAloneOrganization: true/);
     expect(uiMetadata).toContain("createDefaultValue: 'Person'");
     expect(uiMetadata).toContain('principalType.option.canHaveParent === true');
     expect(uiMetadata).toContain('readOnlyValue: null');
@@ -40,7 +42,7 @@ describe('metadata-driven Principal presentation', () => {
     expect(forms).toContain('resolveLocalFieldVariable');
     expect(forms).toContain('let value = { value: fieldValue, option };');
     expect(ctxRuntime).toContain('const updateField =');
-    expect(ctxRuntime).toContain('dataCurrent');
+    expect(ctxRuntime).toContain('entry');
     expect(routes).toContain('pageEntryRuntimeContext(initialRecordValues)');
     expect(routes).toContain('Object.entries(runtimeEntryValues).filter');
     expect(forms).toContain('expressionDependencyPaths');
@@ -86,7 +88,7 @@ describe('metadata-driven Principal presentation', () => {
 
     expect(uiMetadata).toContain("tab('organization', 'Organization'");
     expect(uiMetadata).toContain("key: 'hierarchy-tree'");
-    expect(uiMetadata).toContain("dataSource: 'dataList'");
+    expect(uiMetadata).toContain("dataSource: 'entries'");
     expect(uiMetadata).toContain("rootField: 'rootPrincipalId'");
     expect(uiMetadata).toContain("viewModes: 'tree,chart'");
     expect(uiMetadata).toContain("defaultView: 'chart'");
@@ -125,6 +127,49 @@ describe('metadata-driven Principal presentation', () => {
     // Retired names remain only as compatibility tombstones so stale persisted
     // configuration rows are ignored rather than resurrecting the old engine.
     expect(configuration).toContain("'UI_SYSBO_PRINCIPALS_VIEW_MODE'");
+  });
+
+  it('declares Principal Organization as the first consumer of the generic hierarchy workspace', async () => {
+    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
+    const routes = await uiSource('src/routes/sysbo-routes.ts');
+    const workspace = await uiSource('views/pages/metadata-driven/ui-components/hierarchy-workspace.ejs');
+    const hierarchyRuntime = await uiSource('public/js/components/hierarchy-tree.js');
+    const hierarchyModel = await uiSource('src/presentation/metadata-hierarchy-workspace.ts');
+
+    expect(uiMetadata).toContain("label: 'Add organization'");
+    expect(uiMetadata).toMatch(/addOrganization:[\s\S]*?emphasis: 'solid'/);
+    expect(uiMetadata).toMatch(/organization:[\s\S]*?label: 'Organization'[\s\S]*?emphasis: 'outline'/);
+    expect(uiMetadata).toContain("href: '/bo/sys-principals/hierarchy/new'");
+    expect(uiMetadata).toContain("href: '/bo/sys-principals/{id}/hierarchy'");
+    expect(uiMetadata).toContain("workspaceKey: 'organization'");
+    expect(uiMetadata).toContain("workspaceLabel: 'Organization'");
+    expect(uiMetadata).toContain("containerTrait: 'isContainer'");
+    expect(uiMetadata).toContain("canHaveParentTrait: 'canHaveParent'");
+    expect(uiMetadata).toContain("rootEligibleTrait: 'canBeOrganizationRoot'");
+    expect(uiMetadata).toContain("standAloneEligibleTrait: 'canStandAloneOrganization'");
+
+    expect(routes).toContain("router.get('/:key/hierarchy/new'");
+    expect(routes).toContain("router.get('/:key/:id/hierarchy'");
+    expect(routes).toContain('renderMetadataDrivenHierarchyWorkspace');
+    expect(routes).toContain("'sysbo-hierarchy'");
+    expect(routes).toContain('pageCollectionRuntimeContext(hierarchyItems)');
+    expect(routes).toContain('initialMemberId: focusedId');
+    expect(routes).toContain('focusedMemberId: focusedId');
+    expect(routes).not.toContain('renderPrincipalOrganizationWorkspace');
+
+    expect(hierarchyModel).toContain('metadataHierarchyWorkspaceDescriptor');
+    expect(hierarchyModel).toContain('keyedHierarchySnapshot');
+    expect(hierarchyModel).toContain('hierarchyRootIdForMember');
+    expect(workspace).toContain('data-metadata-hierarchy-workspace');
+    expect(workspace).toContain("dataSource: 'entries'");
+    expect(workspace).toContain("focusSource: 'focusedMemberId'");
+    expect(workspace).toContain("interactionMode: 'workspace'");
+    expect(workspace).not.toContain('data-hierarchy-save-close');
+    expect(hierarchyRuntime).toContain('const collectionRows =');
+    expect(hierarchyRuntime).toContain('focusSource');
+    expect(hierarchyRuntime).toContain('data-hierarchy-empty-add');
+    expect(hierarchyRuntime).toContain("String(options.interactionMode || '') === 'workspace'");
+    expect(hierarchyRuntime).not.toContain('sys-principals');
   });
 
 });

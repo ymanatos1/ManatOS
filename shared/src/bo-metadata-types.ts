@@ -220,6 +220,33 @@ export interface SysBODerivedFieldMetadata {
   persisted?: boolean;
 }
 
+
+/**
+ * Canonical source used to describe how one entity entry is represented.
+ *
+ * `field` is a direct field/derived-field reference. `expression` uses the
+ * canonical ManatOS expression evaluator and is preferred whenever the value
+ * is calculated from multiple fields or other derived values.
+ */
+export type ManatOSEntryValueSourceMetadata =
+  | Readonly<{ field: string; expression?: never }>
+  | Readonly<{ expression: string; field?: never }>;
+
+/**
+ * Canonical, UI-neutral semantics for representing one entity entry.
+ *
+ * `name` is the human-facing entry identity used by lists, breadcrumbs,
+ * references and visualizations. `type` is an optional semantic classifier.
+ * Both may reference canonical derived fields; evaluator dependency ordering
+ * therefore remains identical to ordinary metadata calculations.
+ */
+export interface ManatOSEntryMetadata {
+  name?: ManatOSEntryValueSourceMetadata;
+  type?: ManatOSEntryValueSourceMetadata;
+  description?: ManatOSEntryValueSourceMetadata;
+  status?: ManatOSEntryValueSourceMetadata;
+}
+
 export interface ManatOSObjectMetadata<T> {
   /** Stable metadata identity; may describe a first-class SysBO or a related value object. */
   key: string;
@@ -228,6 +255,9 @@ export interface ManatOSObjectMetadata<T> {
 
   /** Main human/business identifying property of one object instance. */
   primaryField: keyof T & string;
+
+  /** Optional canonical semantics for representing one object instance. */
+  entry?: Readonly<ManatOSEntryMetadata>;
 
   /** Keyed canonical persisted/runtime field definitions. */
   fieldDefinition: Record<string, SysBOFieldMetadata>;

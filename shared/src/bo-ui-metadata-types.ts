@@ -38,6 +38,26 @@ export interface SysBOUIListRowActionMetadata {
   href: string;
 }
 
+/**
+ * List-level action rendered beside the ordinary Add action.
+ *
+ * Unlike row actions, these commands are not tied to one result row and may
+ * use evaluator-backed visibility. This is the reusable hook for workflows
+ * such as opening a hierarchy/organization workspace without teaching the
+ * generic list renderer about a particular entity.
+ */
+export interface SysBOUIListPageActionMetadata {
+  kind: SysBOUIListRowActionKind;
+  order?: number;
+  visible?: SysBOUIDynamicValue<boolean>;
+  label: string;
+  icon?: SysBOUIIconKey;
+  tone?: SysBOUIStatusTone;
+  emphasis?: 'solid' | 'outline';
+  title?: string;
+  href: string;
+}
+
 export interface SysBOUIListNoticeMetadata {
   tone: SysBOUIStatusTone;
   icon?: SysBOUIIconKey;
@@ -59,6 +79,13 @@ export interface SysBOUIListMetadata {
    * identity; renderers must not infer entity-specific row behavior.
    */
   rowActions?: Readonly<Record<string, SysBOUIListRowActionMetadata>>;
+
+  /**
+   * Optional collection/workspace commands shown at list level. Their
+   * visibility is resolved against the list CTX, so future customer-defined
+   * hierarchical entities can expose the same workflows declaratively.
+   */
+  pageActions?: Readonly<Record<string, SysBOUIListPageActionMetadata>>;
 }
 
 /**
@@ -377,6 +404,22 @@ export interface SysBOUIRelatedCollectionMetadata {
   fields: Readonly<Record<string, SysBOUIRelatedCollectionFieldMetadata>>;
 }
 
+/**
+ * Compact embedded record presentation. Unlike `record`, this does not define
+ * a standalone page: an owning workspace/component controls its lifecycle and
+ * commits Add/Update/Remove into its own working `entries[]` collection.
+ */
+export interface SysBOUIRecordQuickMetadata {
+  content: readonly SysBOUITabContentMetadata[];
+
+  /**
+   * Optional compact-editor overrides. These intentionally reuse the normal
+   * record field-override vocabulary so an entity does not need a second field
+   * semantics model merely because the owner presents it in a small panel.
+   */
+  fieldOverrides?: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>;
+}
+
 export interface SysBOUIRecordMetadata {
   tabs: readonly SysBOUIRecordTabMetadata[];
   fieldOverrides: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>;
@@ -395,8 +438,30 @@ export interface SysBOUIRecordMetadata {
   relatedCollections?: Readonly<Record<string, SysBOUIRelatedCollectionMetadata>>;
 }
 
+
+/** Presentation of one entity instance, distinct from the entity/page icon. */
+export type SysBOUIEntryIconMetadata =
+  | Readonly<{ mode: 'entity' }>
+  | Readonly<{ mode: 'type' }>
+  | Readonly<{ mode: 'fixed'; icon: string }>
+  | Readonly<{ mode: 'composed'; entityScale?: number; typeScale?: number; typeEmphasis?: 'primary' | 'secondary' }>;
+
+export interface SysBOUIEntryRepresentationMetadata {
+  /**
+   * Icon for individual entries in lists/visualizations. This never changes the
+   * entity/page/navigation icon owned by the routed SysBO definition.
+   */
+  icon?: SysBOUIEntryIconMetadata;
+  secondaryText?: SysBOUIDynamicValue<string>;
+  tooltip?: SysBOUIDynamicValue<string>;
+}
+
 export interface SysBOUIMetadata {
   key: string;
+  /** Optional presentation of entity entries; separate from the entity icon. */
+  entry?: SysBOUIEntryRepresentationMetadata;
   list: SysBOUIListMetadata;
+  /** Optional compact owner-managed editor, reusable by hierarchy and other aggregate workspaces. */
+  recordQuick?: SysBOUIRecordQuickMetadata;
   record: SysBOUIRecordMetadata;
 }

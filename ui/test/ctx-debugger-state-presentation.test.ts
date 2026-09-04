@@ -120,10 +120,10 @@ describe('CTX debugger presentation state', () => {
   it('moves focus outside the unified developer dock before hiding it and uses inert for inactive tabs', () => {
     expect(developerToolsViewSource).toContain('inert');
     expect(shellSource).toContain('developerToolsDock.contains(active)');
-    expect(shellSource).toContain('fallback?.focus({ preventScroll: true })');
+    expect(shellSource).toContain('fallback.focus({ preventScroll: true })');
     expect(shellSource).toContain('developerToolsDock.inert = true');
     expect(shellSource).toContain("developerToolsDock.setAttribute('aria-hidden', 'true')");
-    expect(shellSource.indexOf('fallback?.focus({ preventScroll: true })')).toBeLessThan(
+    expect(shellSource.indexOf('fallback.focus({ preventScroll: true })')).toBeLessThan(
       shellSource.indexOf("developerToolsDock.setAttribute('aria-hidden', 'true')"),
     );
     expect(shellSource).toContain('debugPanel.inert = !ctxActive');
@@ -153,8 +153,10 @@ describe('CTX debugger presentation state', () => {
     expect(debuggingPanelSource).toContain('data-debug-inspect-kind="value"');
     expect(debuggingPanelSource).not.toContain("debugRow.inspectPath || 'ctx.page.page'");
     expect(metadataEntrySource).toContain('buildMetadataDebuggingModel({');
-    expect(metadataDebuggingModelSource).toContain('`ctx.page.page.fields.${key}.expression`');
-    expect(metadataDebuggingModelSource).toContain('`ctx.page.page.dataCurrent.${key}`');
+    expect(metadataDebuggingModelSource).toContain("entryContextPath = 'ctx.page.page'");
+    expect(metadataDebuggingModelSource).toContain('`${entryContextPath}.fields.${key}.expression`');
+    expect(metadataDebuggingModelSource).toContain('`${entryContextPath}.entry.${key}`');
+    expect(metadataEntrySource).toContain("entryContextPath: ownerEditing ? 'ctx.page.page.page' : 'ctx.page.page'");
     expect(metadataDebuggingModelSource).toContain('definitionPath');
     expect(metadataDebuggingModelSource).toContain('valuePath');
     expect(debuggingPanelSource).toContain('const hasInspectionActions = Boolean(debugRow.definitionPath || debugRow.valuePath)');

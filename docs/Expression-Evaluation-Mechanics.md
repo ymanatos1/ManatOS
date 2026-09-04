@@ -56,7 +56,7 @@ The entry page owns the calculation. Bare `parentId` resolves from the live curr
 
 The server process can use the same expression with a candidate or persisted entity as its scope. `parentId` then comes from that record rather than from browser CTX.
 
-Canonical entity formulas should therefore prefer entity-local field names (`parentId`) rather than hard-coded UI paths (`ctx.page.page.dataCurrent.parentId`).
+Canonical entity formulas should therefore prefer entity-local field names (`parentId`) rather than hard-coded UI paths (`ctx.page.page.entry.parentId`).
 
 ## 5. Function capabilities
 
@@ -141,7 +141,7 @@ The current resolver caches canonical `entityKey:id` reads for the lifetime of o
 
 `TraverseEntity()` is for canonical persisted hierarchy traversal. It must not depend on a list page, filtering, pagination or navigation history.
 
-This distinction fixes the earlier Root Principal limitation where `ctx.page.dataList` accidentally acted as if it were the complete Principal database.
+This distinction fixes the earlier Root Principal limitation where `ctx.page.entries` accidentally acted as if it were the complete Principal database.
 
 ## 11. Root Principal end-to-end
 

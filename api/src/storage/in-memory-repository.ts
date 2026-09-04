@@ -7,6 +7,8 @@ import {
   type SysBOEntity,
   type SysBOMetadata,
   type SysBOUpdateInput,
+  type CompiledExpression,
+  evaluateCompiledExpression,
 } from '@manatos/shared';
 
 import { auditService, type AuditActor } from '../audit/audit-service.js';
@@ -24,6 +26,9 @@ export interface ListQuery {
   direction: 'asc' | 'desc';
 
   filters: Record<string, string>;
+
+  /** Canonical exclusion predicate. When it evaluates true for a row, that row is omitted before filtering/sorting/paging. */
+  listExceptions?: CompiledExpression;
 }
 
 /**
@@ -85,6 +90,22 @@ export class InMemoryRepository<T extends SysBOEntity> {
      */
     if (authorizationFilter) {
       items = await authorizationFilter(items);
+    }
+
+    /*
+     * Apply caller-supplied list exceptions before ordinary filtering, sorting
+     * and paging. The canonical AST is storage-neutral: the in-memory adapter
+     * evaluates it directly today; a future RDBMS adapter can translate the
+     * same AST into a parameterized SQL WHERE predicate. True means EXCLUDE.
+     */
+    if (query.listExceptions) {
+      const compiled = query.listExceptions;
+      items = items.filter((item) => evaluateCompiledExpression(
+        compiled,
+        item,
+        item,
+        { source: 'other', purpose: 'apply list exception predicate' },
+      ) !== true);
     }
 
     /*

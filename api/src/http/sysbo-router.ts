@@ -5,6 +5,7 @@ import {
   ForbiddenAppError,
   SysBOUserRole,
   NotFoundError,
+  ValidationAppError,
   operationContext,
   type SysBOEntity,
   type SysBOMetadata,
@@ -208,6 +209,63 @@ export function createSysBORouter<T extends SysBOEntity>(
   };
 
   router.post('/', createHandler);
+
+
+  /**
+   * Atomically commit an owner-managed aggregate working set. The browser may
+   * use temporary draft identities; the service resolves them transactionally.
+   */
+  router.post('/$aggregate-commit', async (req, res) => {
+    if (customCreate || customUpdate) {
+      throw new ValidationAppError(
+        `${metadata.name} requires specialized persistence and cannot use the generic aggregate commit endpoint.`,
+        'This entity does not support generic aggregate Commit.',
+      );
+    }
+    const subject = securityContext(req);
+    const entries: Record<string, unknown>[] = Array.isArray(req.body?.entries)
+      ? req.body.entries.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+      : [];
+    const entriesOriginal: Record<string, unknown>[] = Array.isArray(req.body?.entriesOriginal)
+      ? req.body.entriesOriginal.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+      : [];
+    const identityField = String(req.body?.identityField || 'id');
+    const originalIds = new Set<string>(entriesOriginal.map((row) => String(row[identityField] ?? '')).filter(Boolean));
+    const currentIds = new Set<string>(entries.map((row) => String(row[identityField] ?? '')).filter(Boolean));
+    const unexpectedPersistedId = entries
+      .map((row) => String(row[identityField] ?? ''))
+      .find((id) => id && !id.startsWith('draft:') && !originalIds.has(id));
+    if (unexpectedPersistedId) {
+      throw new ValidationAppError(
+        `Aggregate commit contains persisted id '${unexpectedPersistedId}' outside entriesOriginal.`,
+        'The aggregate working set no longer matches its original baseline.',
+      );
+    }
+
+    if (entries.some((row) => String(row[identityField] ?? '').startsWith('draft:'))) {
+      await authorization.assertCan('create', subject, metadata.key);
+    }
+    for (const row of entries) {
+      const id = String(row[identityField] ?? '');
+      if (!id || id.startsWith('draft:') || !originalIds.has(id)) continue;
+      const existing = await service.get(id);
+      if (!existing) throw new NotFoundError(metadata.name, id);
+      await authorization.assertCan('update', subject, metadata.key, existing);
+    }
+    for (const id of originalIds) {
+      if (currentIds.has(id)) continue;
+      const existing = await service.get(id);
+      if (!existing) throw new NotFoundError(metadata.name, id);
+      await authorization.assertCan('delete', subject, metadata.key, existing);
+    }
+
+    const actor = authenticatedAuditActor(subject.userId, subject.userName);
+    const result = await service.commitAggregate({ entries, entriesOriginal, identityField }, actor);
+    sendCommand(res, `${metadata.name} aggregate committed successfully.`, {
+      items: result.items.map((item) => sanitize(item, metadata)),
+      idMap: result.idMap,
+    });
+  });
 
   /**
    * Shared implementation for PUT and PATCH.

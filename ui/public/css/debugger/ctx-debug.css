@@ -1038,15 +1038,15 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
   white-space: nowrap;
 }
 
-.developer-tools-tab strong { color: #172b4d; }
-.developer-tools-tab span { margin-left: .2rem; color: #7a8796; font-size: .66rem; font-weight: 400; }
+.developer-tools-tab-caption { color: #172b4d; font-weight: 400; }
+.developer-tools-tab-subtitle { margin-left: .2rem; color: #7a8796; font-size: .66rem; font-weight: 400; }
 .developer-tools-tab:hover { background: #eef5ff; }
 .developer-tools-tab.is-active {
   border-bottom-color: #0d6efd;
   background: #fff;
   color: #0d6efd;
 }
-.developer-tools-tab.is-active strong { color: #0d6efd; }
+.developer-tools-tab.is-active .developer-tools-tab-caption { color: #0d6efd; font-weight: 700; }
 
 .developer-tools-close {
   flex: 0 0 auto;

@@ -19,6 +19,7 @@ import {
   pageContextNode,
   pageBreadcrumbItems,
   pageEntryRuntimeContext,
+  pageCollectionRuntimeContext,
   pageListRuntimeContext,
   registerContextEntity,
   setPageContext,
@@ -190,6 +191,92 @@ describe('ManatOS ctx tree', () => {
     expect(pageBreadcrumbItems(ctx)).toEqual([
       { label: 'ManatOS', href: '/' },
       { label: 'Principals', href: '/bo/sys-principals' },
+      { label: 'Edit Principal - Guest Maria', href: null },
+    ]);
+  });
+
+  it('keeps hierarchy workspaces beneath the list context and derives their breadcrumb title from CTX', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
+    registerContextEntity(base, 'sys-principals', {
+      name: 'Principal', pluralName: 'Principals', primaryField: 'name',
+    });
+
+    const hierarchy = pageContextNode(
+      'organization',
+      'sysbo-hierarchy',
+      'edit',
+      contextFields({ title: 'Edit Organization', focusedMemberId: 'p1' }),
+      null,
+      pageCollectionRuntimeContext([
+        { id: 'p1', name: 'ManatOS' },
+        { id: 'p2', name: 'Guest Maria', parentId: 'p1' },
+      ]),
+    );
+    const list = pageContextNode(
+      'sysPrincipals',
+      'sysbo-list',
+      'list',
+      contextFields({ entity: 'sysPrincipals' }),
+      hierarchy,
+      pageListRuntimeContext([], [], {}),
+    );
+    const ctx = setPageContext(base, list);
+
+    expect(currentPagePath(ctx)).toBe('/sysPrincipals/organization');
+    expect(list.entriesOriginal).toEqual([]);
+    expect(list.entries).toEqual([]);
+    expect(hierarchy.entriesOriginal?.map((entry) => entry.id)).toEqual(['p1', 'p2']);
+    expect(hierarchy.entries?.map((entry) => entry.id)).toEqual(['p1', 'p2']);
+    expect(pageBreadcrumbItems(ctx)).toEqual([
+      { label: 'ManatOS', href: '/' },
+      { label: 'Principals', href: '/bo/sys-principals' },
+      { label: 'Edit Organization', href: null },
+    ]);
+  });
+
+
+  it('supports a member entry as a third page level beneath a hierarchy workspace', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
+    registerContextEntity(base, 'sys-principals', {
+      name: 'Principal', pluralName: 'Principals', primaryField: 'name',
+    });
+
+    const memberEntry = pageContextNode(
+      'entry',
+      'sysbo-entry',
+      'edit',
+      contextFields({ id: 'p2', name: 'Guest Maria' }),
+      null,
+      pageEntryRuntimeContext({ id: 'p2', name: 'Guest Maria' }),
+    );
+    const hierarchy = pageContextNode(
+      'organization',
+      'sysbo-hierarchy',
+      'edit',
+      contextFields({ title: 'Edit Organization', focusedMemberId: 'p2' }),
+      memberEntry,
+      pageCollectionRuntimeContext([
+        { id: 'p1', name: 'ManatOS' },
+        { id: 'p2', name: 'Guest Maria', parentId: 'p1' },
+      ]),
+    );
+    const list = pageContextNode(
+      'sysPrincipals',
+      'sysbo-list',
+      'list',
+      contextFields({ entity: 'sysPrincipals' }),
+      hierarchy,
+      pageListRuntimeContext([], [], {}),
+    );
+    const ctx = setPageContext(base, list);
+
+    expect(currentPagePath(ctx)).toBe('/sysPrincipals/organization/entry');
+    expect(pageBreadcrumbItems(ctx)).toEqual([
+      { label: 'ManatOS', href: '/' },
+      { label: 'Principals', href: '/bo/sys-principals' },
+      { label: 'Edit Organization', href: null },
       { label: 'Edit Principal - Guest Maria', href: null },
     ]);
   });
@@ -384,8 +471,8 @@ it('keeps list API rows and filter values directly on the page context instead o
   );
   const ctx = setPageContext(base, page);
 
-  expect(ctx.page?.filters).toEqual({ name: 'Admin', principalType: null });
-  expect(ctx.page?.dataList).toEqual([
+  expect(ctx.page?.filters).toEqual({ name: 'Admin', principalType: null, listExceptions: null });
+  expect(ctx.page?.entries).toEqual([
     { id: 'p1', name: 'ManatOS', principalType: 'Company' },
     { id: 'p2', name: 'Our Admin', principalType: 'Person' },
   ]);
@@ -393,7 +480,7 @@ it('keeps list API rows and filter values directly on the page context instead o
 });
 
 
-it('keeps dataOriginal/dataCurrent entry values directly on the child entry page context', () => {
+it('keeps entryOriginal/entry entry values directly on the child entry page context', () => {
   const platform = resolvePlatform(MANATOS_COMPANY);
   const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
   const entryRuntime = pageEntryRuntimeContext({
@@ -421,9 +508,9 @@ it('keeps dataOriginal/dataCurrent entry values directly on the child entry page
 
   expect(ctx.page?.scope).toBe('sys');
   expect(ctx.page?.page?.scope).toBe('sys');
-  expect(ctx.page?.page?.dataOriginal).toEqual({
+  expect(ctx.page?.page?.entryOriginal).toEqual({
     id: 'p2', name: 'Our Admin', principalType: 'Person', parentId: 'p1',
   });
-  expect(ctx.page?.page?.dataCurrent).toEqual(ctx.page?.page?.dataOriginal);
+  expect(ctx.page?.page?.entry).toEqual(ctx.page?.page?.entryOriginal);
   expect(ctx.page?.page?.state).toEqual({ dirty: false, valid: true, internalEditing: false, internalEditorCount: 0, saving: false, deleting: false });
 });

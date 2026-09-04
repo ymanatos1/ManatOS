@@ -83,30 +83,30 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest("mode === 'view' ? status : 'wrong'", ctx, fields)).toBe('ready');
   });
 
-  it('inherits a one-level dataList symbol from the nearest parent page scope', () => {
+  it('inherits a one-level entries symbol from the nearest parent page scope', () => {
     const entryFields = { parentId: { value: 'p2' } };
     const ctx = {
       page: {
-        dataList: [
+        entries: [
           { id: 'p1', parentId: null, name: 'Root' },
           { id: 'p2', parentId: 'p1', name: 'Parent' },
         ],
         page: {
           fields: entryFields,
-          dataCurrent: { id: 'p3', parentId: 'p2', name: 'Child' },
+          entry: { id: 'p3', parentId: 'p2', name: 'Child' },
         },
       },
     };
 
-    expect(evaluateTest("dataList['p2'].parentId", ctx, entryFields)).toBe('p1');
-    expect(evaluateTest('dataCurrent.parentId', ctx, entryFields)).toBe('p2');
+    expect(evaluateTest("entries['p2'].parentId", ctx, entryFields)).toBe('p1');
+    expect(evaluateTest('entry.parentId', ctx, entryFields)).toBe('p2');
   });
 
   it('traverses a keyed parent hierarchy generically and returns the requested root field', () => {
     const fields = { parentId: { value: 'p3' }, name: { value: 'Child' } };
     const ctx = {
       page: {
-        dataList: [
+        entries: [
           { id: 'p1', parentId: null, name: 'Root' },
           { id: 'p2', parentId: 'p1', name: 'Branch' },
           { id: 'p3', parentId: 'p2', name: 'Parent' },
@@ -115,15 +115,15 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(evaluateTest("TraverseCtx(parentId, dataList, 'parentId', 'name')", ctx, fields)).toBe('Root');
-    expect(evaluateTest("parentId == null ? name : TraverseCtx(parentId, dataList, 'parentId', 'name')", ctx, fields)).toBe('Root');
+    expect(evaluateTest("TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields)).toBe('Root');
+    expect(evaluateTest("parentId == null ? name : TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields)).toBe('Root');
   });
 
   it('terminates malformed hierarchy cycles instead of looping forever', () => {
     const fields = { parentId: { value: 'p1' } };
     const ctx = {
       page: {
-        dataList: [
+        entries: [
           { id: 'p1', parentId: 'p2', name: 'One' },
           { id: 'p2', parentId: 'p1', name: 'Two' },
         ],
@@ -131,7 +131,7 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(() => evaluateTest("TraverseCtx(parentId, dataList, 'parentId', 'name')", ctx, fields))
+    expect(() => evaluateTest("TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields))
       .toThrow(/parent cycle/i);
   });
 
@@ -323,7 +323,7 @@ describe('ManatOS expression parser/evaluator', () => {
       page: {
         ...testCtx().page,
         page: {
-          dataCurrent: {
+          entry: {
             emailAddresses: [
               { id: 'mail-a', address: 'first@example.com' },
               { id: 'mail-b', address: 'second@example.com' },
@@ -339,10 +339,10 @@ describe('ManatOS expression parser/evaluator', () => {
     const entry = ctx.page.page;
     expect(evaluateTest('ctx.company.platforms[0].name', ctx, entry)).toBe('ManatOS CRM Platform');
     expect(evaluateTest('ctx.company.platforms.mcrm.name', ctx, entry)).toBe('ManatOS CRM Platform');
-    expect(evaluateTest('dataCurrent.emailAddresses[1].address', ctx, entry)).toBe('second@example.com');
-    expect(evaluateTest("dataCurrent.emailAddresses['mail-b'].address", ctx, entry)).toBe('second@example.com');
-    expect(evaluateTest('dataCurrent.telephoneNumbers[1].fullNumber', ctx, entry)).toBe('+302222222222');
-    expect(evaluateTest("dataCurrent.telephoneNumbers['tel-b'].fullNumber", ctx, entry)).toBe('+302222222222');
+    expect(evaluateTest('entry.emailAddresses[1].address', ctx, entry)).toBe('second@example.com');
+    expect(evaluateTest("entry.emailAddresses['mail-b'].address", ctx, entry)).toBe('second@example.com');
+    expect(evaluateTest('entry.telephoneNumbers[1].fullNumber', ctx, entry)).toBe('+302222222222');
+    expect(evaluateTest("entry.telephoneNumbers['tel-b'].fullNumber", ctx, entry)).toBe('+302222222222');
   });
 
   it('evaluates the SysUser Full name expression against camelCase page fields', () => {

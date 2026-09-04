@@ -4,12 +4,15 @@
    * every metadata-driven entity receives the same controls and enhancements;
    * entity-specific templates must not choose their own field widgets.
    */
+  const entityBindCtx = typeof bindCtx === 'boolean' ? bindCtx : true;
+  const entityInputId = typeof inputId === 'string' ? inputId : undefined;
+  const entityInputName = typeof inputName === 'string' ? inputName : undefined;
 %>
 <% if (field.type === 'boolean') { %>
-  <%- include('boolean-field', { key, field, value, editable, fieldLabel }) %>
+  <%- include('boolean-field', { key, field, value, editable, fieldLabel, bindCtx: entityBindCtx, inputId: entityInputId, inputName: entityInputName }) %>
 <% } else if (field.type === 'enum') { %>
   <% const enumItems = enumItemsFor(field); %>
-  <%- include('enum-select', { key, field, value, editable, enumItems, fieldLabel }) %>
+  <%- include('enum-select', { key, field, value, editable, enumItems, fieldLabel, bindCtx: entityBindCtx, inputId: entityInputId, inputName: entityInputName }) %>
 <% } else if (field.type === 'reference') { %>
   <%- include('reference-select', { key, field, value, editable, referenceValues, referenceEntityIcons, fieldLabel }) %>
 <% } else if (field.type === 'date') { %>

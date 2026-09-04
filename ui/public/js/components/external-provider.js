@@ -426,7 +426,10 @@
     const tenantDefault = selectedDefinition?.tenant ?? selectedMetadata.tenant ?? null;
     const hasTenant = tenantDefault !== null && tenantDefault !== undefined && tenantDefault !== '';
 
-    if (providerIcon instanceof HTMLElement) providerIcon.className = `bi ${providerIcons[key] || 'bi-globe2'}`;
+    if (providerIcon instanceof HTMLElement) {
+      const icon = String(providerIcons[key] || 'globe2').replace(/^bi-/, '');
+      providerIcon.className = `bi bi-${icon}`;
+    }
     if (tenant instanceof HTMLElement) tenant.hidden = !hasTenant;
     if (tenantSelect instanceof HTMLSelectElement || tenantSelect instanceof HTMLInputElement) {
       if (tenantSelect instanceof HTMLSelectElement) tenantSelect.disabled = true;

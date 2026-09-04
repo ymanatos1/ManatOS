@@ -307,6 +307,12 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
 
 export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
   key: 'sys-principals',
+  entry: {
+    // Entry representation is deliberately separate from the routed entity icon.
+    // Principals combine the entity cue with the semantic Principal-type cue;
+    // renderers make the type icon visually dominant.
+    icon: { mode: 'composed', entityScale: 0.72, typeScale: 1.15, typeEmphasis: 'primary' },
+  },
   list: {
     // Root/Parent are shown first for hierarchy scanning; `name` remains the
     // canonical primary/clickable field in the generic list renderer.
@@ -314,6 +320,49 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     filterFields: ['name', 'principalType', 'parentId', 'rootPrincipalId'],
     sortableFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled'],
     addAction: standardAddAction(),
+    pageActions: {
+      addOrganization: {
+        kind: 'navigate',
+        order: 10,
+        visible: { expression: 'permissions.create === true' },
+        label: 'Add organization',
+        icon: 'diagram-3',
+        tone: 'primary',
+        emphasis: 'solid',
+        title: 'Create an organization structure',
+        href: '/bo/sys-principals/hierarchy/new',
+      },
+    },
+    rowActions: {
+      organization: {
+        kind: 'navigate',
+        order: 10,
+        visible: true,
+        label: 'Organization',
+        icon: 'diagram-3',
+        tone: 'primary',
+        emphasis: 'outline',
+        title: 'Open principal organization',
+        href: '/bo/sys-principals/{id}/hierarchy',
+      },
+    },
+  },
+  recordQuick: {
+    // Compact owner-managed Principal editor used by generic aggregate workspaces.
+    // Relationship fields are supplied by the owning hierarchy operation; the
+    // calculated root remains evaluator-owned and is never manually entered.
+    content: [
+      { kind: 'field', field: 'name', span: 12 },
+      { kind: 'field', field: 'principalType', span: 8 },
+      { kind: 'field', field: 'enabled', span: 4 },
+    ],
+    fieldOverrides: {
+      // A newly sketched Principal starts enabled just like the full create form.
+      enabled: { createDefaultValue: true },
+      // Principal type has one canonical create default across full and quick records.
+      // Keeping both surfaces aligned avoids owner/editor-specific creation semantics.
+      principalType: { createDefaultValue: 'Person' },
+    },
   },
   record: {
     tabs: [
@@ -476,13 +525,17 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         component: {
           key: 'hierarchy-tree',
           options: {
-            dataSource: 'dataList',
-            currentSource: 'dataCurrent',
+            dataSource: 'entries',
+            currentSource: 'entry',
             idField: 'id',
             parentField: 'parentId',
             rootField: 'rootPrincipalId',
-            labelField: 'name',
-            typeField: 'principalType',
+            workspaceKey: 'organization',
+            workspaceLabel: 'Organization',
+            containerTrait: 'isContainer',
+            canHaveParentTrait: 'canHaveParent',
+            rootEligibleTrait: 'canBeOrganizationRoot',
+            standAloneEligibleTrait: 'canStandAloneOrganization',
             viewModes: 'tree,chart',
             defaultView: 'chart',
           },
@@ -506,8 +559,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
       },
       parentId: {
         // Parentability is a separate declarative enum trait from containment: a
-        // Company can contain children yet acts as a root here, while Person and
-        // Group records may themselves belong to a parent. The evaluator reads
+        // Company can contain children yet acts as a root here, while Person,
+        // Group and System records may themselves belong to a parent. The evaluator reads
         // the selected enum item's canonical metadata through CTX.
         editable: { expression: 'principalType.option != null && principalType.option.canHaveParent === true' },
         readOnlyValue: null,
@@ -704,6 +757,9 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
 
 export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
   key: 'sys-ext-auth-providers',
+  // Entity icon remains the routed globe; entry instances use their provider
+  // type icon (Microsoft/Google/Facebook/GitHub) everywhere representations render.
+  entry: { icon: { mode: 'type' } },
   list: {
     visibleFields: ['provider', 'enabled', 'callbackPath', 'credentialsVerified'],
     filterFields: ['provider'],

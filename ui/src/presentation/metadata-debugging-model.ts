@@ -103,6 +103,7 @@ export interface MetadataDebuggingModelInput {
     field: DebugRelatedFieldMetadata,
   ) => Readonly<{ raw?: unknown }>;
   relatedExpressionScope: (row: unknown, relatedMetadata: DebugCanonicalMetadata | undefined) => unknown;
+  entryContextPath?: string;
 }
 
 export interface MetadataDebuggingRow {
@@ -164,7 +165,7 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
   const {
     debuggingTabEnabled, metadata, metadataUI, compiledEntityContext, compiledEntityContextName, compiledUIRecord,
     ctxFields, ctxValue, dynamicUIValue, derivedFields, overrides, relatedCollections,
-    relatedMetadataRegistry, pageRelatedData, collectionValue, relatedExpressionScope,
+    relatedMetadataRegistry, pageRelatedData, collectionValue, relatedExpressionScope, entryContextPath = 'ctx.page.page',
   } = input;
 
   const debuggingRows: MetadataDebuggingRow[] = [];
@@ -307,8 +308,8 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
         ctxValue(key),
         compiledAstAt(compiledEntityContext, ['metadata', 'derivedFields', key]),
         derived.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
-        `ctx.page.page.fields.${key}.expression`,
-        `ctx.page.page.dataCurrent.${key}`,
+        `${entryContextPath}.fields.${key}.expression`,
+        `${entryContextPath}.entry.${key}`,
       );
     }
 
@@ -323,8 +324,8 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
         ctxValue(key),
         compiledAstAt(compiledUIRecord, ['derivedFields', key]),
         derived.inheritedFrom ? 'INHERITED FIELDS' : 'UI-DEFINED FIELDS',
-        `ctx.page.page.fields.${key}.expression`,
-        `ctx.page.page.dataCurrent.${key}`,
+        `${entryContextPath}.fields.${key}.expression`,
+        `${entryContextPath}.entry.${key}`,
       );
     }
 
@@ -350,7 +351,7 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
         compiledEntityContextName
           ? `ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`
           : null,
-        `ctx.page.page.dataCurrent.${fieldKey}`,
+        `${entryContextPath}.entry.${fieldKey}`,
       );
     }
 

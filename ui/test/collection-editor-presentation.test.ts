@@ -45,7 +45,8 @@ describe('generic transactional collection editor', () => {
     const routes = await source('src/routes/sysbo-routes.ts');
     expect(routes).toContain('const referencedPrimaryField = referencedDefinition.boMetadata.primaryField');
     expect(routes).toContain('value: id');
-    expect(routes).toContain('label: primaryValue ?? record.name ?? id');
+    expect(routes).toContain('const representation = resolveEntryRepresentation(');
+    expect(routes).toContain('label: representation.name || primaryValue || record.name || id');
     expect(routes).not.toContain("field.referenceBOKey === 'sys-email-addresses'");
     expect(routes).not.toContain("field.referenceBOKey === 'sys-telephone-numbers'");
   });

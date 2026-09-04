@@ -24,6 +24,10 @@ describe('API Traffic developer viewer', () => {
     expect(developerToolsViewSource).toContain("include('./api-traffic')");
     expect(developerToolsViewSource).toContain('data-developer-tool-tab="ctx"');
     expect(developerToolsViewSource).toContain('data-developer-tool-tab="apiTraffic"');
+    expect(developerToolsViewSource).toContain('class="developer-tools-tab-caption">CTX VIEWER');
+    expect(developerToolsViewSource).toContain('class="developer-tools-tab-caption">API TRAFFIC');
+    expect(debuggerCssSource).toContain('.developer-tools-tab-caption { color: #172b4d; font-weight: 400; }');
+    expect(debuggerCssSource).toContain('.developer-tools-tab.is-active .developer-tools-tab-caption { color: #0d6efd; font-weight: 700; }');
     expect(shellSource).toContain("DEVELOPER_TOOL_TAB_STORAGE_KEY = 'manatos.debug.activeTab.v1'");
     expect(shellSource).toContain('setDeveloperToolTab(tab, persist = true)');
     expect(shellSource).toContain('toggleDeveloperTools()');
@@ -41,6 +45,9 @@ describe('API Traffic developer viewer', () => {
     expect(viewerSource).toContain('renderDetails');
     expect(viewerSource).toContain('setInterval');
     expect(viewerSource).toContain('hiddenRoutes');
+    expect(viewerSource).toContain('ignoreRouteSelections');
+    expect(viewerSource).toContain('!state.ignoreRouteSelections && state.hiddenRoutes.has(routeKey(entry))');
+    expect(viewerSource).toContain('refreshIgnoreRoutesButton');
     expect(viewerSource).toContain('routeKey');
     expect(viewerSource).toContain('routeCounts');
     expect(viewerSource).toContain('ROUTE_COUNT_STATE_KEY');
@@ -61,6 +68,7 @@ describe('API Traffic developer viewer', () => {
     expect(viewerViewSource).toContain('apiTrafficResponseTab');
     expect(viewerViewSource).toContain('apiTrafficFilter');
     expect(viewerViewSource).toContain('apiTrafficRoutes');
+    expect(viewerViewSource).toContain('apiTrafficIgnoreRoutes');
     expect(viewerViewSource).toContain('placeholder="Search traffic"');
     expect(viewerViewSource.indexOf('apiTrafficDetails')).toBeLessThan(viewerViewSource.indexOf('apiTrafficList'));
     expect(viewerViewSource).toContain('apiTrafficDetails');

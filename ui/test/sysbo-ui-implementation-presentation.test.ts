@@ -83,9 +83,20 @@ describe('#16 metadata-driven SysBO UI closure', () => {
   it('uses global runtime paging configuration while metadata selects query fields', async () => {
     const routes = await source('src/routes/sysbo-routes.ts');
     const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
+    const tableHeader = await source('views/pages/metadata-driven/ui-components/list-table-header.ejs');
 
     expect(routes).toContain('uiBootstrapState().ui');
     expect(list).toContain('metadataUI.list.filterFields');
-    expect(list).toContain('metadataUI.list.sortableFields');
+    expect(list).toContain("include('ui-components/list-table-header'");
+    expect(tableHeader).toContain('metadataUI.list.sortableFields');
+  });
+
+  it('renders browse-list filter collapse attributes as real Bootstrap attributes while selectors keep local behavior', async () => {
+    const toolbar = await source('views/pages/metadata-driven/ui-components/list-toolbar.ejs');
+
+    expect(toolbar).toContain('data-selector-filters-toggle');
+    expect(toolbar).toContain('data-bs-toggle="collapse"');
+    expect(toolbar).toContain('data-bs-target="#<%= filterCollapseId %>"');
+    expect(toolbar).not.toContain('`data-bs-toggle="collapse" data-bs-target="#${filterCollapseId}"`');
   });
 });

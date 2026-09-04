@@ -192,6 +192,9 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
     case 'literal':
       return node.value;
 
+    case 'array':
+      return node.items.map((item) => evaluateNode(item, state));
+
     case 'group':
       return evaluateNode(node.expression, state);
 
@@ -253,6 +256,10 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
         case '!=': return !looseEqual(left, right);
         case '===': return strictEqual(left, right);
         case '!==': return !strictEqual(left, right);
+        case 'IN': {
+          if (!Array.isArray(right)) throw new ExpressionEvaluationError('IN requires an array on the right-hand side.');
+          return right.some((candidate) => strictEqual(left, candidate));
+        }
         case '<': return relational(left, right, '<');
         case '<=': return relational(left, right, '<=');
         case '>': return relational(left, right, '>');
@@ -368,6 +375,7 @@ export async function evaluateCompiledExpressionAsync(
   const evaluate = async (node: ExpressionNode, scope: unknown = execution.scope): Promise<unknown> => {
     switch (node.kind) {
       case 'literal': return node.value;
+      case 'array': return Promise.all(node.items.map((item) => evaluate(item, scope)));
       case 'group': return evaluate(node.expression, scope);
       case 'variable': {
         const resolved = resolveExpressionVariable(node, execution.root, scope);
@@ -424,6 +432,7 @@ export async function evaluateCompiledExpressionAsync(
           case '!=': return !looseEqual(left, right);
           case '===': return strictEqual(left, right);
           case '!==': return !strictEqual(left, right);
+          case 'IN': { if (!Array.isArray(right)) throw new ExpressionEvaluationError('IN requires an array on the right-hand side.'); return right.some((candidate) => strictEqual(left, candidate)); }
           case '<': return relational(left, right, '<');
           case '<=': return relational(left, right, '<=');
           case '>': return relational(left, right, '>');

@@ -59,16 +59,16 @@ value >>> 1
 Every CTX array remains a normal ordered array and supports zero-based numeric indexing wherever it occurs:
 
 ```text
-dataCurrent.emailAddresses[0]
-dataCurrent.emailAddresses[1].address
-dataCurrent.telephoneNumbers[1].fullNumber
+entry.emailAddresses[0]
+entry.emailAddresses[1].address
+entry.telephoneNumbers[1].fullNumber
 ```
 
 When members expose a stable `id` or `key`, the same array also supports semantic keyed lookup without duplicating it into a second object:
 
 ```text
-dataCurrent.emailAddresses['2b8f7232-c605-4c66-94b3-50f4c7d6a576'].address
-dataCurrent.telephoneNumbers['<telephone-number-id>'].fullNumber
+entry.emailAddresses['2b8f7232-c605-4c66-94b3-50f4c7d6a576'].address
+entry.telephoneNumbers['<telephone-number-id>'].fullNumber
 ```
 
 Numeric indexing is positional; semantic lookup is stable across reordering. Both syntaxes use the same generic CTX resolver.
@@ -94,7 +94,7 @@ Returns the first member of a CTX-resolved collection, or `null` when the collec
 ```text
 FirstCtx(platformId.options, 'value')
 FirstCtx(customerId.options, 'id')
-FirstCtx(dataList)
+FirstCtx(entries)
 ```
 
 Typical create-default metadata:
@@ -124,8 +124,8 @@ validFrom = CurrentDay()
 Follows an id-based parent chain inside a CTX collection until it reaches the terminal/root row. If `resultField` is supplied, that property is returned from the root; otherwise the root object is returned. Empty start ids return `null`. Cycles are detected explicitly and traversal is capped at 256 levels.
 
 ```text
-TraverseCtx(parentId, dataList, 'parentId', 'id')
-TraverseCtx(parentId, dataList, 'parentId', 'name')
+TraverseCtx(parentId, entries, 'parentId', 'id')
+TraverseCtx(parentId, entries, 'parentId', 'name')
 ```
 
 A persisted Principal root-id calculation can therefore remain completely declarative:
@@ -203,7 +203,7 @@ addConstraintReached !== true
 
 ## Design rules for metadata expressions
 
-Expressions should describe domain/UI relationships, not reproduce renderer logic. Prefer one-level CTX names such as `dataList` when a value is intentionally made available for upward resolution. Reusable entity calculations belong in canonical business-object metadata; UI-only visibility, editability, decoration, create defaults, navigation visibility and action state belong in metadata. Prefer resolved scalar facts from CTX (`permissions.create`, platform capabilities, mode, constraint facts) over testing whole structured objects or recreating entitlement/role logic in metadata. Keep facts and policy separate: CTX should expose `addConstraintReached`, not `disableAddButton`; metadata decides how that fact affects presentation. Evaluator-backed UI decisions never replace API/domain authorization. Functions must remain entity/field agnostic so the same evaluator can serve system pages, future application pages, server-side persistence calculations, and other renderers.
+Expressions should describe domain/UI relationships, not reproduce renderer logic. Prefer one-level CTX names such as `entries` when a value is intentionally made available for upward resolution. Reusable entity calculations belong in canonical business-object metadata; UI-only visibility, editability, decoration, create defaults, navigation visibility and action state belong in metadata. Prefer resolved scalar facts from CTX (`permissions.create`, platform capabilities, mode, constraint facts) over testing whole structured objects or recreating entitlement/role logic in metadata. Keep facts and policy separate: CTX should expose `addConstraintReached`, not `disableAddButton`; metadata decides how that fact affects presentation. Evaluator-backed UI decisions never replace API/domain authorization. Functions must remain entity/field agnostic so the same evaluator can serve system pages, future application pages, server-side persistence calculations, and other renderers.
 
 
 ## Execution ownership and capabilities

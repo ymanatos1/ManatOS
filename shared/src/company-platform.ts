@@ -91,7 +91,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       id: 'principals',
       parentId: 'administration',
       text: 'Principals',
-      icon: 'bi-people-fill',
+      icon: 'bi-diagram-3-fill',
       url: '/bo/sys-principals',
       order: 320,
       requiresEntityKeys: ['sys-principals'],

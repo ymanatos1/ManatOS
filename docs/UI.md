@@ -221,7 +221,14 @@ Metadata-driven entry forms use one generic state rule: **Save is enabled only w
 
 On opening a record, the first editable field on the first tab receives focus. If that tab contains no editable field, the renderer activates the first later tab that contains one and focuses its first editable field. Tabs whose visible fields are entirely read-only use a very light informational-grey pane; individual read-only/calculated controls use the slightly darker read-only control grey. Create forms still show System details as generated/empty information rather than hiding the tab.
 
-Metadata-driven breadcrumbs are projected from the logical CTX page chain, so an entry opened under a list is represented as `ManatOS > <List> > <Entry>` and the owning list remains navigable. Reusable component tabs are likewise CTX/data driven. The Principal Organization component is the first example: it combines the parent page `dataList` with the entry `dataCurrent` (current entry wins over its persisted list snapshot), redraws on relevant CTX changes/tab activation, and offers Tree/Chart presentations with Chart as the Principal default.
+Metadata-driven breadcrumbs are projected from the logical CTX page chain, so an entry opened under a list is represented as `ManatOS > <List> > <Entry>` and the owning list remains navigable. Reusable component tabs are likewise CTX/data driven. The Principal Organization component is the first hierarchy example: it reads the immediate owner's `entries[]` collection together with the child entry's live `entry` record when embedded in an entry page, redraws on relevant CTX changes/tab activation, and offers Tree/Chart presentations with Chart as the Principal default. On an ordinary Principal entry the visualization is informational only; node opening, drag/drop and structural commands are reserved for the dedicated Organization workspace.
+
+
+Hierarchy workspace footer semantics are explicit: **Cancel** leaves without checkpointing the current unsaved workspace changes, **Close** checkpoints the current owner graph in user-scoped browser-local draft storage (even when structurally incomplete) and leaves the page, and **Commit** first confirms the implied database operations and then performs the single aggregate persistence transaction only when the graph is finalizable.
+
+### Entry representation metadata
+
+One entity entry has a reusable canonical name/type representation and a separate UI entry-icon representation. This removes list/hierarchy-specific `labelField`/`typeField` duplication and keeps the entity/page icon separate from record-instance icons. See `Entity-Metadata.md`.
 
 ### 5.2.1 Null reference presentation
 
@@ -233,7 +240,9 @@ Calculated field values and evaluator-driven UI properties share the same expres
 
 `ManatOSDynamicValue<T>` generalizes this beyond SysBO forms: a metadata property is either a static `T` or `{ expression }`, and `SysBOUIDynamicValue<T>` aliases the same contract. CTX owns resolved facts (`mode`, `permissions.*`, `user.permissions.<platform>.capabilities.*`, runtime constraints); metadata owns presentation policy (`visible`, `enabled`, `disabledReason`, `editable`, etc. Navigation, standard Save/Delete actions and list Add decisions now use this pipeline. Generic renderers consume the resolved state and do not add a second role/permission/entitlement gate. API/domain authorization remains authoritative regardless of what the UI renders.
 
-Entry pages expose an immutable normalized `dataOriginal` baseline and a live `dataCurrent` working projection; `dataCurrent` starts as a clone of `dataOriginal` for both create and edit flows. The owning list page exposes its keyed contextual collection as `dataList`, allowing child entry calculations/components to resolve surrounding records without duplicating that collection. Dirty state is derived from the original/current record state rather than from one-off DOM wiring.
+Entry pages expose an immutable normalized `entryOriginal` baseline and a live `entry` working projection; `entry` starts as a clone of `entryOriginal` for both create and edit flows. Collection-owning pages expose `entriesOriginal[]` and `entries[]`, giving child entries one stable owner contract whether the owner is a list, hierarchy workspace or future aggregate editor. Dirty state is derived from the original/current record state rather than from one-off DOM wiring.
+
+Metadata-driven list surfaces share the same toolbar, filters, column header and paging partials in browse and selection contexts. Browse mode navigates and exposes page actions; selection mode selects rows and deliberately suppresses create/actions navigation. Search is part of the shared toolbar. Aggregate-owned selectors publish their temporary list state below the owner page's `selections` branch and may expose a CTX shortcut when Developer Tools are open.
 
 Canonical `derivedFields` are non-persisted by default. A derived field may opt into `persisted: true`; the generic service layer then recalculates it before authoritative persistence so UI forms, direct API calls and automatic/background creation use the same rule. `SysPrincipal.rootPrincipalId` is the current acceptance example and uses resolver-capable `TraverseEntity(...)` to follow canonical persisted parent relationships independently of the current list snapshot.
 
@@ -602,7 +611,7 @@ Keep this document updated when a new reusable UI architecture is introduced.
 
 ## Metadata-driven contact collection editors
 
-Principal Contact collections use the generic transactional `collection-editor` component. The component edits `ctx.page.page.dataCurrent` only; persistence remains bounded by the parent entry **Save** operation. Email-address and telephone-number rows can be edited either through the pencil action or by activating the displayed value itself. Delete removes the relationship from the editing buffer; canonical shared contact rows are not immediately destroyed.
+Principal Contact collections use the generic transactional `collection-editor` component. The component edits the current entry page's `entry` only; persistence remains bounded by the parent entry **Save** operation. Email-address and telephone-number rows can be edited either through the pencil action or by activating the displayed value itself. Delete removes the relationship from the editing buffer; canonical shared contact rows are not immediately destroyed.
 
 Telephone country selection is presentation metadata. The visible option may include a country flag when ManatOS already has a corresponding presentation asset/representation; currently Greece uses `/assets/flags/el.svg` and the United Kingdom uses `/assets/flags/en.svg`; unflagged countries reserve the same visual space without inventing an asset. Only the calling code and telephone data participate in persistence.
 
@@ -638,6 +647,8 @@ Reusable inline editors register themselves with the owning metadata-driven entr
 Development builds expose **CTX Viewer** and **API Traffic** as tabs of one shell-owned **Developer Tools dock**. There is one dock visibility state, one outer application/dock resize boundary and one active-tab state. Switching tabs does not recreate either tool's internal state. Additional developer tools should be added as tabs rather than as new docked peer panels.
 
 The API Traffic tab shows sanitized UI-server -> API transport traffic, including method, compact API path (`/api/v1/` is displayed as `./`), HTTP status, duration, request correlation id, request payload and response payload. Newest requests appear first. The selected request inspector is above the list and exposes separate **Request** and **Response** tabs. In the path column only the resource/entity segment is emphasized (for example `./` + **`SysUsers/`** + `<id>`), leaving ids/query/operation suffixes visually secondary.
+
+The API-call chooser stores durable per-route visibility selections. The adjacent **Ignore API call visibility selections** toggle temporarily bypasses those selections and shows all captured calls without modifying the saved chooser state; errors-only and text search filters still apply.
 
 The toolbar provides pause, clear, errors-only filtering, text search and a distinct-call checklist. The checklist normalizes volatile ids/query variants into route patterns, remembers each route's show/hide selection, and displays a boot-lifetime counter for each pattern. Counters accumulate across ordinary navigation for the current UI-server boot and are not durable local preferences; known zero-count routes remain below a separator so prior visibility choices are still available. Hidden calls remain captured and may be re-enabled. Sensitive values are redacted before they enter the in-memory trace buffer; authorization headers and process secrets are never captured.
 

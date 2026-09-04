@@ -1,0 +1,74 @@
+<%
+  /*
+   * Shared metadata-driven list toolbar.
+   *
+   * Browse pages and selection surfaces intentionally use the same structure.
+   * Only behavior differs: browse Search submits through the owning list route,
+   * while selection Search is handled by the owner workspace against its local
+   * selection collection.
+   */
+  const toolbarSelectorMode = typeof selectorMode !== 'undefined' && selectorMode === true;
+  const toolbarCount = Number(typeof totalEntries !== 'undefined' ? totalEntries : 0);
+  const toolbarQuery = typeof query !== 'undefined' && query ? query : {};
+  const toolbarSearchValue = String(toolbarQuery.search || '');
+  const toolbarSearchPlaceholder = typeof searchPlaceholder === 'string' && searchPlaceholder ? searchPlaceholder : 'Search entries';
+%>
+<div class="metadata-list-toolbar d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3" <%= toolbarSelectorMode ? 'data-selector-toolbar' : '' %>>
+  <div class="text-secondary">
+    <strong class="text-body" <%= toolbarSelectorMode ? 'data-selector-count' : '' %>><%= toolbarCount %></strong>
+    <%= toolbarCount === 1 ? 'entry' : 'entries' %>
+  </div>
+
+  <div class="d-flex align-items-center gap-2 flex-wrap ms-auto metadata-list-toolbar-actions">
+    <% if (filterFields.length) { %>
+      <button
+        class="btn <%= hasActiveFilters ? 'btn-outline-primary' : 'btn-outline-secondary' %>"
+        type="button"
+        <% if (toolbarSelectorMode) { %>
+          data-selector-filters-toggle
+        <% } else { %>
+          data-bs-toggle="collapse"
+          data-bs-target="#<%= filterCollapseId %>"
+        <% } %>
+        aria-expanded="<%= hasActiveFilters ? 'true' : 'false' %>"
+        aria-controls="<%= filterCollapseId %>"
+      >
+        <i class="bi bi-funnel me-1" aria-hidden="true"></i>
+        Filters
+        <% if (activeFilterCount) { %><span class="badge text-bg-primary ms-1"><%= activeFilterCount %></span><% } %>
+      </button>
+    <% } %>
+
+    <% if (toolbarSelectorMode) { %>
+      <input class="form-control metadata-list-search" type="search" placeholder="<%= toolbarSearchPlaceholder %>" data-selector-filter>
+    <% } else { %>
+      <form method="get" class="metadata-list-search-form d-flex align-items-center" role="search">
+        <% for (const [key, value] of Object.entries(toolbarQuery)) { %>
+          <% if (key === 'search' || key === 'page') continue; %>
+          <input type="hidden" name="<%= key %>" value="<%= value %>">
+        <% } %>
+        <input class="form-control metadata-list-search" type="search" name="search" value="<%= toolbarSearchValue %>" placeholder="<%= toolbarSearchPlaceholder %>" aria-label="Search entries">
+      </form>
+    <% } %>
+
+    <% if (!toolbarSelectorMode) { %>
+      <% for (const action of (typeof resolvedPageActions !== 'undefined' ? resolvedPageActions : [])) { %>
+        <% if (!action.resolvedVisible || action.kind !== 'navigate') continue; %>
+        <a class="<%= action.cssClass %>" href="<%= action.href %>" title="<%= action.title || action.label %>">
+          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= action.label %>
+        </a>
+      <% } %>
+
+      <% if (resolvedAddAction.resolvedVisible) { %>
+        <a
+          class="btn btn-success <%= resolvedAddAction.resolvedEnabled ? '' : 'disabled' %>"
+          href="<%= resolvedAddAction.resolvedEnabled ? '/bo/' + definition.key + '/new' : '#' %>"
+          <%= resolvedAddAction.resolvedEnabled ? '' : 'aria-disabled="true" tabindex="-1"' %>
+          title="<%= resolvedAddAction.resolvedEnabled ? resolvedAddAction.label : (resolvedAddAction.resolvedDisabledReason || 'Creation is currently unavailable.') %>"
+        >
+          <i class="bi bi-plus-circle me-1"></i><%= resolvedAddAction.label %>
+        </a>
+      <% } %>
+    <% } %>
+  </div>
+</div>

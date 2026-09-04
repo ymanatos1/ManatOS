@@ -206,8 +206,8 @@
   };
 
   /**
-   * Atomically update one entry field's live CTX views. `dataOriginal` is never
-   * touched; `fields.<key>.value` and `dataCurrent.<key>` move together and one
+   * Atomically update one entry field's live CTX views. `entryOriginal` is never
+   * touched; `fields.<key>.value` and `entry.<key>` move together and one
    * causal CTX event wakes dependents.
    */
   const updateField = (pagePath, key, value, option, cause = {}) => {
@@ -220,10 +220,10 @@
     if (Object.prototype.hasOwnProperty.call(field, 'option') || option !== undefined) {
       field.option = option ?? null;
     }
-    if (isObject(page.dataCurrent)) page.dataCurrent[key] = value;
+    if (isObject(page.entry)) page.entry[key] = value;
 
     const path = `${pagePath}.fields.${key}.value`;
-    const relatedPaths = [`${pagePath}.dataCurrent.${key}`];
+    const relatedPaths = [`${pagePath}.entry.${key}`];
     if (!Object.is(oldOption, field.option)) {
       relatedPaths.push(`${pagePath}.fields.${key}.option`);
     }

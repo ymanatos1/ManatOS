@@ -279,7 +279,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    * Examples:
    * - `FirstCtx(platformId.options, 'value')` -> first enum value.
    * - `FirstCtx(customerId.options, 'id')` -> first reference id.
-   * - `FirstCtx(dataList)` -> first row object.
+   * - `FirstCtx(entries)` -> first row object.
    *
    * This is intentionally collection-shape agnostic: arrays use index 0 and
    * objects use their first enumerable value. Do not add entity-specific
@@ -390,7 +390,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
    * Optionally project one property from that root row.
    *
    * Example:
-   * `TraverseCtx(parentId, dataList, 'parentId', 'id')`
+   * `TraverseCtx(parentId, entries, 'parentId', 'id')`
    * starts at `parentId`, repeatedly reads each row's `parentId`, and returns
    * the terminal/root row's `id`.
    *

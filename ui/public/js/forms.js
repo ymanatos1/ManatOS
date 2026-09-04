@@ -343,6 +343,7 @@
     form.addEventListener('submit', (event) => {
       const submitter = event.submitter;
       const inPlaceSave = form.dataset.recordMode !== 'create'
+        && form.dataset.ownerEditing !== 'true'
         && submitter instanceof HTMLButtonElement
         && submitter.name === '_saveMode'
         && submitter.value === 'stay';
@@ -375,7 +376,7 @@
  * baseline therefore returns the form to clean state and disables Save again.
  * Native HTML constraints (required/email/minlength/etc.) and any custom
  * validity participate before Save becomes actionable. Inline/child editors own
- * drafts outside the parent dataCurrent until Add/Update, so parent persistence
+ * drafts outside the parent entry until Add/Update, so parent persistence
  * is blocked while any registered child editor is active. API validation remains
  * authoritative after submission.
  * ======================================================================== */
@@ -455,7 +456,7 @@
       // canonical dirty predicate.  CTX remains useful as an observable page
       // projection, but it cannot replace form-state dirtiness: compound field
       // components (for example external-provider credentials) can own posted
-      // values that are intentionally not mirrored into dataCurrent.  Using
+      // values that are intentionally not mirrored into entry.  Using
       // ctxDirty here previously produced the contradictory state where the
       // footer said "No changes"/disabled Save while Cancel correctly detected
       // unsaved credential edits.
@@ -571,14 +572,14 @@
     return pagePath ? `${pagePath}.fields` : null;
   };
 
-  const leafPageDataCurrentPath = () => {
+  const leafPageEntryPath = () => {
     const pagePath = leafPagePath();
-    return pagePath ? `${pagePath}.dataCurrent` : null;
+    return pagePath ? `${pagePath}.entry` : null;
   };
 
   /** Update the working record through CTX; dependents react to the CTX event. */
   const syncCurrentValue = (key, value, source, triggerPath) => {
-    const currentPath = leafPageDataCurrentPath();
+    const currentPath = leafPageEntryPath();
     if (!key || !currentPath || !runtime?.replace) return;
     const path = `${currentPath}.${key}`;
     if (runtime.get?.(path) !== value) {
@@ -709,9 +710,39 @@
   };
 
   let explicitEvaluationScopePath = null;
+  let explicitEvaluationScopeValue = null;
+  let explicitScopeMemo = new Map();
+  let explicitScopeActive = new Set();
+
+  const scopedValue = (members) => {
+    if (!explicitEvaluationScopeValue || !Array.isArray(members) || !members.length) return undefined;
+    let value = explicitEvaluationScopeValue;
+    for (const member of members) {
+      if (value == null || (typeof value !== 'object' && typeof value !== 'function')) return undefined;
+      value = value[member];
+    }
+    if (value && typeof value === 'object' && value.__manatosExpressionAst) {
+      if (explicitScopeMemo.has(value)) return explicitScopeMemo.get(value);
+      if (explicitScopeActive.has(value)) return value.value ?? null;
+      explicitScopeActive.add(value);
+      try {
+        const calculated = evaluate(value.__manatosExpressionAst);
+        explicitScopeMemo.set(value, calculated);
+        return calculated;
+      } finally {
+        explicitScopeActive.delete(value);
+      }
+    }
+    return value;
+  };
 
   const resolveVariable = (node) => {
     if (!node || !Array.isArray(node.members) || !node.members.length) return undefined;
+
+    if (!node.absolute && explicitEvaluationScopeValue) {
+      const scoped = scopedValue(node.members);
+      if (scoped !== undefined) return scoped;
+    }
 
     // Non-absolute expressions resolve local form fields first. This includes
     // rich enum option traits and therefore works in production even when the
@@ -1000,6 +1031,23 @@
       const previousScope = explicitEvaluationScopePath;
       explicitEvaluationScopePath = scopePath || null;
       try { return await evaluateOwned(ast); } finally { explicitEvaluationScopePath = previousScope; }
+    },
+    evaluateAstWithScope: (ast, scope) => {
+      const previousPath = explicitEvaluationScopePath;
+      const previousValue = explicitEvaluationScopeValue;
+      const previousMemo = explicitScopeMemo;
+      const previousActive = explicitScopeActive;
+      explicitEvaluationScopePath = null;
+      explicitEvaluationScopeValue = scope && typeof scope === 'object' ? scope : null;
+      explicitScopeMemo = new Map();
+      explicitScopeActive = new Set();
+      try { return evaluate(ast); }
+      finally {
+        explicitEvaluationScopePath = previousPath;
+        explicitEvaluationScopeValue = previousValue;
+        explicitScopeMemo = previousMemo;
+        explicitScopeActive = previousActive;
+      }
     },
     currentCtxPath: () => leafPagePath(),
     currentCtxNode: () => {
@@ -1603,7 +1651,7 @@
 
   const fieldValue = (container, key) => {
     const pagePath = leafPagePath();
-    const ctxValue = pagePath ? runtime?.get?.(`${pagePath}.dataCurrent.${key}`) : undefined;
+    const ctxValue = pagePath ? runtime?.get?.(`${pagePath}.entry.${key}`) : undefined;
     return ctxValue !== undefined ? ctxValue : domFieldValue(container, key);
   };
 
@@ -1670,8 +1718,8 @@
     const pagePath = leafPagePath();
     if (!pagePath) return;
 
-    const current = runtime.get?.(`${pagePath}.dataCurrent`);
-    const original = runtime.get?.(`${pagePath}.dataOriginal`);
+    const current = runtime.get?.(`${pagePath}.entry`);
+    const original = runtime.get?.(`${pagePath}.entryOriginal`);
     const mergedCurrent = current && typeof current === 'object' && !Array.isArray(current)
       ? { ...current, ...record }
       : { ...record };
@@ -1679,8 +1727,8 @@
       ? { ...original, ...record }
       : { ...mergedCurrent };
 
-    runtime.replace(`${pagePath}.dataCurrent`, mergedCurrent, { source: 'save-reconcile' });
-    runtime.replace(`${pagePath}.dataOriginal`, mergedOriginal, { source: 'save-reconcile' });
+    runtime.replace(`${pagePath}.entry`, mergedCurrent, { source: 'save-reconcile' });
+    runtime.replace(`${pagePath}.entryOriginal`, mergedOriginal, { source: 'save-reconcile' });
 
     for (const [key, value] of Object.entries(record)) {
       const fieldPath = `${pagePath}.fields.${key}.value`;
@@ -1696,7 +1744,7 @@
     const isStay = submitter instanceof HTMLButtonElement
       && submitter.name === '_saveMode'
       && submitter.value === 'stay';
-    if (!isStay || form.dataset.recordMode === 'create' || saving) return;
+    if (!isStay || form.dataset.recordMode === 'create' || form.dataset.ownerEditing === 'true' || saving) return;
 
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -1891,7 +1939,10 @@
  * ======================================================================== */
 (() => {
   document.querySelectorAll('[data-metadata-enum-select]').forEach((root) => {
-    const select = root.querySelector('select[data-ctx-field]');
+    // The same rich enum component is used by owner-managed recordQuick panels.
+    // Those controls intentionally have no data-ctx-field binding, so discover the
+    // canonical hidden select by its enum metadata rather than by CTX ownership.
+    const select = root.querySelector('select[data-enum-items]');
     const toggle = root.querySelector('[data-metadata-enum-toggle]');
     if (!(select instanceof HTMLSelectElement) || !(toggle instanceof HTMLButtonElement)) return;
 

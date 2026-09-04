@@ -4,17 +4,25 @@
     <strong>No entries found</strong>
     <span>This entity does not contain any entries yet.</span>
 
-    <% if (resolvedAddAction.resolvedVisible) { %>
-      <a
-        class="btn btn-success mt-2 <%= resolvedAddAction.resolvedEnabled ? '' : 'disabled' %>"
-        href="<%= resolvedAddAction.resolvedEnabled ? '/bo/' + definition.key + '/new' : '#' %>"
-        <%= resolvedAddAction.resolvedEnabled ? '' : 'aria-disabled="true" tabindex="-1"' %>
-        title="<%= resolvedAddAction.resolvedEnabled ? resolvedAddAction.label : (resolvedAddAction.resolvedDisabledReason || 'Creation is currently unavailable.') %>"
-      >
-        <i class="bi bi-plus-circle me-1"></i>
-        Add the first entry
-      </a>
-    <% } %>
+    <div class="d-flex gap-2 flex-wrap justify-content-center mt-2">
+      <% if (resolvedAddAction.resolvedVisible) { %>
+        <a
+          class="btn btn-success <%= resolvedAddAction.resolvedEnabled ? '' : 'disabled' %>"
+          href="<%= resolvedAddAction.resolvedEnabled ? '/bo/' + definition.key + '/new' : '#' %>"
+          <%= resolvedAddAction.resolvedEnabled ? '' : 'aria-disabled="true" tabindex="-1"' %>
+          title="<%= resolvedAddAction.resolvedEnabled ? resolvedAddAction.label : (resolvedAddAction.resolvedDisabledReason || 'Creation is currently unavailable.') %>"
+        >
+          <i class="bi bi-plus-circle me-1"></i>
+          Add the first entry
+        </a>
+      <% } %>
+      <% for (const action of (typeof resolvedPageActions !== 'undefined' ? resolvedPageActions : [])) { %>
+        <% if (!action.resolvedVisible || action.kind !== 'navigate') continue; %>
+        <a class="<%= action.cssClass %>" href="<%= action.href %>" title="<%= action.title || action.label %>">
+          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= action.label %>
+        </a>
+      <% } %>
+    </div>
   </section>
 <% } else { %>
   <%
@@ -23,10 +31,14 @@
     const hasActiveFilters = activeFilterCount > 0;
     const filterCollapseId = `metadata-filters-${definition.key}`;
     const listReferenceValues = typeof referenceData !== 'undefined' && referenceData ? referenceData : {};
+    const referenceEntry = (fieldKey, value) => {
+      if (value === undefined || value === null || value === '') return null;
+      return (listReferenceValues[fieldKey] || []).find((candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value)) || null;
+    };
     const referenceLabel = (fieldKey, value) => {
       if (value === undefined || value === null || value === '') return '—';
-      const match = (listReferenceValues[fieldKey] || []).find((candidate) => candidate?.id === value);
-      return match?.name ?? String(value);
+      const match = referenceEntry(fieldKey, value);
+      return match?.label ?? match?.name ?? String(value);
     };
     const optionItem = metadataOptionItemForField;
     // Filters still use canonical enum constraints, so retain this narrow alias.
@@ -60,71 +72,26 @@
         </div>
       </div>
     <% } %>
-    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
-      <div class="text-secondary">
-        <strong class="text-body"><%= paging.total %></strong>
-        <%= paging.total === 1 ? 'entry' : 'entries' %>
-      </div>
-
-      <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
-        <% if (filterFields.length) { %>
-          <button
-            class="btn <%= hasActiveFilters ? 'btn-outline-primary' : 'btn-outline-secondary' %>"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#<%= filterCollapseId %>"
-            aria-expanded="<%= hasActiveFilters ? 'true' : 'false' %>"
-            aria-controls="<%= filterCollapseId %>"
-          >
-            <i class="bi bi-funnel me-1" aria-hidden="true"></i>
-            Filters
-            <% if (activeFilterCount) { %>
-              <span class="badge text-bg-primary ms-1"><%= activeFilterCount %></span>
-            <% } %>
-          </button>
-        <% } %>
-
-        <% if (resolvedAddAction.resolvedVisible) { %>
-          <a
-            class="btn btn-success <%= resolvedAddAction.resolvedEnabled ? '' : 'disabled' %>"
-            href="<%= resolvedAddAction.resolvedEnabled ? '/bo/' + definition.key + '/new' : '#' %>"
-            <%= resolvedAddAction.resolvedEnabled ? '' : 'aria-disabled="true" tabindex="-1"' %>
-            title="<%= resolvedAddAction.resolvedEnabled ? resolvedAddAction.label : (resolvedAddAction.resolvedDisabledReason || 'Creation is currently unavailable.') %>"
-          >
-            <i class="bi bi-plus-circle me-1"></i><%= resolvedAddAction.label %>
-          </a>
-        <% } %>
-      </div>
-    </div>
+    <%- include('ui-components/list-toolbar', {
+      selectorMode: false,
+      totalEntries: paging.total,
+      filterFields,
+      hasActiveFilters,
+      activeFilterCount,
+      filterCollapseId,
+      query,
+      definition,
+      resolvedPageActions,
+      resolvedAddAction,
+      searchPlaceholder: `Search ${metadata.pluralName.toLowerCase()}`
+    }) %>
 
     <%- include('ui-components/list-filters', { filterFields, hasActiveFilters, filterCollapseId, metadata, query, enumItem, listReferenceValues, definition }) %>
 
     <div class="table-responsive">
       <table class="table table-hover align-middle">
         <thead>
-          <tr>
-            <% for (const key of metadataUI.list.visibleFields) { %>
-              <% const field = metadata.fieldDefinition[key]; %>
-              <% if (!field) continue; %>
-              <th>
-                <% if (metadataUI.list.sortableFields.includes(key)) { %>
-                  <a class="table-sort-link" href="?<%= new URLSearchParams({...query, sort: key, direction: query.sort === key && query.direction !== 'desc' ? 'desc' : 'asc'}).toString() %>">
-                    <%= field.label %>
-                    <% if (query.sort === key) { %>
-                      <i class="bi <%= query.direction === 'desc' ? 'bi-sort-down' : 'bi-sort-up' %>"></i>
-                    <% } else { %>
-                      <i class="bi bi-arrow-down-up table-sort-muted"></i>
-                    <% } %>
-                  </a>
-                <% } else { %>
-                  <%= field.label %>
-                <% } %>
-              </th>
-            <% } %>
-            <% if (rowActions.length) { %>
-              <th class="text-end">Actions</th>
-            <% } %>
-          </tr>
+          <%- include('ui-components/list-table-header', { selectorMode: false, metadata, metadataUI, query, rowActions }) %>
         </thead>
 
         <tbody>
@@ -146,11 +113,19 @@
                 <td>
                   <% if (key === metadata.primaryField) { %>
                     <% const primaryOptionItem = optionItem(field, item[key]); %>
-                    <a class="fw-semibold" href="/bo/<%= definition.key %>/<%= item.id %>">
-                      <% if (primaryOptionItem?.icon) { %><i class="bi bi-<%= primaryOptionItem.icon %> <%= enumToneClass(primaryOptionItem) %> me-1" aria-hidden="true"></i><% } %><%= primaryOptionItem?.label || item[key] || '' %>
+                    <% const entryRep = typeof entryRepresentations !== 'undefined' ? entryRepresentations.get(String(item.id || '')) : null; %>
+                    <a class="fw-semibold metadata-entry-name" href="/bo/<%= definition.key %>/<%= item.id %>">
+                      <% if (entryRep?.icons?.length) { %>
+                        <span class="metadata-entry-icons me-1" aria-hidden="true" style="--entry-entity-scale:<%= metadataUI.entry?.icon?.mode === 'composed' ? (metadataUI.entry.icon.entityScale || .72) : .72 %>;--entry-type-scale:<%= metadataUI.entry?.icon?.mode === 'composed' ? (metadataUI.entry.icon.typeScale || 1.15) : 1.15 %>">
+                          <% for (const [iconIndex, icon] of entryRep.icons.entries()) { %><i class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"></i><% } %>
+                        </span>
+                      <% } else if (primaryOptionItem?.icon) { %>
+                        <i class="bi bi-<%= primaryOptionItem.icon %> <%= enumToneClass(primaryOptionItem) %> me-1" aria-hidden="true"></i>
+                      <% } %><%= entryRep?.name || primaryOptionItem?.label || item[key] || '' %>
                     </a>
                   <% } else if (field.type === 'reference') { %>
-                    <%= referenceLabel(key, item[key]) %>
+                    <% const reference = referenceEntry(key, item[key]); %>
+                    <% if (reference?.__entryIcon) { %><i class="bi bi-<%= reference.__entryIcon %> me-1" aria-hidden="true"></i><% } %><%= referenceLabel(key, item[key]) %>
                   <% } else if (optionItem(field, item[key])) { %>
                     <% const selectedOptionItem = optionItem(field, item[key]); %>
                     <% if (selectedOptionItem?.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
@@ -196,57 +171,7 @@
     </div>
 
     <% if (paging) { %>
-      <% const minimumPageSize = pageSizeOptions.length ? Math.min(...pageSizeOptions) : paging.pageSize; %>
-      <% const showPagingControls = paging.totalPages > 1; %>
-      <% const showPageSizeSelector = paging.total >= minimumPageSize; %>
-
-      <% if (showPagingControls || showPageSizeSelector) { %>
-        <div class="sysbo-paging-row mt-2">
-          <% if (showPagingControls) { %>
-            <div class="small text-secondary me-auto">Page <%= paging.page %> of <%= paging.totalPages %></div>
-          <% } else { %>
-            <div class="me-auto"></div>
-          <% } %>
-
-          <div class="sysbo-paging-actions">
-            <% if (showPagingControls) { %>
-              <nav aria-label="Result pages">
-                <ul class="pagination pagination-sm mb-0">
-                  <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
-                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: '1'}).toString() %>" title="First page" aria-label="First page"><i class="bi bi-chevron-bar-left" aria-hidden="true"></i></a>
-                  </li>
-                  <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
-                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.max(1, paging.page - 1))}).toString() %>" title="Previous page" aria-label="Previous page"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
-                  </li>
-                  <li class="page-item active" aria-current="page"><span class="page-link"><%= paging.page %></span></li>
-                  <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
-                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.min(paging.totalPages, paging.page + 1))}).toString() %>" title="Next page" aria-label="Next page"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
-                  </li>
-                  <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
-                    <a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(paging.totalPages)}).toString() %>" title="Last page" aria-label="Last page"><i class="bi bi-chevron-bar-right" aria-hidden="true"></i></a>
-                  </li>
-                </ul>
-              </nav>
-            <% } %>
-
-            <% if (showPageSizeSelector) { %>
-              <form method="get" class="d-flex align-items-center gap-2">
-                <% if (query.sort) { %><input type="hidden" name="sort" value="<%= query.sort %>"><% } %>
-                <% if (query.direction) { %><input type="hidden" name="direction" value="<%= query.direction %>"><% } %>
-                <% for (const field of filterFields) { %>
-                  <% if (query[`filter.${field}`]) { %><input type="hidden" name="filter.<%= field %>" value="<%= query[`filter.${field}`] %>"><% } %>
-                <% } %>
-                <label class="small text-secondary" for="metadata-pageSize-<%= definition.key %>">Rows</label>
-                <select class="form-select form-select-sm page-size-select" id="metadata-pageSize-<%= definition.key %>" name="pageSize" data-page-size-select>
-                  <% for (const size of pageSizeOptions) { %>
-                    <option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>><%= size %></option>
-                  <% } %>
-                </select>
-              </form>
-            <% } %>
-          </div>
-        </div>
-      <% } %>
+      <%- include('ui-components/list-paging', { selectorMode: false, paging, pageSizeOptions, filterFields, query, definition }) %>
     <% } %>
   </section>
 <% } %>

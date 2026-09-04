@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { sysBOApplicationsMetadata, sysBOExtAuthProvidersMetadata } from '@manatos/shared';
+import { SysBOPrincipalType, sysBOApplicationsMetadata, sysBOExtAuthProvidersMetadata, sysBOPrincipalsMetadata } from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 
@@ -28,6 +28,7 @@ describe('storage contract', () => {
   let databasePath: string;
   let store: InMemoryDataStore;
   let applications: GenericSysBOService<import('@manatos/shared').SysBOApplication>;
+  let principals: GenericSysBOService<import('@manatos/shared').SysBOPrincipal>;
 
   beforeEach(async () => {
     const directory = await mkdtemp(join(tmpdir(), 'manatos-storage-test-'));
@@ -39,6 +40,7 @@ describe('storage contract', () => {
     await store.initialize();
 
     applications = new GenericSysBOService(store, store.sysApplications, sysBOApplicationsMetadata);
+    principals = new GenericSysBOService(store, store.sysPrincipals, sysBOPrincipalsMetadata);
   });
 
   it('normalizes legacy external-provider verification timestamps into the persisted verification flag', async () => {
@@ -83,6 +85,22 @@ describe('storage contract', () => {
     expect(created.createdBy).toBe(SYSTEM_AUDIT_ACTOR.userName);
 
     expect(created.updatedBy).toBe(SYSTEM_AUDIT_ACTOR.userName);
+  });
+
+  it('commits owner-managed hierarchy drafts atomically and resolves draft references', async () => {
+    const result = await principals.commitAggregate({
+      entriesOriginal: [],
+      entries: [
+        { id: 'draft:root', name: 'Acme', principalType: SysBOPrincipalType.Group, enabled: true, parentId: null },
+        { id: 'draft:child', name: 'Alice', principalType: SysBOPrincipalType.Person, enabled: true, parentId: 'draft:root' },
+      ],
+    }, SYSTEM_AUDIT_ACTOR);
+
+    expect(result.idMap['draft:root']).toBeTruthy();
+    expect(result.idMap['draft:child']).toBeTruthy();
+    const child = result.items.find((item) => item.name === 'Alice');
+    expect(child?.parentId).toBe(result.idMap['draft:root']);
+    expect(child?.rootPrincipalId).toBe(result.idMap['draft:root']);
   });
 
   it('enforces metadata-defined unique fields case-insensitively', async () => {

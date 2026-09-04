@@ -153,7 +153,7 @@ export interface ManatOSUserContext {
  * stable identity; `key` is accepted for metadata-style collection members.
  * Keys do not have to be expression identifiers: UUIDs and similar ids are
  * addressable through quoted bracket syntax, for example
- * `ctx.page.dataList['8c7d...']`.
+ * `ctx.page.entries['8c7d...']`.
  */
 export function contextCollectionMemberKey(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null;
@@ -266,7 +266,7 @@ export function contextPathOf(ctxRoot: unknown, target: unknown): string | null 
  *
  * Important page resources intentionally live at ONE page-node level. This
  * keeps lexical expression lookup predictable: an entry-page expression can
- * request `dataList`, and the resolver searches the current page, then parent
+ * request `entries`, and the resolver searches the current page, then parent
  * pages, until it finds the nearest list page exposing that resource.
  */
 export interface ManatOSPageRuntimeContext {
@@ -277,23 +277,47 @@ export interface ManatOSPageRuntimeContext {
    *
    * This remains a real array for ordering/paging semantics, while ManatOS CTX
    * resolution treats each member as keyed by its stable `id` (or `key`) too.
-   * Thus both `dataList[0]` and `dataList['<record-id>']` resolve the same row.
+   * Thus both `entries[0]` and `entries['<record-id>']` resolve the same row.
    */
-  dataList?: readonly Readonly<Record<string, unknown>>[];
-  /** Immutable entry-page baseline captured when the page opens. */
-  dataOriginal?: Readonly<Record<string, unknown>>;
-  /** Live entry-page working record. DOM adapters update this through CTX. */
-  dataCurrent?: Readonly<Record<string, unknown>>;
+  entries?: readonly Readonly<Record<string, unknown>>[];
+  /** Persisted baseline for aggregate/transactional owner pages. */
+  entriesOriginal?: readonly Readonly<Record<string, unknown>>[];
+  /**
+   * Transient child selection/editor surfaces owned by this page (for example
+   * an entity-picker popup inside a hierarchy workspace). These are not page
+   * levels and may be cleared when the child surface closes.
+   */
+  selections?: Readonly<Record<string, unknown>>;
+  /**
+   * Immutable working baseline captured when the page opens. Entry pages store
+   * one record; transactional workspaces may store an ID-keyed collection.
+   */
+  entryOriginal?: Readonly<Record<string, unknown>>;
+  /**
+   * Live working value with the same logical shape as entryOriginal. DOM/workspace
+   * adapters update this branch through CTX without mutating the baseline.
+   */
+  entry?: Readonly<Record<string, unknown>>;
 }
 
 export interface ManatOSPageListRuntimeContext extends ManatOSPageRuntimeContext {
   filters: Readonly<Record<string, unknown>>;
-  dataList: readonly Readonly<Record<string, unknown>>[];
+  entriesOriginal: readonly Readonly<Record<string, unknown>>[];
+  entries: readonly Readonly<Record<string, unknown>>[];
 }
 
-export interface ManatOSPageEntryRuntimeContext extends ManatOSPageRuntimeContext {
-  dataOriginal: Readonly<Record<string, unknown>>;
-  dataCurrent: Readonly<Record<string, unknown>>;
+export interface ManatOSPageWorkingRuntimeContext extends ManatOSPageRuntimeContext {
+  entryOriginal: Readonly<Record<string, unknown>>;
+  entry: Readonly<Record<string, unknown>>;
+}
+
+/** One-record working state used by ordinary metadata-driven entry pages. */
+export type ManatOSPageEntryRuntimeContext = ManatOSPageWorkingRuntimeContext;
+
+/** Multi-record working state used by transactional hierarchy/aggregate workspaces. */
+export interface ManatOSPageCollectionRuntimeContext extends ManatOSPageRuntimeContext {
+  entriesOriginal: readonly Readonly<Record<string, unknown>>[];
+  entries: readonly Readonly<Record<string, unknown>>[];
 }
 
 /** Live state owned by every logical page and available to metadata expressions. */

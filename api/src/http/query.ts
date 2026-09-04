@@ -1,5 +1,7 @@
 import type { Request } from 'express';
 
+import { compileExpression } from '@manatos/shared';
+
 import type { ListQuery } from '../storage/in-memory-repository.js';
 
 import { config } from '../config.js';
@@ -17,6 +19,7 @@ import { runtimeNumber } from '../runtime-configuration.js';
  *   ?direction=asc
  *   ?filter.name=test
  *   ?filter.enabled=true
+ *   ?listExceptions=id%20IN%20%5B%27id1%27%2C%27id2%27%5D
  *
  * Multiple filter.* parameters use AND semantics in the repository.
  */
@@ -81,11 +84,19 @@ export function parseListQuery(req: Request): ListQuery {
     }
   }
 
+  const listExceptionsSource = typeof req.query.listExceptions === 'string'
+    ? req.query.listExceptions.trim()
+    : '';
+  const listExceptions = listExceptionsSource
+    ? compileExpression(listExceptionsSource)
+    : undefined;
+
   return {
     page,
     pageSize,
 
     ...(sort ? { sort } : {}),
+    ...(listExceptions ? { listExceptions } : {}),
 
     direction,
     filters,

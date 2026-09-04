@@ -15,6 +15,7 @@
   const clear = document.getElementById('apiTrafficClear');
   const errors = document.getElementById('apiTrafficErrors');
   const routesButton = document.getElementById('apiTrafficRoutes');
+  const ignoreRoutesButton = document.getElementById('apiTrafficIgnoreRoutes');
   const routeMenu = document.getElementById('apiTrafficRouteMenu');
   const routeMenuList = document.getElementById('apiTrafficRouteMenuList');
   const filter = document.getElementById('apiTrafficFilter');
@@ -69,6 +70,7 @@
     entries: [],
     paused: saved.paused === true,
     errorsOnly: saved.errorsOnly === true,
+    ignoreRouteSelections: saved.ignoreRouteSelections === true,
     lastId: null,
     selectedId: typeof saved.selectedId === 'string' ? saved.selectedId : null,
     detailTab: saved.detailTab === 'response' ? 'response' : 'request',
@@ -97,6 +99,7 @@
       sessionStorage.setItem(STATE_KEY, JSON.stringify({
         paused: state.paused,
         errorsOnly: state.errorsOnly,
+        ignoreRouteSelections: state.ignoreRouteSelections,
         selectedId: state.selectedId,
         detailTab: state.detailTab,
         textFilter: String(filter?.value || ''),
@@ -197,7 +200,7 @@
     const q = String(filter?.value || '').trim().toLowerCase();
     return state.entries.filter((entry) => {
       if (state.errorsOnly && entry.ok) return false;
-      if (state.hiddenRoutes.has(routeKey(entry))) return false;
+      if (!state.ignoreRouteSelections && state.hiddenRoutes.has(routeKey(entry))) return false;
       if (!q) return true;
       return `${entry.method} ${entry.path} ${entry.status ?? ''} ${entry.requestId}`.toLowerCase().includes(q);
     });
@@ -367,12 +370,25 @@
   };
 
 
+  const refreshIgnoreRoutesButton = () => {
+    if (!(ignoreRoutesButton instanceof HTMLButtonElement)) return;
+    ignoreRoutesButton.classList.toggle('is-active', state.ignoreRouteSelections);
+    ignoreRoutesButton.setAttribute('aria-pressed', String(state.ignoreRouteSelections));
+    ignoreRoutesButton.title = state.ignoreRouteSelections
+      ? 'Apply API call visibility selections'
+      : 'Ignore API call visibility selections (show all calls)';
+    ignoreRoutesButton.setAttribute('aria-label', ignoreRoutesButton.title);
+    const icon = ignoreRoutesButton.querySelector('i');
+    if (icon instanceof HTMLElement) icon.className = `bi ${state.ignoreRouteSelections ? 'bi-eye-fill' : 'bi-eye'}`;
+  };
+
   pause?.classList.toggle('is-active', state.paused);
   pause?.setAttribute('aria-pressed', String(state.paused));
   pause?.querySelector('i')?.classList.toggle('bi-play', state.paused);
   pause?.querySelector('i')?.classList.toggle('bi-pause', !state.paused);
   errors?.classList.toggle('is-active', state.errorsOnly);
   errors?.setAttribute('aria-pressed', String(state.errorsOnly));
+  refreshIgnoreRoutesButton();
   if (filter) filter.value = state.textFilter;
 
   pause?.addEventListener('click', () => {
@@ -388,6 +404,12 @@
     state.errorsOnly = !state.errorsOnly;
     errors.classList.toggle('is-active', state.errorsOnly);
     errors.setAttribute('aria-pressed', String(state.errorsOnly));
+    persistState();
+    render();
+  });
+  ignoreRoutesButton?.addEventListener('click', () => {
+    state.ignoreRouteSelections = !state.ignoreRouteSelections;
+    refreshIgnoreRoutesButton();
     persistState();
     render();
   });

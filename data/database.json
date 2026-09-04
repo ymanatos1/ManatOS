@@ -105,24 +105,84 @@
       "name": "Mitsos",
       "enabled": true,
       "principalType": "Person",
-      "parentId": "37d5a118-9568-4577-84fb-5b3a4706168a",
+      "parentId": "1645f99b-c04a-49e6-afde-2612e6e0224e",
       "description": "ff",
       "createdAt": "2026-09-01T04:56:29.334Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T05:36:35.683Z",
+      "updatedAt": "2026-09-04T01:43:09.745Z",
       "updatedBy": "Admin",
-      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+      "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650"
     },
     "bb728ee8-dca2-4919-a456-bd2b5b9e138f": {
       "name": "Maria Guest",
       "enabled": true,
       "principalType": "Person",
-      "parentId": "37d5a118-9568-4577-84fb-5b3a4706168a",
+      "parentId": "7e7632ce-f0c6-4159-af84-402d98dbc650",
       "createdAt": "2026-09-01T05:36:21.470Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T05:36:21.470Z",
+      "updatedAt": "2026-09-04T01:43:09.745Z",
       "updatedBy": "Admin",
-      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
+      "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650"
+    },
+    "7e7632ce-f0c6-4159-af84-402d98dbc650": {
+      "name": "YiannakisCompany",
+      "enabled": true,
+      "principalType": "Company",
+      "parentId": "",
+      "description": "",
+      "createdAt": "2026-09-04T01:43:09.744Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-04T01:43:09.744Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": null
+    },
+    "1645f99b-c04a-49e6-afde-2612e6e0224e": {
+      "name": "YiannakisGroup",
+      "enabled": "on",
+      "principalType": "Group",
+      "parentId": "7e7632ce-f0c6-4159-af84-402d98dbc650",
+      "description": "",
+      "createdAt": "2026-09-04T01:43:09.744Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-04T01:43:09.744Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650"
+    },
+    "03ff4e76-a01b-4354-a9c0-76847ded6618": {
+      "name": "Yiannakis",
+      "enabled": true,
+      "principalType": "Person",
+      "parentId": "1645f99b-c04a-49e6-afde-2612e6e0224e",
+      "description": "",
+      "createdAt": "2026-09-04T01:43:09.744Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-04T01:43:09.744Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650"
+    },
+    "a26a9a0e-0b30-4a09-b03d-0bdce7471bcf": {
+      "name": "YiannakisOtherGroup",
+      "enabled": true,
+      "principalType": "Group",
+      "parentId": "7e7632ce-f0c6-4159-af84-402d98dbc650",
+      "description": "",
+      "createdAt": "2026-09-04T01:43:09.744Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-04T01:43:09.744Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650"
+    },
+    "c7c5d4fa-fb9a-4a26-9aff-ca16722414f8": {
+      "name": "YiannakisBro22",
+      "enabled": true,
+      "principalType": "Person",
+      "parentId": "1645f99b-c04a-49e6-afde-2612e6e0224e",
+      "description": "",
+      "createdAt": "2026-09-04T01:43:09.744Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-04T01:43:09.744Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650"
     }
   },
   "sysEmailAddresses": {

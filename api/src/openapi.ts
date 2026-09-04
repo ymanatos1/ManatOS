@@ -248,6 +248,8 @@ export function buildOpenApiSpec() {
 
       '/api/v1/SysPrincipals': genericOperations('Principal', 'System Business Objects'),
 
+      '/api/v1/SysPrincipals/$aggregate-commit': aggregateCommitOperation('Principal', 'System Business Objects'),
+
       '/api/v1/SysEmailAddresses': genericOperations('Email address', 'System Business Objects (Aux)'),
 
       '/api/v1/SysPrincipalEmailAddresses': genericOperations('Principal email address', 'System Business Objects (Aux)'),
@@ -555,6 +557,38 @@ const expressionFunctionOperation = () => ({
       '400': { description: 'Unknown/non-delegable function or invalid arguments.' },
       '401': { description: 'Authentication required.' },
       '403': { description: 'Resolver access to a referenced entity is not authorized.' },
+    },
+  },
+});
+
+
+const aggregateCommitOperation = (name: string, tag = 'System Business Objects') => ({
+  post: {
+    summary: `Atomically commit an owner-managed ${name} aggregate`,
+    tags: [tag],
+    description: 'Persists one complete owner working set in a single datastore transaction. Temporary draft:* identities are resolved server-side and same-entity references are rewritten before commit. Intended for metadata-driven aggregate/hierarchy workspaces.',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['entries', 'entriesOriginal'],
+            properties: {
+              identityField: { type: 'string', default: 'id' },
+              entries: { type: 'array', items: { type: 'object', additionalProperties: true } },
+              entriesOriginal: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            },
+          },
+        },
+      },
+    },
+    responses: {
+      '200': { description: 'Aggregate committed atomically; response contains committed records and draft-to-persisted idMap.' },
+      '400': { description: 'Invalid aggregate or unresolved/cyclic draft references.' },
+      '401': { description: 'Authentication required.' },
+      '403': { description: 'Not authorized for one or more requested mutations.' },
     },
   },
 });

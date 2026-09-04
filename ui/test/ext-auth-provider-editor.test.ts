@@ -52,7 +52,7 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(runtime).toContain('External-auth provider compound UI component.');
 
     // Save enablement and the unsaved-navigation modal must agree. Compound
-    // components can own posted values that are not projected into dataCurrent.
+    // components can own posted values that are not projected into entry.
     expect(forms).toContain("const changed = typeof sharedState.isDirty === 'function'");
     expect(forms).not.toContain('const ctxDirty =');
     expect(forms).toContain("document.addEventListener('hide.bs.modal'");
@@ -87,6 +87,8 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(renderer).toContain('referenceValues[field.key]');
     expect(runtime).toContain('option.dataset.enumItem');
     expect(runtime).toContain('optionMetadata(option).callbackPath');
+    expect(runtime).toContain("providerIcon.className = `bi bi-${icon}`");
+    expect(runtime).toContain("replace(/^bi-/, '')");
     expect(runtime).toContain('find((option) => option.value && !option.disabled)');
     expect(runtime).toContain("callback.dispatchEvent(new Event('change', { bubbles: true }))");
   });

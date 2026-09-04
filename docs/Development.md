@@ -12,7 +12,7 @@ ui     -> EJS + sessions + external auth + generic CRUD
 
 The UI uses the API over HTTP. It never reads `data/database.json` directly.
 
-The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions; server-side context construction compiles them to ASTs and the browser consumes the compiled representation with dependency-aware refresh. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one SysBO must be checked against all registered metadata-driven SysBOs. Live entry state belongs in CTX (`dataOriginal` baseline, `dataCurrent` working record); owning list context is exposed through keyed `dataList`; calculated mutations use the same CTX setter/events as user changes. Canonical derived fields may opt into generic persistence with `persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
+The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions; server-side context construction compiles them to ASTs and the browser consumes the compiled representation with dependency-aware refresh. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one SysBO must be checked against all registered metadata-driven SysBOs. Live entry state belongs in CTX (`entryOriginal` baseline, `entry` working record); collection-owning pages expose `entriesOriginal[]` and `entries[]`; calculated mutations use the same CTX setter/events as user changes. Canonical derived fields may opt into generic persistence with `persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
 
 ## Commands
 
@@ -182,7 +182,7 @@ Changes to the expression grammar, precedence, registered functions, CTX path re
 
 ### In-place metadata entry Save
 
-For an existing metadata-driven record, the primary **Save** action uses the normal UI save route but requests an in-place JSON completion. The route persists through the same API/domain path, then returns the authoritative persisted record. The browser promotes its current form snapshot to the new baseline and reconciles `dataCurrent`/`dataOriginal` in CTX without replacing the document. **Save and Close** and first-save create flows retain navigation semantics. This behavior belongs to shared form infrastructure and must not be reimplemented per entity.
+For an existing metadata-driven record, the primary **Save** action uses the normal UI save route but requests an in-place JSON completion. The route persists through the same API/domain path, then returns the authoritative persisted record. The browser promotes its current form snapshot to the new baseline and reconciles `entry`/`entryOriginal` in CTX without replacing the document. **Save and Close** and first-save create flows retain navigation semantics. This behavior belongs to shared form infrastructure and must not be reimplemented per entity.
 
 
 ### Child-editor lifecycle contract

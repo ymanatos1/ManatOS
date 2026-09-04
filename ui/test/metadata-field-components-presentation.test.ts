@@ -99,6 +99,9 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(reference).toContain('data-field-component="reference"');
     expect(number).toContain('data-field-component="number"');
     expect(boolean).toContain('data-field-component="boolean"');
+    expect(boolean).toContain('form-switch');
+    expect(boolean).not.toContain('metadata-field-input-menu');
+    expect(boolean).not.toContain("include('field-tools-menu'");
     expect(calculated).toContain('is-readonly');
     expect(text).toContain('>Tt</span>');
     expect(text).toContain("effectiveEditable ? 'is-enabled' : 'is-readonly'");
@@ -169,6 +172,11 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(renderer).toContain('const contextual = Array.isArray(referenceValues[field.key])');
     expect(renderer).toContain('contextual.map((candidate) => candidate.value)');
     expect(enumSelect).toContain('data-enum-item="<%= JSON.stringify(option) %>"');
+    expect(enumSelect).toContain('const canonicalEnumItems = Array.isArray(field.enumItems)');
+    expect(enumSelect).toContain('Array.isArray(field.optionItems) ? field.optionItems : []');
+    expect(enumSelect).toContain('const presentationItems = enumItems.map((option) => ({');
+    expect(enumSelect).toContain("String(candidate?.value ?? '') === String(option?.value ?? '')");
+    expect(enumSelect).toContain('data-enum-selected-icon');
   });
 
   it('uses reusable ui-components for non-field metadata visualizations', async () => {

@@ -1,0 +1,169 @@
+<section class="content-card metadata-hierarchy-workspace" data-metadata-hierarchy-workspace data-hierarchy-close-href="/bo/<%= encodeURIComponent(definition.key) %>" data-hierarchy-label="<%= hierarchyDescriptor.label %>" data-hierarchy-empty-name="New <%= hierarchyDescriptor.label.toLowerCase() %>">
+  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+    <div>
+      <div class="text-secondary small"><%= hierarchyDescriptor.label %></div>
+      <% if (focusedMember) { %>
+        <div class="fw-semibold" data-hierarchy-name><%= focusedRepresentation?.name || focusedMember[hierarchyDescriptor.idField] %> <%= hierarchyDescriptor.label.toLowerCase() %></div>
+      <% } else { %>
+        <div class="fw-semibold" data-hierarchy-name>New <%= hierarchyDescriptor.label.toLowerCase() %></div>
+      <% } %>
+      <div class="text-secondary small" data-hierarchy-member-count>
+        <%= hierarchyFinalization.memberCount %>
+        <%= hierarchyFinalization.memberCount === 1 ? 'member' : 'members' %>
+      </div>
+      <div class="small text-warning-emphasis mt-1" data-hierarchy-incomplete title="<%= hierarchyFinalization.reason || '' %>"<%= hierarchyFinalization.complete ? ' hidden' : '' %>>
+        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>Incomplete <%= hierarchyDescriptor.label.toLowerCase() %>
+      </div>
+    </div>
+
+    <!-- Structural commands live on the graph nodes themselves. Keeping them
+         spatially attached to a node removes a second, ambiguous selection UI. -->
+  </div>
+
+  <!--
+    The workspace reuses the exact hierarchy visualization component declared by
+    entity UI metadata. Only the runtime bindings differ: a standalone workspace
+    owns an entries[] working graph and a separate focusedMemberId.
+  -->
+  <div
+    data-metadata-component="<%= hierarchyDescriptor.component.key %>"
+    data-metadata-component-options="<%= JSON.stringify({
+      ...(hierarchyDescriptor.component.options || {}),
+      dataSource: 'entries',
+      currentSource: 'entries',
+      focusSource: 'focusedMemberId',
+      emptyAddLabel: `Add ${metadata.name}`,
+      emptyAddTitle: `Create ${metadata.name}`,
+      interactionMode: 'workspace',
+      entityLabel: metadata.name,
+      entityIcon: String(definition.icon || '').replace(/^bi-/, ''),
+      entryRepresentation: entryRepresentationRuntime
+    }) %>"
+    data-metadata-component-bindings="<%= JSON.stringify(hierarchyDescriptor.component.bindings || {}) %>"
+    data-entity-key="<%= definition.key %>"
+    data-record-mode="<%= hierarchyMode %>"
+  ></div>
+
+  <div data-hierarchy-record-quick-host hidden>
+    <%- include('record-quick', { metadata, metadataUI, quickDraft: null, quickDraftMode: 'create' }) %>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center gap-2 mt-4 pt-3 border-top">
+    <% if (hierarchyMode === 'create') { %>
+      <div class="d-flex align-items-center gap-2">
+        <span class="small text-secondary" data-hierarchy-draft-status hidden></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-hierarchy-save-draft hidden>
+          <i class="bi bi-floppy me-1" aria-hidden="true"></i>Save draft
+        </button>
+      </div>
+    <% } else { %>
+      <span></span>
+    <% } %>
+    <div class="d-flex justify-content-end gap-2 ms-auto">
+      <% if (hierarchyMode === 'create') { %>
+        <a class="btn btn-outline-secondary" href="/bo/<%= encodeURIComponent(definition.key) %>">Cancel</a>
+        <button type="button" class="btn btn-outline-primary" data-hierarchy-close>Close</button>
+      <% } else { %>
+        <button type="button" class="btn btn-outline-secondary" data-hierarchy-edit-exit>Close</button>
+      <% } %>
+      <button type="button" class="btn btn-primary" data-hierarchy-commit disabled>Commit</button>
+    </div>
+  </div>
+
+
+  <template data-hierarchy-entry-selector-template>
+    <section class="metadata-hierarchy-entry-selector card shadow" role="dialog" aria-modal="true">
+      <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <strong data-selector-title>Select existing <%= metadata.name %></strong>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <button type="button" class="btn btn-sm btn-outline-secondary d-none" data-selector-ctx title="Inspect this popup context in Developer Tools">
+            <i class="bi bi-bug me-1" aria-hidden="true"></i>CTX
+          </button>
+          <button type="button" class="btn-close" data-selector-close aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column gap-3">
+        <%- include('list-toolbar', {
+          selectorMode: true,
+          totalEntries: 0,
+          filterFields: metadataUI.list.filterFields,
+          hasActiveFilters: false,
+          activeFilterCount: 0,
+          filterCollapseId: `metadata-selector-filters-${definition.key}`,
+          query: {},
+          definition,
+          searchPlaceholder: `Search ${metadata.pluralName.toLowerCase()}`
+        }) %>
+
+        <%- include('list-filters', {
+          filterFields: metadataUI.list.filterFields,
+          hasActiveFilters: false,
+          filterCollapseId: `metadata-selector-filters-${definition.key}`,
+          metadata,
+          query: {},
+          enumItem: metadataOptionItemForField,
+          listReferenceValues: selectorReferenceData || {},
+          definition,
+          selectorMode: true
+        }) %>
+
+        <div class="table-responsive metadata-hierarchy-entry-selector-list">
+          <table class="table table-hover align-middle mb-0">
+            <thead><%- include('list-table-header', { selectorMode: true, metadata, metadataUI, query: {}, rowActions: [] }) %></thead>
+            <tbody data-selector-rows></tbody>
+          </table>
+        </div>
+
+        <%- include('list-paging', {
+          selectorMode: true,
+          paging: {
+            page: 1,
+            pageSize: metadataUI.list.pageSize || 10,
+            total: Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField]) ? (selectorReferenceData || {})[hierarchyDescriptor.parentField].length : 0,
+            totalPages: Math.max(1, Math.ceil((Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField]) ? (selectorReferenceData || {})[hierarchyDescriptor.parentField].length : 0) / (metadataUI.list.pageSize || 10)))
+          },
+          pageSizeOptions: selectorPageSizeOptions,
+          filterFields: metadataUI.list.filterFields,
+          query: {},
+          definition
+        }) %>
+      </div>
+      <div class="card-footer d-flex align-items-center justify-content-between gap-3">
+        <div class="small text-secondary" data-selector-context-note>Select an entry to see what will happen.</div>
+        <div class="d-flex gap-2 ms-auto">
+          <button type="button" class="btn btn-outline-secondary" data-selector-cancel>Cancel</button>
+          <button type="button" class="btn btn-primary" data-selector-select disabled>Select</button>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <template data-hierarchy-commit-confirm-template>
+    <section class="metadata-hierarchy-commit-confirm card shadow" role="dialog" aria-modal="true" aria-labelledby="hierarchyCommitConfirmTitle">
+      <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <strong id="hierarchyCommitConfirmTitle"><i class="bi bi-database-check me-2" aria-hidden="true"></i>Commit organization</strong>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-commit-confirm-ctx hidden title="Inspect this popup context in Developer Tools"><i class="bi bi-bug me-1" aria-hidden="true"></i>CTX</button>
+          <button type="button" class="btn-close" data-commit-confirm-cancel aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="mb-3">Commit will persist this working organization to the database as one transaction.</p>
+        <ul class="nav nav-tabs mb-3" role="tablist">
+          <li class="nav-item" role="presentation"><button type="button" class="nav-link active" data-commit-tab="summary" role="tab" aria-selected="true">Summary</button></li>
+          <li class="nav-item" role="presentation"><button type="button" class="nav-link" data-commit-tab="details" role="tab" aria-selected="false">Details</button></li>
+        </ul>
+        <div data-commit-panel="summary">
+          <div class="metadata-hierarchy-commit-summary" data-commit-summary></div>
+          <p class="small text-secondary mb-0 mt-3">Cancel returns to the organization chart without changing the current working data.</p>
+        </div>
+        <div data-commit-panel="details" hidden><div class="metadata-hierarchy-commit-details" data-commit-details></div></div>
+      </div>
+      <div class="card-footer d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-commit-confirm-cancel>Cancel</button>
+        <button type="button" class="btn btn-primary" data-commit-confirm-accept><i class="bi bi-check-circle me-1" aria-hidden="true"></i>Commit</button>
+      </div>
+    </section>
+  </template>
+
+</section>
