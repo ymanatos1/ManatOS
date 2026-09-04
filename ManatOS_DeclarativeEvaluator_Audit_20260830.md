@@ -22,6 +22,24 @@ The Phase-B recommendations from this audit have now been implemented and verifi
 
 The historical findings below are intentionally retained as the record of the 2026-08-30 audit; statements describing then-current duplication should therefore be read as snapshot findings, not current architecture.
 
+## Completion update — 2026-09-04
+
+The audit remains the one intentionally historical/progress-oriented document in the ManatOS documentation set. All other project documentation is maintained as current-state reference documentation and must not be used as a patch diary, backlog, progress tracker, or repository of pending work.
+
+Further implementation since the 2026-09-02 completion note includes:
+
+- canonical list-exception expressions shared by ordinary SysBO list contexts and entity-selection contexts;
+- evaluator support required by those declarative list predicates, including `IN`;
+- propagation of list exceptions through the UI/API/storage query path so filtering semantics are not implemented as browser-only post-filtering;
+- reusable entity-selection popup CTX with operation-specific eligibility/exclusion rules layered on the common list contract;
+- the Principal Organization hierarchy workspace, including chart/tree presentation, new/existing node placement, drag/drop relationship editing, persisted-entry indication, and shared prevention of invalid or no-op hierarchy operations;
+- distinct lifecycle semantics for Create Organization and Edit Organization, including create-draft handling and aggregate commit behavior;
+- organization commit preview with Summary and Details views and transactional persistence of the working aggregate;
+- successful organization commit returning to the Principals list and clearing the applicable Create Organization draft;
+- continued consolidation of developer inspection around CTX, including nested popup/selection contexts.
+
+These additions do not change the audit's central architectural conclusion: the evaluator is most valuable as a declarative decision engine over canonical, already-resolved facts. The `IN` addition is a targeted grammar capability required by concrete declarative query/list semantics; it does not move datastore access, persistence side effects, or authorization enforcement into browser evaluation.
+
 ## Executive result
 
 The evaluator is already mature enough to remove a meaningful amount of UI decision code **without extending expression syntax**. The largest immediate opportunity is not adding more expressions indiscriminately; it is making resolved permission/capability facts first-class in CTX and letting metadata consume them consistently.
