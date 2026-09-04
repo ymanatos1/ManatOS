@@ -1,13 +1,12 @@
 import { Router } from 'express';
 
-import type { SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { requireSignedIn } from '../../middleware/auth.js';
 import { renderPage } from '../../presentation/render-page.js';
 import { getSysBODefinition } from '../../sysbo/definitions.js';
-import { requirePermission, uiPermissions } from '../../sysbo/permissions.js';
+import { requirePermission, resolveUIEntityPermissions } from '../../sysbo/permissions.js';
 import { requireCurrentPlatformEntitlement } from '../access.js';
 
 const routeParam = (value: string | string[] | undefined): string =>
@@ -46,8 +45,8 @@ export function createProtoCrmRoutes() {
       try {
         const id = routeParam(req.params.id);
         const definition = getSysBODefinition('sys-applications');
-        const permissions = uiPermissions(res.locals.currentUser as SysBOUser | null, definition);
-        requirePermission(permissions.view, 'Read access is required for applications.');
+        const permissions = await resolveUIEntityPermissions(req, definition, id);
+        requirePermission(permissions.read, 'Read access is required for applications.');
 
         req.session.activeApplicationId = id;
         const application = (

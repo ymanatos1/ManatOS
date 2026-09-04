@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { MANATOS_COMPANY, SysBOUserRole, allManatOSObjectMetadata, licenseGrantsPlatformAccess, resolvePlatform, type SysBOApplication, type SysBOLicense, type SysBOUser } from '@manatos/shared';
+import { MANATOS_COMPANY, allManatOSObjectMetadata, resolvePlatform, type PlatformAuthorizationCapabilities, type SysBOApplication, type SysBOUser } from '@manatos/shared';
 
 import { config } from '../config.js';
 
@@ -16,11 +16,6 @@ import { buildRootScope } from '../context/root-scope.js';
 
 import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
 import { createManatOSContext, registerContextEntity } from '../context/manatos-context.js';
-
-interface LicenseListData {
-  items: SysBOLicense[];
-  paging: { total: number; page: number; pageSize: number; totalPages: number };
-}
 
 
 /**
@@ -90,23 +85,21 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     const currentPlatform = resolvePlatform(MANATOS_COMPANY);
 
     /**
-     * Platform functionality is entitlement driven for non-Admin users. The API
-     * returns only licenses related to this user's principals, so the UI can
-     * derive menu visibility from the same shared license semantics without
-     * receiving another customer's license rows.
+     * Platform entitlement is resolved authoritatively by the API. The UI
+     * receives only the safe capability outcome; it does not fetch licenses,
+     * traverse principal relationships, or reproduce Admin bypass rules.
      */
-    let resolvedPlatformAccess = user?.role === SysBOUserRole.Admin;
-    if (user && !resolvedPlatformAccess) {
-      const licenses = (
-        await apiClient.get<LicenseListData>(
-          '/api/v1/SysLicenses?pageSize=1000',
+    let platformCapabilities: PlatformAuthorizationCapabilities = { platformAccess: false };
+    if (user) {
+      platformCapabilities = (
+        await apiClient.get<{
+          platformId: string;
+          capabilities: PlatformAuthorizationCapabilities;
+        }>(
+          `/api/v1/platforms/${encodeURIComponent(currentPlatform.id)}/$capabilities`,
           apiSessionOptions(req),
         )
-      ).data.items;
-
-      resolvedPlatformAccess = licenses.some((license) =>
-        licenseGrantsPlatformAccess(license, currentPlatform.id),
-      );
+      ).data.capabilities;
     }
 
     res.locals.currentUser = user;
@@ -126,9 +119,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
       },
       'sys',
       config.NODE_ENV,
-      {
-        platformAccess: Boolean(resolvedPlatformAccess),
-      },
+      platformCapabilities,
     );
 
     /*

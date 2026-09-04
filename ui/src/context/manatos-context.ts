@@ -18,6 +18,7 @@ import {
   contextPointer,
   compileExpression,
   type SysPlatform,
+  type PlatformAuthorizationCapabilities,
 } from '@manatos/shared';
 
 const CONTEXT_IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
@@ -142,7 +143,7 @@ function userContext(
   user: SysBOUser | null,
   currentPlatform: SysPlatform,
   scope: string,
-  platformCapabilities: Readonly<Record<string, unknown>>,
+  platformCapabilities: Readonly<PlatformAuthorizationCapabilities>,
 ): ManatOSUserContext | null {
   if (!user) return null;
 
@@ -166,10 +167,11 @@ function userContext(
     fields,
     permissions: {
       userRole: user.role,
-      [currentPlatform.id]: Object.freeze({
-        capabilities: Object.freeze({
-          platformAccess: platformCapabilities.platformAccess === true,
-          ...platformCapabilities,
+      platforms: Object.freeze({
+        [currentPlatform.id]: Object.freeze({
+          capabilities: Object.freeze({
+            ...platformCapabilities,
+          }),
         }),
       }),
     },
@@ -189,9 +191,8 @@ export function contextPlatformAccess(
   platformId: string,
 ): boolean {
   if (!ctx?.user || !platformId) return false;
-  const permission = ctx.user.permissions[platformId];
-  return typeof permission !== 'string'
-    && permission?.capabilities.platformAccess === true;
+  const permission = ctx.user.permissions.platforms[platformId];
+  return permission?.capabilities.platformAccess === true;
 }
 
 
@@ -204,7 +205,7 @@ export function createManatOSContext(
   clientFeatures: Readonly<Record<string, boolean>> = {},
   scope = 'sys',
   runtimeMode = 'development',
-  platformCapabilities: Readonly<Record<string, unknown>> = {},
+  platformCapabilities: Readonly<PlatformAuthorizationCapabilities> = { platformAccess: false },
 ): ManatOSContext {
   const foundPlatformIndex = company.platforms.findIndex(
     (candidate) => candidate.id === currentPlatform.id,

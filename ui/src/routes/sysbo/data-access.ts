@@ -9,28 +9,10 @@ import {
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { getSysBODefinition } from '../../sysbo/definitions.js';
+import { apiPathFor } from '../../sysbo/api-path.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
 
-/**
- * Canonical UI-to-API resource mapping for metadata-driven SysBO routes.
- *
- * Keep this transport mapping outside route orchestration so list, entry,
- * hierarchy and supplemental-data loaders all consume the same API resource
- * contract.
- */
-const pathByKey: Readonly<Record<string, string>> = Object.freeze({
-  'sys-users': 'SysUsers',
-  'sys-principals': 'SysPrincipals',
-  'sys-email-addresses': 'SysEmailAddresses',
-  'sys-principal-email-addresses': 'SysPrincipalEmailAddresses',
-  'sys-telephone-numbers': 'SysTelephoneNumbers',
-  'sys-principal-telephone-numbers': 'SysPrincipalTelephoneNumbers',
-  'sys-addresses': 'SysAddresses',
-  'sys-principal-addresses': 'SysPrincipalAddresses',
-  'sys-applications': 'SysApplications',
-  'sys-licenses': 'SysLicenses',
-  'sys-ext-auth-providers': 'SysExtAuthProviders',
-});
+export { apiPathFor } from '../../sysbo/api-path.js';
 
 /** Generic SysBO list payload returned by the API. */
 export interface SysBOListData<T> {
@@ -42,15 +24,6 @@ export interface SysBOListData<T> {
     totalPages: number;
   };
   metadata?: unknown;
-}
-
-/** Resolve one configured API resource name. */
-export function apiPathFor(key: string): string {
-  const apiPath = pathByKey[key];
-  if (!apiPath) {
-    throw new Error(`No API path is configured for SysBO '${key}'.`);
-  }
-  return apiPath;
 }
 
 /**
@@ -98,8 +71,12 @@ export async function references(
   for (const field of Object.values(definition.boMetadata.fieldDefinition)) {
     if (!field.referenceBOKey) continue;
 
-    const apiPath = pathByKey[field.referenceBOKey];
-    if (!apiPath) continue;
+    let apiPath: string;
+    try {
+      apiPath = apiPathFor(field.referenceBOKey);
+    } catch {
+      continue;
+    }
 
     const response = await apiClient.get<SysBOListData<unknown>>(
       `/api/v1/${apiPath}?pageSize=500&sort=name`,

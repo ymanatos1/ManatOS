@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
 import { popupContent } from './popup-content.js';
-import { buildMetadataDebuggingModel } from './metadata-debugging-model.js';
+import { buildCalculatedContextDebuggingRows, buildMetadataDebuggingModel } from './metadata-debugging-model.js';
 import {
   formatMetadataValue,
   metadataOptionItemForField,
@@ -200,6 +200,7 @@ export async function renderPage(
     ctxUserFieldValue,
     ctxExpressionValue,
     buildMetadataDebuggingModel,
+    buildCalculatedContextDebuggingRows,
     formatMetadataValue,
     metadataOptionItemForField,
     metadataOptionToneClass,

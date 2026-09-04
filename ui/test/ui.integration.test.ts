@@ -15,6 +15,7 @@ describe('UI integration - SysBOUser delete behavior', () => {
 
   it('rejects a manually posted own-account delete before calling the API', async () => {
     const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
+    mockCapabilities({ read: true, create: true, update: true, delete: false });
     const deleteSpy = vi.spyOn(apiClient, 'delete');
 
     const response = await request(routeHarness(currentUser))
@@ -23,12 +24,13 @@ describe('UI integration - SysBOUser delete behavior', () => {
       .send({ _csrf: 'test-csrf' });
 
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe('FORBIDDEN');
+    expect(response.body.message).toBe('Delete access is required for this entity.');
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 
   it('allows an Admin UI route to delete another SysBOUser and redirects to the list', async () => {
     const currentUser = sysUser('admin-id', SysBOUserRole.Admin, 'Admin');
+    mockCapabilities({ read: true, create: true, update: true, delete: true });
     const deleteSpy = vi.spyOn(apiClient, 'delete').mockResolvedValue({
       success: true,
       message: 'Deleted.',
@@ -49,6 +51,7 @@ describe('UI integration - SysBOUser delete behavior', () => {
 
   it('rejects a non-Admin UI delete route before calling the API', async () => {
     const currentUser = sysUser('user-id', SysBOUserRole.User, 'NormalUser');
+    mockCapabilities({ read: false, create: false, update: false, delete: false });
     const deleteSpy = vi.spyOn(apiClient, 'delete');
 
     const response = await request(routeHarness(currentUser))
@@ -62,6 +65,7 @@ describe('UI integration - SysBOUser delete behavior', () => {
 
   it('allows a Guest to save their own SysBOUser entry through the UI route', async () => {
     const currentUser = sysUser('guest-id', SysBOUserRole.Guest, 'GuestUser');
+    mockCapabilities({ read: true, create: false, update: true, delete: false });
     const patchSpy = vi.spyOn(apiClient, 'patch').mockResolvedValue({
       success: true,
       message: 'Updated.',
@@ -92,6 +96,7 @@ describe('UI integration - SysBOUser delete behavior', () => {
 
   it('still rejects a Guest saving another SysBOUser entry', async () => {
     const currentUser = sysUser('guest-id', SysBOUserRole.Guest, 'GuestUser');
+    mockCapabilities({ read: false, create: false, update: false, delete: false });
     const patchSpy = vi.spyOn(apiClient, 'patch');
 
     const response = await request(routeHarness(currentUser))
@@ -122,6 +127,23 @@ describe('UI integration - SysBOUser delete behavior', () => {
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 });
+
+function mockCapabilities(capabilities: {
+  read: boolean;
+  create: boolean;
+  update: boolean;
+  delete: boolean;
+}) {
+  return vi.spyOn(apiClient, 'get').mockResolvedValue({
+    success: true,
+    message: 'Capabilities resolved.',
+    data: {
+      sysBOKey: 'sys-users',
+      scope: 'record',
+      capabilities,
+    },
+  });
+}
 
 function routeHarness(currentUser: SysBOUser) {
   const app = express();

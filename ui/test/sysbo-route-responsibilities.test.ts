@@ -9,9 +9,13 @@ const source = (relativePath: string) => readFile(resolve(testDirectory, relativ
 
 describe('SysBO route responsibility boundaries', () => {
   it('keeps permissions, form coercion and entry-representation compilation outside route orchestration', async () => {
-    const [routes, permissions, payload, representation, listRenderer, hierarchyRenderer, recordRenderer, hierarchyWrite, ownerManagedEntry, entryWrite, providerWrite] = await Promise.all([
+    const [routes, permissions, definitions, types, navigation, apiPath, payload, representation, listRenderer, hierarchyRenderer, recordRenderer, hierarchyWrite, ownerManagedEntry, entryWrite, providerWrite] = await Promise.all([
       source('../src/routes/sysbo-routes.ts'),
       source('../src/sysbo/permissions.ts'),
+      source('../src/sysbo/definitions.ts'),
+      source('../src/sysbo/types.ts'),
+      source('../src/navigation.ts'),
+      source('../src/sysbo/api-path.ts'),
       source('../src/routes/sysbo/form-payload.ts'),
       source('../src/routes/sysbo/entry-representation-runtime.ts'),
       source('../src/routes/sysbo/list-renderer.ts'),
@@ -27,6 +31,7 @@ describe('SysBO route responsibility boundaries', () => {
     expect(entryWrite).toContain("from './form-payload.js'");
     expect(routes).not.toContain("from './sysbo/form-payload.js'");
     expect(recordRenderer).toContain("from './entry-representation-runtime.js'");
+    expect(recordRenderer).not.toContain('resolveUIEntityPermissions(');
     expect(routes).not.toContain('function uiPermissions(');
     expect(routes).not.toContain('function formPayload(');
     expect(routes).toContain("from './sysbo/list-renderer.js'");
@@ -51,7 +56,25 @@ describe('SysBO route responsibility boundaries', () => {
     expect(providerWrite).toContain('export async function handleExternalProviderCredentialSave(');
     expect(routes).not.toContain("const action = String(req.body.providerCredentialAction");
 
-    expect(permissions).toContain("definition.key === 'sys-users' && recordId === user.id");
+    expect(permissions).toContain('export async function resolveUIEntityPermissions(');
+    expect(permissions).toContain("from './api-path.js'");
+    expect(apiPath).toContain("'sys-users': 'SysUsers'");
+    expect(permissions).toContain('/$capabilities');
+    expect(permissions).toContain('capabilities.read');
+    expect(permissions).toContain('capabilities.update');
+    expect(permissions).toContain('read: boolean;');
+    expect(permissions).toContain('update: boolean;');
+    expect(permissions).not.toContain('view: boolean;');
+    expect(permissions).not.toContain('edit: boolean;');
+    expect(permissions).not.toContain('definition.permissions');
+    expect(permissions).not.toContain('SysBOUserRole');
+    expect(definitions).not.toContain('SysBOUserRole');
+    expect(definitions).not.toContain('permissions:');
+    expect(types).not.toContain('SysBOPermissions');
+    expect(types).not.toContain('permissions: SysBOPermissions');
+    expect(navigation).not.toContain('role === SysBOUserRole.Admin');
+    expect(navigation).toContain('const fallbackPlatformAccess = false;');
+    expect(routes).toContain('await resolveUIEntityPermissions(req, definition');
     expect(payload).toContain('field.generated || field.readOnly || field.sensitive');
     expect(representation).toContain('compileExpression(derived.expression).ast');
   });

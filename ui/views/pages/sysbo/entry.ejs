@@ -9,9 +9,9 @@
   const derivedFields = { ...canonicalDerivedFields, ...uiDerivedFields };
   const relatedCollections = metadataUI.record.relatedCollections || {};
 
-  // Metadata-driven pages consume related values from the canonical ctx leaf.
-  // The legacy relatedData fallback keeps save-error/current-renderer paths safe
-  // while the wider UI is progressively moved onto ctx.
+  // Metadata-driven pages consume related values from the canonical CTX leaf.
+  // `relatedData` remains a defensive render fallback for error/re-render paths
+  // that may not carry a fully reconstructed page CTX.
   const ctxFields = typeof ctxPage !== 'undefined' && ctxPage?.fields ? ctxPage.fields : {};
   const ctxValue = (key) =>
     typeof ctxFieldValue === 'function' ? ctxFieldValue(key) : ctxFields[key]?.value;

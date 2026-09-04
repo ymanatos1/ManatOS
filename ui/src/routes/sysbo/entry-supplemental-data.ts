@@ -13,7 +13,7 @@ import { externalIdentitiesForUser } from '../../auth/user-authentication.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
 import { apiPathFor, references, type SysBOListData } from './data-access.js';
 import { loadRelatedCollections } from './related-collections.js';
-import { uiPermissions } from '../../sysbo/permissions.js';
+import type { UIEntityPermissions } from '../../sysbo/permissions.js';
 
 
 /**
@@ -27,6 +27,7 @@ export async function editPageSupplementalData(
   item: Record<string, unknown>,
   isNew: boolean,
   effectiveUIMetadata?: SysBOUIMetadata,
+  permissions?: UIEntityPermissions,
 ) {
   const itemId = typeof item.id === 'string' ? item.id : '';
 
@@ -43,7 +44,7 @@ export async function editPageSupplementalData(
     { externalIdentities: authenticationIdentities },
   );
 
-  const deleteImpact = !isNew && itemId && uiPermissions(currentUser, definition, itemId).delete
+  const deleteImpact = !isNew && itemId && permissions?.delete
     ? (
         await apiClient.get<{
           targetObjectKey: string;

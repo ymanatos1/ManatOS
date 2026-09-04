@@ -218,10 +218,10 @@ CTX contains already-resolved facts. Examples include:
 ```text
 mode = 'create' | 'edit' | 'view'
 permissions.create
-permissions.edit
+permissions.update
 permissions.delete
 ctx.user.permissions.userRole
-ctx.user.permissions.protocrm.capabilities.platformAccess
+ctx.user.permissions.platforms.protocrm.capabilities.platformAccess
 addConstraintReached
 ```
 
@@ -231,7 +231,7 @@ Metadata owns the policy that consumes those facts. Examples include:
 
 ```text
 navigation.visible:
-  user.permissions.protocrm.capabilities.platformAccess === true
+  user.permissions.platforms.protocrm.capabilities.platformAccess === true
 
 list.addAction.visible:
   permissions.create === true
@@ -244,7 +244,7 @@ entryActions.delete.visible:
 
 entryActions.save.visible:
   mode !== 'view' &&
-  (permissions.create === true || permissions.edit === true)
+  (permissions.create === true || permissions.update === true)
 ```
 
 This keeps facts reusable. `addConstraintReached`, for example, only says that the generic enum-coverage constraint has been reached; metadata decides that the Add action should then be disabled and supplies its disabled reason.
@@ -267,7 +267,7 @@ CTX deliberately stores entity/page facts in inspectable field/pointer nodes suc
 
 ```text
 permissions.create
-permissions.edit
+permissions.update
 ```
 
 The resolver therefore treats a field node's `value` as transparent when a requested nested member is not an explicit CTX member. Explicit introspection still wins, so these remain distinct and valid:
@@ -280,9 +280,9 @@ rootPrincipalId.value
 
 This allows one CTX representation to support both concise policy expressions and precise debugger inspection.
 
-### 13.4 Navigation and action migration
+### 13.4 Navigation and actions
 
-Navigation visibility now evaluates `ManatOSDynamicValue<boolean>` against the authoritative request CTX, with compiled expressions cached by source string. Legacy authentication/role contribution properties remain as a compatibility path for navigation items not yet migrated, but platform entitlement is no longer a parallel input: `ctx.user.permissions.<platform>.capabilities.platformAccess` is the single UI decision fact used by navigation and the platform route guard.
+Navigation visibility evaluates `ManatOSDynamicValue<boolean>` against the authoritative request CTX, with compiled expressions cached by source string. Current Company/platform navigation contributions use this evaluator-backed `visible` contract. The resolver retains legacy authentication/role contribution fields only as compatibility input; platform entitlement is not a parallel input and comes exclusively from `ctx.user.permissions.platforms.<platform>.capabilities.platformAccess`.
 
 Metadata-driven entry actions resolve `visible`, `enabled` and `disabledReason` generically. Standard Save/Delete rules therefore live in metadata rather than an entity renderer. List Add resolves the same style of dynamic `visible`, `enabled` and `disabledReason` properties. Renderers receive resolved action models and do not add a second permission gate.
 

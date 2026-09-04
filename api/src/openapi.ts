@@ -183,6 +183,9 @@ export function buildOpenApiSpec() {
         ...schemas,
 
         ApiFailure: apiFailureSchema(),
+
+        SysBOAuthorizationCapabilities: sysBOAuthorizationCapabilitiesSchema(),
+        PlatformAuthorizationCapabilities: platformAuthorizationCapabilitiesSchema(),
       },
 
       securitySchemes: {
@@ -235,9 +238,23 @@ export function buildOpenApiSpec() {
 
       '/api/v1/public/external-auth-providers': publicExternalAuthProvidersOperation(),
 
+      '/api/v1/platforms/{platformId}/$capabilities': platformCapabilityOperation(),
+
       /**
        * Protected SysBO resources.
        */
+      ...sysBOCapabilityPaths('/api/v1/SysUsers', 'User', 'System Business Objects'),
+      ...sysBOCapabilityPaths('/api/v1/SysPrincipals', 'Principal', 'System Business Objects'),
+      ...sysBOCapabilityPaths('/api/v1/SysEmailAddresses', 'Email address', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths('/api/v1/SysPrincipalEmailAddresses', 'Principal email address', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths('/api/v1/SysTelephoneNumbers', 'Telephone number', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths('/api/v1/SysPrincipalTelephoneNumbers', 'Principal telephone number', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths('/api/v1/SysAddresses', 'Address', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths('/api/v1/SysPrincipalAddresses', 'Principal address', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths('/api/v1/SysApplications', 'Application', 'System Business Objects'),
+      ...sysBOCapabilityPaths('/api/v1/SysLicenses', 'License', 'System Business Objects'),
+      ...sysBOCapabilityPaths('/api/v1/SysExtAuthProviders', 'External authentication provider', 'External Authentication'),
+
       '/api/v1/SysUsers': genericOperations('User', 'System Business Objects'),
 
       '/api/v1/SysUsers/$metadata-ui': sysBOUIMetadataOperation('User', 'System Business Objects'),
@@ -592,6 +609,114 @@ const aggregateCommitOperation = (name: string, tag = 'System Business Objects')
     },
   },
 });
+
+function platformAuthorizationCapabilitiesSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['platformAccess'],
+    properties: {
+      platformAccess: { type: 'boolean' },
+    },
+  };
+}
+
+function platformCapabilityOperation() {
+  return {
+    get: {
+      summary: 'Get current platform capabilities',
+      description: 'Returns API-resolved platform capability facts without exposing license rows, principal relationships, role bypass rules, or other authorization-policy inputs.',
+      tags: ['System Business Objects'],
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: 'platformId', in: 'path', required: true, schema: { type: 'string' } }],
+      responses: {
+        '200': {
+          description: 'Current platform capability projection.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', const: true },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      platformId: { type: 'string' },
+                      capabilities: { $ref: '#/components/schemas/PlatformAuthorizationCapabilities' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        '401': failureResponse('Authentication required.'),
+      },
+    },
+  };
+}
+
+function sysBOAuthorizationCapabilitiesSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['read', 'create', 'update', 'delete'],
+    properties: {
+      read: { type: 'boolean' },
+      create: { type: 'boolean' },
+      update: { type: 'boolean' },
+      delete: { type: 'boolean' },
+    },
+  };
+}
+
+function sysBOCapabilityPaths(basePath: string, name: string, tag: string) {
+  const responseSchema = {
+    type: 'object',
+    properties: {
+      success: { type: 'boolean', const: true },
+      data: {
+        type: 'object',
+        properties: {
+          sysBOKey: { type: 'string' },
+          scope: { type: 'string', enum: ['collection', 'record'] },
+          recordId: { type: 'string' },
+          capabilities: { $ref: '#/components/schemas/SysBOAuthorizationCapabilities' },
+        },
+      },
+    },
+  };
+
+  return {
+    [`${basePath}/$capabilities`]: {
+      get: {
+        summary: `Get current ${name} collection capabilities`,
+        description: 'Returns the authenticated subject\'s API-resolved presentation capabilities. The snapshot is advisory only; every later operation is authorized again at execution time.',
+        tags: [tag],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Current collection capability projection.', content: { 'application/json': { schema: responseSchema } } },
+          '401': failureResponse('Authentication required.'),
+        },
+      },
+    },
+    [`${basePath}/{id}/$capabilities`]: {
+      get: {
+        summary: `Get current ${name} record capabilities`,
+        description: 'Resolves record-sensitive capabilities through the same AuthorizationService policy used by CRUD operations. Read authorization is required before the record capability set is returned.',
+        tags: [tag],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Current record capability projection.', content: { 'application/json': { schema: responseSchema } } },
+          '401': failureResponse('Authentication required.'),
+          '403': failureResponse('The record is not readable by this subject.'),
+          '404': failureResponse(`${name} not found.`),
+        },
+      },
+    },
+  };
+}
 
 const genericOperations = (name: string, tag = 'System Business Objects') => ({
   get: {

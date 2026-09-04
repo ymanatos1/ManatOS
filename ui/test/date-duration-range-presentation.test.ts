@@ -13,7 +13,7 @@ describe('generic date-duration-range component', () => {
   it('is layout-only while canonical field calculations are CTX/evaluator driven', async () => {
     const component = await uiSource('views/components/common/date-duration-range.ejs');
     const fieldRenderer = await uiSource('views/field-components/form-field.ejs');
-    const forms = await uiSource('public/js/forms.js');
+    const runtime = await uiSource('public/js/metadata-form-runtime.js');
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const canonicalMetadata = await sharedSource('src/metadata/bo/business.ts');
     const uiContract = await sharedSource('src/metadata/ui/types.ts');
@@ -37,10 +37,10 @@ describe('generic date-duration-range component', () => {
     expect(canonicalMetadata).toContain("triggeredBy: ['validUntil']");
     expect(fieldRenderer).toContain('data-field-calculation-ast');
     expect(fieldRenderer).toContain('data-field-calculation-triggered-by');
-    expect(forms).toContain("kind: 'field-calculation'");
-    expect(forms).toContain('change.cause?.triggerPath');
-    expect(forms).toContain('rootEventId');
-    expect(forms).not.toContain('WeakSet');
+    expect(runtime).toContain("kind: 'field-calculation'");
+    expect(runtime).toContain('change.cause?.triggerPath');
+    expect(runtime).toContain('rootEventId');
+    expect(runtime).not.toContain('WeakSet');
 
     expect(uiMetadata).toContain("key: 'date-duration-range'");
     expect(uiMetadata).not.toContain('component: {\n                key: \'date-duration-range\',\n                readOnly: false,\n                options: {\n                  startField: \'validFrom\',\n                  durationField: \'validityDuration\',\n                  endField: \'validUntil\',\n                },\n                calculations:');
@@ -52,7 +52,7 @@ describe('generic date-duration-range component', () => {
     const renderer = await uiSource('views/pages/sysbo/entry.ejs');
     const debuggingModel = await uiSource('src/presentation/metadata-debugging-model.ts');
     const panel = await uiSource('views/components/debugging/debugging-panel.ejs');
-    const forms = await uiSource('public/js/forms.js');
+    const runtime = await uiSource('public/js/metadata-form-runtime.js');
 
     expect(renderer).toContain('buildMetadataDebuggingModel({');
     expect(debuggingModel).toContain('FIELD CALCULATIONS');
@@ -62,8 +62,8 @@ describe('generic date-duration-range component', () => {
     expect(panel).toContain('data-debug-inspect-ctx');
     expect(panel).toContain('Inspect formula in CTX Viewer');
     expect(panel).toContain('Inspect current value in CTX Viewer');
-    expect(forms).toContain('data-debug-inspect-ctx');
-    expect(forms).toContain('manatos:ctx-viewer-show');
-    expect(forms).toContain('expand: true');
+    expect(runtime).toContain('data-debug-inspect-ctx');
+    expect(runtime).toContain('manatos:ctx-viewer-show');
+    expect(runtime).toContain('expand: true');
   });
 });

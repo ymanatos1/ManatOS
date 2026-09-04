@@ -16,7 +16,7 @@ describe('metadata-driven field/content component infrastructure', () => {
     const identityMetadata = await sharedSource('src/metadata/ui/identity.ts');
     const renderer = await uiSource('views/pages/sysbo/entry.ejs');
     const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
-    const forms = await uiSource('public/js/forms.js');
+    const runtime = await uiSource('public/js/metadata-form-runtime.js');
 
     expect(contract).toContain('SysBOUITabContentMetadata');
     expect(contract).toContain("kind: 'field'");
@@ -34,8 +34,8 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(tabContent).toContain('resolve metadata grid span');
     expect(tabContent).toContain('resolveContentSpan(6)');
     expect(tabContent).toContain('data-ui-grid-span-ast');
-    expect(forms).toContain("kind: 'grid-span'");
-    expect(forms).toContain('expressionDependencyPaths(spanAst)');
+    expect(runtime).toContain("kind: 'grid-span'");
+    expect(runtime).toContain('expressionDependencyPaths(spanAst)');
     expect(tabContent).toContain('data-metadata-layout-spacer');
     expect(renderer).toContain('const metadataComponentContext = {');
     expect(tabContent).toContain('...metadataComponentContext, component, componentBindings');
@@ -257,10 +257,10 @@ describe('metadata-driven field/content component infrastructure', () => {
 
   it('renders null calculated references as None on initial and live updates', async () => {
     const entry = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
-    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const runtime = await readFile(resolve(testDirectory, '../public/js/metadata-form-runtime.js'), 'utf8');
 
     expect(entry).toContain("if (value === undefined || value === null || value === '') return 'None'");
-    expect(forms).toContain("element.value = value == null || value === '' ? 'None'");
+    expect(runtime).toContain("element.value = value == null || value === '' ? 'None'");
   });
 
 });

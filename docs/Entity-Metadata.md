@@ -243,3 +243,10 @@ This is especially important for aggregate workspaces: a hierarchy can contain `
 `entry.type` declares semantic entry type independently of a physical field name. For example, `sys-ext-auth-providers` declares `provider` as its entry type. Because `provider` is an enum whose canonical option items carry Microsoft/Google/Facebook/GitHub icons, the generic entry-representation resolver obtains the provider label and icon from that metadata. UI metadata separately chooses `entry.icon.mode: 'type'`; the routed entity icon remains the entity's globe icon.
 
 Reference fields use the referenced entity's resolved entry representation when reference data is projected into a list/selector. This allows fields such as Principal parent/root references to show the referenced Principal's semantic type icon without Principal-specific rendering code or additional component API calls.
+
+
+## Authorization is not entity metadata
+
+SysBO/entity metadata describes domain shape and declarative presentation behavior; it is not an authorization-policy store. UI SysBO definitions likewise contain no role/action permission matrices. The API `AuthorizationService` resolves canonical `read`, `create`, `update`, and `delete` capabilities for collection or record scope, and the UI projects those facts into page CTX. Platform entitlement is resolved the same way through the API platform-capability contract.
+
+Metadata expressions may consume resolved capability facts such as `permissions.update` or `user.permissions.<platform>.capabilities.platformAccess`, but they do not grant access and must not reconstruct policy from user roles, license records, or client-posted CTX. Genuine role-specific presentation can still use `user.permissions.userRole` when the role itself is what is being presented.

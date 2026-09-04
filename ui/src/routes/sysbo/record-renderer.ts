@@ -18,7 +18,7 @@ import {
   canonicalSysBOUIMetadata,
 } from './data-access.js';
 import { parentListContextForEntry } from './parent-list.js';
-import { uiPermissions } from '../../sysbo/permissions.js';
+import type { UIEntityPermissions } from '../../sysbo/permissions.js';
 import { compiledEntryRepresentationRuntime } from './entry-representation-runtime.js';
 import {
   editPageSupplementalData,
@@ -39,7 +39,7 @@ export async function renderMetadataDrivenRecord(
   req: Request,
   res: Response,
   definition: SysBODefinition,
-  permissions: ReturnType<typeof uiPermissions>,
+  permissions: UIEntityPermissions,
   record: {
     isNew: boolean;
     recordId?: string;
@@ -49,10 +49,11 @@ export async function renderMetadataDrivenRecord(
   },
 ): Promise<void> {
   const currentUser = res.locals.currentUser as SysBOUser | null;
-  const effectivePermissions = record.isNew
-    ? permissions
-    : uiPermissions(currentUser, definition, record.recordId);
-  const recordMode = record.isNew ? 'create' : effectivePermissions.edit ? 'edit' : 'view';
+  // Route orchestration already resolved the authoritative API capability
+  // snapshot for this exact collection/record scope. Do not recalculate policy
+  // inside the renderer or issue a second capability request.
+  const effectivePermissions = permissions;
+  const recordMode = record.isNew ? 'create' : effectivePermissions.update ? 'edit' : 'view';
   const [metadata, metadataUI] = await Promise.all([
     canonicalSysBOMetadata(req, definition),
     canonicalSysBOUIMetadata(req, definition),
@@ -81,6 +82,7 @@ export async function renderMetadataDrivenRecord(
     item,
     record.isNew || ownerDraft,
     metadataUI,
+    effectivePermissions,
   );
   const parentListContext = await parentListContextForEntry(
     req,

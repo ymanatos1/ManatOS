@@ -343,8 +343,8 @@
               /*
                * CTX owns logical page nesting, so breadcrumbs are projected from
                * the CTX page chain rather than rebuilt independently from routes.
-               * The fallback keeps non-CTX/legacy rendering resilient while the
-               * same generic renderer is progressively adopted everywhere.
+               * The fallback keeps routes that do not provide a page CTX resilient
+               * without making route structure a second breadcrumb authority.
                */
               const ctxBreadcrumb = Array.isArray(breadcrumbItems) && breadcrumbItems.length
                 ? breadcrumbItems
@@ -550,6 +550,7 @@
   <% } %>
   <script src="/js/lists.js"></script>
   <script src="/js/busy.js"></script>
+  <script src="/js/metadata-form-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/forms.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/entry-representation.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/debugger/cli.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>

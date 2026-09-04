@@ -28,14 +28,14 @@ describe('SysBO flattened page CTX data flow', () => {
 
   it('keeps entry entryOriginal/entry live at one page-node level and supports id-keyed entries members', async () => {
     const context = await readFile(resolve(testDirectory, '../src/routes/sysbo/context.ts'), 'utf8');
-    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const runtime = await readFile(resolve(testDirectory, '../public/js/metadata-form-runtime.js'), 'utf8');
     const debuggerSource = await readFile(resolve(testDirectory, '../public/js/debugger/ctx-debug.js'), 'utf8');
     const ctxRuntime = await readFile(resolve(testDirectory, '../public/js/ctx-runtime.js'), 'utf8');
 
     expect(context).toContain('pageEntryRuntimeContext(initialRecordValues)');
-    expect(forms).toContain('leafPageEntryPath');
-    expect(forms).toContain('runtime.updateField(pagePath, key, value, option');
-    expect(forms).toContain('window.addEventListener(CHANGE_EVENT');
+    expect(runtime).toContain('leafPageEntryPath');
+    expect(runtime).toContain('runtime.updateField(pagePath, key, value, option');
+    expect(runtime).toContain('window.addEventListener(CHANGE_EVENT');
     expect(ctxRuntime).toContain('entryOriginal');
     expect(ctxRuntime).toContain('entry');
     expect(ctxRuntime).toContain('const updateField =');

@@ -11,8 +11,8 @@ describe('Account developer debugging presentation', () => {
     const source = await readFile(resolve(testDirectory, '../views/pages/account.ejs'), 'utf8');
 
     expect(source).toContain('const accountDebuggingEnabled = Boolean(app?.ui?.debugTools)');
-    expect(source).toContain("typeof field.expression === 'string'");
-    expect(source).toContain("typeof ctxUserFieldValue === 'function'");
+    expect(source).toContain('buildCalculatedContextDebuggingRows');
+    expect(source).toContain("'ctx.user.fields'");
     expect(source).toContain('id="account-debugging-tab"');
     expect(source).toContain('id="account-debugging-pane"');
     expect(source).toContain('data-readonly-tab="true"');

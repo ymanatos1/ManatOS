@@ -8,9 +8,13 @@ import { sendQuery } from './api-response.js';
 export function createExtAuthProviderAdminRouter(extAuthProviders: SysBOExtAuthProviderService) {
   const router = Router();
 
-  router.use(requireAuthenticated, requireAdmin);
-
-  router.get('/definitions', (_req, res) => {
+  /*
+   * Keep Admin middleware scoped to this supplemental endpoint. Applying it
+   * router-wide would also intercept the generic SysBO router mounted after
+   * this one, preventing authenticated non-Admins from querying the generic
+   * $capabilities projection (which correctly returns false capabilities).
+   */
+  router.get('/definitions', requireAuthenticated, requireAdmin, (_req, res) => {
     res.set('Cache-Control', 'no-store');
     sendQuery(res, { providers: extAuthProviders.providerDefinitions() });
   });

@@ -6,6 +6,8 @@ import {
   SysBOLicenseStatus,
   SysBOUserRole,
   type SysBOApplication,
+  type SysBOAuthorizationCapabilities,
+  type PlatformAuthorizationCapabilities,
   type SysBOEntity,
   type SysBOLicense,
 } from '@manatos/shared';
@@ -27,11 +29,11 @@ export interface AuthorizationSubject {
 export type SysBOAuthorizationAction = 'read' | 'create' | 'update' | 'delete';
 
 /**
- * Context provided to application-specific permission logic.
+ * Context provided to application-specific definition-modification policy.
  *
- * This is deliberately separate from the generic authorization service.
- * SysBOApplication permissions are expected to become considerably richer
- * later.
+ * Keeping this contract separate lets the generic authorization service resolve
+ * relationships/licenses while the application policy answers the final
+ * application-definition decision.
  */
 export interface SysBOApplicationPermissionContext {
   action: 'update' | 'delete';
@@ -43,28 +45,17 @@ export interface SysBOApplicationPermissionContext {
   relatedLicenses: SysBOLicense[];
 }
 
-/**
- * Extension point for future SysBOApplication permission logic.
- */
+/** Application-specific definition-modification policy contract. */
 export interface SysBOApplicationPermissionPolicy {
   canModifyDefinition(context: SysBOApplicationPermissionContext): Promise<boolean>;
 }
 
 /**
- * Baseline application permission policy.
+ * Current application definition-modification policy.
  *
- * For now, an active license establishes permission to modify an
- * application's definition.
- *
- * Later this class can additionally evaluate:
- *
- * - license capabilities;
- * - permission sets;
- * - owner/admin/member roles;
- * - application-specific ACLs;
- * - read/write/delete capabilities;
- * - subscription tier;
- * - feature flags.
+ * The authorization service supplies only licenses already proven to be
+ * effective for the subject/application relationship. An enabled Active
+ * related license therefore grants update/delete of the application definition.
  */
 export class DefaultSysBOApplicationPermissionPolicy implements SysBOApplicationPermissionPolicy {
   async canModifyDefinition(context: SysBOApplicationPermissionContext): Promise<boolean> {
@@ -108,6 +99,52 @@ export class AuthorizationService {
         `${subject.userName} is not authorized to ${action} ${sysBOKey}.`,
       );
     }
+  }
+
+  /**
+   * Resolve the capability set exposed to clients for one SysBO scope.
+   *
+   * Collection scope has no target record, therefore update/delete are false.
+   * Record scope reuses the exact same can() policy used by mutation routes.
+   *
+   * This is a projection only. Every eventual API operation must still call
+   * assertCan()/can() at execution time so clients can never turn a stale
+   * capability snapshot into authorization.
+   */
+  async capabilities(
+    subject: AuthorizationSubject,
+    sysBOKey: string,
+    record?: SysBOEntity,
+  ): Promise<SysBOAuthorizationCapabilities> {
+    const [read, create, update, remove] = await Promise.all([
+      this.can('read', subject, sysBOKey, record),
+      this.can('create', subject, sysBOKey),
+      record ? this.can('update', subject, sysBOKey, record) : Promise.resolve(false),
+      record ? this.can('delete', subject, sysBOKey, record) : Promise.resolve(false),
+    ]);
+
+    return {
+      read,
+      create,
+      update,
+      delete: remove,
+    };
+  }
+
+  /**
+   * Resolve safe platform-level capability facts for UI/other clients.
+   *
+   * This deliberately owns the Admin bypass and license/principal traversal so
+   * no client needs enough raw authorization inputs to reconstruct policy.
+   */
+  async platformCapabilities(
+    subject: AuthorizationSubject,
+    platformId: string,
+  ): Promise<PlatformAuthorizationCapabilities> {
+    return {
+      platformAccess: subject.role === SysBOUserRole.Admin
+        || this.userHasPlatformAccess(subject.userId, platformId),
+    };
   }
 
   async can(
@@ -166,8 +203,9 @@ export class AuthorizationService {
     /**
      * Non-Admin users may inspect only licenses belonging to principals linked
      * to them. The collection itself remains queryable so an unlicensed user
-     * receives an empty own-license list, which the UI uses to derive navigation
-     * entitlement without exposing somebody else's licenses.
+     * receives an empty own-license list without exposing somebody else's
+     * licenses. Platform navigation entitlement is resolved separately through
+     * platformCapabilities().
      */
     if (action === 'read' && sysBOKey === 'sys-licenses') {
       return record === undefined || this.userRelatesToLicense(subject.userId, record as SysBOLicense);

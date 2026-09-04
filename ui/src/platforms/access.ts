@@ -6,10 +6,10 @@ import { contextPlatformAccess } from '../context/manatos-context.js';
 /**
  * Require entitlement to the currently selected platform.
  *
- * Entitlement is resolved once by the page-context middleware from canonical
- * license/role facts and stored under ctx.user.permissions.<platform>.capabilities.
- * Platform features consume that authoritative server-built CTX fact instead of
- * mirroring it into app.* or reimplementing license traversal in each route.
+ * Entitlement is resolved by the API authorization layer and projected by the
+ * page-context middleware into ctx.user.permissions.<platform>.capabilities.
+ * Platform features consume that server-authoritative CTX fact instead of
+ * mirroring it into app.* or reconstructing license/role policy in UI code.
  */
 export function requireCurrentPlatformEntitlement(
   _req: Request,

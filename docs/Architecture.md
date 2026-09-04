@@ -56,9 +56,9 @@ ctx
   page
 ```
 
-`ctx.system` contains safe runtime/host facts, `ctx.entities` is the canonical metadata registry, `ctx.user.permissions` is the evaluator-visible authorization fact branch, and `ctx.page` contains the active lexical page chain. Platform permission branches expose resolved capabilities such as `ctx.user.permissions.protocrm.capabilities.platformAccess`; that fact already includes the Admin bypass and license-derived entitlement result. Record/list page CTX exposes operation facts such as `permissions.create`, `permissions.edit` and `permissions.delete`. These are facts, not presentation policy: metadata expressions decide whether a particular navigation item or action is visible/enabled. This makes UI decisions declarative without exposing server secrets or duplicating authorization policy in renderers.
+`ctx.system` contains safe runtime/host facts, `ctx.entities` is the canonical metadata registry, `ctx.user.permissions` is the evaluator-visible authorization fact branch, and `ctx.page` contains the active lexical page chain. Platform permission branches expose resolved capabilities such as `ctx.user.permissions.platforms.protocrm.capabilities.platformAccess`; that fact already includes the Admin bypass and license-derived entitlement result. Record/list page CTX exposes operation facts such as `permissions.create`, `permissions.update` and `permissions.delete`. These are facts, not presentation policy: metadata expressions decide whether a particular navigation item or action is visible/enabled. This makes UI decisions declarative without exposing server secrets or duplicating authorization policy in renderers.
 
-The older `app.scopes` tree still carries session/request/workspace shell state; selecting Play on a SysApplication adds the selected application to workspace scope. Scope/CTX state is runtime context, not business persistence. Platform access is no longer duplicated as `app.currentPlatformEntitled`: navigation and the UI route guard consume the trusted server-built `ctx.user.permissions.<platform>.capabilities.platformAccess` fact. This keeps CTX as the single decision-fact surface while `app.scopes` remains responsible only for shell/workspace state that has not yet moved into CTX.
+The older `app.scopes` tree still carries session/request/workspace shell state; selecting Play on a SysApplication adds the selected application to workspace scope. Scope/CTX state is runtime context, not business persistence. Platform access is no longer duplicated as `app.currentPlatformEntitled`: navigation and the UI route guard consume the trusted server-built `ctx.user.permissions.platforms.<platform>.capabilities.platformAccess` fact. This keeps CTX as the single decision-fact surface while `app.scopes` remains responsible only for shell/workspace state that has not yet moved into CTX.
 
 ### Aggregate workspace persistence boundary
 
@@ -159,3 +159,24 @@ Expression evaluation is owner-driven: the browser, API or another host supplies
 
 
 Selection dialogs owned by aggregate pages are modeled as transient child runtime surfaces under the owner page's `selections` branch, not as additional `page` levels. This lets them reuse list contracts (`entriesOriginal[]`, `entries[]`, filters, search and paging) while preserving the lexical page chain for real navigation.
+
+## Authorization capability projection
+
+ManatOS keeps authorization authority in the API. `AuthorizationService` is the single policy engine for SysBO actions (`read`, `create`, `update`, `delete`) and platform entitlement, while UI/metadata consumers receive only safe capability projections derived from that policy.
+
+Every metadata-driven SysBO router exposes collection and record capability endpoints:
+
+- `GET /api/v1/<SysBO>/$capabilities`;
+- `GET /api/v1/<SysBO>/:id/$capabilities`.
+
+Collection projection resolves `read` and `create`; record-dependent `update` and `delete` are false without a concrete row. Record projection loads the persisted row, requires read authorization, and evaluates the exact same record-sensitive rules used by the eventual operation. Capability responses are presentation/preflight inputs only: CRUD routes independently re-authorize the operation when it executes.
+
+`ui/src/sysbo/permissions.ts::resolveUIEntityPermissions()` is a thin capability client. Page CTX carries the canonical API vocabulary directly (`permissions.read/create/update/delete`); `view` and `edit` remain separate UI-mode names. Owner-managed `draft:*` entries have no persisted record yet, so their temporary `update` presentation capability follows collection `create`.
+
+Platform entitlement uses the same authority boundary through `GET /api/v1/platforms/:platformId/$capabilities`. The API owns Admin bypass, User↔Principal traversal and license validity/platform matching; the UI receives only `platformAccess` and copies it into `ctx.user.permissions.platforms.<platform>.capabilities`. SysApplication visibility/modification remains license/application scoped through the same `AuthorizationService`.
+
+Generic UI infrastructure contains no role/action authorization matrices and must not reconstruct CRUD or platform policy from `userRole`, role arrays or license rows. `ctx.user.permissions.userRole` is still a safe identity fact for genuinely role-specific presentation. In the absence of authoritative request CTX, capability-backed navigation fails closed.
+
+Unauthorized list rows are removed before client filtering/paging. The current in-memory adapter applies record-level `read` policy to materialized candidates; an RDBMS adapter must push the equivalent authorization predicate into database selection rather than materializing unauthorized rows first.
+
+See [Authorization and Capability Projection](Authorization.md) for the complete current policy, endpoints, CTX projection and security invariants.

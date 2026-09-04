@@ -21,3 +21,5 @@ export * from './expressions/index.js';
 export * from './system-country-catalog.js';
 
 export * from './entry-representation.js';
+
+export * from './authorization.js';

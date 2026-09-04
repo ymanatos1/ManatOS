@@ -81,7 +81,7 @@ export const standardEntryActions = {
   save: {
     kind: 'save' as const,
     order: 100,
-    visible: { expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)" },
+    visible: { expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)" },
     placement: 'footer-trailing' as const,
     label: 'Save',
     icon: 'check-circle',

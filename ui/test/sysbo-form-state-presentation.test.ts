@@ -104,7 +104,7 @@ describe('generic SysBO form state presentation', () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
     const debuggingModelSource = await readFile(resolve(testDirectory, '../src/presentation/metadata-debugging-model.ts'), 'utf8');
     const debuggingPanelSource = await readFile(resolve(testDirectory, '../views/components/debugging/debugging-panel.ejs'), 'utf8');
-    const formsSource = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const runtimeSource = await readFile(resolve(testDirectory, '../public/js/metadata-form-runtime.js'), 'utf8');
     const expressionFormatSource = await readFile(resolve(testDirectory, '../public/js/debugger/expression-format.js'), 'utf8');
 
     expect(metadataSource).toContain("const debuggingTabEnabled = Boolean(app?.ui?.debugTools)");
@@ -147,24 +147,24 @@ describe('generic SysBO form state presentation', () => {
     expect(expressionFormatSource).toContain("systemRoots.has(identifier) ? 'system' : 'field'");
     expect(expressionFormatSource).toContain('debug-expression-${tokenClass}');
     expect(debuggingModelSource).toContain("`[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`");
-    expect(formsSource).toContain("`[ ${value.map(debugValueText).join(', ')} ]`");
+    expect(runtimeSource).toContain("`[ ${value.map(debugValueText).join(', ')} ]`");
     expect(metadataSource).toContain('debugElementNameParts');
     expect(debuggingPanelSource).toContain('debugging-element-prefix');
     expect(debuggingPanelSource).toContain('debugging-element-leaf');
     expect(debuggingModelSource).toContain("if (value === null) return 'null'");
-    expect(formsSource).toContain("if (value === null) return 'null'");
+    expect(runtimeSource).toContain("if (value === null) return 'null'");
     expect(debuggingModelSource).toContain("if (value === '') return \"''\"");
-    expect(formsSource).toContain("if (value === '') return \"''\"");
+    expect(runtimeSource).toContain("if (value === '') return \"''\"");
     expect(debuggingModelSource).toContain("typeof value === 'string'");
-    expect(formsSource).toContain("typeof value === 'string'");
+    expect(runtimeSource).toContain("typeof value === 'string'");
     expect(debuggingModelSource).toContain("return `'${value.replaceAll");
-    expect(formsSource).toContain("return `'${value.replaceAll");
+    expect(runtimeSource).toContain("return `'${value.replaceAll");
     expect(debuggingModelSource).toContain('Array.isArray(scope)');
     expect(debuggingModelSource).toContain('rows,');
     expect(debuggingModelSource).toContain('Array.isArray(scope) ? null');
-    expect(formsSource).toContain("kind: 'debug-value'");
-    expect(formsSource).toContain("parseAst(cell, 'data-debug-calculation-ast')");
-    expect(formsSource).toContain('dependencyPaths: expressionDependencyPaths(ast)');
+    expect(runtimeSource).toContain("kind: 'debug-value'");
+    expect(runtimeSource).toContain("parseAst(cell, 'data-debug-calculation-ast')");
+    expect(runtimeSource).toContain('dependencyPaths: expressionDependencyPaths(ast)');
   });
 
 

@@ -9,9 +9,9 @@ import { apiPathFor, references, type SysBOListData } from './data-access.js';
 import { metadataDrivenListQuery, metadataEntrySearchField } from './list-query.js';
 
 export interface ParentListPermissions {
-  view: boolean;
+  read: boolean;
   create: boolean;
-  edit: boolean;
+  update: boolean;
   delete: boolean;
 }
 

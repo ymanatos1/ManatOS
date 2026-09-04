@@ -8,7 +8,7 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 describe('external provider credential-test failure diagnostics', () => {
   it('captures OAuth callback errors into the pending test state for editor polling', async () => {
-    const source = await readFile(resolve(testDirectory, '../src/routes/auth-routes.ts'), 'utf8');
+    const source = await readFile(resolve(testDirectory, '../src/routes/auth/external-auth-router.ts'), 'utf8');
 
     expect(source).toContain("const callbackError = String(req.query.error ?? '').trim()");
     expect(source).toContain('providerCredentialTestCallbackError(');

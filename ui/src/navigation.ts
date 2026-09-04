@@ -12,8 +12,6 @@ import {
   type SysPlatform,
 } from '@manatos/shared';
 
-import { contextPlatformAccess } from './context/manatos-context.js';
-
 export interface AppNavMenuItem {
   id: string;
   text: string;
@@ -21,18 +19,11 @@ export interface AppNavMenuItem {
   url?: string;
   children?: AppNavMenuItem[];
   separatorBefore?: boolean;
-  requiresAuthentication?: boolean;
-  roles?: SysBOUserRole[];
   action?: 'open-preferences';
   dockBottom?: boolean;
   /** Static or evaluator-backed visibility against the current CTX root. */
   visible?: ManatOSDynamicValue<boolean>;
 
-  /**
-   * Legacy access flags remain readable during metadata migration. New
-   * navigation contributions should declare `visible` instead.
-   */
-  requiresPlatformEntitlement?: boolean;
 }
 
 const baseHorizontalNavMenu: AppNavMenuItem[] = [
@@ -156,12 +147,9 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
     ...(item.icon ? { icon: item.icon } : {}),
     ...(item.url ? { url: item.url } : {}),
     ...(item.separatorBefore ? { separatorBefore: true } : {}),
-    ...(item.requiresAuthentication ? { requiresAuthentication: true } : {}),
-    ...(item.roles ? { roles: item.roles } : {}),
     ...(item.action === 'open-preferences' ? { action: 'open-preferences' as const } : {}),
     ...(item.dockBottom ? { dockBottom: true } : {}),
     ...(item.visible !== undefined ? { visible: item.visible } : {}),
-    ...(item.requiresPlatformEntitlement ? { requiresPlatformEntitlement: true } : {}),
   };
 }
 
@@ -214,36 +202,28 @@ export function navigationFor(
   /*
    * Normal rendering supplies the real request CTX. The compact fallback is
    * intentionally only for isolated navigation consumers without request CTX;
-   * it can represent the Admin baseline but never invents a licensed decision.
+   * it must not invent any authorization or entitlement decision. Without the
+   * request CTX, capability-backed contributions therefore fail closed.
    */
-  const fallbackPlatformAccess = role === SysBOUserRole.Admin;
+  const fallbackPlatformAccess = false;
   const evaluationCtx = access.ctx ?? {
     user: auth && role
       ? {
           permissions: {
             userRole: role,
-            [platform.id]: {
-              capabilities: { platformAccess: fallbackPlatformAccess },
+            platforms: {
+              [platform.id]: {
+                capabilities: { platformAccess: fallbackPlatformAccess },
+              },
             },
           },
         }
       : null,
   };
-  const platformEntitled = access.ctx
-    ? contextPlatformAccess(access.ctx, platform.id)
-    : fallbackPlatformAccess;
-
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {
       const evaluatedVisible = dynamicNavigationVisible(item.visible, evaluationCtx, item.id);
       if (evaluatedVisible === false) return [];
-
-      // Compatibility only for contributions not yet migrated to `visible`.
-      if (evaluatedVisible === undefined) {
-        if (item.requiresAuthentication && !auth) return [];
-        if (item.roles && (!role || !item.roles.includes(role))) return [];
-        if (item.requiresPlatformEntitlement && !platformEntitled) return [];
-      }
 
       const childItems = item.children ? filter(item.children) : undefined;
       return [{ ...item, ...(childItems ? { children: childItems } : {}) }];

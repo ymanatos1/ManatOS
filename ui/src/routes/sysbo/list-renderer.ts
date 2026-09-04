@@ -21,7 +21,7 @@ import {
   references,
   type SysBOListData,
 } from './data-access.js';
-import { uiPermissions } from '../../sysbo/permissions.js';
+import type { UIEntityPermissions } from '../../sysbo/permissions.js';
 
 /**
  * Render one canonical metadata-driven SysBO browse/list page.
@@ -33,7 +33,7 @@ export async function renderMetadataDrivenList(
   req: Request,
   res: Response,
   definition: SysBODefinition,
-  permissions: ReturnType<typeof uiPermissions>,
+  permissions: UIEntityPermissions,
 ): Promise<void> {
   const [metadata, metadataUI] = await Promise.all([
     canonicalSysBOMetadata(req, definition),

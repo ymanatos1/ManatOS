@@ -42,13 +42,18 @@ describe('platform feature organization', () => {
     const navigation = await source('src/navigation.ts');
     const context = await source('src/context/manatos-context.ts');
 
-    expect(pageContext).toContain('platformAccess: Boolean(resolvedPlatformAccess)');
+    expect(pageContext).toContain('/api/v1/platforms/${encodeURIComponent(currentPlatform.id)}/$capabilities');
+    expect(pageContext).toContain('platformCapabilities');
+    expect(pageContext).not.toContain('/api/v1/SysLicenses?pageSize=1000');
+    expect(pageContext).not.toContain('licenseGrantsPlatformAccess');
     expect(pageContext).toContain('{ ctx: res.locals.ctx }');
     expect(pageContext).not.toContain('currentPlatformEntitled');
     expect(pageContext).not.toContain('platformEntitled:');
     expect(access).toContain('contextPlatformAccess(res.locals.ctx, platformId)');
     expect(access).not.toContain('app?.currentPlatformEntitled');
-    expect(navigation).toContain('contextPlatformAccess(access.ctx, platform.id)');
+    expect(navigation).toContain('evaluateCompiledExpression');
+    expect(navigation).toContain('const evaluationCtx = access.ctx ??');
+    expect(navigation).not.toContain('contextPlatformAccess(access.ctx, platform.id)');
     expect(navigation).not.toContain('platformEntitled?:');
     expect(context).toContain('export function contextPlatformAccess');
   });

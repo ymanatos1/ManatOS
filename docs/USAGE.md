@@ -241,13 +241,13 @@ type ManatOSDynamicValue<T> = T | Readonly<{ expression: string }>;
 CTX/runtime facts -> metadata policy -> evaluator -> resolved renderer state
 ```
 
-Do not put presentation decisions into CTX. Prefer facts such as `permissions.create`, `mode`, `user.permissions.protocrm.capabilities.platformAccess` or `addConstraintReached`; let metadata decide `visible`, `enabled`, `disabledReason`, `editable`, etc.
+Do not put presentation decisions into CTX. Prefer facts such as `permissions.create`, `mode`, `user.permissions.platforms.protocrm.capabilities.platformAccess` or `addConstraintReached`; let metadata decide `visible`, `enabled`, `disabledReason`, `editable`, etc.
 
 Standard entry actions illustrate the pattern:
 
 ```ts
 delete.visible = { expression: "mode !== 'create' && permissions.delete === true" }
-save.visible   = { expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)" }
+save.visible   = { expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)" }
 ```
 
 Entity-specific policy may add evaluator-backed `enabled` and `disabledReason` without teaching the renderer about that entity. UI policy is not authorization: API/domain permission checks remain mandatory.

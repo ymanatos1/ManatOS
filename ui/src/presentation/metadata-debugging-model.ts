@@ -151,6 +151,25 @@ const valueAtPath = (value: unknown, path: readonly (string | number)[]): unknow
 const compiledAstAt = (value: unknown, path: readonly (string | number)[]): unknown =>
   recordChild(valueAtPath(value, path), 'ast') ?? null;
 
+const debugValueText = (value: unknown): string => {
+  // Debugging displays raw evaluator values rather than presentation labels.
+  // Keeping null/undefined/empty-string distinct is important when inspecting
+  // conditional calculations such as Root Principal.
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (value === '') return "''";
+  if (Array.isArray(value)) {
+    return value.length
+      ? `[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`
+      : '[]';
+  }
+  if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
+  if (typeof value === 'object') {
+    try { return JSON.stringify(value); } catch { return String(value); }
+  }
+  return String(value);
+};
+
 const expressionOf = (value: unknown): string | null => {
   const expression = asRecord(value)?.expression;
   return typeof expression === 'string' && expression.length > 0 ? expression : null;
@@ -161,6 +180,42 @@ const stringProperty = (value: unknown, key: string): string | null => {
   return typeof candidate === 'string' ? candidate : null;
 };
 
+
+/**
+ * Build the flat Debugging rows for a calculated CTX field collection.
+ *
+ * Purpose-built pages such as Account do not have canonical entry/UI metadata
+ * to feed through buildMetadataDebuggingModel(), but they should still reuse
+ * the same raw-value formatting and display-row contract rather than recreate
+ * debugger presentation logic in EJS.
+ */
+export function buildCalculatedContextDebuggingRows(
+  fields: unknown,
+  valueForField: (key: string) => unknown,
+  contextPath: string,
+): MetadataDebuggingDisplayRow[] {
+  const record = asRecord(fields);
+  if (!record) return [];
+
+  return Object.entries(record)
+    .filter(([, field]) => typeof asRecord(field)?.expression === 'string')
+    .map(([name, field]) => ({
+      type: 'value' as const,
+      displayName: name,
+      row: {
+        group: 'CTX',
+        subgroup: null,
+        detailGroup: null,
+        name,
+        formula: String(asRecord(field)?.expression ?? ''),
+        value: debugValueText(valueForField(name)),
+        ast: asRecord(field)?.ast ?? null,
+        definitionPath: `${contextPath}.${name}`,
+        valuePath: `${contextPath}.${name}`,
+      },
+    }));
+}
+
 export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput): MetadataDebuggingModel {
   const {
     debuggingTabEnabled, metadata, metadataUI, compiledEntityContext, compiledEntityContextName, compiledUIRecord,
@@ -170,24 +225,6 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
 
   const debuggingRows: MetadataDebuggingRow[] = [];
 
-  const debugValueText = (value: unknown): string => {
-    // Debugging displays raw evaluator values rather than presentation labels.
-    // Keeping null/undefined/empty-string distinct is important when inspecting
-    // conditional calculations such as Root Principal.
-    if (value === undefined) return 'undefined';
-    if (value === null) return 'null';
-    if (value === '') return "''";
-    if (Array.isArray(value)) {
-      return value.length
-        ? `[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`
-        : '[]';
-    }
-    if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
-    if (typeof value === 'object') {
-      try { return JSON.stringify(value); } catch { return String(value); }
-    }
-    return String(value);
-  };
 
   /*
    * `detailGroup` is optional provenance/classification beneath the semantic

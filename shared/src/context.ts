@@ -120,10 +120,14 @@ export interface ManatOSPlatformPermissionContext {
 }
 
 export interface ManatOSUserPermissionsContext {
-  /** Current website/application role; kept outside fields because it is an authorization fact. */
+  /** Current website/application role, available to evaluator-driven role-specific presentation. */
   userRole: string;
-  /** Platform ids are dynamic (for example `protocrm`). */
-  [platformId: string]: string | ManatOSPlatformPermissionContext;
+  /**
+   * Request-wide platform capability facts, keyed by canonical platform id.
+   * Record/entity CRUD capabilities do not belong here because they are scoped
+   * to the active page/record and are exposed by that page's `permissions`.
+   */
+  platforms: Readonly<Record<string, ManatOSPlatformPermissionContext>>;
 }
 
 export interface ManatOSUserContext {

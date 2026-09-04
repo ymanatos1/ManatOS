@@ -949,6 +949,41 @@
               ]
             },
             {
+              "name": "SysUsers capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$capabilities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "$capabilities"
+                  ]
+                },
+                "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Capabilities use canonical action names', () => { pm.expect(json.data.capabilities).to.have.all.keys('read','create','update','delete'); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "SysUsers metadata",
               "request": {
                 "method": "GET",
@@ -1095,6 +1130,42 @@
                       "const json = pm.response.json();",
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysUser record capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{userId}}/$capabilities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysUsers",
+                    "{{userId}}",
+                    "$capabilities"
+                  ]
+                },
+                "description": "Record-sensitive authorization projection. Useful for rules such as Admin self-delete."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Capabilities use canonical action names', () => { pm.expect(json.data.capabilities).to.have.all.keys('read','create','update','delete'); });"
                     ]
                   }
                 }
@@ -1256,6 +1327,41 @@
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
                       "pm.test('List contains items array', () => pm.expect(json.data.items).to.be.an('array'));",
                       "pm.test('List contains paging', () => pm.expect(json.data.paging).to.be.an('object'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysPrincipals capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$capabilities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "$capabilities"
+                  ]
+                },
+                "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Capabilities use canonical action names', () => { pm.expect(json.data.capabilities).to.have.all.keys('read','create','update','delete'); });"
                     ]
                   }
                 }
@@ -1654,6 +1760,41 @@
               ]
             },
             {
+              "name": "SysApplications capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$capabilities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "$capabilities"
+                  ]
+                },
+                "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Capabilities use canonical action names', () => { pm.expect(json.data.capabilities).to.have.all.keys('read','create','update','delete'); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "SysApplications metadata",
               "request": {
                 "method": "GET",
@@ -1967,6 +2108,41 @@
               ]
             },
             {
+              "name": "SysLicenses capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$capabilities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "$capabilities"
+                  ]
+                },
+                "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Capabilities use canonical action names', () => { pm.expect(json.data.capabilities).to.have.all.keys('read','create','update','delete'); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "SysLicenses metadata",
               "request": {
                 "method": "GET",
@@ -2237,6 +2413,49 @@
                       "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
                       "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);",
                       "pm.test('Deleted id returned', () => pm.expect(json.data.id).to.be.a('string').and.not.empty);"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Platform Capabilities",
+          "item": [
+            {
+              "name": "Get protoCRM Platform Capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/platforms/protocrm/$capabilities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "platforms",
+                    "protocrm",
+                    "$capabilities"
+                  ]
+                },
+                "description": "Returns only API-resolved platform capability facts. The UI must not fetch SysLicenses to reconstruct platform entitlement."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                      "pm.test('Platform id is protoCRM', () => pm.expect(json.data.platformId).to.eql('protocrm'));",
+                      "pm.test('Platform capability is boolean', () => pm.expect(json.data.capabilities.platformAccess).to.be.a('boolean'));",
+                      "pm.test('Policy inputs are not exposed', () => { pm.expect(json.data).to.not.have.property('licenses'); pm.expect(json.data).to.not.have.property('role'); });"
                     ]
                   }
                 }

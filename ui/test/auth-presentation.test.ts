@@ -285,12 +285,13 @@ describe('authentication presentation', () => {
 
 describe('external registration user-name suggestion', () => {
   it('uses a provider display name as a normalized, uniqueness-checked suggestion', async () => {
-    const routeSource = await readFile(resolve(testDirectory, '../src/routes/auth-routes.ts'), 'utf8');
+    const routeSource = await readFile(resolve(testDirectory, '../src/routes/auth/external-account-router.ts'), 'utf8');
+    const sharedSource = await readFile(resolve(testDirectory, '../src/routes/auth/shared.ts'), 'utf8');
     const viewSource = await readFile(resolve(testDirectory, '../views/pages/external-registration.ejs'), 'utf8');
 
     expect(routeSource).toContain('suggestedUserName: await suggestExternalUserName(profile)');
-    expect(routeSource).toContain('profile.displayName');
-    expect(routeSource).toContain('if (!(await lookup(candidate))) return candidate');
+    expect(sharedSource).toContain('profile.displayName');
+    expect(sharedSource).toContain('if (!(await lookup(candidate))) return candidate');
     expect(viewSource).toContain("profile.userName || (typeof suggestedUserName !== 'undefined' ? suggestedUserName : '')");
   });
 });

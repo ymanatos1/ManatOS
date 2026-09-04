@@ -28,7 +28,7 @@ import type { SysBODefinition } from '../../sysbo/types.js';
 import { apiPathFor, canonicalSysBOMetadata, canonicalSysBOUIMetadata, type SysBOListData } from './data-access.js';
 import { parentListContextForEntry } from './parent-list.js';
 import { metadataDrivenListQuery } from './list-query.js';
-import { uiPermissions } from '../../sysbo/permissions.js';
+import type { UIEntityPermissions } from '../../sysbo/permissions.js';
 import { compiledEntryRepresentationRuntime } from './entry-representation-runtime.js';
 
 /**
@@ -51,7 +51,7 @@ export async function renderMetadataDrivenHierarchyWorkspace(
   req: Request,
   res: Response,
   definition: SysBODefinition,
-  permissions: ReturnType<typeof uiPermissions>,
+  permissions: UIEntityPermissions,
   initialMemberId: string | null,
   workspaceOverride?: {
     entries: Record<string, unknown>[];

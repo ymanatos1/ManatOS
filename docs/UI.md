@@ -186,7 +186,7 @@ Navigation definitions live in `src/navigation.ts`, not in individual EJS pages.
 - client-side UI actions;
 - bottom docking in the vertical navigation.
 
-`navigationFor(role, auth, company, platform, ctx)` recursively resolves navigation contributions before rendering them. Authentication/role compatibility rules are still supported for contributions not yet migrated, but evaluator-backed `visible` metadata is resolved against the authoritative request CTX. Platform access comes only from `ctx.user.permissions.<platform>.capabilities.platformAccess`; there is no parallel `app.currentPlatformEntitled` or separately passed entitlement flag. Presentation templates therefore receive already-resolved menu entries without introducing another entitlement decision path.
+`navigationFor(role, auth, company, platform, ctx)` recursively resolves navigation contributions before rendering them. Company/platform catalogue entries use the single evaluator-backed `visible` metadata contract resolved against request CTX; the retired parallel authentication/role/platform-entitlement flags are no longer part of the navigation contract. Platform access comes only from `ctx.user.permissions.platforms.<platform>.capabilities.platformAccess`; there is no parallel `app.currentPlatformEntitled` or separately passed entitlement flag. Presentation templates therefore receive already-resolved menu entries without introducing another entitlement decision path.
 
 Horizontal platform navigation is derived from the shared `CompanyInfo.platforms` catalogue. Vertical navigation is composed from Company and current-Platform contributions, including shared containers such as Administration and Configuration.
 
@@ -296,10 +296,13 @@ The shell loads focused browser modules rather than one large page script:
 | File | Responsibility |
 | --- | --- |
 | `shell.js` | shell state, left navigation, Details panel and general modal/shell behavior |
-| `forms.js` | form behavior, password controls, validation hooks and unsaved changes |
+| `metadata-form-runtime.js` | metadata/CTX reactive runtime: canonical AST evaluation, dependencies, calculated fields, dynamic UI properties and live debugging values |
+| `forms.js` | form/page lifecycle: dirty/valid state, Save behavior, password/configuration helpers, focus and unsaved changes |
 | `lists.js` | list/grid interaction |
 | `busy.js` | full-screen busy/locked state during operations |
 | `prefs.js` | browser-local UI preferences such as theme and language |
+
+The shell loads `metadata-form-runtime.js` immediately before `forms.js`. The split is by ownership rather than page: the reactive runtime owns metadata evaluation and CTX propagation, while `forms.js` owns form lifecycle/presentation behavior. Browser expression execution consumes the canonical compiled AST supplied by ManatOS; it does not reparse metadata expression strings on every field change.
 
 The server remains responsible for authoritative validation/security. Browser validation is primarily usability protection and must not be treated as the security boundary.
 

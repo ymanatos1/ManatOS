@@ -141,6 +141,50 @@ export function createSysBORouter<T extends SysBOEntity>(
   });
 
   /**
+   * Return the authenticated subject's current collection-level capability set.
+   *
+   * This endpoint is intentionally available even when read=false so the UI/BFF
+   * can discover that a SysBO is unavailable without recreating role policy.
+   * The returned flags are advisory presentation inputs only; every actual API
+   * operation still performs its authoritative authorization check.
+   */
+  router.get('/$capabilities', async (req, res) => {
+    const subject = securityContext(req);
+
+    sendQuery(res, {
+      sysBOKey: metadata.key,
+      scope: 'collection',
+      capabilities: await authorization.capabilities(subject, metadata.key),
+    });
+  });
+
+  /**
+   * Return record-sensitive capabilities for one readable BO entry.
+   *
+   * Resolving the record first is essential for policies such as Admin
+   * self-delete. Read authorization is required before projecting the other
+   * flags so this endpoint cannot disclose the existence of an unreadable row.
+   */
+  router.get('/:id/$capabilities', async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const item = await service.get(id);
+
+    if (!item) {
+      throw new NotFoundError(metadata.name, id);
+    }
+
+    const subject = securityContext(req);
+    await authorization.assertCan('read', subject, metadata.key, item);
+
+    sendQuery(res, {
+      sysBOKey: metadata.key,
+      scope: 'record',
+      recordId: id,
+      capabilities: await authorization.capabilities(subject, metadata.key, item),
+    });
+  });
+
+  /**
    * Read one BO entry by its generated GUID.
    */
   router.get('/:id', async (req, res) => {

@@ -11,7 +11,7 @@ ManatOS is organized as a workspace with three principal packages:
 - **`shared`** — canonical SysBO definitions, metadata contracts, expression parsing/evaluation, shared presentation rules, and framework-neutral types.
 - **`api`** — Express API, persistence, authentication/authorization, metadata endpoints, and business/domain services.
 - **`ui`** — metadata-driven web UI, page/CTX construction, reusable presentation components, hierarchy workspaces, Developer Tools, and platform-specific presentation.
-- **`documentation`** — durable architectural, API, UI, security, and development documentation.
+- **`docs`** — durable architectural, API, UI, security, and development documentation.
 - **Postman collection/environment** — executable API exploration and contract verification support.
 
 The design principle is that business-object structure and presentation behavior should be declared in metadata wherever practical, while security enforcement, persistence transactions, datastore access, and other side effects remain authoritative server/domain responsibilities.
@@ -104,6 +104,8 @@ The API remains authoritative for authentication, authorization, record access, 
 
 Secrets such as session secrets, internal API keys, provider credentials, and encryption material belong only in server-side configuration/storage and must never be exposed to browser bundles or public client configuration.
 
+Detailed policy, capability endpoints, list-selection enforcement and CTX projection are documented in [`docs/Authorization.md`](docs/Authorization.md).
+
 ## External authentication
 
 External authentication providers are represented as metadata-driven configuration entities.
@@ -128,15 +130,11 @@ Generated build output should not be committed as source changes unless explicit
 
 ## Documentation policy
 
-Files under `documentation/` describe the **current durable architecture, contracts, behavior, security model, APIs, and development conventions**.
+Files under `docs/` describe the **current durable architecture, contracts, behavior, security model, APIs, and development conventions**.
 
-They are not a development diary, patch log, backlog, progress tracker, or place for pending-work notes.
+They are not a development diary, patch log, backlog, progress tracker, migration history, or place for pending-work notes. Historical audit/progress documents are not kept in the source tree; durable decisions must be incorporated into the relevant current-state document.
 
-Historical implementation progress and outstanding recommendations may be retained only in the explicitly designated architectural audit:
-
-`ManatOS_DeclarativeEvaluator_Audit_20260830.md`
-
-That audit is intentionally exceptional and should clearly distinguish historical findings from the current implemented architecture.
+The authorization security boundary and capability contracts are documented in `docs/Authorization.md`.
 
 ## Project status
 

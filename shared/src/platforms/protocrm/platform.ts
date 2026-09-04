@@ -81,7 +81,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
       order: 200,
       requiresEntityKeys: ['sys-applications'],
       visible: {
-        expression: 'user.permissions.protocrm.capabilities.platformAccess === true',
+        expression: 'user.permissions.platforms.protocrm.capabilities.platformAccess === true',
       },
     },
     {
@@ -93,7 +93,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
       order: 330,
       requiresEntityKeys: ['sys-applications'],
       visible: {
-        expression: 'user.permissions.protocrm.capabilities.platformAccess === true',
+        expression: 'user.permissions.platforms.protocrm.capabilities.platformAccess === true',
       },
     },
   ],

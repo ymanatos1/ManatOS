@@ -196,8 +196,9 @@ export function effectiveEntityKeys(company: CompanyInfo, platform: SysPlatform)
 /**
  * True when a persisted license is effective at the supplied instant.
  *
- * This helper is shared by API authorization and UI navigation so date/status/
- * quantity semantics cannot drift between the security boundary and menus.
+ * This shared domain helper defines the license-effective semantics consumed by
+ * API authorization and related server/domain logic. UI navigation receives only
+ * the resolved platform capability and does not evaluate license rows itself.
  */
 export function licenseIsEffective(
   license: SysBOLicense,

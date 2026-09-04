@@ -56,6 +56,7 @@ import type { SysBOConfigurationService } from './services/sys-configuration-ser
 
 import { createPublicRouter } from './http/public-router.js';
 import { createExpressionRouter } from './http/expression-router.js';
+import { createPlatformCapabilityRouter } from './http/platform-capability-router.js';
 import { createConfigurationRouter } from './http/configuration-router.js';
 import { createExtAuthProviderAdminRouter } from './http/ext-auth-provider-admin-router.js';
 
@@ -183,6 +184,18 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     '/api/v1/auth',
 
     createAuthRouter(services.users),
+  );
+
+  /**
+   * API-authoritative platform capability projection.
+   *
+   * The UI consumes this resolved fact instead of reading SysLicenses and
+   * reproducing entitlement policy locally.
+   */
+  app.use(
+    '/api/v1/platforms',
+    requireAuthenticated,
+    createPlatformCapabilityRouter(authorization),
   );
 
   /**

@@ -1,4 +1,3 @@
-import type { SysBOUserRole } from '../domain.js';
 import type { ManatOSDynamicValue } from '../dynamic-value.js';
 
 /** Public asset reference used by shared Company/Platform presentation metadata. */
@@ -28,10 +27,7 @@ export interface NavigationContribution {
   dockBottom?: boolean;
   /** Static or evaluator-backed visibility against the current CTX root. */
   visible?: ManatOSDynamicValue<boolean>;
-  requiresAuthentication?: boolean;
-  roles?: SysBOUserRole[];
   requiresEntityKeys?: string[];
-  requiresPlatformEntitlement?: boolean;
 }
 
 /** One SysBO/entity capability contributed by a Company or Platform. */

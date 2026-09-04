@@ -13,15 +13,15 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     const dispatcher = await uiSource('views/field-components/entity-field.ejs');
     const formField = await uiSource('views/field-components/form-field.ejs');
     const telephone = await uiSource('views/field-components/telephone-field.ejs');
-    const forms = await uiSource('public/js/forms.js');
+    const runtime = await uiSource('public/js/metadata-form-runtime.js');
     expect(metadata).toContain("normalize: { expression: 'TelephoneNbr(value)' }");
     expect(uiMetadata).toContain("field: 'telephoneNumber'");
     expect(dispatcher).toContain("field.type === 'telephone'");
     expect(formField).toContain('data-field-normalize-ast');
     expect(telephone).not.toContain('TelephoneNbr');
-    expect(forms).toContain('container?.dataset.fieldNormalizeAst');
-    expect(forms).toContain("syncSourceField(control, { source: 'field-normalization'");
-    expect(forms).not.toContain('publish(control');
+    expect(runtime).toContain('container?.dataset.fieldNormalizeAst');
+    expect(runtime).toContain("syncSourceField(control, { source: 'field-normalization'");
+    expect(runtime).not.toContain('publish(control');
   });
 
   it('uses one CLI component for page and CTX-viewer instances with independent local histories', async () => {

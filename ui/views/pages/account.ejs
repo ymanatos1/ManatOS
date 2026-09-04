@@ -1,61 +1,13 @@
 <%
-  const accountDateWithElapsed = (value) => {
-    if (!value) return '—';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    const elapsedMs = Date.now() - date.getTime();
-    const future = elapsedMs < 0;
-    let remaining = Math.abs(elapsedMs);
-    const parts = [];
-    for (const [suffix, size] of [['d', 86400000], ['h', 3600000], ['m', 60000], ['s', 1000]]) {
-      const amount = Math.floor(remaining / size);
-      if (amount > 0 || (suffix === 's' && parts.length === 0)) {
-        parts.push(`${amount}${suffix}`);
-        remaining -= amount * size;
-      }
-      if (parts.length === 2) break;
-    }
-    const elapsed = future ? `in ${parts.join(' ')}` : `${parts.join(' ')} ago`;
-    return `${date.toLocaleString()} (${elapsed})`;
-  };
-
   /*
-   * Account is a purpose-built read-only page rather than a metadata-driven
-   * SysBO entry renderer. In developer mode it still exposes the canonical
-   * authenticated-user calculations that this page can consume from CTX.
-   * Do not invent entry-form UI calculations here: the grid reports only
-   * calculations that genuinely exist on the Account page's user context.
+   * Account remains a purpose-built read-only projection, but its generic
+   * value/debug presentation comes from the same TypeScript helpers used by
+   * metadata-driven pages. Keep EJS concerned with markup and page semantics.
    */
   const accountDebuggingEnabled = Boolean(app?.ui?.debugTools);
-  const accountUserFields = typeof ctx !== 'undefined' && ctx?.user?.fields ? ctx.user.fields : {};
-  const accountDebugRows = Object.entries(accountUserFields)
-    .filter(([, field]) => field && typeof field === 'object' && typeof field.expression === 'string')
-    .map(([name, field]) => ({
-      name,
-      formula: field.expression,
-      value: typeof ctxUserFieldValue === 'function' ? ctxUserFieldValue(name) : field.value,
-    }));
-
-  const accountDebugValueText = (value) => {
-    if (value === undefined || value === null || value === '') return '—';
-    if (Array.isArray(value)) return value.length ? `[ ${value.map((entry) => accountDebugValueText(entry)).join(', ')} ]` : '[]';
-    if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
-    if (typeof value === 'object') {
-      try { return JSON.stringify(value); } catch { return String(value); }
-    }
-    return String(value);
-  };
-
-
-  const accountDebuggingDisplayRows = accountDebugRows.map((row) => ({
-    type: 'row',
-    displayName: row.name,
-    row: {
-      formula: row.formula,
-      value: accountDebugValueText(row.value),
-      inspectPath: `ctx.user.fields.${row.name}`,
-    },
-  }));
+  const accountDebuggingDisplayRows = accountDebuggingEnabled
+    ? buildCalculatedContextDebuggingRows(ctx?.user?.fields, ctxUserFieldValue, 'ctx.user.fields')
+    : [];
   const accountDebugElementNameParts = (name) => ({ prefix: '', leaf: String(name) });
 %>
 <section class="account-page entity-tabbed-page">
@@ -198,13 +150,13 @@
         <div class="account-summary-value"><%= currentUser.id %></div>
 
         <div class="account-summary-label">Created</div>
-        <div class="account-summary-value"><%= accountDateWithElapsed(currentUser.createdAt) %></div>
+        <div class="account-summary-value"><%= formatMetadataValue(currentUser.createdAt, { format: 'datetime-elapsed', emptyText: '—' }) %></div>
 
         <div class="account-summary-label">Created by</div>
         <div class="account-summary-value"><%= currentUser.createdBy || '—' %></div>
 
         <div class="account-summary-label">Updated</div>
-        <div class="account-summary-value"><%= accountDateWithElapsed(currentUser.updatedAt) %></div>
+        <div class="account-summary-value"><%= formatMetadataValue(currentUser.updatedAt, { format: 'datetime-elapsed', emptyText: '—' }) %></div>
 
         <div class="account-summary-label">Updated by</div>
         <div class="account-summary-value"><%= currentUser.updatedBy || '—' %></div>

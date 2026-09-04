@@ -115,7 +115,7 @@ describe('metadata-driven SysBO UI conventions', () => {
         expression: "mode !== 'create' && permissions.delete === true",
       });
       expect(saveAction?.visible).toEqual({
-        expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)",
+        expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)",
       });
       expect(metadata.list.addAction.visible).toEqual({
         expression: 'permissions.create === true',

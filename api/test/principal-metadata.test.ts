@@ -26,7 +26,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       save: { kind: 'save', label: 'Save' },
     });
     expect(sysBOPrincipalsUIMetadata.record.entryActions?.save?.visible).toEqual({
-      expression: "mode !== 'view' && (permissions.create === true || permissions.edit === true)",
+      expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)",
     });
   });
   it('declares icon, containment and parentability traits for every principal type', () => {

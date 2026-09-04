@@ -186,7 +186,7 @@ hasClientSecret ? 'lock-fill' : 'lock'
 StrFormat('{0} / {1}', name, version)
 
 # Platform capability decision
-user.permissions.protocrm.capabilities.platformAccess === true
+user.permissions.platforms.protocrm.capabilities.platformAccess === true
 
 # List Add visibility
 permissions.create === true
@@ -195,7 +195,7 @@ permissions.create === true
 mode !== 'create' && permissions.delete === true
 
 # Entry Save visibility
-mode !== 'view' && (permissions.create === true || permissions.edit === true)
+mode !== 'view' && (permissions.create === true || permissions.update === true)
 
 # Runtime constraint decision
 addConstraintReached !== true

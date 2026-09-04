@@ -6,7 +6,6 @@ import {
   AppError,
   operationContext,
   SysBOUserRole,
-  type SysBOUser,
   compileExpression,
 } from '@manatos/shared';
 
@@ -21,7 +20,7 @@ import { requireSignedIn } from '../middleware/auth.js';
 import { requireCsrf } from '../middleware/csrf.js';
 
 import { canonicalSysBOMetadata } from './sysbo/data-access.js';
-import { uiPermissions, requirePermission } from '../sysbo/permissions.js';
+import { resolveUIEntityPermissions, requirePermission } from '../sysbo/permissions.js';
 import { renderMetadataDrivenList } from './sysbo/list-renderer.js';
 import { renderMetadataDrivenRecord } from './sysbo/record-renderer.js';
 import { renderMetadataDrivenHierarchyWorkspace } from './sysbo/hierarchy-renderer.js';
@@ -124,9 +123,8 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       if (definition.key === 'sys-ext-auth-providers') delete req.session.pendingExtAuthCredentialTest;
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition);
-      requirePermission(permissions.view, 'Read access is required for this entity.');
+      const permissions = await resolveUIEntityPermissions(req, definition);
+      requirePermission(permissions.read, 'Read access is required for this entity.');
       await renderMetadataDrivenList(req, res, definition, permissions);
     } catch (error) {
       next(error);
@@ -136,8 +134,7 @@ export function createSysBORoutes() {
   router.get('/:key/new', async (req, res, next) => {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition);
+      const permissions = await resolveUIEntityPermissions(req, definition);
       requirePermission(permissions.create, 'Create access is required for this entity.');
       await renderMetadataDrivenRecord(req, res, definition, permissions, { isNew: true });
     } catch (error) {
@@ -156,8 +153,7 @@ export function createSysBORoutes() {
   router.get('/:key/hierarchy/new', async (req, res, next) => {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition);
+      const permissions = await resolveUIEntityPermissions(req, definition);
       requirePermission(permissions.create, 'Create access is required for this entity.');
       await renderMetadataDrivenHierarchyWorkspace(req, res, definition, permissions, null);
     } catch (error) {
@@ -168,9 +164,8 @@ export function createSysBORoutes() {
   router.post('/:key/hierarchy/commit', requireCsrf, async (req, res, next) => {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition);
-      requirePermission(permissions.create || permissions.edit || permissions.delete, 'Write access is required to commit this hierarchy.');
+      const permissions = await resolveUIEntityPermissions(req, definition);
+      requirePermission(permissions.create || permissions.update || permissions.delete, 'Write access is required to commit this hierarchy.');
 
       const result = await commitMetadataDrivenHierarchy(req, definition);
       res.json({ success: true, data: result });
@@ -183,9 +178,8 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const id = routeParam(req.params.id);
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition, id);
-      requirePermission(permissions.view, 'Read access is required for this entity.');
+      const permissions = await resolveUIEntityPermissions(req, definition, id);
+      requirePermission(permissions.read, 'Read access is required for this entity.');
       await renderMetadataDrivenHierarchyWorkspace(req, res, definition, permissions, id);
     } catch (error) {
       next(error);
@@ -203,9 +197,8 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const id = routeParam(req.params.id);
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition, id);
-      requirePermission(permissions.view, 'Read access is required for this entity.');
+      const permissions = await resolveUIEntityPermissions(req, definition, id);
+      requirePermission(permissions.read, 'Read access is required for this entity.');
 
       const { item, parentOwnerContext } = ownerManagedEntryFromRequest(req, id);
       await renderMetadataDrivenRecord(req, res, definition, permissions, {
@@ -227,9 +220,8 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const id = String(req.body.id ?? '');
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition, id || undefined);
-      requirePermission(permissions.edit, 'Edit access is required for this entity.');
+      const permissions = await resolveUIEntityPermissions(req, definition, id || undefined);
+      requirePermission(permissions.update, 'Update access is required for this entity.');
 
       const metadata = await canonicalSysBOMetadata(req, definition);
       const ownerUpdate = mergeOwnerManagedEntryFromRequest(req, metadata);
@@ -250,9 +242,8 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const id = routeParam(req.params.id);
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition, id);
-      requirePermission(permissions.view, 'Read access is required for this entity.');
+      const permissions = await resolveUIEntityPermissions(req, definition, id);
+      requirePermission(permissions.read, 'Read access is required for this entity.');
       await renderMetadataDrivenRecord(req, res, definition, permissions, {
         isNew: false,
         recordId: id,
@@ -335,9 +326,8 @@ export function createSysBORoutes() {
   router.post('/sys-ext-auth-providers/test-credentials', requireCsrf, async (req, res, next) => {
     try {
       const definition = getSysBODefinition('sys-ext-auth-providers');
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition);
-      requirePermission(permissions.edit || permissions.create, 'Admin access is required to test provider credentials.');
+      const permissions = await resolveUIEntityPermissions(req, definition);
+      requirePermission(permissions.update || permissions.create, 'Admin access is required to test provider credentials.');
 
       res.json(await startExternalProviderCredentialTest(req));
     } catch (error) {
@@ -359,9 +349,8 @@ export function createSysBORoutes() {
   router.get('/sys-ext-auth-providers/test-credentials/status', async (req, res, next) => {
     try {
       const definition = getSysBODefinition('sys-ext-auth-providers');
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition);
-      requirePermission(permissions.edit || permissions.create, 'Admin access is required to inspect provider credential tests.');
+      const permissions = await resolveUIEntityPermissions(req, definition);
+      requirePermission(permissions.update || permissions.create, 'Admin access is required to inspect provider credential tests.');
 
       const status = externalProviderCredentialTestStatus(req);
       if (!status) {
@@ -389,13 +378,12 @@ export function createSysBORoutes() {
     async (req, res, next) => {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const id = String(req.body.id ?? '');
-      const currentUser = res.locals.currentUser as SysBOUser | null;
-      const permissions = uiPermissions(currentUser, definition, id || undefined);
+      const permissions = await resolveUIEntityPermissions(req, definition, id || undefined);
 
       try {
         requirePermission(
-          id ? permissions.edit : permissions.create,
-          id ? 'Edit access is required for this entity.' : 'Create access is required for this entity.',
+          id ? permissions.update : permissions.create,
+          id ? 'Update access is required for this entity.' : 'Create access is required for this entity.',
         );
 
         const providerSavedId = await handleExternalProviderCredentialSave(req, definition, id);
@@ -447,24 +435,7 @@ export function createSysBORoutes() {
 
         const definition = getSysBODefinition(key);
 
-        const currentUser = res.locals.currentUser as SysBOUser | null;
-        const permissions = uiPermissions(currentUser, definition, id);
-
-        /*
-         * Own-account deletion is a distinct security invariant, not merely a
-         * missing role permission. Report the stable FORBIDDEN application
-         * error before the generic permission gate so every route explains the
-         * actual reason consistently.
-         */
-        if (definition.key === 'sys-users' && currentUser && id === currentUser.id) {
-          throw new AppError(
-            'FORBIDDEN',
-            'A SysBOUser cannot delete its own account.',
-            'You cannot delete your own user account.',
-            false,
-          );
-        }
-
+        const permissions = await resolveUIEntityPermissions(req, definition, id);
         requirePermission(permissions.delete, 'Delete access is required for this entity.');
 
         await deleteMetadataDrivenEntry(req, definition, id);

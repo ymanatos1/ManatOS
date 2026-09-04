@@ -57,7 +57,7 @@ describe('ManatOS expression parser/evaluator', () => {
 
   it('resolves nested members transparently through CTX field values without hiding explicit field metadata', () => {
     const fields = {
-      permissions: { value: { view: true, create: true, edit: false, delete: false } },
+      permissions: { value: { read: true, create: true, update: false, delete: false } },
       principalType: {
         value: 'Person',
         option: { value: 'Person', canHaveParent: true },
@@ -66,7 +66,7 @@ describe('ManatOS expression parser/evaluator', () => {
     const ctx = { page: { fields } };
 
     expect(evaluateTest('permissions.create === true', ctx, fields)).toBe(true);
-    expect(evaluateTest('permissions.edit === true', ctx, fields)).toBe(false);
+    expect(evaluateTest('permissions.update === true', ctx, fields)).toBe(false);
     expect(evaluateTest('principalType.option.canHaveParent === true', ctx, fields)).toBe(true);
   });
 

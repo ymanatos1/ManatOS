@@ -76,7 +76,13 @@ describe('company/platform navigation composition', () => {
 
   it('merges Company and protoCRM contributions into the current left-nav order', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
-    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform).vertical;
+    const navigation = navigationFor(
+      SysBOUserRole.Admin,
+      true,
+      MANATOS_COMPANY,
+      platform,
+      { ctx: navigationCtx(SysBOUserRole.Admin, true) },
+    ).vertical;
 
     expect(navigation.map((item) => item.id)).toEqual([
       'account',
@@ -118,7 +124,7 @@ describe('company/platform navigation composition', () => {
           icon: 'bi-gear-wide-connected',
           url: '/platform-settings',
           order: 420,
-          requiresAuthentication: true,
+          visible: { expression: 'user.permissions.userRole !== null' },
         },
       ],
     };
@@ -155,14 +161,12 @@ describe('company/platform navigation composition', () => {
   });
 
 
-  it('uses evaluator-backed CTX visibility for migrated navigation decisions', () => {
+  it('uses evaluator-backed CTX visibility for navigation decisions', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const playground = platform.navigation.find((item) => item.id === 'app-playground');
     expect(playground?.visible).toEqual({
-      expression: 'user.permissions.protocrm.capabilities.platformAccess === true',
+      expression: 'user.permissions.platforms.protocrm.capabilities.platformAccess === true',
     });
-    expect(playground?.requiresAuthentication).toBeUndefined();
-    expect(playground?.requiresPlatformEntitlement).toBeUndefined();
   });
 
   it('gates protoCRM application navigation by entitlement for every non-Admin role', () => {
@@ -192,7 +196,13 @@ describe('company/platform navigation composition', () => {
       ).toBe(true);
     }
 
-    const admin = navigationFor(SysBOUserRole.Admin, true);
+    const admin = navigationFor(
+      SysBOUserRole.Admin,
+      true,
+      MANATOS_COMPANY,
+      resolvePlatform(MANATOS_COMPANY),
+      { ctx: navigationCtx(SysBOUserRole.Admin, true) },
+    );
     expect(admin.vertical.some((item) => item.id === 'app-playground')).toBe(true);
     expect(admin.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
   });

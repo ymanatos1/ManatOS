@@ -99,6 +99,22 @@ describe('AuthorizationService', () => {
     await expect(authorization.can('read', licensed, 'sys-applications')).resolves.toBe(true);
     await expect(authorization.can('read', licensed, 'sys-applications', allowedApp)).resolves.toBe(true);
     await expect(authorization.can('read', licensed, 'sys-applications', otherApp)).resolves.toBe(false);
+    await expect(
+      authorization.capabilities(licensed, 'sys-applications', allowedApp),
+    ).resolves.toEqual({
+      read: true,
+      create: false,
+      update: true,
+      delete: true,
+    });
+    await expect(
+      authorization.capabilities(licensed, 'sys-applications', otherApp),
+    ).resolves.toEqual({
+      read: false,
+      create: false,
+      update: false,
+      delete: false,
+    });
   });
 
   it.each([
@@ -202,3 +218,39 @@ function entity(id: string): SysBOEntity {
     updatedBy: 'System',
   };
 }
+
+describe('AuthorizationService capabilities projection', () => {
+  it.each([
+    [SysBOUserRole.Admin, true, true],
+    [SysBOUserRole.Superuser, true, false],
+    [SysBOUserRole.User, true, false],
+    [SysBOUserRole.Guest, true, false],
+  ] as const)('projects collection capabilities for %s', async (role, read, create) => {
+    const context = await createTestApi();
+    const authorization = new AuthorizationService(context.store);
+
+    await expect(
+      authorization.capabilities(subject(role), 'sys-principals'),
+    ).resolves.toEqual({
+      read,
+      create,
+      update: false,
+      delete: false,
+    });
+  });
+
+  it('projects Admin self-delete as false while preserving the other record capabilities', async () => {
+    const context = await createTestApi();
+    const authorization = new AuthorizationService(context.store);
+    const admin = subject(SysBOUserRole.Admin, 'admin-id', 'Admin');
+
+    await expect(
+      authorization.capabilities(admin, 'sys-users', entity('admin-id')),
+    ).resolves.toEqual({
+      read: true,
+      create: true,
+      update: true,
+      delete: false,
+    });
+  });
+});
