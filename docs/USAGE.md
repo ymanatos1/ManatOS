@@ -241,7 +241,7 @@ type ManatOSDynamicValue<T> = T | Readonly<{ expression: string }>;
 CTX/runtime facts -> metadata policy -> evaluator -> resolved renderer state
 ```
 
-Do not put presentation decisions into CTX. Prefer facts such as `permissions.create`, `mode`, `user.permissions.mcrm.capabilities.platformAccess` or `addConstraintReached`; let metadata decide `visible`, `enabled`, `disabledReason`, `editable`, etc.
+Do not put presentation decisions into CTX. Prefer facts such as `permissions.create`, `mode`, `user.permissions.protocrm.capabilities.platformAccess` or `addConstraintReached`; let metadata decide `visible`, `enabled`, `disabledReason`, `editable`, etc.
 
 Standard entry actions illustrate the pattern:
 
@@ -331,19 +331,19 @@ Do not move executable strategy constructors into metadata.
 
 Platform-specific feature code belongs below explicit platform folders.
 
-For mCRM:
+For protoCRM:
 
 ```text
-shared/src/platforms/mcrm/
-ui/src/platforms/mcrm/
-ui/views/pages/platforms/mcrm/
-ui/public/assets/platforms/mcrm/
-ui/public/css/platforms/mcrm.css
+shared/src/platforms/protocrm/
+ui/src/platforms/protocrm/
+ui/views/pages/platforms/protocrm/
+ui/public/assets/platforms/protocrm/
+ui/public/css/platforms/protocrm.css
 ```
 
-Generic routers/renderers should compose platform modules and must not accumulate mCRM-specific branches.
+Generic routers/renderers should compose platform modules and must not accumulate protoCRM-specific branches.
 
-`app-playground.ejs` is the mCRM Apps Playground landing/workspace. `application-playground.ejs` is the workspace for one selected SysApplication.
+`app-playground.ejs` is the protoCRM Apps Playground landing/workspace. `application-playground.ejs` is the workspace for one selected SysApplication.
 
 ## 17. Adding a new metadata-driven field
 

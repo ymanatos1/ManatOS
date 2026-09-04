@@ -1,6 +1,0 @@
-/* ManatOS stylesheet manifest. Keep imports in this order. */
-@import url('./base.css');
-@import url('./layout.css');
-@import url('./ui.css');
-@import url('./theme.css');
-@import url('./pages.css');

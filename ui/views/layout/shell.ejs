@@ -211,9 +211,9 @@
 
   <div class="site-frame">
 
-    <%- include('../partials/header') %>
+    <%- include('../components/layout/header') %>
 
-    <%- include('../partials/horizontal-nav') %>
+    <%- include('../components/navigation/horizontal-nav') %>
 
 
     <!-- =========================================================
@@ -279,8 +279,7 @@
           </div>
 
           <div class="left-navigation-main">
-            <%- include(
-              '../partials/vertical-nav',
+            <%- include('../components/navigation/vertical-nav',
               {
                 items: app.navigation.vertical.filter((item) => !item.dockBottom),
                 level: 0
@@ -289,8 +288,7 @@
           </div>
 
           <div class="left-navigation-bottom">
-            <%- include(
-              '../partials/vertical-nav',
+            <%- include('../components/navigation/vertical-nav',
               {
                 items: app.navigation.vertical.filter((item) => item.dockBottom),
                 level: 0
@@ -428,7 +426,7 @@
         </div>
 
         <% if (app.ui?.debugTools) { %>
-          <%- include('../pages/metadata-driven/ui-components/debugging-cli', {
+          <%- include('../components/debugging/debugging-cli', {
             instanceKey: 'ctx-viewer',
             startPath: 'ctx',
             csrfToken,
@@ -505,13 +503,13 @@
 
 
       <% if (app.ui?.debugTools) { %>
-        <%- include('../partials/debugger/developer-tools') %>
+        <%- include('../components/debugging/developer-tools') %>
       <% } %>
 
     </main>
 
 
-    <%- include('../partials/footer') %>
+    <%- include('../components/layout/footer') %>
 
   </div>
 
@@ -520,9 +518,9 @@
 
   <%- include('../popups/messages/message-modals') %>
 
-  <%- include('../popups/other/preferences-modal') %>
+  <%- include('../popups/preferences/preferences-modal') %>
 
-  <%- include('../partials/busy-overlay') %>
+  <%- include('../components/layout/busy-overlay') %>
 
 
   <script

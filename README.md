@@ -2,7 +2,7 @@
 
 ManatOS is a metadata-driven, multi-platform application framework built around a shared business-object model, a canonical context tree (CTX), and a declarative expression evaluator.
 
-The repository currently contains the ManatOS runtime and the first platform implementation, **mCRM**.
+The repository currently contains the ManatOS runtime and the first platform implementation, **protoCRM**.
 
 ## Architecture
 

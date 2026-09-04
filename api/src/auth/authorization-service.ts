@@ -1,6 +1,6 @@
 import {
   ForbiddenAppError,
-  MCRM_PLATFORM_ID,
+  PROTOCRM_PLATFORM_ID,
   licenseGrantsApplicationAccess,
   licenseGrantsPlatformAccess,
   SysBOLicenseStatus,
@@ -78,7 +78,7 @@ export class DefaultSysBOApplicationPermissionPolicy implements SysBOApplication
  * Central authorization service for SysBO access.
  *
  * Read:
- *   Company-owned entities follow their record rules; mCRM applications are
+ *   Company-owned entities follow their record rules; protoCRM applications are
  *   entitlement-scoped for every non-Admin user.
  *
  * Create:
@@ -152,14 +152,14 @@ export class AuthorizationService {
     }
 
     /**
-     * mCRM application visibility is license scoped for every non-Admin user.
+     * protoCRM application visibility is license scoped for every non-Admin user.
      * A collection read is allowed only when the user owns at least one current
-     * mCRM entitlement through a linked principal. Individual application reads
+     * protoCRM entitlement through a linked principal. Individual application reads
      * additionally honor an applicationId restriction when the license has one.
      */
     if (action === 'read' && sysBOKey === 'sys-applications') {
       return record === undefined
-        ? this.userHasPlatformAccess(subject.userId, MCRM_PLATFORM_ID)
+        ? this.userHasPlatformAccess(subject.userId, PROTOCRM_PLATFORM_ID)
         : this.userMayReadApplication(subject.userId, record as SysBOApplication);
     }
 
@@ -334,10 +334,10 @@ export class AuthorizationService {
     const result: SysBOLicense[] = [];
 
     for (const license of this.store.sysLicenses.values()) {
-      // A platform-wide mCRM license (no applicationId) grants every app; an
+      // A platform-wide protoCRM license (no applicationId) grants every app; an
       // application-restricted license grants only its named application. The
       // shared helper also enforces enabled/status/date/quantity semantics.
-      if (!licenseGrantsApplicationAccess(license, MCRM_PLATFORM_ID, applicationId)) {
+      if (!licenseGrantsApplicationAccess(license, PROTOCRM_PLATFORM_ID, applicationId)) {
         continue;
       }
 

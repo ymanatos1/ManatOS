@@ -1,6 +1,6 @@
 import type { EmailVerificationSource, ExternalProviderKey } from '@manatos/shared';
 
-import { apiClient } from '../../api-client.js';
+import { apiClient } from '../../api/client.js';
 
 /** Anonymous-safe provider projection used by Sign in/Register presentation. */
 export interface AuthProviderOption {

@@ -8,9 +8,9 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 describe('generic SysBO delete presentation', () => {
   it('derives friendly delete labels from canonical metadata instead of legacy EJS view-model metadata', async () => {
-    const routes = await readFile(resolve(testDirectory, '../src/routes/sysbo-routes.ts'), 'utf8');
-    expect(routes).toContain('definition.boMetadata.name');
-    expect(routes).not.toContain('editViewModel.deleteEntityLabel');
+    const entryWrite = await readFile(resolve(testDirectory, '../src/routes/sysbo/entry-write.ts'), 'utf8');
+    expect(entryWrite).toContain('definition.boMetadata.name');
+    expect(entryWrite).not.toContain('editViewModel.deleteEntityLabel');
   });
 
   it('suppresses the native dirty-page warning only after destructive confirmation submits', async () => {

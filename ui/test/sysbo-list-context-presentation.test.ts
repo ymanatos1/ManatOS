@@ -8,26 +8,31 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 describe('SysBO flattened page CTX data flow', () => {
   it('loads API rows and filter values directly on the list page before rendering either list engine', async () => {
-    const source = await readFile(resolve(testDirectory, '../src/routes/sysbo-routes.ts'), 'utf8');
+    const listRenderer = await readFile(resolve(testDirectory, '../src/routes/sysbo/list-renderer.ts'), 'utf8');
+    const context = await readFile(resolve(testDirectory, '../src/routes/sysbo/context.ts'), 'utf8');
+    const listQuery = await readFile(resolve(testDirectory, '../src/routes/sysbo/list-query.ts'), 'utf8');
 
-    expect(source).toContain('const runtime = pageListRuntimeContext(safeItems, filterFields, safeQuery)');
-    expect(source).toContain('const { metadata, uiMetadata, items, query, ...pageValues } = values');
-    expect(source).toContain('const listItems = listPage.entries ?? []');
-    expect(source).toContain('metadataEntrySearchField(metadata)');
-    expect(source).toContain('params.set(`filter.${searchField}`, requestedSearch)');
-    expect(source).toContain('entriesOriginal');
-    expect(source).toContain('items: listItems');
-    expect(source).toContain('pageEntryRuntimeContext(initialRecordValues)');
-    expect(source).not.toContain('contextFields({\n      entity: entityContextName(definition.key),\n      ...pageValues');
+    expect(context).toContain('const runtime = pageListRuntimeContext(safeItems, filterFields, safeQuery)');
+    expect(context).toContain('const { metadata, uiMetadata, items, query, ...pageValues } = values');
+    expect(listRenderer).toContain('const listItems = listPage.entries ?? []');
+    expect(listRenderer).toContain('metadataEntrySearchField(metadata)');
+    expect(listQuery).toContain('params.set(`filter.${searchField}`, requestedSearch)');
+    expect(listQuery).toContain('metadataListFilterQueryValue(sourceQuery, field)');
+    const filtersTemplate = await readFile(resolve(testDirectory, '../views/components/sysbo/list/list-filters.ejs'), 'utf8');
+    expect(filtersTemplate).toContain('name="filter.<%= key %>"');
+    expect(context).toContain('entriesOriginal');
+    expect(listRenderer).toContain('items: listItems');
+    expect(context).toContain('pageEntryRuntimeContext(initialRecordValues)');
+    expect(context).not.toContain('contextFields({\n      entity: entityContextName(definition.key),\n      ...pageValues');
   });
 
   it('keeps entry entryOriginal/entry live at one page-node level and supports id-keyed entries members', async () => {
-    const routes = await readFile(resolve(testDirectory, '../src/routes/sysbo-routes.ts'), 'utf8');
+    const context = await readFile(resolve(testDirectory, '../src/routes/sysbo/context.ts'), 'utf8');
     const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
     const debuggerSource = await readFile(resolve(testDirectory, '../public/js/debugger/ctx-debug.js'), 'utf8');
     const ctxRuntime = await readFile(resolve(testDirectory, '../public/js/ctx-runtime.js'), 'utf8');
 
-    expect(routes).toContain('pageEntryRuntimeContext(initialRecordValues)');
+    expect(context).toContain('pageEntryRuntimeContext(initialRecordValues)');
     expect(forms).toContain('leafPageEntryPath');
     expect(forms).toContain('runtime.updateField(pagePath, key, value, option');
     expect(forms).toContain('window.addEventListener(CHANGE_EVENT');
@@ -44,22 +49,26 @@ describe('SysBO flattened page CTX data flow', () => {
     expect(debuggerSource).toContain("entries['<uuid>']");
   });
   it('keeps the populated parent entries alive while its child entry page is open', async () => {
-    const routes = await readFile(resolve(testDirectory, '../src/routes/sysbo-routes.ts'), 'utf8');
+    const recordRenderer = await readFile(resolve(testDirectory, '../src/routes/sysbo/record-renderer.ts'), 'utf8');
+    const context = await readFile(resolve(testDirectory, '../src/routes/sysbo/context.ts'), 'utf8');
+    const parentList = await readFile(resolve(testDirectory, '../src/routes/sysbo/parent-list.ts'), 'utf8');
 
-    expect(routes).toContain('parentListContextForEntry');
-    expect(routes).toContain('pageListRuntimeContext(parentItems, parentFilterFields, parentQuery)');
-    expect(routes).toContain('parentListQueryForEntry');
-    expect(routes).toContain("const expectedPath = `/bo/${definition.key}`");
-    expect(routes).toContain('parentListContext,');
+    expect(recordRenderer).toContain('parentListContextForEntry');
+    expect(context).toContain('pageListRuntimeContext(parentItems, parentFilterFields, parentQuery)');
+    expect(parentList).toContain('function parentListQueryForEntry');
+    expect(parentList).toContain("url.pathname !== `/bo/${definition.key}`");
+    expect(recordRenderer).toContain('parentListContext,');
   });
 
   it('opens aggregate-owned entries from owner entries without the ordinary record GET path', async () => {
     const routes = await readFile(resolve(testDirectory, '../src/routes/sysbo-routes.ts'), 'utf8');
+    const ownerManaged = await readFile(resolve(testDirectory, '../src/routes/sysbo/owner-managed-entry.ts'), 'utf8');
     const workspace = await readFile(resolve(testDirectory, '../public/js/components/hierarchy-workspace.js'), 'utf8');
 
     expect(routes).toContain("router.post('/:key/owned-entry/:id'");
     expect(routes).toContain('itemOverride: { ...item }');
-    expect(routes).toContain('parentOwnerContext:');
+    expect(routes).toContain('parentOwnerContext,');
+    expect(ownerManaged).toContain('parentOwnerContext: {');
     expect(routes).toContain("router.post('/:key/owned/save'");
     expect(workspace).toContain("append('_ownerEntries', JSON.stringify(entries()))");
     expect(workspace).toContain('/owned-entry/');

@@ -137,7 +137,7 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     });
 
-    it('blocks a Guest from mCRM SysApplications, including generic creation', async () => {
+    it('blocks a Guest from protoCRM SysApplications, including generic creation', async () => {
       const registration = await request(context.app).post('/api/v1/auth/register').send({
         name: 'ReadOnlyGuest',
         email: 'readonly@example.test',

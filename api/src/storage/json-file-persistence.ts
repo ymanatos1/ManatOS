@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 
 import { dirname, resolve } from 'node:path';
 
-import { MCRM_PLATFORM_ID, StorageAppError, type SysBOExtAuthProvider, type SysBOLicense } from '@manatos/shared';
+import { PROTOCRM_PLATFORM_ID, StorageAppError, type SysBOExtAuthProvider, type SysBOLicense } from '@manatos/shared';
 
 import { emptyDatabaseState, type DatabaseState, type PersistedDatabaseState } from './types.js';
 
@@ -169,17 +169,17 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
 
 
 /**
- * Backward-compatible normalization for databases written before platform
- * ownership was introduced. Existing licenses necessarily referred to mCRM
- * SysBOApplications, so the migration is deterministic and does not require a
+ * Backward-compatible normalization for databases written before platform ownership was introduced or while protoCRM still used
+ * the legacy 'mcrm' platform id. Those records necessarily refer to protoCRM, so
+ * the migration is deterministic and does not require a
  * destructive database rebuild.
  */
 function normalizeLegacyLicenses(records: Map<string, SysBOLicense>): Map<string, SysBOLicense> {
   for (const [id, license] of records) {
-    if (!license.platformId) {
+    if (!license.platformId || license.platformId === 'mcrm') {
       records.set(id, {
         ...license,
-        platformId: MCRM_PLATFORM_ID,
+        platformId: PROTOCRM_PLATFORM_ID,
       });
     }
   }

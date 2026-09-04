@@ -9,12 +9,12 @@ const source = (relativePath: string) => readFile(resolve(testDirectory, '..', r
 
 describe('evaluator-backed action presentation', () => {
   it('resolves list Add visible/enabled/reason from metadata against CTX facts', async () => {
-    const routes = await source('src/routes/sysbo-routes.ts');
-    const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
+    const listRenderer = await source('src/routes/sysbo/list-renderer.ts');
+    const list = await source('views/pages/sysbo/list.ejs');
 
-    expect(routes).toContain('const resolvedAddAction = {');
-    expect(routes).toContain("sourcePath: `list.addAction.${property}`");
-    expect(routes).toContain('addConstraintReached');
+    expect(listRenderer).toContain('const resolvedAddAction = {');
+    expect(listRenderer).toContain("sourcePath: `list.addAction.${property}`");
+    expect(listRenderer).toContain('addConstraintReached');
     expect(list).toContain('resolvedAddAction.resolvedVisible');
     expect(list).toContain('resolvedAddAction.resolvedEnabled');
     expect(list).not.toContain('permissions.create && metadataUI.list.addAction.visible');
@@ -22,7 +22,7 @@ describe('evaluator-backed action presentation', () => {
   });
 
   it('lets entry action metadata own visibility/enabled policy without renderer permission gates', async () => {
-    const entry = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const entry = await source('views/pages/sysbo/entry.ejs');
 
     expect(entry).toContain('dynamicUIValue(action.visible');
     expect(entry).toContain('dynamicUIValue(action.enabled ?? true');

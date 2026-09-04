@@ -10,12 +10,12 @@ const sharedSource = (relativePath: string) => readFile(resolve(testDirectory, '
 
 describe('owner-managed hierarchy recordQuick presentation', () => {
   it('keeps recordQuick entity-driven, compact and validity/dirtiness aware', async () => {
-    const contract = await sharedSource('src/bo-ui-metadata-types.ts');
-    const metadata = await sharedSource('src/bo-ui-metadata.ts');
-    const quick = await uiSource('views/pages/metadata-driven/ui-components/record-quick.ejs');
+    const contract = await sharedSource('src/metadata/ui/types.ts');
+    const metadata = await sharedSource('src/metadata/ui/business.ts');
+    const quick = await uiSource('views/components/sysbo/hierarchy/record-quick.ejs');
     const workspace = await uiSource('public/js/components/hierarchy-workspace.js');
-    const hierarchyPage = await uiSource('views/pages/metadata-driven/ui-components/hierarchy-workspace.ejs');
-    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
+    const hierarchyPage = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
+    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
     const tree = await uiSource('public/js/components/hierarchy-tree.js');
     const forms = await uiSource('public/js/forms.js');
     const css = await uiSource('public/css/ui.css');
@@ -71,6 +71,15 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     expect(workspace).toContain('is already the parent of');
     expect(workspace).not.toContain('Draft saved${savedDraftAt');
     expect(workspace).toContain('data-hierarchy-save-draft');
+    expect(hierarchyPage).toContain('data-hierarchy-clear-all');
+    expect(hierarchyPage).toContain('data-hierarchy-clear-all-confirm-template');
+    expect(hierarchyPage).toContain('data-clear-all-tab="summary"');
+    expect(hierarchyPage).toContain('data-clear-all-tab="details"');
+    expect(workspace).toContain('confirmClearAllWorkspace');
+    expect(workspace).toContain('clearAllWorkspace');
+    expect(workspace).toContain("replaceOriginalEntries([], 'clear-all-originals')");
+    expect(workspace).toContain("replaceEntries([], 'clear-all')");
+    expect(workspace).toContain('Persisted entries remain unchanged in application storage/database.');
     expect(hierarchyPage).toContain('data-commit-tab="summary"');
     expect(hierarchyPage).toContain('data-commit-tab="details"');
     expect(workspace).toContain('Existing entries unchanged');
@@ -148,14 +157,14 @@ describe('hierarchy draft persistence and relation selection', () => {
     expect(hierarchyTreeScript).toContain('Add existing entry…');
     expect(hierarchyTreeScript).toContain('data-hierarchy-add-relation="parent"');
     expect(hierarchyTreeScript).toContain('data-hierarchy-existing-node-menu');
-    const hierarchyPage = await uiSource('views/pages/metadata-driven/ui-components/hierarchy-workspace.ejs');
-    const listFilters = await uiSource('views/pages/metadata-driven/ui-components/list-filters.ejs');
-    const listPaging = await uiSource('views/pages/metadata-driven/ui-components/list-paging.ejs');
+    const hierarchyPage = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
+    const listFilters = await uiSource('views/components/sysbo/list/list-filters.ejs');
+    const listPaging = await uiSource('views/components/sysbo/list/list-paging.ejs');
     expect(hierarchyPage).toContain('data-hierarchy-entry-selector-template');
-    expect(hierarchyPage).toContain("include('list-toolbar'");
-    expect(hierarchyPage).toContain("include('list-filters'");
-    expect(hierarchyPage).toContain("include('list-table-header'");
-    expect(hierarchyPage).toContain("include('list-paging'");
+    expect(hierarchyPage).toContain("include('../list/list-toolbar'");
+    expect(hierarchyPage).toContain("include('../list/list-filters'");
+    expect(hierarchyPage).toContain("include('../list/list-table-header'");
+    expect(hierarchyPage).toContain("include('../list/list-paging'");
     expect(listFilters).toContain('data-selector-filter-clear');
     expect(listFilters).toContain('data-selector-filter-apply');
     expect(listPaging).toContain('data-selector-page-size');
@@ -188,7 +197,7 @@ describe('hierarchy draft persistence and relation selection', () => {
   });
   it('seeds ctx.entities from the complete canonical object registry including internal relationship objects', async () => {
     const pageContext = await uiSource('src/middleware/page-context.ts');
-    const metadata = await sharedSource('src/bo-metadata.ts');
+    const metadata = await sharedSource('src/metadata/bo/registry.ts');
     expect(pageContext).toContain('allManatOSObjectMetadata');
     expect(pageContext).toContain('Object.values(allManatOSObjectMetadata)');
     expect(metadata).toContain('[sysBOEmailAddressesMetadata.key]');

@@ -6,13 +6,13 @@ import { config } from '../config.js';
 
 import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
 
-import { apiClient } from '../api-client.js';
+import { apiClient } from '../api/client.js';
 
 import { apiSessionOptions, clearApiSession, isApiSessionExpired } from '../auth/api-session.js';
 
 import { navigationFor } from '../navigation.js';
 
-import { buildRootScope } from '../scopes.js';
+import { buildRootScope } from '../context/root-scope.js';
 
 import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
 import { createManatOSContext, registerContextEntity } from '../context/manatos-context.js';

@@ -11,10 +11,11 @@ const sharedSource = (relativePath: string) => readFile(resolve(testDirectory, '
 
 describe('metadata-driven field/content component infrastructure', () => {
   it('composes tab fields and components without entity-specific renderer branches', async () => {
-    const contract = await sharedSource('src/bo-ui-metadata-types.ts');
-    const metadata = await sharedSource('src/bo-ui-metadata.ts');
-    const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
+    const contract = await sharedSource('src/metadata/ui/types.ts');
+    const metadata = await sharedSource('src/metadata/ui/business.ts');
+    const identityMetadata = await sharedSource('src/metadata/ui/identity.ts');
+    const renderer = await uiSource('views/pages/sysbo/entry.ejs');
+    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
     const forms = await uiSource('public/js/forms.js');
 
     expect(contract).toContain('SysBOUITabContentMetadata');
@@ -23,8 +24,8 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(contract).toContain("kind: 'break'");
     expect(contract).toContain("kind: 'spacer'");
     expect(contract).toContain('bindings?:');
-    expect(metadata).toContain("key: 'contextual-help'");
-    expect(metadata).toContain("key: 'provider-credentials'");
+    expect(identityMetadata).toContain("key: 'contextual-help'");
+    expect(identityMetadata).toContain("key: 'provider-credentials'");
     expect(metadata).toContain("key: 'hierarchy-tree'");
     expect(tabContent).toContain('metadataComponentPartialFor(String(component.key))');
     expect(tabContent).toContain("content.kind === 'break'");
@@ -43,10 +44,10 @@ describe('metadata-driven field/content component infrastructure', () => {
   });
 
   it('passes canonical renderer context explicitly across EJS include boundaries', async () => {
-    const pageRenderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
-    const formField = await uiSource('views/pages/metadata-driven/field-components/form-field.ejs');
-    const entityField = await uiSource('views/pages/metadata-driven/field-components/entity-field.ejs');
+    const pageRenderer = await uiSource('views/pages/sysbo/entry.ejs');
+    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
+    const formField = await uiSource('views/field-components/form-field.ejs');
+    const entityField = await uiSource('views/field-components/entity-field.ejs');
 
     expect(pageRenderer).toContain('const fieldComponentContext = {');
     expect(pageRenderer).toContain('const metadataComponentContext = {');
@@ -66,17 +67,17 @@ describe('metadata-driven field/content component infrastructure', () => {
   });
 
   it('uses enhanced canonical controls only through the entity-field dispatcher', async () => {
-    const renderer = await uiSource('views/pages/metadata-driven/field-components/entity-field.ejs');
-    const text = await uiSource('views/pages/metadata-driven/field-components/text-field.ejs');
-    const date = await uiSource('views/pages/metadata-driven/field-components/date-field.ejs');
-    const datetime = await uiSource('views/pages/metadata-driven/field-components/datetime-field.ejs');
-    const duration = await uiSource('views/pages/metadata-driven/field-components/duration-field.ejs');
-    const version = await uiSource('views/pages/metadata-driven/field-components/version-field.ejs');
-    const enumSelect = await uiSource('views/pages/metadata-driven/field-components/enum-select.ejs');
-    const reference = await uiSource('views/pages/metadata-driven/field-components/reference-select.ejs');
-    const number = await uiSource('views/pages/metadata-driven/field-components/number-field.ejs');
-    const boolean = await uiSource('views/pages/metadata-driven/field-components/boolean-field.ejs');
-    const calculated = await uiSource('views/pages/metadata-driven/field-components/calculated-field.ejs');
+    const renderer = await uiSource('views/field-components/entity-field.ejs');
+    const text = await uiSource('views/field-components/text-field.ejs');
+    const date = await uiSource('views/field-components/date-field.ejs');
+    const datetime = await uiSource('views/field-components/datetime-field.ejs');
+    const duration = await uiSource('views/field-components/duration-field.ejs');
+    const version = await uiSource('views/field-components/version-field.ejs');
+    const enumSelect = await uiSource('views/field-components/enum-select.ejs');
+    const reference = await uiSource('views/field-components/reference-select.ejs');
+    const number = await uiSource('views/field-components/number-field.ejs');
+    const boolean = await uiSource('views/field-components/boolean-field.ejs');
+    const calculated = await uiSource('views/field-components/calculated-field.ejs');
     const runtime = await uiSource('public/js/field-components/runtime.js');
 
     expect(renderer).toContain("field.type === 'string' || field.type === 'email'");
@@ -119,10 +120,10 @@ describe('metadata-driven field/content component infrastructure', () => {
   });
 
   it('keeps read-only field tools interactive while disabling only mutating actions', async () => {
-    const tools = await uiSource('views/pages/metadata-driven/field-components/field-tools-menu.ejs');
-    const calculated = await uiSource('views/pages/metadata-driven/field-components/calculated-field.ejs');
-    const enumSelect = await uiSource('views/pages/metadata-driven/field-components/enum-select.ejs');
-    const reference = await uiSource('views/pages/metadata-driven/field-components/reference-select.ejs');
+    const tools = await uiSource('views/field-components/field-tools-menu.ejs');
+    const calculated = await uiSource('views/field-components/calculated-field.ejs');
+    const enumSelect = await uiSource('views/field-components/enum-select.ejs');
+    const reference = await uiSource('views/field-components/reference-select.ejs');
     const runtime = await uiSource('public/js/field-components/runtime.js');
 
     expect(tools).toContain('Copy current value');
@@ -167,8 +168,8 @@ describe('metadata-driven field/content component infrastructure', () => {
   });
 
   it('lets contextual enum options narrow and enrich the canonical enum catalogue', async () => {
-    const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const enumSelect = await uiSource('views/pages/metadata-driven/field-components/enum-select.ejs');
+    const renderer = await uiSource('views/pages/sysbo/entry.ejs');
+    const enumSelect = await uiSource('views/field-components/enum-select.ejs');
     expect(renderer).toContain('const contextual = Array.isArray(referenceValues[field.key])');
     expect(renderer).toContain('contextual.map((candidate) => candidate.value)');
     expect(enumSelect).toContain('data-enum-item="<%= JSON.stringify(option) %>"');
@@ -180,31 +181,31 @@ describe('metadata-driven field/content component infrastructure', () => {
   });
 
   it('uses reusable ui-components for non-field metadata visualizations', async () => {
-    const entry = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const list = await uiSource('views/pages/metadata-driven/bo-list-metadata.ejs');
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
-    const providerCredentials = await uiSource('views/pages/metadata-driven/ui-components/provider-credentials.ejs');
-    const contextualHelp = await uiSource('views/pages/metadata-driven/ui-components/contextual-help.ejs');
+    const entry = await uiSource('views/pages/sysbo/entry.ejs');
+    const list = await uiSource('views/pages/sysbo/list.ejs');
+    const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
+    const providerCredentials = await uiSource('views/components/sysbo/entry/provider-credentials.ejs');
+    const contextualHelp = await uiSource('views/components/common/contextual-help.ejs');
     const registry = await uiSource('src/presentation/metadata-component-registry.ts');
 
-    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
-    expect(tabContent).toContain("include('debugging-panel'");
+    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
+    expect(tabContent).toContain("include('../../debugging/debugging-panel'");
     expect(tabContent).toContain('readOnly: isViewMode || component.readOnly === true');
-    expect(tabContent).toContain("include('related-collections'");
-    expect(list).toContain("include('ui-components/list-filters'");
+    expect(tabContent).toContain("include('../collections/related-collections'");
+    expect(list).toContain("include('../../components/sysbo/list/list-filters'");
     expect(uiMetadata).toContain('notice: {');
     expect(uiMetadata).toContain('disableWhenAllEnumValuesExistForField');
-    expect(providerCredentials).toContain("include('../field-components/text-field'");
+    expect(providerCredentials).toContain("include('../../../field-components/text-field'");
     expect(providerCredentials).toContain("inputTypeOverride: 'password'");
     expect(providerCredentials).toContain('bindCtx: false');
     expect(contextualHelp).toContain('data-contextual-help-key');
     expect(contextualHelp).toContain('itemsDataKey');
-    expect(registry).toContain("'contextual-help': 'ui-components/contextual-help'");
-    expect(tabContent).toContain("include('../' + componentPartial");
+    expect(registry).toContain("'contextual-help': '../../common/contextual-help'");
+    expect(tabContent).toContain("include(componentPartial");
   });
 
   it('keeps field tool menus compact, content-sized and visually tied to their component button', async () => {
-    const tools = await uiSource('views/pages/metadata-driven/field-components/field-tools-menu.ejs');
+    const tools = await uiSource('views/field-components/field-tools-menu.ejs');
     const css = await uiSource('public/css/pages.css');
     const theme = await uiSource('public/css/theme.css');
     expect(tools).toContain("metadata-field-input-menu <%= editable ? 'is-enabled' : 'is-readonly' %>");
@@ -233,11 +234,11 @@ describe('metadata-driven field/content component infrastructure', () => {
   });
 
   it('uses universal field labels and reversible CTX-driven change decoration', async () => {
-    const formField = await uiSource('views/pages/metadata-driven/field-components/form-field.ejs');
+    const formField = await uiSource('views/field-components/form-field.ejs');
     const forms = await uiSource('public/js/forms.js');
     const css = await uiSource('public/css/pages.css');
-    const informationPanel = await uiSource('views/pages/metadata-driven/ui-components/information-panel.ejs');
-    const contextualHelp = await uiSource('views/pages/metadata-driven/ui-components/contextual-help.ejs');
+    const informationPanel = await uiSource('views/components/common/information-panel.ejs');
+    const contextualHelp = await uiSource('views/components/common/contextual-help.ejs');
     const registry = await uiSource('src/presentation/metadata-component-registry.ts');
 
     expect(formField).toContain('data-metadata-field-label="<%= key %>"');
@@ -250,12 +251,12 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(informationPanel).toContain('data-information-panel');
     expect(informationPanel).toContain('data-bs-toggle="collapse"');
     expect(contextualHelp).toContain("include('information-panel'");
-    expect(registry).toContain("'information-panel': 'ui-components/information-panel'");
+    expect(registry).toContain("'information-panel': '../../common/information-panel'");
   });
 
 
   it('renders null calculated references as None on initial and live updates', async () => {
-    const entry = await readFile(resolve(testDirectory, '../views/pages/metadata-driven/bo-entry-metadata.ejs'), 'utf8');
+    const entry = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
     const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
 
     expect(entry).toContain("if (value === undefined || value === null || value === '') return 'None'");

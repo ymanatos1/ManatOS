@@ -28,6 +28,9 @@ describe('system connectivity watchdog', () => {
 
     expect(bootstrap).toContain("reportFailure?.('ui-bootstrap')");
     expect(bootstrap).toContain("reportSuccess?.('ui-bootstrap')");
+    expect(bootstrap).toContain("reportFailure?.('ui-health')");
+    expect(bootstrap).toContain("reportSuccess?.('ui-health')");
+    expect(bootstrap).toContain("fetch('/runtime/health'");
     expect(bootstrap).toContain("window.addEventListener('manatos:system-unavailable'");
 
     expect(traffic).toContain("reportFailure?.('api-traffic')");
@@ -47,6 +50,10 @@ describe('system connectivity watchdog', () => {
     expect(bootstrap.indexOf("reportSuccess?.('ui-bootstrap')")).toBeLessThan(
       bootstrap.indexOf('if (!response.ok)'),
     );
+    const healthSuccess = bootstrap.indexOf("reportSuccess?.('ui-health')");
+    const healthErrorCheck = bootstrap.indexOf('if (!response.ok)', healthSuccess);
+    expect(healthSuccess).toBeGreaterThan(-1);
+    expect(healthSuccess).toBeLessThan(healthErrorCheck);
     expect(traffic.indexOf("reportSuccess?.('api-traffic')")).toBeLessThan(
       traffic.indexOf('if (!response.ok)'),
     );

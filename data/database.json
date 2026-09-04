@@ -813,7 +813,7 @@
       "name": "First sample license",
       "enabled": true,
       "principalId": "ce34b655-e494-438f-a091-ab18d2b37bad",
-      "platformId": "mcrm",
+      "platformId": "protocrm",
       "applicationId": "69cc1b80-326e-44f6-95d2-82d338486580",
       "status": "Active",
       "validFrom": "2026-08-31",

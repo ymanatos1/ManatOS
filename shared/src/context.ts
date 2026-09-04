@@ -122,7 +122,7 @@ export interface ManatOSPlatformPermissionContext {
 export interface ManatOSUserPermissionsContext {
   /** Current website/application role; kept outside fields because it is an authorization fact. */
   userRole: string;
-  /** Platform ids are dynamic (for example `mcrm`). */
+  /** Platform ids are dynamic (for example `protocrm`). */
   [platformId: string]: string | ManatOSPlatformPermissionContext;
 }
 

@@ -72,6 +72,7 @@
   const hierarchyCommit = workspace.querySelector('[data-hierarchy-commit]');
   const hierarchyDraftStatus = workspace.querySelector('[data-hierarchy-draft-status]');
   const hierarchySaveDraft = workspace.querySelector('[data-hierarchy-save-draft]');
+  const hierarchyClearAll = workspace.querySelector('[data-hierarchy-clear-all]');
   const typeField = String(page?.fields?.typeField?.value ?? page?.typeField ?? componentOptions.typeField ?? '');
   const containerTrait = String(page?.fields?.containerTrait?.value ?? page?.containerTrait ?? componentOptions.containerTrait ?? '');
   const canHaveParentTrait = String(page?.fields?.canHaveParentTrait?.value ?? page?.canHaveParentTrait ?? componentOptions.canHaveParentTrait ?? '');
@@ -294,6 +295,14 @@
           : !dirty
             ? 'No changes to commit.'
             : 'Commit all organization members and relationships atomically.';
+    }
+    if (hierarchyClearAll instanceof HTMLButtonElement) {
+      hierarchyClearAll.disabled = !rows.length || Boolean(draft);
+      hierarchyClearAll.title = draft
+        ? 'Finish or cancel the current inline edit first.'
+        : rows.length
+          ? 'Clear this working organization and its saved Create Organization draft.'
+          : 'The Create Organization workspace is already empty.';
     }
 
     refreshDraftStatus(rows);
@@ -1196,6 +1205,100 @@
     } catch { /* Commit already succeeded; draft cleanup must never block navigation. */ }
   };
 
+  const clearAllOperationSummary = () => {
+    const current = entries();
+    const newEntries = current.filter((row) => String(row?.[idField] ?? '').startsWith('draft:'));
+    const persistedEntries = current.filter((row) => {
+      const id = String(row?.[idField] ?? '');
+      return id && !id.startsWith('draft:');
+    });
+    return {
+      newEntries,
+      persistedEntries,
+      total: current.length,
+      savedDraftPresent: Boolean(savedDraftSignature) || storedDraftCandidates().length > 0,
+    };
+  };
+
+  const clearAllWorkspace = () => {
+    if (!draftSupported || draft) return;
+    clearCreateWorkspaceDrafts();
+    savedDraftSignature = null;
+    savedDraftAt = null;
+    replaceOriginalEntries([], 'clear-all-originals');
+    replaceEntries([], 'clear-all');
+    refreshWorkspaceSummary();
+  };
+
+  const confirmClearAllWorkspace = () => {
+    if (!draftSupported || draft || !entries().length) return;
+    document.querySelector('[data-hierarchy-clear-all-confirm]')?.remove();
+    const template = workspace.querySelector('[data-hierarchy-clear-all-confirm-template]');
+    if (!(template instanceof HTMLTemplateElement)) return;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'manatos-popup-backdrop metadata-hierarchy-entry-selector-backdrop';
+    backdrop.dataset.hierarchyClearAllConfirm = '';
+    const fragment = template.content.cloneNode(true);
+    const panel = fragment.querySelector('.metadata-hierarchy-clear-confirm');
+    if (!(panel instanceof HTMLElement)) return;
+
+    const summary = clearAllOperationSummary();
+    const summaryHost = panel.querySelector('[data-clear-all-summary]');
+    if (summaryHost instanceof HTMLElement) {
+      summaryHost.innerHTML = `
+        <div class="row g-2">
+          <div class="col-sm-4"><div class="border rounded p-2 h-100"><strong>${summary.newEntries.length}</strong><div class="small text-secondary">new entries to discard</div></div></div>
+          <div class="col-sm-4"><div class="border rounded p-2 h-100"><strong>${summary.persistedEntries.length}</strong><div class="small text-secondary">persisted entries removed from this working organization</div></div></div>
+          <div class="col-sm-4"><div class="border rounded p-2 h-100"><strong>${summary.savedDraftPresent ? 'Yes' : 'No'}</strong><div class="small text-secondary">saved Create Organization draft to clear</div></div></div>
+        </div>
+        <div class="small text-secondary mt-2">${summary.total} working members will be removed. Persisted entries remain unchanged in application storage/database.</div>`;
+    }
+
+    const detailsHost = panel.querySelector('[data-clear-all-details]');
+    if (detailsHost instanceof HTMLElement) {
+      detailsHost.innerHTML = [
+        commitDetailSection('New entries to discard', summary.newEntries, 'No new entries.'),
+        commitDetailSection('Persisted entries removed from the working organization', summary.persistedEntries, 'No persisted entries are currently included.'),
+        `<section class="mb-3"><div class="fw-semibold mb-1">Saved Create Organization draft</div><div class="small text-secondary">${summary.savedDraftPresent ? 'The saved browser draft for this Create Organization workspace will be deleted.' : 'No saved browser draft currently exists.'}</div></section>`,
+        '<div class="alert alert-info py-2 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>No persisted Principal is deleted or modified in application storage/database by Clear all.</div>',
+      ].join('');
+    }
+
+    panel.querySelectorAll('[data-clear-all-tab]').forEach((button) => button.addEventListener('click', () => {
+      const tab = button.dataset.clearAllTab || 'summary';
+      panel.querySelectorAll('[data-clear-all-tab]').forEach((candidate) => {
+        const active = candidate === button;
+        candidate.classList.toggle('active', active);
+        candidate.setAttribute('aria-selected', String(active));
+      });
+      panel.querySelectorAll('[data-clear-all-panel]').forEach((candidate) => { candidate.hidden = candidate.dataset.clearAllPanel !== tab; });
+    }));
+
+    const developerToolsDock = document.getElementById('developerToolsDock');
+    const developerToolsWasVisible = Boolean(developerToolsDock && !developerToolsDock.classList.contains('d-none'));
+    const ctxButton = panel.querySelector('[data-clear-all-confirm-ctx]');
+    if (ctxButton instanceof HTMLButtonElement) {
+      ctxButton.hidden = !developerToolsWasVisible;
+      ctxButton.addEventListener('click', () => {
+        developerToolsDock?.classList.add('is-popup-inspection');
+        window.ManatOS?.shell?.setDeveloperToolTab?.('ctx', false);
+        window.dispatchEvent(new CustomEvent('manatos:ctx-viewer-select', { detail: { path: pagePath, expand: true } }));
+      });
+    }
+
+    backdrop.append(fragment);
+    document.body.append(backdrop);
+    const cancel = () => { developerToolsDock?.classList.remove('is-popup-inspection'); backdrop.remove(); };
+    panel.querySelectorAll('[data-clear-all-confirm-cancel]').forEach((button) => button.addEventListener('click', cancel));
+    // Universal ManatOS popup rule: backdrop clicks never dismiss a popup.
+    panel.querySelector('[data-clear-all-confirm-accept]')?.addEventListener('click', () => {
+      cancel();
+      clearAllWorkspace();
+    });
+    panel.querySelector('[data-clear-all-confirm-accept]')?.focus();
+  };
+
   const restoreWorkspaceDraft = () => {
     if (!draftSupported) return false;
     let best = null;
@@ -1380,6 +1483,7 @@
   hierarchyClose?.addEventListener('click', closeWorkspace);
   hierarchyEditExit?.addEventListener('click', exitEditWorkspace);
   hierarchySaveDraft?.addEventListener('click', () => saveWorkspaceDraft());
+  hierarchyClearAll?.addEventListener('click', confirmClearAllWorkspace);
   hierarchyCommit?.addEventListener('click', confirmCommitWorkspace);
 
   component.addEventListener('manatos:hierarchy-command', (event) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MANATOS_COMPANY, SysBOUserRole, resolvePlatform } from '@manatos/shared';
+import { MANATOS_COMPANY, PROTOCRM_PLATFORM, SysBOUserRole, resolvePlatform } from '@manatos/shared';
 
 import { createManatOSContext } from '../src/context/manatos-context.js';
 import { navigationFor } from '../src/navigation.js';
@@ -35,6 +35,13 @@ const navigationCtx = (role: SysBOUserRole, platformAccess: boolean) => {
 };
 
 describe('company/platform navigation composition', () => {
+  it('composes the Company catalogue from the canonical protoCRM platform module', () => {
+    const platform = resolvePlatform(MANATOS_COMPANY);
+
+    expect(platform).toBe(PROTOCRM_PLATFORM);
+    expect(platform.presentation?.stylesheet).toBe('/css/platforms/protocrm.css');
+  });
+
   it('places Platform immediately after Company in horizontal navigation', () => {
     const navigation = navigationFor(SysBOUserRole.Admin, true).horizontal;
 
@@ -44,7 +51,7 @@ describe('company/platform navigation composition', () => {
       'platform',
       'resources',
     ]);
-    expect(navigation.find((item) => item.id === 'platform')?.url).toBe('/platform/mcrm');
+    expect(navigation.find((item) => item.id === 'platform')?.url).toBe('/platform/protocrm');
   });
 
   it('turns Platform into a catalogue dropdown when multiple platforms are enabled', () => {
@@ -64,10 +71,10 @@ describe('company/platform navigation composition', () => {
       .find((item) => item.id === 'platform');
 
     expect(platformItem?.url).toBeUndefined();
-    expect(platformItem?.children?.map((item) => item.text)).toEqual(['mCRM', 'Analytics']);
+    expect(platformItem?.children?.map((item) => item.text)).toEqual(['protoCRM', 'Analytics']);
   });
 
-  it('merges Company and mCRM contributions into the current left-nav order', () => {
+  it('merges Company and protoCRM contributions into the current left-nav order', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform).vertical;
 
@@ -152,13 +159,13 @@ describe('company/platform navigation composition', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const playground = platform.navigation.find((item) => item.id === 'app-playground');
     expect(playground?.visible).toEqual({
-      expression: 'user.permissions.mcrm.capabilities.platformAccess === true',
+      expression: 'user.permissions.protocrm.capabilities.platformAccess === true',
     });
     expect(playground?.requiresAuthentication).toBeUndefined();
     expect(playground?.requiresPlatformEntitlement).toBeUndefined();
   });
 
-  it('gates mCRM application navigation by entitlement for every non-Admin role', () => {
+  it('gates protoCRM application navigation by entitlement for every non-Admin role', () => {
     for (const role of [SysBOUserRole.Guest, SysBOUserRole.User, SysBOUserRole.Superuser]) {
       const unlicensed = navigationFor(role, true);
       expect(unlicensed.vertical.some((item) => item.id === 'app-playground')).toBe(false);
@@ -212,7 +219,7 @@ describe('company/platform navigation composition', () => {
 // The effective SysBO catalogue follows the same ownership composition as navigation.
 
 describe('company/platform SysBO ownership', () => {
-  it('combines Company-owned SysBOs with mCRM-owned SysBOApplication', () => {
+  it('combines Company-owned SysBOs with protoCRM-owned SysBOApplication', () => {
     expect(Object.keys(effectiveSysBODefinitions()).sort()).toEqual([
       'sys-applications',
       'sys-configurations',
@@ -223,7 +230,7 @@ describe('company/platform SysBO ownership', () => {
     ]);
   });
 
-  it('removes mCRM SysBOApplication when the selected platform does not contribute it', () => {
+  it('removes protoCRM SysBOApplication when the selected platform does not contribute it', () => {
     const platform = {
       ...resolvePlatform(MANATOS_COMPANY),
       entities: [],

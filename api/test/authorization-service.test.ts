@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  MCRM_PLATFORM_ID,
+  PROTOCRM_PLATFORM_ID,
   SysBOLicenseStatus,
   SysBOPrincipalType,
   SysBOUserPrincipalRelationship,
@@ -41,13 +41,13 @@ describe('AuthorizationService', () => {
     SysBOUserRole.Superuser,
     SysBOUserRole.User,
     SysBOUserRole.Guest,
-  ])('blocks an unlicensed non-Admin %s from mCRM SysBOApplications', async (role) => {
+  ])('blocks an unlicensed non-Admin %s from protoCRM SysBOApplications', async (role) => {
     await expect(
       authorization.can('read', subject(role), 'sys-applications'),
     ).resolves.toBe(false);
   });
 
-  it('uses linked-principal licenses for mCRM collection and application read access', async () => {
+  it('uses linked-principal licenses for protoCRM collection and application read access', async () => {
     const user = await context.services.users.createUser(
       {
         name: 'LicensedUser',
@@ -84,9 +84,9 @@ describe('AuthorizationService', () => {
     );
     await context.services.licenses.create(
       {
-        name: 'Restricted mCRM license',
+        name: 'Restricted protoCRM license',
         principalId: principal.id,
-        platformId: MCRM_PLATFORM_ID,
+        platformId: PROTOCRM_PLATFORM_ID,
         applicationId: allowedApp.id,
         status: SysBOLicenseStatus.Active,
         quantity: 1,

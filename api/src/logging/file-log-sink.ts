@@ -4,6 +4,9 @@ import { dirname, isAbsolute, resolve } from 'node:path';
 import { config } from '../config.js';
 import type { LogEntry, LogSink } from './log-sink.js';
 
+const transientFileErrorCodes = new Set(['EBUSY', 'EPERM', 'EACCES']);
+const transientRetryDelaysMs = [10, 25, 50];
+
 const priorities: Record<LogEntry['level'], number> = {
   debug: 10,
   info: 20,
@@ -15,6 +18,37 @@ const priorities: Record<LogEntry['level'], number> = {
 function resolveConfiguredPath(value: string | undefined): string | undefined {
   if (!value) return undefined;
   return isAbsolute(value) ? value : resolve(process.cwd(), value);
+}
+
+function isTransientFileError(error: unknown): error is NodeJS.ErrnoException {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      transientFileErrorCodes.has(String((error as NodeJS.ErrnoException).code ?? '')),
+  );
+}
+
+/**
+ * The sink is synchronous by design so log ordering matches application order.
+ * A very short synchronous wait is used only after Windows reports a transient
+ * file lock (for example antivirus/indexing touching the active log file).
+ */
+function waitForTransientFileRetry(delayMs: number): void {
+  const signal = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+  Atomics.wait(signal, 0, 0, delayMs);
+}
+
+function withTransientFileRetry(operation: () => void): void {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      operation();
+      return;
+    } catch (error) {
+      if (!isTransientFileError(error) || attempt >= transientRetryDelaysMs.length) throw error;
+      waitForTransientFileRetry(transientRetryDelaysMs[attempt]!);
+    }
+  }
 }
 
 /**
@@ -41,26 +75,35 @@ export class FileLogSink implements LogSink {
   }
 
   write(entry: LogEntry): void {
+    const line = `${JSON.stringify(entry)}\n`;
+
+    if (
+      this.normalFile &&
+      priorities[entry.level] >= priorities[config.LOG_FILE_MIN_LEVEL]
+    ) {
+      this.writeFile(this.normalFile, line);
+    }
+
+    /*
+     * Treat destinations independently: a temporary lock on one file must not
+     * prevent another configured destination from receiving the same entry.
+     */
+    if (
+      this.errorFile &&
+      priorities[entry.level] >= priorities[config.LOG_ERROR_FILE_MIN_LEVEL]
+    ) {
+      this.writeFile(this.errorFile, line);
+    }
+  }
+
+  private writeFile(file: string, line: string): void {
     try {
-      const line = `${JSON.stringify(entry)}\n`;
-
-      if (
-        this.normalFile &&
-        priorities[entry.level] >= priorities[config.LOG_FILE_MIN_LEVEL]
-      ) {
-        this.rotateIfNeeded(this.normalFile, Buffer.byteLength(line));
-        appendFileSync(this.normalFile, line, 'utf8');
-      }
-
-      if (
-        this.errorFile &&
-        priorities[entry.level] >= priorities[config.LOG_ERROR_FILE_MIN_LEVEL]
-      ) {
-        this.rotateIfNeeded(this.errorFile, Buffer.byteLength(line));
-        appendFileSync(this.errorFile, line, 'utf8');
-      }
+      withTransientFileRetry(() => {
+        this.rotateIfNeeded(file, Buffer.byteLength(line));
+        appendFileSync(file, line, 'utf8');
+      });
     } catch (error) {
-      this.reportFailure('Unable to persist server log entry', error);
+      this.reportFailure(`Unable to persist server log entry to ${file}`, error);
     }
   }
 

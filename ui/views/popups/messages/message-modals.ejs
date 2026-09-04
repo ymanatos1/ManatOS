@@ -4,7 +4,7 @@
   icon, severity surface and action set while preserving one consistent compact appearance.
 %>
 <% if (typeof warningMessage !== 'undefined' && warningMessage) { %>
-  <%- include('../layouts/message-popup', {
+  <%- include('../shared/message-popup', {
     modalId: 'warningMessageModal',
     labelId: 'warningMessageModalLabel',
     dialogClass: 'modal-md',
@@ -25,7 +25,7 @@
 <% } %>
 
 <% if (typeof informationMessage !== 'undefined' && informationMessage) { %>
-  <%- include('../layouts/message-popup', {
+  <%- include('../shared/message-popup', {
     modalId: 'informationMessageModal',
     labelId: 'informationMessageModalLabel',
     dialogClass: 'modal-md',
@@ -46,7 +46,7 @@
 <% } %>
 
 <% if (typeof applicationError !== 'undefined' && applicationError) { %>
-  <%- include('../layouts/message-popup', {
+  <%- include('../shared/message-popup', {
     modalId: 'applicationErrorModal',
     labelId: 'applicationErrorModalLabel',
     dialogClass: 'modal-lg',

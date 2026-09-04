@@ -48,7 +48,7 @@
     >
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-      <%- include('../popups/partials/popup-header', {
+      <%- include('../popups/shared/popup-header', {
         labelId: 'externalRegistrationModalLabel',
         icon: 'bi-person-plus',
         modalTitle: externalRegistrationCopy.modalTitle,
@@ -59,7 +59,7 @@
       }) %>
 
       <div class="modal-body auth-primary-modal-body auth-email-registration-body">
-        <%- include('../popups/partials/rich-popup-hero', {
+        <%- include('../popups/shared/rich-popup-hero', {
           introClass: 'auth-email-registration-intro',
           illustration: { kind: 'provider', provider, context: 'register' },
           contentTitle: externalRegistrationCopy.contentTitle,
@@ -148,14 +148,14 @@
                 <p class="small mb-2 text-secondary">
                   Leave both password fields empty to use the external provider only, or the passwords must satisfy all rules below.
                 </p>
-                <%- include('../partials/password-rules', { includeMatchRule: true }) %>
+                <%- include('../components/auth/password-rules', { includeMatchRule: true }) %>
               </div>
             </div>
           </div>
         </section>
       </div>
 
-      <%- include('../popups/partials/popup-footer', {
+      <%- include('../popups/shared/popup-footer', {
         footerClass: 'auth-step-footer',
         leftActions: [{ label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary', href: '/' }],
         rightActions: [

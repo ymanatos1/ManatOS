@@ -10,7 +10,7 @@ const source = (path: string) => readFile(resolve(testDirectory, '..', path), 'u
 describe('Account SysUser metadata reuse', () => {
   it('uses canonical SysUser calculated status values instead of recalculating status text', async () => {
     const account = await source('views/pages/account.ejs');
-    const authenticationSummary = await source('views/partials/authentication-summary.ejs');
+    const authenticationSummary = await source('views/components/auth/authentication-summary.ejs');
 
     expect(account).toContain("emailVerificationStatus: ctxUserFieldValue('emailVerificationStatus')");
     expect(account).toContain("localPasswordStatus: ctxUserFieldValue('localPasswordStatus')");

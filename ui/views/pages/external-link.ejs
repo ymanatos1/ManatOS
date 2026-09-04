@@ -32,7 +32,7 @@
         value="<%= csrfToken %>"
       >
 
-      <%- include('../popups/partials/popup-header', {
+      <%- include('../popups/shared/popup-header', {
         labelId: 'externalLinkModalLabel',
         icon: 'bi-link-45deg',
         modalTitle: 'Link external account',
@@ -148,7 +148,7 @@
           </div>
       </div>
 
-      <%- include('../popups/partials/popup-footer', {
+      <%- include('../popups/shared/popup-footer', {
         leftActions: [],
         rightActions: [
           { label: 'Cancel', variant: 'btn-outline-secondary', href: '/' },

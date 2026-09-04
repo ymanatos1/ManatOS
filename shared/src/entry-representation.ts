@@ -1,5 +1,5 @@
-import type {ManatOSEntryValueSourceMetadata, ManatOSObjectMetadata} from './bo-metadata-types.js';
-import type {SysBOUIEntryIconMetadata, SysBOUIMetadata} from './bo-ui-metadata-types.js';
+import type {ManatOSEntryValueSourceMetadata, ManatOSObjectMetadata} from './metadata/bo/types.js';
+import type {SysBOUIEntryIconMetadata, SysBOUIMetadata} from './metadata/ui/types.js';
 import {calculatedContextField, evaluateExpression} from './expressions/index.js';
 
 /** Reference rows are supplied by the owner; representation resolution never performs I/O. */

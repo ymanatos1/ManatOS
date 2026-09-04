@@ -29,26 +29,26 @@ const shellViewSource = readFileSync(
 );
 
 const debuggerViewSource = readFileSync(
-  resolve(process.cwd(), 'views/partials/debugger/ctx-debug.ejs'),
+  resolve(process.cwd(), 'views/components/debugging/ctx-debug.ejs'),
   'utf8',
 );
 const developerToolsViewSource = readFileSync(
-  resolve(process.cwd(), 'views/partials/debugger/developer-tools.ejs'),
+  resolve(process.cwd(), 'views/components/debugging/developer-tools.ejs'),
   'utf8',
 );
 
 const horizontalNavSource = readFileSync(
-  resolve(process.cwd(), 'views/partials/horizontal-nav.ejs'),
+  resolve(process.cwd(), 'views/components/navigation/horizontal-nav.ejs'),
   'utf8',
 );
 
 const debuggingPanelSource = readFileSync(
-  resolve(process.cwd(), 'views/pages/metadata-driven/ui-components/debugging-panel.ejs'),
+  resolve(process.cwd(), 'views/components/debugging/debugging-panel.ejs'),
   'utf8',
 );
 
 const metadataEntrySource = readFileSync(
-  resolve(process.cwd(), 'views/pages/metadata-driven/bo-entry-metadata.ejs'),
+  resolve(process.cwd(), 'views/pages/sysbo/entry.ejs'),
   'utf8',
 );
 
@@ -63,7 +63,7 @@ const fieldRuntimeSource = readFileSync(
 );
 
 const fieldToolsSource = readFileSync(
-  resolve(process.cwd(), 'views/pages/metadata-driven/field-components/field-tools-menu.ejs'),
+  resolve(process.cwd(), 'views/field-components/field-tools-menu.ejs'),
   'utf8',
 );
 

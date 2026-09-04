@@ -177,7 +177,7 @@
       aria-labelledby="account-authentication-tab"
       tabindex="0"
     >
-      <%- include('../partials/authentication-summary', {
+      <%- include('../components/auth/authentication-summary', {
         authenticationUser: currentUser,
         authenticationIdentities,
         emailVerificationStatus: ctxUserFieldValue('emailVerificationStatus'),
@@ -221,7 +221,7 @@
         tabindex="0"
         data-readonly-tab="true"
       >
-        <%- include('metadata-driven/ui-components/debugging-panel', {
+        <%- include('../components/debugging/debugging-panel', {
           entityDebuggingDisplayRows: accountDebuggingDisplayRows,
           uiDebuggingDisplayRows: [],
           debugElementNameParts: accountDebugElementNameParts,

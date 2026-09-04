@@ -11,15 +11,15 @@ const sharedSource = (path: string) => readFile(resolve(testDirectory, '..', '..
 
 describe('generic date-duration-range component', () => {
   it('is layout-only while canonical field calculations are CTX/evaluator driven', async () => {
-    const component = await uiSource('views/pages/metadata-driven/ui-components/date-duration-range.ejs');
-    const fieldRenderer = await uiSource('views/pages/metadata-driven/field-components/form-field.ejs');
+    const component = await uiSource('views/components/common/date-duration-range.ejs');
+    const fieldRenderer = await uiSource('views/field-components/form-field.ejs');
     const forms = await uiSource('public/js/forms.js');
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
-    const canonicalMetadata = await sharedSource('src/bo-metadata.ts');
-    const uiContract = await sharedSource('src/bo-ui-metadata-types.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const canonicalMetadata = await sharedSource('src/metadata/bo/business.ts');
+    const uiContract = await sharedSource('src/metadata/ui/types.ts');
     const shell = await uiSource('views/layout/shell.ejs');
 
-    expect(component).toContain("include('../field-components/form-field'");
+    expect(component).toContain("include('../../field-components/form-field'");
     expect(component).toContain('metadata-date-duration-range-primary');
     expect(component).toContain('metadata-date-duration-range-end');
     expect(component).toContain('key: startField, span: 6');
@@ -49,9 +49,9 @@ describe('generic date-duration-range component', () => {
   });
 
   it('exposes canonical field calculations generically in the Debugging tab with CTX tools', async () => {
-    const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const renderer = await uiSource('views/pages/sysbo/entry.ejs');
     const debuggingModel = await uiSource('src/presentation/metadata-debugging-model.ts');
-    const panel = await uiSource('views/pages/metadata-driven/ui-components/debugging-panel.ejs');
+    const panel = await uiSource('views/components/debugging/debugging-panel.ejs');
     const forms = await uiSource('public/js/forms.js');
 
     expect(renderer).toContain('buildMetadataDebuggingModel({');

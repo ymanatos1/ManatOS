@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  MCRM_PLATFORM_ID,
+  PROTOCRM_PLATFORM_ID,
   licenseGrantsApplicationAccess,
   licenseGrantsPlatformAccess,
   SysBOLicenseStatus,
@@ -29,9 +29,9 @@ describe('platform-aware licenses', () => {
 
     const first = await context.services.licenses.create(
       {
-        name: 'Acme mCRM 1',
+        name: 'Acme protoCRM 1',
         principalId: principal.id,
-        platformId: MCRM_PLATFORM_ID,
+        platformId: PROTOCRM_PLATFORM_ID,
         status: SysBOLicenseStatus.Active,
         quantity: 1,
         enabled: true,
@@ -41,9 +41,9 @@ describe('platform-aware licenses', () => {
 
     const second = await context.services.licenses.create(
       {
-        name: 'Acme mCRM 2',
+        name: 'Acme protoCRM 2',
         principalId: principal.id,
-        platformId: MCRM_PLATFORM_ID,
+        platformId: PROTOCRM_PLATFORM_ID,
         status: SysBOLicenseStatus.Active,
         quantity: 5,
         enabled: true,
@@ -61,7 +61,7 @@ describe('platform-aware licenses', () => {
       id: 'license-1',
       name: 'Entitlement',
       principalId: 'principal-1',
-      platformId: MCRM_PLATFORM_ID,
+      platformId: PROTOCRM_PLATFORM_ID,
       status: SysBOLicenseStatus.Active,
       quantity: 1,
       enabled: true,
@@ -72,15 +72,15 @@ describe('platform-aware licenses', () => {
     };
     const now = new Date('2026-08-30T12:00:00.000Z');
 
-    expect(licenseGrantsPlatformAccess(base, MCRM_PLATFORM_ID, now)).toBe(true);
-    expect(licenseGrantsApplicationAccess(base, MCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
-    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, MCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
-    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, MCRM_PLATFORM_ID, 'app-2', now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29T23:59:59.000Z' }, MCRM_PLATFORM_ID, now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-30' }, MCRM_PLATFORM_ID, new Date('2026-08-30T23:59:59.999Z'))).toBe(true);
-    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29' }, MCRM_PLATFORM_ID, now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, quantity: 0 }, MCRM_PLATFORM_ID, now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, enabled: false }, MCRM_PLATFORM_ID, now)).toBe(false);
+    expect(licenseGrantsPlatformAccess(base, PROTOCRM_PLATFORM_ID, now)).toBe(true);
+    expect(licenseGrantsApplicationAccess(base, PROTOCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
+    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, PROTOCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
+    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, PROTOCRM_PLATFORM_ID, 'app-2', now)).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29T23:59:59.000Z' }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-30' }, PROTOCRM_PLATFORM_ID, new Date('2026-08-30T23:59:59.999Z'))).toBe(true);
+    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29' }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, quantity: 0 }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, enabled: false }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
   });
 
 });

@@ -92,6 +92,7 @@
     consecutiveFailures: 0,
     pollingSuspended: false,
     pollInFlight: false,
+    renderedDetailKey: null,
   };
 
   const persistState = () => {
@@ -262,12 +263,24 @@
     }
   };
 
-  const renderDetails = () => {
+  const renderDetails = (force = false) => {
     const entry = selectedEntry();
     if (!details || !detailsBody || !detailsTitle || !entry) {
       details?.classList.add('d-none');
+      state.renderedDetailKey = null;
       return;
     }
+
+    const detailKey = `${entry.id}:${state.detailTab}`;
+    if (!force && state.renderedDetailKey === detailKey) return;
+
+    /*
+     * The traffic list is live, but the selected request/response is an
+     * inspection surface. Polling must never rebuild its DOM because doing so
+     * resets the developer's scroll position while they are reading a payload.
+     * Re-render details only when the selected entry or active detail tab changes.
+     */
+    state.renderedDetailKey = detailKey;
     details.classList.remove('d-none');
     detailsTitle.textContent = `${entry.method} ${compactPath(entry.path)}`;
     requestTab?.classList.toggle('is-active', state.detailTab === 'request');
@@ -308,6 +321,7 @@
       const path = compactPath(entry.path);
       row.innerHTML = `<span class="api-traffic-time">${escapeHtml(time)}</span><strong class="api-traffic-method">${escapeHtml(entry.method)}</strong><span class="api-traffic-path" title="${escapeHtml(entry.path)}">${resourcePathHtml(path)}</span><span class="api-traffic-status">${escapeHtml(entry.status ?? 'ERR')}</span><span class="api-traffic-duration">${escapeHtml(entry.durationMs)} ms</span>`;
       row.addEventListener('click', () => {
+        if (state.selectedId !== entry.id) state.renderedDetailKey = null;
         state.selectedId = entry.id;
         persistState();
         render();
@@ -414,9 +428,9 @@
     render();
   });
   filter?.addEventListener('input', () => { persistState(); render(); });
-  requestTab?.addEventListener('click', () => { state.detailTab = 'request'; persistState(); renderDetails(); });
-  responseTab?.addEventListener('click', () => { state.detailTab = 'response'; persistState(); renderDetails(); });
-  detailsClose?.addEventListener('click', () => { state.selectedId = null; persistState(); render(); });
+  requestTab?.addEventListener('click', () => { state.detailTab = 'request'; state.renderedDetailKey = null; persistState(); renderDetails(true); });
+  responseTab?.addEventListener('click', () => { state.detailTab = 'response'; state.renderedDetailKey = null; persistState(); renderDetails(true); });
+  detailsClose?.addEventListener('click', () => { state.selectedId = null; state.renderedDetailKey = null; persistState(); render(); });
 
   const positionRouteMenu = () => {
     if (!routeMenu || !routesButton || routeMenu.classList.contains('d-none')) return;
@@ -459,6 +473,7 @@
     state.entries = [];
     state.lastId = null;
     state.selectedId = null;
+    state.renderedDetailKey = null;
     // Clear only the visible/captured request buffer. Route counters are
     // intentionally boot-lifetime telemetry and therefore continue until the
     // ManatOS UI boot id changes on a system/server restart.

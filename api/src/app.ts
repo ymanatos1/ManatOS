@@ -4,9 +4,6 @@ import swaggerUi from 'swagger-ui-express';
 
 import {
   SysBOUserRole,
-  ExpressionEvaluationError,
-  ValidationAppError,
-  expressionFunctions,
   sysBOApplicationsMetadata,
   sysBOExtAuthProvidersMetadata,
   sysBOEmailAddressesMetadata,
@@ -22,8 +19,6 @@ import {
 
 import { createSysBORouter } from './http/sysbo-router.js';
 import { GenericSysBOService } from './services/generic-sysbo-service.js';
-import { DataStoreEntityResolver } from './services/entity-resolver.js';
-import { API_IMPLEMENTATION_VERSION, API_VERSION } from './version.js';
 
 import { createInternalRouter } from './http/internal-router.js';
 
@@ -49,22 +44,24 @@ import type {
   SysBOLicenseService,
   SysBOPrincipalService,
   UserPrincipalService,
-} from './services/domain-services.js';
+} from './services/index.js';
 
-import { requireAdmin, requireAuthenticated } from './auth/auth-middleware.js';
+import { requireAuthenticated } from './auth/auth-middleware.js';
 import { AuthorizationService } from './auth/authorization-service.js';
 import { createAuthRouter } from './auth/auth-router.js';
 
-import { sendCommand, sendFailure, sendQuery } from './http/api-response.js';
-import { authenticatedAuditActor } from './audit/audit-service.js';
+import { sendFailure } from './http/api-response.js';
 import type { IEmailService } from './email/email-service.js';
 import type { SysBOConfigurationService } from './services/sys-configuration-service.js';
+
+import { createPublicRouter } from './http/public-router.js';
+import { createExpressionRouter } from './http/expression-router.js';
+import { createConfigurationRouter } from './http/configuration-router.js';
+import { createExtAuthProviderAdminRouter } from './http/ext-auth-provider-admin-router.js';
 
 import type {
   SysBOExtAuthProviderService,
   SaveSysBOExtAuthProviderInput,
-  SaveStoredSysBOExtAuthProviderInput,
-  SaveVerifiedSysBOExtAuthProviderInput,
 } from './services/sys-ext-auth-provider-service.js';
 
 /**
@@ -263,87 +260,17 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     ),
   );
 
-  /**
-   * Anonymous-safe UI bootstrap contract.
-   *
-   * The UI starts from local defaults and refreshes this data opportunistically.
-   * Keep this payload intentionally small and limited to information that is both
-   * useful before sign-in and safe to expose publicly. External authentication
-   * provider state has its own on-demand endpoint because freshness matters when
-   * Sign in/Register is opened.
-   */
-  app.get('/api/v1/public/ui-bootstrap', async (_req, res) => {
-    res.set('Cache-Control', 'no-store');
-    const value = async (name:string) => services.configurations.resolve(name);
-    sendQuery(res, {
-      server: { alive:true, implementationVersion:API_IMPLEMENTATION_VERSION },
-      api: { version:API_VERSION },
-      ui: {
-        pageSizeOptions: (await value('UI_PAGE_SIZE_OPTIONS') ?? '2,5,10,20,50,100').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0),
-        defaultPageSize: Number(await value('UI_DEFAULT_PAGE_SIZE') ?? 10),
-        showTechnicalErrorDetails: (await value('SHOW_TECHNICAL_ERROR_DETAILS') ?? 'false') === 'true',
-        sessionErrorLogMaxEntries: Number(await value('SESSION_ERROR_LOG_MAX_ENTRIES') ?? 20),
-        donationsShow: (await value('DONATIONS_SHOW') ?? 'false') === 'true',
-      },
-    });
-  });
+  /** Anonymous-safe UI discovery/bootstrap endpoints. */
+  app.use('/api/v1/public', createPublicRouter(services.configurations, services.extAuthProviders));
 
-  /**
-   * Current anonymous-safe external-authentication state.
-   *
-   * This projection deliberately excludes Client ID, Client secret, encrypted
-   * secret material and persisted Admin/audit fields.
-   */
-  app.get('/api/v1/public/external-auth-providers', async (_req, res) => {
-    res.set('Cache-Control', 'no-store');
-    sendQuery(res, { providers: await services.extAuthProviders.publicProviderState() });
-  });
+  /** Capability-backed expression functions delegated to the API. */
+  app.use('/api/v1/expressions', createExpressionRouter(_store, authorization));
 
-  /**
-   * API-owned provider definitions used by the Admin editor.
-   * Authentication + Admin role are required even though the definitions contain
-   * no secrets, because this is administration/reference material rather than an
-   * anonymous UI concern.
-   */
-  app.get(
-    '/api/v1/SysExtAuthProviders/definitions',
-    requireAuthenticated,
-    requireAdmin,
-    (_req, res) => {
-      res.set('Cache-Control', 'no-store');
-      sendQuery(res, { providers: services.extAuthProviders.providerDefinitions() });
-    },
+  /** External-authentication administration/reference endpoints. */
+  app.use(
+    '/api/v1/SysExtAuthProviders',
+    createExtAuthProviderAdminRouter(services.extAuthProviders),
   );
-
-  /**
-   * Evaluate one capability-backed expression function for a remote owner.
-   *
-   * Browser/UI evaluators remain owners of their full expression. They locally
-   * evaluate ordinary/CTX arguments and call this endpoint only when runtime
-   * evaluation actually reaches a function whose capability is unavailable in
-   * the browser (currently EntityResolver functions such as TraverseEntity).
-   * The endpoint returns only the function result; it never exposes a database
-   * handle or the resolver's intermediate records.
-   */
-  app.post('/api/v1/expressions/evaluate-function', requireAuthenticated, async (req, res) => {
-    const functionName = String(req.body?.functionName ?? '');
-    const definition = expressionFunctions[functionName];
-    if (!definition) throw new ValidationAppError(`Unknown expression function ${functionName}.`);
-    if (definition.capability !== 'entityResolver' || !definition.evaluateAsync) {
-      throw new ValidationAppError(`${functionName} is not a remotely delegated EntityResolver function.`);
-    }
-    const args = Array.isArray(req.body?.args) ? req.body.args : [];
-    const subject = req.auth!;
-    const entityResolver = new DataStoreEntityResolver(_store, authorization, subject);
-    try {
-      const value = await definition.evaluateAsync(args, { now: () => new Date(), owner: 'api-capability-provider', entityResolver });
-      res.set('Cache-Control', 'no-store');
-      sendQuery(res, { value });
-    } catch (error) {
-      if (error instanceof ExpressionEvaluationError) throw new ValidationAppError(error.message);
-      throw error;
-    }
-  });
 
   /**
    * Standard metadata-driven SysBO CRUD endpoints.
@@ -355,18 +282,8 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     createSysBORouter(services.principals, sysBOPrincipalsMetadata, authorization),
   );
 
-  /** Admin-only application configuration. Sensitive values are projected safely. */
-  app.get('/api/v1/SysConfigurations', requireAuthenticated, requireAdmin, async (_req, res) => {
-    res.set('Cache-Control', 'no-store');
-    sendQuery(res, { items: await services.configurations.safeList() });
-  });
-
-  app.patch('/api/v1/SysConfigurations/:id/value', requireAuthenticated, requireAdmin, async (req, res) => {
-    const subject = req.auth!;
-    const actor = authenticatedAuditActor(subject.userId, subject.userName);
-    const item = await services.configurations.setValue(String(req.params.id ?? ''), req.body?.value == null ? null : String(req.body.value), actor);
-    sendCommand(res, 'Configuration updated successfully.', { item });
-  });
+  /** Admin-only application configuration. */
+  app.use('/api/v1/SysConfigurations', createConfigurationRouter(services.configurations));
 
   app.use(
     '/api/v1/SysEmailAddresses',
@@ -430,123 +347,6 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     ),
   );
 
-  app.get(
-    '/api/v1/internal/external-auth-providers/runtime',
-    requireInternalApiKey,
-    async (_req, res) => {
-      const items = await services.extAuthProviders.resolveConfiguredProviders();
-      res.json({ success: true, data: { items } });
-    },
-  );
-
-  /**
-   * Trusted UI command used only after a successful end-to-end provider OAuth
-   * credential test. Both the internal key and the authenticated Admin Bearer
-   * session are required so a direct public/Admin CRUD request cannot falsely
-   * mark credentials as verified.
-   */
-  app.post(
-    '/api/v1/internal/external-auth-providers/verified-credentials',
-    requireInternalApiKey,
-    requireAuthenticated,
-    requireAdmin,
-    async (req, res) => {
-      const subject = req.auth!;
-      const actor = authenticatedAuditActor(subject.userId, subject.userName);
-      const item = await services.extAuthProviders.saveVerifiedCredentials(
-        req.body as SaveVerifiedSysBOExtAuthProviderInput,
-        actor,
-      );
-
-      sendCommand(
-        res,
-        `External authentication credentials for '${item.name}' verified and saved successfully.`,
-        { id: item.id, provider: item.provider, credentialsVerified: item.credentialsVerified, credentialsVerifiedAt: item.credentialsVerifiedAt },
-      );
-    },
-  );
-
-  /**
-   * Store a complete provider credential pair securely without asserting that
-   * the provider has accepted it. This supports Admin draft/configuration work
-   * while keeping the provider unavailable to sign-in until it is verified.
-   */
-  app.post(
-    '/api/v1/internal/external-auth-providers/stored-credentials',
-    requireInternalApiKey,
-    requireAuthenticated,
-    requireAdmin,
-    async (req, res) => {
-      const subject = req.auth!;
-      const actor = authenticatedAuditActor(subject.userId, subject.userName);
-      const item = await services.extAuthProviders.saveStoredCredentials(
-        req.body as SaveStoredSysBOExtAuthProviderInput,
-        actor,
-      );
-
-      sendCommand(
-        res,
-        `External authentication credentials for '${item.name}' stored securely; verification is still required.`,
-        { id: item.id, provider: item.provider, credentialsVerified: item.credentialsVerified, credentialsVerifiedAt: item.credentialsVerifiedAt },
-      );
-    },
-  );
-
-  /** Trusted UI-only access to one encrypted-at-rest pair for provider testing. */
-  app.get(
-    '/api/v1/internal/external-auth-providers/:id/credentials-for-test',
-    requireInternalApiKey,
-    requireAuthenticated,
-    requireAdmin,
-    async (req, res) => {
-      const data = await services.extAuthProviders.storedCredentialMaterial(String(req.params.id ?? ''));
-      res.set('Cache-Control', 'no-store');
-      res.json({ success: true, data });
-    },
-  );
-
-  /** Mark the exact stored credential version that successfully completed OAuth testing. */
-  app.post(
-    '/api/v1/internal/external-auth-providers/:id/credentials-verified',
-    requireInternalApiKey,
-    requireAuthenticated,
-    requireAdmin,
-    async (req, res) => {
-      const subject = req.auth!;
-      const actor = authenticatedAuditActor(subject.userId, subject.userName);
-      const item = await services.extAuthProviders.markStoredCredentialsVerified(
-        String(req.params.id ?? ''),
-        String(req.body.clientId ?? ''),
-        String(req.body.secretUpdatedAt ?? ''),
-        actor,
-      );
-
-      sendCommand(
-        res,
-        `External authentication credentials for '${item.name}' verified successfully.`,
-        { id: item.id, provider: item.provider, credentialsVerified: item.credentialsVerified, credentialsVerifiedAt: item.credentialsVerifiedAt },
-      );
-    },
-  );
-
-  /** Remove both provider credentials and disable the provider atomically. */
-  app.delete(
-    '/api/v1/internal/external-auth-providers/:id/credentials',
-    requireInternalApiKey,
-    requireAuthenticated,
-    requireAdmin,
-    async (req, res) => {
-      const subject = req.auth!;
-      const actor = authenticatedAuditActor(subject.userId, subject.userName);
-      const item = await services.extAuthProviders.removeCredentials(String(req.params.id ?? ''), actor);
-
-      sendCommand(
-        res,
-        `External authentication credentials for '${item.name}' removed; provider disabled.`,
-        { id: item.id, provider: item.provider, enabled: item.enabled },
-      );
-    },
-  );
 
   /**
    * Server-level operational routes:
@@ -568,7 +368,13 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
 
     requireInternalApiKey,
 
-    createInternalRouter(services.users, services.externalIdentities, services.userPrincipals, services.email),
+    createInternalRouter({
+      users: services.users,
+      externalIdentities: services.externalIdentities,
+      userPrincipals: services.userPrincipals,
+      email: services.email,
+      extAuthProviders: services.extAuthProviders,
+    }),
   );
 
   /**

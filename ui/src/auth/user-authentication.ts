@@ -1,6 +1,6 @@
 import type { SysBOExternalIdentity } from '@manatos/shared';
 
-import { apiClient } from '../api-client.js';
+import { apiClient } from '../api/client.js';
 
 /**
  * Read-only external authentication identities for one SysBOUser.

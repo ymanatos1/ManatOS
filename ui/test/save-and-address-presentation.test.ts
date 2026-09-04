@@ -10,23 +10,23 @@ const api = (path: string) => readFile(resolve(here, '..', '..', 'api', path), '
 
 describe('metadata entry Save lifecycle and Principal addresses', () => {
   it('uses one shared split Save action and keeps Save-in-place distinct from Save-and-Close', async () => {
-    const renderer = await ui('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const actionsFooter = await ui('views/pages/metadata-driven/ui-components/entry-actions-footer.ejs');
-    const split = await ui('views/pages/metadata-driven/ui-components/save-split-action.ejs');
+    const renderer = await ui('views/pages/sysbo/entry.ejs');
+    const actionsFooter = await ui('views/components/sysbo/entry/entry-actions-footer.ejs');
+    const split = await ui('views/components/sysbo/entry/save-split-action.ejs');
     const forms = await ui('public/js/forms.js');
-    const routes = await ui('src/routes/sysbo-routes.ts');
+    const entryWrite = await ui('src/routes/sysbo/entry-write.ts');
 
-    expect(renderer).toContain("include('ui-components/entry-actions-footer'");
+    expect(renderer).toContain("include('../../components/sysbo/entry/entry-actions-footer'");
     expect(actionsFooter).toContain("include('save-split-action'");
     expect(split).toContain('value="stay"');
     expect(split).toContain('Save and Close');
     expect(split).toContain('value="close"');
     expect(forms).toContain("[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]");
-    expect(routes).toContain("const saveMode = req.body._saveMode === 'close' ? 'close' : 'stay';");
-    expect(routes).toContain("req.get('X-Requested-With') === 'ManatOS-InPlace-Save'");
-    expect(routes).toContain('const completeSave = async (');
-    expect(routes).toContain('savedRecord?: Record<string, unknown>');
-    expect(routes).toContain('await completeSave(savedId || undefined, savedRecord)');
+    expect(entryWrite).toContain("const saveMode = req.body._saveMode === 'close' ? 'close' : 'stay';");
+    expect(entryWrite).toContain("req.get('X-Requested-With') === 'ManatOS-InPlace-Save'");
+    expect(entryWrite).toContain('export async function completeMetadataDrivenSave(');
+    expect(entryWrite).toContain('savedRecord?: Record<string, unknown>');
+    expect(entryWrite).toContain('savedRecord ?? (await apiClient.get<Record<string, unknown>>');
     expect(forms).not.toContain('HTMLFormElement.prototype.submit.call(form)');
     expect(forms).toContain("form.addEventListener('manatos:form-saved'");
     expect(forms).toContain("'X-Requested-With': 'ManatOS-InPlace-Save'");
@@ -38,10 +38,10 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
 
   it('models addresses as canonical internal SysBOs and exposes them through the reusable Contact collection editor', async () => {
     const domain = await shared('src/domain.ts');
-    const metadata = await shared('src/bo-metadata.ts');
-    const uiMetadata = await shared('src/bo-ui-metadata.ts');
-    const service = await api('src/services/domain-services.ts');
-    const collection = await ui('views/pages/metadata-driven/ui-components/collection-editor.ejs');
+    const metadata = await shared('src/metadata/bo/contact.ts');
+    const uiMetadata = await shared('src/metadata/ui/business.ts');
+    const service = await api('src/services/sysbo-principal-service.ts');
+    const collection = await ui('views/components/sysbo/collections/collection-editor.ejs');
 
     expect(domain).toContain('export interface SysAddress extends SysBOEntity');
     expect(domain).toContain('export interface SysPrincipalAddress extends SysBOEntity');
@@ -60,13 +60,13 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
 
 
   it('keeps the split Save menu visually aligned with the primary action and sanitizes failed-save CTX re-renders', async () => {
-    const save = await ui('views/pages/metadata-driven/ui-components/save-split-action.ejs');
+    const save = await ui('views/components/sysbo/entry/save-split-action.ejs');
     const pagesCss = await ui('public/css/pages.css');
-    const routes = await ui('src/routes/sysbo-routes.ts');
+    const entryWrite = await ui('src/routes/sysbo/entry-write.ts');
     expect(save).toContain('metadata-save-dropdown-menu');
     expect(pagesCss).toContain('.metadata-save-dropdown-menu');
-    expect(routes).toContain('Object.keys(definition.boMetadata.fieldDefinition)');
-    expect(routes).not.toContain('itemOverride: { ...req.body');
+    expect(entryWrite).toContain('Object.keys(definition.boMetadata.fieldDefinition)');
+    expect(entryWrite).not.toContain('itemOverride: { ...req.body');
     expect(pagesCss).toContain('.metadata-field-required-marker');
     expect(pagesCss).toContain('font-weight: inherit');
   });

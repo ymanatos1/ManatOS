@@ -186,7 +186,7 @@ hasClientSecret ? 'lock-fill' : 'lock'
 StrFormat('{0} / {1}', name, version)
 
 # Platform capability decision
-user.permissions.mcrm.capabilities.platformAccess === true
+user.permissions.protocrm.capabilities.platformAccess === true
 
 # List Add visibility
 permissions.create === true

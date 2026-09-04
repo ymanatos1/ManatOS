@@ -8,15 +8,15 @@ import { MANATOS_COMPANY, resolvePlatform } from '@manatos/shared';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const platformView = resolve(testDirectory, '../views/pages/platform.ejs');
-const headerView = resolve(testDirectory, '../views/partials/header.ejs');
+const headerView = resolve(testDirectory, '../views/components/layout/header.ejs');
 
 describe('platform presentation', () => {
-  it('renders mCRM from shared platform metadata rather than page literals', async () => {
+  it('renders protoCRM from shared platform metadata rather than page literals', async () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const html = await ejs.renderFile(platformView, { platform });
     const $ = load(html);
 
-    expect($('.platform-hero-image').attr('src')).toBe('/assets/platforms/mcrm/mcrm-customer-network.png');
+    expect($('.platform-hero-image').attr('src')).toBe('/assets/platforms/protocrm/protocrm-customer-network.png');
     expect($('.platform-feature-card').length).toBe(6);
     expect($('.platform-feature-card').text()).toContain('Customer 360°');
     expect($('.platform-feature-card').text()).toContain('Documents');
@@ -31,8 +31,8 @@ describe('platform presentation', () => {
     });
     const $ = load(html);
 
-    expect($('.current-platform-badge').attr('href')).toBe('/platform/mcrm');
-    expect($('.current-platform-badge').text().trim()).toBe('mCRM');
+    expect($('.current-platform-badge').attr('href')).toBe('/platform/protocrm');
+    expect($('.current-platform-badge').text().trim()).toBe('protoCRM');
   });
   it('keeps Donate reactive in the DOM and applies the initial DONATIONS_SHOW visibility', async () => {
     const currentPlatform = resolvePlatform(MANATOS_COMPANY);

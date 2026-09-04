@@ -5,13 +5,15 @@ import { describe, expect, it } from 'vitest';
 
 const shellSource = readFileSync(resolve(process.cwd(), 'public/js/shell.js'), 'utf8');
 const viewerSource = readFileSync(resolve(process.cwd(), 'public/js/debugger/api-traffic.js'), 'utf8');
-const navSource = readFileSync(resolve(process.cwd(), 'views/partials/horizontal-nav.ejs'), 'utf8');
+const navSource = readFileSync(resolve(process.cwd(), 'views/components/navigation/horizontal-nav.ejs'), 'utf8');
 const shellViewSource = readFileSync(resolve(process.cwd(), 'views/layout/shell.ejs'), 'utf8');
-const viewerViewSource = readFileSync(resolve(process.cwd(), 'views/partials/debugger/api-traffic.ejs'), 'utf8');
-const developerToolsViewSource = readFileSync(resolve(process.cwd(), 'views/partials/debugger/developer-tools.ejs'), 'utf8');
+const viewerViewSource = readFileSync(resolve(process.cwd(), 'views/components/debugging/api-traffic.ejs'), 'utf8');
+const developerToolsViewSource = readFileSync(resolve(process.cwd(), 'views/components/debugging/developer-tools.ejs'), 'utf8');
 const debuggerCssSource = readFileSync(resolve(process.cwd(), 'public/css/debugger/ctx-debug.css'), 'utf8');
 const layoutSource = readFileSync(resolve(process.cwd(), 'public/css/layout.css'), 'utf8');
 const appSource = readFileSync(resolve(process.cwd(), 'src/app.ts'), 'utf8');
+const bootstrapSource = readFileSync(resolve(process.cwd(), 'src/bootstrap/ui-bootstrap.ts'), 'utf8');
+const browserBootstrapSource = readFileSync(resolve(process.cwd(), 'public/js/ui-bootstrap-runtime.js'), 'utf8');
 
 describe('API Traffic developer viewer', () => {
   it('hosts CTX Viewer and API Traffic as tabs of one dock and remembers the active tab', () => {
@@ -19,9 +21,9 @@ describe('API Traffic developer viewer', () => {
     expect(navSource).toContain('aria-controls="developerToolsDock"');
     expect(navSource).toContain('Show/hide Developer tools');
     expect(navSource).not.toContain('toggleApiTrafficPanel');
-    expect(shellViewSource).toContain("include('../partials/debugger/developer-tools')");
-    expect(developerToolsViewSource).toContain("include('./ctx-debug')");
-    expect(developerToolsViewSource).toContain("include('./api-traffic')");
+    expect(shellViewSource).toContain("include('../components/debugging/developer-tools')");
+    expect(developerToolsViewSource).toContain("include('ctx-debug')");
+    expect(developerToolsViewSource).toContain("include('api-traffic')");
     expect(developerToolsViewSource).toContain('data-developer-tool-tab="ctx"');
     expect(developerToolsViewSource).toContain('data-developer-tool-tab="apiTraffic"');
     expect(developerToolsViewSource).toContain('class="developer-tools-tab-caption">CTX VIEWER');
@@ -43,6 +45,8 @@ describe('API Traffic developer viewer', () => {
     expect(viewerSource).toContain('state.errorsOnly');
     expect(viewerSource).toContain('state.paused');
     expect(viewerSource).toContain('renderDetails');
+    expect(viewerSource).toContain('state.renderedDetailKey === detailKey');
+    expect(viewerSource).toContain('Polling must never rebuild its DOM');
     expect(viewerSource).toContain('setInterval');
     expect(viewerSource).toContain('hiddenRoutes');
     expect(viewerSource).toContain('ignoreRouteSelections');
@@ -90,6 +94,17 @@ describe('API Traffic developer viewer', () => {
     expect(debuggerCssSource).toContain('.api-traffic-route-path');
   });
 
+
+
+  it('keeps selected detail inspection stable while traffic continues and uses health for routine bootstrap monitoring', () => {
+    expect(viewerSource).toContain('if (!force && state.renderedDetailKey === detailKey) return;');
+    expect(viewerSource).toContain('Polling must never rebuild its DOM');
+    expect(appSource).toContain("app.get('/runtime/health'");
+    expect(browserBootstrapSource).toContain("fetch('/runtime/health'");
+    expect(bootstrapSource).toContain("apiClient.get<ApiHealthState>('/health')");
+    expect(bootstrapSource).toContain('heartbeatCount % 10 === 0');
+    expect(bootstrapSource).toContain('bootstrapRefreshInFlight');
+  });
 
   it('polls through a lightweight diagnostic route before page-context hydration', () => {
     const debugRoute = appSource.indexOf("app.use('/bo/debug', createDebugRoutes())");

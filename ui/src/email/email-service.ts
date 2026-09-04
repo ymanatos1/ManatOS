@@ -1,6 +1,6 @@
 import type { SysBOUser } from '@manatos/shared';
 
-import { apiClient } from '../api-client.js';
+import { apiClient } from '../api/client.js';
 
 /**
  * UI-side mail gateway.

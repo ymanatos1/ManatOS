@@ -171,9 +171,9 @@ Access remains operation-specific: public endpoints explicitly say so; Admin-onl
 
 ### Platform-owned UI code
 
-Keep generic routers/templates platform-neutral. Platform catalogue metadata belongs under `shared/src/platforms/<platform>/`; platform-specific feature routes belong under `ui/src/platforms/<platform>/`, pages under `ui/views/pages/platforms/<platform>/`, assets under `ui/public/assets/platforms/<platform>/`, and platform-specific CSS under `ui/public/css/platforms/<platform>.css`. Register feature routers through `ui/src/platforms/routes.ts`; do not add mCRM-specific branches to `page-routes.ts`, `sysbo-routes.ts` or the shell. The platform catalogue/presentation metadata should select platform assets/styles where practical.
+Keep generic routers/templates platform-neutral. Platform catalogue metadata belongs under `shared/src/platforms/<platform>/`; platform-specific feature routes belong under `ui/src/platforms/<platform>/`, pages under `ui/views/pages/platforms/<platform>/`, assets under `ui/public/assets/platforms/<platform>/`, and platform-specific CSS under `ui/public/css/platforms/<platform>.css`. Register feature routers through `ui/src/platforms/routes.ts`; do not add protoCRM-specific branches to `page-routes.ts`, `sysbo-routes.ts` or the shell. The platform catalogue/presentation metadata should select platform assets/styles where practical.
 
-The mCRM Apps Playground has two related surfaces: `app-playground.ejs` is the platform-level Apps Playground landing/workspace; `application-playground.ejs` is the selected-`SysBOApplication` playground reached by `/bo/sys-applications/:id/play`. Both are mCRM-owned and therefore live under the mCRM platform folder.
+The protoCRM Apps Playground has two related surfaces: `app-playground.ejs` is the platform-level Apps Playground landing/workspace; `application-playground.ejs` is the selected-`SysBOApplication` playground reached by `/bo/sys-applications/:id/play`. Both are protoCRM-owned and therefore live under the protoCRM platform folder.
 
 ## Expression/debugging regression expectations
 

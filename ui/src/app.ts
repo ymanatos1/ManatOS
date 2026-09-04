@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 
 import type { ExternalProviderKey } from '@manatos/shared';
 
-import { apiClient } from './api-client.js';
+import { apiClient } from './api/client.js';
 import { config } from './config.js';
 import { passport } from './auth/passport.js';
 import { requestContextMiddleware } from './middleware/request-context.js';
@@ -19,8 +19,8 @@ import { createPageRoutes } from './routes/page-routes.js';
 import { createSysBORoutes } from './routes/sysbo-routes.js';
 import { createDebugRoutes } from './routes/debug-routes.js';
 import { createPlatformRoutes } from './platforms/routes.js';
-import { uiErrorHandler } from './error-handler.js';
-import { refreshUiBootstrap, uiBootstrapState } from './bootstrap/ui-bootstrap.js';
+import { uiErrorHandler } from './middleware/error-handler.js';
+import { refreshUiBootstrap, uiBootstrapRevision, uiBootstrapState } from './bootstrap/ui-bootstrap.js';
 
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
@@ -70,15 +70,27 @@ export function createUiApp() {
    */
   app.get('/runtime/ui-bootstrap', async (_req, res) => {
     /*
-     * Force one public refresh before projecting the state to the browser.
-     * This removes the startup race where the UI process can still hold its
-     * local donationsShow=false fallback after the API has already become
-     * available. The browser then receives the real bootstrap value and the
-     * existing manatos:ctx-change consumer updates Donate without login/reload.
+     * Only the initial/unavailable state needs an on-demand API refresh. During
+     * normal operation the UI process maintains this projection in the
+     * background using lightweight /health checks plus infrequent full refreshes.
      */
-    await refreshUiBootstrap();
+    if (!uiBootstrapState().server.alive) await refreshUiBootstrap();
     res.set('Cache-Control', 'no-store');
+    res.set('X-ManatOS-Bootstrap-Revision', String(uiBootstrapRevision()));
     res.json(uiBootstrapState());
+  });
+
+  /**
+   * Tiny same-origin heartbeat for the already-loaded browser shell. It never
+   * calls the API itself; the UI process owns API liveness polling. This avoids
+   * turning every browser heartbeat into another /public/ui-bootstrap trace.
+   */
+  app.get('/runtime/health', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      alive: uiBootstrapState().server.alive,
+      bootstrapRevision: uiBootstrapRevision(),
+    });
   });
 
   /**

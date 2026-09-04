@@ -18,7 +18,7 @@ The Phase-B recommendations from this audit have now been implemented and verifi
 - the metadata-driven entry renderer has been decomposed into reusable tab/content/action components, with EJS runtime-composition regression coverage.
 - Debugging inventory construction has moved from EJS into a reusable TypeScript presentation-model builder, preserving formula/current-value CTX inspection as separate capabilities.
 - generic option/value presentation has moved into a shared resolver; the renderer-specific `verification-source` concept has been removed in favor of metadata-declared option presentation.
-- mCRM-specific Playground styling is isolated in the platform stylesheet rather than duplicated in generic CSS.
+- protoCRM-specific Playground styling is isolated in the platform stylesheet rather than duplicated in generic CSS.
 
 The historical findings below are intentionally retained as the record of the 2026-08-30 audit; statements describing then-current duplication should therefore be read as snapshot findings, not current architecture.
 
@@ -73,9 +73,9 @@ ctx
 `ctx.user.permissions` is the key architectural leverage point. Today it contains `userRole` and a platform `capabilities` placeholder. The next useful step is to populate that capability bucket with *resolved facts*, for example:
 
 ```text
-ctx.user.permissions.mcrm.capabilities.platformAccess = true
-ctx.user.permissions.mcrm.capabilities.appsPlayground = true
-ctx.user.permissions.mcrm.capabilities.applicationsRead = true
+ctx.user.permissions.protocrm.capabilities.platformAccess = true
+ctx.user.permissions.protocrm.capabilities.appsPlayground = true
+ctx.user.permissions.protocrm.capabilities.applicationsRead = true
 ```
 
 and, on an entry page, expose effective record facts such as:
@@ -117,7 +117,7 @@ Examples:
 ```text
 user !== null
 user.permissions.userRole === 'Admin'
-user.permissions.mcrm.capabilities.platformAccess === true
+user.permissions.protocrm.capabilities.platformAccess === true
 ```
 
 `requiresEntityKeys` should remain structural composition metadata; it is not primarily an authorization decision.

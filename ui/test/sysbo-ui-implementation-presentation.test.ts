@@ -33,21 +33,26 @@ describe('#16 metadata-driven SysBO UI closure', () => {
 
   it('loads canonical BO and UI metadata for every generic list/record page', async () => {
     const routes = await source('src/routes/sysbo-routes.ts');
-    const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
-    const edit = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const tabContent = await source('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
-    const related = await source('views/pages/metadata-driven/ui-components/related-collections.ejs');
+    const dataAccess = await source('src/routes/sysbo/data-access.ts');
+    const listRenderer = await source('src/routes/sysbo/list-renderer.ts');
+    const recordRenderer = await source('src/routes/sysbo/record-renderer.ts');
+    const list = await source('views/pages/sysbo/list.ejs');
+    const edit = await source('views/pages/sysbo/entry.ejs');
+    const tabContent = await source('views/components/sysbo/entry/entry-tab-content.ejs');
+    const related = await source('views/components/sysbo/collections/related-collections.ejs');
 
-    expect(routes).toContain('canonicalSysBOMetadata');
-    expect(routes).toContain('canonicalSysBOUIMetadata');
-    expect(routes).toContain('/$metadata');
-    expect(routes).toContain('/$metadata-ui');
+    expect(listRenderer).toContain('canonicalSysBOMetadata');
+    expect(listRenderer).toContain('canonicalSysBOUIMetadata');
+    expect(recordRenderer).toContain('canonicalSysBOMetadata');
+    expect(recordRenderer).toContain('canonicalSysBOUIMetadata');
+    expect(dataAccess).toContain('/$metadata');
+    expect(dataAccess).toContain('/$metadata-ui');
     expect(list).toContain('metadataUI.list.visibleFields');
     expect(list).toContain('metadataUI.list.filterFields');
     expect(list).toContain('resolvedAddAction');
     expect(edit).toContain('metadataUI.record.tabs');
     expect(edit).toContain('metadataUI.record.fieldOverrides');
-    expect(edit).toContain("include('ui-components/entry-tab-content', {");
+    expect(edit).toContain("include('../../components/sysbo/entry/entry-tab-content', {");
     expect(tabContent).toContain('tab.content');
     expect(tabContent).toContain('metadataComponentPartialFor');
     expect(related).toContain("collection.layout === 'table-list'");
@@ -55,7 +60,7 @@ describe('#16 metadata-driven SysBO UI closure', () => {
   });
 
   it('keeps External Authentication Providers entirely declarative after #16 closure', async () => {
-    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    const metadata = await source('../shared/src/metadata/ui/identity.ts');
     const registry = await source('src/presentation/metadata-component-registry.ts');
 
     expect(metadata).toContain("key: 'sys-ext-auth-providers'");
@@ -63,36 +68,37 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     expect(metadata).toContain("component: { key: 'provider-credentials', readOnly: false }");
     expect(metadata).toContain('disableWhenAllEnumValuesExistForField');
     expect(metadata).toContain('One configuration record per provider.');
-    expect(registry).toContain("'contextual-help': 'ui-components/contextual-help'");
-    expect(registry).toContain("'provider-credentials': 'ui-components/provider-credentials'");
+    expect(registry).toContain("'contextual-help': '../../common/contextual-help'");
+    expect(registry).toContain("'provider-credentials': 'provider-credentials'");
   });
 
   it('keeps framework-neutral UI metadata as the only presentation contract', async () => {
-    const contracts = await source('../shared/src/bo-ui-metadata-types.ts');
+    const contracts = await source('../shared/src/metadata/ui/types.ts');
     const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    const businessMetadata = await source('../shared/src/metadata/ui/business.ts');
 
     expect(contracts).toContain('interface SysBOUIMetadata');
     expect(contracts).toContain('interface SysBOUIComponentMetadata');
     expect(contracts).toContain('bindings?:');
     expect(contracts).toContain('relatedCollections');
     expect(contracts).toContain('entryActions');
-    expect(metadata).toContain("href: '/bo/sys-applications/{id}/play'");
-    expect(metadata).toContain("key: 'date-duration-range'");
+    expect(businessMetadata).toContain("href: '/bo/sys-applications/{id}/play'");
+    expect(businessMetadata).toContain("key: 'date-duration-range'");
   });
 
   it('uses global runtime paging configuration while metadata selects query fields', async () => {
-    const routes = await source('src/routes/sysbo-routes.ts');
-    const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
-    const tableHeader = await source('views/pages/metadata-driven/ui-components/list-table-header.ejs');
+    const listQuery = await source('src/routes/sysbo/list-query.ts');
+    const list = await source('views/pages/sysbo/list.ejs');
+    const tableHeader = await source('views/components/sysbo/list/list-table-header.ejs');
 
-    expect(routes).toContain('uiBootstrapState().ui');
+    expect(listQuery).toContain('uiBootstrapState().ui');
     expect(list).toContain('metadataUI.list.filterFields');
-    expect(list).toContain("include('ui-components/list-table-header'");
+    expect(list).toContain("include('../../components/sysbo/list/list-table-header'");
     expect(tableHeader).toContain('metadataUI.list.sortableFields');
   });
 
   it('renders browse-list filter collapse attributes as real Bootstrap attributes while selectors keep local behavior', async () => {
-    const toolbar = await source('views/pages/metadata-driven/ui-components/list-toolbar.ejs');
+    const toolbar = await source('views/components/sysbo/list/list-toolbar.ejs');
 
     expect(toolbar).toContain('data-selector-filters-toggle');
     expect(toolbar).toContain('data-bs-toggle="collapse"');

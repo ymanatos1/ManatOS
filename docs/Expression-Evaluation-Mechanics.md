@@ -221,7 +221,7 @@ permissions.create
 permissions.edit
 permissions.delete
 ctx.user.permissions.userRole
-ctx.user.permissions.mcrm.capabilities.platformAccess
+ctx.user.permissions.protocrm.capabilities.platformAccess
 addConstraintReached
 ```
 
@@ -231,7 +231,7 @@ Metadata owns the policy that consumes those facts. Examples include:
 
 ```text
 navigation.visible:
-  user.permissions.mcrm.capabilities.platformAccess === true
+  user.permissions.protocrm.capabilities.platformAccess === true
 
 list.addAction.visible:
   permissions.create === true

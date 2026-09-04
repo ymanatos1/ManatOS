@@ -345,7 +345,7 @@
    * then root. Once found, all remaining segments are traversed strictly
    * downward; lookup never jumps back to a parent for a missing child. Array
    * members may be traversed by zero-based index (`list[0]`) or by a semantic
-   * `id`/`key`: identifier keys use dotted syntax (`platforms.mcrm`), while
+   * `id`/`key`: identifier keys use dotted syntax (`platforms.protocrm`), while
    * arbitrary ids use quoted brackets (`entries['<uuid>']`).
    *
    * `metadata()` is a virtual field operation backed by ctx.entities.

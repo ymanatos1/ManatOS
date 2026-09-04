@@ -9,8 +9,8 @@ import { describe, expect, it } from 'vitest';
 import { popupContent } from '../src/presentation/popup-content.js';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const horizontalNavView = resolve(testDirectory, '../views/partials/horizontal-nav.ejs');
-const preferencesView = resolve(testDirectory, '../views/popups/other/preferences-modal.ejs');
+const horizontalNavView = resolve(testDirectory, '../views/components/navigation/horizontal-nav.ejs');
+const preferencesView = resolve(testDirectory, '../views/popups/preferences/preferences-modal.ejs');
 
 describe('popup infrastructure presentation', () => {
   it('renders signed-in identity immediately before the language selector', async () => {

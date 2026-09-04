@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppError, SysBOUserRole, type SysBOUser } from '@manatos/shared';
 
-import { apiClient } from '../src/api-client.js';
+import { apiClient } from '../src/api/client.js';
 import { createSysBORoutes } from '../src/routes/sysbo-routes.js';
 
 describe('UI integration - SysBOUser delete behavior', () => {

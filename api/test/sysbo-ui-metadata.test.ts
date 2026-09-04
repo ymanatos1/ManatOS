@@ -162,7 +162,7 @@ describe('metadata-driven SysBO UI conventions', () => {
     });
     expect(sysBOLicensesMetadata.fieldDefinition.platformId?.enumItems?.[0]).toMatchObject({
       value: expect.any(String),
-      label: 'mCRM',
+      label: 'protoCRM',
     });
     expect(licenses.record.fieldOverrides.status?.createDefaultValue).toBe('Active');
     expect(licenses.record.fieldOverrides.validFrom?.createDefaultValue).toEqual({ expression: 'CurrentDay()' });

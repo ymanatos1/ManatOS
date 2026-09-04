@@ -15,12 +15,13 @@ const sharedSource = (relativePath: string) =>
 
 describe('metadata-driven Principal presentation', () => {
   it('uses canonical enum-item icons/traits and evaluator-driven Parent principal editability', async () => {
-    const canonical = await sharedSource('src/bo-metadata.ts');
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
-    const entry = await uiSource('views/pages/metadata-driven/field-components/enum-select.ejs');
+    const canonical = await sharedSource('src/metadata/bo/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const entry = await uiSource('views/field-components/enum-select.ejs');
     const forms = await uiSource('public/js/forms.js');
     const ctxRuntime = await uiSource('public/js/ctx-runtime.js');
     const routes = await uiSource('src/routes/sysbo-routes.ts');
+    const routeContext = await uiSource('src/routes/sysbo/context.ts');
     const definitions = await uiSource('src/sysbo/definitions.ts');
 
     expect(definitions).toContain("icon: 'bi-diagram-3-fill'");
@@ -43,8 +44,8 @@ describe('metadata-driven Principal presentation', () => {
     expect(forms).toContain('let value = { value: fieldValue, option };');
     expect(ctxRuntime).toContain('const updateField =');
     expect(ctxRuntime).toContain('entry');
-    expect(routes).toContain('pageEntryRuntimeContext(initialRecordValues)');
-    expect(routes).toContain('Object.entries(runtimeEntryValues).filter');
+    expect(routeContext).toContain('pageEntryRuntimeContext(initialRecordValues)');
+    expect(routeContext).toContain('Object.entries(runtimeEntryValues).filter');
     expect(forms).toContain('expressionDependencyPaths');
     expect(forms).toContain('runtime?.resolvePath?.(node.path, scopePath)');
     expect(ctxRuntime).toContain('const resolvePath =');
@@ -52,8 +53,8 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('places Parent then Root principal before Name while preserving Name as the generic clickable primary field', async () => {
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
-    const list = await uiSource('views/pages/metadata-driven/bo-list-metadata.ejs');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const list = await uiSource('views/pages/sysbo/list.ejs');
 
     expect(uiMetadata).toContain("visibleFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled']");
     expect(uiMetadata).toContain("filterFields: ['name', 'principalType', 'parentId', 'rootPrincipalId']");
@@ -63,9 +64,9 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('lays out Contact as a metadata grid so reusable contact collections can share rows', async () => {
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
-    const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const renderer = await uiSource('views/pages/sysbo/entry.ejs');
+    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
 
     expect(uiMetadata).toContain("tab('contact', 'Contact', 20, [], {");
     expect(uiMetadata).toContain("layout: 'form'");
@@ -81,10 +82,10 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('declares the reusable CTX-driven Organization visualization without Principal-specific component code', async () => {
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const component = await uiSource('public/js/components/hierarchy-tree.js');
-    const renderer = await uiSource('views/pages/metadata-driven/bo-entry-metadata.ejs');
-    const tabContent = await uiSource('views/pages/metadata-driven/ui-components/entry-tab-content.ejs');
+    const renderer = await uiSource('views/pages/sysbo/entry.ejs');
+    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
 
     expect(uiMetadata).toContain("tab('organization', 'Organization'");
     expect(uiMetadata).toContain("key: 'hierarchy-tree'");
@@ -130,9 +131,10 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('declares Principal Organization as the first consumer of the generic hierarchy workspace', async () => {
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const routes = await uiSource('src/routes/sysbo-routes.ts');
-    const workspace = await uiSource('views/pages/metadata-driven/ui-components/hierarchy-workspace.ejs');
+    const hierarchyRenderer = await uiSource('src/routes/sysbo/hierarchy-renderer.ts');
+    const workspace = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
     const hierarchyRuntime = await uiSource('public/js/components/hierarchy-tree.js');
     const hierarchyModel = await uiSource('src/presentation/metadata-hierarchy-workspace.ts');
 
@@ -151,11 +153,13 @@ describe('metadata-driven Principal presentation', () => {
     expect(routes).toContain("router.get('/:key/hierarchy/new'");
     expect(routes).toContain("router.get('/:key/:id/hierarchy'");
     expect(routes).toContain('renderMetadataDrivenHierarchyWorkspace');
-    expect(routes).toContain("'sysbo-hierarchy'");
-    expect(routes).toContain('pageCollectionRuntimeContext(hierarchyItems)');
-    expect(routes).toContain('initialMemberId: focusedId');
-    expect(routes).toContain('focusedMemberId: focusedId');
-    expect(routes).not.toContain('renderPrincipalOrganizationWorkspace');
+    expect(routes).toContain("from './sysbo/hierarchy-renderer.js'");
+    expect(hierarchyRenderer).toContain("'sysbo-hierarchy'");
+    expect(hierarchyRenderer).toContain('pageCollectionRuntimeContext(hierarchyItems)');
+    expect(hierarchyRenderer).toContain('initialMemberId: focusedId');
+    expect(hierarchyRenderer).toContain('focusedMemberId: focusedId');
+    expect(hierarchyRenderer).not.toContain('renderPrincipalOrganizationWorkspace');
+    expect(hierarchyRenderer).not.toContain('sys-principals');
 
     expect(hierarchyModel).toContain('metadataHierarchyWorkspaceDescriptor');
     expect(hierarchyModel).toContain('keyedHierarchySnapshot');

@@ -24,9 +24,9 @@ function evaluateTest(
 }
 
 function testCtx() {
-  const mcrm = {id: 'mcrm', name: 'ManatOS CRM Platform', enabled: true};
+  const protoCrm = {id: 'protocrm', name: 'ManatOS CRM Platform', enabled: true};
   return {
-    company: {platforms: [mcrm]},
+    company: {platforms: [protoCrm]},
     page: {
       fields: {
         firstname: {value: 'Yiannis'},
@@ -296,7 +296,7 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest("StrFormat('{0} {1}', firstname, lastname)", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
     expect(evaluateTest('GetTime()', ctx, ctx.page.fields, {now: () => new Date(123456)})).toBe(123456);
     expect(evaluateTest("FirstCtx(options, 'id')", { options: [{ id: 'first' }, { id: 'second' }] }, { options: [{ id: 'first' }, { id: 'second' }] })).toBe('first');
-    expect(evaluateTest("FirstCtx(options, 'value')", { options: [{ value: 'mcrm' }] }, { options: [{ value: 'mcrm' }] })).toBe('mcrm');
+    expect(evaluateTest("FirstCtx(options, 'value')", { options: [{ value: 'protocrm' }] }, { options: [{ value: 'protocrm' }] })).toBe('protocrm');
     expect(evaluateTest("FirstCtx(options, 'id')", { options: [] }, { options: [] })).toBeNull();
     expect(evaluateTest('CurrentDay()', ctx, ctx.page.fields, {now: () => new Date(2026, 7, 31, 15, 45)})).toBe('2026-08-31T00:00');
     expect(() => compileExpression('MissingFunction(1)')).toThrow(ExpressionParseError);
@@ -338,7 +338,7 @@ describe('ManatOS expression parser/evaluator', () => {
     };
     const entry = ctx.page.page;
     expect(evaluateTest('ctx.company.platforms[0].name', ctx, entry)).toBe('ManatOS CRM Platform');
-    expect(evaluateTest('ctx.company.platforms.mcrm.name', ctx, entry)).toBe('ManatOS CRM Platform');
+    expect(evaluateTest('ctx.company.platforms.protocrm.name', ctx, entry)).toBe('ManatOS CRM Platform');
     expect(evaluateTest('entry.emailAddresses[1].address', ctx, entry)).toBe('second@example.com');
     expect(evaluateTest("entry.emailAddresses['mail-b'].address", ctx, entry)).toBe('second@example.com');
     expect(evaluateTest('entry.telephoneNumbers[1].fullNumber', ctx, entry)).toBe('+302222222222');

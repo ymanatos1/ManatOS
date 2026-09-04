@@ -4,7 +4,7 @@ import createError from 'http-errors';
 
 import { AppError, MANATOS_COMPANY, validatePassword, type SysBOUser } from '@manatos/shared';
 
-import { apiClient } from '../api-client.js';
+import { apiClient } from '../api/client.js';
 
 import { apiSessionOptions } from '../auth/api-session.js';
 
@@ -16,7 +16,7 @@ import { requireCsrf } from '../middleware/csrf.js';
 
 import { emailService } from '../email/email-service.js';
 
-import { renderPage } from '../render.js';
+import { renderPage } from '../presentation/render-page.js';
 
 import { externalIdentitiesForUser } from '../auth/user-authentication.js';
 
@@ -89,7 +89,7 @@ export function createPageRoutes() {
    * Generic platform landing page.
    *
    * The route is keyed by the shared SysPlatform catalogue rather than by
-   * mCRM-specific literals so future platforms automatically gain the same
+   * protoCRM-specific literals so future platforms automatically gain the same
    * page structure and navigation behavior.
    */
   router.get(['/platform', '/platform/:platformId'], async (req, res, next) => {

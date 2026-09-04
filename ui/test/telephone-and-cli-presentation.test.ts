@@ -8,11 +8,11 @@ const sharedSource = (relativePath: string) => readFile(resolve(testDirectory, '
 
 describe('telephone field normalization and debugging CLI presentation', () => {
   it('keeps normalization metadata-driven and uses the reusable telephone field component', async () => {
-    const metadata = await sharedSource('src/bo-metadata.ts');
-    const uiMetadata = await sharedSource('src/bo-ui-metadata.ts');
-    const dispatcher = await uiSource('views/pages/metadata-driven/field-components/entity-field.ejs');
-    const formField = await uiSource('views/pages/metadata-driven/field-components/form-field.ejs');
-    const telephone = await uiSource('views/pages/metadata-driven/field-components/telephone-field.ejs');
+    const metadata = await sharedSource('src/metadata/bo/identity.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
+    const dispatcher = await uiSource('views/field-components/entity-field.ejs');
+    const formField = await uiSource('views/field-components/form-field.ejs');
+    const telephone = await uiSource('views/field-components/telephone-field.ejs');
     const forms = await uiSource('public/js/forms.js');
     expect(metadata).toContain("normalize: { expression: 'TelephoneNbr(value)' }");
     expect(uiMetadata).toContain("field: 'telephoneNumber'");
@@ -25,10 +25,10 @@ describe('telephone field normalization and debugging CLI presentation', () => {
   });
 
   it('uses one CLI component for page and CTX-viewer instances with independent local histories', async () => {
-    const panel = await uiSource('views/pages/metadata-driven/ui-components/debugging-panel.ejs');
-    const cliView = await uiSource('views/pages/metadata-driven/ui-components/debugging-cli.ejs');
+    const panel = await uiSource('views/components/debugging/debugging-panel.ejs');
+    const cliView = await uiSource('views/components/debugging/debugging-cli.ejs');
     const shell = await uiSource('views/layout/shell.ejs');
-    const debuggerView = await uiSource('views/partials/debugger/ctx-debug.ejs');
+    const debuggerView = await uiSource('views/components/debugging/ctx-debug.ejs');
     const cli = await uiSource('public/js/debugger/cli.js');
     const routes = await uiSource('src/routes/sysbo-routes.ts');
 
@@ -55,7 +55,7 @@ describe('telephone field normalization and debugging CLI presentation', () => {
   });
 
   it('behaves like a compact wrapping console with keyboard execution and prompt history', async () => {
-    const cliView = await uiSource('views/pages/metadata-driven/ui-components/debugging-cli.ejs');
+    const cliView = await uiSource('views/components/debugging/debugging-cli.ejs');
     const cli = await uiSource('public/js/debugger/cli.js');
     const css = await uiSource('public/css/debugger/ctx-debug.css');
 

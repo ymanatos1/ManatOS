@@ -1,7 +1,7 @@
 <%#
   Authentication popup family.
 
-  These dialogs intentionally share the popup infrastructure under views/popups/partials:
+  These dialogs intentionally share the popup infrastructure under views/popups/shared:
   popup-header owns the modal-level title/subtitle, rich-popup-hero owns the illustration
   plus contentTitle/contentParagraphs, and popup-footer owns the Back-left/actions-right
   convention. Keeping the structural chrome here declarative prevents individual auth
@@ -18,7 +18,7 @@
   >
     <div class="modal-dialog modal-dialog-centered auth-modal-dialog">
       <div class="modal-content">
-        <%- include('../partials/popup-header', {
+        <%- include('../shared/popup-header', {
           labelId: 'signUpMethodModalLabel',
           icon: 'bi-person-plus',
           modalTitle: popupContent.auth.createAccount.modalTitle,
@@ -26,7 +26,7 @@
         }) %>
 
         <div class="modal-body auth-primary-modal-body">
-          <%- include('../partials/rich-popup-hero', {
+          <%- include('../shared/rich-popup-hero', {
             illustration: { kind: 'static', name: 'register' },
             contentTitle: popupContent.auth.createAccount.contentTitle,
             contentParagraphs: popupContent.auth.createAccount.contentParagraphs
@@ -41,7 +41,7 @@
               <p class="auth-method-description">
                 Register with an available account you already use.
               </p>
-              <%- include('../partials/external-provider-buttons', { mode: 'register' }) %>
+              <%- include('../shared/external-provider-buttons', { mode: 'register' }) %>
             </section>
 
             <section class="auth-method-card auth-email-method" aria-labelledby="registerEmailHeading">
@@ -105,7 +105,7 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <%- include('../partials/popup-header', {
+        <%- include('../shared/popup-header', {
           labelId: 'emailRegistrationModalLabel',
           icon: 'bi-envelope-plus',
           modalTitle: popupContent.auth.registerEmail.modalTitle,
@@ -113,7 +113,7 @@
         }) %>
 
         <div class="modal-body auth-primary-modal-body auth-email-registration-body">
-          <%- include('../partials/rich-popup-hero', {
+          <%- include('../shared/rich-popup-hero', {
             introClass: 'auth-email-registration-intro',
             illustration: { kind: 'static', name: 'register' },
             contentTitle: popupContent.auth.registerEmail.contentTitle,
@@ -186,12 +186,12 @@
                 <i class="bi bi-shield-check" aria-hidden="true"></i>
                 Choose a secure password
               </div>
-              <%- include('../../partials/password-rules', { includeMatchRule: true }) %>
+              <%- include('../../components/auth/password-rules', { includeMatchRule: true }) %>
             </div>
           </section>
         </div>
 
-        <%- include('../partials/popup-footer', {
+        <%- include('../shared/popup-footer', {
           footerClass: 'auth-step-footer',
           leftActions: [{
             label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary',
@@ -223,7 +223,7 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <%- include('../partials/popup-header', {
+        <%- include('../shared/popup-header', {
           labelId: 'signInModalLabel',
           icon: 'bi-box-arrow-in-right',
           modalTitle: popupContent.auth.signIn.modalTitle,
@@ -231,7 +231,7 @@
         }) %>
 
         <div class="modal-body auth-primary-modal-body">
-          <%- include('../partials/rich-popup-hero', {
+          <%- include('../shared/rich-popup-hero', {
             illustration: { kind: 'static', name: 'signin' },
             contentTitle: popupContent.auth.signIn.contentTitle,
             contentParagraphs: popupContent.auth.signIn.contentParagraphs
@@ -246,7 +246,7 @@
               <p class="auth-method-description">
                 Use a configured provider already connected to your account.
               </p>
-              <%- include('../partials/external-provider-buttons', { mode: 'signin' }) %>
+              <%- include('../shared/external-provider-buttons', { mode: 'signin' }) %>
             </section>
 
             <section class="auth-method-card" aria-labelledby="signInCredentialsHeading">
@@ -290,7 +290,7 @@
           </div>
         </div>
 
-        <%- include('../partials/popup-footer', {
+        <%- include('../shared/popup-footer', {
           leftActions: [],
           rightActions: [
             { label: 'Cancel', variant: 'btn-outline-secondary', dismiss: true },
@@ -326,7 +326,7 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <%- include('../partials/popup-header', {
+        <%- include('../shared/popup-header', {
           labelId: 'passwordRequestModalLabel',
           icon: 'bi-key',
           modalTitle: popupContent.auth.passwordRequest.modalTitle,
@@ -334,7 +334,7 @@
         }) %>
 
         <div class="modal-body auth-primary-modal-body auth-password-request-body">
-          <%- include('../partials/rich-popup-hero', {
+          <%- include('../shared/rich-popup-hero', {
             introClass: 'auth-entry-intro auth-password-request-intro',
             illustration: { kind: 'static', name: 'password' },
             contentTitle: popupContent.auth.passwordRequest.contentTitle,
@@ -371,7 +371,7 @@
           </section>
         </div>
 
-        <%- include('../partials/popup-footer', {
+        <%- include('../shared/popup-footer', {
           footerClass: 'auth-step-footer',
           leftActions: [{
             label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary',

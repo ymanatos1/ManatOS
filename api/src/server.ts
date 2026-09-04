@@ -12,7 +12,7 @@ import {
   SysBOLicenseService,
   SysBOPrincipalService,
   UserPrincipalService,
-} from './services/domain-services.js';
+} from './services/index.js';
 
 import { createApp } from './app.js';
 import { createEmailService } from './email/email-service.js';

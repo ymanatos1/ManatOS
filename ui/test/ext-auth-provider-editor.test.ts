@@ -9,7 +9,7 @@ const source = (path: string) => readFile(resolve(testDirectory, '..', path), 'u
 
 describe('external authentication provider metadata-driven editor', () => {
   it('declares provider General help and Secrets through reusable metadata components', async () => {
-    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    const metadata = await source('../shared/src/metadata/ui/identity.ts');
     expect(metadata).toContain("key: 'contextual-help'");
     expect(metadata).toContain("itemsDataKey: 'providerDefinitions'");
     expect(metadata).toContain("component: { key: 'provider-credentials', readOnly: false }");
@@ -23,8 +23,8 @@ describe('external authentication provider metadata-driven editor', () => {
   });
 
   it('keeps the credential workflow compound while reusing canonical field components internally', async () => {
-    const credentials = await source('views/pages/metadata-driven/ui-components/provider-credentials.ejs');
-    expect(credentials).toContain("include('../field-components/text-field'");
+    const credentials = await source('views/components/sysbo/entry/provider-credentials.ejs');
+    expect(credentials).toContain("include('../../../field-components/text-field'");
     expect(credentials).toContain("key: 'clientId'");
     expect(credentials).toContain('data-provider-client-secret');
     expect(credentials).toContain('data-provider-test-credentials');
@@ -37,7 +37,7 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(credentials).toContain('data-provider-remove-credentials');
     expect(credentials).not.toContain('removeProviderCredentialsModal');
     expect(credentials).not.toContain("include('contextual-help'");
-    expect(credentials).toContain("include('information-panel'");
+    expect(credentials).toContain("include('../../common/information-panel'");
     expect(credentials).not.toContain('class="ms-auto d-flex align-items-center gap-2 small"');
   });
 
@@ -60,7 +60,7 @@ describe('external authentication provider metadata-driven editor', () => {
 
   it('keeps provider-specific behavior in component/runtime data rather than generic entity renderer branches', async () => {
     const runtime = await source('public/js/components/external-provider.js');
-    const renderer = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const renderer = await source('views/pages/sysbo/entry.ejs');
     expect(runtime).toContain('data-contextual-help-key');
     expect(runtime).toContain('verificationProof.value = statusPayload.verificationProofId');
     expect(runtime).not.toContain("url.searchParams.set('credentialsTest'");
@@ -77,13 +77,13 @@ describe('external authentication provider metadata-driven editor', () => {
   });
 
   it('creates only from unconfigured provider options and applies provider defaults live', async () => {
-    const routes = await source('src/routes/sysbo-routes.ts');
-    const renderer = await source('views/pages/metadata-driven/bo-entry-metadata.ejs');
+    const supplemental = await source('src/routes/sysbo/entry-supplemental-data.ts');
+    const renderer = await source('views/pages/sysbo/entry.ejs');
     const runtime = await source('public/js/components/external-provider.js');
 
-    expect(routes).toContain('const configuredKeys = new Set');
-    expect(routes).toContain('externalAuthProviderDefinitions.filter');
-    expect(routes).toContain('pageReferenceData.provider = externalAuthProviderDefinitions.map');
+    expect(supplemental).toContain('const configuredKeys = new Set');
+    expect(supplemental).toContain('externalAuthProviderDefinitions.filter');
+    expect(supplemental).toContain('pageReferenceData.provider = externalAuthProviderDefinitions.map');
     expect(renderer).toContain('referenceValues[field.key]');
     expect(runtime).toContain('option.dataset.enumItem');
     expect(runtime).toContain('optionMetadata(option).callbackPath');
@@ -94,25 +94,26 @@ describe('external authentication provider metadata-driven editor', () => {
   });
 
   it('resolves immutable provider identity server-side when saving an existing record', async () => {
-    const routes = await source('src/routes/sysbo-routes.ts');
+    const providerWrite = await source('src/routes/sysbo/external-provider-write.ts');
+    const formPayload = await source('src/routes/sysbo/form-payload.ts');
 
     // Read-only enum/select controls are disabled in the browser and therefore
     // are not part of FormData. Existing provider saves must resolve the immutable
     // provider from the persisted record instead of treating a missing posted
     // value as provider ''.
-    expect(routes).toContain('let provider = String(req.body.provider');
-    expect(routes).toContain('if (id) {');
-    expect(routes).toContain('existingProvider = await apiClient.get<Record<string, unknown>>');
-    expect(routes).toContain('provider = String(existingProvider.data.provider');
-    expect(routes).toContain("req.body.providerCredentialAction ?? 'unchanged'");
-    expect(routes).toContain('req.body.providerVerificationProofId');
-    expect(routes).not.toContain("router.post('/sys-ext-auth-providers/:id/remove-credentials'");
-    expect(routes).toContain("field.key === 'clientId'");
+    expect(providerWrite).toContain('let provider = String(req.body.provider');
+    expect(providerWrite).toContain('if (id) {');
+    expect(providerWrite).toContain('existingProvider = await apiClient.get<Record<string, unknown>>');
+    expect(providerWrite).toContain('provider = String(existingProvider.data.provider');
+    expect(providerWrite).toContain("req.body.providerCredentialAction ?? 'unchanged'");
+    expect(providerWrite).toContain('req.body.providerVerificationProofId');
+    expect(providerWrite).not.toContain("router.post('/sys-ext-auth-providers/:id/remove-credentials'");
+    expect(formPayload).toContain("field.key === 'clientId'");
   });
 
   it('keeps callback, verification and secret material server-controlled', async () => {
-    const metadata = await source('../shared/src/bo-ui-metadata.ts');
-    const credentials = await source('views/pages/metadata-driven/ui-components/provider-credentials.ejs');
+    const metadata = await source('../shared/src/metadata/ui/identity.ts');
+    const credentials = await source('views/components/sysbo/entry/provider-credentials.ejs');
     expect(metadata).toContain('administrators cannot override it');
     expect(metadata).toContain('clientId: { editable: false }');
     expect(credentials).toContain('Secret stored securely');
@@ -121,14 +122,14 @@ describe('external authentication provider metadata-driven editor', () => {
 
   it('keeps credential tools screen-local and Save as the only persistence boundary', async () => {
     const runtime = await source('public/js/components/external-provider.js');
-    const routes = await source('src/routes/sysbo-routes.ts');
+    const providerWrite = await source('src/routes/sysbo/external-provider-write.ts');
     expect(runtime).toContain("credentialAction.value = 'remove'");
     expect(runtime).toContain("credentialAction.value = 'replace'");
     expect(runtime).not.toContain('window.location.replace(url.toString())');
-    expect(routes).toContain("const action = String(req.body.providerCredentialAction ?? 'unchanged')");
-    expect(routes).toContain("if (action === 'remove')");
-    expect(routes).toContain("if (action === 'replace')");
-    expect(routes).toContain("pending.testId === proofId");
-    expect(routes).toContain("credentialEndpoint = proofMatches");
+    expect(providerWrite).toContain("const action = String(req.body.providerCredentialAction ?? 'unchanged')");
+    expect(providerWrite).toContain("if (action === 'remove')");
+    expect(providerWrite).toContain("if (action !== 'replace')");
+    expect(providerWrite).toContain("pending.testId === proofId");
+    expect(providerWrite).toContain("credentialEndpoint = proofMatches");
   });
 });

@@ -84,6 +84,22 @@ export function parseListQuery(req: Request): ListQuery {
     }
   }
 
+  /*
+   * Express can also expose the same URL query as a nested object when an
+   * extended query parser is active:
+   *
+   *   ?filter.name=Admin  ->  { filter: { name: 'Admin' } }
+   *
+   * Accept both representations. The HTTP contract remains filter.<field>;
+   * parser configuration must not decide whether a valid list filter works.
+   */
+  const nestedFilters = req.query.filter;
+  if (nestedFilters && typeof nestedFilters === 'object' && !Array.isArray(nestedFilters)) {
+    for (const [field, value] of Object.entries(nestedFilters)) {
+      if (typeof value === 'string') filters[field] = value;
+    }
+  }
+
   const listExceptionsSource = typeof req.query.listExceptions === 'string'
     ? req.query.listExceptions.trim()
     : '';

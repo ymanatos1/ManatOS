@@ -10,7 +10,7 @@ import {
   type SysBOUser,
 } from '@manatos/shared';
 
-import { apiClient } from '../api-client.js';
+import { apiClient } from '../api/client.js';
 import { config } from '../config.js';
 import { apiSessionOptions } from '../auth/api-session.js';
 
@@ -35,7 +35,7 @@ import {
 
 import { requireCsrf } from '../middleware/csrf.js';
 
-import { renderPage } from '../render.js';
+import { renderPage } from '../presentation/render-page.js';
 
 /**
  * API session returned by:

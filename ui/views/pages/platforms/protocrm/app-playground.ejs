@@ -1,0 +1,56 @@
+<section class="app-playground-welcome">
+  <div class="app-playground-illustration-wrap">
+    <img
+      src="/assets/platforms/protocrm/app-playground-professional.png"
+      class="app-playground-illustration"
+      alt="Happy professional customer ready to explore ManatOS applications"
+    />
+  </div>
+
+  <div class="app-playground-welcome-copy">
+    <span class="eyebrow">ManatOS Applications</span>
+    <h2 class="mt-2 mb-2">Welcome to Apps Playground</h2>
+    <p class="text-secondary">
+      This workspace will be used to design and run ManatOS applications defined by SysBOApplication
+      entries. Application selection, design tools and runtime controls will be added here as the
+      application framework evolves.
+    </p>
+    <div class="app-playground-capabilities">
+      <span><i class="bi bi-boxes"></i> Metadata-driven applications</span>
+      <span><i class="bi bi-diagram-3"></i> Data and relationships</span>
+      <span><i class="bi bi-play-circle"></i> Design, validate and run</span>
+    </div>
+
+
+    <div class="playground-launch-area">
+
+      <button
+        type="button"
+        class="playground-run-button"
+        disabled
+        aria-disabled="true"
+        title="Application execution is not available yet"
+      >
+        <i class="bi bi-play-fill" aria-hidden="true"></i>
+      </button>
+
+
+      <div class="playground-launch-message">
+        <!--
+          Route invariants already guarantee a signed-in, platform-entitled user.
+          Anonymous/unlicensed Guest states belong to access/navigation handling
+          and must not be reimplemented as unreachable presentation branches.
+        -->
+        <h3>No applications available yet</h3>
+        <p>
+          Welcome, <strong><%= currentUser.name %></strong>.
+          There are currently no applications associated with your account.
+        </p>
+      </div>
+
+    </div>
+
+
+  </div>
+
+</section>

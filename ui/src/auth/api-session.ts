@@ -2,7 +2,7 @@ import type { Request } from 'express';
 
 import { AppError } from '@manatos/shared';
 
-import type { ApiRequestOptions } from '../api-client.js';
+import type { ApiRequestOptions } from '../api/client.js';
 
 /**
  * Error code used specifically for loss/expiration of the API session

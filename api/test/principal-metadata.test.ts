@@ -8,10 +8,10 @@ import {
   type SysBOCreateInput,
   type SysBOUpdateInput,
   type SysBOPrincipal,
+  sysBOPrincipalsUIMetadata,
 } from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
-import { sysBOPrincipalsUIMetadata } from '../src/metadata/sysbo-ui-definitions.js';
 import { createTestApi } from './test-helpers.js';
 
 describe('SysBOPrincipal declarative enum metadata', () => {

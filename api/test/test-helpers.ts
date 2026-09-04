@@ -16,7 +16,7 @@ import {
   SysBOLicenseService,
   SysBOPrincipalService,
   UserPrincipalService,
-} from '../src/services/domain-services.js';
+} from '../src/services/index.js';
 import { SecretsEncryptionService } from '../src/security/secrets-encryption-service.js';
 import { SysBOExtAuthProviderService } from '../src/services/sys-ext-auth-provider-service.js';
 import { SysBOConfigurationService } from '../src/services/sys-configuration-service.js';

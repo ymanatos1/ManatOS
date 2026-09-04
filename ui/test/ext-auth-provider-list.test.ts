@@ -9,7 +9,7 @@ const source = (path: string) => readFile(resolve(testDirectory, '..', path), 'u
 
 describe('external authentication provider metadata-driven list presentation', () => {
   it('declares only safe provider list columns and the one-record-per-provider rule in metadata', async () => {
-    const metadata = await source('../shared/src/bo-ui-metadata.ts');
+    const metadata = await source('../shared/src/metadata/ui/identity.ts');
     expect(metadata).toContain("visibleFields: ['provider', 'enabled', 'callbackPath', 'credentialsVerified']");
     expect(metadata).toContain("disableWhenAllEnumValuesExistForField: 'provider'");
     expect(metadata).toContain('One configuration record per provider.');
@@ -17,7 +17,7 @@ describe('external authentication provider metadata-driven list presentation', (
   });
 
   it('uses the generic metadata list renderer for provider labels and navigation', async () => {
-    const list = await source('views/pages/metadata-driven/bo-list-metadata.ejs');
+    const list = await source('views/pages/sysbo/list.ejs');
     expect(list).toContain('metadataUI.list.visibleFields');
     expect(list).toContain('const optionItem = metadataOptionItemForField');
     expect(list).toContain('primaryOptionItem');

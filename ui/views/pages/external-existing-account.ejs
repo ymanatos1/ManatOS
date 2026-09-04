@@ -28,7 +28,7 @@
     >
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-      <%- include('../popups/partials/popup-header', {
+      <%- include('../popups/shared/popup-header', {
         labelId: 'externalExistingAccountModalLabel',
         icon: 'bi-person-check',
         modalTitle: 'You already have an account',
@@ -68,7 +68,7 @@
         </div>
       </div>
 
-      <%- include('../popups/partials/popup-footer', {
+      <%- include('../popups/shared/popup-footer', {
         leftActions: [],
         rightActions: [
           { label: 'Cancel', variant: 'btn-outline-secondary', href: '/' },

@@ -29,7 +29,7 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <%- include('../partials/popup-header', {
+        <%- include('../shared/popup-header', {
           labelId: 'deleteEntryModalLabel',
           icon: 'bi-trash',
           titleClass: 'h5',
@@ -185,7 +185,7 @@
           <% } %>
         </div>
 
-        <%- include('../partials/popup-footer', {
+        <%- include('../shared/popup-footer', {
           leftActions: [],
           rightActions: [
             { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
@@ -214,7 +214,7 @@
       >
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <%- include('../partials/popup-header', {
+        <%- include('../shared/popup-header', {
           labelId: 'removeProviderCredentialsModalLabel',
           icon: 'bi-key',
           titleClass: 'h5',
@@ -230,7 +230,7 @@
           <p class="text-danger mb-0">The Secrets tab will reopen ready for a replacement pair. New credentials must be tested successfully before the provider can be enabled again.</p>
         </div>
 
-        <%- include('../partials/popup-footer', {
+        <%- include('../shared/popup-footer', {
           leftActions: [],
           rightActions: [
             { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
@@ -252,7 +252,7 @@
 >
   <div class="modal-dialog">
     <div class="modal-content">
-      <%- include('../partials/popup-header', {
+      <%- include('../shared/popup-header', {
         labelId: 'unsavedChangesModalLabel',
         icon: 'bi-exclamation-triangle',
         titleClass: 'h5',
@@ -266,7 +266,7 @@
         You have changes that have not been saved.
       </div>
 
-      <%- include('../partials/popup-footer', {
+      <%- include('../shared/popup-footer', {
         leftActions: [],
         rightActions: [
           { label: 'Cancel', variant: 'btn-secondary', data: { 'unsaved-action': 'cancel' } },

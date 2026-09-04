@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const tabContentPath = resolve(
   testDirectory,
-  '../views/pages/metadata-driven/ui-components/entry-tab-content.ejs',
+  '../views/components/sysbo/entry/entry-tab-content.ejs',
 );
 
 describe('metadata-driven entry EJS runtime composition', () => {

@@ -65,3 +65,31 @@ export interface SysPlatform {
   entities: EntityContribution[];
   navigation: NavigationContribution[];
 }
+
+
+/**
+ * Code-defined ManatOS company catalogue.
+ *
+ * Company-owned capabilities are composed with one current SysPlatform at
+ * runtime; product/platform definitions remain modular and source-owned.
+ */
+export interface CompanyInfo {
+  id: string;
+  name: string;
+  shortName: string;
+  description?: string;
+  branding: {
+    headerLogo: ThemedImageRef;
+    companyPageImage?: ImageRef;
+  };
+  entities: EntityContribution[];
+  navigation: NavigationContribution[];
+  defaultPlatformId: string;
+  /** Company-owned Home-page presentation. */
+  home: {
+    eyebrow: string;
+    title: string;
+    description: string;
+  };
+  platforms: SysPlatform[];
+}

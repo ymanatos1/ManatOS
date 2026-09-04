@@ -208,7 +208,7 @@ Add tests when the corresponding functionality becomes real rather than pre-buil
 - a small Playwright E2E suite for only the most important browser workflows.
 
 
-Platform organization has a presentation contract test (`platform-feature-organization.test.ts`) that prevents mCRM playground handlers from drifting back into generic page/SysBO routers and verifies the platform-owned view/style paths. External-provider adapter coverage requires every canonical provider key to have exactly one executable adapter used by both live sign-in and credential testing.
+Platform organization has a presentation contract test (`platform-feature-organization.test.ts`) that prevents protoCRM playground handlers from drifting back into generic page/SysBO routers and verifies the platform-owned view/style paths. External-provider adapter coverage requires every canonical provider key to have exactly one executable adapter used by both live sign-in and credential testing.
 
 Entry-representation contract tests cover canonical name/type sources, formula-driven names with lazy derived-field dependencies, relationship expressions through `relations.<relationshipKey>`, enum/reference type icons, and the separation between entity/page icons and entry-instance icons.
 

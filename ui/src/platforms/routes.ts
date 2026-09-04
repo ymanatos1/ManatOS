@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { createMcrmRoutes } from './mcrm/routes.js';
+import { createProtoCrmRoutes } from './protocrm/routes.js';
 
 /**
  * Compose platform-owned UI routes behind one generic application boundary.
@@ -9,6 +9,6 @@ import { createMcrmRoutes } from './mcrm/routes.js';
  */
 export function createPlatformRoutes() {
   const router = Router();
-  router.use(createMcrmRoutes());
+  router.use(createProtoCrmRoutes());
   return router;
 }

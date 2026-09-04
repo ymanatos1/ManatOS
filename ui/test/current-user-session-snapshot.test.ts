@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const pageContext = readFileSync(resolve(process.cwd(), 'src/middleware/page-context.ts'), 'utf8');
 const authRoutes = readFileSync(resolve(process.cwd(), 'src/routes/auth-routes.ts'), 'utf8');
-const sysboRoutes = readFileSync(resolve(process.cwd(), 'src/routes/sysbo-routes.ts'), 'utf8');
+const entryWrite = readFileSync(resolve(process.cwd(), 'src/routes/sysbo/entry-write.ts'), 'utf8');
 const apiSession = readFileSync(resolve(process.cwd(), 'src/auth/api-session.ts'), 'utf8');
 
 describe('current SysUser session snapshot', () => {
@@ -16,8 +16,8 @@ describe('current SysUser session snapshot', () => {
   });
 
   it('refreshes the snapshot after saving the signed-in SysUser and clears it with auth state', () => {
-    expect(sysboRoutes).toContain("definition.key === 'sys-users'");
-    expect(sysboRoutes).toContain('req.session.currentUserSnapshot = savedRecord as unknown as SysBOUser');
+    expect(entryWrite).toContain("definition.key === 'sys-users'");
+    expect(entryWrite).toContain('req.session.currentUserSnapshot = saved.data as unknown as SysBOUser');
     expect(apiSession).toContain('delete req.session.currentUserSnapshot');
   });
 });

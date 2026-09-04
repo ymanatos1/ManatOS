@@ -80,22 +80,22 @@ describe('ManatOS ctx tree', () => {
 
   it('normalizes enum choices into the same option/options CTX shape used by references', () => {
     const fields = contextFields(
-      { platformId: 'mcrm' },
+      { platformId: 'protocrm' },
       {
         platformId: {
           key: 'platformId',
           label: 'Platform',
           type: 'enum',
           order: 10,
-          enumValues: ['mcrm', 'other'],
+          enumValues: ['protocrm', 'other'],
         },
       },
     );
 
-    expect(fields.platformId?.value).toBe('mcrm');
-    expect(fields.platformId?.option).toEqual({ value: 'mcrm', label: 'mcrm' });
+    expect(fields.platformId?.value).toBe('protocrm');
+    expect(fields.platformId?.option).toEqual({ value: 'protocrm', label: 'protocrm' });
     expect(fields.platformId?.options).toEqual([
-      { value: 'mcrm', label: 'mcrm' },
+      { value: 'protocrm', label: 'protocrm' },
       { value: 'other', label: 'other' },
     ]);
   });

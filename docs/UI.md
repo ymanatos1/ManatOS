@@ -146,7 +146,7 @@ The Account dropdown contains the detailed account controls; it is distinct from
 
 `views/partials/horizontal-nav.ejs` renders metadata/configuration-driven items from `src/navigation.ts` and supports nested menus.
 
-The main navigation exposes **Home → Company → Platform → Resources** plus platform-owned shortcuts such as **Apps Playground** when the current user is entitled to them. The Platform entry is catalogue-driven: with one enabled platform it is a direct link to that platform; with multiple enabled platforms it becomes a dropdown of platform pages without requiring new shell markup. Apps Playground and SysApplications are mCRM-owned capabilities: Admin bypass applies, while every non-Admin user requires a current effective mCRM license linked through one of their principals.
+The main navigation exposes **Home → Company → Platform → Resources** plus platform-owned shortcuts such as **Apps Playground** when the current user is entitled to them. The Platform entry is catalogue-driven: with one enabled platform it is a direct link to that platform; with multiple enabled platforms it becomes a dropdown of platform pages without requiring new shell markup. Apps Playground and SysApplications are protoCRM-owned capabilities: Admin bypass applies, while every non-Admin user requires a current effective protoCRM license linked through one of their principals.
 
 For authenticated users, the right side contains a compact signed-in identity immediately before the language selector. This keeps global session identity out of page-specific content such as the Home hero.
 
@@ -154,7 +154,7 @@ The language control currently persists `en` / `el` browser preference and updat
 
 ### 3.4 Left navigation
 
-The authenticated left navigation is generated from `app.navigation.vertical`. It supports nested entries, separators, docked lower actions, authorization filtering, platform-entitlement filtering and UI actions such as opening Preferences. Horizontal and vertical mCRM shortcuts reuse the same platform contribution so their entitlement rules cannot drift.
+The authenticated left navigation is generated from `app.navigation.vertical`. It supports nested entries, separators, docked lower actions, authorization filtering, platform-entitlement filtering and UI actions such as opening Preferences. Horizontal and vertical protoCRM shortcuts reuse the same platform contribution so their entitlement rules cannot drift.
 
 It can be collapsed independently. The restore control is intentionally outside the hidden navigation element so it remains available after collapse.
 
@@ -192,9 +192,9 @@ Horizontal platform navigation is derived from the shared `CompanyInfo.platforms
 
 ## 4.1 Platform landing pages
 
-`/platform/:platformId` is a generic platform landing route driven by `SysPlatform` metadata. A platform may provide a hero image, subtitle, introductory copy and capability cards. mCRM is presented as the **ManatOS Dynamic Customer Relationship Management Platform**: a platform for defining and evolving CRM applications with configurable business models, relationships and processes, licensing-controlled access, Playground testing and a path toward independent delivery as applications mature. Its current presentation includes a connected customer-relationship network plus Customer 360°, Opportunities, Activities, Communications, Documents and Analytics. Future platforms reuse the same page structure rather than introducing hard-coded mCRM routes.
+`/platform/:platformId` is a generic platform landing route driven by `SysPlatform` metadata. A platform may provide a hero image, subtitle, introductory copy and capability cards. protoCRM is presented as the **ManatOS Dynamic Customer Relationship Management Platform**: a platform for defining and evolving CRM applications with configurable business models, relationships and processes, licensing-controlled access, Playground testing and a path toward independent delivery as applications mature. Its current presentation includes a connected customer-relationship network plus Customer 360°, Opportunities, Activities, Communications, Documents and Analytics. Future platforms reuse the same page structure rather than introducing hard-coded protoCRM routes.
 
-Platform-owned feature code is isolated by platform. mCRM catalogue metadata lives under `shared/src/platforms/mcrm/`, mCRM routes under `ui/src/platforms/mcrm/`, and mCRM pages under `ui/views/pages/platforms/mcrm/`, and platform assets/styles under `ui/public/assets/platforms/mcrm/` and `ui/public/css/platforms/mcrm.css`. The generic `ui/src/platforms/routes.ts` composes platform route modules, keeping the general page and SysBO routers free of mCRM-specific feature branches. The platform presentation metadata may declare its stylesheet so the shell does not hard-code platform IDs.
+Platform-owned feature code is isolated by platform. protoCRM catalogue metadata lives under `shared/src/platforms/protocrm/`, protoCRM routes under `ui/src/platforms/protocrm/`, and protoCRM pages under `ui/views/pages/platforms/protocrm/`, and platform assets/styles under `ui/public/assets/platforms/protocrm/` and `ui/public/css/platforms/protocrm.css`. The generic `ui/src/platforms/routes.ts` composes platform route modules, keeping the general page and SysBO routers free of protoCRM-specific feature branches. The platform presentation metadata may declare its stylesheet so the shell does not hard-code platform IDs.
 
 ## 5. Generic SysBO UI
 
@@ -268,7 +268,7 @@ The **CTX VIEWER** is one tab of the unified Developer Tools dock and exposes th
 
 Generic value display is resolved through `src/presentation/metadata-value-presentation.ts` rather than entity-specific renderer branches. Option/enum labels, icons and semantic tones come from metadata `optionItems`/`enumItems`; generic date/datetime/duration/empty-value formatting is centralized there as well. Domain concepts such as an email verification source therefore do not require a renderer format token such as `verification-source`: the canonical/UI metadata supplies the presentation catalogue and every renderer consumes the same generic contract.
 
-This boundary is important for customer-designed mCRM applications. A future Apps Designer can persist entity/relationship/expression/presentation metadata, while Playground or another renderer consumes those contracts without adding application-specific EJS conditions. EJS is the current renderer, not the owner of application semantics.
+This boundary is important for customer-designed protoCRM applications. A future Apps Designer can persist entity/relationship/expression/presentation metadata, while Playground or another renderer consumes those contracts without adding application-specific EJS conditions. EJS is the current renderer, not the owner of application semantics.
 
 ### 5.5 Relationship-aware delete confirmation
 
