@@ -15,6 +15,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
   code: 'protoCRM',
   name: 'protoCRM Platform',
   shortName: 'protoCRM',
+  icon: 'bi-boxes',
   description:
     'CRM platform for managing customer relationships, business activity and connected applications.',
   enabled: true,

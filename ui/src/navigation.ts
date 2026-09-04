@@ -61,7 +61,7 @@ export function horizontalNavigation(
     ? {
         id: 'platform',
         text: 'Platform',
-        icon: 'bi-boxes',
+        icon: platform.icon ?? 'bi-boxes',
         url: `/platform/${encodeURIComponent(platform.id)}`,
       }
     : {
@@ -71,7 +71,7 @@ export function horizontalNavigation(
         children: enabledPlatforms.map((entry) => ({
           id: `platform-${entry.id}`,
           text: entry.shortName,
-          icon: 'bi-boxes',
+          icon: entry.icon ?? 'bi-boxes',
           url: `/platform/${encodeURIComponent(entry.id)}`,
         })),
       };

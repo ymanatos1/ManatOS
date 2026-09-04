@@ -35,10 +35,19 @@
     </a>
 
     <!--
-      The platform badge is deliberately separate from the Company logo.
-      CompanyInfo answers who owns the product catalogue, while
-      currentPlatform identifies the selected major platform. Its embossed
-      treatment is theme-owned CSS rather than platform-specific hardcoding.
+      app.version is the ManatOS/UI application version, not the selected
+      platform version. Keep it adjacent to the enclosing ManatOS identity so
+      the header does not imply that the value belongs to protoCRM.
+    -->
+    <span class="version-badge d-none d-sm-inline" title="ManatOS version">
+      v<%= app.version %>
+    </span>
+
+    <!--
+      The compact platform identity is deliberately subordinate to the ManatOS
+      Company brand. It is metadata-driven and links to the selected platform;
+      the horizontal Platform navigation becomes the catalogue/menu when more
+      than one enabled platform exists.
     -->
     <a
       class="current-platform-badge"
@@ -46,12 +55,9 @@
       title="Open <%= app.currentPlatform.name %>"
       aria-label="Current platform: <%= app.currentPlatform.name %>"
     >
+      <i class="bi <%= app.currentPlatform.icon || 'bi-boxes' %> current-platform-icon" aria-hidden="true"></i>
       <span class="current-platform-code"><%= app.currentPlatform.shortName %></span>
     </a>
-
-    <span class="version-badge d-none d-sm-inline">
-      v<%= app.version %>
-    </span>
   </div>
 
   <div class="header-center-actions">

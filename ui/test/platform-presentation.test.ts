@@ -33,6 +33,11 @@ describe('platform presentation', () => {
 
     expect($('.current-platform-badge').attr('href')).toBe('/platform/protocrm');
     expect($('.current-platform-badge').text().trim()).toBe('protoCRM');
+    expect($('.current-platform-badge .bi-boxes').length).toBe(1);
+    expect($('.version-badge').attr('title')).toBe('ManatOS version');
+    expect($('.header-brand-area').children().index($('.version-badge'))).toBeLessThan(
+      $('.header-brand-area').children().index($('.current-platform-badge')),
+    );
   });
   it('keeps Donate reactive in the DOM and applies the initial DONATIONS_SHOW visibility', async () => {
     const currentPlatform = resolvePlatform(MANATOS_COMPANY);

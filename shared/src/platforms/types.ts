@@ -42,6 +42,8 @@ export interface SysPlatform {
   code: string;
   name: string;
   shortName: string;
+  /** Compact platform identity icon reused by generic shell/catalogue presentation. */
+  icon?: string;
   description?: string;
   enabled: boolean;
   logo?: ImageRef;

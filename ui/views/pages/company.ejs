@@ -18,17 +18,26 @@
     the only platform. Adding another SysPlatform should therefore make it
     visible here without introducing another hard-coded Company-page block.
   -->
-  <div class="company-platform-catalogue mt-4">
-    <% for (const platform of app.company.platforms.filter((entry) => entry.enabled)) { %>
-      <article class="company-platform-card">
-        <div class="company-platform-card-title">
-          <strong><a href="/platform/<%= encodeURIComponent(platform.id) %>"><%= platform.shortName %></a></strong>
-          <span><%= platform.name %></span>
-        </div>
-        <% if (platform.description) { %>
-          <p class="mb-0"><%= platform.description %></p>
-        <% } %>
-      </article>
-    <% } %>
-  </div>
+  <section class="company-platforms mt-4" aria-labelledby="companyPlatformsHeading">
+    <h3 id="companyPlatformsHeading" class="h5 mb-3">Platforms</h3>
+    <div class="company-platform-catalogue">
+      <% for (const platform of app.company.platforms.filter((entry) => entry.enabled)) { %>
+        <article class="company-platform-card">
+          <a class="company-platform-card-link" href="/platform/<%= encodeURIComponent(platform.id) %>" aria-label="Open <%= platform.name %>">
+            <span class="company-platform-card-icon" aria-hidden="true"><i class="bi <%= platform.icon || 'bi-boxes' %>"></i></span>
+            <span class="company-platform-card-copy">
+              <span class="company-platform-card-title">
+                <strong><%= platform.shortName %></strong>
+                <span><%= platform.name %></span>
+              </span>
+              <% if (platform.description) { %>
+                <span class="company-platform-card-description"><%= platform.description %></span>
+              <% } %>
+            </span>
+            <i class="bi bi-arrow-right company-platform-card-arrow" aria-hidden="true"></i>
+          </a>
+        </article>
+      <% } %>
+    </div>
+  </section>
 </section>

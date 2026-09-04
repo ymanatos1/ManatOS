@@ -107,7 +107,7 @@ export function createPageRoutes() {
 
       await renderPage(res, 'pages/platform', {
         title: platform.shortName,
-        titleIcon: 'bi-boxes',
+        titleIcon: platform.icon ?? 'bi-boxes',
         titleSubtitle: platform.presentation?.subtitle ?? platform.name,
         breadcrumbTitle: `Platform · ${platform.shortName}`,
         platform,

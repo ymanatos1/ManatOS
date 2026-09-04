@@ -18,13 +18,13 @@ describe('home presentation', () => {
 
     expect($('.home-hero-grid').length).toBe(1);
     expect($('.home-hero-copy h2').text().trim()).toBe(
-      'The data-driven platform to design and instantly test real applications',
+      'A data-driven foundation for business platforms and applications',
     );
     expect($('.home-platform-map').length).toBe(1);
-    expect($('.home-platform-app').text()).toContain('Business Application');
-    expect($('.home-platform-app .bi-boxes').length).toBe(1);
+    expect($('.home-platform-app').text()).toContain('Business Platforms & Applications');
+    expect($('.home-platform-app .bi-layers').length).toBe(1);
     expect($('.home-platform-service').length).toBe(3);
-    expect($('.home-platform-foundation').text()).toContain('Metadata Foundation');
+    expect($('.home-platform-foundation').text()).toContain('ManatOS Application Foundation');
     expect($('.home-benefit').length).toBe(3);
     expect($('.home-hero img').length).toBe(0);
   });

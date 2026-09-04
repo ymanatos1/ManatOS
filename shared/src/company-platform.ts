@@ -31,10 +31,10 @@ export const MANATOS_COMPANY: CompanyInfo = {
   shortName: 'ManatOS',
   description: 'Software platforms and reusable application foundations.',
   home: {
-    eyebrow: 'ManatOS platform',
-    title: 'The data-driven platform to design and instantly test real applications',
+    eyebrow: 'ManatOS application foundation',
+    title: 'A data-driven foundation for business platforms and applications',
     description:
-      'Reusable metadata provides a clean foundation for secure, maintainable, rich and dynamic application development.',
+      'ManatOS provides reusable metadata, context, authorization, API and UI foundations for defining business platforms and building secure applications on top of them.',
   },
   branding: {
     headerLogo: {
