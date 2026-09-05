@@ -7,6 +7,33 @@ import { describe, expect, it } from 'vitest';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 describe('generic SysBO form state presentation', () => {
+  it('loads focused form runtimes instead of the former forms.js monolith', async () => {
+    const shell = await readFile(resolve(testDirectory, '../views/layout/shell.ejs'), 'utf8');
+    const expected = [
+      '/js/forms/auth.js',
+      '/js/forms/entry-state.js',
+      '/js/forms/entry-field-state.js',
+      '/js/forms/entry-save.js',
+      '/js/forms/entry-focus.js',
+      '/js/forms/configuration.js',
+      '/js/forms/modal-focus.js',
+    ];
+
+    for (const runtime of expected) expect(shell).toContain(runtime);
+    expect(shell).not.toContain('/js/forms.js');
+
+    const entryState = await readFile(resolve(testDirectory, '../public/js/forms/entry-state.js'), 'utf8');
+    const entryFieldState = await readFile(resolve(testDirectory, '../public/js/forms/entry-field-state.js'), 'utf8');
+    const entrySave = await readFile(resolve(testDirectory, '../public/js/forms/entry-save.js'), 'utf8');
+    const entryFocus = await readFile(resolve(testDirectory, '../public/js/forms/entry-focus.js'), 'utf8');
+
+    expect(entryState).toContain('Canonical SysBO form-state baseline + dirty navigation protection');
+    expect(entryState).toContain('Generic SysBO Save-button state');
+    expect(entryFieldState).toContain('Metadata-driven per-field change highlighting');
+    expect(entrySave).toContain('Metadata-driven in-place Save');
+    expect(entryFocus).toContain('Metadata-driven entry initial focus');
+  });
+
   it('starts the shared Save button disabled and marks it for generic state management', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
     const actionsFooterSource = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/entry-actions-footer.ejs'), 'utf8');
@@ -19,7 +46,7 @@ describe('generic SysBO form state presentation', () => {
     expect(saveActionSource).toContain('disabled');
     // The dirty-guard attribute must be emitted as actual markup, not through
     // EJS escaped interpolation. Escaped quotes become part of the attribute
-    // value (\"true\"), so forms.js cannot match [data-dirty-guard=\"true\"].
+    // value (\"true\"), so entry-state runtime cannot match [data-dirty-guard=\"true\"].
     expect(metadataSource).toContain('<% if (!isViewMode) { %>data-dirty-guard=\"true\"<% } %>');
     expect(metadataSource).not.toContain(`<%= isViewMode ? '' : 'data-dirty-guard=\"true\"' %>`);
     expect(metadataSource).toContain('data-record-mode="<%= recordMode %>"');
@@ -28,7 +55,7 @@ describe('generic SysBO form state presentation', () => {
   });
 
   it('uses reversible dirty state and requires current form validity before enabling Save', async () => {
-    const source = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const source = await readFile(resolve(testDirectory, '../public/js/forms/entry-state.js'), 'utf8');
     expect(source).toContain('window.manatosSysBOFormState = state');
     expect(source).toContain('isDirty: () =>');
     expect(source).toContain('isValid: () => form.checkValidity()');
@@ -118,10 +145,12 @@ describe('generic SysBO form state presentation', () => {
     expect(metadataSource).toContain('buildMetadataDebuggingModel({');
     expect(debuggingModelSource).toContain("'ENTITY'");
     expect(debuggingModelSource).toContain("'ENTITY FIELDS'");
-    expect(debuggingModelSource).toContain("'FIELD VALUES'");
+    expect(debuggingModelSource).toContain("'FIELD CALCULATIONS'");
     expect(debuggingModelSource).toContain("'DECLARED FIELDS'");
     expect(debuggingModelSource).toContain("'INHERITED FIELDS'");
-    expect(debuggingModelSource).toContain("'UI-DEFINED FIELDS'");
+    // Renderable calculated fields are canonical fieldDefinition entries;
+    // the normalized model has no parallel UI-defined field catalogue.
+    expect(debuggingModelSource).not.toContain("'UI-DEFINED FIELDS'");
     expect(debuggingModelSource).toContain("'FIELD OTHER'");
     expect(debuggingModelSource).toContain("'RELATED ENTITY'");
     expect(debuggingModelSource).toContain("'UI'");
@@ -195,7 +224,7 @@ describe('generic SysBO form state presentation', () => {
   });
 
   it('focuses the first editable field and skips informational tabs when necessary', async () => {
-    const formsSource = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const formsSource = await readFile(resolve(testDirectory, '../public/js/forms/entry-focus.js'), 'utf8');
     expect(formsSource).toContain('focusInitialEditableField');
     expect(formsSource).toContain('editableControlIn(firstPane)');
     expect(formsSource).toContain('for (const pane of panes.slice(1))');
@@ -213,7 +242,7 @@ describe('generic SysBO form state presentation', () => {
   });
 
   it('keeps rich enum backing selects out of initial focus and separates date-only from datetime browser controls', async () => {
-    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const forms = await readFile(resolve(testDirectory, '../public/js/forms/entry-focus.js'), 'utf8');
     const entry = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
     const dateField = await readFile(resolve(testDirectory, '../views/field-components/date-field.ejs'), 'utf8');
     const datetimeField = await readFile(resolve(testDirectory, '../views/field-components/datetime-field.ejs'), 'utf8');
@@ -232,7 +261,7 @@ describe('generic SysBO form state presentation', () => {
   it('uses Close for a clean entry and Cancel whenever the shared page transaction is dirty or internally editing', async () => {
     const renderer = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
     const actionsFooter = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/entry-actions-footer.ejs'), 'utf8');
-    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const forms = await readFile(resolve(testDirectory, '../public/js/forms/entry-state.js'), 'utf8');
 
     expect(renderer).toContain("include('../../components/sysbo/entry/entry-actions-footer'");
     expect(actionsFooter).toContain('data-form-close-cancel');

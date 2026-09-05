@@ -27,7 +27,7 @@
           const tabHasEditableFields = tabContents.some((content) => {
             if (content?.kind !== 'field') return false;
             const key = content.field;
-            if (derivedFields[key] || relatedCollections[key]) return false;
+            if (relatedCollections[key]) return false;
             const field = metadata.fieldDefinition[key];
             return Boolean(field && fieldVisible(field) && !field.sensitive && fieldEditable(field));
           });
@@ -186,61 +186,26 @@
               ></div>
             <% } %>
           <% } else if (tab.layout === 'summary') { %>
-            <div class="account-summary-grid authentication-summary-grid">
-              <% for (const key of tab.fields) { %>
-                <% const derived = derivedFields[key]; %>
-                <% const collection = relatedCollections[key]; %>
-                <% const field = metadata.fieldDefinition[key]; %>
-                <% if (collection) continue; %>
-
-                <% if (derived) { %>
-                  <% const rawValue = derived.expression ? ctxValue(key) : undefined; %>
-                  <% const presentation = overrides[key]?.presentation || {}; %>
-                  <% const tone = dynamicUIValue(presentation.tone, ctxFields, {
-                    source: 'ui-metadata',
-                    sourcePath: `fieldOverrides.${key}.presentation.tone`,
-                    targetPath: `fields.${key}.tone`,
-                    purpose: 'resolve calculated-field presentation tone',
-                  }); %>
-                  <% const stateIcon = dynamicUIValue(presentation.icon, ctxFields, {
-                    source: 'ui-metadata',
-                    sourcePath: `fieldOverrides.${key}.presentation.icon`,
-                    targetPath: `fields.${key}.icon`,
-                    purpose: 'resolve calculated-field presentation icon',
-                  }); %>
-                  <% const derivedField = metadata.fieldDefinition[key]; %>
-                  <% const renderedDerivedValue = derivedField?.type === 'reference'
-                    ? referenceLabel(key, rawValue)
-                    : formatValue(rawValue, {...derived, ...presentation}); %>
-                  <div class="account-summary-label"><% if (derived.icon) { %><i class="bi bi-<%= derived.icon %> me-1" aria-hidden="true"></i><% } %><%= overrides[key]?.label || derived.label %>:</div>
-                  <div class="account-summary-value">
-                    <% if (stateIcon) { %>
-                      <span class="status-value <%= tone === 'success' ? 'status-positive' : 'status-neutral' %>">
-                        <i class="bi bi-<%= stateIcon %>" aria-hidden="true"></i>
-                        <%= renderedDerivedValue %>
-                      </span>
-                    <% } else if (tone) { %>
-                      <span class="badge text-bg-<%= tone %>"><%= renderedDerivedValue %></span>
-                    <% } else { %>
-                      <span class="text-secondary"><%= renderedDerivedValue %></span>
-                    <% } %>
-                  </div>
-                <% } else if (field && fieldVisible(field) && !field.sensitive) { %>
-                  <% const presentation = overrides[key]?.presentation || {}; %>
-                  <div class="account-summary-label"><%= fieldLabel(field) %>:</div>
-                  <div class="account-summary-value">
-                    <% const rendered = formatValue(valueFor(key), presentation); %>
-                    <% if (rendered === (presentation.emptyText || '—')) { %>
-                      <span class="text-secondary"><%= rendered %></span>
-                    <% } else { %>
-                      <%= rendered %>
-                    <% } %>
-                  </div>
-                <% } %>
-              <% } %>
-            </div>
-
-            <%- include('../collections/related-collections', { tab, relatedCollections, pageRelatedData, relatedMetadataRegistry, collectionValue, relatedRowHref, relatedReferenceLabel, optionItemForField, enumToneClass, formatValue }) %>
+            <%- include('summary', {
+              tab,
+              relatedCollections,
+              metadata,
+              overrides,
+              ctxFields,
+              dynamicUIValue,
+              fieldVisible,
+              fieldLabel,
+              valueFor,
+              referenceLabel,
+              formatValue,
+              pageRelatedData,
+              relatedMetadataRegistry,
+              collectionValue,
+              relatedRowHref,
+              relatedReferenceLabel,
+              optionItemForField,
+              enumToneClass,
+            }) %>
           <% } else { %>
             <div class="row g-3">
               <% for (const key of tab.fields) { %>

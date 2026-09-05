@@ -250,7 +250,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
       ...audit,
     } as T;
 
-    // Application/service infrastructure may materialize metadata-derived fields
+    // Application/service infrastructure may materialize metadata-calculated fields
     // after provider-generated identity/audit values exist but before the record
     // is committed into the backing collection.
     const record = prepare ? await prepare(candidate) : candidate;

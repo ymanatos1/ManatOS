@@ -61,11 +61,11 @@ export class GenericSysBOService<T extends SysBOEntity> {
     authorizationFilter?: InMemoryListAuthorizationFilter<T>,
   ): Promise<ListResult<T>> {
     const result = await this.repository.list(query, authorizationFilter);
-    if (!this.hasPersistedDerivedFields()) return result;
+    if (!this.hasPersistedCalculatedFields()) return result;
 
     return {
       ...result,
-      items: await Promise.all(result.items.map((item) => this.materializePersistedDerivedFields(item))),
+      items: await Promise.all(result.items.map((item) => this.materializePersistedCalculatedFields(item))),
     };
   }
 
@@ -76,8 +76,8 @@ export class GenericSysBOService<T extends SysBOEntity> {
    */
   async get(id: string): Promise<T | null> {
     const item = await this.repository.getById(id);
-    return item && this.hasPersistedDerivedFields()
-      ? this.materializePersistedDerivedFields(item)
+    return item && this.hasPersistedCalculatedFields()
+      ? this.materializePersistedCalculatedFields(item)
       : item;
   }
 
@@ -109,9 +109,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
           const created = await this.repository.create(
             normalizedInput,
             actor,
-            (record) => this.materializePersistedDerivedFields(record),
+            (record) => this.materializePersistedCalculatedFields(record),
           );
-          await this.refreshPersistedDerivedCollection();
+          await this.refreshPersistedCalculatedCollection();
           return (await this.repository.getById(created.id)) ?? created;
         },
       ),
@@ -144,9 +144,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
             id,
             normalizedChanges,
             actor,
-            (record) => this.materializePersistedDerivedFields(record),
+            (record) => this.materializePersistedCalculatedFields(record),
           );
-          await this.refreshPersistedDerivedCollection();
+          await this.refreshPersistedCalculatedCollection();
           return (await this.repository.getById(updated.id)) ?? updated;
         },
       ),
@@ -171,34 +171,35 @@ export class GenericSysBOService<T extends SysBOEntity> {
     return candidate;
   }
 
-  /** Whether this entity declares any derived value that must be stored. */
-  private hasPersistedDerivedFields(): boolean {
-    return Object.values(this.metadata.derivedFields ?? {}).some((field) => field.persisted === true);
+  /** Whether this entity declares any calculated value that must be stored. */
+  private hasPersistedCalculatedFields(): boolean {
+    return Object.values(this.metadata.fieldDefinition).some((field) => field.calculation?.persisted === true);
   }
 
   /**
-   * Materialize every metadata-declared persisted derived field against a
+   * Materialize every metadata-declared persisted calculated field against a
    * minimal, entity-agnostic execution scope. The current candidate entity is
    * the lexical scope; persistence-backed functions use the generic EntityResolver
    * capability rather than depending on a UI/list entries snapshot.
    *
-   * Several derived fields may depend on one another. Iterate to a fixed point
+   * Several calculated fields may depend on one another. Iterate to a fixed point
    * with a strict safety bound; no entity/field names are hard-coded here.
    */
-  protected async materializePersistedDerivedFields(record: T): Promise<T> {
-    const derived = Object.entries(this.metadata.derivedFields ?? {})
-      .filter(([, field]) => field.persisted === true);
-    if (!derived.length) return record;
+  protected async materializePersistedCalculatedFields(record: T): Promise<T> {
+    const calculations = Object.entries(this.metadata.fieldDefinition)
+      .filter(([, field]) => field.calculation?.persisted === true)
+      .map(([key, field]) => [key, field.calculation!] as const);
+    if (!calculations.length) return record;
 
     const candidate = { ...(record as unknown as Record<string, unknown>) };
     // One resolver per top-level materialization gives all fixed-point passes a
     // request-local canonical lookup cache without leaking data across operations.
     const entityResolver = new DataStoreEntityResolver(this.store);
 
-    const maxPasses = Math.max(4, derived.length * 4);
+    const maxPasses = Math.max(4, calculations.length * 4);
     for (let pass = 0; pass < maxPasses; pass += 1) {
       /*
-       * Derived expressions resolve against the canonical field context, not
+       * Calculated expressions resolve against the canonical field context, not
        * merely properties physically present on a partial input object. Optional
        * fields therefore remain addressable with value=undefined and can safely
        * participate in conditional calculations without becoming required.
@@ -210,7 +211,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
       const ctx = { page: { page: entryPage } };
 
       let changed = false;
-      for (const [key, field] of derived) {
+      for (const [key, field] of calculations) {
         const value = await evaluateExpressionAsync(
           field.expression,
           {
@@ -222,9 +223,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
           },
           {
             source: 'calculated-field',
-            sourcePath: `derivedFields.${key}`,
+            sourcePath: `fieldDefinition.${key}.calculation`,
             targetPath: key,
-            purpose: 'materialize persisted derived field before persistence',
+            purpose: 'materialize persisted calculated field before persistence',
           },
         );
 
@@ -238,24 +239,24 @@ export class GenericSysBOService<T extends SysBOEntity> {
     }
 
     throw new Error(
-      `Persisted derived fields for ${this.metadata.key} did not settle within ${maxPasses} evaluation passes.`,
+      `Persisted calculated fields for ${this.metadata.key} did not settle within ${maxPasses} evaluation passes.`,
     );
   }
 
   /**
-   * Recalculate materialized derived values for the complete same-entity
+   * Recalculate materialized calculated values for the complete same-entity
    * collection before transaction commit. This is required for hierarchy-like
    * formulas where changing one record can alter a descendant's stored result.
    * The sweep is metadata-driven and therefore applies equally to future
-   * entities with persisted derived fields.
+   * entities with persisted calculated fields.
    */
-  protected async refreshPersistedDerivedCollection(): Promise<void> {
-    if (!this.hasPersistedDerivedFields()) return;
+  protected async refreshPersistedCalculatedCollection(): Promise<void> {
+    if (!this.hasPersistedCalculatedFields()) return;
     const collection = this.store.collectionForObjectKey(this.metadata.key);
     if (!collection?.size) return;
 
-    const persistedKeys = Object.entries(this.metadata.derivedFields ?? {})
-      .filter(([, field]) => field.persisted === true)
+    const persistedKeys = Object.entries(this.metadata.fieldDefinition)
+      .filter(([, field]) => field.calculation?.persisted === true)
       .map(([key]) => key);
     const maxPasses = Math.max(4, collection.size * 2);
 
@@ -263,7 +264,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
       let changed = false;
 
       for (const [id, raw] of collection.entries()) {
-        const materialized = await this.materializePersistedDerivedFields(raw as unknown as T);
+        const materialized = await this.materializePersistedCalculatedFields(raw as unknown as T);
         const next = materialized as unknown as Record<string, unknown>;
         if (!persistedKeys.some((key) => !Object.is(raw[key], next[key]))) continue;
 
@@ -275,7 +276,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
     }
 
     throw new Error(
-      `Persisted derived collection for ${this.metadata.key} did not settle within ${maxPasses} passes.`,
+      `Persisted calculated collection for ${this.metadata.key} did not settle within ${maxPasses} passes.`,
     );
   }
 
@@ -337,7 +338,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
           const created = await this.repository.create(
             persistenceValues(row) as SysBOCreateInput<T>,
             actor,
-            (record) => this.materializePersistedDerivedFields(record),
+            (record) => this.materializePersistedCalculatedFields(record),
           );
           idMap[draftId] = created.id;
         }
@@ -355,7 +356,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
             id,
             nextValues as SysBOUpdateInput<T>,
             actor,
-            (record) => this.materializePersistedDerivedFields(record),
+            (record) => this.materializePersistedCalculatedFields(record),
           );
         }
 
@@ -367,7 +368,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
           await this.repository.delete(id, actor);
         }
 
-        await this.refreshPersistedDerivedCollection();
+        await this.refreshPersistedCalculatedCollection();
         const finalIds: string[] = current
           .map((row) => {
             const id = String(row[identityField] ?? '');

@@ -155,22 +155,150 @@
     return control.value;
   };
 
+
+  const referenceOptionIcons = (option) => {
+    if (!(option instanceof HTMLOptionElement)) return [];
+    try {
+      const parsed = JSON.parse(option.dataset.entryIcons || '[]');
+      return Array.isArray(parsed) ? parsed.filter((icon) => typeof icon === 'string' && icon) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const renderReferenceSelection = (selected, control) => {
+    if (!(selected instanceof Element) || !(control instanceof HTMLSelectElement)) return;
+    const option = [...control.options].find((candidate) => candidate.value === control.value) || null;
+    const name = option?.dataset.entryName || option?.textContent?.trim() || '';
+    const icons = referenceOptionIcons(option);
+
+    selected.replaceChildren();
+    if (icons.length) {
+      const iconGroup = document.createElement('span');
+      iconGroup.className = 'metadata-entry-icons me-1';
+      iconGroup.setAttribute('aria-hidden', 'true');
+      icons.forEach((icon, index) => {
+        const element = document.createElement('i');
+        element.className = `bi bi-${String(icon).replace(/^bi-/, '')} metadata-entry-icon metadata-entry-icon-${index}`;
+        iconGroup.append(element);
+      });
+      selected.append(iconGroup);
+    }
+
+    if (name) selected.append(document.createTextNode(name));
+    else selected.append(document.createTextNode(control.required ? 'Choose...' : 'None'));
+  };
+
+  const setReferenceValue = (control, value) => {
+    if (!(control instanceof HTMLSelectElement)) return;
+    control.value = value == null ? '' : String(value);
+    const root = control.closest('[data-metadata-reference-select]');
+    if (!root) return;
+    const choice = [...root.querySelectorAll('[data-reference-choice]')]
+      .find((candidate) => candidate instanceof HTMLButtonElement
+        && String(candidate.dataset.referenceChoice || '') === control.value);
+    root.querySelectorAll('[data-reference-choice]').forEach((candidate) => {
+      const isSelected = candidate === choice;
+      candidate.classList.toggle('active', isSelected);
+      candidate.setAttribute('aria-selected', String(isSelected));
+    });
+    const toggle = root.querySelector('[data-reference-toggle]');
+    if (toggle instanceof HTMLButtonElement) toggle.disabled = control.disabled;
+    const selected = root.querySelector('[data-reference-selected]');
+    if (selected) renderReferenceSelection(selected, control);
+  };
+
+  const enumToneClasses = (item) => {
+    const tone = item?.tone;
+    if (!tone) return [];
+    if (tone === 'danger' && item?.toneStrength === 'soft') return ['text-danger', 'opacity-75'];
+    if (tone === 'danger' && item?.toneStrength === 'strong') return ['text-danger-emphasis'];
+    if (tone === 'warning') return ['text-warning-emphasis'];
+    return [`text-${tone}`];
+  };
+
+  const setEnumValue = (control, value) => {
+    if (!(control instanceof HTMLSelectElement)) return;
+    control.value = value == null ? '' : String(value);
+    const root = control.closest('[data-metadata-enum-select]');
+    if (!root) return;
+    const choice = [...root.querySelectorAll('[data-enum-choice]')]
+      .find((candidate) => candidate instanceof HTMLButtonElement
+        && String(candidate.dataset.enumChoice || '') === control.value);
+    root.querySelectorAll('[data-enum-choice]').forEach((candidate) => {
+      const selected = candidate === choice;
+      candidate.classList.toggle('active', selected);
+      candidate.setAttribute('aria-selected', String(selected));
+    });
+    const label = root.querySelector('[data-enum-selected-label]');
+    const icon = root.querySelector('[data-enum-selected-icon]');
+    const selectedOption = control.selectedOptions[0];
+    let item = null;
+    try { item = selectedOption?.dataset.enumItem ? JSON.parse(selectedOption.dataset.enumItem) : null; } catch { item = null; }
+    if (label) label.textContent = item?.label || item?.value || 'Choose...';
+    if (icon instanceof HTMLElement) {
+      icon.className = item?.icon ? `bi bi-${item.icon}` : 'bi d-none';
+      if (item?.icon) enumToneClasses(item).forEach((className) => icon.classList.add(className));
+    }
+    const toggle = root.querySelector('[data-metadata-enum-toggle]');
+    if (toggle instanceof HTMLButtonElement) toggle.disabled = control.disabled;
+  };
+
+  /**
+   * Programmatic value binding used by the evaluator/runtime. Presentation
+   * knowledge remains inside field-components: callers supply only the native
+   * canonical control and its newly resolved value.
+   */
+  /**
+   * Return canonical option metadata for the current field value when the
+   * concrete field type exposes such semantics. Evaluator/CTX runtimes may use
+   * this without knowing how enum controls store or present their options.
+   */
+  const getFieldOption = (control) => {
+    if (!(control instanceof HTMLSelectElement)) return undefined;
+    const root = control.closest('[data-enhanced-field-input]');
+    if (root?.dataset.fieldComponent !== 'enum') return undefined;
+    const selectedOption = control.selectedOptions?.[0];
+    const raw = selectedOption?.dataset?.enumItem;
+    if (!raw) return undefined;
+    try { return JSON.parse(raw); } catch { return undefined; }
+  };
+
+  const setFieldValue = (control, value, { emit = false, cause = {} } = {}) => {
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) return;
+    const root = control.closest('[data-enhanced-field-input]');
+    const component = root?.dataset.fieldComponent;
+    if (component === 'duration') {
+      setDurationValue(root, value, { emit, cause });
+      return;
+    }
+    if (component === 'reference') setReferenceValue(control, value);
+    else if (component === 'enum') setEnumValue(control, value);
+    else if (control instanceof HTMLInputElement && control.type === 'checkbox') control.checked = Boolean(value);
+    else control.value = value == null ? '' : String(value);
+    if (emit) publish(control, false, cause);
+  };
+
   document.addEventListener('click', async (event) => {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
+
+    const enumChoice = target.closest('[data-enum-choice]');
+    if (enumChoice instanceof HTMLButtonElement) {
+      const root = enumChoice.closest('[data-metadata-enum-select]');
+      const control = root?.querySelector('select[data-enum-items]');
+      if (!(control instanceof HTMLSelectElement) || control.disabled) return;
+      setEnumValue(control, enumChoice.dataset.enumChoice || '');
+      publish(control);
+      return;
+    }
 
     const referenceChoice = target.closest('[data-reference-choice]');
     if (referenceChoice instanceof HTMLButtonElement) {
       const root = referenceChoice.closest('[data-metadata-reference-select]');
       const control = root?.querySelector('select[data-ctx-field]');
       if (!(control instanceof HTMLSelectElement) || control.disabled) return;
-      control.value = referenceChoice.dataset.referenceChoice || '';
-      root.querySelectorAll('[data-reference-choice]').forEach((choice) => {
-        choice.classList.toggle('active', choice === referenceChoice);
-        choice.setAttribute('aria-selected', String(choice === referenceChoice));
-      });
-      const selected = root.querySelector('[data-reference-selected]');
-      if (selected) selected.innerHTML = referenceChoice.innerHTML;
+      setReferenceValue(control, referenceChoice.dataset.referenceChoice || '');
       publish(control);
       return;
     }
@@ -268,10 +396,40 @@
     publish(control);
   });
 
+  /**
+   * Native backing controls are the canonical browser value for enhanced enum
+   * and reference fields. Any external code that legitimately changes one and
+   * emits `change` gets the same component-owned presentation refresh as user
+   * interaction or evaluator-driven writes.
+   */
+  document.addEventListener('change', (event) => {
+    const control = event.target;
+    if (!(control instanceof HTMLSelectElement)) return;
+    if (control.closest('[data-metadata-enum-select]') && control.dataset.enumItems) {
+      setEnumValue(control, control.value);
+      return;
+    }
+    if (control.closest('[data-metadata-reference-select]')) {
+      setReferenceValue(control, control.value);
+    }
+  });
+
+  // Server rendering already supplies the initial visible state. Reconcile it
+  // once through the same field-component functions so dynamically inserted or
+  // locally drafted controls also begin from the canonical native value.
+  document.querySelectorAll('[data-metadata-enum-select] select[data-enum-items]').forEach((control) => {
+    if (control instanceof HTMLSelectElement) setEnumValue(control, control.value);
+  });
+  document.querySelectorAll('[data-metadata-reference-select] select').forEach((control) => {
+    if (control instanceof HTMLSelectElement) setReferenceValue(control, control.value);
+  });
+
   window.ManatOSFieldComponents = Object.freeze({
     publish,
     durationValue,
     setDurationValue,
+    setFieldValue,
+    getFieldOption,
     formatDuration,
   });
 })();

@@ -46,14 +46,6 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
     description: { field: 'description' },
   },
 
-  derivedFields: {
-    rootPrincipalId: {
-      label: 'Root principal',
-      expression: "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
-      persisted: true,
-    },
-  },
-
   relationships: {
     parent: {
       fields: ['parentId'],
@@ -142,6 +134,10 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       readOnly: true,
       applicationManaged: true,
       referenceBOKey: 'sys-principals',
+      calculation: {
+        expression: "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
+        persisted: true,
+      },
     },
 
     description: {
@@ -272,6 +268,9 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
         .map((platform) => ({
           value: platform.id,
           label: platform.shortName,
+          // SysPlatform icons use Bootstrap's `bi-*` form; canonical enum items
+          // store the semantic key consumed by the universal enum component.
+          ...(platform.icon ? { icon: platform.icon.replace(/^bi-/, '') } : {}),
         })),
     },
 

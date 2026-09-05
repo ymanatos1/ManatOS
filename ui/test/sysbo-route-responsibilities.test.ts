@@ -76,6 +76,6 @@ describe('SysBO route responsibility boundaries', () => {
     expect(navigation).toContain('const fallbackPlatformAccess = false;');
     expect(routes).toContain('await resolveUIEntityPermissions(req, definition');
     expect(payload).toContain('field.generated || field.readOnly || field.sensitive');
-    expect(representation).toContain('compileExpression(derived.expression).ast');
+    expect(representation).toContain('compileExpression(field.calculation!.expression).ast');
   });
 });

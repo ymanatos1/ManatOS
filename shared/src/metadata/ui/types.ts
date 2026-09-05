@@ -213,7 +213,7 @@ export interface SysBOUIFieldPresentationMetadata {
 
 export interface SysBOUIFieldOverrideMetadata {
   /**
-   * Presentation overrides for a field/derived-field when this particular UI
+   * Presentation overrides for a canonical field when this particular UI
    * intentionally differs from the canonical metadata. Do not repeat canonical
    * properties merely for emphasis: omission means "use the canonical rule".
    *
@@ -258,22 +258,6 @@ export interface SysBOUIFieldOverrideMetadata {
 
   /** Formatting and visual decoration only; never changes entity semantics. */
   presentation?: SysBOUIFieldPresentationMetadata;
-}
-
-/**
- * UI-only calculated field declaration. Canonical/reusable calculations belong
- * in SysBOMetadata.derivedFields; this container exists so a presentation can
- * add calculations that are meaningful only for that UI/context.
- */
-export interface SysBOUIDerivedFieldMetadata {
-  label: string;
-  icon?: SysBOUIIconKey;
-
-  /** Context-agnostic ManatOS expression, parsed when its CTX field is declared. */
-  expression?: string;
-
-  format?: SysBOUIValueFormat;
-  emptyText?: string;
 }
 
 export type SysBOUIEntryActionKind = 'delete' | 'save' | 'command';
@@ -337,7 +321,7 @@ export interface SysBOUIRelatedCollectionFieldMetadata {
   sourceField?: string;
 
   /**
-   * Optional UI-only calculation. Prefer a canonical related-entity derived
+   * Optional UI-only calculation. Prefer a canonical related-entity calculated
    * field when the value is reusable outside this presentation.
    */
   expression?: string;
@@ -364,7 +348,12 @@ export interface SysBOUIRelatedCollectionSourceMetadata {
 export interface SysBOUIRelatedCollectionMetadata {
   label: string;
   icon?: SysBOUIIconKey;
-  /** Optional icon prefixed to each rendered related record; defaults to collection icon. */
+  /**
+   * Optional entry-identity icon override for each related record. The generic
+   * related-collection pipeline feeds it into canonical entry representation;
+   * when omitted, the collection icon is used. Renderers must not prepend
+   * entity-specific row icons outside the common related-collections component.
+   */
   rowIcon?: SysBOUIIconKey;
 
   /**
@@ -423,9 +412,6 @@ export interface SysBOUIRecordQuickMetadata {
 export interface SysBOUIRecordMetadata {
   tabs: readonly SysBOUIRecordTabMetadata[];
   fieldOverrides: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>;
-
-  /** Optional calculated/read-only fields referenced by tab.fields. */
-  derivedFields?: Readonly<Record<string, SysBOUIDerivedFieldMetadata>>;
 
   /**
    * Keyed record-level commands. The Record key is the action identifier, so

@@ -882,14 +882,14 @@
       "provider": "github",
       "enabled": true,
       "clientId": "Ov23lih8R9McBbOBJPlr",
-      "clientSecretEncrypted": "v1:v1:LVyhZK8Nz6G1+XMw:QjXrTTG00gpFRltWa7RM8A==:pJBi96aIrvNXbx7dk74RV4rko5uZIOAWDCHPPOyX8o7UwIfgq4YM1A==",
-      "secretUpdatedAt": "2026-09-01T08:54:33.071Z",
+      "clientSecretEncrypted": "v1:v1:RcLjmku4UFXpr7OO:75rAp3RugPezO0h0pismwA==:m9X6PQBiKgkiVmBppKJfLfqTo5KqFZrUcwAjuzAH7akk4oCeHWcKFQ==",
+      "secretUpdatedAt": "2026-09-05T00:29:26.075Z",
       "credentialsVerified": true,
-      "credentialsVerifiedAt": "2026-09-01T08:54:33.071Z",
+      "credentialsVerifiedAt": "2026-09-05T00:29:26.075Z",
       "callbackPath": "/auth/github/callback",
       "createdAt": "2026-09-01T08:54:33.071Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T08:54:33.071Z",
+      "updatedAt": "2026-09-05T00:29:26.077Z",
       "updatedBy": "Admin"
     }
   },

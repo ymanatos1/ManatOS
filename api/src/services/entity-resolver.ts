@@ -66,7 +66,6 @@ export class DataStoreEntityResolver implements EntityResolver {
       ...Object.entries(metadata.fieldDefinition)
         .filter(([, field]) => field.sensitive !== true)
         .map(([key]) => key),
-      ...Object.keys(metadata.derivedFields ?? {}),
     ]);
     const projected = Object.fromEntries(
       [...readableKeys]

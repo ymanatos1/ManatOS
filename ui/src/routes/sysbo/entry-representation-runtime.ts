@@ -27,10 +27,12 @@ export function compiledEntryRepresentationRuntime(
     type: compileSource(metadata.entry?.type ?? (metadata.fieldDefinition.type ? { field: 'type' } : undefined)),
     description: compileSource(metadata.entry?.description),
     status: compileSource(metadata.entry?.status),
-    derived: Object.fromEntries(Object.entries(metadata.derivedFields ?? {}).map(([key, derived]) => [
-      key,
-      compileExpression(derived.expression).ast,
-    ])),
+    calculations: Object.fromEntries(Object.entries(metadata.fieldDefinition)
+      .filter(([, field]) => Boolean(field.calculation?.expression))
+      .map(([key, field]) => [
+        key,
+        compileExpression(field.calculation!.expression).ast,
+      ])),
     relationships: Object.fromEntries(Object.entries(metadata.relationships ?? {})
       .filter(([, relationship]) => relationship.fields.length === 1)
       .map(([key, relationship]) => [key, { field: relationship.fields[0] }])),

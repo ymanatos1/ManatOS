@@ -13,7 +13,8 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     const renderer = await ui('views/pages/sysbo/entry.ejs');
     const actionsFooter = await ui('views/components/sysbo/entry/entry-actions-footer.ejs');
     const split = await ui('views/components/sysbo/entry/save-split-action.ejs');
-    const forms = await ui('public/js/forms.js');
+    const entryState = await ui('public/js/forms/entry-state.js');
+    const entrySave = await ui('public/js/forms/entry-save.js');
     const entryWrite = await ui('src/routes/sysbo/entry-write.ts');
 
     expect(renderer).toContain("include('../../components/sysbo/entry/entry-actions-footer'");
@@ -21,19 +22,19 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     expect(split).toContain('value="stay"');
     expect(split).toContain('Save and Close');
     expect(split).toContain('value="close"');
-    expect(forms).toContain("[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]");
+    expect(entryState).toContain("[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]");
     expect(entryWrite).toContain("const saveMode = req.body._saveMode === 'close' ? 'close' : 'stay';");
     expect(entryWrite).toContain("req.get('X-Requested-With') === 'ManatOS-InPlace-Save'");
     expect(entryWrite).toContain('export async function completeMetadataDrivenSave(');
     expect(entryWrite).toContain('savedRecord?: Record<string, unknown>');
     expect(entryWrite).toContain('savedRecord ?? (await apiClient.get<Record<string, unknown>>');
-    expect(forms).not.toContain('HTMLFormElement.prototype.submit.call(form)');
-    expect(forms).toContain("form.addEventListener('manatos:form-saved'");
-    expect(forms).toContain("'X-Requested-With': 'ManatOS-InPlace-Save'");
-    expect(forms).toContain('const body = new URLSearchParams();');
-    expect(forms).toContain('new FormData(form).entries()');
-    expect(forms).not.toContain('const body = new FormData(form);');
-    expect(forms).toContain("form.dataset.recordMode === 'create'");
+    expect(entrySave).not.toContain('HTMLFormElement.prototype.submit.call(form)');
+    expect(entrySave).toContain("form.dispatchEvent(new CustomEvent('manatos:form-saved'");
+    expect(entrySave).toContain("'X-Requested-With': 'ManatOS-InPlace-Save'");
+    expect(entrySave).toContain('const body = new URLSearchParams();');
+    expect(entrySave).toContain('new FormData(form).entries()');
+    expect(entrySave).not.toContain('const body = new FormData(form);');
+    expect(entrySave).toContain("form.dataset.recordMode === 'create'");
   });
 
   it('models addresses as canonical internal SysBOs and exposes them through the reusable Contact collection editor', async () => {

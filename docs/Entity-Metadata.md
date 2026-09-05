@@ -15,7 +15,6 @@ pluralName
 primaryField
 exposure?              // SysBO only: standard | internal
 entry?                 // reusable one-entry semantic representation
-derivedFields?
 relationships?
 fieldDefinition
 ```
@@ -40,7 +39,7 @@ entry?: {
 Each `EntryValueSource` is one of:
 
 ```ts
-{ field: 'fieldOrDerivedFieldName' }
+{ field: 'fieldName' }
 ```
 
 or:
@@ -84,7 +83,7 @@ Default order when omitted:
 
 ### 2.3 `entry.type`
 
-`entry.type` is an optional semantic classifier for an entry. It may be an enum field, reference field, derived field or expression.
+`entry.type` is an optional semantic classifier for an entry. It may be an enum field, reference field, calculated field or expression.
 
 If omitted, an exact canonical field named `type` is used when present; otherwise the entity has no generic entry type.
 
@@ -114,17 +113,21 @@ This is preferred over inventing special expression syntax such as `relation[ent
 
 A renderer/owner that wants to evaluate a relationship expression must provide the referenced relation projection. The resolver must not fetch it itself.
 
-## 3. Derived-field ordering
+## 3. Calculated-field ordering
 
-Entry formulas obey the normal evaluator rules. Canonical `derivedFields` are injected into the entry expression scope as calculated variables, not eagerly copied values.
-
-Therefore:
+Renderable calculated values are ordinary canonical `fieldDefinition` entries. Their normal `type` selects the field-component; `calculation.expression` only supplies the value:
 
 ```ts
-derivedFields: {
+fieldDefinition: {
   fullName: {
+    key: 'fullName',
     label: 'Full name',
-    expression: "firstName + ' ' + lastName"
+    type: 'string',
+    order: 40,
+    readOnly: true,
+    calculation: {
+      expression: "firstName + ' ' + lastName"
+    }
   }
 },
 entry: {
@@ -132,7 +135,9 @@ entry: {
 }
 ```
 
-causes `fullName` to be evaluated first when `entry.name` reaches it. If `fullName` itself depends on another derived field, that dependency remains lazy and evaluator-owned as well. Cycle detection/fallback follows the common expression evaluator rather than entry-representation-specific logic.
+Entry formulas inject canonical calculated fields into the evaluator scope lazily. Dependencies between calculated fields therefore use the normal evaluator ordering/cycle rules. A calculated field is not declared again in a parallel derived-field catalogue.
+
+`calculation.persisted: true` materializes an authoritative calculated value before API/domain commit. `calculation.triggeredBy` is reserved for editable assisted calculations whose recalculation is causally driven by specific direct/user-authoritative fields.
 
 Expressions are parsed/compiled before repeated browser evaluation. Browser renderers consume the compiled AST; they must not reparse formula strings for every row/node redraw.
 
@@ -204,7 +209,13 @@ entry: {
 
 The Organization hierarchy no longer owns `labelField`/`typeField` as presentation facts. It receives hierarchy-only structure such as identity, parent/root fields and enum capability traits, while entry caption/type/icon come from the reusable entity-entry contract.
 
-## 6. Consumers and fallbacks
+## 6. Universal enum/reference field presentation
+
+Canonical enum-item metadata may declare `label`, `icon`, tone and semantic traits. Entity edit forms never render those icons through entity-specific templates: every ordinary enum field is dispatched through `field-components/enum-select.ejs`, which renders a real selected option and every real dropdown option as icon + label when an icon exists. `Choose...` remains iconless. Contextual enum projections may narrow/enrich the catalogue, but canonical labels/icons survive by value.
+
+Reference fields follow the same ownership rule. `field-components/reference-select.ejs` is the entity-form presenter for related records, including calculated/read-only references. Reference data is projected through the canonical entry-representation resolver (`__entryName`, `__entryIcons`), and the component renders the resolved entry icon composition before the resolved entry name for both the selected value and every dropdown choice. `None` / `Choose...` remain iconless. Callers must not prepend their own entity/reference icons around these components.
+
+## 7. Consumers and fallbacks
 
 The generic entry representation is intended for:
 
@@ -217,7 +228,7 @@ The generic entry representation is intended for:
 
 Consumers may temporarily retain a fallback to `primaryField` while being migrated, but must not introduce new entity-specific label/type/icon options when the entry contract already describes the concept.
 
-## 7. I/O and ownership rule
+## 8. I/O and ownership rule
 
 Entry representation is pure metadata + current data + owner-supplied relation/reference data. It does **not** perform API calls.
 
@@ -225,7 +236,7 @@ This is especially important for aggregate workspaces: a hierarchy can contain `
 
 `recordQuick` remains a UI projection over the same complete working entry and likewise performs no persistence/API call. Only the owning workspace `Commit` crosses the aggregate persistence boundary.
 
-## 8. Golden rules
+## 9. Golden rules
 
 1. Do not hard-code entity names in generic entry renderers.
 2. Do not duplicate entry naming/type/icon rules in list, hierarchy and lookup components.

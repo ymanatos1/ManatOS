@@ -36,12 +36,12 @@
     <% for (const option of presentationItems) { %><option value="<%= option.value %>" data-enum-item="<%= JSON.stringify(option) %>" <%= value === option.value ? 'selected' : '' %>><%= option.label || option.value %></option><% } %>
   </select>
   <button type="button" class="form-select metadata-enum-select-toggle text-start" data-bs-toggle="dropdown" data-metadata-enum-toggle aria-expanded="false" <%= editable ? '' : 'disabled' %>>
-    <span class="d-flex align-items-center gap-2"><% if (richHasIcons) { %><i class="bi bi-<%= richSelected?.icon || 'list' %> <%= enumToneClass(richSelected) %>" data-enum-selected-icon aria-hidden="true"></i><% } %><span data-enum-selected-label><%= richSelected?.label || richSelected?.value || 'Choose...' %></span></span>
+    <span class="d-flex align-items-center gap-2"><% if (richHasIcons) { %><i class="bi <%= richSelected?.icon ? `bi-${richSelected.icon}` : 'd-none' %> <%= enumToneClass(richSelected) %>" data-enum-selected-icon aria-hidden="true"></i><% } %><span data-enum-selected-label><%= richSelected?.label || richSelected?.value || 'Choose...' %></span></span>
   </button>
   <% if (editable) { %>
     <ul class="dropdown-menu metadata-enum-select-menu w-100" role="listbox">
       <li><button type="button" class="dropdown-item d-flex justify-content-between align-items-center" data-enum-choice="" role="option">Choose...</button></li>
-      <% for (const option of presentationItems) { %><li><button type="button" class="dropdown-item d-flex justify-content-between align-items-center <%= value === option.value ? 'active' : '' %>" data-enum-choice="<%= option.value %>" role="option" aria-selected="<%= value === option.value ? 'true' : 'false' %>"><span><%= option.label || option.value %></span><% if (option.icon) { %><i class="bi bi-<%= option.icon %> <%= enumToneClass(option) %> ms-3" aria-hidden="true"></i><% } %></button></li><% } %>
+      <% for (const option of presentationItems) { %><li><button type="button" class="dropdown-item d-flex align-items-center gap-2 <%= value === option.value ? 'active' : '' %>" data-enum-choice="<%= option.value %>" role="option" aria-selected="<%= value === option.value ? 'true' : 'false' %>"><% if (option.icon) { %><i class="bi bi-<%= option.icon %> <%= enumToneClass(option) %>" aria-hidden="true"></i><% } %><span><%= option.label || option.value %></span></button></li><% } %>
     </ul>
   <% } %>
 </div>

@@ -17,7 +17,7 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     const hierarchyPage = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
     const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
     const tree = await uiSource('public/js/components/hierarchy-tree.js');
-    const forms = await uiSource('public/js/forms.js');
+    const fieldComponentRuntime = await uiSource('public/js/field-components/runtime.js');
     const css = await uiSource('public/css/ui.css');
 
     expect(contract).toContain('fieldOverrides?: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>');
@@ -135,7 +135,7 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     expect(workspace).not.toContain("window.alert('This member type cannot have a parent.')");
     expect(workspace).not.toContain("window.alert('A member cannot be moved below one of its descendants.')");
     expect(tree).not.toContain('data-hierarchy-open-draft');
-    expect(forms).toContain("root.querySelector('select[data-enum-items]')");
+    expect(fieldComponentRuntime).toContain("root?.querySelector('select[data-enum-items]')");
   });
 });
 

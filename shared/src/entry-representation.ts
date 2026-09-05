@@ -49,10 +49,12 @@ function buildEntryScope<T>(
 ): Record<string, unknown> {
   const scope: Record<string, unknown> = { ...entry, relations };
 
-  // Derived variables stay evaluator-owned. Referencing one from an entry formula
-  // lazily evaluates it (and any derived dependency it references) first.
-  for (const [key, derived] of Object.entries(metadata.derivedFields ?? {})) {
-    scope[key] = calculatedContextField(derived.expression, {
+  // Calculated fields stay evaluator-owned. Referencing one from an entry formula
+  // lazily evaluates it (and any calculated dependency it references) first.
+  for (const [key, field] of Object.entries(metadata.fieldDefinition)) {
+    const calculation = field.calculation;
+    if (!calculation?.expression || calculation.triggeredBy?.length) continue;
+    scope[key] = calculatedContextField(calculation.expression, {
       ...(Object.prototype.hasOwnProperty.call(entry, key) ? { value: entry[key] } : {}),
     });
   }
@@ -68,18 +70,30 @@ function resolveSource<T>(
 ): unknown {
   if (!source) return null;
 
-  // A direct field source is metadata selection, not a formula. Read it
-  // directly so optional/omitted properties resolve to `undefined` instead of
-  // becoming an unknown evaluator identifier.
-  if ('field' in source) return entry[source.field];
+  // A direct canonical field normally reads directly from the entry. If that
+  // field has an authoritative calculation, however, resolve the field through
+  // the evaluator-owned scope so representation sees the same current value as
+  // every field-component.
+  if ('field' in source) {
+    const calculation = metadata.fieldDefinition[source.field]?.calculation;
+    if (!calculation?.expression || calculation.triggeredBy?.length || Object.prototype.hasOwnProperty.call(entry, source.field)) {
+      return entry[source.field];
+    }
+    const scope = buildEntryScope(metadata, entry, relations);
+    return evaluateExpression(source.field, scope, scope, {
+      source: 'renderer',
+      sourcePath: `entry.${purpose}`,
+      targetPath: `entry.${purpose}`,
+      purpose: `resolve calculated entry ${purpose}`,
+    });
+  }
 
-  // A simple expression that names one canonical field has the same data
-  // dependency as `{ field: ... }`. Resolve it directly as well. This matters
-  // for create pages where the supplemental entry representation can be built
-  // before record create-defaults are materialized into CTX; a missing optional
-  // field must produce `undefined`, not an ExpressionEvaluationError.
+  // A simple expression naming one canonical non-calculated field has the same
+  // dependency as `{ field: ... }` and can be resolved without evaluator work.
   const directExpressionField = directSourceField(metadata, source);
-  if (directExpressionField) return entry[directExpressionField];
+  if (directExpressionField && (!metadata.fieldDefinition[directExpressionField]?.calculation?.expression || metadata.fieldDefinition[directExpressionField]?.calculation?.triggeredBy?.length)) {
+    return entry[directExpressionField];
+  }
 
   const scope = buildEntryScope(metadata, entry, relations);
   return evaluateExpression(source.expression, scope, scope, {

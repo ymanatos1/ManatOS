@@ -116,16 +116,16 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     return this.store.executeTransaction(async () => {
       /*
        * Specialized Principal persistence must preserve the same canonical
-       * metadata-derived-field materialization used by GenericSysBOService.
+       * metadata-calculated-field materialization used by GenericSysBOService.
        * Keeping these protected generic hooks inside this single transaction
        * also lets Contact collection synchronization remain atomic with Save.
        */
       const created = await this.repository.create(
         split.entity,
         actor,
-        (record) => this.materializePersistedDerivedFields(record),
+        (record) => this.materializePersistedCalculatedFields(record),
       );
-      await this.refreshPersistedDerivedCollection();
+      await this.refreshPersistedCalculatedCollection();
       const persisted = (await this.repository.getById(created.id)) ?? created;
       await this.syncEmailAddresses(persisted.id, split.relatedChanges?.emailAddresses?.current, actor);
       await this.syncTelephoneNumbers(persisted.id, split.relatedChanges?.telephoneNumbers?.current, actor);
@@ -203,9 +203,9 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
         id,
         normalizedChanges,
         actor,
-        (record) => this.materializePersistedDerivedFields(record),
+        (record) => this.materializePersistedCalculatedFields(record),
       );
-      await this.refreshPersistedDerivedCollection();
+      await this.refreshPersistedCalculatedCollection();
       const persisted = (await this.repository.getById(updated.id)) ?? updated;
       await this.syncEmailAddresses(id, split.relatedChanges?.emailAddresses?.current, actor);
       await this.syncTelephoneNumbers(id, split.relatedChanges?.telephoneNumbers?.current, actor);
@@ -336,7 +336,7 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
    * Resolve-or-create canonical structured addresses and synchronize Principal links.
    * The canonical key ignores presentation whitespace/case while the persisted
    * constituent fields preserve useful display text. formattedAddress is produced
-   * by canonical metadata derived-field materialization, not by this UI host.
+   * by canonical metadata calculated-field materialization, not by this UI host.
    */
   private async syncAddresses(
     principalId: string,
@@ -396,11 +396,11 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
   }
 
   private materializeAddress(record: SysAddress): SysAddress {
-    const derived = sysBOAddressesMetadata.derivedFields?.formattedAddress;
-    if (!derived) return record;
+    const calculation = sysBOAddressesMetadata.fieldDefinition.formattedAddress?.calculation;
+    if (!calculation) return record;
     return {
       ...record,
-      formattedAddress: String(evaluateExpression(derived.expression, record as unknown as Record<string, unknown>, record as unknown as Record<string, unknown>, { source: 'calculated-field', purpose: 'materialize formatted address' })),
+      formattedAddress: String(evaluateExpression(calculation.expression, record as unknown as Record<string, unknown>, record as unknown as Record<string, unknown>, { source: 'calculated-field', purpose: 'materialize formatted address' })),
     };
   }
 }

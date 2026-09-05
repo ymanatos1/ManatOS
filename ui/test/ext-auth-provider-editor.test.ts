@@ -22,9 +22,11 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(metadata).not.toContain("provider.value === 'microsoft'");
   });
 
-  it('keeps the credential workflow compound while reusing canonical field components internally', async () => {
+  it('keeps canonical provider fields on the dispatcher and transient secrets outside entity field-components', async () => {
     const credentials = await source('views/components/sysbo/entry/provider-credentials.ejs');
-    expect(credentials).toContain("include('../../../field-components/text-field'");
+    expect(credentials).toContain("include('../../../field-components/entity-field'");
+    expect(credentials).toContain("include('../../common/workflow-input'");
+    expect(credentials).not.toContain("include('../../../field-components/text-field'");
     expect(credentials).toContain("key: 'clientId'");
     expect(credentials).toContain('data-provider-client-secret');
     expect(credentials).toContain('data-provider-test-credentials');
@@ -39,23 +41,27 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(credentials).not.toContain("include('contextual-help'");
     expect(credentials).toContain("include('../../common/information-panel'");
     expect(credentials).not.toContain('class="ms-auto d-flex align-items-center gap-2 small"');
+    const css = await source('public/css/pages.css');
+    expect(css).toContain('.metadata-workflow-input > .password-visibility-field');
+    expect(css).toContain('.metadata-workflow-input {');
   });
 
   it('uses one provider runtime and one canonical dirty predicate for Save and Cancel navigation', async () => {
-    const forms = await source('public/js/forms.js');
+    const entryState = await source('public/js/forms/entry-state.js');
+    const modalFocus = await source('public/js/forms/modal-focus.js');
     const runtime = await source('public/js/components/external-provider.js');
 
     // Provider behavior belongs exclusively to its compound component runtime.
-    // A stale second implementation in forms.js used to register duplicate
+    // A stale second implementation in generic form runtime used to register duplicate
     // credential-test/change handlers and allowed the two paths to drift.
-    expect(forms).not.toContain('External-auth provider editor: provider defaults, credential lifecycle and help content.');
+    expect(entryState).not.toContain('External-auth provider editor: provider defaults, credential lifecycle and help content.');
     expect(runtime).toContain('External-auth provider compound UI component.');
 
     // Save enablement and the unsaved-navigation modal must agree. Compound
     // components can own posted values that are not projected into entry.
-    expect(forms).toContain("const changed = typeof sharedState.isDirty === 'function'");
-    expect(forms).not.toContain('const ctxDirty =');
-    expect(forms).toContain("document.addEventListener('hide.bs.modal'");
+    expect(entryState).toContain("const changed = typeof sharedState.isDirty === 'function'");
+    expect(entryState).not.toContain('const ctxDirty =');
+    expect(modalFocus).toContain("document.addEventListener('hide.bs.modal'");
   });
 
   it('keeps provider-specific behavior in component/runtime data rather than generic entity renderer branches', async () => {

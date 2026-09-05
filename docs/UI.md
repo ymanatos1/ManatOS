@@ -2,6 +2,16 @@
 
 **Status:** Under Development / Under Testing
 
+> **UI developer guide:** The detailed component/form architecture is organized under [`docs/ui/`](ui/README.md). This document remains the broader website/shell/navigation architecture reference.
+
+```mermaid
+flowchart LR
+    UI[UI.md\nwebsite shell/navigation] --> GUIDE[docs/ui/README.md\nforms/components/entity & system pages]
+    GUIDE --> FIELD[UI-Field-Components.md]
+    GUIDE --> FORM[UI-Forms.md]
+    GUIDE --> FLOW[UI-Flows.md]
+```
+
 This document describes the current ManatOS website UI architecture implemented by the `ui/` workspace. It is intended to be the primary technical reference for UI layout, rendering, navigation, reusable popup infrastructure, browser-side behavior and UI testing. As additional UI architectures are introduced, they should be documented here rather than being left implicit in individual pages.
 
 ## 1. Technology and responsibilities
@@ -211,9 +221,9 @@ Generic SysBO pages provide sorting, filtering, pagination, create/edit/delete b
 
 ### 5.1 Canonical metadata + UI metadata renderer
 
-The metadata-driven renderer consumes two contracts: canonical SysBO metadata (fields, constraints, derived fields and relationships) and framework-neutral UI metadata (tabs, list fields, field overrides, related collections, reusable components and entry actions). The API exposes these as `/$metadata` and `/$metadata-ui`. **#16 is complete:** the generic SysBO UI has one metadata-driven engine for Users, Principals, Applications, Licenses and External authentication providers. The temporary Current-EJS comparison selector and per-entity renderer settings are retired. Engine behavior and metadata conventions are architectural contracts shared by **all existing and future** metadata-driven entities and must not depend on a particular entity key.
+The metadata-driven renderer consumes two contracts: canonical SysBO metadata (fields, constraints, calculations and relationships) and framework-neutral UI metadata (tabs, list fields, field overrides, related collections, reusable components and entry actions). The API exposes these as `/$metadata` and `/$metadata-ui`. The generic SysBO UI uses one metadata-driven engine for Users, Principals, Applications, Licenses and External authentication providers. Engine behavior and metadata conventions are architectural contracts shared by **all existing and future** metadata-driven entities and must not depend on a particular entity key.
 
-SysUser is the first full acceptance target. Authenticated non-Admin users can reach their own SysUser entry, while authorization and evaluator-backed field metadata keep administrative properties such as Role protected. The owner may view Authentication/external-identity information; self-deletion remains prohibited.
+SysUser is a reference implementation for the full metadata-driven entry contract. Authenticated non-Admin users can reach their own SysUser entry, while authorization and evaluator-backed field metadata keep administrative properties such as Role protected. The owner may view Authentication/external-identity information; self-deletion remains prohibited.
 
 ### 5.2 Entry-form state and interaction
 
@@ -244,15 +254,15 @@ Entry pages expose an immutable normalized `entryOriginal` baseline and a live `
 
 Metadata-driven list surfaces share the same toolbar, filters, column header and paging partials in browse and selection contexts. Browse mode navigates and exposes page actions; selection mode selects rows and deliberately suppresses create/actions navigation. Search is part of the shared toolbar. Aggregate-owned selectors publish their temporary list state below the owner page's `selections` branch and may expose a CTX shortcut when Developer Tools are open.
 
-Canonical `derivedFields` are non-persisted by default. A derived field may opt into `persisted: true`; the generic service layer then recalculates it before authoritative persistence so UI forms, direct API calls and automatic/background creation use the same rule. `SysPrincipal.rootPrincipalId` is the current acceptance example and uses resolver-capable `TraverseEntity(...)` to follow canonical persisted parent relationships independently of the current list snapshot.
+Canonical calculated fields are ordinary typed `fieldDefinition` entries with `calculation.expression`. Calculation is a value-source concern and never selects a different field-component. `calculation.persisted: true` asks the generic service layer to recalculate the value before authoritative persistence so UI forms, direct API calls and automatic/background creation use the same rule. `SysPrincipal.rootPrincipalId` is the current acceptance example and uses resolver-capable `TraverseEntity(...)` independently of the current list snapshot.
 
 
 
 ### 5.3.1 Field components, UI components and calendar duration
 
-Entity-field controls live under `views/pages/metadata-driven/field-components/`. Text, date, datetime, enum, reference, number, boolean and structured **duration** fields use the same canonical dispatcher; read-only/calculated controls retain their field-tool button, with mutating actions disabled rather than hiding the component surface. A duration is one canonical field value with `years`, `months` and `days`, not three unrelated persisted properties.
+Entity-field controls live under `views/field-components/`. Text, date, datetime, enum, reference, number, boolean and structured **duration** fields use the same canonical dispatcher; read-only/calculated controls retain their field-tool button, with mutating actions disabled rather than hiding the component surface. A duration is one canonical field value with `years`, `months` and `days`, not three unrelated persisted properties.
 
-Reusable non-field/compound visualizations live under `views/pages/metadata-driven/ui-components/`. Examples include contextual help, related collections, list filters, Debugging and compound workflows. A compound component composes canonical field-components instead of recreating their controls. The License `date-duration-range` component is the acceptance example: `validFrom` and `validUntil` are date-only fields, `validityDuration` is a structured calendar duration, and the three values remain ordinary CTX fields.
+Reusable non-field/compound visualizations live under `views/components/sysbo/`. Examples include contextual help, related collections, list filters, Debugging and compound workflows. A compound component composes canonical field-components instead of recreating their controls. The License `date-duration-range` component is the acceptance example: `validFrom` and `validUntil` are date-only fields, `validityDuration` is a structured calendar duration, and the three values remain ordinary CTX fields.
 
 Causal recalculation is generic. Native field mutations may carry the originating field path/provenance through the CTX event pipeline; dependent writes preserve that cause and do not become a new user-authoritative source. The expression/dependency infrastructure owns cycle/runaway protection. Components may choose which field is authoritative for an interaction, but they must not invent a private evaluator or a component-specific settling loop.
 
@@ -564,26 +574,10 @@ The popup-refactor regression that produced `isOwnSysUser is not defined` is a g
 
 `ui.integration.test.ts` uses Supertest plus selected rendered views/API-client mocks to exercise UI-route authorization, CSRF behavior and SysUser delete flows.
 
-### Current assessment
+### Test organization
 
-The suite has good **layer diversity** and is already useful. The principal structural weakness is that all test styles currently share a flat `test/` directory. That is acceptable at the present size, and there is no need to reorganize files merely for aesthetics.
+Presentation, unit and route/integration tests protect different layers of the UI contract. Test placement should follow those responsibility boundaries as the suite grows; directory organization is secondary to keeping each test's architectural purpose explicit.
 
-When the suite grows, prefer a structure such as:
-
-```text
-test/
-├── unit/
-│   ├── auth/
-│   └── security/
-├── presentation/
-│   ├── popups/
-│   ├── pages/
-│   └── shell/
-└── integration/
-    └── routes/
-```
-
-Do that as a deliberate test-architecture refactor, not piecemeal file movement.
 
 ### Future browser E2E layer
 
@@ -660,3 +654,7 @@ API Traffic polling is sequential: a new diagnostic poll is not started while th
 ### Developer dock placement invariant
 
 The shell reserves one right-side column for the Developer Tools dock. The dock fills the available shell height and never participates as another application-shell row. CTX Viewer/API Traffic are tab contents, so there is no internal CTX/API resize divider and no peer-panel width/height negotiation. The only horizontal developer resize is the outer application/dock boundary.
+
+### Detailed form/component contracts
+
+See [UI Forms and UI Components](UI-Forms.md) for form/tab/UI-component composition and [UI Field Components](UI-Field-Components.md) for the canonical field-component pipeline, value-source independence and extension rules.

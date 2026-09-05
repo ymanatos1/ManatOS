@@ -28,11 +28,6 @@ interface DebugExpressionNode extends UnknownRecord {
   expression: string;
 }
 
-interface DebugDerivedField extends UnknownRecord {
-  expression?: string;
-  inheritedFrom?: unknown;
-}
-
 interface DebugCalculation extends UnknownRecord {
   expression?: string;
 }
@@ -44,7 +39,6 @@ interface DebugFieldMetadata extends UnknownRecord {
 
 interface DebugCanonicalMetadata extends UnknownRecord {
   fieldDefinition?: Readonly<Record<string, DebugFieldMetadata>>;
-  derivedFields?: Readonly<Record<string, DebugDerivedField>>;
 }
 
 interface DebugTabMetadata extends UnknownRecord {
@@ -90,7 +84,6 @@ export interface MetadataDebuggingModelInput {
   ctxFields: unknown;
   ctxValue: (key: string) => unknown;
   dynamicUIValue: (value: unknown, scope: unknown, caller: UnknownRecord) => unknown;
-  derivedFields: Readonly<Record<string, DebugDerivedField>>;
   overrides: Readonly<Record<string, UnknownRecord>>;
   relatedCollections: Readonly<Record<string, DebugRelatedCollectionMetadata>>;
   relatedMetadataRegistry: Readonly<Record<string, DebugCanonicalMetadata>>;
@@ -219,7 +212,7 @@ export function buildCalculatedContextDebuggingRows(
 export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput): MetadataDebuggingModel {
   const {
     debuggingTabEnabled, metadata, metadataUI, compiledEntityContext, compiledEntityContextName, compiledUIRecord,
-    ctxFields, ctxValue, dynamicUIValue, derivedFields, overrides, relatedCollections,
+    ctxFields, ctxValue, dynamicUIValue, overrides, relatedCollections,
     relatedMetadataRegistry, pageRelatedData, collectionValue, relatedExpressionScope, entryContextPath = 'ctx.page.page',
   } = input;
 
@@ -316,7 +309,7 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
      * collections; they are classified beneath ENTITY FIELDS below.
      */
     const entityMetadataForDebug = Object.fromEntries(
-      Object.entries(metadata).filter(([key]) => !['fieldDefinition', 'derivedFields'].includes(key)),
+      Object.entries(metadata).filter(([key]) => key !== 'fieldDefinition'),
     );
     collectDynamicExpressions(
       'ENTITY',
@@ -328,50 +321,19 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
     );
 
     /*
-     * Calculated field values are classified by provenance. Current metadata
-     * explicitly declares SysUser calculations, so they appear under DECLARED
-     * FIELDS. If a future metadata contract marks a derived field with
-     * `inheritedFrom`, it automatically moves to INHERITED FIELDS. UI-only
-     * derived values remain visibly distinct as UI-DEFINED FIELDS.
+     * Renderable calculated values are canonical fieldDefinition entries. The
+     * normalized form architecture therefore has no parallel "UI-defined field"
+     * catalogue. Provenance for canonical field calculations is limited to the
+     * declared/inherited distinction below; presentation-only UI expressions are
+     * inventoried separately under the UI group.
      */
-    for (const [key, derived] of Object.entries(metadata.derivedFields ?? {})) {
-      const expression = expressionOf(derived);
-      if (!expression) continue;
-      addDebugRow(
-        'ENTITY FIELDS',
-        'FIELD VALUES',
-        key,
-        expression,
-        ctxValue(key),
-        compiledAstAt(compiledEntityContext, ['metadata', 'derivedFields', key]),
-        derived.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
-        `${entryContextPath}.fields.${key}.expression`,
-        `${entryContextPath}.entry.${key}`,
-      );
-    }
-
-    for (const [key, derived] of Object.entries(derivedFields)) {
-      const expression = expressionOf(derived);
-      if (!expression || expressionOf(metadata.derivedFields?.[key]) === expression) continue;
-      addDebugRow(
-        'ENTITY FIELDS',
-        'FIELD VALUES',
-        key,
-        expression,
-        ctxValue(key),
-        compiledAstAt(compiledUIRecord, ['derivedFields', key]),
-        derived.inheritedFrom ? 'INHERITED FIELDS' : 'UI-DEFINED FIELDS',
-        `${entryContextPath}.fields.${key}.expression`,
-        `${entryContextPath}.entry.${key}`,
-      );
-    }
 
     /*
-     * Canonical calculations on ordinary editable/stored fields are different
-     * from derived fields: the field persists a normal value, while CTX/evaluator
-     * causality recalculates it only for the metadata-declared triggers. Keep
+     * Canonical field calculations are value-source metadata on ordinary typed
+     * fields. Read-only authoritative calculations and editable assisted
+     * calculations therefore share one debugging path. Keep
      * these visible as FIELD CALCULATIONS so DEBUG reflects the same canonical
-     * metadata that drives forms.js, without knowing any specific component or
+     * metadata that drives the metadata-form/evaluator runtime, without knowing any specific component or
      * entity such as License/date-duration-range.
      */
     for (const [fieldKey, fieldMetadata] of Object.entries(metadata.fieldDefinition ?? {})) {
@@ -451,7 +413,7 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
       const sourceKey = stringProperty(collection, 'sourceKey') ?? collectionKey;
       const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
       for (const [fieldKey, field] of Object.entries(collection.fields ?? {})) {
-        const formula = expressionOf(field) ?? expressionOf(relatedMetadata?.derivedFields?.[fieldKey]);
+        const formula = expressionOf(field) ?? expressionOf(relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation);
         if (!formula) continue;
         const values = rows.map((row) => collectionValue(row, collectionKey, collection, fieldKey, field).raw);
         addDebugRow(

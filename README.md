@@ -2,7 +2,18 @@
 
 ManatOS is a metadata-driven, multi-platform application framework built around a shared business-object model, a canonical context tree (CTX), and a declarative expression evaluator.
 
-The repository currently contains the ManatOS runtime and the first platform implementation, **protoCRM**.
+The repository contains the ManatOS runtime and the first platform implementation, **protoCRM**.
+
+## Who this repository is for
+
+ManatOS documentation is organized so the same repository can be read at different depths:
+
+- **Architects and technical reviewers** can start with the system vision, package boundaries, security model, metadata/CTX architecture, and architectural invariants.
+- **Developers and contributors** can follow the contracts into metadata definitions, API/storage behavior, UI runtime ownership, reusable components, testing, and extension guidance.
+- **Power users and functional reviewers** can use the UI flow and entity/system-page guides to understand the supported workflows without first learning renderer internals.
+- **Portfolio/repository visitors** can use this README as an orientation to the implemented system and then follow the architecture and representative-flow links that match their interests.
+
+The documentation distinguishes implemented behavior from explicitly identified extension points. Git history records how the system evolved; durable documentation describes the system as it exists and the rationale that remains relevant to its architecture.
 
 ## Architecture
 
@@ -114,6 +125,21 @@ Provider-defined values such as callback paths are system-controlled where appro
 
 Credential/secret handling remains server-side.
 
+## Documentation map
+
+| Interest | Start here |
+|---|---|
+| system vision, boundaries and major runtime responsibilities | [`docs/Architecture.md`](docs/Architecture.md) |
+| canonical business-object and UI metadata | [`docs/Entity-Metadata.md`](docs/Entity-Metadata.md) |
+| CTX/expression ownership and execution mechanics | [`docs/Expression-Evaluation-Mechanics.md`](docs/Expression-Evaluation-Mechanics.md) |
+| authentication and authorization/security boundaries | [`docs/Authentication.md`](docs/Authentication.md), [`docs/Authorization.md`](docs/Authorization.md) |
+| persistence and adapter contracts | [`docs/Storage.md`](docs/Storage.md) |
+| UI architecture and component ownership | [`docs/ui/README.md`](docs/ui/README.md) |
+| supported end-to-end UI workflows | [`docs/ui/UI-Flows.md`](docs/ui/UI-Flows.md) |
+| metadata-driven entity pages | [`docs/ui/Entity-Pages.md`](docs/ui/Entity-Pages.md) |
+| authentication/account/configuration/developer UI surfaces | [`docs/ui/System-Pages.md`](docs/ui/System-Pages.md) |
+| development and verification | [`docs/Development.md`](docs/Development.md), [`docs/Testing.md`](docs/Testing.md) |
+
 ## Development
 
 Install dependencies and build/run the repository using the npm workspace scripts defined by the project.
@@ -135,6 +161,8 @@ Files under `docs/` describe the **current durable architecture, contracts, beha
 They are not a development diary, patch log, backlog, progress tracker, migration history, or place for pending-work notes. Historical audit/progress documents are not kept in the source tree; durable decisions must be incorporated into the relevant current-state document.
 
 The authorization security boundary and capability contracts are documented in `docs/Authorization.md`.
+
+The canonical UI documentation starts at `docs/ui/README.md`; it provides audience-oriented routes into UI architecture, supported flows, forms, entity/system pages, reusable components, composite components, and canonical entity-field components.
 
 ## Project status
 

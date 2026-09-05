@@ -47,7 +47,9 @@ describe('generic transactional collection editor', () => {
     expect(dataAccess).toContain('const referencedPrimaryField = referencedDefinition.boMetadata.primaryField');
     expect(dataAccess).toContain('value: id');
     expect(dataAccess).toContain('const representation = resolveEntryRepresentation(');
-    expect(dataAccess).toContain('label: representation.name || primaryValue || record.name || id');
+    expect(dataAccess).toContain('const entryName = representation.name || primaryValue || record.name || id');
+    expect(dataAccess).toContain('label: entryName');
+    expect(dataAccess).toContain('__entryIcons: representation.icons');
     expect(relatedCollections).toContain('collection.source?.kind');
     expect(relatedCollections).toContain('relatedEditingData[sourceKey]');
     expect(dataAccess).not.toContain("field.referenceBOKey === 'sys-email-addresses'");
@@ -97,6 +99,14 @@ describe('generic transactional collection editor', () => {
     expect(component).toContain('manatos:child-editor-state');
     expect(css).toContain('.metadata-collection-summary {');
     expect(css).toContain('flex-wrap: wrap;');
+  });
+
+  it('closes only pristine inline drafts when focus leaves the collection', async () => {
+    const component = await source('views/components/sysbo/collections/collection-editor.ejs');
+    expect(component).toContain("root.addEventListener('focusout'");
+    expect(component).toContain('if (active instanceof Node && root.contains(active)) return');
+    expect(component).toContain('if (!editorDraftDirty()) clearEditor()');
+    expect(component).not.toContain('if (editorDraftDirty()) clearEditor()');
   });
 
 });

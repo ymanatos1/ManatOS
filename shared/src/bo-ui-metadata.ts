@@ -5,3 +5,4 @@
 export * from './metadata/ui/types.js';
 export * from './metadata/ui/identity.js';
 export * from './metadata/ui/business.js';
+export * from './metadata/ui/registry.js';

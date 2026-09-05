@@ -1,9 +1,26 @@
 <%
-  const providerFor = (providerKey) =>
-    authProviders.find((candidate) => candidate.key === providerKey);
+  const externalIdentityCollection = relatedCollectionMetadataFor('sys-users', 'externalIdentities');
+  const externalIdentityMetadata = externalIdentityCollection
+    ? relatedEntityMetadata?.[externalIdentityCollection.entityKey]
+    : null;
+  const externalIdentityProviderField = externalIdentityMetadata?.fieldDefinition?.provider;
+  const externalIdentityEntityIcon = externalIdentityCollection?.rowIcon || externalIdentityCollection?.icon || null;
+
+  // Provider presentation comes from the same canonical option metadata used by
+  // related-collections. Runtime authProviders is only a defensive fallback for
+  // a future provider value not yet known to the canonical catalogue.
+  const providerFor = (providerKey) => {
+    const canonical = metadataOptionItemForField(externalIdentityProviderField, providerKey);
+    if (canonical) return {
+      key: providerKey,
+      label: canonical.label || providerKey,
+      icon: canonical.icon ? `bi-${String(canonical.icon).replace(/^bi-/, '')}` : null,
+    };
+    return authProviders.find((candidate) => candidate.key === providerKey);
+  };
 
   /*
-   * Status text comes from the same canonical SysUser derived fields used by
+   * Status text comes from the same canonical SysUser calculated fields used by
    * metadata-driven SysUser forms. This partial owns presentation only; it must
    * not duplicate those business/presentation calculations from raw booleans.
    */
@@ -69,8 +86,8 @@
 
 <div class="authentication-identities mt-4">
   <h3 class="h6 mb-3">
-    <i class="bi bi-person-badge me-1"></i>
-    External identities
+    <% if (externalIdentityCollection?.icon) { %><i class="bi bi-<%= externalIdentityCollection.icon %> me-1"></i><% } %>
+    <%= externalIdentityCollection?.label || 'External identities' %>
   </h3>
 
   <% if (authenticationIdentities && authenticationIdentities.length > 0) { %>
@@ -78,7 +95,16 @@
       <% for (const identity of authenticationIdentities) { %>
         <div class="authentication-identity-row">
           <div class="authentication-provider">
-            <% const identityProvider = providerFor(identity.provider); %>
+            <%
+              const identityProvider = providerFor(identity.provider);
+              const identityRepresentation = externalIdentityCollection
+                ? entryRepresentationFor(externalIdentityCollection.entityKey, identity, externalIdentityEntityIcon)
+                : null;
+            %>
+            <%- include('../sysbo/entry/entry-icons', {
+              entryRepresentation: identityRepresentation,
+              iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
+            }) %>
             <i
               class="bi <%= identityProvider?.icon || 'bi-box-arrow-in-right' %>"
               aria-hidden="true"

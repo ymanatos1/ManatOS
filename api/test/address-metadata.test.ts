@@ -5,7 +5,7 @@ describe('address metadata', () => {
   it('keeps reusable addresses internal and calculates one canonical formatted description', () => {
     expect(sysBOAddressesMetadata.exposure).toBe('internal');
     expect(sysBOAddressesMetadata.primaryField).toBe('formattedAddress');
-    expect(sysBOAddressesMetadata.derivedFields?.formattedAddress?.persisted).toBe(true);
+    expect(sysBOAddressesMetadata.fieldDefinition.formattedAddress?.calculation?.persisted).toBe(true);
     expect(sysBOAddressesMetadata.fieldDefinition.addressLine1?.required).toBe(true);
     expect(sysBOAddressesMetadata.fieldDefinition.city?.required).toBe(true);
     expect(sysBOAddressesMetadata.fieldDefinition.country?.required).toBe(true);
@@ -13,7 +13,7 @@ describe('address metadata', () => {
   });
 
   it('uses boolean ternary conditions in the canonical formatted-address expression', () => {
-    const expression = sysBOAddressesMetadata.derivedFields?.formattedAddress?.expression || '';
+    const expression = sysBOAddressesMetadata.fieldDefinition.formattedAddress?.calculation?.expression || '';
     expect(expression).toContain("recipientOrAttention != '' ?");
     expect(expression).toContain("stateOrProvince != '' ?");
     expect(expression).not.toContain('recipientOrAttention ?');

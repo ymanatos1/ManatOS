@@ -38,8 +38,12 @@ describe('metadata-driven Principal presentation', () => {
     expect(entry).toContain('data-enum-items');
     expect(entry).toContain('data-enum-selected-icon');
     expect(entry).toContain('data-enum-item');
-    expect(runtime).toContain('selectedEnumItem');
-    expect(runtime).toContain('control.selectedOptions?.[0]?.dataset?.enumItem');
+    const fieldRuntime = await uiSource('public/js/field-components/runtime.js');
+    expect(runtime).toContain('window.ManatOSFieldComponents?.getFieldOption?.(control)');
+    expect(runtime).not.toContain('selectedEnumItem');
+    expect(runtime).not.toContain('dataset.enumItems');
+    expect(fieldRuntime).toContain('const getFieldOption = (control) =>');
+    expect(fieldRuntime).toContain('selectedOption?.dataset?.enumItem');
     expect(runtime).toContain('resolveLocalFieldVariable');
     expect(runtime).toContain('let value = { value: fieldValue, option };');
     expect(ctxRuntime).toContain('const updateField =');
@@ -61,6 +65,11 @@ describe('metadata-driven Principal presentation', () => {
     expect(list).toContain("key === metadata.primaryField");
     expect(list).toContain("field.type === 'reference'");
     expect(list).toContain('referenceLabel(key, item[key])');
+    const referenceSelect = await uiSource('views/field-components/reference-select.ejs');
+    const dataAccess = await uiSource('src/routes/sysbo/data-access.ts');
+    expect(dataAccess).toContain('__entryIcons: representation.icons');
+    expect(referenceSelect).toContain('reference?.__entryIcons');
+    expect(referenceSelect).toContain('metadata-entry-icon-<%= iconIndex %>');
   });
 
   it('lays out Contact as a metadata grid so reusable contact collections can share rows', async () => {

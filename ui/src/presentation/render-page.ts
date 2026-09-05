@@ -20,6 +20,8 @@ import {
 } from '../context/manatos-context.js';
 import {
   allManatOSObjectMetadata,
+  allSysBOUIMetadata,
+  resolveEntryRepresentation,
   contextPathOf,
   evaluateCompiledExpression,
   expressionCapabilities,
@@ -28,11 +30,14 @@ import {
   type ExpressionEvaluationCaller,
   type ManatOSCalculatedContextField,
   type ManatOSContext,
+  type ManatOSObjectMetadata,
 } from '@manatos/shared';
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const uiRoot = resolve(moduleDirectory, '../..');
 const viewsDirectory = resolve(uiRoot, 'views');
+
+
 
 // Changes on every UI-server process start. Browser debugger state is keyed by
 // this value so normal page reloads preserve state, while a ManatOS restart
@@ -192,6 +197,34 @@ export async function renderPage(
     }
   };
 
+
+  /**
+   * Resolve one record's canonical entry presentation at the rendering boundary.
+   * Routes supply domain rows only; views combine those rows with already-loaded
+   * canonical/UI metadata instead of receiving synthetic __entry* properties.
+   */
+  const entryRepresentationFor = (
+    entityKey: string,
+    entry: unknown,
+    entityIcon: string | null = null,
+  ) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const metadata = allManatOSObjectMetadata[
+      entityKey as keyof typeof allManatOSObjectMetadata
+    ] as ManatOSObjectMetadata<Record<string, unknown>> | undefined;
+    if (!metadata) return null;
+    return resolveEntryRepresentation(
+      metadata,
+      allSysBOUIMetadata[entityKey as keyof typeof allSysBOUIMetadata],
+      entry as Readonly<Record<string, unknown>>,
+      { ...(entityIcon ? { entityIcon } : {}) },
+    );
+  };
+
+  /** Return one current UI-metadata related-collection declaration, when any. */
+  const relatedCollectionMetadataFor = (ownerEntityKey: string, collectionKey: string) =>
+    allSysBOUIMetadata[ownerEntityKey as keyof typeof allSysBOUIMetadata]?.record.relatedCollections?.[collectionKey] ?? null;
+
   const renderedModel: Record<string, unknown> = {
     ...viewModel,
     ...(ctx ? { ctx } : {}),
@@ -204,6 +237,8 @@ export async function renderPage(
     formatMetadataValue,
     metadataOptionItemForField,
     metadataOptionToneClass,
+    entryRepresentationFor,
+    relatedCollectionMetadataFor,
     breadcrumbItems: ctx ? pageBreadcrumbItems(ctx) : [],
     relatedEntityMetadata: allManatOSObjectMetadata,
     ctxDiagnostics,

@@ -10,7 +10,6 @@
   const quickFieldLabel = (field) => field?.label || field?.name || '';
   const quickEnumItemsFor = (field) => Array.isArray(field?.enumItems) ? field.enumItems : [];
   const emptyReferences = {};
-  const emptyReferenceIcons = {};
   const quickDateOnlyValue = (value) => value == null ? '' : String(value).slice(0, 10);
   const quickDatetimeLocalValue = (value) => value == null ? '' : String(value).slice(0, 16);
   const quickDurationParts = () => ({});
@@ -38,7 +37,7 @@
                   <%- include('../../../field-components/entity-field', {
                     key, field, value: quickValue, editable: true,
                     fieldLabel: quickFieldLabel, enumItemsFor: quickEnumItemsFor,
-                    referenceValues: emptyReferences, referenceEntityIcons: emptyReferenceIcons,
+                    referenceValues: emptyReferences,
                     dateOnlyValue: quickDateOnlyValue, datetimeLocalValue: quickDatetimeLocalValue,
                     durationParts: quickDurationParts, durationSerializedValue: quickDurationSerializedValue,
                     bindCtx: false, inputId: `record-quick-${key}`, inputName: key

@@ -76,66 +76,11 @@
     return control?.value ?? null;
   };
 
-  const enumItems = (control) => {
-    if (!(control instanceof HTMLSelectElement) || !control.dataset.enumItems) return [];
-    try {
-      const parsed = JSON.parse(control.dataset.enumItems);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const selectedEnumItem = (control) => {
-    if (!(control instanceof HTMLSelectElement)) return null;
-
-    // HTML select values are always strings. Canonical enum metadata normally
-    // uses strings too, but normalize both sides so generic enum traits remain
-    // reliable if a future enum uses numeric/boolean wire values.
-    const selectedValue = String(control.value ?? '');
-    const fromFieldMetadata = enumItems(control).find(
-      (item) => item && String(item.value ?? '') === selectedValue,
-    );
-    if (fromFieldMetadata) return fromFieldMetadata;
-
-    // Keep the selected option self-describing as a defensive fallback. This
-    // also means reactive metadata rules do not depend on developer CTX runtime
-    // availability or on a second lookup table after the server rendered them.
-    const raw = control.selectedOptions?.[0]?.dataset?.enumItem;
-    if (!raw) return null;
-    try { return JSON.parse(raw); } catch { return null; }
-  };
-
-  const enumToneClasses = (item) => {
-    const tone = item?.tone;
-    if (!tone) return [];
-    if (tone === 'danger' && item?.toneStrength === 'soft') return ['text-danger', 'opacity-75'];
-    if (tone === 'danger' && item?.toneStrength === 'strong') return ['text-danger-emphasis'];
-    if (tone === 'warning') return ['text-warning-emphasis'];
-    return [`text-${tone}`];
-  };
-
-  const updateEnumIcon = (control) => {
-    if (!(control instanceof HTMLSelectElement)) return;
-    const root = control.closest('[data-metadata-enum-select], [data-enum-icon-control]');
-    const icon = root?.querySelector('[data-enum-selected-icon]');
-    const label = root?.querySelector('[data-enum-selected-label]');
-    const toggle = root?.querySelector('[data-metadata-enum-toggle]');
-    const item = selectedEnumItem(control);
-    if (icon instanceof HTMLElement) {
-      icon.className = `bi bi-${item?.icon || 'list'}`;
-      enumToneClasses(item).forEach((className) => icon.classList.add(className));
-    }
-    if (label instanceof HTMLElement) label.textContent = item?.label || item?.value || 'Choose...';
-    if (toggle instanceof HTMLButtonElement) toggle.disabled = control.disabled;
-  };
 
   const formFieldValue = (name) => {
     const escaped = globalThis.CSS?.escape ? CSS.escape(name) : name.replace(/"/g, '\\"');
     const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
     if (control) return controlValue(control);
-    const calculated = form.querySelector(`[data-ctx-calculated-field="${escaped}"]`);
-    if (calculated instanceof HTMLInputElement) return calculated.value;
     return undefined;
   };
 
@@ -155,17 +100,11 @@
     if (normalizationValueActive && key === 'value' && members.length === 1) return normalizationValue;
     const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
     const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
-    const calculated = form.querySelector(`[data-ctx-calculated-field="${escaped}"]`);
-
     let fieldValue;
     let option;
     if (control) {
       fieldValue = controlValue(control);
-      if (control instanceof HTMLSelectElement && control.dataset.enumItems) {
-        option = selectedEnumItem(control);
-      }
-    } else if (calculated instanceof HTMLInputElement) {
-      fieldValue = calculated.value;
+      option = window.ManatOSFieldComponents?.getFieldOption?.(control);
     } else {
       return undefined;
     }
@@ -620,74 +559,6 @@
     reactiveEntries.push(entry);
   };
 
-  const calculatedRawValue = (element) => {
-    try { return JSON.parse(element.dataset.calculatedValue || 'null'); }
-    catch { return null; }
-  };
-
-  const setCalculatedDisplay = (element, value) => {
-    if (element.dataset.calculatedFieldType === 'reference') {
-      let values = [];
-      try {
-        const parsed = JSON.parse(element.dataset.referenceValues || '[]');
-        if (Array.isArray(parsed)) values = parsed;
-      } catch { /* keep empty */ }
-      const match = values.find((candidate) => candidate?.id === value);
-      element.value = value == null || value === '' ? 'None' : String(match?.name ?? value);
-      return;
-    }
-    element.value = value == null ? '' : String(value);
-  };
-
-  form.querySelectorAll('[data-ctx-calculated-field]').forEach((element) => {
-    if (!(element instanceof HTMLInputElement)) return;
-    const ast = parseAst(element, 'data-calculated-ast');
-    if (!ast) return;
-    const key = element.dataset.ctxCalculatedField;
-    const persisted = element.dataset.calculatedPersisted === 'true';
-
-    registerEntry({
-      kind: 'calculated',
-      key,
-      dependencyPaths: expressionDependencyPaths(ast),
-      run: async () => {
-        try {
-          const next = await evaluateOwned(ast);
-          const current = calculatedRawValue(element);
-          const changed = !Object.is(current, next);
-
-          if (changed) {
-            element.dataset.calculatedValue = JSON.stringify(next ?? null);
-            setCalculatedDisplay(element, next);
-          }
-
-          const pagePath = leafPagePath();
-          const fieldsPath = leafPageFieldsPath();
-          if (key && pagePath && fieldsPath && runtime) {
-            const valuePath = `${fieldsPath}.${key}.value`;
-            if (runtime.get?.(valuePath) !== next) {
-              if (persisted && runtime.updateField) {
-                runtime.updateField(pagePath, key, next, undefined, {
-                  source: 'calculated-field',
-                  triggerPath: valuePath,
-                });
-              } else if (runtime.replace) {
-                runtime.replace(valuePath, next, {
-                  source: 'calculated-field',
-                  triggerPath: valuePath,
-                });
-              }
-            }
-          }
-
-          return changed;
-        } catch {
-          return false;
-        }
-      },
-    });
-  });
-
   const sameReactiveValue = (left, right) => {
     if (Object.is(left, right)) return true;
     if (left && right && typeof left === 'object' && typeof right === 'object') {
@@ -697,20 +568,12 @@
   };
 
   const writeCalculatedControlValue = (control, value) => {
-    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) return;
-    if (control instanceof HTMLInputElement && control.dataset.ctxValueType === 'duration') {
-      const durationRoot = control.closest('[data-duration-field]');
-      if (durationRoot) window.ManatOSFieldComponents?.setDurationValue?.(durationRoot, value, { emit: false });
-      return;
-    }
-    if (control instanceof HTMLInputElement && control.type === 'checkbox') control.checked = Boolean(value);
-    else control.value = value == null ? '' : String(value);
-    updateEnumIcon(control);
+    window.ManatOSFieldComponents?.setFieldValue?.(control, value, { emit: false });
   };
 
   /*
    * Canonical normal-field calculations use the same precompiled AST/evaluator
-   * plan as derived fields. The UI component arranging a field never participates
+   * plan as other calculated fields. The UI component arranging a field never participates
    * in the calculation. `triggeredBy` is matched against CTX causal provenance,
    * preserving the original user-authoritative field through dependent writes.
    */
@@ -733,9 +596,11 @@
       key,
       dependencyPaths: expressionDependencyPaths(ast),
       run: async (change) => {
-        if (!change) return false;
-        const authoritativePath = change.cause?.triggerPath || change.changedPath;
-        if (![...triggerPaths].some((triggerPath) => pathsOverlap(triggerPath, authoritativePath))) return false;
+        const authoritativePath = change?.cause?.triggerPath || change?.changedPath;
+        if (triggerPaths.size) {
+          if (!authoritativePath) return false;
+          if (![...triggerPaths].some((triggerPath) => pathsOverlap(triggerPath, authoritativePath))) return false;
+        }
         try {
           const next = await evaluateOwned(ast);
           const pagePath = leafPagePath();
@@ -748,12 +613,10 @@
           const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
           const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
           writeCalculatedControlValue(control, next);
-          const option = control instanceof HTMLSelectElement && control.dataset.enumItems
-            ? selectedEnumItem(control)
-            : undefined;
+          const option = window.ManatOSFieldComponents?.getFieldOption?.(control);
           runtime.updateField(pagePath, key, next, option, {
             source: 'calculated-field',
-            triggerPath: authoritativePath,
+            triggerPath: authoritativePath || valuePath,
             ...(change.cause?.rootEventId ? { rootEventId: change.cause.rootEventId } : {}),
           });
           return true;
@@ -888,7 +751,7 @@
                   } else if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) {
                     control.value = readOnlyValue == null ? '' : String(readOnlyValue);
                   }
-                  updateEnumIcon(control);
+                  window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
 
                   const key = control.dataset.ctxField;
                   const pagePath = leafPagePath();
@@ -913,7 +776,7 @@
 
               if (control instanceof HTMLInputElement && control.type !== 'checkbox') control.readOnly = !editable;
               else control.disabled = !editable;
-              updateEnumIcon(control);
+              window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
               if (wasEditable !== editable) changed = true;
             });
 
@@ -1010,7 +873,7 @@
     const fieldsPath = leafPageFieldsPath();
     const path = fieldsPath ? `${fieldsPath}.${key}.value` : `fields.${key}.value`;
 
-    updateEnumIcon(control);
+    window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
 
     const source = typeof eventCause.source === 'string' && eventCause.source
       ? eventCause.source
@@ -1022,9 +885,7 @@
 
     if (fieldsPath && runtime?.updateField) {
       const pagePath = leafPagePath();
-      const option = control instanceof HTMLSelectElement && control.dataset.enumItems
-        ? selectedEnumItem(control)
-        : undefined;
+      const option = window.ManatOSFieldComponents?.getFieldOption?.(control);
       runtime.updateField(pagePath, key, value, option, cause);
     } else if (fieldsPath && runtime?.replace) {
       runtime.replace(path, value, cause);
@@ -1062,7 +923,9 @@
   form.addEventListener('input', react);
   form.addEventListener('change', react);
   queueMicrotask(() => {
-    form.querySelectorAll('select[data-enum-items]').forEach(updateEnumIcon);
+    form.querySelectorAll('[data-ctx-field]').forEach((control) => {
+      window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
+    });
     runAllReactiveEntries();
     form.dispatchEvent(new Event('change', { bubbles: true }));
   });

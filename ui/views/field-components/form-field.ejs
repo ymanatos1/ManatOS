@@ -1,22 +1,31 @@
 <%
-  const derived = derivedFields[key];
+  /*
+   * FORM-FIELD WRAPPER (not a concrete field-type component).
+   *
+   * This layer owns how one canonical field participates in a form: outer grid
+   * placement, label/help, visibility/editability, normalization/calculation
+   * bindings and read-only submission support. It always delegates the actual
+   * type-specific control to entity-field.ejs.
+   *
+   * Value-source semantics (direct, calculated, default, application-managed)
+   * are deliberately orthogonal to presentation. They may change the resolved
+   * value or mutability, but they must never choose the concrete UI control.
+   */
   const field = metadata.fieldDefinition[key];
+  const visibilityExpression = expressionText(overrides[key]?.visible);
 %>
-<% if (derived?.expression) { %>
-  <% const calculatedValue = ctxValue(key); %>
-  <% const calculatedDisplayValue = field?.type === 'reference'
-    ? referenceLabel(key, calculatedValue)
-    : field?.type === 'duration'
-      ? formatValue(calculatedValue)
-      : calculatedValue; %>
-  <% const derivedVisibleExpression = expressionText(overrides[key]?.visible); %>
-  <% const compiledDerivedOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
-  <% const derivedInitiallyVisible = dynamicUIValue(overrides[key]?.visible ?? true, ctxFields, {
-    source: 'ui-metadata',
-    sourcePath: `fieldOverrides.${key}.visible`,
-    targetPath: `fields.${key}.visible`,
-    purpose: 'resolve calculated-field visibility',
-  }) !== false; %>
+<% if (field && !field.sensitive && (fieldVisible(field) !== false || visibilityExpression)) { %>
+  <% const editable = fieldEditable(field); %>
+  <% const hasReadOnlyValue = Object.prototype.hasOwnProperty.call(overrides[key] || {}, 'readOnlyValue'); %>
+  <% const readOnlyValue = hasReadOnlyValue ? overrides[key].readOnlyValue : undefined; %>
+  <% const value = !editable && hasReadOnlyValue ? readOnlyValue : valueFor(key); %>
+  <% const visibleExpression = expressionText(overrides[key]?.visible); %>
+  <% const editableExpression = expressionText(overrides[key]?.editable); %>
+  <% const compiledOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
+  <% const calculation = field.calculation; %>
+  <% const normalization = field.normalize; %>
+  <% const compiledNormalization = compiledEntityMetadata?.fieldDefinition?.[key]?.normalize; %>
+  <% const compiledCalculation = compiledEntityMetadata?.fieldDefinition?.[key]?.calculation; %>
   <div
     class="col-md-<%= span || 6 %>"
     data-ctx-field-container="<%= key %>"
@@ -24,81 +33,43 @@
       data-ui-grid-span-ast="<%= JSON.stringify(spanAst) %>"
       data-ui-grid-span-fallback="<%= span || 6 %>"
     <% } %>
-    <% if (derivedVisibleExpression) { %>
-      data-ui-visible-expression="<%= derivedVisibleExpression %>"
-      data-ui-visible-ast="<%= JSON.stringify(compiledDerivedOverride.visible?.ast ?? null) %>"
+    <% if (normalization?.expression) { %>
+      data-field-normalize-expression="<%= normalization.expression %>"
+      data-field-normalize-ast="<%= JSON.stringify(compiledNormalization?.ast ?? null) %>"
     <% } %>
-    <%= !derivedInitiallyVisible ? 'hidden' : '' %>
+    <% if (calculation?.expression) { %>
+      data-field-calculation-expression="<%= calculation.expression %>"
+      data-field-calculation-ast="<%= JSON.stringify(compiledCalculation?.ast ?? null) %>"
+      data-field-calculation-triggered-by="<%= JSON.stringify(calculation.triggeredBy || []) %>"
+      data-field-calculation-persisted="<%= calculation.persisted === true ? 'true' : 'false' %>"
+    <% } %>
+    <% if (visibleExpression) { %>
+      data-ui-visible-expression="<%= visibleExpression %>"
+      data-ui-visible-ast="<%= JSON.stringify(compiledOverride.visible?.ast ?? null) %>"
+    <% } %>
+    <% if (editableExpression) { %>
+      data-ui-editable-expression="<%= editableExpression %>"
+      data-ui-editable-ast="<%= JSON.stringify(compiledOverride.editable?.ast ?? null) %>"
+    <% } %>
+    <% if (hasReadOnlyValue) { %>
+      data-ui-has-readonly-value="true"
+      data-ui-readonly-value="<%= JSON.stringify(readOnlyValue) %>"
+    <% } %>
+    <%= !fieldVisible(field) ? 'hidden' : '' %>
   >
-    <label class="form-label" for="metadata-field-<%= key %>" data-metadata-field-label="<%= key %>"><%= overrides[key]?.label || derived.label %>:<% if (field?.required) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
-    <%- include('calculated-field', {
-      key,
-      field,
-      derived,
-      calculatedValue,
-      calculatedDisplayValue,
-      ctxFields,
-      referenceValues,
-    }) %>
+    <label class="form-label" for="metadata-field-<%= key %>" data-metadata-field-label="<%= key %>"><%= fieldLabel(field) %>:<% if (field.required) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
+    <%- include('entity-field', { key, field, value, editable, fieldLabel, enumItemsFor, referenceValues, dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue }) %>
+    <% if (overrides[key]?.helpText) { %>
+      <div class="form-text"><%= overrides[key].helpText %></div>
+    <% } %>
+    <% if (!isViewMode && hasReadOnlyValue) { %>
+      <input
+        type="hidden"
+        name="<%= key %>"
+        value="<%= readOnlyValue ?? '' %>"
+        data-readonly-submit="<%= key %>"
+        <%= editable ? 'disabled' : '' %>
+      >
+    <% } %>
   </div>
-<% } else { %>
-  <% const visibilityExpression = expressionText(overrides[key]?.visible); %>
-  <% if (field && !field.sensitive && (fieldVisible(field) !== false || visibilityExpression)) { %>
-    <% const editable = fieldEditable(field); %>
-    <% const hasReadOnlyValue = Object.prototype.hasOwnProperty.call(overrides[key] || {}, 'readOnlyValue'); %>
-    <% const readOnlyValue = hasReadOnlyValue ? overrides[key].readOnlyValue : undefined; %>
-    <% const value = !editable && hasReadOnlyValue ? readOnlyValue : valueFor(key); %>
-    <% const visibleExpression = expressionText(overrides[key]?.visible); %>
-    <% const editableExpression = expressionText(overrides[key]?.editable); %>
-    <% const compiledOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
-    <% const calculation = field.calculation; %>
-    <% const normalization = field.normalize; %>
-    <% const compiledNormalization = compiledEntityMetadata?.fieldDefinition?.[key]?.normalize; %>
-    <% const compiledCalculation = compiledEntityMetadata?.fieldDefinition?.[key]?.calculation; %>
-    <div
-      class="col-md-<%= span || 6 %>"
-      data-ctx-field-container="<%= key %>"
-      <% if (typeof spanExpression !== 'undefined' && spanExpression && typeof spanAst !== 'undefined' && spanAst) { %>
-        data-ui-grid-span-ast="<%= JSON.stringify(spanAst) %>"
-        data-ui-grid-span-fallback="<%= span || 6 %>"
-      <% } %>
-      <% if (normalization?.expression) { %>
-        data-field-normalize-expression="<%= normalization.expression %>"
-        data-field-normalize-ast="<%= JSON.stringify(compiledNormalization?.ast ?? null) %>"
-      <% } %>
-      <% if (calculation?.expression) { %>
-        data-field-calculation-expression="<%= calculation.expression %>"
-        data-field-calculation-ast="<%= JSON.stringify(compiledCalculation?.ast ?? null) %>"
-        data-field-calculation-triggered-by="<%= JSON.stringify(calculation.triggeredBy || []) %>"
-      <% } %>
-      <% if (visibleExpression) { %>
-        data-ui-visible-expression="<%= visibleExpression %>"
-        data-ui-visible-ast="<%= JSON.stringify(compiledOverride.visible?.ast ?? null) %>"
-      <% } %>
-      <% if (editableExpression) { %>
-        data-ui-editable-expression="<%= editableExpression %>"
-        data-ui-editable-ast="<%= JSON.stringify(compiledOverride.editable?.ast ?? null) %>"
-      <% } %>
-      <% if (hasReadOnlyValue) { %>
-        data-ui-has-readonly-value="true"
-        data-ui-readonly-value="<%= JSON.stringify(readOnlyValue) %>"
-      <% } %>
-      <%= !fieldVisible(field) ? 'hidden' : '' %>
-    >
-      <label class="form-label" for="metadata-field-<%= key %>" data-metadata-field-label="<%= key %>"><%= fieldLabel(field) %>:<% if (field.required) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
-      <%- include('entity-field', { key, field, value, editable, fieldLabel, enumItemsFor, referenceValues, referenceEntityIcons, dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue }) %>
-      <% if (overrides[key]?.helpText) { %>
-        <div class="form-text"><%= overrides[key].helpText %></div>
-      <% } %>
-      <% if (!isViewMode && hasReadOnlyValue) { %>
-        <input
-          type="hidden"
-          name="<%= key %>"
-          value="<%= readOnlyValue ?? '' %>"
-          data-readonly-submit="<%= key %>"
-          <%= editable ? 'disabled' : '' %>
-        >
-      <% } %>
-    </div>
-  <% } %>
 <% } %>

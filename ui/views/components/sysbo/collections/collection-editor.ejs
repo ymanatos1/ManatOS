@@ -452,6 +452,23 @@
   });
   root.querySelector('[data-collection-cancel]')?.addEventListener('click', clearEditor);
 
+  /*
+   * A pristine inline draft is only temporary interaction scaffolding. When
+   * keyboard/pointer focus genuinely leaves this collection, close that empty
+   * editor automatically. A dirty draft remains open: focus movement must
+   * never be reinterpreted as Update or Cancel and must never discard input.
+   * `focusout` is deferred so Bootstrap dropdown focus transitions inside the
+   * same collection have settled before containment is evaluated.
+   */
+  root.addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      if (box.classList.contains('d-none')) return;
+      const active = document.activeElement;
+      if (active instanceof Node && root.contains(active)) return;
+      if (!editorDraftDirty()) clearEditor();
+    }, 0);
+  });
+
   const accept = () => {
     let value;
     if (structured) {

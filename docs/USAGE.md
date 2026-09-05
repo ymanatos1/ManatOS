@@ -104,10 +104,10 @@ The generic CTX/evaluator pipeline owns dependency propagation and cycle/runaway
 Entity-field controls live under:
 
 ```text
-ui/views/pages/metadata-driven/field-components/
+ui/views/field-components/
 ```
 
-The generic form-field dispatcher chooses the appropriate component from canonical field metadata. A field-component owns field-specific interaction and presentation, not entity-specific business logic.
+`form-field.ejs` supplies the form-field wrapper/lifecycle context and delegates to `entity-field.ejs`. `entity-field.ejs` is the single canonical field-type dispatcher and chooses the concrete component from `field.type` only. A field-component owns field-specific interaction and presentation, not entity-specific business logic.
 
 Examples include text, date, datetime, enum, reference, number, boolean, duration and version field components.
 
@@ -133,7 +133,7 @@ Field inspection opens the Developer Tools dock on the CTX Viewer tab, selects t
 Reusable non-field or compound visuals live under:
 
 ```text
-ui/views/pages/metadata-driven/ui-components/
+ui/views/components/
 ```
 
 Use UI-components for layout/composition or reusable visual behavior that is not itself a canonical field. Ordered form content may also use renderer-neutral layout primitives such as `break` (start the next row) and `spacer` (reserve grid width); neither carries field/data semantics.
@@ -177,9 +177,9 @@ A compound workflow may contain temporary browser inputs that are deliberately n
 
 ## 6. Related-reference selector fields
 
-A `reference` field uses the common related-entry selector component. Real options are prefixed with the referenced entity icon. Sentinel choices such as `None`, `Choose...`, or `All` stay iconless so they are visually distinct from real records.
+A `reference` field uses the common `reference-select.ejs` related-entry component. Every real referenced record is presented through that record's canonical entry representation: its resolved entry icon(s), followed by its canonical entry name. This is the same rule for the current selection and for every dropdown option, and it also applies when the reference is calculated/read-only. A composed entry representation may therefore show both the referenced entity cue and its semantic type cue (for example Principal entity + Principal type). Sentinel choices such as `None`, `Choose...`, or `All` stay iconless so they remain visually distinct from real records.
 
-This applies generically to Principal parent selection, License customer/application selection, and future single- or multi-entity relationships.
+The owner projects the referenced records and their resolved entry representation into the selector; the component never performs entity-specific lookups or API calls. This applies generically to Principal parent/root references, License customer/application selection, and future related-entry selectors.
 
 ## 7. Related collections
 
@@ -191,15 +191,15 @@ Current examples include:
 - Application -> Licenses
 - Principal -> Licenses
 
-A related collection can declare `rowIcon` to identify the related entity/record. Field-specific formatting remains independent.
+Every real row remains ordinary domain data. At render time the common `related-collections` component combines that row with the related entity's already-available canonical/UI metadata and resolves the same canonical entry representation used by lists and reference selectors. The component renders the resolved entry icon composition before the row's primary displayed value; routes must not decorate rows with synthetic `__entryName` / `__entryIcons` presentation properties. `rowIcon` remains a legitimate collection-level metadata override and otherwise the collection icon supplies the entity cue.
 
-For example, an External Identity row may display:
+Field-specific presentation remains independent. For example, an External Identity row may display:
 
 ```text
-[External Identity entity icon] [Microsoft provider icon] account@example.com [status]
+[External Identity entry icon] [Microsoft provider icon] Microsoft [account/status fields]
 ```
 
-The first icon identifies the related entity; the provider icon comes from the field presentation (`auth-provider`). This distinction is especially important for future heterogeneous related collections.
+The first icon group identifies the related entry and is owned by the generic related-entry presentation component used by `related-collections`; the provider icon comes from canonical option presentation for the provider field. The Account authentication projection reuses the same metadata/entry-icon presentation rather than rebuilding External Identity icons or provider labels itself. Likewise, Principal/Application License rows obtain their License entry icon through the same component-level rule. This separation is especially important for future heterogeneous related collections.
 
 ## 8. List-page reusable UI
 

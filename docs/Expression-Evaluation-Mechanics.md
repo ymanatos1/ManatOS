@@ -60,7 +60,7 @@ Canonical entity formulas should therefore prefer entity-local field names (`par
 
 ## 5. Function capabilities
 
-Registry functions declare the capability needed to execute them. Phase 1 uses these categories:
+Registry functions declare the capability needed to execute them. The current capability model uses these categories:
 
 - `pure` - deterministic/local scalar or value operations;
 - `clock` - requires the evaluator clock;
@@ -105,7 +105,7 @@ The browser has local scalar/CTX capabilities but no database resolver. When it 
 5. only the function result is returned;
 6. the browser resumes and completes its own AST evaluation.
 
-Phase 1 delegates reached resolver function calls individually. A later planner may combine compatible reached subtrees/batches while preserving the same owner and lazy semantics.
+Reached resolver function calls are delegated individually. This is an execution-policy detail: a planner may combine compatible reached subtrees/batches while preserving the same owner and lazy semantics.
 
 ## 8. Server-owned execution
 
@@ -119,7 +119,7 @@ If a caller asks an owner to execute a formula requiring a capability that neith
 
 `EntityResolver` is the expression engine's storage-independent canonical entity lookup capability. Expression functions never import a concrete datastore, repository, SQL driver or entity-specific service.
 
-Phase 1 contract:
+Current minimal contract:
 
 ```text
 getById(entityKey, id) -> entity | null
@@ -308,11 +308,11 @@ The Debugging inventory itself now follows the same separation. A reusable prese
 
 Evaluation diagnostics retain caller/source/target provenance and should eventually include delegated capability provenance. Capability failures are explicit, for example when an API-owned expression requires a browser-only capability that was not supplied.
 
-## 15. Phase 1 versus later optimization
+## 15. Optimization boundary
 
-Phase 1 establishes ownership, execution context, capability annotations, EntityResolver and `TraverseEntity()`.
+The architectural contract establishes ownership, execution context, capability annotations, `EntityResolver` and `TraverseEntity()` independently of execution optimization.
 
-Later phases can add:
+Compatible implementations may add:
 
 - dependency plans listing local fields and persisted entity fields;
 - maximal capability-compatible AST fragment delegation;

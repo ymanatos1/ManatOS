@@ -19,23 +19,21 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
   primaryField: 'name',
 
-  derivedFields: {
-    fullName: {
-      label: 'Full name',
-      expression: "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName",
-    },
-    emailVerificationStatus: {
-      label: 'Email verification',
-      expression: "emailVerified ? 'Verified' : 'Not verified'",
-    },
-    localPasswordStatus: {
-      label: 'Local password',
-      expression: "mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'",
-    },
-  },
-
   fieldDefinition: {
     ...commonSysBOFields,
+
+    fullName: {
+      key: 'fullName', label: 'Full name', type: 'string', order: 90, readOnly: true,
+      calculation: { expression: "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName" },
+    },
+    emailVerificationStatus: {
+      key: 'emailVerificationStatus', label: 'Email verification', type: 'string', order: 33, readOnly: true,
+      calculation: { expression: "emailVerified ? 'Verified' : 'Not verified'" },
+    },
+    localPasswordStatus: {
+      key: 'localPasswordStatus', label: 'Local password', type: 'string', order: 51, readOnly: true,
+      calculation: { expression: "mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'" },
+    },
 
     /*
      * We customize the common `name` field label for SysBOUser.
@@ -144,6 +142,14 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
       required: true,
       enumValues: Object.values(SysBOUserRole),
+      // Role presentation is canonical enum metadata. Every enum consumer gets
+      // the same icon+label semantics without SysUser-specific renderer logic.
+      enumItems: [
+        { value: SysBOUserRole.Admin, label: 'Admin', icon: 'shield-lock-fill' },
+        { value: SysBOUserRole.Superuser, label: 'Superuser', icon: 'shield-check' },
+        { value: SysBOUserRole.User, label: 'User', icon: 'person-fill' },
+        { value: SysBOUserRole.Guest, label: 'Guest', icon: 'person' },
+      ],
     },
 
     firstName: {
@@ -220,14 +226,12 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
       },
     },
   },
-  derivedFields: {
-    providerEmailVerificationStatus: {
-      label: 'Provider email verification',
-      expression: "emailVerified ? 'Provider email verified' : 'Provider email not verified'",
-    },
-  },
   fieldDefinition: {
     ...commonSysBOFields,
+    providerEmailVerificationStatus: {
+      key: 'providerEmailVerificationStatus', label: 'Provider email verification', type: 'string', order: 61, readOnly: true,
+      calculation: { expression: "emailVerified ? 'Provider email verified' : 'Provider email not verified'" },
+    },
     userId: {
       key: 'userId',
       label: 'User',

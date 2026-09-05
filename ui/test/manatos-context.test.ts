@@ -306,7 +306,7 @@ describe('ManatOS ctx tree', () => {
 
     registerContextEntity(ctx, 'sys-users', sysBOUsersMetadata);
 
-    const fullName = (ctx.entities.sysUsers?.metadata as any)?.derivedFields?.fullName;
+    const fullName = (ctx.entities.sysUsers?.metadata as any)?.fieldDefinition?.fullName?.calculation;
     expect(fullName?.expression).toBe(
       "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName",
     );

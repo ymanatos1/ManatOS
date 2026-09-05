@@ -38,7 +38,7 @@ describe('generic date-duration-range component', () => {
     expect(fieldRenderer).toContain('data-field-calculation-ast');
     expect(fieldRenderer).toContain('data-field-calculation-triggered-by');
     expect(runtime).toContain("kind: 'field-calculation'");
-    expect(runtime).toContain('change.cause?.triggerPath');
+    expect(runtime).toContain('change?.cause?.triggerPath');
     expect(runtime).toContain('rootEventId');
     expect(runtime).not.toContain('WeakSet');
 

@@ -58,19 +58,16 @@ export const sysBOTelephoneNumbersMetadata: SysBOMetadata<SysTelephoneNumber> = 
   name: 'Telephone number',
   pluralName: 'Telephone numbers',
   primaryField: 'fullNumber',
-  derivedFields: {
-    fullNumber: {
-      label: 'Full number',
-      expression: 'TelephoneNbr(countryCode, number)',
-      persisted: true,
-    },
-  },
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Canonical telephone key', readOnly: true },
     countryCode: { key: 'countryCode', label: 'Country code', type: 'string', order: 20, required: true, maxLength: 5 },
     number: { key: 'number', label: 'Telephone number', type: 'string', order: 30, required: true, maxLength: 40 },
-    fullNumber: { key: 'fullNumber', label: 'Full number', type: 'telephone', order: 40, required: true, readOnly: true, applicationManaged: true, unique: true },
+    fullNumber: {
+      key: 'fullNumber', label: 'Full number', type: 'telephone', order: 40, required: true,
+      readOnly: true, applicationManaged: true, unique: true,
+      calculation: { expression: 'TelephoneNbr(countryCode, number)', persisted: true },
+    },
   },
 };
 
@@ -95,7 +92,7 @@ export const sysBOPrincipalTelephoneNumbersMetadata: SysBOMetadata<SysPrincipalT
 /**
  * Postal/street addresses are internal reusable contact entities. Their
  * constituent fields are authoritative; formattedAddress is a persisted
- * derived field so every client receives the same compact description.
+ * calculated field so every client receives the same compact description.
  */
 export const sysBOAddressesMetadata: SysBOMetadata<SysAddress> = {
   key: 'sys-addresses',
@@ -103,20 +100,6 @@ export const sysBOAddressesMetadata: SysBOMetadata<SysAddress> = {
   name: 'Address',
   pluralName: 'Addresses',
   primaryField: 'formattedAddress',
-  derivedFields: {
-    formattedAddress: {
-      label: 'Formatted address',
-      expression:
-        "(recipientOrAttention != '' ? recipientOrAttention + ', ' : '') + " +
-        "(organization != '' ? organization + ', ' : '') + addressLine1 + " +
-        "(addressLine2 != '' ? ', ' + addressLine2 : '') + " +
-        "(addressLine3 != '' ? ', ' + addressLine3 : '') + " +
-        "(poBox != '' ? ', PO Box ' + poBox : '') + " +
-        "(postalCode != '' ? ', ' + postalCode : '') + ', ' + city + " +
-        "(stateOrProvince != '' ? ', ' + stateOrProvince : '') + ', ' + country",
-      persisted: true,
-    },
-  },
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Canonical address key', readOnly: true },
@@ -130,7 +113,21 @@ export const sysBOAddressesMetadata: SysBOMetadata<SysAddress> = {
     city: { key: 'city', label: 'City', type: 'string', order: 90, required: true, maxLength: 120 },
     stateOrProvince: { key: 'stateOrProvince', label: 'State / province', type: 'string', order: 100, maxLength: 120 },
     country: { key: 'country', label: 'Country', type: 'string', order: 110, required: true, maxLength: 120 },
-    formattedAddress: { key: 'formattedAddress', label: 'Formatted address', type: 'string', order: 120, required: true, readOnly: true, applicationManaged: true, maxLength: 1000 },
+    formattedAddress: {
+      key: 'formattedAddress', label: 'Formatted address', type: 'string', order: 120, required: true,
+      readOnly: true, applicationManaged: true, maxLength: 1000,
+      calculation: {
+        expression:
+        "(recipientOrAttention != '' ? recipientOrAttention + ', ' : '') + " +
+        "(organization != '' ? organization + ', ' : '') + addressLine1 + " +
+        "(addressLine2 != '' ? ', ' + addressLine2 : '') + " +
+        "(addressLine3 != '' ? ', ' + addressLine3 : '') + " +
+        "(poBox != '' ? ', PO Box ' + poBox : '') + " +
+        "(postalCode != '' ? ', ' + postalCode : '') + ', ' + city + " +
+        "(stateOrProvince != '' ? ', ' + stateOrProvince : '') + ', ' + country",
+        persisted: true,
+      },
+    },
   },
 };
 

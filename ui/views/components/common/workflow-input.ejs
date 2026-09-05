@@ -1,0 +1,33 @@
+<%
+  /*
+   * Generic non-entity workflow input.
+   *
+   * Use this component only for transient/system workflow values that are not
+   * canonical entity fields and therefore must not enter the entity-field
+   * component hierarchy or bind themselves to ctx.page.page.fields.
+   *
+   * Canonical entity fields belong in form-field/entity-field and their
+   * concrete field-components. This component intentionally has no field-tools
+   * menu, canonical-field metadata interpretation, or CTX field binding.
+   */
+  const workflowType = typeof type === 'string' ? type : 'text';
+  const workflowValue = typeof value === 'undefined' || value === null ? '' : value;
+  const workflowAutocomplete = typeof autocomplete === 'string' ? autocomplete : undefined;
+  const workflowDataAttributes = dataAttributes && typeof dataAttributes === 'object' ? dataAttributes : {};
+  const workflowIcon = typeof icon === 'string' && icon ? icon : (workflowType === 'password' ? 'lock' : 'input-cursor-text');
+%>
+<div class="input-group metadata-workflow-input" data-workflow-input>
+  <span class="input-group-text" aria-hidden="true"><i class="bi bi-<%= workflowIcon %>"></i></span>
+  <input
+    class="form-control"
+    id="<%= id %>"
+    name="<%= name %>"
+    type="<%= workflowType %>"
+    value="<%= workflowValue %>"
+    <% if (required) { %>required<% } %>
+    <% if (maxLength !== undefined) { %>maxlength="<%= maxLength %>"<% } %>
+    <% if (workflowAutocomplete) { %>autocomplete="<%= workflowAutocomplete %>"<% } %>
+    <% for (const [attributeName, attributeValue] of Object.entries(workflowDataAttributes)) { %><%= attributeName %>="<%= attributeValue %>" <% } %>
+    <%= editable ? '' : 'disabled' %>
+  >
+</div>

@@ -24,7 +24,7 @@
 
   const scopeFor = (config, row) => {
     const scope = { ...row, relations: relationScopeFor(config, row) };
-    for (const [key, ast] of Object.entries(config?.derived || {})) {
+    for (const [key, ast] of Object.entries(config?.calculations || {})) {
       scope[key] = { __manatosExpressionAst: ast, value: row?.[key] ?? null };
     }
     return scope;

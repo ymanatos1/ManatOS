@@ -150,8 +150,10 @@ function userContext(
   // passwordHash is intentionally never exposed to the browser/debug context.
   const { passwordHash: _passwordHash, ...safeUser } = user;
   const fields = contextFields(safeUser);
-  for (const [derivedName, derived] of Object.entries(sysBOUsersMetadata.derivedFields ?? {})) {
-    fields[derivedName] = calculatedContextField(derived.expression, {
+  for (const [fieldName, field] of Object.entries(sysBOUsersMetadata.fieldDefinition)) {
+    const calculation = field.calculation;
+    if (!calculation?.expression || calculation.triggeredBy?.length) continue;
+    fields[fieldName] = calculatedContextField(calculation.expression, {
       diagnosticSink: (diagnostic) => console.error('[ManatOS expression parse]', diagnostic),
     });
   }
@@ -256,7 +258,7 @@ export function createManatOSContext(
 /**
  * Copy metadata into the runtime CTX registry and precompile every declared
  * expression, regardless of where the metadata contract uses it (canonical
- * derived field, UI-derived field, related-row calculation, future dynamic
+ * calculated field, UI-only calculated field, related-row calculation, future dynamic
  * visibility/read-only rule, and so on).
  *
  * Parsing remains context-agnostic. Variable/path resolution is deliberately

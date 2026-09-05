@@ -15,7 +15,7 @@ describe('generic SysBO delete presentation', () => {
 
   it('suppresses the native dirty-page warning only after destructive confirmation submits', async () => {
     const view = await readFile(resolve(testDirectory, '../views/popups/messages/bo-edit-confirmations.ejs'), 'utf8');
-    const forms = await readFile(resolve(testDirectory, '../public/js/forms.js'), 'utf8');
+    const forms = await readFile(resolve(testDirectory, '../public/js/forms/entry-state.js'), 'utf8');
     expect(view).toContain('data-allow-dirty-page-exit="true"');
     expect(view).toContain('deletePresentation.displayValue');
     expect(view).toContain('deletePresentation.entityLabel');

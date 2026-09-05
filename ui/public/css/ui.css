@@ -972,7 +972,7 @@ body.anonymous .workspace {
    ========================================================================= */
 
 /*
- * Password inputs are enhanced client-side by forms.js. Keeping the input as
+ * Password inputs are enhanced client-side by forms/auth.js. Keeping the input as
  * the original form element preserves native validation, autofill and password
  * manager behavior while the adjacent button controls visibility only.
  */

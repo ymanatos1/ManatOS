@@ -41,16 +41,17 @@ describe('canonical entry representation metadata', () => {
     expect(result.typeValue).toBeUndefined();
   });
 
-  it('prefers evaluator formulas and resolves derived dependencies lazily', () => {
+  it('prefers evaluator formulas and resolves calculated field dependencies lazily', () => {
     const metadata: SysBOMetadata<Record<string, unknown>> = {
       key: 'people', name: 'Person', pluralName: 'People', primaryField: 'id',
       fieldDefinition: {
         id: { key: 'id', label: 'Id', type: 'guid', order: 1 },
         firstName: { key: 'firstName', label: 'First', type: 'string', order: 2 },
         lastName: { key: 'lastName', label: 'Last', type: 'string', order: 3 },
-      },
-      derivedFields: {
-        fullName: { label: 'Full name', expression: "firstName + ' ' + lastName" },
+        fullName: {
+          key: 'fullName', label: 'Full name', type: 'string', order: 4, readOnly: true,
+          calculation: { expression: "firstName + ' ' + lastName" },
+        },
       },
       entry: { name: { expression: 'fullName' } },
     };

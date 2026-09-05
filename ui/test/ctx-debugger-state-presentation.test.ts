@@ -154,8 +154,8 @@ describe('CTX debugger presentation state', () => {
     expect(debuggingPanelSource).not.toContain("debugRow.inspectPath || 'ctx.page.page'");
     expect(metadataEntrySource).toContain('buildMetadataDebuggingModel({');
     expect(metadataDebuggingModelSource).toContain("entryContextPath = 'ctx.page.page'");
-    expect(metadataDebuggingModelSource).toContain('`${entryContextPath}.fields.${key}.expression`');
-    expect(metadataDebuggingModelSource).toContain('`${entryContextPath}.entry.${key}`');
+    expect(metadataDebuggingModelSource).toContain('`ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`');
+    expect(metadataDebuggingModelSource).toContain('`${entryContextPath}.entry.${fieldKey}`');
     expect(metadataEntrySource).toContain("entryContextPath: ownerEditing ? 'ctx.page.page.page' : 'ctx.page.page'");
     expect(metadataDebuggingModelSource).toContain('definitionPath');
     expect(metadataDebuggingModelSource).toContain('valuePath');

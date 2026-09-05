@@ -225,21 +225,26 @@ export function applySysBOEntryContext(
    * happens here, when the context variable is declared, while variable/path
    * resolution remains completely lazy and context-dependent at value access.
    */
-  // API $metadata-ui is already the effective UI contract. Current-EJS paths
-  // do not use that contract, so fall back to canonical derived fields there.
-  const effectiveDerivedFields = {
-    ...(canonical.derivedFields ?? {}),
-    ...(ui?.record?.derivedFields ?? {}),
-  };
-  for (const [derivedName, derived] of Object.entries(effectiveDerivedFields)) {
-    if (!derived.expression) continue;
-    entryFields[derivedName] = calculatedContextField(derived.expression, {
-      value: initialRecordValues[derivedName],
+  /*
+   * Authoritative calculated canonical fields are ordinary typed fields whose
+   * value source is an expression. Their type/presentation remains in
+   * fieldDefinition; CTX only owns resolving the current value.
+   *
+   * Editable assisted calculations (those with triggeredBy) retain their
+   * current stored/user value until one of their declared causes fires.
+   */
+  for (const [fieldName, field] of Object.entries(canonical.fieldDefinition)) {
+    const calculation = field.calculation;
+    if (!calculation?.expression || calculation.triggeredBy?.length) continue;
+    entryFields[fieldName] = calculatedContextField(calculation.expression, {
+      value: initialRecordValues[fieldName],
       diagnosticSink: (diagnostic) => {
         console.error('[ManatOS expression parse]', diagnostic);
       },
     });
   }
+
+
 
   const entryPage = pageContextNode(
     'entry',

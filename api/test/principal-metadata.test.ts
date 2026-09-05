@@ -104,7 +104,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     )).rejects.toMatchObject({ code: 'PRINCIPAL_TYPE_CANNOT_CONTAIN_EXISTING_MEMBERS' });
   });
 
-  it('materializes canonical persisted derived rootPrincipalId before commit and cascades it through the hierarchy', async () => {
+  it('materializes canonical persisted calculated rootPrincipalId before commit and cascades it through the hierarchy', async () => {
     expect(sysBOPrincipalsMetadata.fieldDefinition.rootPrincipalId).toMatchObject({
       type: 'reference',
       readOnly: true,
@@ -112,7 +112,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       applicationManaged: true,
       referenceBOKey: 'sys-principals',
     });
-    expect(sysBOPrincipalsMetadata.derivedFields?.rootPrincipalId).toMatchObject({
+    expect(sysBOPrincipalsMetadata.fieldDefinition.rootPrincipalId?.calculation).toMatchObject({
       persisted: true,
       expression: "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
     });

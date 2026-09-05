@@ -58,19 +58,26 @@ export interface SysBOEnumItemMetadata {
 
 export interface SysBOFieldCalculationMetadata {
   /**
-   * Canonical expression used to calculate this persisted/editable field.
-   * Unlike derivedFields, the target remains a normal field that a user may
-   * edit directly; `triggeredBy` determines which authoritative field changes
-   * are allowed to recalculate it.
+   * Canonical expression that resolves this field's value.
+   *
+   * Calculation is a value-source concern, not a presentation type. The field's
+   * canonical `type` continues to select its field-component regardless of
+   * whether the current value is stored, calculated, defaulted or managed.
    */
   expression: string;
 
   /**
-   * Field keys whose direct/user-authoritative changes may drive this
-   * calculation. Causal CTX provenance is preserved through dependent writes,
-   * so a calculated update does not become a new authoritative trigger.
+   * Optional causal triggers for an editable assisted-calculation field.
+   * Omit for authoritative/read-only calculated fields: those are recalculated
+   * whenever their dependencies change.
    */
-  triggeredBy: readonly string[];
+  triggeredBy?: readonly string[];
+
+  /**
+   * Materialize the calculated value into persisted entity data. The API
+   * recalculates these values before commit, including background/API writes.
+   */
+  persisted?: boolean;
 }
 
 export interface SysBOFieldMetadata {
@@ -205,28 +212,12 @@ export interface ManatOSRelationshipMetadata {
  *
  * Actual BO records have completely separate generated GUID `id` values.
  */
-/** Canonical, non-persisted value derived from an entity record/context. */
-export interface SysBODerivedFieldMetadata {
-  /** The parent Record key is the canonical derived-field name. */
-  label: string;
-  expression: string;
-
-  /**
-   * When true, the derived value is materialized into persisted entity data.
-   * The default is false, preserving the normal calculated-only behavior.
-   * Persistence infrastructure recalculates these values before commit so the
-   * same rule applies to UI, API and automatic/background creation paths.
-   */
-  persisted?: boolean;
-}
-
-
 /**
  * Canonical source used to describe how one entity entry is represented.
  *
- * `field` is a direct field/derived-field reference. `expression` uses the
+ * `field` is a direct canonical field reference. `expression` uses the
  * canonical ManatOS expression evaluator and is preferred whenever the value
- * is calculated from multiple fields or other derived values.
+ * is calculated from multiple fields or other calculated values.
  */
 export type ManatOSEntryValueSourceMetadata =
   | Readonly<{ field: string; expression?: never }>
@@ -237,7 +228,7 @@ export type ManatOSEntryValueSourceMetadata =
  *
  * `name` is the human-facing entry identity used by lists, breadcrumbs,
  * references and visualizations. `type` is an optional semantic classifier.
- * Both may reference canonical derived fields; evaluator dependency ordering
+ * Both may reference canonical calculated fields; evaluator dependency ordering
  * therefore remains identical to ordinary metadata calculations.
  */
 export interface ManatOSEntryMetadata {
@@ -261,9 +252,6 @@ export interface ManatOSObjectMetadata<T> {
 
   /** Keyed canonical persisted/runtime field definitions. */
   fieldDefinition: Record<string, SysBOFieldMetadata>;
-
-  /** Reusable object/domain calculations, independent from any particular UI. */
-  derivedFields?: Readonly<Record<string, SysBODerivedFieldMetadata>>;
 
   /**
    * Keyed canonical relationships registered on the referencing side. `fields`
@@ -294,6 +282,6 @@ export interface SysBOMetadata<T> extends ManatOSObjectMetadata<T> {
 /**
  * Canonical metadata for a related/domain object that is not independently
  * exposed as a generic SysBO CRUD endpoint. It still deserves the same field
- * and derived-value semantics so renderers, reports and expressions can reuse it.
+ * and calculated-value semantics so renderers, reports and expressions can reuse it.
  */
 export type ManatOSValueObjectMetadata<T> = ManatOSObjectMetadata<T>;

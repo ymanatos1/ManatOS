@@ -2,11 +2,6 @@
   const isViewMode = recordMode === 'view';
   const isNew = recordMode === 'create';
   const overrides = metadataUI.record.fieldOverrides || {};
-  const canonicalDerivedFields = metadata.derivedFields || {};
-  const uiDerivedFields = metadataUI.record.derivedFields || {};
-  // Canonical calculations are reusable entity fields; UI-only calculations
-  // may add/override presentation-specific values without hiding canonical ones.
-  const derivedFields = { ...canonicalDerivedFields, ...uiDerivedFields };
   const relatedCollections = metadataUI.record.relatedCollections || {};
 
   // Metadata-driven pages consume related values from the canonical CTX leaf.
@@ -298,15 +293,7 @@
     // fieldComponentContext is created.
   };
 
-  const referenceEntityIcons = Object.fromEntries(
-    Object.entries(referenceValues || {}).map(([fieldKey, candidates]) => [
-      fieldKey,
-      Array.isArray(candidates) ? (candidates.find((candidate) => candidate?.__entityIcon)?.__entityIcon || 'box-arrow-up-right') : 'box-arrow-up-right',
-    ]),
-  );
-
   const fieldComponentContext = {
-    derivedFields,
     metadata,
     ctxValue,
     referenceLabel,
@@ -317,7 +304,6 @@
     dynamicUIValue,
     ctxFields,
     referenceValues,
-    referenceEntityIcons,
     fieldVisible,
     fieldEditable,
     valueFor,
@@ -374,8 +360,8 @@
   const collectionValue = (row, collectionKey, collection, fieldKey, field) => {
     const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
     const expressionScope = relatedExpressionScope(row, relatedMetadata);
-    const canonicalDerived = relatedMetadata?.derivedFields?.[fieldKey];
-    const expression = field.expression || canonicalDerived?.expression;
+    const canonicalCalculation = relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation;
+    const expression = field.expression || canonicalCalculation?.expression;
     const sourceField = field.sourceField ?? fieldKey;
 
     const raw = expression
@@ -431,8 +417,8 @@
    * Development-only calculated-expression inventory.
    *
    * The visible table deliberately shows formula text, never AST JSON. The
-   * compiled AST is carried only in a data attribute so forms.js can reuse the
-   * already-parsed expression and keep the Current value column live while the
+   * compiled AST is carried only in a data attribute so the metadata-form runtime can
+   * reuse the already-parsed expression and keep the Current value column live while the
    * Admin edits the form. This follows the same no-browser-reparse contract as
    * calculated fields and evaluator-driven UI properties.
    * --------------------------------------------------------------------- */
@@ -459,7 +445,6 @@
     ctxFields,
     ctxValue,
     dynamicUIValue,
-    derivedFields,
     overrides,
     relatedCollections,
     relatedMetadataRegistry,
@@ -497,8 +482,7 @@
     <%- include('../../components/sysbo/entry/entry-tab-content', {
       tabs,
       activeTabId,
-      derivedFields,
-      relatedCollections,
+        relatedCollections,
       metadata,
       compiledUIRecord,
       ctxFields,

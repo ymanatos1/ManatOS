@@ -1,9 +1,20 @@
 <%
+  /*
+   * Canonical related-entry selector/presenter. A reference is an entity entry,
+   * not merely an entity type, so both editable choices and read-only values
+   * render the referenced entry's resolved representation: canonical entry
+   * icon(s) followed by its canonical entry name. `None` / `Choose...` remain
+   * intentionally iconless.
+   */
   const references = referenceValues[key] || [];
-  const referencedEntityIcon = typeof referenceEntityIcons !== 'undefined'
-    ? (referenceEntityIcons[key] || 'box-arrow-up-right')
-    : 'box-arrow-up-right';
-  const selectedReference = references.find((reference) => reference?.id === value) || null;
+  const selectedReference = references.find((reference) => String(reference?.id ?? reference?.value ?? '') === String(value ?? '')) || null;
+  const referenceName = (reference) => reference?.__entryName || reference?.label || reference?.name || reference?.id || '';
+  const referenceIcons = (reference) => {
+    if (Array.isArray(reference?.__entryIcons) && reference.__entryIcons.length) return reference.__entryIcons;
+    if (reference?.__entryIcon) return [reference.__entryIcon];
+    if (reference?.__entityIcon) return [reference.__entityIcon];
+    return [];
+  };
 %>
 <div class="input-group metadata-field-input metadata-reference-select" data-enhanced-field-input data-field-component="reference" data-metadata-reference-select>
   <div class="dropdown">
@@ -12,15 +23,23 @@
   </div>
   <select class="visually-hidden" id="metadata-field-<%= key %>" name="<%= key %>" data-ctx-field="<%= key %>" tabindex="-1" aria-hidden="true" <%= field.required ? 'required' : '' %> <%= editable ? '' : 'disabled' %>>
     <option value=""><%= field.required ? 'Choose...' : 'None' %></option>
-    <% for (const reference of references) { %><option value="<%= reference.id %>" <%= value === reference.id ? 'selected' : '' %>><%= reference.name %></option><% } %>
+    <% for (const reference of references) { %><option value="<%= reference.id %>" data-entry-name="<%= referenceName(reference) %>" data-entry-icons="<%= JSON.stringify(referenceIcons(reference)) %>" <%= String(value ?? '') === String(reference.id ?? '') ? 'selected' : '' %>><%= referenceName(reference) %></option><% } %>
   </select>
   <button type="button" class="form-select metadata-reference-select-toggle text-start" data-bs-toggle="dropdown" data-reference-toggle aria-expanded="false" <%= editable ? '' : 'disabled' %>>
-    <span data-reference-selected><% if (selectedReference) { %><i class="bi bi-<%= referencedEntityIcon %> me-2" aria-hidden="true"></i><%= selectedReference.name %><% } else { %><%= field.required ? 'Choose...' : 'None' %><% } %></span>
+    <span data-reference-selected>
+      <% if (selectedReference) { %>
+        <% const selectedIcons = referenceIcons(selectedReference); %>
+        <% if (selectedIcons.length) { %><span class="metadata-entry-icons me-1" aria-hidden="true"><% for (const [iconIndex, icon] of selectedIcons.entries()) { %><i class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"></i><% } %></span><% } %><%= referenceName(selectedReference) %>
+      <% } else { %><%= field.required ? 'Choose...' : 'None' %><% } %>
+    </span>
   </button>
   <% if (editable) { %>
     <ul class="dropdown-menu metadata-reference-select-menu w-100" role="listbox">
       <li><button type="button" class="dropdown-item" data-reference-choice="" role="option"><%= field.required ? 'Choose...' : 'None' %></button></li>
-      <% for (const reference of references) { %><li><button type="button" class="dropdown-item <%= value === reference.id ? 'active' : '' %>" data-reference-choice="<%= reference.id %>" role="option" aria-selected="<%= value === reference.id ? 'true' : 'false' %>"><i class="bi bi-<%= referencedEntityIcon %> me-2" aria-hidden="true"></i><%= reference.name %></button></li><% } %>
+      <% for (const reference of references) { %>
+        <% const icons = referenceIcons(reference); %>
+        <li><button type="button" class="dropdown-item <%= String(value ?? '') === String(reference.id ?? '') ? 'active' : '' %>" data-reference-choice="<%= reference.id %>" role="option" aria-selected="<%= String(value ?? '') === String(reference.id ?? '') ? 'true' : 'false' %>"><% if (icons.length) { %><span class="metadata-entry-icons me-1" aria-hidden="true"><% for (const [iconIndex, icon] of icons.entries()) { %><i class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"></i><% } %></span><% } %><%= referenceName(reference) %></button></li>
+      <% } %>
     </ul>
   <% } %>
 </div>

@@ -20,7 +20,7 @@ describe('canonical telephone-number relationship metadata', () => {
       maxLength: 5,
     });
     expect(sysBOTelephoneNumbersMetadata.fieldDefinition.fullNumber).toMatchObject({ type: 'telephone', unique: true, readOnly: true });
-    expect(sysBOTelephoneNumbersMetadata.derivedFields?.fullNumber).toMatchObject({
+    expect(sysBOTelephoneNumbersMetadata.fieldDefinition.fullNumber?.calculation).toMatchObject({
       expression: 'TelephoneNbr(countryCode, number)',
       persisted: true,
     });

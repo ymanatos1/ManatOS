@@ -12,6 +12,10 @@
   <% const rows = Array.isArray(pageRelatedData[collectionSourceKey]) ? pageRelatedData[collectionSourceKey] : []; %>
   <% const rowMetadata = relatedMetadataRegistry[collection.entityKey]; %>
   <% const relatedRowIcon = collection.rowIcon || collection.icon || null; %>
+  <% const relatedEntryIcons = (row) => {
+    const representation = entryRepresentationFor(collection.entityKey, row, relatedRowIcon);
+    return Array.isArray(representation?.icons) ? representation.icons : [];
+  }; %>
 
   <div class="metadata-related-collection mt-3">
     <% if (collection.layout !== 'table-list') { %>
@@ -43,7 +47,10 @@
                   <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
                   <td>
                     <% if (relatedFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
-                    <% if (relatedFieldIndex === 0 && relatedRowIcon) { %><i class="bi bi-<%= relatedRowIcon %> text-secondary" aria-hidden="true"></i><% } %>
+                    <% if (relatedFieldIndex === 0) { %>
+                      <% const entryIcons = relatedEntryIcons(row); %>
+                      <%- include('../entry/entry-icons', { entryRepresentation: { icons: entryIcons }, iconGroupClass: 'metadata-entry-icons me-1 text-secondary' }) %>
+                    <% } %>
                     <% if (rowHref && relatedFieldIndex === 0) { %>
                       <a class="fw-semibold" href="<%= rowHref %>"><%= renderedValue.raw ?? '—' %></a>
                     <% } else if (canonicalField?.type === 'reference') { %>
@@ -87,7 +94,10 @@
               <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
               <div class="<%= relatedPanelFieldIndex === 0 ? 'metadata-related-primary-cell' : '' %>">
                 <% if (relatedPanelFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
-                <% if (relatedPanelFieldIndex === 0 && relatedRowIcon) { %><i class="bi bi-<%= relatedRowIcon %> text-secondary" aria-hidden="true"></i><% } %>
+                <% if (relatedPanelFieldIndex === 0) { %>
+                  <% const entryIcons = relatedEntryIcons(row); %>
+                  <%- include('../entry/entry-icons', { entryRepresentation: { icons: entryIcons }, iconGroupClass: 'metadata-entry-icons me-1 text-secondary' }) %>
+                <% } %>
                 <% if (renderedValue.calculated && (renderedValue.tone || renderedValue.icon)) { %>
                   <span class="badge text-bg-<%= renderedValue.tone || 'secondary' %>">
                     <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>

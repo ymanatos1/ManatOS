@@ -96,10 +96,21 @@ export async function references(
         { entityIcon: referencedDefinition.icon },
       );
 
+      const entryName = representation.name || primaryValue || record.name || id;
       return {
         ...record,
         value: id,
-        label: representation.name || primaryValue || record.name || id,
+        label: entryName,
+        __entryName: entryName,
+        // Keep the complete canonical entry icon representation so every
+        // related-entry control can render the referenced record itself rather
+        // than falling back to the referenced entity's page icon. For composed
+        // representations (for example Principal entity + Principal type), the
+        // order is entity icon first, semantic/type icon second.
+        __entryIcons: representation.icons,
+        // Transitional scalar retained for other existing consumers until they
+        // migrate to the complete icon array. It is the semantic/type icon when
+        // a composed representation exists.
         __entryIcon: representation.icons.at(-1) ?? null,
         __entityIcon: referencedDefinition.icon.replace(/^bi-/, ''),
       };

@@ -911,6 +911,27 @@ body.manatos-busy {
   min-width: 0;
 }
 
+/*
+ * Transient workflow password inputs use the same password-visibility enhancer
+ * as canonical password fields. Keep the wrapper fluid inside its Bootstrap
+ * input-group so workflow controls (notably External Provider Client secret)
+ * occupy the full column selected by their owning composite component.
+ */
+.metadata-workflow-input {
+  width: 100%;
+}
+
+.metadata-workflow-input > .password-visibility-field {
+  flex: 1 1 auto;
+  width: 1%;
+  min-width: 0;
+}
+
+.metadata-workflow-input > .password-visibility-field > .form-control {
+  width: 100%;
+  min-width: 0;
+}
+
 /* Generic metadata-driven information panels. */
 .metadata-information-panel-toggle {
   align-items: center;

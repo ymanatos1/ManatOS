@@ -60,12 +60,12 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
        * every tab, so no redundant visible:false override is needed. Canonical
        * readOnly/application-managed rules remain in SysBOUsersMetadata.
        *
-       * These two calculated fields are canonical entity derivedFields; the UI
+       * These two calculated fields are canonical calculated fields; the UI
        * only decorates their already-evaluated textual values.
        */
       emailVerificationStatus: {
         presentation: {
-          // The canonical derived field owns the text ("Verified"/"Not verified").
+          // The canonical calculated field owns the text ("Verified"/"Not verified").
           // UI metadata owns only visual decoration; its decision is evaluator-backed.
           tone: { expression: "emailVerified ? 'success' : 'secondary'" },
         },
@@ -127,7 +127,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           provider: {},
           email: {},
           providerEmailVerificationStatus: {
-            // Value comes from canonical external-identities.derivedFields.
+            // Value comes from canonical external-identities field calculation.
             presentation: {
               tone: { expression: "emailVerified ? 'success' : 'secondary'" },
             },
