@@ -2,7 +2,6 @@ import {
   sysBOExtAuthProvidersMetadata,
   sysBOExternalIdentityMetadata,
   sysBOUserInvitationMetadata,
-  sysBOUserPrincipalMetadata,
   sysBOUsersMetadata,
 } from './identity.js';
 import {
@@ -23,7 +22,6 @@ import {
 /** Canonical related/value-object metadata that is not exposed as generic SysBO CRUD. */
 export const allManatOSValueObjectMetadata = {
   [sysBOExternalIdentityMetadata.key]: sysBOExternalIdentityMetadata,
-  [sysBOUserPrincipalMetadata.key]: sysBOUserPrincipalMetadata,
   [sysBOUserInvitationMetadata.key]: sysBOUserInvitationMetadata,
 } as const;
 

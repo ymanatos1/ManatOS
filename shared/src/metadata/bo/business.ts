@@ -43,7 +43,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
     // Expression form is supported even for direct fields and still preserves
     // enum/reference metadata discovery for simple field expressions.
     type: { expression: 'principalType' },
-    description: { field: 'description' },
+    description: { field: 'name' },
   },
 
   relationships: {
@@ -65,6 +65,33 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
   fieldDefinition: {
     ...commonSysBOFields,
+
+    name: {
+      ...commonSysBOFields.name!,
+      label: 'Full name',
+      calculation: {
+        expression:
+          "principalType === 'Person' ? (firstName != null && firstName !== '' ? (lastName != null && lastName !== '' ? firstName + ' ' + lastName : firstName) : lastName != null && lastName !== '' ? lastName : name) : name",
+        triggeredBy: ['principalType', 'firstName', 'lastName'],
+        persisted: true,
+      },
+    },
+
+    firstName: {
+      key: 'firstName',
+      label: 'First name',
+      type: 'string',
+      order: 11,
+      maxLength: 100,
+    },
+
+    lastName: {
+      key: 'lastName',
+      label: 'Last name',
+      type: 'string',
+      order: 12,
+      maxLength: 100,
+    },
 
     principalType: {
       key: 'principalType',
@@ -112,6 +139,19 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
           canStandAloneOrganization: true,
         },
       ],
+    },
+
+    /** Inverse endpoint of SysUser.principalId; not persisted on Principal. */
+    userId: {
+      key: 'userId',
+      label: 'User',
+      type: 'reference',
+      order: 25,
+      nullable: true,
+      referenceBOKey: 'sys-users',
+      referenceSelection: {
+        uniqueThrough: { objectKey: 'sys-users', field: 'principalId' },
+      },
     },
 
     parentId: {

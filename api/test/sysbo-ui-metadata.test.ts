@@ -17,7 +17,7 @@ describe('metadata-driven SysBO UI conventions', () => {
     }
   });
 
-  it('places Enabled second in every General tab after the entity identity field', () => {
+  it('places Enabled second in every General tab after its leading field', () => {
     for (const metadata of Object.values(allSysBOUIMetadata)) {
       const general = metadata.record.tabs.find((tab) => tab.id === 'general');
       expect(general, `${metadata.key} should declare General`).toBeDefined();
@@ -27,12 +27,21 @@ describe('metadata-driven SysBO UI conventions', () => {
         const fieldContent = general.content.filter((content) => content.kind === 'field');
         expect(fieldContent[0]).toMatchObject({
           kind: 'field',
-          field: metadata.key === 'sys-ext-auth-providers' ? 'provider' : 'name',
+          field:
+            metadata.key === 'sys-ext-auth-providers'
+              ? 'provider'
+              : metadata.key === 'sys-principals'
+                ? 'principalType'
+                : 'name',
         });
         expect(fieldContent[1]).toMatchObject({ kind: 'field', field: 'enabled' });
       } else {
         expect(general?.fields[0]).toBe(
-          metadata.key === 'sys-ext-auth-providers' ? 'provider' : 'name',
+          metadata.key === 'sys-ext-auth-providers'
+            ? 'provider'
+            : metadata.key === 'sys-principals'
+              ? 'principalType'
+              : 'name',
         );
       }
     }
@@ -67,20 +76,25 @@ describe('metadata-driven SysBO UI conventions', () => {
     const general = principal.record.tabs.find((tab) => tab.id === 'general');
 
     expect(general?.fields).toEqual([
-      'name',
-      'enabled',
-      'description',
       'principalType',
+      'enabled',
+      'firstName',
+      'lastName',
+      'name',
+      'userId',
+      'description',
       'parentId',
       'rootPrincipalId',
     ]);
     expect(principal.record.fieldOverrides.principalType?.createDefaultValue).toBe('Person');
     expect(general?.content).toEqual([
-      { kind: 'field', field: 'name', span: 6 },
-      { kind: 'field', field: 'enabled', span: 6 },
-      { kind: 'field', field: 'description', span: 12 },
       { kind: 'field', field: 'principalType', span: 6 },
-      { kind: 'spacer', span: 6 },
+      { kind: 'field', field: 'enabled', span: 6 },
+      { kind: 'field', field: 'firstName', span: 6 },
+      { kind: 'field', field: 'lastName', span: 6 },
+      { kind: 'field', field: 'name', span: 6 },
+      { kind: 'field', field: 'userId', span: 6 },
+      { kind: 'field', field: 'description', span: 12 },
       { kind: 'field', field: 'parentId', span: 6 },
       { kind: 'field', field: 'rootPrincipalId', span: 6 },
     ]);

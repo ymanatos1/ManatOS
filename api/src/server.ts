@@ -11,7 +11,6 @@ import {
   SysBOApplicationService,
   SysBOLicenseService,
   SysBOPrincipalService,
-  UserPrincipalService,
 } from './services/index.js';
 
 import { createApp } from './app.js';
@@ -117,8 +116,6 @@ const services = {
   extAuthProviders: new SysBOExtAuthProviderService(store, secretsEncryption),
 
   externalIdentities: new ExternalIdentityService(store, users),
-
-  userPrincipals: new UserPrincipalService(store, users),
 };
 
 /**

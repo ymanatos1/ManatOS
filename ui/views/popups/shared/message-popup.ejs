@@ -30,6 +30,10 @@
   const messageTrace = typeof operationTrace !== 'undefined' && Array.isArray(operationTrace)
     ? operationTrace
     : [];
+  const messageCallingParams =
+    typeof popupCallingParams !== 'undefined' && popupCallingParams && typeof popupCallingParams === 'object'
+      ? popupCallingParams
+      : {};
 %>
 <div
   class="modal fade"
@@ -37,6 +41,7 @@
   data-popup-purpose="<%= typeof popupPurpose !== 'undefined' && popupPurpose ? popupPurpose : 'message' %>"
   data-popup-kind="message-modal"
   data-popup-presentation="compact"
+  data-popup-calling-params="<%= JSON.stringify(messageCallingParams) %>"
   tabindex="-1"
   data-auto-show="true"
   aria-labelledby="<%= labelId %>"

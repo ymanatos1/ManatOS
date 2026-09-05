@@ -7,7 +7,12 @@ import type { ExternalAuthProviderDefinition } from '../../auth/providers/types.
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { externalIdentitiesForUser } from '../../auth/user-authentication.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
-import { apiPathFor, references, type SysBOListData } from './data-access.js';
+import {
+  apiPathFor,
+  references,
+  selectorContextForReferenceField,
+  type SysBOListData,
+} from './data-access.js';
 import { loadRelatedCollections } from './related-collections.js';
 import type { UIEntityPermissions } from '../../sysbo/permissions.js';
 
@@ -96,6 +101,30 @@ export async function editPageSupplementalData(
   ].find((candidate) => candidate?.value === rawPrimaryValue);
 
   const pageReferenceData = await references(req, definition);
+
+  /*
+   * Each reference field receives one canonical selector context derived from
+   * the target entity itself. This avoids a second, caller-specific reference
+   * presenter in the popup path: Parent/Root Principal, User, Application, etc.
+   * all resolve through the same entity-aware metadata pipeline as normal lists.
+   */
+  const referenceSelectorContexts = Object.fromEntries(
+    await Promise.all(
+      Object.values(definition.boMetadata.fieldDefinition)
+        .filter((field) => field.type === 'reference' && field.referenceBOKey)
+        .map(async (field) => [
+          field.key,
+          await selectorContextForReferenceField(req, field, pageReferenceData[field.key] || []),
+        ]),
+    ),
+  );
+
+  if (definition.key === 'sys-principals' && itemId) {
+    const linkedUser = (pageReferenceData.userId || []).find(
+      (candidate) => String(candidate.principalId ?? '') === itemId,
+    );
+    item.userId = linkedUser?.id ?? null;
+  }
   const entryRepresentation = resolveEntryRepresentation(
     definition.boMetadata,
     effectiveUIMetadata,
@@ -122,6 +151,7 @@ export async function editPageSupplementalData(
     relatedReferenceData,
     relatedEditingData,
     referenceData: pageReferenceData,
+    referenceSelectorContexts,
     primaryDisplayValue: displayValue,
     deletePresentation: { displayValue, entityLabel: definition.boMetadata.name },
     deleteImpact,

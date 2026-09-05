@@ -22,6 +22,8 @@ describe('platform presentation', () => {
     expect($('.platform-feature-card').length).toBe(6);
     expect($('.platform-feature-card').text()).toContain('Customer 360°');
     expect($('.platform-feature-card').text()).toContain('Documents');
+    expect($('.platform-intro').text()).toContain('CRM domain layer');
+    expect($('.platform-intro').text()).toContain('ManatOS Application Foundation');
     expect($('.platform-feature-card').text()).toContain('Analytics');
   });
 

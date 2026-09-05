@@ -219,4 +219,25 @@ describe('metadata-driven Principal presentation', () => {
     expect(hierarchyRuntime).toContain("String(options.interactionMode || '') === 'workspace'");
     expect(hierarchyRuntime).not.toContain('sys-principals');
   });
+  it('orders Principal identity fields by type and presents Person names declaratively', async () => {
+    const canonical = await sharedSource('src/metadata/bo/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+
+    expect(canonical).toContain("label: 'Full name'");
+    expect(canonical).toContain("key: 'firstName'");
+    expect(canonical).toContain("key: 'lastName'");
+    expect(canonical).toContain("triggeredBy: ['principalType', 'firstName', 'lastName']");
+    expect(canonical).toContain('persisted: true');
+    expect(canonical).toContain("description: { field: 'name' }");
+    expect(canonical).toContain("key: 'userId'");
+    expect(canonical).toContain("referenceBOKey: 'sys-users'");
+
+    expect(uiMetadata).toMatch(
+      /field: 'principalType', span: 6[\s\S]*?field: 'enabled', span: 6[\s\S]*?field: 'firstName', span: 6[\s\S]*?field: 'lastName', span: 6[\s\S]*?field: 'name', span: 6[\s\S]*?field: 'userId', span: 6[\s\S]*?field: 'description', span: 12[\s\S]*?field: 'parentId', span: 6[\s\S]*?field: 'rootPrincipalId', span: 6/,
+    );
+    expect(uiMetadata).toMatch(/firstName:[\s\S]*?principalType === 'Person'/);
+    expect(uiMetadata).toMatch(/lastName:[\s\S]*?principalType === 'Person'/);
+    expect(uiMetadata).toMatch(/name:[\s\S]*?principalType !== 'Person'/);
+    expect(uiMetadata).toMatch(/userId:[\s\S]*?principalType === 'Person'/);
+  });
 });

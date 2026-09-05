@@ -72,7 +72,7 @@ Canonical entity metadata may declare `entry.name/type/description/status`; UI m
 
 - SysUser: website/security account.
 - SysPrincipal: customer/commercial identity.
-- SysUserPrincipal: bridge between them.
+- SysUser.principalId: optional one-to-one identity link to a Person Principal.
 - SysLicense: owned by a principal for a SysApplication.
 
 This avoids making customer type/hierarchy and website authentication the same concept.

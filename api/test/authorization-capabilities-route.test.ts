@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 
-import {
-  PROTOCRM_PLATFORM_ID,
-  SysBOLicenseStatus,
-  SysBOPrincipalType,
-  SysBOUserPrincipalRelationship,
-  SysBOUserRole,
-} from '@manatos/shared';
+import { PROTOCRM_PLATFORM_ID, SysBOUserRole } from '@manatos/shared';
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 
 import {
@@ -127,7 +121,7 @@ describe('SysBO authorization capability API', () => {
     expect(response.body.data).not.toHaveProperty('role');
   });
 
-  it('resolves non-Admin platform access from linked-principal licensing in the API', async () => {
+  it('keeps non-Admin platform access false even when licenses exist', async () => {
     const context = await createTestApi();
     const user = await context.services.users.createUser(
       {
@@ -136,33 +130,6 @@ describe('SysBO authorization capability API', () => {
         password: 'VeryStrong-Test-Password-42!',
         role: SysBOUserRole.User,
         emailVerified: true,
-        enabled: true,
-      },
-      SYSTEM_AUDIT_ACTOR,
-    );
-    const principal = await context.services.principals.create(
-      {
-        name: 'Platform Capability Principal',
-        principalType: SysBOPrincipalType.Company,
-        parentId: null,
-        enabled: true,
-      },
-      SYSTEM_AUDIT_ACTOR,
-    );
-    await context.services.userPrincipals.link(
-      user.id,
-      principal.id,
-      SysBOUserPrincipalRelationship.Member,
-      true,
-      SYSTEM_AUDIT_ACTOR,
-    );
-    await context.services.licenses.create(
-      {
-        name: 'Platform capability license',
-        principalId: principal.id,
-        platformId: PROTOCRM_PLATFORM_ID,
-        status: SysBOLicenseStatus.Active,
-        quantity: 1,
         enabled: true,
       },
       SYSTEM_AUDIT_ACTOR,
@@ -179,7 +146,9 @@ describe('SysBO authorization capability API', () => {
       .set('authorization', bearer(token));
 
     expect(response.status).toBe(200);
-    expectQuerySuccess(response.body);
-    expect(response.body.data.capabilities).toEqual({ platformAccess: true });
+    expect(response.body?.data).toEqual({
+      platformId: PROTOCRM_PLATFORM_ID,
+      capabilities: { platformAccess: false },
+    });
   });
 });

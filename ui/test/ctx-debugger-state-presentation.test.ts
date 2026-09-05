@@ -98,6 +98,10 @@ describe('CTX debugger presentation state', () => {
     expect(expressionFormatSource).toContain('window.ManatOSDebugExpression');
     expect(expressionFormatSource).toContain("emit(identifier, 'path')");
     expect(debuggerSource).toContain('const isExpressionSourcePath = (path)');
+    expect(debuggerSource).toContain('const isCompiledExpression = (value)');
+    expect(debuggerSource).toContain("compiledExpression ? 'compiled-expression'");
+    expect(debuggerSource).toContain("path.endsWith('.source')");
+    expect(debuggerSource).toContain('highlightElement(formulaElement, value.source)');
     expect(debuggerSource).toContain(
       "label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path))",
     );

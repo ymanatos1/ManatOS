@@ -310,6 +310,19 @@
     };
 
     const printCtx = (path) => append('result', pretty(ctxRuntime()?.get?.(path)));
+    const printCtxShallow = (path) => {
+      const value = ctxRuntime()?.get?.(path);
+      if (!value || typeof value !== 'object') {
+        append('result', pretty(value));
+        return;
+      }
+      const lines = Object.entries(value).map(([key, child]) => {
+        if (Array.isArray(child)) return `${key}: Array(${child.length})`;
+        if (child && typeof child === 'object') return `${key}: {…}`;
+        return `${key}: ${pretty(child)}`;
+      });
+      append('result', lines.join('\n') || '(empty)');
+    };
 
     const run = async () => {
       const command = String(input?.value || '').trim();
@@ -332,6 +345,10 @@
       try {
         if (command === '.') {
           printCtx(path);
+          return;
+        }
+        if (command === '. ls' || command === '. dir') {
+          printCtxShallow(path);
           return;
         }
         if (command === '..') {

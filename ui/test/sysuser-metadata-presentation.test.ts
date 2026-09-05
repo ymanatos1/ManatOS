@@ -35,4 +35,18 @@ describe('metadata-driven SysUser presentation', () => {
       "mode === 'create' ? 'dash-circle' : hasPassword ? 'check-circle-fill' : 'dash-circle'",
     );
   });
+  it('places the Admin-editable Principal reference first on Authentication', async () => {
+    const canonical = await sharedSource('src/metadata/bo/identity.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
+
+    expect(canonical).toContain("cardinality: 'one-to-one'");
+    expect(canonical).toContain('filterExpression: "principalType === \'Person\'"');
+    expect(uiMetadata).toMatch(
+      /'authentication'[\s\S]*?\[\s*'principalId',[\s\S]*?'emailVerificationStatus'/,
+    );
+    expect(uiMetadata).toContain('principalId: {');
+    expect(uiMetadata).toContain(
+      'editable: { expression: "user.permissions.userRole === \'Admin\'" }',
+    );
+  });
 });

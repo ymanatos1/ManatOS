@@ -59,6 +59,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         'Authentication',
         20,
         [
+          'principalId',
           'emailVerificationStatus',
           'emailVerificationSource',
           'emailVerifiedAt',
@@ -86,6 +87,9 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
        * These two calculated fields are canonical calculated fields; the UI
        * only decorates their already-evaluated textual values.
        */
+      principalId: {
+        editable: { expression: "user.permissions.userRole === 'Admin'" },
+      },
       emailVerificationStatus: {
         presentation: {
           // The canonical calculated field owns the text ("Verified"/"Not verified").

@@ -9,6 +9,8 @@
     ? buildCalculatedContextDebuggingRows(ctx?.user?.fields, ctxUserFieldValue, 'ctx.user.fields')
     : [];
   const accountDebugElementNameParts = (name) => ({ prefix: '', leaf: String(name) });
+  const accountUserDisplayRecord = { ...currentUser, name: ctxUserFieldValue('fullName') || currentUser.name };
+  const accountUserRepresentation = entryRepresentationFor('sys-users', accountUserDisplayRecord);
 %>
 <section class="account-page entity-tabbed-page">
   <ul class="nav nav-tabs entity-tabs" role="tablist">
@@ -88,8 +90,19 @@
       tabindex="0"
     >
       <div class="account-summary-grid">
-        <div class="account-summary-label">User name</div>
-        <div class="account-summary-value"><%= currentUser.name %></div>
+        <div class="account-summary-label">User</div>
+        <div class="account-summary-value">
+          <a
+            class="metadata-reference-link"
+            href="/bo/sys-users/<%= encodeURIComponent(currentUser.id) %>"
+          >
+            <%- include('../components/sysbo/entry/shell/entry-icons', {
+              entryRepresentation: accountUserRepresentation,
+              iconGroupClass: 'metadata-entry-icons me-1'
+            }) %>
+            <%= accountUserRepresentation?.name || currentUser.name %>
+          </a>
+        </div>
 
         <div class="account-summary-label">Email</div>
         <div class="account-summary-value"><%= currentUser.email %></div>
@@ -134,7 +147,9 @@
         authenticationIdentities,
         emailVerificationStatus: ctxUserFieldValue('emailVerificationStatus'),
         localPasswordStatus: ctxUserFieldValue('localPasswordStatus'),
-        showPasswordAction: true
+        showPasswordAction: true,
+        showPrincipalReference: true,
+        accountPrincipal
       }) %>
     </div>
 

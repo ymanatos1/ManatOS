@@ -48,6 +48,14 @@
   const emailIsVerified = resolvedEmailVerificationStatus === 'Verified';
   const localPasswordConfigured = resolvedLocalPasswordStatus === 'Configured';
 
+
+  const principalRepresentation =
+    showPrincipalReference === true && accountPrincipal
+      ? entryRepresentationFor('sys-principals', accountPrincipal)
+      : null;
+  const principalDisplayName =
+    principalRepresentation?.name || accountPrincipal?.name || authenticationUser.principalId || '';
+
   const verificationSourceDisplayName = (source) => {
     if (source === 'internal') {
       return 'ManatOS';
@@ -58,6 +66,27 @@
 %>
 
 <div class="account-summary-grid authentication-summary-grid">
+  <% if (showPrincipalReference === true) { %>
+    <div class="account-summary-label">Principal (Person)</div>
+    <div class="account-summary-value">
+      <% if (accountPrincipal && authenticationUser.principalId) { %>
+        <a
+          class="metadata-reference-link"
+          href="/bo/sys-principals/<%= encodeURIComponent(authenticationUser.principalId) %>"
+        >
+          <%- include('../sysbo/entry/shell/entry-icons', {
+            entryRepresentation: principalRepresentation,
+            iconGroupClass: 'metadata-entry-icons me-1'
+          }) %>
+          <%= principalDisplayName %>
+        </a>
+      <% } else if (authenticationUser.principalId) { %>
+        <span class="text-secondary">A Principal is linked to this account, but its details are not available.</span>
+      <% } else { %>
+        <span class="text-secondary">No Person Principal is linked to this account.</span>
+      <% } %>
+    </div>
+  <% } %>
   <div class="account-summary-label">Email verification</div>
   <div class="account-summary-value">
     <span class="badge text-bg-<%= emailIsVerified ? 'success' : 'secondary' %>">

@@ -62,6 +62,51 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     });
   });
 
+  it('keeps canonical name as Full name and materializes Person names from first/last components', async () => {
+    expect(sysBOPrincipalsMetadata.fieldDefinition.name).toMatchObject({
+      key: 'name',
+      label: 'Full name',
+      required: true,
+    });
+    expect(sysBOPrincipalsMetadata.fieldDefinition.name?.calculation).toMatchObject({
+      triggeredBy: ['principalType', 'firstName', 'lastName'],
+      persisted: true,
+    });
+    expect(sysBOPrincipalsMetadata.entry?.description).toEqual({ field: 'name' });
+
+    const context = await createTestApi();
+    const person = await context.services.principals.create(
+      {
+        name: 'Temporary value',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        principalType: SysBOPrincipalType.Person,
+        parentId: null,
+        enabled: true,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    expect(person.name).toBe('Ada Lovelace');
+
+    const renamed = await context.services.principals.update(
+      person.id,
+      { firstName: 'Augusta', lastName: 'Lovelace' },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    expect(renamed.name).toBe('Augusta Lovelace');
+
+    const company = await context.services.principals.create(
+      {
+        name: 'Contoso Ltd',
+        principalType: SysBOPrincipalType.Company,
+        parentId: null,
+        enabled: true,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    expect(company.name).toBe('Contoso Ltd');
+  });
+
   it('allows System principals to be organization members while preventing non-container principals from parenting children', async () => {
     const context = await createTestApi();
     const group = await context.services.principals.create(

@@ -2,7 +2,9 @@ import argon2 from 'argon2';
 
 import {
   AuthenticationError,
+  ConflictError,
   NotFoundError,
+  SysBOPrincipalType,
   SysBOUserRole,
   ValidationAppError,
   operationContext,
@@ -10,6 +12,8 @@ import {
   validatePassword,
   type EmailVerificationSource,
   type SysBOUser,
+  type SysBOCreateInput,
+  type SysBOUpdateInput,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
@@ -61,6 +65,56 @@ export interface CreateSysBOUserInput {
 export class SysBOUserService extends GenericSysBOService<SysBOUser> {
   constructor(store: InMemoryDataStore) {
     super(store, store.sysUsers, sysBOUsersMetadata);
+  }
+
+  /** Enforce the canonical optional 1:1 SysUser -> Person Principal identity link. */
+  private async validatePrincipalIdentityLink(
+    principalId: string | null | undefined,
+    currentUserId?: string,
+  ): Promise<void> {
+    if (!principalId) return;
+    const principal = await this.store.sysPrincipals.getById(principalId);
+    if (!principal) throw new NotFoundError('SysBOPrincipal', principalId);
+    if (principal.principalType !== SysBOPrincipalType.Person) {
+      throw new ConflictError(
+        'USER_PRINCIPAL_MUST_BE_PERSON',
+        'A User account can only be linked to a Person Principal.',
+        'Choose a Principal whose Principal type is Person.',
+      );
+    }
+    for (const user of this.store.sysUsers.values()) {
+      if (user.id !== currentUserId && user.principalId === principalId) {
+        throw new ConflictError(
+          'USER_PRINCIPAL_ALREADY_LINKED',
+          `Principal '${principal.name}' is already linked to User '${user.name}'.`,
+          'Choose an unlinked Person Principal.',
+        );
+      }
+    }
+  }
+
+  override async create(input: SysBOCreateInput<SysBOUser>, actor: AuditActor): Promise<SysBOUser> {
+    await this.validatePrincipalIdentityLink(input.principalId);
+    return super.create(input, actor);
+  }
+
+  override async update(
+    id: string,
+    changes: SysBOUpdateInput<SysBOUser>,
+    actor: AuditActor,
+  ): Promise<SysBOUser> {
+    if (Object.prototype.hasOwnProperty.call(changes, 'principalId')) {
+      const actingUser = actor.userId ? await this.store.sysUsers.getById(actor.userId) : null;
+      if (actor.source === 'user' && actingUser?.role !== SysBOUserRole.Admin) {
+        throw new ConflictError(
+          'USER_PRINCIPAL_ADMIN_REQUIRED',
+          'Only an Administrator can change a User identity Principal.',
+          'Ask an Administrator to change this relationship.',
+        );
+      }
+      await this.validatePrincipalIdentityLink(changes.principalId, id);
+    }
+    return super.update(id, changes, actor);
   }
 
   /**
@@ -141,6 +195,20 @@ export class SysBOUserService extends GenericSysBOService<SysBOUser> {
         );
       },
     );
+  }
+
+  /**
+   * Business-rule hook for future qualifying license/provisioning transactions.
+   * The entitlement workflow can call this inside the same datastore transaction:
+   * a Guest becomes User, while existing User/Admin roles remain unchanged.
+   *
+   * Identity-link changes deliberately do NOT invoke this rule.
+   */
+  async promoteGuestForEntitlement(userId: string, actor: AuditActor): Promise<SysBOUser> {
+    const user = await this.get(userId);
+    if (!user) throw new NotFoundError('SysBOUser', userId);
+    if (user.role !== SysBOUserRole.Guest) return user;
+    return this.update(userId, { role: SysBOUserRole.User }, actor);
   }
 
   /**

@@ -150,17 +150,6 @@ export enum SysBOLicenseStatus {
 }
 
 /**
- * Defines the relationship between a website user
- * and a customer/commercial principal.
- */
-export enum SysBOUserPrincipalRelationship {
-  Owner = 'Owner',
-  Administrator = 'Administrator',
-  Member = 'Member',
-  Representative = 'Representative',
-}
-
-/**
  * Website/security identity.
  *
  * `name` is the unique local user-name.
@@ -195,6 +184,10 @@ export interface SysBOUser extends SysBOEntity {
 
   firstName?: string;
   lastName?: string;
+
+  /** Optional canonical 1:1 identity link to the represented Person Principal. */
+  principalId?: string | null;
+
   description?: string;
 }
 
@@ -203,11 +196,15 @@ export interface SysBOUser extends SysBOEntity {
  *
  * A SysBOPrincipal does not authenticate directly.
  *
- * Authentication belongs to SysBOUser, while SysBOUserPrincipal
- * establishes the relationship between users and principals.
+ * Authentication belongs to SysBOUser. A SysBOUser may identify one Person
+ * Principal through its canonical optional one-to-one `principalId` reference.
  */
 export interface SysBOPrincipal extends SysBOEntity {
   principalType: SysBOPrincipalType;
+
+  /** Optional personal-name components used when principalType is Person. */
+  firstName?: string;
+  lastName?: string;
 
   /**
    * Optional parent principal.
@@ -349,32 +346,6 @@ export interface SysBOExternalIdentity extends SysBOEntity {
 }
 
 /**
- * Relationship between a website SysBOUser and a
- * customer/commercial SysBOPrincipal.
- *
- * This allows:
- *
- * - one user to relate to multiple principals;
- * - one principal to relate to multiple users;
- * - the relationship type to describe the user's authority
- *   or association with that principal.
- */
-export interface SysBOUserPrincipal extends SysBOEntity {
-  userId: string;
-  principalId: string;
-
-  relationship: SysBOUserPrincipalRelationship;
-
-  /**
-   * Indicates the principal that should normally become the
-   * user's active/default customer context.
-   */
-  isDefault: boolean;
-
-  description?: string;
-}
-
-/**
  * Persistable invitation scaffold for customers created before
  * a website account exists.
  *
@@ -390,8 +361,6 @@ export interface SysBOUserInvitation extends SysBOEntity {
   email: string;
 
   principalId: string;
-
-  relationship: SysBOUserPrincipalRelationship;
 
   requestedRole: SysBOUserRole;
 

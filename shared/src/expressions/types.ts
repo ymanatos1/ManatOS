@@ -169,6 +169,7 @@ export type ExpressionEvaluationSource =
   | 'field-normalization'
   | 'ctx-change'
   | 'ui-metadata'
+  | 'reference-selection'
   | 'navigation'
   | 'test'
   | 'other';

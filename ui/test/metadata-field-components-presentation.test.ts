@@ -180,13 +180,13 @@ describe('metadata-driven field/content component infrastructure', () => {
   it('keeps date/time controls compact while allowing datetime more room', async () => {
     const pages = await uiSource('public/css/pages.css');
     expect(pages).toContain("data-field-component='date'");
-    expect(pages).toContain('max-width: 19rem');
+    expect(pages).toContain('max-width: 13.5rem');
     expect(pages).toContain("data-field-component='time'");
     expect(pages).toContain('max-width: 14rem');
     expect(pages).toContain("data-field-component='datetime'");
     expect(pages).toContain('max-width: 28rem');
     expect(pages).toContain("data-field-component='duration'");
-    expect(pages).toContain('max-width: 32rem');
+    expect(pages).toContain('max-width: 38rem');
   });
 
   it('keeps numeric controls compact while text/password controls remain fluid', async () => {
@@ -194,7 +194,7 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(pages).toContain("data-field-component='number'");
     expect(pages).toContain('max-width: 9rem');
     expect(pages).toContain("data-field-component='version'");
-    expect(pages).toContain('max-width: 20rem');
+    expect(pages).toContain('max-width: 21rem');
     expect(pages).toContain('.metadata-version-editor {');
     expect(pages).toContain('padding: 0');
     expect(pages).toContain('.metadata-field-input > .password-visibility-field');

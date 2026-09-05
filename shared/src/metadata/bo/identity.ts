@@ -5,7 +5,6 @@ import {
   type SysBOExternalIdentity,
   type SysBOUser,
   type SysBOUserInvitation,
-  type SysBOUserPrincipal,
 } from '../../domain.js';
 import type { ManatOSValueObjectMetadata, SysBOMetadata } from './types.js';
 import { commonSysBOFields, externalAuthProviderOptionItems } from './common.js';
@@ -18,6 +17,15 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
   pluralName: 'Users',
 
   primaryField: 'name',
+
+  relationships: {
+    principal: {
+      fields: ['principalId'],
+      references: { objectKey: 'sys-principals', fields: ['id'] },
+      cardinality: 'one-to-one',
+      policies: { delete: { action: 'set-null', confirmation: 'confirm' } },
+    },
+  },
 
   fieldDefinition: {
     ...commonSysBOFields,
@@ -86,6 +94,31 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
       nullable: true,
       maxLength: 32,
       normalize: { expression: 'TelephoneNbr(value)' },
+    },
+
+    principalId: {
+      key: 'principalId',
+      label: 'Principal (Person)',
+      type: 'reference',
+      order: 29,
+      nullable: true,
+      unique: true,
+      referenceBOKey: 'sys-principals',
+      referenceSelection: {
+        filterExpression: "principalType === 'Person'",
+        uniqueThrough: { objectKey: 'sys-users', field: 'principalId' },
+        createRelated: {
+          defaults: {
+            firstName: { sourceField: 'firstName' },
+            lastName: { sourceField: 'lastName' },
+          },
+          fixedValues: { userId: { sourceField: 'id' } },
+          uiOverrides: {
+            userId: { editable: false },
+            principalType: { allowedValues: ['Person'] },
+          },
+        },
+      },
     },
 
     emailVerified: {
@@ -310,92 +343,7 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
   },
 };
 
-/** Canonical junction metadata for the SysBOUser <-> SysBOPrincipal N:N relation. */
-
-export const sysBOUserPrincipalMetadata: ManatOSValueObjectMetadata<SysBOUserPrincipal> = {
-  key: 'user-principals',
-  name: 'User principal relationship',
-  pluralName: 'User principal relationships',
-  primaryField: 'name',
-  relationships: {
-    user: {
-      fields: ['userId'],
-      references: {
-        objectKey: 'sys-users',
-        fields: ['id'],
-      },
-      cardinality: 'many-to-one',
-      policies: {
-        delete: {
-          action: 'unlink',
-          confirmation: 'confirm',
-        },
-      },
-    },
-    principal: {
-      fields: ['principalId'],
-      references: {
-        objectKey: 'sys-principals',
-        fields: ['id'],
-      },
-      cardinality: 'many-to-one',
-      policies: {
-        delete: {
-          action: 'unlink',
-          confirmation: 'confirm',
-        },
-      },
-    },
-  },
-  fieldDefinition: {
-    ...commonSysBOFields,
-    userId: {
-      key: 'userId',
-      label: 'User',
-      type: 'reference',
-      order: 20,
-
-      required: true,
-      referenceBOKey: 'sys-users',
-    },
-    principalId: {
-      key: 'principalId',
-      label: 'Principal',
-      type: 'reference',
-      order: 30,
-
-      required: true,
-      referenceBOKey: 'sys-principals',
-    },
-    relationship: {
-      key: 'relationship',
-      label: 'Relationship',
-      type: 'string',
-      order: 40,
-
-      required: true,
-    },
-    isDefault: {
-      key: 'isDefault',
-      label: 'Default',
-      type: 'boolean',
-      order: 50,
-
-      required: true,
-    },
-    description: {
-      key: 'description',
-      label: 'Description',
-      type: 'string',
-      order: 60,
-
-      nullable: true,
-      maxLength: 2000,
-    },
-  },
-};
-
-/** Canonical metadata for pending invitations related to a Principal. */
+/** Persistable invitation scaffold retained for future account provisioning flows. */
 
 export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserInvitation> = {
   key: 'user-invitations',
@@ -437,14 +385,6 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
 
       required: true,
       referenceBOKey: 'sys-principals',
-    },
-    relationship: {
-      key: 'relationship',
-      label: 'Relationship',
-      type: 'string',
-      order: 40,
-
-      required: true,
     },
     requestedRole: {
       key: 'requestedRole',

@@ -1,15 +1,9 @@
 import {
   ForbiddenAppError,
-  PROTOCRM_PLATFORM_ID,
-  licenseGrantsApplicationAccess,
-  licenseGrantsPlatformAccess,
-  SysBOLicenseStatus,
   SysBOUserRole,
-  type SysBOApplication,
   type SysBOAuthorizationCapabilities,
   type PlatformAuthorizationCapabilities,
   type SysBOEntity,
-  type SysBOLicense,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
@@ -29,43 +23,6 @@ export interface AuthorizationSubject {
 export type SysBOAuthorizationAction = 'read' | 'create' | 'update' | 'delete';
 
 /**
- * Context provided to application-specific definition-modification policy.
- *
- * Keeping this contract separate lets the generic authorization service resolve
- * relationships/licenses while the application policy answers the final
- * application-definition decision.
- */
-export interface SysBOApplicationPermissionContext {
-  action: 'update' | 'delete';
-
-  subject: AuthorizationSubject;
-
-  application: SysBOApplication;
-
-  relatedLicenses: SysBOLicense[];
-}
-
-/** Application-specific definition-modification policy contract. */
-export interface SysBOApplicationPermissionPolicy {
-  canModifyDefinition(context: SysBOApplicationPermissionContext): Promise<boolean>;
-}
-
-/**
- * Current application definition-modification policy.
- *
- * The authorization service supplies only licenses already proven to be
- * effective for the subject/application relationship. An enabled Active
- * related license therefore grants update/delete of the application definition.
- */
-export class DefaultSysBOApplicationPermissionPolicy implements SysBOApplicationPermissionPolicy {
-  async canModifyDefinition(context: SysBOApplicationPermissionContext): Promise<boolean> {
-    return context.relatedLicenses.some(
-      (license) => license.enabled && license.status === SysBOLicenseStatus.Active,
-    );
-  }
-}
-
-/**
  * Central authorization service for SysBO access.
  *
  * Read:
@@ -80,11 +37,9 @@ export class DefaultSysBOApplicationPermissionPolicy implements SysBOApplication
  *   Guest/User/Superuser may modify only related records.
  */
 export class AuthorizationService {
-  constructor(
-    private readonly store: InMemoryDataStore,
-
-    private readonly applicationPermissions: SysBOApplicationPermissionPolicy = new DefaultSysBOApplicationPermissionPolicy(),
-  ) {}
+  constructor(store: InMemoryDataStore) {
+    void store;
+  }
 
   async assertCan(
     action: SysBOAuthorizationAction,
@@ -141,10 +96,13 @@ export class AuthorizationService {
     subject: AuthorizationSubject,
     platformId: string,
   ): Promise<PlatformAuthorizationCapabilities> {
+    // Platform-specific entitlement evaluation is intentionally deferred until the
+    // licensing authorization model is introduced. Keep the platform argument in
+    // the contract because capabilities remain platform-scoped.
+    void platformId;
+
     return {
-      platformAccess:
-        subject.role === SysBOUserRole.Admin ||
-        this.userHasPlatformAccess(subject.userId, platformId),
+      platformAccess: subject.role === SysBOUserRole.Admin,
     };
   }
 
@@ -190,31 +148,10 @@ export class AuthorizationService {
     if (action === 'read' && sysBOKey === 'sys-users') {
       return record === undefined || record.id === subject.userId;
     }
-
-    /**
-     * protoCRM application visibility is license scoped for every non-Admin user.
-     * A collection read is allowed only when the user owns at least one current
-     * protoCRM entitlement through a linked principal. Individual application reads
-     * additionally honor an applicationId restriction when the license has one.
-     */
-    if (action === 'read' && sysBOKey === 'sys-applications') {
-      return record === undefined
-        ? this.userHasPlatformAccess(subject.userId, PROTOCRM_PLATFORM_ID)
-        : this.userMayReadApplication(subject.userId, record as SysBOApplication);
-    }
-
-    /**
-     * Non-Admin users may inspect only licenses belonging to principals linked
-     * to them. The collection itself remains queryable so an unlicensed user
-     * receives an empty own-license list without exposing somebody else's
-     * licenses. Platform navigation entitlement is resolved separately through
-     * platformCapabilities().
-     */
-    if (action === 'read' && sysBOKey === 'sys-licenses') {
-      return (
-        record === undefined || this.userRelatesToLicense(subject.userId, record as SysBOLicense)
-      );
-    }
+    /** Platform applications are Admin-only until the new license authorization model lands. */
+    if (action === 'read' && sysBOKey === 'sys-applications') return false;
+    /** License administration remains Admin-only while entitlement rules are redesigned. */
+    if (action === 'read' && sysBOKey === 'sys-licenses') return false;
 
     /** Other Company-owned SysBO reads retain the current baseline rule. */
     if (action === 'read') {
@@ -250,13 +187,9 @@ export class AuthorizationService {
         return record.id === subject.userId;
 
       case 'sys-principals':
-        return this.userRelatesToPrincipal(subject.userId, record.id);
-
       case 'sys-licenses':
-        return this.userRelatesToLicense(subject.userId, record as SysBOLicense);
-
       case 'sys-applications':
-        return this.userMayModifyApplication(action, subject, record as SysBOApplication);
+        return false;
 
       default:
         /*
@@ -305,91 +238,6 @@ export class AuthorizationService {
     const userName = normalize(subject.userName);
 
     return normalize(record.createdBy) === userName || normalize(record.updatedBy) === userName;
-  }
-
-  /**
-   * Determine whether a website user is linked to a customer principal.
-   */
-  private userRelatesToPrincipal(userId: string, principalId: string): boolean {
-    for (const link of this.store.userPrincipals().values()) {
-      if (link.enabled && link.userId === userId && link.principalId === principalId) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * A license is related to the user when its owning principal is
-   * related to that user.
-   */
-  private userRelatesToLicense(userId: string, license: SysBOLicense): boolean {
-    return this.userRelatesToPrincipal(userId, license.principalId);
-  }
-
-  /** True when the user has any currently effective entitlement to a platform. */
-  private userHasPlatformAccess(userId: string, platformId: string): boolean {
-    for (const license of this.store.sysLicenses.values()) {
-      if (!licenseGrantsPlatformAccess(license, platformId)) continue;
-      if (this.userRelatesToPrincipal(userId, license.principalId)) return true;
-    }
-
-    return false;
-  }
-
-  /** True when a current license grants this user read access to one application. */
-  private userMayReadApplication(userId: string, application: SysBOApplication): boolean {
-    return this.findUserApplicationLicenses(userId, application.id).length > 0;
-  }
-
-  /**
-   * A SysBOApplication becomes related through a license owned by one
-   * of the user's related principals.
-   *
-   * The actual ability to alter the application definition is then
-   * delegated to the SysBOApplication permission policy.
-   */
-  private async userMayModifyApplication(
-    action: SysBOAuthorizationAction,
-    subject: AuthorizationSubject,
-    application: SysBOApplication,
-  ): Promise<boolean> {
-    if (action !== 'update' && action !== 'delete') {
-      return false;
-    }
-
-    const relatedLicenses = this.findUserApplicationLicenses(subject.userId, application.id);
-
-    if (relatedLicenses.length === 0) {
-      return false;
-    }
-
-    return this.applicationPermissions.canModifyDefinition({
-      action,
-      subject,
-      application,
-      relatedLicenses,
-    });
-  }
-
-  private findUserApplicationLicenses(userId: string, applicationId: string): SysBOLicense[] {
-    const result: SysBOLicense[] = [];
-
-    for (const license of this.store.sysLicenses.values()) {
-      // A platform-wide protoCRM license (no applicationId) grants every app; an
-      // application-restricted license grants only its named application. The
-      // shared helper also enforces enabled/status/date/quantity semantics.
-      if (!licenseGrantsApplicationAccess(license, PROTOCRM_PLATFORM_ID, applicationId)) {
-        continue;
-      }
-
-      if (this.userRelatesToPrincipal(userId, license.principalId)) {
-        result.push(license);
-      }
-    }
-
-    return result;
   }
 }
 

@@ -55,8 +55,6 @@ export class JsonFilePersistence {
 
         sysExternalIdentities: fromPersistedRecords(raw.sysExternalIdentities),
 
-        sysUserPrincipals: fromPersistedRecords(raw.sysUserPrincipals),
-
         sysUserInvitations: fromPersistedRecords(raw.sysUserInvitations),
       };
     } catch (error) {
@@ -101,8 +99,6 @@ export class JsonFilePersistence {
       sysExtAuthProviders: toPersistedRecords(state.sysExtAuthProviders),
 
       sysExternalIdentities: toPersistedRecords(state.sysExternalIdentities),
-
-      sysUserPrincipals: toPersistedRecords(state.sysUserPrincipals),
 
       sysUserInvitations: toPersistedRecords(state.sysUserInvitations),
     };

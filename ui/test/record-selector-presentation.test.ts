@@ -56,6 +56,7 @@ describe('generic existing-record selector', () => {
 
   it('projects invocation parameters separately from mutable selector state in CTX', async () => {
     const runtime = await uiSource('public/js/popups/record-selector.js');
+    const dataAccess = await uiSource('src/routes/sysbo/data-access.ts');
 
     expect(runtime).toContain("kind: 'record-selector'");
     expect(runtime).toContain('callingParams: { ...resolvedCallingParams }');
@@ -72,6 +73,10 @@ describe('generic existing-record selector', () => {
     expect(runtime).toContain('manatos:record-selector-selection');
     expect(runtime).toMatch(/evaluateUIRule\(\s*'title'/);
     expect(runtime).toContain('resolvedCallingParams.queryPredicate');
+    expect(runtime).toContain('idField,');
+    expect(runtime).not.toContain('...callingParams,');
+    expect(dataAccess).toContain("referencedDefinition.boMetadata.exposure === 'internal'");
+    expect(dataAccess).toContain('? undefined');
     expect(runtime).not.toContain('listExceptions = null');
   });
 
@@ -95,8 +100,24 @@ describe('generic existing-record selector', () => {
     expect(fieldRuntime).not.toContain('title: `Select ${targetName} for ${fieldLabelText}`');
     expect(fieldRuntime).toContain('setReferenceValue(control, selectedId)');
     expect(fieldRuntime).not.toContain('data-selector-row');
+    const dataAccess = await uiSource('src/routes/sysbo/data-access.ts');
     expect(selectorRuntime).not.toContain('parentId');
     expect(selectorRuntime).not.toContain('Principal');
+    expect(selectorRuntime).not.toContain('candidate?.__referenceUnavailable === true');
+    expect(selectorRuntime).toContain('resolvedCallingParams.queryPredicate');
+    expect(selectorRuntime).toContain('queryPredicate.ast');
+    expect(selectorRuntime).toContain('evaluateAstWithScope(predicateAst, candidate)');
+    expect(selectorRuntime).toContain('initialSelectedIds.has(id)');
+    expect(fieldRuntime).toContain('dataset.referenceQueryPredicate');
+    expect(fieldRuntime).toContain('queryPredicate,');
+    expect(reference).toContain('referenceSelectorContexts?.[key]');
+    expect(reference).toContain('referenceSelectorContext.referenceData');
+    expect(reference).not.toContain('targetField.referenceBOKey === referenceTargetKey');
+    expect(dataAccess).toContain('selectorContextForReferenceField');
+    expect(dataAccess).toContain('referenceData: await references(req, targetDefinition)');
+    expect(dataAccess).toContain('compileExpression(');
+    expect(dataAccess).toContain('id IN [');
+    expect(dataAccess).toContain('canonicalSysBOUIMetadata(req, referencedDefinition)');
     expect(renderPage).toContain('relatedEntityUIMetadata: allSysBOUIMetadata');
   });
 

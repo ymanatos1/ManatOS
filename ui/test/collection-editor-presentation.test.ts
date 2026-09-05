@@ -44,14 +44,11 @@ describe('generic transactional collection editor', () => {
   it('hydrates persisted relationship ids through canonical reference records', async () => {
     const dataAccess = await source('src/routes/sysbo/data-access.ts');
     const relatedCollections = await source('src/routes/sysbo/related-collections.ts');
-    expect(dataAccess).toContain(
-      'const referencedPrimaryField = referencedDefinition.boMetadata.primaryField',
-    );
+    expect(dataAccess).not.toContain('referencedPrimaryField');
     expect(dataAccess).toContain('value: id');
     expect(dataAccess).toContain('const representation = resolveEntryRepresentation(');
-    expect(dataAccess).toContain(
-      'const entryName = representation.name || primaryValue || record.name || id',
-    );
+    expect(dataAccess).toContain("const entryName = representation.name || String(id ?? '')");
+    expect(dataAccess).not.toContain('primaryValue');
     expect(dataAccess).toContain('label: entryName');
     expect(dataAccess).toContain('__entryIcons: representation.icons');
     expect(relatedCollections).toContain('collection.source?.kind');

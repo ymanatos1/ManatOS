@@ -1130,6 +1130,27 @@
         emit: false,
       });
     });
+
+    /*
+     * Hosted-entry caller defaults are real field assignments, not inert render
+     * hints. Publish each supplied value through the canonical CTX setter so
+     * every dependent calculated field/UI property receives exactly the same
+     * causal event it would receive from a user/programmatic field change.
+     */
+    let invocationDefaults = {};
+    try {
+      invocationDefaults = JSON.parse(
+        form.querySelector('input[name="_entryDefaults"]')?.value || '{}',
+      );
+    } catch {
+      invocationDefaults = {};
+    }
+    for (const key of Object.keys(invocationDefaults)) {
+      const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
+      const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
+      if (control) syncSourceField(control, { source: 'entry-invocation', triggerField: key });
+    }
+
     runAllReactiveEntries();
     form.dispatchEvent(new Event('change', { bubbles: true }));
   });

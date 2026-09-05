@@ -205,7 +205,10 @@
           const candidateId = String(item?.id ?? item?.value ?? '');
           const selectorFilterValues = Object.fromEntries(recordSelectorFilterFields.map((fieldKey) => [fieldKey, item?.[fieldKey] ?? '']));
           const candidateRepresentation = {
-            name: item?.__entryName || item?.label || item?.[recordSelectorMetadata.primaryField] || item?.name || candidateId,
+            // Candidate entry names/icons are already projected by the canonical,
+            // entity-aware entry representation resolver. The selector must not
+            // invent another naming strategy.
+            name: item?.__entryName || candidateId,
             icons: Array.isArray(item?.__entryIcons) ? item.__entryIcons : (item?.__entryIcon ? [item.__entryIcon] : (item?.__entityIcon ? [item.__entityIcon] : [])),
           };
         %>

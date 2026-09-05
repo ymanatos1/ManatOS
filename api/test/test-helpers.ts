@@ -15,7 +15,6 @@ import {
   SysBOApplicationService,
   SysBOLicenseService,
   SysBOPrincipalService,
-  UserPrincipalService,
 } from '../src/services/index.js';
 import { SecretsEncryptionService } from '../src/security/secrets-encryption-service.js';
 import { SysBOExtAuthProviderService } from '../src/services/sys-ext-auth-provider-service.js';
@@ -80,8 +79,6 @@ export async function createTestApi() {
     licenses: new SysBOLicenseService(store),
 
     externalIdentities: new ExternalIdentityService(store, users),
-
-    userPrincipals: new UserPrincipalService(store, users),
   };
 
   const app = createApp(store, services);

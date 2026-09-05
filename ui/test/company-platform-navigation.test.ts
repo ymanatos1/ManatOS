@@ -43,6 +43,10 @@ describe('company/platform navigation composition', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
 
     expect(platform).toBe(PROTOCRM_PLATFORM);
+    expect(MANATOS_COMPANY.description).toBe(
+      'We build semantic business application platforms on reusable Application Foundations',
+    );
+    expect(platform.description).toContain('on the ManatOS Application Foundation');
     expect(platform.presentation?.stylesheet).toBe('/css/platforms/protocrm.css');
   });
 

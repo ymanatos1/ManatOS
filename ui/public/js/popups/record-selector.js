@@ -107,14 +107,20 @@
         : new Map();
     const selectionMode = callingParams.selectionMode === 'multiple' ? 'multiple' : 'single';
     const idField = String(callingParams.idField || 'id');
+    /*
+     * Every Record Selector invocation projects exactly the same callingParams
+     * schema into CTX. Callers supply semantic values; this runtime owns the
+     * canonical shape. Explicit nulls prevent evaluator fall-through into the
+     * surrounding page context and make CTX diagnostics directly comparable
+     * across reference-field and hierarchy callers.
+     */
     const resolvedCallingParams = Object.freeze({
-      // Keep every selector UI-policy input present in the invocation scope,
-      // even when a caller does not need it. The canonical evaluator treats an
-      // explicit null as a resolved scalar value; an absent/undefined nested
-      // member would otherwise fall through to the page CTX resolver.
       purpose: String(callingParams.purpose || 'select-existing-entry'),
       presentationMode: callingParams.presentationMode ?? null,
       title: callingParams.title ?? null,
+      entityKey,
+      idField,
+      selectionMode,
       targetField: callingParams.targetField ?? null,
       targetFieldLabel: callingParams.targetFieldLabel ?? null,
       targetEntityLabel: callingParams.targetEntityLabel ?? metadata.name ?? 'entry',
@@ -125,12 +131,9 @@
       relation: callingParams.relation ?? null,
       anchorRecordId: callingParams.anchorRecordId ?? null,
       queryPredicate: callingParams.queryPredicate ?? null,
-      allowClear: callingParams.allowClear ?? false,
+      allowClear: callingParams.allowClear === true,
       showContextNote: callingParams.showContextNote ?? null,
       autofocusSearch: callingParams.autofocusSearch ?? null,
-      ...callingParams,
-      entityKey,
-      selectionMode,
     });
 
     // UI rules are canonical precompiled expressions emitted by the server.
@@ -242,10 +245,52 @@
         ]),
       );
 
-    const candidateEligibility = (candidate) =>
-      normalizeEligibility(
+    const initialSelectedIds = new Set(
+      (Array.isArray(initialSelection)
+        ? initialSelection
+        : initialSelection == null
+          ? []
+          : [initialSelection]
+      )
+        .map((value) => String(value))
+        .filter(Boolean),
+    );
+
+    const candidateEligibility = (candidate) => {
+      const id = candidateId(candidate, idField);
+
+      /*
+       * A caller may supply one canonical, precompiled predicate describing
+       * candidates that are unavailable for this selection. The popup evaluates
+       * only the emitted AST against the candidate row; it never reparses source
+       * text and it never knows relationship/entity-specific rules.
+       *
+       * The initial selection is intentionally exempt so an existing valid link
+       * remains visible/selectable while editing.
+       */
+      const queryPredicate = resolvedCallingParams.queryPredicate;
+      const predicateAst =
+        queryPredicate && typeof queryPredicate === 'object' ? queryPredicate.ast : null;
+      if (predicateAst && !initialSelectedIds.has(id) && expressionRuntime?.evaluateAstWithScope) {
+        try {
+          const unavailable = expressionRuntime.evaluateAstWithScope(predicateAst, candidate);
+          if (unavailable === true) {
+            return {
+              eligible: false,
+              visible: true,
+              reason: 'This entry is unavailable for the current selection.',
+            };
+          }
+        } catch {
+          // The API remains authoritative; malformed/advisory UI predicates do
+          // not turn the selector into a second authorization boundary.
+        }
+      }
+
+      return normalizeEligibility(
         typeof eligibility === 'function' ? eligibility(candidate, resolvedCallingParams) : true,
       );
+    };
 
     // Callers may project domain facts for a candidate, but presentation remains
     // selector-owned and evaluator-driven. This keeps hierarchy membership,

@@ -43,7 +43,6 @@ import type {
   SysBOApplicationService,
   SysBOLicenseService,
   SysBOPrincipalService,
-  UserPrincipalService,
 } from './services/index.js';
 
 import { requireAuthenticated } from './auth/auth-middleware.js';
@@ -84,8 +83,6 @@ export interface ApiServices {
   extAuthProviders: SysBOExtAuthProviderService;
 
   externalIdentities: ExternalIdentityService;
-
-  userPrincipals: UserPrincipalService;
 }
 
 /**
@@ -420,7 +417,6 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     createInternalRouter({
       users: services.users,
       externalIdentities: services.externalIdentities,
-      userPrincipals: services.userPrincipals,
       email: services.email,
       extAuthProviders: services.extAuthProviders,
     }),

@@ -502,11 +502,11 @@
             ${childRows.length ? `<button class="metadata-hierarchy-toggle" type="button" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${esc(childId)}" title="Collapse/expand"><i class="bi bi-chevron-${expanded ? 'down' : 'right'}" aria-hidden="true"></i></button>` : '<span class="metadata-hierarchy-toggle-spacer" aria-hidden="true"></span>'}
             <span class="metadata-hierarchy-node-shell">
               ${showNodeCommands ? `<button type="button" class="metadata-hierarchy-node-command metadata-hierarchy-node-delete btn btn-danger btn-sm" data-hierarchy-remove-toggle title="Node actions" aria-label="Node actions for ${esc(label)}" aria-expanded="false"><i class="bi bi-x-lg" aria-hidden="true"></i></button><span class="metadata-hierarchy-node-remove-menu" data-hierarchy-remove-menu data-hierarchy-menu-for="${esc(id)}" hidden><button type="button" class="dropdown-item text-danger" data-hierarchy-command="delete" data-hierarchy-member-id="${esc(id)}"><i class="bi bi-trash me-2" aria-hidden="true"></i>Remove</button><hr class="dropdown-divider"><button type="button" class="dropdown-item" data-hierarchy-command="clear-parent" data-hierarchy-member-id="${esc(id)}"${hasParent ? '' : ' disabled aria-disabled="true"'}><i class="bi bi-diagram-2 me-2" aria-hidden="true"></i>Clear parent (detach)</button></span>${canAddParent ? '<button type="button" class="metadata-hierarchy-node-command metadata-hierarchy-node-parent btn btn-primary btn-sm" data-hierarchy-add-toggle data-hierarchy-add-relation="parent" title="Add parent" aria-label="Add parent" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>' : ''}` : ''}
-              ${workspaceMode ? `<button type="button" class="metadata-hierarchy-node-link metadata-hierarchy-node-workspace" data-hierarchy-open-member draggable="true" title="${esc(tooltip)}">` : `<span class="metadata-hierarchy-node-link metadata-hierarchy-node-informational" title="${esc(tooltip)}">`}
+              ${workspaceMode ? `<button type="button" class="metadata-hierarchy-node-link metadata-hierarchy-node-workspace" data-hierarchy-open-member draggable="true" title="${esc(tooltip)}">` : `<button type="button" class="metadata-hierarchy-node-link metadata-hierarchy-node-informational" data-hierarchy-view-member title="${esc(tooltip)}">`}
                 ${iconMode === 'composed' && entityIcon && typeIcon ? `<span class="metadata-hierarchy-node-icons" aria-hidden="true" style="--entry-entity-scale:${Number(entryIcon.entityScale || 0.72)};--entry-type-scale:${Number(entryIcon.typeScale || 1.15)}"><i class="bi bi-${esc(entityIcon)} metadata-hierarchy-node-entity-icon"></i><i class="bi bi-${esc(typeIcon)} metadata-hierarchy-node-type-icon"></i></span>` : iconMode === 'type' && typeIcon ? `<i class="bi bi-${esc(typeIcon)}" aria-hidden="true"></i>` : `<i class="bi bi-${esc(entityIcon || typeIcon || 'circle')}" aria-hidden="true"></i>`}
                 <span>${esc(label)}</span>
                 ${workspaceMode && persistedEntry ? '<span class="metadata-hierarchy-node-persistence" title="This entry already exists in application storage/database." aria-label="This entry already exists in application storage/database."><i class="bi bi-database-check" aria-hidden="true"></i></span>' : ''}
-              ${workspaceMode ? '</button>' : '</span>'}
+              ${workspaceMode ? '</button>' : '</button>'}
               ${showNodeCommands ? `<button type="button" class="metadata-hierarchy-node-command metadata-hierarchy-node-sibling btn btn-primary btn-sm" data-hierarchy-add-toggle data-hierarchy-add-relation="sibling" title="Add sibling" aria-label="Add sibling" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>${canAddChild ? '<button type="button" class="metadata-hierarchy-node-command metadata-hierarchy-node-child btn btn-primary btn-sm" data-hierarchy-add-toggle data-hierarchy-add-relation="child" title="Add child" aria-label="Add child" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>' : ''}${addMenu}` : ''}
             </span>
           </div>
@@ -632,6 +632,43 @@
               },
             }),
           );
+        });
+      });
+    }
+
+    if (!workspaceMode) {
+      content.querySelectorAll('[data-hierarchy-view-member]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const node = button.closest('[data-hierarchy-node-id]');
+          const memberId = node?.dataset?.hierarchyNodeId || '';
+          const entityKey = component.dataset.entityKey || '';
+          const popup = window.ManatOSEntryPopup;
+          // A hosted entry is already a child interaction. Do not recursively
+          // host another full entry document inside it; the current popup stack
+          // intentionally supports one hosted-entry level only.
+          if (document.body.classList.contains('entry-popup-host')) return;
+          if (!memberId || memberId.startsWith('draft:') || !entityKey || !popup?.open) return;
+          const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
+          const params = new URLSearchParams({
+            _entryPopup: '1',
+            _entryPopupToken: token,
+            _entryMode: 'view',
+          });
+          popup.open({
+            token,
+            title: node?.dataset?.hierarchyNodeLabel || 'View entry',
+            url: `/bo/${encodeURIComponent(entityKey)}/${encodeURIComponent(memberId)}?${params.toString()}`,
+            callingParams: {
+              purpose: 'hierarchy-view-entry',
+              presentationMode: 'entry',
+              entityKey,
+              selectionMode: 'single',
+              sourceEntityKey: entityKey,
+              sourceRecordId: memberId,
+              mode: 'view',
+            },
+          });
         });
       });
     }

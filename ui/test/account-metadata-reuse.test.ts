@@ -47,4 +47,27 @@ describe('Account SysUser metadata reuse', () => {
       'const relatedCollectionMetadataFor = (ownerEntityKey: string, collectionKey: string) =>',
     );
   });
+  it('shows the current User Principal on Account Authentication without duplicating relationship logic', async () => {
+    const account = await source('views/pages/account.ejs');
+    const authenticationSummary = await source('views/components/auth/authentication-summary.ejs');
+    const routes = await source('src/routes/page-routes.ts');
+
+    expect(account).toContain('showPrincipalReference: true');
+    expect(account).toContain('accountPrincipal');
+    expect(routes).toContain('/api/v1/SysPrincipals/');
+    expect(authenticationSummary).toContain(
+      "entryRepresentationFor('sys-principals', accountPrincipal)",
+    );
+    expect(authenticationSummary).toContain('No Person Principal is linked to this account.');
+    expect(authenticationSummary).toContain('/bo/sys-principals/');
+  });
+
+  it('uses the canonical User entry representation as the Account navigation link', async () => {
+    const account = await source('views/pages/account.ejs');
+
+    expect(account).toContain("entryRepresentationFor('sys-users', accountUserDisplayRecord)");
+    expect(account).toContain('href="/bo/sys-users/');
+    expect(account).toContain("include('../components/sysbo/entry/shell/entry-icons'");
+    expect(account).not.toContain('Open user');
+  });
 });

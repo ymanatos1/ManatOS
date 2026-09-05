@@ -251,8 +251,28 @@
   const isCalculatedContextField = (value) =>
     isObject(value) && typeof value.expression === 'string' && isObject(value.ast);
 
-  /** A CTX leaf that contains the source text of a compiled calculation. */
-  const isExpressionSourcePath = (path) => typeof path === 'string' && path.endsWith('.expression');
+  /** Canonical parser output embedded in ordinary CTX values such as query predicates. */
+  const isCompiledExpression = (value) =>
+    isObject(value) &&
+    typeof value.source === 'string' &&
+    isObject(value.ast) &&
+    Array.isArray(value.requiredCapabilities);
+
+  const expressionSourceFor = (value) =>
+    isCalculatedContextField(value)
+      ? value.expression
+      : isCompiledExpression(value)
+        ? value.source
+        : null;
+
+  /** A CTX leaf that contains canonical expression source text. */
+  const isExpressionSourcePath = (path) => {
+    if (typeof path !== 'string') return false;
+    if (path.endsWith('.expression')) return true;
+    if (!path.endsWith('.source')) return false;
+    const parentPath = path.slice(0, -'.source'.length);
+    return isCompiledExpression(runtime.resolve?.(parentPath));
+  };
 
   const objectChildren = (path, value) => {
     if (!isObject(value)) return [];
@@ -877,6 +897,8 @@
     const kind = nodeKind(info.path, info.value, info.derived, info.source);
     const children = info.derived ? [] : objectChildren(info.path, info.value);
     const calculated = isCalculatedContextField(info.value);
+    const compiledExpression = isCompiledExpression(info.value);
+    const expressionSource = expressionSourceFor(info.value);
     if (propertiesTitle) {
       const variableName = nodeNameFromPath(info.path);
       const prefix = info.path.slice(0, Math.max(0, info.path.length - variableName.length));
@@ -888,7 +910,7 @@
     }
     const rows = [
       ['Path', info.path],
-      ['Kind', calculated ? 'calculated' : kind],
+      ['Kind', calculated ? 'calculated' : compiledExpression ? 'compiled-expression' : kind],
       [
         'JavaScript type',
         info.value === null ? 'null' : Array.isArray(info.value) ? 'array' : typeof info.value,
@@ -898,7 +920,7 @@
       ['Watchable', info.derived || info.source ? 'no' : 'yes'],
     ];
     if (info.sourcePath) rows.splice(4, 0, ['Derived from', info.sourcePath]);
-    if (calculated) rows.splice(4, 0, ['Expression', info.value.expression]);
+    if (expressionSource) rows.splice(4, 0, ['Expression', expressionSource]);
 
     propertiesBody.replaceChildren();
     for (const [label, value] of rows) {
@@ -928,7 +950,7 @@
       }
       row.append(labelElement, valueElement);
       propertiesBody.appendChild(row);
-      if (calculated && label === 'Expression') {
+      if (expressionSource && label === 'Expression') {
         propertiesBody.appendChild(renderAst(info.value.ast));
       }
     }
@@ -984,6 +1006,12 @@
       valueElement.className = 'ctx-debug-value';
       if (derived) {
         valueElement.textContent = '= derived';
+      } else if (isCompiledExpression(value) && window.ManatOSDebugExpression) {
+        valueElement.appendChild(document.createTextNode('= '));
+        const formulaElement = document.createElement('span');
+        formulaElement.className = 'ctx-debug-expression';
+        window.ManatOSDebugExpression.highlightElement(formulaElement, value.source);
+        valueElement.appendChild(formulaElement);
       } else if (!isObject(value)) {
         if (
           typeof value === 'string' &&

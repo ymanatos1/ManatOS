@@ -60,9 +60,11 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     // Relationship fields are supplied by the owning hierarchy operation; the
     // calculated root remains evaluator-owned and is never manually entered.
     content: [
-      { kind: 'field', field: 'name', span: 12 },
       { kind: 'field', field: 'principalType', span: 8 },
       { kind: 'field', field: 'enabled', span: 4 },
+      { kind: 'field', field: 'firstName', span: 6 },
+      { kind: 'field', field: 'lastName', span: 6 },
+      { kind: 'field', field: 'name', span: 12 },
     ],
     fieldOverrides: {
       // A newly sketched Principal starts enabled just like the full create form.
@@ -70,6 +72,9 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
       // Principal type has one canonical create default across full and quick records.
       // Keeping both surfaces aligned avoids owner/editor-specific creation semantics.
       principalType: { createDefaultValue: 'Person' },
+      firstName: { visible: { expression: "principalType === 'Person'" } },
+      lastName: { visible: { expression: "principalType === 'Person'" } },
+      name: { editable: { expression: "principalType !== 'Person'" } },
     },
   },
   record: {
@@ -78,22 +83,36 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         'general',
         'General',
         10,
-        ['name', 'enabled', 'description', 'principalType', 'parentId', 'rootPrincipalId'],
+        [
+          'principalType',
+          'enabled',
+          'firstName',
+          'lastName',
+          'name',
+          'userId',
+          'description',
+          'parentId',
+          'rootPrincipalId',
+        ],
         {
           icon: 'info-circle',
           layout: 'form',
           /*
            * Principal uses the same generic grid-content contract as every other
-           * metadata-driven form. The spacer reserves the second half of the
-           * Principal type row so Parent principal and Root principal start
-           * together on the following row without renderer/entity special cases.
+           * metadata-driven form. Principal type and Enabled form the first row so Principal type is the
+           * initial editable control. Person-only First/Last names occupy the next
+           * row, followed by canonical Full name (`name`) and the inverse User
+           * reference. Description owns a full row, while Parent and Root principal
+           * remain paired on the final row without renderer/entity special cases.
            */
           content: [
-            { kind: 'field', field: 'name', span: 6 },
-            { kind: 'field', field: 'enabled', span: 6 },
-            { kind: 'field', field: 'description', span: 12 },
             { kind: 'field', field: 'principalType', span: 6 },
-            { kind: 'spacer', span: 6 },
+            { kind: 'field', field: 'enabled', span: 6 },
+            { kind: 'field', field: 'firstName', span: 6 },
+            { kind: 'field', field: 'lastName', span: 6 },
+            { kind: 'field', field: 'name', span: 6 },
+            { kind: 'field', field: 'userId', span: 6 },
+            { kind: 'field', field: 'description', span: 12 },
             { kind: 'field', field: 'parentId', span: 6 },
             { kind: 'field', field: 'rootPrincipalId', span: 6 },
           ],
@@ -351,6 +370,19 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     fieldOverrides: {
       ...systemFieldOverrides,
       enabled: { createDefaultValue: true },
+      firstName: {
+        visible: { expression: "principalType === 'Person'" },
+      },
+      lastName: {
+        visible: { expression: "principalType === 'Person'" },
+      },
+      name: {
+        editable: { expression: "principalType !== 'Person'" },
+      },
+      userId: {
+        visible: { expression: "principalType === 'Person'" },
+        editable: { expression: "user.permissions.userRole === 'Admin'" },
+      },
       principalType: {
         // Seed the create CTX itself, not merely the visible select. This means
         // principalType.option is decorated from canonical enumItems before any

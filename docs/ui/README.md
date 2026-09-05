@@ -16,7 +16,7 @@ You do not need to read this directory linearly.
 
 | Audience / goal                                       | Recommended path                                                         |
 | ----------------------------------------------------- | ------------------------------------------------------------------------ |
-| understand what the UI supports                       | `UI-Flows.md` → `Entity-Pages.md` / `System-Pages.md`                    |
+| understand what the UI supports                       | `UI-Flows.md` → `Entity-Pages.md` / `System-Pages.md` / `UI-Popups.md`   |
 | review the UI architecture                            | `UI-Architecture.md` → `UI-Forms.md` → component guides                  |
 | implement or extend an entity                         | `Entity-Pages.md` → `UI-Forms.md` → `UI-Field-Components.md`             |
 | implement a reusable multi-field or non-field feature | `UI-Composite-Components.md` / `UI-Components.md` → `UI-Architecture.md` |
@@ -32,6 +32,7 @@ flowchart TB
     B[UI-Forms.md\nForm composition and lifecycle]
     C[Entity-Pages.md\nMetadata-driven entity page models]
     D[System-Pages.md\nNon-entity/system surfaces]
+    I[UI-Popups.md\nPopup contracts and lifecycle]
     E[UI-Components.md\nReusable non-field components]
     F[UI-Composite-Components.md\nComponents that compose fields/content]
     G[UI-Field-Components.md\nCanonical entity-field rendering/editing]
@@ -44,6 +45,7 @@ flowchart TB
     B --> F
     B --> G
     C --> E
+    C --> I
     C --> F
     C --> G
     H --> B
@@ -63,6 +65,7 @@ flowchart TB
 | adding a collection, hierarchy, panel or other non-field widget | `UI-Components.md`           | `UI-Forms.md`                             |
 | implementing a new metadata-driven entity                       | `Entity-Pages.md`            | `UI-Forms.md`, `UI-Field-Components.md`   |
 | implementing authentication/account/debug/system UI             | `System-Pages.md`            | `UI-Components.md`                        |
+| changing popup contracts/CTX lifecycle                          | `UI-Popups.md`               | `Entity-Pages.md`, `UI-Components.md`     |
 | tracing or documenting an end-to-end supported workflow         | `UI-Flows.md`                | linked page/form/component guides         |
 
 ## Responsibility map
@@ -99,4 +102,4 @@ When deciding where new UI code belongs, ask **what semantic thing is being rend
 
 ## Existing-record selection
 
-The generic **Select existing entry** popup is documented in [`UI-Components.md#existing-record-selector`](UI-Components.md#existing-record-selector). Reference-field use is covered in [`UI-Field-Components.md#selecting-from-the-generic-record-browser`](UI-Field-Components.md#selecting-from-the-generic-record-browser), and end-to-end usage appears in [`UI-Flows.md`](UI-Flows.md).
+The generic **Select existing entry** entity surface is documented structurally in [`Entity-Pages.md#existing-record-selector-page-surface`](Entity-Pages.md#existing-record-selector-page-surface); popup hosting, CTX and calling contracts are detailed in [`UI-Popups.md`](UI-Popups.md). Reference-field use is covered in [`UI-Field-Components.md#selecting-from-the-generic-record-browser`](UI-Field-Components.md#selecting-from-the-generic-record-browser), and end-to-end usage appears in [`UI-Flows.md`](UI-Flows.md).

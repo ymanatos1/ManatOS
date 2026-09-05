@@ -56,15 +56,23 @@
       pageSize: 10,
     },
   } : null);
-  const referenceSelectorReferenceData = referenceTargetMetadata
-    ? Object.fromEntries(
-        Object.entries(referenceTargetMetadata.fieldDefinition || {})
-          .filter(([, targetField]) => targetField?.type === 'reference' && targetField.referenceBOKey === referenceTargetKey)
-          .map(([targetFieldKey]) => [targetFieldKey, references]),
-      )
-    : {};
+  /*
+   * Selector reference presentation comes from the target entity's canonical
+   * reference catalogues, prepared server-side by the same generic data-access
+   * resolver used by normal SysBO lists. Never synthesize a self-reference map
+   * from this field's candidates: that loses the target entity of nested
+   * references and is exactly how raw parent/root ids leaked into popups.
+   */
+  const referenceSelectorContext =
+    typeof referenceSelectorContexts !== 'undefined' && referenceSelectorContexts?.[key]
+      ? referenceSelectorContexts[key]
+      : { referenceData: {}, queryPredicate: null };
+  const referenceSelectorReferenceData = referenceSelectorContext.referenceData || {};
+  const referenceSelectorQueryPredicate = referenceSelectorContext.queryPredicate || null;
   const referenceSourceEntityKey = typeof definition !== 'undefined' && definition?.key ? definition.key : '';
+  const referenceCreateRelated = field.referenceSelection?.createRelated || null;
   const referenceToolActions = [
+    ...(referenceTargetMetadata ? [{ action: 'add-entry', icon: 'plus-circle', label: 'Add entry…' }] : []),
     ...(referenceTargetMetadata ? [{ action: 'select-existing', icon: 'database-check', label: 'Select existing entry…' }] : []),
     ...(field.required ? [] : [{ action: 'clear', icon: 'x-circle', label: 'Clear selection' }]),
   ];
@@ -78,6 +86,8 @@
   data-reference-source-entity-key="<%= referenceSourceEntityKey %>"
   data-reference-field-key="<%= key %>"
   data-reference-field-label="<%= fieldLabel(field) %>"
+  data-reference-query-predicate="<%= JSON.stringify(referenceSelectorQueryPredicate) %>"
+  data-reference-create-related="<%= JSON.stringify(referenceCreateRelated) %>"
 >
   <div class="dropdown">
     <button
@@ -112,6 +122,7 @@
         data-entry-name="<%= referenceName(reference) %>"
         data-entry-icons="<%= JSON.stringify(referenceIcons(reference)) %>"
         <%= String(value ?? '') === String(reference.id ?? '') ? 'selected' : '' %>
+        <%= reference.__referenceUnavailable && String(value ?? '') !== String(reference.id ?? '') ? 'disabled' : '' %>
       ><%= referenceName(reference) %></option>
     <% } %>
   </select>
@@ -159,6 +170,7 @@
             class="dropdown-item <%= String(value ?? '') === String(reference.id ?? '') ? 'active' : '' %>"
             data-reference-choice="<%= reference.id %>"
             role="option"
+            <%= reference.__referenceUnavailable && String(value ?? '') !== String(reference.id ?? '') ? 'disabled aria-disabled="true"' : '' %>
             aria-selected="<%= String(value ?? '') === String(reference.id ?? '') ? 'true' : 'false' %>"
           >
             <% if (icons.length) { %>

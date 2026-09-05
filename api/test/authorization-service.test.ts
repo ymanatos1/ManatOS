@@ -1,20 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  PROTOCRM_PLATFORM_ID,
-  SysBOLicenseStatus,
-  SysBOPrincipalType,
-  SysBOUserPrincipalRelationship,
-  SysBOUserRole,
-  type SysBOEntity,
-} from '@manatos/shared';
+import { PROTOCRM_PLATFORM_ID, SysBOUserRole, type SysBOEntity } from '@manatos/shared';
 
 import {
   AuthorizationService,
   type AuthorizationSubject,
 } from '../src/auth/authorization-service.js';
-
-import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 
 import { createTestApi } from './test-helpers.js';
 
@@ -47,88 +38,13 @@ describe('AuthorizationService', () => {
     },
   );
 
-  it('uses linked-principal licenses for protoCRM collection and application read access', async () => {
-    const user = await context.services.users.createUser(
-      {
-        name: 'LicensedUser',
-        email: 'licensed@example.test',
-        role: SysBOUserRole.User,
-        emailVerified: true,
-        enabled: true,
-      },
-      SYSTEM_AUDIT_ACTOR,
-    );
-    const principal = await context.services.principals.create(
-      {
-        name: 'Licensed Principal',
-        principalType: SysBOPrincipalType.Company,
-        parentId: null,
-        enabled: true,
-      },
-      SYSTEM_AUDIT_ACTOR,
-    );
-    await context.services.userPrincipals.link(
-      user.id,
-      principal.id,
-      SysBOUserPrincipalRelationship.Member,
-      true,
-      SYSTEM_AUDIT_ACTOR,
-    );
-    const allowedApp = await context.services.applications.create(
-      { name: 'Allowed App', fullName: 'Allowed Application', enabled: true },
-      SYSTEM_AUDIT_ACTOR,
-    );
-    const otherApp = await context.services.applications.create(
-      { name: 'Other App', fullName: 'Other Application', enabled: true },
-      SYSTEM_AUDIT_ACTOR,
-    );
-    await context.services.licenses.create(
-      {
-        name: 'Restricted protoCRM license',
-        principalId: principal.id,
-        platformId: PROTOCRM_PLATFORM_ID,
-        applicationId: allowedApp.id,
-        status: SysBOLicenseStatus.Active,
-        quantity: 1,
-        enabled: true,
-      },
-      SYSTEM_AUDIT_ACTOR,
-    );
-
-    const licensed = subject(SysBOUserRole.User, user.id, user.name);
-    await expect(authorization.can('read', licensed, 'sys-applications')).resolves.toBe(true);
-    await expect(authorization.can('read', licensed, 'sys-applications', allowedApp)).resolves.toBe(
-      true,
-    );
-    await expect(authorization.can('read', licensed, 'sys-applications', otherApp)).resolves.toBe(
-      false,
-    );
+  it('keeps platform applications Admin-only until license authorization is rebuilt', async () => {
+    const nonAdmin = subject(SysBOUserRole.User, 'user-1', 'User1');
+    await expect(authorization.can('read', nonAdmin, 'sys-applications')).resolves.toBe(false);
     await expect(
-      authorization.capabilities(licensed, 'sys-applications', allowedApp),
-    ).resolves.toEqual({
-      read: true,
-      create: false,
-      update: true,
-      delete: true,
-    });
-    await expect(
-      authorization.capabilities(licensed, 'sys-applications', otherApp),
-    ).resolves.toEqual({
-      read: false,
-      create: false,
-      update: false,
-      delete: false,
-    });
+      authorization.platformCapabilities(nonAdmin, PROTOCRM_PLATFORM_ID),
+    ).resolves.toEqual({ platformAccess: false });
   });
-
-  it.each([SysBOUserRole.Superuser, SysBOUserRole.User, SysBOUserRole.Guest])(
-    'blocks generic SysBO creation for %s',
-    async (role) => {
-      await expect(authorization.can('create', subject(role), 'sys-applications')).resolves.toBe(
-        false,
-      );
-    },
-  );
 
   it('scopes non-Admin SysBOUser reads to the authenticated user record', async () => {
     const guest = subject(SysBOUserRole.Guest, 'guest-id', 'Guest');

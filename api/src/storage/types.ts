@@ -13,7 +13,6 @@ import type {
   SysBOPrincipal,
   SysBOUser,
   SysBOUserInvitation,
-  SysBOUserPrincipal,
 } from '@manatos/shared';
 
 /**
@@ -42,8 +41,6 @@ export interface DatabaseState {
   sysExtAuthProviders: Map<string, SysBOExtAuthProvider>;
 
   sysExternalIdentities: Map<string, SysBOExternalIdentity>;
-
-  sysUserPrincipals: Map<string, SysBOUserPrincipal>;
 
   sysUserInvitations: Map<string, SysBOUserInvitation>;
 }
@@ -94,8 +91,6 @@ export interface PersistedDatabaseState {
 
   sysExternalIdentities: Record<string, PersistedEntity<SysBOExternalIdentity>>;
 
-  sysUserPrincipals: Record<string, PersistedEntity<SysBOUserPrincipal>>;
-
   sysUserInvitations: Record<string, PersistedEntity<SysBOUserInvitation>>;
 }
 
@@ -123,8 +118,6 @@ export const emptyDatabaseState = (): DatabaseState => ({
   sysExtAuthProviders: new Map(),
 
   sysExternalIdentities: new Map(),
-
-  sysUserPrincipals: new Map(),
 
   sysUserInvitations: new Map(),
 });

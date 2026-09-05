@@ -74,6 +74,16 @@
     modalTitle: 'Operation failed',
     message: applicationError.userMessage,
     operationTrace: applicationError.operationTrace || [],
+    popupCallingParams: {
+      error: {
+        name: applicationError.name || 'AppError',
+        code: applicationError.code || null,
+        message: applicationError.message || null,
+        userMessage: applicationError.userMessage || null,
+        retryable: applicationError.retryable === true,
+        operationTrace: applicationError.operationTrace || []
+      }
+    },
     actions: [
       { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
       ...(applicationError.retryable

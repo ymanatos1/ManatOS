@@ -90,11 +90,89 @@ describe('metadata-driven entry EJS runtime composition', () => {
       overrides,
       ctxValue,
       referenceLabel: (_fieldKey: string, value: unknown) => String(value ?? ''),
+      referenceValues: {},
       fieldLabel,
       valueFor,
     });
 
     expect(html).toContain('data-ctx-field="name"');
     expect(html).toContain('value="Example"');
+  });
+
+  it('renders a summary tab with the explicit reference-selector contract', async () => {
+    const metadata = {
+      fieldDefinition: {
+        principalId: {
+          key: 'principalId',
+          label: 'Principal',
+          type: 'reference',
+          sensitive: false,
+        },
+      },
+    };
+    const referenceValues = {
+      principalId: [
+        {
+          id: 'principal-1',
+          name: 'Example Person',
+          value: 'principal-1',
+          label: 'Example Person',
+        },
+      ],
+    };
+    const fieldVisible = () => true;
+    const fieldEditable = () => true;
+    const fieldLabel = (field: { label: string }) => field.label;
+    const dynamicUIValue = <T>(value: T) => value;
+    const valueFor = () => 'principal-1';
+    const formatValue = (value: unknown) => String(value ?? '');
+
+    const html = await renderFile(tabContentPath, {
+      tabs: [
+        {
+          id: 'summary',
+          label: 'Summary',
+          order: 1,
+          fields: ['principalId'],
+          layout: 'summary',
+        },
+      ],
+      activeTabId: 'summary',
+      relatedCollections: {},
+      metadata,
+      compiledUIRecord: {},
+      ctxFields: {},
+      expressionText: () => null,
+      dynamicUIValue,
+      fieldVisible,
+      fieldEditable,
+      fieldComponentContext: {},
+      metadataComponentContext: {},
+      metadataComponentPartialFor: () => null,
+      isViewMode: false,
+      definition: { key: 'test-entity' },
+      recordMode: 'edit',
+      entityDebuggingDisplayRows: [],
+      uiDebuggingDisplayRows: [],
+      debugElementNameParts: () => ({ prefix: '', leaf: '' }),
+      csrfToken: 'test-csrf',
+      pageRelatedData: {},
+      relatedMetadataRegistry: {},
+      collectionValue: () => ({ raw: null, tone: null, icon: null, calculated: false }),
+      relatedRowHref: () => null,
+      relatedReferenceLabel: () => '—',
+      optionItemForField: () => null,
+      enumToneClass: () => '',
+      formatValue,
+      overrides: {},
+      ctxValue: () => null,
+      referenceLabel: () => 'Example Person',
+      referenceValues,
+      fieldLabel,
+      valueFor,
+    });
+
+    expect(html).toContain('name="principalId"');
+    expect(html).toContain('Example Person');
   });
 });

@@ -30,6 +30,11 @@
    * value or mutability, but they must never choose the concrete UI control.
    */
   const field = metadata.fieldDefinition[key];
+  // Selector supplemental data is optional at this wrapper boundary. Preserve
+  // the canonical context when supplied, while keeping ordinary field rendering
+  // independent from selector-specific page preparation.
+  const safeReferenceSelectorContexts =
+    typeof referenceSelectorContexts !== 'undefined' ? referenceSelectorContexts : {};
   const visibilityExpression = expressionText(overrides[key]?.visible);
 %>
 <% if (field && !field.sensitive && (fieldVisible(field) !== false || visibilityExpression)) { %>
@@ -88,6 +93,7 @@
       fieldLabel,
       enumItemsFor,
       referenceValues,
+      referenceSelectorContexts: safeReferenceSelectorContexts,
       dateOnlyValue,
       datetimeLocalValue,
       durationParts,

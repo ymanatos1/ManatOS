@@ -34,4 +34,30 @@ describe('message modal presentation', () => {
     expect($('#warningMessageModalLabel').text()).toContain('Password changed with a warning');
     expect($('#warningMessageModal .modal-body').text()).toContain('could not be sent');
   });
+
+  it('projects the transport-safe application error into popup callingParams for CTX inspection', async () => {
+    const html = await ejs.renderFile(view, {
+      applicationError: {
+        name: 'ConflictError',
+        code: 'RELATIONSHIP_CONFLICT',
+        message: 'Principal is already linked.',
+        userMessage: 'That Principal is already linked to another User.',
+        retryable: false,
+        operationTrace: [{ id: 'op-1', status: 'failed' }],
+      },
+    });
+    const $ = load(html);
+    const callingParams = JSON.parse(
+      $('#applicationErrorModal').attr('data-popup-calling-params') || '{}',
+    );
+
+    expect(callingParams.error).toMatchObject({
+      name: 'ConflictError',
+      code: 'RELATIONSHIP_CONFLICT',
+      message: 'Principal is already linked.',
+      userMessage: 'That Principal is already linked to another User.',
+      retryable: false,
+    });
+    expect(callingParams.error.operationTrace).toEqual([{ id: 'op-1', status: 'failed' }]);
+  });
 });

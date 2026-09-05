@@ -201,11 +201,27 @@
   <% if (app.currentPlatform?.presentation?.stylesheet) { %>
     <link rel="stylesheet" href="<%= app.currentPlatform.presentation.stylesheet %>">
   <% } %>
+
+  <% if (typeof entryPopupHost !== 'undefined' && entryPopupHost) { %>
+    <style>
+      body.entry-popup-host .site-frame > header,
+      body.entry-popup-host .site-frame > nav,
+      body.entry-popup-host .site-frame > footer,
+      body.entry-popup-host .left-navigation,
+      body.entry-popup-host .details-panel,
+      body.entry-popup-host .workspace-toolbar,
+      body.entry-popup-host .workspace-titlebar,
+      body.entry-popup-host [data-developer-tools] { display: none !important; }
+      body.entry-popup-host .app-shell { display: block !important; min-height: 100vh; }
+      body.entry-popup-host .workspace { width: 100% !important; max-width: none !important; }
+      body.entry-popup-host .workspace-content { padding: 1rem !important; }
+    </style>
+  <% } %>
 </head>
 
 
 <body
-  class="<%= currentUser ? 'authenticated' : 'anonymous' %>"
+  class="<%= currentUser ? 'authenticated' : 'anonymous' %> <%= typeof entryPopupHost !== 'undefined' && entryPopupHost ? 'entry-popup-host' : '' %>"
   data-user-id="<%= currentUser?.id || 'anonymous' %>"
 >
 
@@ -529,6 +545,7 @@
 
   <script src="/js/prefs.js"></script>
   <script src="/js/shell.js"></script>
+  <script src="/js/popups/entry-popup.js"></script>
   <% if (app.ui?.debugTools && Array.isArray(ctxDiagnostics) && ctxDiagnostics.length) { %>
     <script>
       (() => {

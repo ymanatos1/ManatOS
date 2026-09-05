@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 const isWindows = process.platform === 'win32';
 const command = isWindows ? process.env.ComSpec || 'cmd.exe' : 'npm';
-const logPath = resolve(process.cwd(), 'verifyrun.log');
+const logPath = resolve(process.cwd(), 'verify-run.log');
 const logStream = createWriteStream(logPath, { flags: 'w', encoding: 'utf8' });
 
 const ANSI = {
@@ -17,7 +17,7 @@ function npmArgs(...args) {
   return isWindows ? ['/d', '/s', '/c', `npm ${args.join(' ')}`] : args;
 }
 
-/** Keep verifyrun.log readable even when child processes emit ANSI colours. */
+/** Keep verify-run.log readable even when child processes emit ANSI colours. */
 const ansiEscape = String.fromCharCode(27);
 const ansiPattern = new RegExp(`${ansiEscape}(?:[@-Z\\-_]|\\[[0-?]*[ -/]*[@-~])`, 'g');
 
@@ -25,7 +25,7 @@ function stripAnsi(value) {
   return String(value).replace(ansiPattern, '');
 }
 
-/** Write a verifyrun-owned line to both console and the current-run log. */
+/** Write a verify-run-owned line to both console and the current-run log. */
 function printLine(value = '', color = '') {
   const text = String(value);
   process.stdout.write(`${color}${text}${color ? ANSI.reset : ''}\n`);
@@ -86,7 +86,7 @@ function pipeStream(stream, target, { greenHealthy = false } = {}) {
 }
 
 /**
- * Run an npm command while teeing stdout/stderr into verifyrun.log.
+ * Run an npm command while teeing stdout/stderr into verify-run.log.
  * `greenHealthy` is enabled only after the verification gate has succeeded.
  */
 function runNpm(args, { greenHealthy = false } = {}) {
@@ -125,7 +125,7 @@ printLine();
 /*
  * Verification is the gate. The authoritative repository verification remains
  * exactly `npm run verify`; that command now includes lint, non-mutating format
- * validation, builds and tests. verifyrun only tees its output and starts ManatOS
+ * validation, builds and tests. verify-run only tees its output and starts ManatOS
  * when the complete quality/build/test gate returns success.
  */
 const verifyExitCode = await runNpm(['run', 'verify']);
@@ -148,7 +148,7 @@ printLine();
 
 /*
  * Verification succeeded. Healthy startup/watch confirmations are green in
- * the console, while verifyrun.log stays plain text and keeps both verification
+ * the console, while verify-run.log stays plain text and keeps both verification
  * and subsequent runtime output for the current invocation.
  */
 const runExitCode = await runNpm(['run', 'dev'], { greenHealthy: true });

@@ -304,6 +304,10 @@
     dynamicUIValue,
     ctxFields,
     referenceValues,
+    referenceSelectorContexts:
+      typeof referenceSelectorContexts !== 'undefined' && referenceSelectorContexts
+        ? referenceSelectorContexts
+        : {},
     fieldVisible,
     fieldEditable,
     valueFor,
@@ -467,6 +471,12 @@
     <% if (!isViewMode) { %>data-dirty-guard="true"<% } %>
   >
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (typeof entryPopupHost !== 'undefined' && entryPopupHost) { %>
+      <input type="hidden" name="_entryPopup" value="1">
+      <input type="hidden" name="_entryPopupToken" value="<%= entryPopupToken || '' %>">
+      <input type="hidden" name="_entryDefaults" value="<%= JSON.stringify(entryInvocationDefaults || {}) %>">
+      <input type="hidden" name="_entryOverrides" value="<%= JSON.stringify(entryInvocationOverrides || {}) %>">
+    <% } %>
     <% if (!isNew && recordId) { %>
       <input type="hidden" name="id" value="<%= recordId %>">
     <% } %>
@@ -511,6 +521,7 @@
       overrides,
       ctxValue,
       referenceLabel,
+      referenceValues,
       fieldLabel,
       valueFor
     }) %>

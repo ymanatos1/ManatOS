@@ -19,6 +19,7 @@ import {
 } from './entry-supplemental-data.js';
 
 import type { SysBODefinition } from '../../sysbo/types.js';
+import { effectiveEntryUIMetadata, entryInvocation } from './entry-invocation.js';
 
 /**
  * Render one canonical metadata-driven SysBO record page.
@@ -46,11 +47,20 @@ export async function renderMetadataDrivenRecord(
   // snapshot for this exact collection/record scope. Do not recalculate policy
   // inside the renderer or issue a second capability request.
   const effectivePermissions = permissions;
-  const recordMode = record.isNew ? 'create' : effectivePermissions.update ? 'edit' : 'view';
-  const [metadata, metadataUI] = await Promise.all([
+  const invocation = entryInvocation(req);
+  const recordMode =
+    invocation.mode === 'view'
+      ? 'view'
+      : record.isNew
+        ? 'create'
+        : effectivePermissions.update
+          ? 'edit'
+          : 'view';
+  const [metadata, canonicalMetadataUI] = await Promise.all([
     canonicalSysBOMetadata(req, definition),
     canonicalSysBOUIMetadata(req, definition),
   ]);
+  const metadataUI = effectiveEntryUIMetadata(canonicalMetadataUI, invocation);
   const modeLabel = recordMode === 'create' ? 'Add' : recordMode === 'edit' ? 'Edit' : 'View';
   const primaryField = metadata.fieldDefinition[metadata.primaryField];
 
@@ -61,7 +71,7 @@ export async function renderMetadataDrivenRecord(
     );
   }
 
-  const item =
+  const loadedItem =
     record.itemOverride ??
     (record.recordId
       ? (
@@ -71,6 +81,7 @@ export async function renderMetadataDrivenRecord(
           )
         ).data
       : {});
+  const item = record.isNew ? { ...loadedItem, ...invocation.defaults } : loadedItem;
 
   const ownerDraft =
     Boolean(record.parentOwnerContext) && String(record.recordId ?? '').startsWith('draft:');
@@ -83,6 +94,16 @@ export async function renderMetadataDrivenRecord(
     metadataUI,
     effectivePermissions,
   );
+
+  // Caller constraints narrow option catalogues without teaching the hosted
+  // entry renderer about any concrete entity or relationship.
+  for (const [fieldKey, override] of Object.entries(invocation.uiOverrides)) {
+    const allowed = override.allowedValues;
+    if (!Array.isArray(allowed)) continue;
+    const field = metadata.fieldDefinition[fieldKey];
+    if (!field || field.type !== 'enum') continue;
+    supplemental.referenceData[fieldKey] = allowed.map((value) => ({ value, label: value }));
+  }
   const parentListContext = await parentListContextForEntry(
     req,
     definition,
@@ -135,6 +156,10 @@ export async function renderMetadataDrivenRecord(
     metadataComponentPartialFor,
     ownerEditing: Boolean(record.parentOwnerContext),
     ownerContext: record.parentOwnerContext ?? null,
+    entryPopupHost: invocation.popup,
+    entryPopupToken: invocation.token,
+    entryInvocationDefaults: invocation.defaults,
+    entryInvocationOverrides: invocation.uiOverrides,
     entryRepresentationRuntime: compiledEntryRepresentationRuntime(
       metadata,
       metadataUI,

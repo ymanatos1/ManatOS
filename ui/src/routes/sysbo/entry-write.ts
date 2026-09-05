@@ -1,12 +1,18 @@
 import type { Request, Response } from 'express';
 
-import { AppError, operationContext, type SysBOUser } from '@manatos/shared';
+import {
+  AppError,
+  operationContext,
+  resolveEntryRepresentation,
+  type SysBOUser,
+} from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 
 import type { SysBODefinition } from '../../sysbo/types.js';
-import { apiPathFor } from './data-access.js';
+import { apiPathFor, canonicalSysBOUIMetadata } from './data-access.js';
+import { entryInvocation } from './entry-invocation.js';
 import { formPayload } from './form-payload.js';
 import { refreshExternalProviderRuntime } from './external-provider-write.js';
 
@@ -142,6 +148,36 @@ export async function completeMetadataDrivenSave(
   const inPlaceSave = saveMode === 'stay' && req.get('X-Requested-With') === 'ManatOS-InPlace-Save';
   const listUrl = `/bo/${definition.key}`;
   const entryUrl = savedId ? `${listUrl}/${encodeURIComponent(savedId)}` : listUrl;
+  const invocation = entryInvocation(req);
+
+  if (invocation.popup && invocation.token && savedId) {
+    const record =
+      savedRecord ??
+      (
+        await apiClient.get<Record<string, unknown>>(
+          `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(savedId)}`,
+          apiSessionOptions(req),
+        )
+      ).data;
+    const uiMetadata = await canonicalSysBOUIMetadata(req, definition);
+    const representation = resolveEntryRepresentation(definition.boMetadata, uiMetadata, record, {
+      entityIcon: definition.icon,
+    });
+    const payload = JSON.stringify({
+      type: 'manatos:entry-popup-saved',
+      token: invocation.token,
+      entityKey: definition.key,
+      id: savedId,
+      record,
+      representation,
+    }).replaceAll('<', '\\u003c');
+    res
+      .type('html')
+      .send(
+        `<!doctype html><html><body><script>parent.postMessage(${payload}, window.location.origin);</script></body></html>`,
+      );
+    return;
+  }
 
   if (!inPlaceSave || !savedId) {
     res.redirect(saveMode === 'close' ? listUrl : entryUrl);

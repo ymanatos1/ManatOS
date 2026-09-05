@@ -121,6 +121,39 @@ export interface SysBOFieldMetadata {
 
   referenceBOKey?: string;
 
+  /**
+   * Optional canonical candidate constraint for a reference endpoint.
+   * `filterExpression` evaluates against each target record. `uniqueThrough`
+   * describes the owning object/field whose existing 1:1 links make candidates
+   * unavailable; inverse endpoints use the same contract without a new UI component.
+   */
+  referenceSelection?: Readonly<{
+    filterExpression?: string;
+    uniqueThrough?: Readonly<{ objectKey: string; field: string }>;
+
+    /**
+     * Optional semantic context used when a reference-field caller creates a
+     * related entry. Source values are projected from the calling entry into
+     * target create defaults; target UI overrides are then resolved by the same
+     * effective-entry override layer used by every hosted entry surface.
+     */
+    createRelated?: Readonly<{
+      defaults?: Readonly<Record<string, Readonly<{ sourceField: string }>>>;
+      fixedValues?: Readonly<Record<string, Readonly<{ sourceField: string }>>>;
+      uiOverrides?: Readonly<
+        Record<
+          string,
+          Readonly<{
+            editable?: boolean;
+            visible?: boolean;
+            label?: string;
+            allowedValues?: readonly string[];
+          }>
+        >
+      >;
+    }>;
+  }>;
+
   /** Calendar duration units exposed by a duration field. Defaults to all units. */
   durationUnits?: readonly ('years' | 'months' | 'days')[];
 

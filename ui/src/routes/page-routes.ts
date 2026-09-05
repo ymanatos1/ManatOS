@@ -148,10 +148,24 @@ export function createPageRoutes() {
 
     requireSignedIn,
 
-    async (_req, res, next) => {
+    async (req, res, next) => {
       try {
         const user = res.locals.currentUser as SysBOUser;
         const authenticationIdentities = await externalIdentitiesForUser(user.id);
+        let accountPrincipal: Record<string, unknown> | null = null;
+        if (user.principalId) {
+          try {
+            const principalResponse = await apiClient.get<Record<string, unknown>>(
+              `/api/v1/SysPrincipals/${encodeURIComponent(user.principalId)}`,
+              apiSessionOptions(req),
+            );
+            accountPrincipal = principalResponse.data;
+          } catch {
+            // Account must remain usable even when the linked Principal is not
+            // readable to the current user. The view derives an explanatory
+            // relationship status from principalId instead of failing the page.
+          }
+        }
 
         await renderPage(
           res,
@@ -162,6 +176,7 @@ export function createPageRoutes() {
             breadcrumbTitle: 'Account details',
             titleIcon: 'bi-person-vcard',
             authenticationIdentities,
+            accountPrincipal,
           },
         );
       } catch (error) {

@@ -87,10 +87,10 @@ policies: {
 For two independent objects, keep the physical relation explicit:
 
 ```text
-SysUser 1 ---- * SysUserPrincipal * ---- 1 SysPrincipal
+SysUser 0..1 ---- 0..1 SysPrincipal(Person)
 ```
 
-`SysUserPrincipal` stores the two foreign keys and declares two ordinary many-to-one relationships. A future semantic many-to-many projection may expose `SysUser.principals` and `SysPrincipal.users`, but the junction object remains the canonical persistence and referential-integrity source of truth.
+`SysUser.principalId` is the canonical stored endpoint. The Principal entry exposes the inverse User endpoint through the same single-reference UI component; writes from that side are applied through the owning User field. The API enforces Person-only targeting and one-to-one uniqueness.
 
 ## Relationship metadata vs UI metadata
 

@@ -372,6 +372,124 @@
         );
         return;
       }
+      case 'add-entry': {
+        if (!(control instanceof HTMLSelectElement) || control.disabled) return;
+        const popup = window.ManatOSEntryPopup;
+        const ctxRuntime = window.ManatOS?.ctx;
+        if (!popup?.open || !ctxRuntime) return;
+
+        const fieldKey = root?.dataset.referenceFieldKey || control.dataset.ctxField;
+        const targetEntityKey = root?.dataset.referenceEntityKey || '';
+        if (!fieldKey || !targetEntityKey) return;
+
+        let createRelated = null;
+        try {
+          createRelated = JSON.parse(root?.dataset.referenceCreateRelated || 'null');
+        } catch {
+          createRelated = null;
+        }
+        // Creation is a universal reference capability. Relationship metadata is
+        // optional and only enriches the hosted entry with defaults/constraints.
+        createRelated = createRelated || {};
+
+        const selector = window.ManatOSRecordSelector;
+        const pagePath = selector?.leafPagePath?.();
+        const currentEntry = pagePath ? ctxRuntime.resolve?.(`${pagePath}.entry`) : null;
+        if (!currentEntry || typeof currentEntry !== 'object') return;
+
+        const defaults = {};
+        for (const [targetField, mapping] of Object.entries(createRelated.defaults || {})) {
+          const sourceField = mapping?.sourceField;
+          if (sourceField && Object.prototype.hasOwnProperty.call(currentEntry, sourceField))
+            defaults[targetField] = currentEntry[sourceField];
+        }
+        for (const [targetField, mapping] of Object.entries(createRelated.fixedValues || {})) {
+          const sourceField = mapping?.sourceField;
+          if (sourceField && Object.prototype.hasOwnProperty.call(currentEntry, sourceField))
+            defaults[targetField] = currentEntry[sourceField];
+        }
+
+        const overrides = { ...(createRelated.uiOverrides || {}) };
+        for (const targetField of Object.keys(createRelated.fixedValues || {})) {
+          overrides[targetField] = {
+            ...(overrides[targetField] || {}),
+            editable: false,
+            readOnlyValue: defaults[targetField] ?? null,
+          };
+        }
+        for (const [targetField, override] of Object.entries(overrides)) {
+          if (
+            Array.isArray(override?.allowedValues) &&
+            override.allowedValues.length === 1 &&
+            defaults[targetField] == null
+          )
+            defaults[targetField] = override.allowedValues[0];
+        }
+
+        const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
+        const params = new URLSearchParams({
+          _entryPopup: '1',
+          _entryPopupToken: token,
+          _entryDefaults: JSON.stringify(defaults),
+          _entryOverrides: JSON.stringify(overrides),
+        });
+        popup.open({
+          token,
+          title: `Add ${root?.dataset.referenceFieldLabel || 'entry'}`,
+          url: `/bo/${encodeURIComponent(targetEntityKey)}/new?${params.toString()}`,
+          callingParams: {
+            purpose: 'reference-field-add-entry',
+            presentationMode: 'entry',
+            entityKey: targetEntityKey,
+            selectionMode: 'single',
+            sourceEntityKey: root?.dataset.referenceSourceEntityKey || null,
+            sourceRecordId: String(currentEntry.id ?? '') || null,
+            targetField: fieldKey,
+            targetFieldLabel: root?.dataset.referenceFieldLabel || fieldKey,
+            mode: 'create',
+            defaults,
+            uiOverrides: overrides,
+          },
+          onSaved: (result) => {
+            const id = String(result?.id || '');
+            if (!id) return;
+            const representation = result?.representation || {};
+            const name = String(representation.name || result?.record?.name || id);
+            const icons = Array.isArray(representation.icons) ? representation.icons : [];
+
+            let option = [...control.options].find((candidate) => candidate.value === id);
+            if (!option) {
+              option = document.createElement('option');
+              option.value = id;
+              control.append(option);
+            }
+            option.textContent = name;
+            option.dataset.entryName = name;
+            option.dataset.entryIcons = JSON.stringify(icons);
+            option.disabled = false;
+
+            const menu = root?.querySelector('.metadata-reference-select-menu');
+            if (menu && !menu.querySelector(`[data-reference-choice="${CSS.escape(id)}"]`)) {
+              const li = document.createElement('li');
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'dropdown-item';
+              button.dataset.referenceChoice = id;
+              button.setAttribute('role', 'option');
+              button.textContent = name;
+              li.append(button);
+              menu.append(li);
+            }
+            setReferenceValue(control, id);
+            publish(control, false, {
+              source: 'entry-popup',
+              purpose: 'add-related-entry',
+              targetField: fieldKey,
+            });
+          },
+        });
+        return;
+      }
       case 'select-existing': {
         if (!(control instanceof HTMLSelectElement) || control.disabled) return;
         const selector = window.ManatOSRecordSelector;
@@ -409,6 +527,12 @@
           currentEntry && typeof currentEntry === 'object'
             ? String(currentEntry[sourcePrimaryField] ?? currentEntry.name ?? '').trim()
             : '';
+        let queryPredicate = null;
+        try {
+          queryPredicate = JSON.parse(root?.dataset.referenceQueryPredicate || 'null');
+        } catch {
+          queryPredicate = null;
+        }
 
         selector.open({
           template,
@@ -426,6 +550,7 @@
             targetEntityLabel: targetName,
             sourceEntityLabel,
             sourceRecordName: sourceRecordName || null,
+            queryPredicate,
             allowClear: !control.required,
           },
           eligibility: (candidate) => {

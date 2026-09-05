@@ -72,6 +72,8 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(cli).toContain("input.style.height = 'auto'");
     expect(cli).toContain("command === '.'");
     expect(cli).toContain("command === '..'");
+    expect(cli).toContain("command === '. ls'");
+    expect(cli).toContain('printCtxShallow');
     expect(cli).toContain("command === 'cls'");
     expect(cli).toContain("command === 'clear'");
     expect(css).toContain('min-height: 12rem');

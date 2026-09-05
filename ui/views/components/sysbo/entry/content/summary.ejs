@@ -48,7 +48,16 @@
       : formatValue(rawValue, presentation); %>
     <div class="account-summary-label"><%= fieldLabel(field) %>:</div>
     <div class="account-summary-value">
-      <% if (stateIcon) { %>
+      <% if (field.type === 'reference' && fieldEditable(field)) { %>
+        <%- include('../fields/reference-select', {
+          key,
+          field,
+          value: rawValue,
+          editable: true,
+          referenceValues,
+          fieldLabel
+        }) %>
+      <% } else if (stateIcon) { %>
         <span class="status-value <%= tone === 'success' ? 'status-positive' : 'status-neutral' %>">
           <i class="bi bi-<%= stateIcon %>" aria-hidden="true"></i>
           <%= rendered %>

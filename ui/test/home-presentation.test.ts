@@ -18,14 +18,21 @@ describe('home presentation', () => {
 
     expect($('.home-hero-grid').length).toBe(1);
     expect($('.home-hero-copy h2').text().trim()).toBe(
-      'A data-driven foundation for business platforms and applications',
+      'A semantic foundation for business platforms and applications',
     );
     expect($('.home-platform-map').length).toBe(1);
     expect($('.home-platform-app').text()).toContain('Business Platforms & Applications');
     expect($('.home-platform-app .bi-layers').length).toBe(1);
     expect($('.home-platform-service').length).toBe(3);
+    expect($('.home-platform-service').text()).toContain('Business Objects');
+    expect($('.home-platform-service').text()).toContain('Context + Rules');
+    expect($('.home-platform-service').text()).toContain('Policy + APIs');
     expect($('.home-platform-foundation').text()).toContain('ManatOS Application Foundation');
+    expect($('.home-platform-foundation').text()).toContain('semantic runtime');
     expect($('.home-benefit').length).toBe(3);
+    expect($('.home-benefit').text()).toContain('Governed by design');
+    expect($('.home-benefit').text()).toContain('Business semantics');
+    expect($('.home-benefit').text()).toContain('One model, many experiences');
     expect($('.home-hero img').length).toBe(0);
   });
 

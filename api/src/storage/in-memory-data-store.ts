@@ -25,7 +25,6 @@ import {
   type SysBOPrincipal,
   type SysBOUser,
   type SysBOUserInvitation,
-  type SysBOUserPrincipal,
 } from '@manatos/shared';
 
 import { InMemoryRepository } from './in-memory-repository.js';
@@ -92,9 +91,6 @@ export class InMemoryDataStore implements StorageAdapter {
   /**
    * SysBOUser <-> SysBOPrincipal relationships.
    */
-  userPrincipals(): Map<string, SysBOUserPrincipal> {
-    return this.state.sysUserPrincipals;
-  }
 
   /**
    * User invitation records.
@@ -138,8 +134,6 @@ export class InMemoryDataStore implements StorageAdapter {
           return this.state.sysExtAuthProviders;
         case 'external-identities':
           return this.state.sysExternalIdentities;
-        case 'user-principals':
-          return this.state.sysUserPrincipals;
         case 'user-invitations':
           return this.state.sysUserInvitations;
         default:
@@ -201,7 +195,6 @@ export class InMemoryDataStore implements StorageAdapter {
       restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
       restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
       restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
-      restoreMap(this.state.sysUserPrincipals, snapshot.sysUserPrincipals);
       restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
 
       throw error;

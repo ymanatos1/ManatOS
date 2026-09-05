@@ -663,54 +663,6 @@
                   }
                 }
               ]
-            },
-            {
-              "name": "Link User to Principal",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"principalId\": \"{{testPrincipalId}}\",\n  \"relationship\": \"Owner\",\n  \"isDefault\": true\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/principals",
-                  "host": ["{{baseUrl}}"],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "internal",
-                    "SysUsers",
-                    "{{testUserId}}",
-                    "principals"
-                  ]
-                }
-              },
-              "response": [],
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                      "const json = pm.response.json();",
-                      "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
-                      "pm.test('Command response contains a root message', () => pm.expect(json.message).to.be.a('string').and.not.empty);"
-                    ]
-                  }
-                }
-              ]
             }
           ],
           "auth": {

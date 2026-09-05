@@ -23,12 +23,13 @@ export const MANATOS_COMPANY: CompanyInfo = {
   id: 'manatos',
   name: 'ManatOS Software Solutions',
   shortName: 'ManatOS',
-  description: 'Software platforms and reusable application foundations.',
+  description:
+    'We build semantic business application platforms on reusable Application Foundations',
   home: {
-    eyebrow: 'ManatOS application foundation',
-    title: 'A data-driven foundation for business platforms and applications',
+    eyebrow: 'ManatOS semantic application foundation',
+    title: 'A semantic foundation for business platforms and applications',
     description:
-      'ManatOS provides reusable metadata, context, authorization, API and UI foundations for defining business platforms and building secure applications on top of them.',
+      'Turn business models, relationships, rules, permissions and application behavior into governed metadata that its runtime can execute consistently across applications.',
   },
   branding: {
     headerLogo: {

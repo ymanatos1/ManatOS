@@ -14,6 +14,7 @@ import {
   evaluateExpression,
   type SysPrincipalTelephoneNumber,
   type SysBOPrincipal,
+  SysBOPrincipalType,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
@@ -68,12 +69,14 @@ type PrincipalRelatedChanges = {
 
 function principalPayload<T extends object>(
   value: T,
-): { entity: T; relatedChanges?: PrincipalRelatedChanges } {
-  const source = value as T & { relatedChanges?: PrincipalRelatedChanges };
-  const { relatedChanges, ...entity } = source;
-  return relatedChanges === undefined
-    ? { entity: entity as T }
-    : { entity: entity as T, relatedChanges };
+): { entity: T; relatedChanges?: PrincipalRelatedChanges; userId?: string | null } {
+  const source = value as T & { relatedChanges?: PrincipalRelatedChanges; userId?: string | null };
+  const { relatedChanges, userId, ...entity } = source;
+  return {
+    entity: entity as T,
+    ...(relatedChanges === undefined ? {} : { relatedChanges }),
+    ...(Object.prototype.hasOwnProperty.call(source, 'userId') ? { userId: userId ?? null } : {}),
+  };
 }
 
 function canonicalTelephoneKey(countryCode: string, number: string): string {
@@ -105,6 +108,58 @@ function canonicalAddressKey(value: PrincipalAddressInput): string {
 export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
   constructor(store: InMemoryDataStore) {
     super(store, store.sysPrincipals, sysBOPrincipalsMetadata);
+  }
+
+  /**
+   * Write the inverse Principal -> User endpoint through the canonical
+   * SysUser.principalId owner. A linked candidate may not already identify
+   * another Principal; the complete change is atomic with Principal Save.
+   */
+  private async syncUserIdentityLink(
+    principal: SysBOPrincipal,
+    requestedUserId: string | null | undefined,
+    actor: AuditActor,
+  ): Promise<void> {
+    if (requestedUserId === undefined && principal.principalType === SysBOPrincipalType.Person)
+      return;
+    if (principal.principalType !== SysBOPrincipalType.Person) requestedUserId = null;
+    const actingUser = actor.userId ? await this.store.sysUsers.getById(actor.userId) : null;
+    if (actor.source === 'user' && actingUser?.role !== 'Admin') {
+      throw new ConflictError(
+        'PRINCIPAL_USER_ADMIN_REQUIRED',
+        'Only an Administrator can change a Principal identity User.',
+        'Ask an Administrator to change this relationship.',
+      );
+    }
+    if (principal.principalType !== SysBOPrincipalType.Person && requestedUserId) {
+      throw new ConflictError(
+        'PRINCIPAL_USER_REQUIRES_PERSON',
+        'Only a Person Principal can be linked to a User account.',
+        'Change Principal type to Person before assigning a User.',
+      );
+    }
+
+    const current = this.store.sysUsers.values().find((user) => user.principalId === principal.id);
+    if (requestedUserId === current?.id) return;
+
+    if (requestedUserId) {
+      const candidate = await this.store.sysUsers.getById(requestedUserId);
+      if (!candidate) throw new NotFoundError('SysBOUser', requestedUserId);
+      if (candidate.principalId && candidate.principalId !== principal.id) {
+        throw new ConflictError(
+          'PRINCIPAL_USER_ALREADY_LINKED',
+          `User '${candidate.name}' is already linked to another Principal.`,
+          'Choose an unlinked User account.',
+        );
+      }
+    }
+
+    if (current) {
+      await this.store.sysUsers.update(current.id, { principalId: null }, actor);
+    }
+    if (requestedUserId) {
+      await this.store.sysUsers.update(requestedUserId, { principalId: principal.id }, actor);
+    }
   }
 
   /**
@@ -157,6 +212,7 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
         actor,
       );
       await this.syncAddresses(persisted.id, split.relatedChanges?.addresses?.current, actor);
+      await this.syncUserIdentityLink(persisted, split.userId, actor);
       return persisted;
     });
   }
@@ -236,6 +292,7 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       await this.syncEmailAddresses(id, split.relatedChanges?.emailAddresses?.current, actor);
       await this.syncTelephoneNumbers(id, split.relatedChanges?.telephoneNumbers?.current, actor);
       await this.syncAddresses(id, split.relatedChanges?.addresses?.current, actor);
+      await this.syncUserIdentityLink(persisted, split.userId, actor);
       return persisted;
     });
   }

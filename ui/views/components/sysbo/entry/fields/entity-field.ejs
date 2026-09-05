@@ -41,7 +41,15 @@
   <% const enumItems = enumItemsFor(field); %>
   <%- include('enum-select', { key, field, value, editable, enumItems, fieldLabel, bindCtx: entityBindCtx, inputId: entityInputId, inputName: entityInputName }) %>
 <% } else if (field.type === 'reference') { %>
-  <%- include('reference-select', { key, field, value, editable, referenceValues, fieldLabel }) %>
+  <%- include('reference-select', {
+    key,
+    field,
+    value,
+    editable,
+    referenceValues,
+    referenceSelectorContexts,
+    fieldLabel
+  }) %>
 <% } else if (field.type === 'date') { %>
   <%- include('date-field', { key, field, value, editable, fieldLabel, dateOnlyValue }) %>
 <% } else if (field.type === 'datetime') { %>
