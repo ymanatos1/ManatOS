@@ -15,7 +15,6 @@ import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 import { createTestApi } from './test-helpers.js';
 
 describe('SysBOPrincipal declarative enum metadata', () => {
-
   it('declares the standard metadata-driven record actions required by the shared entry renderer', () => {
     expect(sysBOPrincipalsUIMetadata.record.entryActions).toMatchObject({
       delete: {
@@ -34,23 +33,34 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     const byValue = new Map(items.map((item) => [item.value, item]));
 
     expect(byValue.get(SysBOPrincipalType.Person)).toMatchObject({
-      icon: 'person', isContainer: false, canHaveParent: true,
-      canBeOrganizationRoot: false, canStandAloneOrganization: true,
+      icon: 'person',
+      isContainer: false,
+      canHaveParent: true,
+      canBeOrganizationRoot: false,
+      canStandAloneOrganization: true,
     });
     expect(byValue.get(SysBOPrincipalType.Company)).toMatchObject({
-      icon: 'building', isContainer: true, canHaveParent: false,
-      canBeOrganizationRoot: true, canStandAloneOrganization: false,
+      icon: 'building',
+      isContainer: true,
+      canHaveParent: false,
+      canBeOrganizationRoot: true,
+      canStandAloneOrganization: false,
     });
     expect(byValue.get(SysBOPrincipalType.Group)).toMatchObject({
-      icon: 'people', isContainer: true, canHaveParent: true,
-      canBeOrganizationRoot: true, canStandAloneOrganization: false,
+      icon: 'people',
+      isContainer: true,
+      canHaveParent: true,
+      canBeOrganizationRoot: true,
+      canStandAloneOrganization: false,
     });
     expect(byValue.get(SysBOPrincipalType.System)).toMatchObject({
-      icon: 'gear', isContainer: false, canHaveParent: true,
-      canBeOrganizationRoot: false, canStandAloneOrganization: true,
+      icon: 'gear',
+      isContainer: false,
+      canHaveParent: true,
+      canBeOrganizationRoot: false,
+      canStandAloneOrganization: true,
     });
   });
-
 
   it('allows System principals to be organization members while preventing non-container principals from parenting children', async () => {
     const context = await createTestApi();
@@ -76,15 +86,17 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     expect(system.parentId).toBe(group.id);
     expect(system.rootPrincipalId).toBe(group.id);
 
-    await expect(context.services.principals.create(
-      {
-        name: 'Invalid child',
-        principalType: SysBOPrincipalType.Person,
-        parentId: system.id,
-        enabled: true,
-      },
-      SYSTEM_AUDIT_ACTOR,
-    )).rejects.toMatchObject({ code: 'PRINCIPAL_PARENT_NOT_CONTAINER' });
+    await expect(
+      context.services.principals.create(
+        {
+          name: 'Invalid child',
+          principalType: SysBOPrincipalType.Person,
+          parentId: system.id,
+          enabled: true,
+        },
+        SYSTEM_AUDIT_ACTOR,
+      ),
+    ).rejects.toMatchObject({ code: 'PRINCIPAL_PARENT_NOT_CONTAINER' });
 
     const child = await context.services.principals.create(
       {
@@ -97,11 +109,13 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     );
     expect(child.parentId).toBe(group.id);
 
-    await expect(context.services.principals.update(
-      group.id,
-      { principalType: SysBOPrincipalType.System },
-      SYSTEM_AUDIT_ACTOR,
-    )).rejects.toMatchObject({ code: 'PRINCIPAL_TYPE_CANNOT_CONTAIN_EXISTING_MEMBERS' });
+    await expect(
+      context.services.principals.update(
+        group.id,
+        { principalType: SysBOPrincipalType.System },
+        SYSTEM_AUDIT_ACTOR,
+      ),
+    ).rejects.toMatchObject({ code: 'PRINCIPAL_TYPE_CANNOT_CONTAIN_EXISTING_MEMBERS' });
   });
 
   it('materializes canonical persisted calculated rootPrincipalId before commit and cascades it through the hierarchy', async () => {
@@ -114,7 +128,8 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     });
     expect(sysBOPrincipalsMetadata.fieldDefinition.rootPrincipalId?.calculation).toMatchObject({
       persisted: true,
-      expression: "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
+      expression:
+        "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
     });
 
     const context = await createTestApi();
@@ -187,8 +202,6 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     );
     expect(person.parentId).toBe(root.id);
 
-
-
     const company = await context.services.principals.create(
       {
         name: 'Child company attempt',
@@ -228,8 +241,9 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       required: true,
       label: 'Country code',
     });
-    expect(sysBOPrincipalTelephoneNumbersMetadata.relationships?.telephoneNumber?.references.objectKey)
-      .toBe('sys-telephone-numbers');
+    expect(
+      sysBOPrincipalTelephoneNumbersMetadata.relationships?.telephoneNumber?.references.objectKey,
+    ).toBe('sys-telephone-numbers');
 
     const context = await createTestApi();
     const input = {
@@ -255,10 +269,16 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     );
 
     const telephones = await context.store.sysTelephoneNumbers.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: {},
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: {},
     });
     const links = await context.store.sysPrincipalTelephoneNumbers.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id },
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: { principalId: principal.id },
     });
 
     expect(telephones.items).toHaveLength(1);
@@ -280,40 +300,59 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     );
 
     const linksAfterRemove = await context.store.sysPrincipalTelephoneNumbers.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id },
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: { principalId: principal.id },
     });
     expect(linksAfterRemove.items).toHaveLength(0);
     // Canonical shared value survives unlinking, matching EmailAddress semantics.
-    expect((await context.store.sysTelephoneNumbers.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: {},
-    })).items).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysTelephoneNumbers.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: {},
+        })
+      ).items,
+    ).toHaveLength(1);
   });
-
 
   it('reuses canonical email rows across Principals and unlinking one Principal preserves the shared value', async () => {
     const context = await createTestApi();
-    const makePrincipal = async (name: string, email: string) => context.services.principals.create(
-      {
-        name,
-        principalType: SysBOPrincipalType.Person,
-        parentId: null,
-        enabled: true,
-        relatedChanges: { emailAddresses: { current: [email] } },
-      } as SysBOCreateInput<SysBOPrincipal>,
-      SYSTEM_AUDIT_ACTOR,
-    );
+    const makePrincipal = async (name: string, email: string) =>
+      context.services.principals.create(
+        {
+          name,
+          principalType: SysBOPrincipalType.Person,
+          parentId: null,
+          enabled: true,
+          relatedChanges: { emailAddresses: { current: [email] } },
+        } as SysBOCreateInput<SysBOPrincipal>,
+        SYSTEM_AUDIT_ACTOR,
+      );
 
     const first = await makePrincipal('First email principal', ' Shared.Contact@Example.com ');
     const second = await makePrincipal('Second email principal', 'shared.contact@example.com');
 
     const emails = await context.store.sysEmailAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: {},
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: {},
     });
     const firstLinks = await context.store.sysPrincipalEmailAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: first.id },
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: { principalId: first.id },
     });
     const secondLinks = await context.store.sysPrincipalEmailAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: second.id },
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: { principalId: second.id },
     });
 
     expect(emails.items).toHaveLength(1);
@@ -328,15 +367,36 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       SYSTEM_AUDIT_ACTOR,
     );
 
-    expect((await context.store.sysPrincipalEmailAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: first.id },
-    })).items).toHaveLength(0);
-    expect((await context.store.sysPrincipalEmailAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: second.id },
-    })).items).toHaveLength(1);
-    expect((await context.store.sysEmailAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: {},
-    })).items).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysPrincipalEmailAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: first.id },
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (
+        await context.store.sysPrincipalEmailAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: second.id },
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysEmailAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: {},
+        })
+      ).items,
+    ).toHaveLength(1);
   });
 
   it('reuses canonical structured addresses across Principals and preserves the shared row when one link is removed', async () => {
@@ -353,16 +413,17 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       stateOrProvince: 'Attica',
       country: 'Greece',
     };
-    const makePrincipal = async (name: string, currentAddress: typeof address) => context.services.principals.create(
-      {
-        name,
-        principalType: SysBOPrincipalType.Person,
-        parentId: null,
-        enabled: true,
-        relatedChanges: { addresses: { current: [currentAddress] } },
-      } as SysBOCreateInput<SysBOPrincipal>,
-      SYSTEM_AUDIT_ACTOR,
-    );
+    const makePrincipal = async (name: string, currentAddress: typeof address) =>
+      context.services.principals.create(
+        {
+          name,
+          principalType: SysBOPrincipalType.Person,
+          parentId: null,
+          enabled: true,
+          relatedChanges: { addresses: { current: [currentAddress] } },
+        } as SysBOCreateInput<SysBOPrincipal>,
+        SYSTEM_AUDIT_ACTOR,
+      );
 
     const first = await makePrincipal('First address principal', address);
     const second = await makePrincipal('Second address principal', {
@@ -373,13 +434,22 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     });
 
     const addresses = await context.store.sysAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: {},
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: {},
     });
     const firstLinks = await context.store.sysPrincipalAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: first.id },
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: { principalId: first.id },
     });
     const secondLinks = await context.store.sysPrincipalAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: second.id },
+      page: 1,
+      pageSize: 100,
+      direction: 'asc',
+      filters: { principalId: second.id },
     });
 
     expect(addresses.items).toHaveLength(1);
@@ -393,15 +463,36 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       SYSTEM_AUDIT_ACTOR,
     );
 
-    expect((await context.store.sysPrincipalAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: first.id },
-    })).items).toHaveLength(0);
-    expect((await context.store.sysPrincipalAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: second.id },
-    })).items).toHaveLength(1);
-    expect((await context.store.sysAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: {},
-    })).items).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysPrincipalAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: first.id },
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (
+        await context.store.sysPrincipalAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: second.id },
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: {},
+        })
+      ).items,
+    ).toHaveLength(1);
   });
 
   it('persists all Principal Contact collections atomically in the same Principal transaction', async () => {
@@ -416,25 +507,56 @@ describe('SysBOPrincipal declarative enum metadata', () => {
           emailAddresses: { current: ['contact@example.com'] },
           telephoneNumbers: { current: [{ countryCode: '+30', number: '210 555 0100' }] },
           addresses: {
-            current: [{
-              recipientOrAttention: '', organization: '', addressLine1: '1 Example St.', addressLine2: '', addressLine3: '',
-              poBox: '', postalCode: '10000', city: 'Athens', stateOrProvince: 'Attica', country: 'Greece',
-            }],
+            current: [
+              {
+                recipientOrAttention: '',
+                organization: '',
+                addressLine1: '1 Example St.',
+                addressLine2: '',
+                addressLine3: '',
+                poBox: '',
+                postalCode: '10000',
+                city: 'Athens',
+                stateOrProvince: 'Attica',
+                country: 'Greece',
+              },
+            ],
           },
         },
       } as SysBOCreateInput<SysBOPrincipal>,
       SYSTEM_AUDIT_ACTOR,
     );
 
-    expect((await context.store.sysPrincipalEmailAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id },
-    })).items).toHaveLength(1);
-    expect((await context.store.sysPrincipalTelephoneNumbers.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id },
-    })).items).toHaveLength(1);
-    expect((await context.store.sysPrincipalAddresses.list({
-      page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id },
-    })).items).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysPrincipalEmailAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: principal.id },
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysPrincipalTelephoneNumbers.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: principal.id },
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysPrincipalAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: principal.id },
+        })
+      ).items,
+    ).toHaveLength(1);
 
     // A subsequent Principal Save can replace all three collections together;
     // canonical value rows deliberately survive because they may be shared.
@@ -450,12 +572,65 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       SYSTEM_AUDIT_ACTOR,
     );
 
-    expect((await context.store.sysPrincipalEmailAddresses.list({ page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id } })).items).toHaveLength(0);
-    expect((await context.store.sysPrincipalTelephoneNumbers.list({ page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id } })).items).toHaveLength(0);
-    expect((await context.store.sysPrincipalAddresses.list({ page: 1, pageSize: 100, direction: 'asc', filters: { principalId: principal.id } })).items).toHaveLength(0);
-    expect((await context.store.sysEmailAddresses.list({ page: 1, pageSize: 100, direction: 'asc', filters: {} })).items).toHaveLength(1);
-    expect((await context.store.sysTelephoneNumbers.list({ page: 1, pageSize: 100, direction: 'asc', filters: {} })).items).toHaveLength(1);
-    expect((await context.store.sysAddresses.list({ page: 1, pageSize: 100, direction: 'asc', filters: {} })).items).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysPrincipalEmailAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: principal.id },
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (
+        await context.store.sysPrincipalTelephoneNumbers.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: principal.id },
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (
+        await context.store.sysPrincipalAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: { principalId: principal.id },
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (
+        await context.store.sysEmailAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: {},
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysTelephoneNumbers.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: {},
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (
+        await context.store.sysAddresses.list({
+          page: 1,
+          pageSize: 100,
+          direction: 'asc',
+          filters: {},
+        })
+      ).items,
+    ).toHaveLength(1);
   });
-
 });

@@ -5,10 +5,7 @@ import { renderFile } from 'ejs';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const filtersPath = resolve(
-  testDirectory,
-  '../views/components/sysbo/list/list-filters.ejs',
-);
+const filtersPath = resolve(testDirectory, '../views/components/sysbo/list/list-filters.ejs');
 
 const metadata = {
   fieldDefinition: {

@@ -130,7 +130,10 @@ export class AuditService {
    *
    * without changing every service/repository caller.
    */
-  async beforeDelete(_actor: AuditActor, _sysBOKey: string, _entity: SysBOEntity): Promise<void> {
+  async beforeDelete(actor: AuditActor, sysBOKey: string, entity: SysBOEntity): Promise<void> {
+    void actor;
+    void sysBOKey;
+    void entity;
     // TODO: Persist a deletion audit event (or introduce soft-delete metadata) before
     // consuming these values. The hook contract is intentionally retained so callers
     // already provide the actor, SysBO identity and deleted entity when that audit

@@ -27,7 +27,9 @@ export function createExpressionRouter(
     const definition = expressionFunctions[functionName];
     if (!definition) throw new ValidationAppError(`Unknown expression function ${functionName}.`);
     if (definition.capability !== 'entityResolver' || !definition.evaluateAsync) {
-      throw new ValidationAppError(`${functionName} is not a remotely delegated EntityResolver function.`);
+      throw new ValidationAppError(
+        `${functionName} is not a remotely delegated EntityResolver function.`,
+      );
     }
 
     const args = Array.isArray(req.body?.args) ? req.body.args : [];

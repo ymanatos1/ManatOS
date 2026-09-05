@@ -23,7 +23,9 @@ describe('canonical field type / value-source architecture', () => {
     expect(dispatcher).not.toContain('calculation');
     expect(dispatcher).not.toContain('persisted');
 
-    await expect(access(resolve(here, '..', 'views/components/sysbo/entry/fields/calculated-field.ejs'))).rejects.toThrow();
+    await expect(
+      access(resolve(here, '..', 'views/components/sysbo/entry/fields/calculated-field.ejs')),
+    ).rejects.toThrow();
   });
 
   it('defines renderable calculations on canonical typed fields rather than a parallel derivedFields catalogue', async () => {
@@ -35,7 +37,8 @@ describe('canonical field type / value-source architecture', () => {
     expect(types).toContain('calculation?: Readonly<SysBOFieldCalculationMetadata>');
     expect(types).toContain('persisted?: boolean');
     expect(types).toContain('triggeredBy?: readonly string[]');
-    for (const source of [types, identity, business, contact]) expect(source).not.toContain('derivedFields');
+    for (const source of [types, identity, business, contact])
+      expect(source).not.toContain('derivedFields');
     expect(identity).toContain("key: 'fullName'");
     expect(identity).toContain("key: 'emailVerificationStatus'");
     expect(identity).toContain("key: 'localPasswordStatus'");

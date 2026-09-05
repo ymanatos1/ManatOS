@@ -22,24 +22,27 @@
     const runtime = window.ManatOS?.ctx;
 
     if (runtime?.value?.system?.client && typeof runtime.set === 'function') {
-      const hasBootstrap = Object.prototype.hasOwnProperty.call(runtime.value.system.client, 'uiBootstrap');
-      runtime[hasBootstrap ? 'replace' : 'set'](
-        'ctx.system.client.uiBootstrap',
-        newValue,
-        { source: 'ui-bootstrap' },
+      const hasBootstrap = Object.prototype.hasOwnProperty.call(
+        runtime.value.system.client,
+        'uiBootstrap',
       );
+      runtime[hasBootstrap ? 'replace' : 'set']('ctx.system.client.uiBootstrap', newValue, {
+        source: 'ui-bootstrap',
+      });
       return;
     }
 
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
-      detail: {
-        operation: oldValue === undefined ? 'set' : 'replace',
-        path: 'ctx.system.client.uiBootstrap',
-        oldValue,
-        newValue,
-        cause: { source: 'ui-bootstrap', triggerPath: 'ctx.system.client.uiBootstrap' },
-      },
-    }));
+    window.dispatchEvent(
+      new CustomEvent(CHANGE_EVENT, {
+        detail: {
+          operation: oldValue === undefined ? 'set' : 'replace',
+          path: 'ctx.system.client.uiBootstrap',
+          oldValue,
+          newValue,
+          cause: { source: 'ui-bootstrap', triggerPath: 'ctx.system.client.uiBootstrap' },
+        },
+      }),
+    );
   };
 
   const applyBootstrap = (bootstrap) => {
@@ -192,10 +195,14 @@
     timer = null;
   });
 
-  window.addEventListener('pagehide', () => {
-    stopped = true;
-    window.clearTimeout(timer);
-  }, { once: true });
+  window.addEventListener(
+    'pagehide',
+    () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    },
+    { once: true },
+  );
 
   // One full bootstrap per loaded page. Routine browser probes are lightweight
   // same-origin health checks; the UI process independently monitors API /health.

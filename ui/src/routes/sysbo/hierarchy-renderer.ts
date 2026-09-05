@@ -1,9 +1,6 @@
 import type { Request, Response } from 'express';
 import createError from 'http-errors';
-import {
-  resolveEntryRepresentation,
-  type ManatOSContext,
-} from '@manatos/shared';
+import { resolveEntryRepresentation, type ManatOSContext } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
@@ -25,7 +22,12 @@ import {
 } from '../../context/manatos-context.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
 
-import { apiPathFor, canonicalSysBOMetadata, canonicalSysBOUIMetadata, type SysBOListData } from './data-access.js';
+import {
+  apiPathFor,
+  canonicalSysBOMetadata,
+  canonicalSysBOUIMetadata,
+  type SysBOListData,
+} from './data-access.js';
 import { parentListContextForEntry } from './parent-list.js';
 import { metadataDrivenListQuery } from './list-query.js';
 import type { UIEntityPermissions } from '../../sysbo/permissions.js';
@@ -85,22 +87,31 @@ export async function renderMetadataDrivenHierarchyWorkspace(
     hierarchyItems = workspaceOverride.entries.map((item) => ({ ...item }));
     const overrideFocusedId = workspaceOverride.focusedMemberId ?? initialMemberId;
     focusedMember = overrideFocusedId
-      ? hierarchyItems.find((item) => String(item[hierarchyDescriptor.idField] ?? '') === String(overrideFocusedId)) ?? null
+      ? (hierarchyItems.find(
+          (item) => String(item[hierarchyDescriptor.idField] ?? '') === String(overrideFocusedId),
+        ) ?? null)
       : null;
-    hierarchyRootId = focusedMember ? hierarchyRootIdForMember(focusedMember, hierarchyDescriptor) : null;
+    hierarchyRootId = focusedMember
+      ? hierarchyRootIdForMember(focusedMember, hierarchyDescriptor)
+      : null;
   } else if (initialMemberId) {
     // Keep the freshly loaded member in a non-null local. Besides making the
     // invariant explicit, this preserves TypeScript narrowing throughout the
     // asynchronous hierarchy-discovery branch.
-    const loadedFocusedMember = await apiClient.get<Record<string, unknown>>(
-      `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(initialMemberId)}`,
-      apiSessionOptions(req),
-    ).then((response) => response.data);
+    const loadedFocusedMember = await apiClient
+      .get<Record<string, unknown>>(
+        `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(initialMemberId)}`,
+        apiSessionOptions(req),
+      )
+      .then((response) => response.data);
     focusedMember = loadedFocusedMember;
     hierarchyRootId = hierarchyRootIdForMember(loadedFocusedMember, hierarchyDescriptor);
 
     if (!hierarchyRootId) {
-      throw createError(500, `The selected ${metadata.name} does not expose a valid hierarchy identity.`);
+      throw createError(
+        500,
+        `The selected ${metadata.name} does not expose a valid hierarchy identity.`,
+      );
     }
 
     const hierarchyById = new Map<string, Record<string, unknown>>();
@@ -128,10 +139,12 @@ export async function renderMetadataDrivenHierarchyWorkspace(
         ),
         String(loadedFocusedMember[hierarchyDescriptor.idField] ?? '') === hierarchyRootId
           ? Promise.resolve(loadedFocusedMember)
-          : apiClient.get<Record<string, unknown>>(
-              `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(hierarchyRootId)}`,
-              apiSessionOptions(req),
-            ).then((response) => response.data),
+          : apiClient
+              .get<Record<string, unknown>>(
+                `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(hierarchyRootId)}`,
+                apiSessionOptions(req),
+              )
+              .then((response) => response.data),
       ]);
 
       addRow(rootMember);
@@ -175,7 +188,8 @@ export async function renderMetadataDrivenHierarchyWorkspace(
         included.add(id);
         addRow(allById.get(id));
         for (const [candidateId, candidate] of allById) {
-          if (String(candidate[hierarchyDescriptor.parentField] ?? '') === id) pending.push(candidateId);
+          if (String(candidate[hierarchyDescriptor.parentField] ?? '') === id)
+            pending.push(candidateId);
         }
       }
       addRow(focusedMember);
@@ -192,7 +206,9 @@ export async function renderMetadataDrivenHierarchyWorkspace(
 
   const hierarchyRuntime = workspaceOverride
     ? {
-        entriesOriginal: Object.freeze(workspaceOverride.entriesOriginal.map((item) => Object.freeze({ ...item }))),
+        entriesOriginal: Object.freeze(
+          workspaceOverride.entriesOriginal.map((item) => Object.freeze({ ...item })),
+        ),
         entries: Object.freeze(hierarchyItems.map((item) => Object.freeze({ ...item }))),
       }
     : pageCollectionRuntimeContext(hierarchyItems);
@@ -200,7 +216,12 @@ export async function renderMetadataDrivenHierarchyWorkspace(
   const hierarchyMode = workspaceOverride?.mode ?? (initialMemberId ? 'edit' : 'create');
   const breadcrumbTitle = `${hierarchyMode === 'create' ? 'Create' : 'Edit'} ${hierarchyDescriptor.label}`;
   const focusedId = focusedMember
-    ? String(focusedMember[hierarchyDescriptor.idField] ?? workspaceOverride?.focusedMemberId ?? initialMemberId ?? '') || null
+    ? String(
+        focusedMember[hierarchyDescriptor.idField] ??
+          workspaceOverride?.focusedMemberId ??
+          initialMemberId ??
+          '',
+      ) || null
     : (workspaceOverride?.focusedMemberId ?? null);
 
   const ctx = res.locals.ctx as ManatOSContext;
@@ -233,11 +254,17 @@ export async function renderMetadataDrivenHierarchyWorkspace(
   );
 
   const parentItems = Array.isArray(parentListContext.items)
-    ? parentListContext.items.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    ? parentListContext.items.filter(
+        (item): item is Readonly<Record<string, unknown>> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+      )
     : [];
-  const parentQuery = parentListContext.query && typeof parentListContext.query === 'object' && !Array.isArray(parentListContext.query)
-    ? parentListContext.query as Readonly<Record<string, unknown>>
-    : {};
+  const parentQuery =
+    parentListContext.query &&
+    typeof parentListContext.query === 'object' &&
+    !Array.isArray(parentListContext.query)
+      ? (parentListContext.query as Readonly<Record<string, unknown>>)
+      : {};
   const listPage = pageContextNode(
     entityContextName(definition.key),
     'sysbo-list',
@@ -245,8 +272,12 @@ export async function renderMetadataDrivenHierarchyWorkspace(
     contextFields({
       entity: entityContextName(definition.key),
       ...(parentListContext.paging !== undefined ? { paging: parentListContext.paging } : {}),
-      ...(parentListContext.permissions !== undefined ? { permissions: parentListContext.permissions } : {}),
-      ...(parentListContext.referenceData !== undefined ? { referenceData: parentListContext.referenceData } : {}),
+      ...(parentListContext.permissions !== undefined
+        ? { permissions: parentListContext.permissions }
+        : {}),
+      ...(parentListContext.referenceData !== undefined
+        ? { referenceData: parentListContext.referenceData }
+        : {}),
     }),
     hierarchyPage,
     pageListRuntimeContext(parentItems, metadataUI.list.filterFields, parentQuery),
@@ -258,14 +289,18 @@ export async function renderMetadataDrivenHierarchyWorkspace(
     metadata,
     metadataUI,
     parentListContext.referenceData && typeof parentListContext.referenceData === 'object'
-      ? parentListContext.referenceData as Readonly<Record<string, unknown>>
+      ? (parentListContext.referenceData as Readonly<Record<string, unknown>>)
       : {},
   );
   const focusedRepresentation = focusedMember
     ? resolveEntryRepresentation<Record<string, unknown>>(metadata, metadataUI, focusedMember, {
         entityIcon: definition.icon,
         ...(parentListContext.referenceData && typeof parentListContext.referenceData === 'object'
-          ? { referenceData: parentListContext.referenceData as Readonly<Record<string, readonly Readonly<Record<string, unknown>>[]>> }
+          ? {
+              referenceData: parentListContext.referenceData as Readonly<
+                Record<string, readonly Readonly<Record<string, unknown>>[]>
+              >,
+            }
           : {}),
       })
     : null;
@@ -283,9 +318,10 @@ export async function renderMetadataDrivenHierarchyWorkspace(
     hierarchyMode,
     entryRepresentationRuntime,
     focusedRepresentation,
-    selectorReferenceData: parentListContext.referenceData && typeof parentListContext.referenceData === 'object'
-      ? parentListContext.referenceData
-      : {},
+    selectorReferenceData:
+      parentListContext.referenceData && typeof parentListContext.referenceData === 'object'
+        ? parentListContext.referenceData
+        : {},
     selectorPageSizeOptions: metadataDrivenListQuery(req, metadataUI, {}).pageSizeOptions,
     metadataOptionItemForField,
   });

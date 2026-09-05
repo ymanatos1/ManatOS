@@ -1,5 +1,3 @@
-/* global bootstrap */
-
 (() => {
   /* =======================================================================
    * Password visibility toggle
@@ -155,22 +153,20 @@
        * in full. This keeps optional-password flows on the same validator rather
        * than creating a second, subtly different implementation.
        */
-      const policyValid = passwordOptional && !passwordSupplied
-        ? true
-        : Object.values(policy).every(Boolean);
+      const policyValid =
+        passwordOptional && !passwordSupplied ? true : Object.values(policy).every(Boolean);
       let confirmationValid = true;
 
       if (confirmation) {
-        confirmationValid = passwordOptional && !passwordSupplied
-          ? true
-          : confirmationValue.length > 0 && confirmationValue === value;
+        confirmationValid =
+          passwordOptional && !passwordSupplied
+            ? true
+            : confirmationValue.length > 0 && confirmationValue === value;
         setRule('match', passwordSupplied && confirmationValid);
 
         // Keep native browser validation consistent with the visible rule.
         confirmation.setCustomValidity(
-          passwordSupplied && !confirmationValid
-            ? 'The two password values do not match.'
-            : '',
+          passwordSupplied && !confirmationValid ? 'The two password values do not match.' : '',
         );
       }
 
@@ -224,7 +220,9 @@
       const valid = isValid();
       const hasValue = input.value.trim().length > 0;
 
-      input.setCustomValidity(valid || !hasValue ? '' : 'Enter a valid email address or user name.');
+      input.setCustomValidity(
+        valid || !hasValue ? '' : 'Enter a valid email address or user name.',
+      );
       input.classList.toggle('is-invalid', hasValue && !valid);
 
       if (submit) {
@@ -235,5 +233,4 @@
     input.addEventListener('input', update);
     update();
   });
-
 })();

@@ -22,7 +22,8 @@
       const data = new URLSearchParams(new FormData(form));
 
       submit.disabled = true;
-      submit.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Applying';
+      submit.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Applying';
 
       if (result instanceof HTMLElement) {
         result.textContent = '';
@@ -61,4 +62,3 @@
     });
   });
 })();
-

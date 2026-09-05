@@ -135,7 +135,8 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       applicationManaged: true,
       referenceBOKey: 'sys-principals',
       calculation: {
-        expression: "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
+        expression:
+          "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
         persisted: true,
       },
     },
@@ -262,7 +263,9 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       order: 30,
 
       required: true,
-      enumValues: MANATOS_COMPANY.platforms.filter((platform) => platform.enabled).map((platform) => platform.id),
+      enumValues: MANATOS_COMPANY.platforms
+        .filter((platform) => platform.enabled)
+        .map((platform) => platform.id),
       enumItems: MANATOS_COMPANY.platforms
         .filter((platform) => platform.enabled)
         .map((platform) => ({

@@ -57,7 +57,6 @@ body {
   object-fit: contain;
 }
 
-
 .header-center-actions {
   position: absolute;
   left: 50%;
@@ -147,4 +146,3 @@ body {
 .dropdown-submenu:focus-within > .dropdown-menu {
   display: block;
 }
-

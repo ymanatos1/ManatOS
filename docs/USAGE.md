@@ -365,7 +365,6 @@ Generic routers/renderers should compose platform modules and must not accumulat
 6. Register the component through the shared metadata-component registry.
 7. Add regression coverage proving the generic renderer remains entity-agnostic.
 
-
 ### Dynamic grid spans
 
 Metadata-driven tab content may use a static grid span or an evaluator-backed span expression. Use this for conditional layout such as letting one field consume the complete row when its neighbour is not visible. The generic renderer evaluates and clamps the span to the 1..12 grid; entity/components must not hard-code layout branches.
@@ -403,7 +402,6 @@ or the compound credential runtime.
 External-provider credential tools follow the same entry transaction as ordinary metadata-driven fields. `Change credentials` and `Remove credentials` mutate only pending screen/component state. `Test credentials` may perform the external OAuth round trip, but it does not persist the candidate pair; success returns an opaque, short-lived verification proof that is submitted by the ordinary Save action. Save is the sole credential persistence boundary and applies `unchanged`, `replace`, or `remove` atomically from the editor's pending intent.
 
 The plaintext Client secret remains confined to the password control and the short-lived trusted server verification session; it is deliberately not copied into the traversable CTX tree. Safe workflow facts (credential action, verification state/proof handle) are transient screen state and must never be treated as persisted SysBO fields. Provider-specific capabilities remain provider-definition metadata; generic renderer/component code must not branch on Microsoft/Google/Facebook/GitHub identities.
-
 
 ## Transactional editable collections
 

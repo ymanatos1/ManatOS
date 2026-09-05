@@ -50,9 +50,7 @@ export async function createTestApi() {
 
   const databasePath = join(directory, 'database.json');
 
-  const store = new InMemoryDataStore(
-    new JsonFilePersistence(databasePath),
-  );
+  const store = new InMemoryDataStore(new JsonFilePersistence(databasePath));
 
   await store.initialize();
 
@@ -73,10 +71,7 @@ export async function createTestApi() {
       async sendPasswordChangedEmail() {},
     },
 
-    extAuthProviders: new SysBOExtAuthProviderService(
-      store,
-      encryption,
-    ),
+    extAuthProviders: new SysBOExtAuthProviderService(store, encryption),
 
     principals: new SysBOPrincipalService(store),
 
@@ -86,16 +81,10 @@ export async function createTestApi() {
 
     externalIdentities: new ExternalIdentityService(store, users),
 
-    userPrincipals: new UserPrincipalService(
-      store,
-      users,
-    ),
+    userPrincipals: new UserPrincipalService(store, users),
   };
 
-  const app = createApp(
-    store,
-    services,
-  );
+  const app = createApp(store, services);
 
   return {
     app,
@@ -111,14 +100,8 @@ export async function createTestApi() {
  * This is test setup, not the behavior under test. The actual login still
  * occurs through the public HTTP endpoint.
  */
-export async function seedAdmin(
-  users: SysBOUserService,
-): Promise<void> {
-  await users.bootstrapAdmin(
-    TEST_ADMIN.name,
-    TEST_ADMIN.email,
-    TEST_ADMIN.password,
-  );
+export async function seedAdmin(users: SysBOUserService): Promise<void> {
+  await users.bootstrapAdmin(TEST_ADMIN.name, TEST_ADMIN.email, TEST_ADMIN.password);
 }
 
 /**
@@ -141,9 +124,7 @@ export async function loginAdmin(
   const token = response.body?.data?.accessToken;
 
   if (typeof token !== 'string' || token.length === 0) {
-    throw new Error(
-      `Admin login did not return an access token: ${JSON.stringify(response.body)}`,
-    );
+    throw new Error(`Admin login did not return an access token: ${JSON.stringify(response.body)}`);
   }
 
   return token;
@@ -159,9 +140,7 @@ export function bearer(token: string): string {
 /**
  * Assertions for the global ManatOS response-envelope convention.
  */
-export function expectQuerySuccess(
-  body: unknown,
-): asserts body is {
+export function expectQuerySuccess(body: unknown): asserts body is {
   success: true;
   data: unknown;
 } {
@@ -182,9 +161,7 @@ export function expectQuerySuccess(
   }
 }
 
-export function expectCommandSuccess(
-  body: unknown,
-): asserts body is {
+export function expectCommandSuccess(body: unknown): asserts body is {
   success: true;
   message: string;
   data: unknown;
@@ -195,13 +172,8 @@ export function expectCommandSuccess(
     throw new Error(`Expected success=true: ${JSON.stringify(body)}`);
   }
 
-  if (
-    typeof response.message !== 'string' ||
-    response.message.length === 0
-  ) {
-    throw new Error(
-      `Expected non-empty command response message: ${JSON.stringify(body)}`,
-    );
+  if (typeof response.message !== 'string' || response.message.length === 0) {
+    throw new Error(`Expected non-empty command response message: ${JSON.stringify(body)}`);
   }
 
   if (!('data' in response)) {
@@ -209,9 +181,7 @@ export function expectCommandSuccess(
   }
 }
 
-export function expectFailure(
-  body: unknown,
-): asserts body is {
+export function expectFailure(body: unknown): asserts body is {
   success: false;
   errorMessage: string;
   error: {
@@ -234,10 +204,7 @@ export function expectFailure(
     throw new Error(`Expected success=false: ${JSON.stringify(body)}`);
   }
 
-  if (
-    typeof response.errorMessage !== 'string' ||
-    response.errorMessage.length === 0
-  ) {
+  if (typeof response.errorMessage !== 'string' || response.errorMessage.length === 0) {
     throw new Error(`Expected root failure errorMessage: ${JSON.stringify(body)}`);
   }
 
@@ -250,9 +217,7 @@ export function expectFailure(
   }
 
   if (response.errorMessage !== response.error.message) {
-    throw new Error(
-      `Root errorMessage must mirror error.message: ${JSON.stringify(body)}`,
-    );
+    throw new Error(`Root errorMessage must mirror error.message: ${JSON.stringify(body)}`);
   }
 }
 
@@ -260,14 +225,8 @@ export function expectFailure(
  * More readable status assertion for setup helpers where throwing a
  * diagnostic error is more useful than a terse matcher failure.
  */
-function expectStatus(
-  actual: number,
-  expected: number,
-  body: unknown,
-): void {
+function expectStatus(actual: number, expected: number, body: unknown): void {
   if (actual !== expected) {
-    throw new Error(
-      `Expected HTTP ${expected}, received ${actual}: ${JSON.stringify(body)}`,
-    );
+    throw new Error(`Expected HTTP ${expected}, received ${actual}: ${JSON.stringify(body)}`);
   }
 }

@@ -13,7 +13,8 @@
   const navigationStatePersistence = appShell?.dataset.navigationStatePersistence ?? 'none';
   const LEFT_NAVIGATION_STORAGE_KEY = 'manatos.ui.leftNavigation.visible';
   const DETAILS_STORAGE_KEY = 'manatos.ui.details.visible';
-  const debugBootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
+  const debugBootId =
+    document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
   const DEBUG_STORAGE_KEY = 'manatos.debug.panel.visible.v1';
   const DEVELOPER_TOOL_TAB_STORAGE_KEY = 'manatos.debug.activeTab.v1';
   const DEBUG_DIAGNOSTICS_STORAGE_KEY = `manatos.debug.diagnostics.visible.${debugBootId}`;
@@ -47,7 +48,7 @@
    * The developer dock is one shell panel. CTX Viewer and API Traffic are
    * content tabs inside it, so changing tools cannot affect shell geometry.
    */
-  const normalizeDeveloperToolTab = (value) => value === 'apiTraffic' ? 'apiTraffic' : 'ctx';
+  const normalizeDeveloperToolTab = (value) => (value === 'apiTraffic' ? 'apiTraffic' : 'ctx');
 
   // Popup runtime is loaded independently from the shell. Keep shell geometry
   // changes safe during boot and delegate modal recentering once that runtime
@@ -56,7 +57,6 @@
     window.ManatOSPopupRuntime?.refreshVisibleModalCenters?.();
   };
 
-
   const DEVELOPER_DOCK_WIDTH_KEY = `manatos.debug.developerDock.width.${debugBootId}`;
   const DEFAULT_DEVELOPER_DOCK_WIDTH = 430;
 
@@ -64,8 +64,14 @@
     if (!appShell) return;
     const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
     const minWidth = 320;
-    const maxWidth = Math.max(minWidth, Math.min(Math.floor(viewportWidth * 0.66), viewportWidth - 420));
-    const width = Math.max(minWidth, Math.min(Number(requested) || DEFAULT_DEVELOPER_DOCK_WIDTH, maxWidth));
+    const maxWidth = Math.max(
+      minWidth,
+      Math.min(Math.floor(viewportWidth * 0.66), viewportWidth - 420),
+    );
+    const width = Math.max(
+      minWidth,
+      Math.min(Number(requested) || DEFAULT_DEVELOPER_DOCK_WIDTH, maxWidth),
+    );
     appShell.style.setProperty('--manatos-debug-width', `${Math.round(width)}px`);
     document.documentElement.style.setProperty('--manatos-debug-width', `${Math.round(width)}px`);
     return width;
@@ -95,7 +101,11 @@
       document.removeEventListener('pointermove', onDeveloperDockResizeMove);
       document.removeEventListener('pointerup', onDeveloperDockResizeEnd);
       document.removeEventListener('pointercancel', onDeveloperDockResizeEnd);
-      try { sessionStorage.setItem(DEVELOPER_DOCK_WIDTH_KEY, String(Math.round(currentWidth))); } catch { /* debugger only */ }
+      try {
+        sessionStorage.setItem(DEVELOPER_DOCK_WIDTH_KEY, String(Math.round(currentWidth)));
+      } catch {
+        /* debugger only */
+      }
     };
 
     developerToolsResize.addEventListener('pointerdown', (event) => {
@@ -111,8 +121,13 @@
       event.preventDefault();
     });
     developerToolsResize.addEventListener('dblclick', () => {
-      currentWidth = applyDeveloperDockWidth(DEFAULT_DEVELOPER_DOCK_WIDTH) ?? DEFAULT_DEVELOPER_DOCK_WIDTH;
-      try { sessionStorage.removeItem(DEVELOPER_DOCK_WIDTH_KEY); } catch { /* debugger only */ }
+      currentWidth =
+        applyDeveloperDockWidth(DEFAULT_DEVELOPER_DOCK_WIDTH) ?? DEFAULT_DEVELOPER_DOCK_WIDTH;
+      try {
+        sessionStorage.removeItem(DEVELOPER_DOCK_WIDTH_KEY);
+      } catch {
+        /* debugger only */
+      }
     });
   }
 
@@ -144,7 +159,6 @@
     localStorage.setItem(key, String(value));
   };
 
-
   const setCheckedMenuItem = (button, checked) => {
     if (!button) return;
     button.setAttribute('aria-checked', String(checked));
@@ -174,14 +188,15 @@
    */
   const diagnosticEntries = new Map();
 
-  const diagnosticKey = (diagnostic) => JSON.stringify([
-    diagnostic?.phase ?? '',
-    diagnostic?.message ?? '',
-    diagnostic?.expression ?? '',
-    diagnostic?.variablePath ?? '',
-    diagnostic?.caller?.sourcePath ?? '',
-    diagnostic?.targetPath ?? '',
-  ]);
+  const diagnosticKey = (diagnostic) =>
+    JSON.stringify([
+      diagnostic?.phase ?? '',
+      diagnostic?.message ?? '',
+      diagnostic?.expression ?? '',
+      diagnostic?.variablePath ?? '',
+      diagnostic?.caller?.sourcePath ?? '',
+      diagnostic?.targetPath ?? '',
+    ]);
 
   const ensureDebugDiagnosticPanel = () => {
     let panel = document.getElementById('debugDiagnosticPanel');
@@ -236,7 +251,8 @@
 
     const item = document.createElement('article');
     item.className = 'ctx-diagnostic-item';
-    const title = diagnostic.phase === 'parse' ? 'CTX expression parse error' : 'CTX evaluation warning';
+    const title =
+      diagnostic.phase === 'parse' ? 'CTX expression parse error' : 'CTX evaluation warning';
     const details = JSON.stringify(diagnostic, null, 2);
     item.innerHTML = `
       <div class="ctx-diagnostic-item-title">
@@ -249,7 +265,9 @@
         <pre class="small mt-2 mb-0 text-wrap"></pre>
       </details>`;
     item.querySelector('[data-ctx-diagnostic-title]').textContent = title;
-    item.querySelector('.ctx-diagnostic-message').textContent = String(diagnostic.message || 'CTX diagnostic');
+    item.querySelector('.ctx-diagnostic-message').textContent = String(
+      diagnostic.message || 'CTX diagnostic',
+    );
     item.querySelector('pre').textContent = details;
     list.appendChild(item);
 
@@ -349,12 +367,14 @@
       debugPanel.classList.toggle('d-none', !ctxActive);
       debugPanel.setAttribute('aria-hidden', String(!ctxActive));
       debugPanel.inert = !ctxActive;
-      if (ctxActive) debugPanel.removeAttribute('inert'); else debugPanel.setAttribute('inert', '');
+      if (ctxActive) debugPanel.removeAttribute('inert');
+      else debugPanel.setAttribute('inert', '');
 
       apiTrafficPanel.classList.toggle('d-none', ctxActive);
       apiTrafficPanel.setAttribute('aria-hidden', String(ctxActive));
       apiTrafficPanel.inert = ctxActive;
-      if (!ctxActive) apiTrafficPanel.removeAttribute('inert'); else apiTrafficPanel.setAttribute('inert', '');
+      if (!ctxActive) apiTrafficPanel.removeAttribute('inert');
+      else apiTrafficPanel.setAttribute('inert', '');
 
       developerToolsCtxTabButton?.classList.toggle('is-active', ctxActive);
       developerToolsCtxTabButton?.setAttribute('aria-selected', String(ctxActive));
@@ -362,9 +382,11 @@
       developerToolsApiTrafficTabButton?.setAttribute('aria-selected', String(!ctxActive));
       document.documentElement.dataset.manatosDebugTab = activeTab;
 
-      window.dispatchEvent(new CustomEvent('manatos:api-traffic-visible', {
-        detail: { visible: !ctxActive && appShell?.classList.contains('has-debug') },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('manatos:api-traffic-visible', {
+          detail: { visible: !ctxActive && appShell?.classList.contains('has-debug') },
+        }),
+      );
       if (persist) localStorage.setItem(DEVELOPER_TOOL_TAB_STORAGE_KEY, activeTab);
     },
 
@@ -388,9 +410,13 @@
       } else {
         const active = document.activeElement;
         if (active instanceof HTMLElement && developerToolsDock.contains(active)) {
-          const fallback = developerToolsReturnFocus instanceof HTMLElement && developerToolsReturnFocus.isConnected
-            ? developerToolsReturnFocus
-            : toggleDebugPanelButton instanceof HTMLElement ? toggleDebugPanelButton : null;
+          const fallback =
+            developerToolsReturnFocus instanceof HTMLElement &&
+            developerToolsReturnFocus.isConnected
+              ? developerToolsReturnFocus
+              : toggleDebugPanelButton instanceof HTMLElement
+                ? toggleDebugPanelButton
+                : null;
           // Remove focus from the subtree synchronously before aria-hidden/inert.
           // Some menu triggers are themselves transient, so blur first and then
           // restore focus only when the target remains connected and visible.
@@ -404,7 +430,9 @@
         developerToolsDock.classList.add('d-none');
         appShell.classList.remove('has-debug');
         setCheckedMenuItem(toggleDebugPanelButton, false);
-        window.dispatchEvent(new CustomEvent('manatos:api-traffic-visible', { detail: { visible: false } }));
+        window.dispatchEvent(
+          new CustomEvent('manatos:api-traffic-visible', { detail: { visible: false } }),
+        );
       }
 
       refreshVisibleModalCenters();
@@ -414,7 +442,8 @@
     /** Compatibility entry point used by existing CTX inspector actions. */
     setDebugVisible(visible, persist = true) {
       if (visible) this.setDeveloperToolsVisible(true, 'ctx', persist);
-      else if (document.documentElement.dataset.manatosDebugTab === 'ctx') this.setDeveloperToolsVisible(false, null, persist);
+      else if (document.documentElement.dataset.manatosDebugTab === 'ctx')
+        this.setDeveloperToolsVisible(false, null, persist);
     },
 
     /** Toggle the unified dock without changing whichever tool tab is active. */
@@ -426,7 +455,8 @@
     /** Compatibility entry point for code that explicitly opens API Traffic. */
     setApiTrafficVisible(visible, persist = true) {
       if (visible) this.setDeveloperToolsVisible(true, 'apiTraffic', persist);
-      else if (document.documentElement.dataset.manatosDebugTab === 'apiTraffic') this.setDeveloperToolsVisible(false, null, persist);
+      else if (document.documentElement.dataset.manatosDebugTab === 'apiTraffic')
+        this.setDeveloperToolsVisible(false, null, persist);
     },
   };
 
@@ -495,9 +525,10 @@
       }
 
       targetPath = targetPath.replace(/\/+$/, '') || '/';
-      const matches = targetPath === '/'
-        ? currentPath === '/'
-        : currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+      const matches =
+        targetPath === '/'
+          ? currentPath === '/'
+          : currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
 
       if (matches && targetPath.length > bestLength) {
         best = link;
@@ -555,7 +586,6 @@
     },
   );
 
-
   /* -----------------------------------------------------------------------
    * Development debugger events
    * -------------------------------------------------------------------- */
@@ -573,8 +603,13 @@
     setDebugDiagnosticsVisible(!debugDiagnosticsVisible);
   });
 
-  developerToolsCtxTabButton?.addEventListener('click', () => shellState.setDeveloperToolTab('ctx'));
-  developerToolsApiTrafficTabButton?.addEventListener('click', () => shellState.setDeveloperToolTab('apiTraffic'));
-  closeDeveloperToolsDockButton?.addEventListener('click', () => shellState.setDeveloperToolsVisible(false));
-
+  developerToolsCtxTabButton?.addEventListener('click', () =>
+    shellState.setDeveloperToolTab('ctx'),
+  );
+  developerToolsApiTrafficTabButton?.addEventListener('click', () =>
+    shellState.setDeveloperToolTab('apiTraffic'),
+  );
+  closeDeveloperToolsDockButton?.addEventListener('click', () =>
+    shellState.setDeveloperToolsVisible(false),
+  );
 })();

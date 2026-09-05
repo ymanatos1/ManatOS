@@ -25,17 +25,21 @@ npm run test
 npm run verify
 npm run verifyrun
 npm run lint
+npm run format:check
+npm run quality:check
 npm run format
 npm run reset:data
 ```
 
-### Verification and lint policy
+### Verification and quality policy
 
-`npm run verify` is the preferred full validation command before committing significant work. It builds `shared`, `api` and `ui`, runs both automated test suites, and prints a compact final summary with API, UI and total passed-test counts. A failed build or test step makes verification fail and identifies the failed stage.
+`npm run verify` is the preferred full validation command before committing significant work. It runs the repository quality gate first (`npm run lint`, then `npm run format:check`), builds `shared`, `api` and `ui`, runs both automated test suites, and prints a compact final summary covering quality checks, builds, API/UI tests and total passed-test counts. Verification stops at the first failing stage, so later stages are reported as `NOT RUN` rather than masking the original failure.
 
-`npm run verifyrun` performs the same verification and starts the normal development processes only when every build and test stage passes. It is useful for the normal development/regression loop because a failing verification cannot accidentally start a stale runtime.
+`npm run verifyrun` performs that same complete quality/build/test verification and starts the normal development processes only when every stage passes. It is useful for the normal development/regression loop because a failed lint, formatting, build or test stage cannot accidentally start a stale runtime.
 
-`npm run lint` remains deliberately separate. ESLint is a development diagnostic, not a target to satisfy by suppression. Fix findings when they expose a genuine code-quality improvement. If an intentional construct is currently preferable and no rational improvement is at hand, keep the finding visible (and, where useful, leave a future-improvement comment) rather than weakening the rule or adding a cosmetic bypass.
+`npm run lint` and `npm run format:check` remain available as focused checks during development. `npm run quality:check` runs them in the same order as the quality portion of `verify`. Keep ESLint findings meaningful: fix the implementation when a rule exposes a genuine problem rather than weakening the rule or adding a cosmetic suppression. `format:check` is deliberately non-mutating; use `npm run format` when you intentionally want Prettier to rewrite supported files.
+
+Source and documentation files use LF as their canonical repository line ending. `.editorconfig` guides editors and `.gitattributes` makes the Git representation platform-independent, so Windows development does not introduce CRLF-only diffs or repeated line-ending warnings.
 
 ## Package guide
 
@@ -122,7 +126,6 @@ Recommended extensions and workspace defaults live in `.vscode/`. They are recom
 
 Source comments explain **why**: security invariants, ownership, metadata contracts, persistence semantics, operation tracing and extension points. Trivial syntax is deliberately left uncommented.
 
-
 ## API response convention
 
 The REST API uses one global response-envelope rule:
@@ -168,7 +171,6 @@ Swagger and Postman use the same responsibility order: **Server**, **Authenticat
 
 Access remains operation-specific: public endpoints explicitly say so; Admin-only operations require an Admin Bearer token; trusted external-provider credential commands require both Admin Bearer authentication and `x-internal-api-key`; credential-test workflow endpoints are internal UI/BFF mechanics rather than routine client operations.
 
-
 ### Platform-owned UI code
 
 Keep generic routers/templates platform-neutral. Platform catalogue metadata belongs under `shared/src/platforms/<platform>/`; platform-specific feature routes belong under `ui/src/platforms/<platform>/`, pages under `ui/views/pages/platforms/<platform>/`, assets under `ui/public/assets/platforms/<platform>/`, and platform-specific CSS under `ui/public/css/platforms/<platform>.css`. Register feature routers through `ui/src/platforms/routes.ts`; do not add protoCRM-specific branches to `page-routes.ts`, `sysbo-routes.ts` or the shell. The platform catalogue/presentation metadata should select platform assets/styles where practical.
@@ -179,16 +181,13 @@ The protoCRM Apps Playground has two related surfaces: `app-playground.ejs` is t
 
 Changes to the expression grammar, precedence, registered functions, CTX path resolution, field normalization, dynamic-value resolution, navigation/action policy, or Debugging CLI must include regression coverage. Numeric and semantic indexing of CTX collections are both contracts. The browser reactive evaluator must consume server-compiled ASTs and remain behaviorally aligned with the canonical evaluator; UI components must not hardcode registered normalization function names. Tests should protect the ownership split: CTX provides facts, metadata provides policy, the evaluator resolves it, and renderers must not add duplicate permission/entitlement gates.
 
-
 ### In-place metadata entry Save
 
 For an existing metadata-driven record, the primary **Save** action uses the normal UI save route but requests an in-place JSON completion. The route persists through the same API/domain path, then returns the authoritative persisted record. The browser promotes its current form snapshot to the new baseline and reconciles `entry`/`entryOriginal` in CTX without replacing the document. **Save and Close** and first-save create flows retain navigation semantics. This behavior belongs to shared form infrastructure and must not be reimplemented per entity.
 
-
 ### Child-editor lifecycle contract
 
 Reusable inline/collection editors must register through the generic child-editor DOM/event contract (`data-entry-child-editor` plus `manatos:child-editor-state`). Opening an editor sets the page's internal-editing state; Add/Update or child Cancel clears it. Parent Save controls must consume that state in addition to ordinary dirty/valid state. Do not add entity-specific Save guards for collections.
-
 
 ## Adding expression functions
 

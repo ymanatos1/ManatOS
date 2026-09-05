@@ -35,7 +35,9 @@ export async function loadRelatedCollections(
     return { relatedData, relatedReferenceData, relatedEditingData };
   }
 
-  for (const [collectionKey, collection] of Object.entries(effectiveUIMetadata?.record.relatedCollections ?? {})) {
+  for (const [collectionKey, collection] of Object.entries(
+    effectiveUIMetadata?.record.relatedCollections ?? {},
+  )) {
     if (collection.source?.kind !== 'entity-query') continue;
 
     const currentField = collection.source.currentField ?? 'id';

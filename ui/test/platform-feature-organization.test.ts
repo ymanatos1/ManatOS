@@ -15,7 +15,9 @@ describe('platform feature organization', () => {
     const pageRoutes = await source('src/routes/page-routes.ts');
     const sysboRoutes = await source('src/routes/sysbo-routes.ts');
     const appPlayground = await source('views/pages/platforms/protocrm/app-playground.ejs');
-    const applicationPlayground = await source('views/pages/platforms/protocrm/application-playground.ejs');
+    const applicationPlayground = await source(
+      'views/pages/platforms/protocrm/application-playground.ejs',
+    );
 
     expect(app).toContain('createPlatformRoutes');
     expect(platformRoutes).toContain('createProtoCrmRoutes');
@@ -35,14 +37,15 @@ describe('platform feature organization', () => {
     expect(applicationPlayground).toContain('app.scopes.workspace.application');
   });
 
-
   it('keeps the current-platform access decision authoritative in CTX without app mirrors', async () => {
     const pageContext = await source('src/middleware/page-context.ts');
     const access = await source('src/platforms/access.ts');
     const navigation = await source('src/navigation.ts');
     const context = await source('src/context/manatos-context.ts');
 
-    expect(pageContext).toContain('/api/v1/platforms/${encodeURIComponent(currentPlatform.id)}/$capabilities');
+    expect(pageContext).toContain(
+      '/api/v1/platforms/${encodeURIComponent(currentPlatform.id)}/$capabilities',
+    );
     expect(pageContext).toContain('platformCapabilities');
     expect(pageContext).not.toContain('/api/v1/SysLicenses?pageSize=1000');
     expect(pageContext).not.toContain('licenseGrantsPlatformAccess');
@@ -70,7 +73,9 @@ describe('platform feature organization', () => {
     expect(platformTypes).toContain('stylesheet?: string');
     expect(platformTypes).toContain('export interface CompanyInfo');
     expect(protoCrmPlatform).toContain("stylesheet: '/css/platforms/protocrm.css'");
-    expect(companyPlatform).toContain("import { PROTOCRM_PLATFORM, PROTOCRM_PLATFORM_ID } from './platforms/protocrm/platform.js'");
+    expect(companyPlatform).toContain(
+      "import { PROTOCRM_PLATFORM, PROTOCRM_PLATFORM_ID } from './platforms/protocrm/platform.js'",
+    );
     expect(companyPlatform).toContain('platforms: [PROTOCRM_PLATFORM]');
     expect(companyPlatform).not.toContain("id: PROTOCRM_PLATFORM_ID,\n      code: 'protoCRM'");
     expect(shell).toContain('app.currentPlatform?.presentation?.stylesheet');

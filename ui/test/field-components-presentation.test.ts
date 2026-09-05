@@ -32,7 +32,9 @@ describe('metadata-driven entity field components', () => {
 
     expect(renderer).toContain('const tabContents = Array.isArray(tab.content)');
     expect(renderer).toContain("content?.kind === 'component'");
-    expect(renderer).toContain('for (let contentIndex = 0; contentIndex < tab.content.length; contentIndex += 1)');
+    expect(renderer).toContain(
+      'for (let contentIndex = 0; contentIndex < tab.content.length; contentIndex += 1)',
+    );
     expect(renderer).toContain('const content = tab.content[contentIndex]');
     expect(renderer).toContain('metadataComponentPartialFor');
     expect(registry).toContain("'contextual-help'");

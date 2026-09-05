@@ -1,5 +1,3 @@
-/* global bootstrap */
-
 /* ==========================================================================
  * Metadata-driven entry initial focus
  *
@@ -21,13 +19,15 @@
 
   const editableControlIn = (pane) => {
     if (!(pane instanceof HTMLElement) || pane.hidden) return null;
-    return [...pane.querySelectorAll(editableControlSelector)].find((control) => {
-      if (!(control instanceof HTMLElement)) return false;
-      const container = control.closest('[data-ctx-field-container]');
-      // Inactive Bootstrap tab panes are display:none, so geometry cannot be
-      // used here; we still need to discover their first editable field.
-      return !container?.hidden;
-    }) ?? null;
+    return (
+      [...pane.querySelectorAll(editableControlSelector)].find((control) => {
+        if (!(control instanceof HTMLElement)) return false;
+        const container = control.closest('[data-ctx-field-container]');
+        // Inactive Bootstrap tab panes are display:none, so geometry cannot be
+        // used here; we still need to discover their first editable field.
+        return !container?.hidden;
+      }) ?? null
+    );
   };
 
   const focusInitialEditableField = () => {

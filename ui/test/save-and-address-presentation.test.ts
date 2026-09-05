@@ -3,6 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { sourceWithoutWhitespace } from './source-contract.js';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const ui = (path: string) => readFile(resolve(here, '..', path), 'utf8');
 const shared = (path: string) => readFile(resolve(here, '..', '..', 'shared', path), 'utf8');
@@ -22,14 +24,22 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     expect(split).toContain('value="stay"');
     expect(split).toContain('Save and Close');
     expect(split).toContain('value="close"');
-    expect(entryState).toContain("[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]");
-    expect(entryWrite).toContain("const saveMode = req.body._saveMode === 'close' ? 'close' : 'stay';");
+    expect(entryState).toContain(
+      '[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]',
+    );
+    expect(entryWrite).toContain(
+      "const saveMode = req.body._saveMode === 'close' ? 'close' : 'stay';",
+    );
     expect(entryWrite).toContain("req.get('X-Requested-With') === 'ManatOS-InPlace-Save'");
     expect(entryWrite).toContain('export async function completeMetadataDrivenSave(');
     expect(entryWrite).toContain('savedRecord?: Record<string, unknown>');
-    expect(entryWrite).toContain('savedRecord ?? (await apiClient.get<Record<string, unknown>>');
+    expect(sourceWithoutWhitespace(entryWrite)).toContain(
+      sourceWithoutWhitespace('savedRecord ?? (await apiClient.get<Record<string, unknown>>'),
+    );
     expect(entrySave).not.toContain('HTMLFormElement.prototype.submit.call(form)');
-    expect(entrySave).toContain("form.dispatchEvent(new CustomEvent('manatos:form-saved'");
+    expect(sourceWithoutWhitespace(entrySave)).toContain(
+      sourceWithoutWhitespace("form.dispatchEvent(new CustomEvent('manatos:form-saved'"),
+    );
     expect(entrySave).toContain("'X-Requested-With': 'ManatOS-InPlace-Save'");
     expect(entrySave).toContain('const body = new URLSearchParams();');
     expect(entrySave).toContain('new FormData(form).entries()');
@@ -58,7 +68,6 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     expect(collection).toContain('o.displayField');
     expect(collection).toContain('field.required === false');
   });
-
 
   it('keeps the split Save menu visually aligned with the primary action and sanitizes failed-save CTX re-renders', async () => {
     const save = await ui('views/components/sysbo/entry/shell/save-split-action.ejs');

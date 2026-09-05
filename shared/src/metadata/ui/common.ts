@@ -25,7 +25,6 @@ export const addressCountryOptions = systemCountryCatalog.map((country) => ({
   ...(country.languageFlagSrc ? { flagSrc: country.languageFlagSrc } : {}),
 }));
 
-
 /**
  * Framework-neutral SysBO UI metadata registry used by the metadata-driven
  * administration renderer.
@@ -42,7 +41,12 @@ export const tab = (
   label: string,
   order: number,
   fields: readonly string[],
-  options: Partial<Pick<SysBOUIRecordTabMetadata, 'icon' | 'layout' | 'visible' | 'component' | 'content' | 'readOnly'>> = {},
+  options: Partial<
+    Pick<
+      SysBOUIRecordTabMetadata,
+      'icon' | 'layout' | 'visible' | 'component' | 'content' | 'readOnly'
+    >
+  > = {},
 ): SysBOUIRecordTabMetadata => ({ id, label, order, fields, ...options });
 
 export const generalTab = (
@@ -58,15 +62,15 @@ export const generalTab = (
      * entity may supply explicit mixed content when it needs full-row fields or
      * other generic layout primitives. The helper owns only the default.
      */
-    content: options.content
-      ?? fields.map((field) => ({ kind: 'field' as const, field, span: 6 })),
+    content: options.content ?? fields.map((field) => ({ kind: 'field' as const, field, span: 6 })),
   });
 
-export const standardAddAction = (label = 'Add new') => ({
-  visible: { expression: 'permissions.create === true' },
-  enabled: true,
-  label,
-}) as const;
+export const standardAddAction = (label = 'Add new') =>
+  ({
+    visible: { expression: 'permissions.create === true' },
+    enabled: true,
+    label,
+  }) as const;
 
 export const standardEntryActions = {
   delete: {
@@ -81,7 +85,9 @@ export const standardEntryActions = {
   save: {
     kind: 'save' as const,
     order: 100,
-    visible: { expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)" },
+    visible: {
+      expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)",
+    },
     placement: 'footer-trailing' as const,
     label: 'Save',
     icon: 'check-circle',
@@ -89,18 +95,11 @@ export const standardEntryActions = {
   },
 } as const;
 
-
 export const systemTab = (): SysBOUIRecordTabMetadata =>
-  tab(
-    'system',
-    'System details',
-    900,
-    ['id', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'],
-    {
-      icon: 'clock-history',
-      layout: 'summary',
-    },
-  );
+  tab('system', 'System details', 900, ['id', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'], {
+    icon: 'clock-history',
+    layout: 'summary',
+  });
 
 export const systemFieldOverrides = {
   createdAt: {
@@ -110,7 +109,6 @@ export const systemFieldOverrides = {
     presentation: { mode: 'summary' as const, format: 'datetime-elapsed' as const, emptyText: '—' },
   },
 } as const;
-
 
 export const relatedLicensesCollection = (filterField: 'principalId' | 'applicationId') => ({
   label: 'Licenses',
@@ -139,4 +137,3 @@ export const relatedLicensesCollection = (filterField: 'principalId' | 'applicat
     enabled: {},
   },
 });
-

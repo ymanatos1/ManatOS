@@ -132,33 +132,40 @@ export function buildOpenApiSpec() {
 
       version: '0.1.0',
 
-      description: 'Metadata-driven versioned REST API. External-authentication operations are grouped by public/business use, trusted credential management, and internal UI verification workflow.',
+      description:
+        'Metadata-driven versioned REST API. External-authentication operations are grouped by public/business use, trusted credential management, and internal UI verification workflow.',
     },
 
     tags: [
       {
         name: 'Server',
-        description: 'Public service health/readiness operations and Admin-only datastore flush operation.',
+        description:
+          'Public service health/readiness operations and Admin-only datastore flush operation.',
       },
       {
         name: 'Authentication',
-        description: 'Registration, sign-in, account/session operations and trusted authentication commands. Access requirements are documented per operation.',
+        description:
+          'Registration, sign-in, account/session operations and trusted authentication commands. Access requirements are documented per operation.',
       },
       {
         name: 'System Business Objects',
-        description: 'Metadata-driven system business-object CRUD, UI metadata and entity-specific SysBO commands.',
+        description:
+          'Metadata-driven system business-object CRUD, UI metadata and entity-specific SysBO commands.',
       },
       {
         name: 'System Business Objects (Aux)',
-        description: 'Supporting/internal SysBO resources used by primary business objects, including reusable contact values and relationship rows.',
+        description:
+          'Supporting/internal SysBO resources used by primary business objects, including reusable contact values and relationship rows.',
       },
       {
         name: 'Expression Runtime',
-        description: 'Authenticated capability-provider operations used by expression owners to delegate only reached AST work that requires server-side capabilities such as EntityResolver.',
+        description:
+          'Authenticated capability-provider operations used by expression owners to delegate only reached AST work that requires server-side capabilities such as EntityResolver.',
       },
       {
         name: 'System Configuration',
-        description: 'Admin-only persisted runtime configuration. Sensitive values are never returned as plaintext.',
+        description:
+          'Admin-only persisted runtime configuration. Sensitive values are never returned as plaintext.',
       },
       {
         name: 'Public UI',
@@ -166,15 +173,18 @@ export function buildOpenApiSpec() {
       },
       {
         name: 'External Authentication',
-        description: 'Provider configuration and supported-provider metadata. Administrative provider configuration is Admin-only; anonymous runtime availability is exposed separately under Public UI.',
+        description:
+          'Provider configuration and supported-provider metadata. Administrative provider configuration is Admin-only; anonymous runtime availability is exposed separately under Public UI.',
       },
       {
         name: 'External Authentication Credentials',
-        description: 'Trusted Admin/BFF credential-management operations. Requires an authenticated Admin Bearer token and x-internal-api-key. Secrets are encrypted at rest and never returned through normal provider CRUD.',
+        description:
+          'Trusted Admin/BFF credential-management operations. Requires an authenticated Admin Bearer token and x-internal-api-key. Secrets are encrypted at rest and never returned through normal provider CRUD.',
       },
       {
         name: 'Internal External Authentication Workflow',
-        description: 'Internal UI/BFF verification mechanics used by the ManatOS credential-test OAuth flow. Not intended as a general client API.',
+        description:
+          'Internal UI/BFF verification mechanics used by the ManatOS credential-test OAuth flow. Not intended as a general client API.',
       },
     ],
 
@@ -193,13 +203,15 @@ export function buildOpenApiSpec() {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'Opaque',
-          description: 'Opaque API access token returned by ManatOS authentication. Role-based authorization still applies to each operation.',
+          description:
+            'Opaque API access token returned by ManatOS authentication. Role-based authorization still applies to each operation.',
         },
         internalApiKey: {
           type: 'apiKey',
           in: 'header',
           name: 'x-internal-api-key',
-          description: 'Trusted UI/BFF key. Internal endpoints that also require bearerAuth require BOTH credentials; for external-provider credential operations the Bearer subject must be an Admin.',
+          description:
+            'Trusted UI/BFF key. Internal endpoints that also require bearerAuth require BOTH credentials; for external-provider credential operations the Bearer subject must be an Admin.',
         },
       },
     },
@@ -245,15 +257,39 @@ export function buildOpenApiSpec() {
        */
       ...sysBOCapabilityPaths('/api/v1/SysUsers', 'User', 'System Business Objects'),
       ...sysBOCapabilityPaths('/api/v1/SysPrincipals', 'Principal', 'System Business Objects'),
-      ...sysBOCapabilityPaths('/api/v1/SysEmailAddresses', 'Email address', 'System Business Objects (Aux)'),
-      ...sysBOCapabilityPaths('/api/v1/SysPrincipalEmailAddresses', 'Principal email address', 'System Business Objects (Aux)'),
-      ...sysBOCapabilityPaths('/api/v1/SysTelephoneNumbers', 'Telephone number', 'System Business Objects (Aux)'),
-      ...sysBOCapabilityPaths('/api/v1/SysPrincipalTelephoneNumbers', 'Principal telephone number', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths(
+        '/api/v1/SysEmailAddresses',
+        'Email address',
+        'System Business Objects (Aux)',
+      ),
+      ...sysBOCapabilityPaths(
+        '/api/v1/SysPrincipalEmailAddresses',
+        'Principal email address',
+        'System Business Objects (Aux)',
+      ),
+      ...sysBOCapabilityPaths(
+        '/api/v1/SysTelephoneNumbers',
+        'Telephone number',
+        'System Business Objects (Aux)',
+      ),
+      ...sysBOCapabilityPaths(
+        '/api/v1/SysPrincipalTelephoneNumbers',
+        'Principal telephone number',
+        'System Business Objects (Aux)',
+      ),
       ...sysBOCapabilityPaths('/api/v1/SysAddresses', 'Address', 'System Business Objects (Aux)'),
-      ...sysBOCapabilityPaths('/api/v1/SysPrincipalAddresses', 'Principal address', 'System Business Objects (Aux)'),
+      ...sysBOCapabilityPaths(
+        '/api/v1/SysPrincipalAddresses',
+        'Principal address',
+        'System Business Objects (Aux)',
+      ),
       ...sysBOCapabilityPaths('/api/v1/SysApplications', 'Application', 'System Business Objects'),
       ...sysBOCapabilityPaths('/api/v1/SysLicenses', 'License', 'System Business Objects'),
-      ...sysBOCapabilityPaths('/api/v1/SysExtAuthProviders', 'External authentication provider', 'External Authentication'),
+      ...sysBOCapabilityPaths(
+        '/api/v1/SysExtAuthProviders',
+        'External authentication provider',
+        'External Authentication',
+      ),
 
       '/api/v1/SysUsers': genericOperations('User', 'System Business Objects'),
 
@@ -265,33 +301,63 @@ export function buildOpenApiSpec() {
 
       '/api/v1/SysPrincipals': genericOperations('Principal', 'System Business Objects'),
 
-      '/api/v1/SysPrincipals/$aggregate-commit': aggregateCommitOperation('Principal', 'System Business Objects'),
+      '/api/v1/SysPrincipals/$aggregate-commit': aggregateCommitOperation(
+        'Principal',
+        'System Business Objects',
+      ),
 
-      '/api/v1/SysEmailAddresses': genericOperations('Email address', 'System Business Objects (Aux)'),
+      '/api/v1/SysEmailAddresses': genericOperations(
+        'Email address',
+        'System Business Objects (Aux)',
+      ),
 
-      '/api/v1/SysPrincipalEmailAddresses': genericOperations('Principal email address', 'System Business Objects (Aux)'),
+      '/api/v1/SysPrincipalEmailAddresses': genericOperations(
+        'Principal email address',
+        'System Business Objects (Aux)',
+      ),
 
-      '/api/v1/SysTelephoneNumbers': genericOperations('Telephone number', 'System Business Objects (Aux)'),
+      '/api/v1/SysTelephoneNumbers': genericOperations(
+        'Telephone number',
+        'System Business Objects (Aux)',
+      ),
 
-      '/api/v1/SysPrincipalTelephoneNumbers': genericOperations('Principal telephone number', 'System Business Objects (Aux)'),
+      '/api/v1/SysPrincipalTelephoneNumbers': genericOperations(
+        'Principal telephone number',
+        'System Business Objects (Aux)',
+      ),
 
       '/api/v1/SysAddresses': genericOperations('Address', 'System Business Objects (Aux)'),
 
-      '/api/v1/SysPrincipalAddresses': genericOperations('Principal address', 'System Business Objects (Aux)'),
+      '/api/v1/SysPrincipalAddresses': genericOperations(
+        'Principal address',
+        'System Business Objects (Aux)',
+      ),
 
-      '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation('Principal', 'System Business Objects'),
+      '/api/v1/SysPrincipals/$metadata-ui': sysBOUIMetadataOperation(
+        'Principal',
+        'System Business Objects',
+      ),
 
       '/api/v1/SysApplications': genericOperations('Application', 'System Business Objects'),
 
-      '/api/v1/SysApplications/$metadata-ui': sysBOUIMetadataOperation('Application', 'System Business Objects'),
+      '/api/v1/SysApplications/$metadata-ui': sysBOUIMetadataOperation(
+        'Application',
+        'System Business Objects',
+      ),
 
       '/api/v1/SysLicenses': genericOperations('License', 'System Business Objects'),
 
-      '/api/v1/SysLicenses/$metadata-ui': sysBOUIMetadataOperation('License', 'System Business Objects'),
+      '/api/v1/SysLicenses/$metadata-ui': sysBOUIMetadataOperation(
+        'License',
+        'System Business Objects',
+      ),
 
       '/api/v1/SysExtAuthProviders': externalAuthProviderOperations(),
 
-      '/api/v1/SysExtAuthProviders/$metadata-ui': sysBOUIMetadataOperation('External authentication provider', 'System Business Objects'),
+      '/api/v1/SysExtAuthProviders/$metadata-ui': sysBOUIMetadataOperation(
+        'External authentication provider',
+        'System Business Objects',
+      ),
 
       '/api/v1/SysExtAuthProviders/{id}': externalAuthProviderItemOperations(),
 
@@ -301,15 +367,20 @@ export function buildOpenApiSpec() {
 
       '/api/v1/SysConfigurations/{id}/value': sysBOConfigurationValueOperation(),
 
-      '/api/v1/internal/external-auth-providers/verified-credentials': verifiedExternalAuthCredentialsOperation(),
+      '/api/v1/internal/external-auth-providers/verified-credentials':
+        verifiedExternalAuthCredentialsOperation(),
 
-      '/api/v1/internal/external-auth-providers/stored-credentials': storedExternalAuthCredentialsOperation(),
+      '/api/v1/internal/external-auth-providers/stored-credentials':
+        storedExternalAuthCredentialsOperation(),
 
-      '/api/v1/internal/external-auth-providers/{id}/credentials-for-test': storedExternalAuthCredentialsForTestOperation(),
+      '/api/v1/internal/external-auth-providers/{id}/credentials-for-test':
+        storedExternalAuthCredentialsForTestOperation(),
 
-      '/api/v1/internal/external-auth-providers/{id}/credentials-verified': markStoredExternalAuthCredentialsVerifiedOperation(),
+      '/api/v1/internal/external-auth-providers/{id}/credentials-verified':
+        markStoredExternalAuthCredentialsVerifiedOperation(),
 
-      '/api/v1/internal/external-auth-providers/{id}/credentials': removeExternalAuthCredentialsOperation(),
+      '/api/v1/internal/external-auth-providers/{id}/credentials':
+        removeExternalAuthCredentialsOperation(),
     },
   };
 }
@@ -321,7 +392,8 @@ function uiBootstrapOperation() {
       tags: ['Public UI'],
       responses: {
         '200': {
-          description: 'Current public UI bootstrap data, including server availability and API/implementation versions. The UI may safely fall back to local defaults and retry when unavailable.',
+          description:
+            'Current public UI bootstrap data, including server availability and API/implementation versions. The UI may safely fall back to local defaults and retry when unavailable.',
         },
       },
     },
@@ -365,7 +437,8 @@ function verifiedExternalAuthCredentialsOperation() {
   return {
     post: {
       summary: 'Persist an externally tested Client ID + Client secret pair',
-      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used by the ordinary provider Save transaction after a non-persisting OAuth test succeeds. The proof/test state is short-lived; verification itself does not persist the candidate pair.',
+      description:
+        'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used by the ordinary provider Save transaction after a non-persisting OAuth test succeeds. The proof/test state is short-lived; verification itself does not persist the candidate pair.',
       tags: ['Internal External Authentication Workflow'],
       'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -383,7 +456,8 @@ function storedExternalAuthCredentialsOperation() {
   return {
     post: {
       summary: 'Persist an unverified Client ID + Client secret pair securely',
-      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used by the ordinary provider Save transaction when replacing a complete pair without a valid verification proof. Stores the complete pair encrypted at rest, sets credentialsVerified=false and clears credentialsVerifiedAt. The provider remains unavailable to sign-in until verification succeeds.',
+      description:
+        'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Used by the ordinary provider Save transaction when replacing a complete pair without a valid verification proof. Stores the complete pair encrypted at rest, sets credentialsVerified=false and clears credentialsVerifiedAt. The provider remains unavailable to sign-in until verification succeeds.',
       tags: ['External Authentication Credentials'],
       'x-manatos-access': 'Trusted Admin/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -401,7 +475,8 @@ function storedExternalAuthCredentialsForTestOperation() {
   return {
     get: {
       summary: 'Get one stored credential pair for trusted UI provider testing',
-      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Decrypts one stored pair only for the trusted UI server while running the OAuth credential test; normal Admin CRUD and browser responses never expose the secret.',
+      description:
+        'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Decrypts one stored pair only for the trusted UI server while running the OAuth credential test; normal Admin CRUD and browser responses never expose the secret.',
       tags: ['Internal External Authentication Workflow'],
       'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -419,7 +494,8 @@ function markStoredExternalAuthCredentialsVerifiedOperation() {
   return {
     post: {
       summary: 'Mark the exact tested stored credential version as verified',
-      description: 'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Legacy/internal support for verification of an already-stored pair; the metadata-driven editor now verifies current screen values and defers persistence to Save. Client ID and secret update timestamp are checked so a stale test cannot verify credentials replaced by another Admin.',
+      description:
+        'Access: Internal UI/BFF only. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Legacy/internal support for verification of an already-stored pair; the metadata-driven editor now verifies current screen values and defers persistence to Save. Client ID and secret update timestamp are checked so a stale test cannot verify credentials replaced by another Admin.',
       tags: ['Internal External Authentication Workflow'],
       'x-manatos-access': 'Internal UI/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -438,7 +514,8 @@ function removeExternalAuthCredentialsOperation() {
   return {
     delete: {
       summary: 'Remove external-provider credentials and disable provider',
-      description: 'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Invoked by the ordinary provider Save transaction when the pending credential action is remove. Removes Client ID and encrypted Client Secret, clears verification state and disables the provider atomically.',
+      description:
+        'Access: Trusted Admin/BFF credential management. Requires BOTH x-internal-api-key and an authenticated Admin Bearer token. Invoked by the ordinary provider Save transaction when the pending credential action is remove. Removes Client ID and encrypted Client Secret, clears verification state and disables the provider atomically.',
       tags: ['External Authentication Credentials'],
       'x-manatos-access': 'Trusted Admin/BFF; Admin Bearer + x-internal-api-key',
       security: [{ bearerAuth: [], internalApiKey: [] }],
@@ -458,7 +535,8 @@ function externalAuthProviderOperations() {
     get: {
       ...generic.get,
       summary: 'List configured external-authentication providers',
-      description: 'Access: Admin only (Bearer token). Lists persisted provider configuration and verification state. Secret material is never returned.',
+      description:
+        'Access: Admin only (Bearer token). Lists persisted provider configuration and verification state. Secret material is never returned.',
       tags: ['System Business Objects'],
       responses: {
         ...generic.get.responses,
@@ -473,7 +551,9 @@ function externalAuthProviderOperations() {
       security: [{ bearerAuth: [] }],
       responses: {
         '201': { description: 'Created with the provider-defined callback path.' },
-        '400': failureResponse('Validation failure, including an attempted callback-path override.'),
+        '400': failureResponse(
+          'Validation failure, including an attempted callback-path override.',
+        ),
         '401': failureResponse('Authentication required.'),
         '403': failureResponse('Administrator role required.'),
         '409': failureResponse('That provider already has a configuration record.'),
@@ -486,10 +566,13 @@ function externalAuthProviderItemOperations() {
   return {
     get: {
       summary: 'Get configured external-authentication provider',
-      description: 'Access: Admin only (Bearer token). Returns one persisted provider configuration and verification state. Client Secret and encrypted secret material are never returned.',
+      description:
+        'Access: Admin only (Bearer token). Returns one persisted provider configuration and verification state. Client Secret and encrypted secret material are never returned.',
       tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
       responses: {
         '200': { description: 'Provider configuration returned.' },
         '401': failureResponse('Authentication required.'),
@@ -499,13 +582,18 @@ function externalAuthProviderItemOperations() {
     },
     patch: {
       summary: 'Update external-authentication provider settings',
-      description: 'Access: Admin only (Bearer token). Updates ordinary provider settings such as enabled/tenant. Provider type, Client ID, Client Secret and application-managed verification state cannot be changed through generic CRUD.',
+      description:
+        'Access: Admin only (Bearer token). Updates ordinary provider settings such as enabled/tenant. Provider type, Client ID, Client Secret and application-managed verification state cannot be changed through generic CRUD.',
       tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
       responses: {
         '200': { description: 'Provider configuration updated.' },
-        '400': failureResponse('Validation failure or attempted credential/application-managed mutation.'),
+        '400': failureResponse(
+          'Validation failure or attempted credential/application-managed mutation.',
+        ),
         '401': failureResponse('Authentication required.'),
         '403': failureResponse('Administrator role required.'),
         '404': failureResponse('Provider configuration not found.'),
@@ -516,7 +604,9 @@ function externalAuthProviderItemOperations() {
       description: 'Access: Admin only (Bearer token). Deletes the provider configuration record.',
       tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
       responses: {
         '200': { description: 'Provider configuration deleted.' },
         '401': failureResponse('Authentication required.'),
@@ -533,7 +623,8 @@ function externalAuthProviderItemOperations() {
 const sysBOUIMetadataOperation = (name: string, tag: string) => ({
   get: {
     summary: `Get ${name} UI metadata`,
-    description: 'Read-only framework-neutral UI contract for EJS and future Angular/React/mobile clients.',
+    description:
+      'Read-only framework-neutral UI contract for EJS and future Angular/React/mobile clients.',
     tags: [tag],
     security: [{ bearerAuth: [] }],
     responses: {
@@ -552,7 +643,8 @@ const expressionFunctionOperation = () => ({
   post: {
     summary: 'Evaluate one delegated expression capability function',
     tags: ['Expression Runtime'],
-    description: 'Access: authenticated Bearer session. The caller remains owner of the complete expression and sends only a reached function call whose capability is unavailable locally. Phase 1 supports EntityResolver-backed functions such as TraverseEntity. Raw resolver records are never returned; resolver-visible entities are metadata-projected with sensitive fields excluded.',
+    description:
+      'Access: authenticated Bearer session. The caller remains owner of the complete expression and sends only a reached function call whose capability is unavailable locally. Phase 1 supports EntityResolver-backed functions such as TraverseEntity. Raw resolver records are never returned; resolver-visible entities are metadata-projected with sensitive fields excluded.',
     security: [{ bearerAuth: [] }],
     requestBody: {
       required: true,
@@ -563,7 +655,11 @@ const expressionFunctionOperation = () => ({
             required: ['functionName', 'args'],
             properties: {
               functionName: { type: 'string', example: 'TraverseEntity' },
-              args: { type: 'array', items: {}, example: ['principal-id', 'sys-principals', 'parentId', 'id'] },
+              args: {
+                type: 'array',
+                items: {},
+                example: ['principal-id', 'sys-principals', 'parentId', 'id'],
+              },
             },
           },
         },
@@ -578,12 +674,12 @@ const expressionFunctionOperation = () => ({
   },
 });
 
-
 const aggregateCommitOperation = (name: string, tag = 'System Business Objects') => ({
   post: {
     summary: `Atomically commit an owner-managed ${name} aggregate`,
     tags: [tag],
-    description: 'Persists one complete owner working set in a single datastore transaction. Temporary draft:* identities are resolved server-side and same-entity references are rewritten before commit. Intended for metadata-driven aggregate/hierarchy workspaces.',
+    description:
+      'Persists one complete owner working set in a single datastore transaction. Temporary draft:* identities are resolved server-side and same-entity references are rewritten before commit. Intended for metadata-driven aggregate/hierarchy workspaces.',
     security: [{ bearerAuth: [] }],
     requestBody: {
       required: true,
@@ -595,14 +691,20 @@ const aggregateCommitOperation = (name: string, tag = 'System Business Objects')
             properties: {
               identityField: { type: 'string', default: 'id' },
               entries: { type: 'array', items: { type: 'object', additionalProperties: true } },
-              entriesOriginal: { type: 'array', items: { type: 'object', additionalProperties: true } },
+              entriesOriginal: {
+                type: 'array',
+                items: { type: 'object', additionalProperties: true },
+              },
             },
           },
         },
       },
     },
     responses: {
-      '200': { description: 'Aggregate committed atomically; response contains committed records and draft-to-persisted idMap.' },
+      '200': {
+        description:
+          'Aggregate committed atomically; response contains committed records and draft-to-persisted idMap.',
+      },
       '400': { description: 'Invalid aggregate or unresolved/cyclic draft references.' },
       '401': { description: 'Authentication required.' },
       '403': { description: 'Not authorized for one or more requested mutations.' },
@@ -625,7 +727,8 @@ function platformCapabilityOperation() {
   return {
     get: {
       summary: 'Get current platform capabilities',
-      description: 'Returns API-resolved platform capability facts without exposing license rows, principal relationships, role bypass rules, or other authorization-policy inputs.',
+      description:
+        'Returns API-resolved platform capability facts without exposing license rows, principal relationships, role bypass rules, or other authorization-policy inputs.',
       tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
       parameters: [{ name: 'platformId', in: 'path', required: true, schema: { type: 'string' } }],
@@ -642,7 +745,9 @@ function platformCapabilityOperation() {
                     type: 'object',
                     properties: {
                       platformId: { type: 'string' },
-                      capabilities: { $ref: '#/components/schemas/PlatformAuthorizationCapabilities' },
+                      capabilities: {
+                        $ref: '#/components/schemas/PlatformAuthorizationCapabilities',
+                      },
                     },
                   },
                 },
@@ -691,11 +796,15 @@ function sysBOCapabilityPaths(basePath: string, name: string, tag: string) {
     [`${basePath}/$capabilities`]: {
       get: {
         summary: `Get current ${name} collection capabilities`,
-        description: 'Returns the authenticated subject\'s API-resolved presentation capabilities. The snapshot is advisory only; every later operation is authorized again at execution time.',
+        description:
+          "Returns the authenticated subject's API-resolved presentation capabilities. The snapshot is advisory only; every later operation is authorized again at execution time.",
         tags: [tag],
         security: [{ bearerAuth: [] }],
         responses: {
-          '200': { description: 'Current collection capability projection.', content: { 'application/json': { schema: responseSchema } } },
+          '200': {
+            description: 'Current collection capability projection.',
+            content: { 'application/json': { schema: responseSchema } },
+          },
           '401': failureResponse('Authentication required.'),
         },
       },
@@ -703,12 +812,16 @@ function sysBOCapabilityPaths(basePath: string, name: string, tag: string) {
     [`${basePath}/{id}/$capabilities`]: {
       get: {
         summary: `Get current ${name} record capabilities`,
-        description: 'Resolves record-sensitive capabilities through the same AuthorizationService policy used by CRUD operations. Read authorization is required before the record capability set is returned.',
+        description:
+          'Resolves record-sensitive capabilities through the same AuthorizationService policy used by CRUD operations. Read authorization is required before the record capability set is returned.',
         tags: [tag],
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: {
-          '200': { description: 'Current record capability projection.', content: { 'application/json': { schema: responseSchema } } },
+          '200': {
+            description: 'Current record capability projection.',
+            content: { 'application/json': { schema: responseSchema } },
+          },
           '401': failureResponse('Authentication required.'),
           '403': failureResponse('The record is not readable by this subject.'),
           '404': failureResponse(`${name} not found.`),
@@ -721,11 +834,22 @@ function sysBOCapabilityPaths(basePath: string, name: string, tag: string) {
 const genericOperations = (name: string, tag = 'System Business Objects') => ({
   get: {
     summary: `List ${name} entries`,
-    description: '`includeMetadataUI=true` returns framework-neutral UI metadata and also implies `includeMetadata=true`.',
+    description:
+      '`includeMetadataUI=true` returns framework-neutral UI metadata and also implies `includeMetadata=true`.',
     tags: [tag],
     parameters: [
-      { name: 'includeMetadata', in: 'query', schema: { type: 'boolean' }, description: 'Include canonical SysBO metadata.' },
-      { name: 'includeMetadataUI', in: 'query', schema: { type: 'boolean' }, description: 'Include UI metadata and canonical SysBO metadata.' },
+      {
+        name: 'includeMetadata',
+        in: 'query',
+        schema: { type: 'boolean' },
+        description: 'Include canonical SysBO metadata.',
+      },
+      {
+        name: 'includeMetadataUI',
+        in: 'query',
+        schema: { type: 'boolean' },
+        description: 'Include UI metadata and canonical SysBO metadata.',
+      },
     ],
     security: [
       {
@@ -1161,8 +1285,41 @@ function passwordOperation() {
 }
 
 function sysBOConfigurationsOperation() {
-  return { get: { summary:'List application configuration (Admin)', tags:['System Configuration'], description:'Access: Admin only (Bearer token). Returns persisted runtime configuration using safe projections; encrypted secret material is never returned.', security:[{bearerAuth:[]}], responses:{ '200':{description:'Safe configuration values; encrypted material is never returned.'}, '403':{description:'Admin access required.'} } } };
+  return {
+    get: {
+      summary: 'List application configuration (Admin)',
+      tags: ['System Configuration'],
+      description:
+        'Access: Admin only (Bearer token). Returns persisted runtime configuration using safe projections; encrypted secret material is never returned.',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        '200': { description: 'Safe configuration values; encrypted material is never returned.' },
+        '403': { description: 'Admin access required.' },
+      },
+    },
+  };
 }
 function sysBOConfigurationValueOperation() {
-  return { patch: { summary:'Update one application configuration value (Admin)', tags:['System Configuration'], description:'Access: Admin only (Bearer token). Updates one Admin-maintainable runtime setting. Sensitive values are accepted for secure storage but never returned as plaintext.', security:[{bearerAuth:[]}], parameters:[{name:'id',in:'path',required:true,schema:{type:'string'}}], requestBody:{required:true,content:{'application/json':{schema:{type:'object',properties:{value:{type:['string','null']}}}}}}, responses:{'200':{description:'Configuration updated.'},'403':{description:'Admin access required.'}} } };
+  return {
+    patch: {
+      summary: 'Update one application configuration value (Admin)',
+      tags: ['System Configuration'],
+      description:
+        'Access: Admin only (Bearer token). Updates one Admin-maintainable runtime setting. Sensitive values are accepted for secure storage but never returned as plaintext.',
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { value: { type: ['string', 'null'] } } },
+          },
+        },
+      },
+      responses: {
+        '200': { description: 'Configuration updated.' },
+        '403': { description: 'Admin access required.' },
+      },
+    },
+  };
 }

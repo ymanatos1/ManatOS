@@ -22,12 +22,12 @@ Provider definitions and callback paths are code-defined. Admins configure one r
 
 The implementation keeps the full provider/credential/verification domain model, but presents it in four clear layers:
 
-| Layer | Typical operations | Access | Intended caller |
-| --- | --- | --- | --- |
-| Provider configuration | list/create/update/delete provider records; provider definitions | **Admin only** with API Bearer token | Admin tools / ManatOS UI |
-| Credential management | store/replace an encrypted credential pair; remove credentials | **Trusted Admin/BFF**: Admin Bearer token **and** `x-internal-api-key` | ManatOS UI server/BFF |
-| Verification workflow | obtain a stored pair for testing; persist successful verification; temporary OAuth test state/callback/status | **Internal UI workflow only** | ManatOS UI server and OAuth callback flow |
-| Runtime availability | anonymous-safe providers currently usable for sign-in | **Public/anonymous** | Sign-in / registration UI |
+| Layer                  | Typical operations                                                                                            | Access                                                                 | Intended caller                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| Provider configuration | list/create/update/delete provider records; provider definitions                                              | **Admin only** with API Bearer token                                   | Admin tools / ManatOS UI                  |
+| Credential management  | store/replace an encrypted credential pair; remove credentials                                                | **Trusted Admin/BFF**: Admin Bearer token **and** `x-internal-api-key` | ManatOS UI server/BFF                     |
+| Verification workflow  | obtain a stored pair for testing; persist successful verification; temporary OAuth test state/callback/status | **Internal UI workflow only**                                          | ManatOS UI server and OAuth callback flow |
+| Runtime availability   | anonymous-safe providers currently usable for sign-in                                                         | **Public/anonymous**                                                   | Sign-in / registration UI                 |
 
 The internal verification workflow is deliberately not a general-purpose client API. In particular, API clients must not mark `credentialsVerified` directly: it is persisted, read-only, application-managed state and becomes `true` only after the real provider OAuth test succeeds. Swagger groups these operations separately and Postman places routine provider/credential-management examples with the provider collection while keeping verification mechanics documented as internal infrastructure.
 
@@ -48,7 +48,6 @@ The public request takes email/user-name but always responds generically. A rand
 ## Customer-first onboarding scaffold
 
 `SysUserInvitation` is included for the case where a customer/principal exists before a website account. It stores customer relationship intent plus a **hashed** activation token and expiry. The complete purchase/provisioning UI is intentionally deferred, but the data boundary is already available.
-
 
 ## API login and access-token sessions
 

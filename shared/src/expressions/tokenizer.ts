@@ -1,12 +1,6 @@
-import {ExpressionParseError} from './diagnostics.js';
+import { ExpressionParseError } from './diagnostics.js';
 
-type TokenKind =
-  | 'number'
-  | 'string'
-  | 'identifier'
-  | 'operator'
-  | 'punctuation'
-  | 'eof';
+type TokenKind = 'number' | 'string' | 'identifier' | 'operator' | 'punctuation' | 'eof';
 
 export interface ExpressionToken {
   kind: TokenKind;
@@ -52,11 +46,11 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       const text = source.slice(start, index);
       const value = Number(text);
       if (!Number.isFinite(value)) fail(`Invalid numeric literal ${text}`, start);
-      tokens.push({kind: 'number', text, position: start, value});
+      tokens.push({ kind: 'number', text, position: start, value });
       continue;
     }
 
-    if (char === '\'' || char === '"') {
+    if (char === "'" || char === '"') {
       const start = index;
       const quote = char;
       index += 1;
@@ -74,7 +68,12 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
           if (escapedCandidate === undefined) fail('Unterminated string escape', index);
           const escaped = escapedCandidate as string;
           const map: Record<string, string> = {
-            n: '\n', r: '\r', t: '\t', '\\': '\\', '\'': '\'', '"': '"',
+            n: '\n',
+            r: '\r',
+            t: '\t',
+            '\\': '\\',
+            "'": "'",
+            '"': '"',
           };
           value += map[escaped] ?? escaped;
           index += 2;
@@ -84,7 +83,7 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
         index += 1;
       }
       if (!closed) fail('Unterminated string literal', start);
-      tokens.push({kind: 'string', text: source.slice(start, index), position: start, value});
+      tokens.push({ kind: 'string', text: source.slice(start, index), position: start, value });
       continue;
     }
 
@@ -94,66 +93,72 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       while (index < source.length && identifierPart.test(source[index] ?? '')) index += 1;
       const text = source.slice(start, index);
       if (text.toUpperCase() === 'IN') {
-        tokens.push({kind: 'operator', text: 'IN', position: start});
+        tokens.push({ kind: 'operator', text: 'IN', position: start });
       } else {
-        tokens.push({kind: 'identifier', text, position: start, value: text});
+        tokens.push({ kind: 'identifier', text, position: start, value: text });
       }
       continue;
     }
 
-    if ((char === '&' && source[index + 1] === '&') ||
-        (char === '|' && source[index + 1] === '|')) {
-      tokens.push({kind: 'operator', text: `${char}${char}`, position: index});
+    if (
+      (char === '&' && source[index + 1] === '&') ||
+      (char === '|' && source[index + 1] === '|')
+    ) {
+      tokens.push({ kind: 'operator', text: `${char}${char}`, position: index });
       index += 2;
       continue;
     }
 
     if ((char === '<' || char === '>') && source[index + 1] === char) {
       const unsignedRightShift = char === '>' && source[index + 2] === '>';
-      tokens.push({kind: 'operator', text: unsignedRightShift ? '>>>' : `${char}${char}`, position: index});
+      tokens.push({
+        kind: 'operator',
+        text: unsignedRightShift ? '>>>' : `${char}${char}`,
+        position: index,
+      });
       index += unsignedRightShift ? 3 : 2;
       continue;
     }
 
     if ((char === '=' || char === '!') && source[index + 1] === '=') {
       const strict = source[index + 2] === '=';
-      tokens.push({kind: 'operator', text: strict ? `${char}==` : `${char}=`, position: index});
+      tokens.push({ kind: 'operator', text: strict ? `${char}==` : `${char}=`, position: index });
       index += strict ? 3 : 2;
       continue;
     }
 
     if ((char === '<' || char === '>') && source[index + 1] === '=') {
-      tokens.push({kind: 'operator', text: `${char}=`, position: index});
+      tokens.push({ kind: 'operator', text: `${char}=`, position: index });
       index += 2;
       continue;
     }
 
     if (char === '<' || char === '>') {
-      tokens.push({kind: 'operator', text: char, position: index});
+      tokens.push({ kind: 'operator', text: char, position: index });
       index += 1;
       continue;
     }
 
     if (char === '?' && source[index + 1] === '?') {
-      tokens.push({kind: 'operator', text: '??', position: index});
+      tokens.push({ kind: 'operator', text: '??', position: index });
       index += 2;
       continue;
     }
 
     if (char === '*' && source[index + 1] === '*') {
-      tokens.push({kind: 'operator', text: '**', position: index});
+      tokens.push({ kind: 'operator', text: '**', position: index });
       index += 2;
       continue;
     }
 
     if ('+-*/%!~&|^'.includes(char)) {
-      tokens.push({kind: 'operator', text: char, position: index});
+      tokens.push({ kind: 'operator', text: char, position: index });
       index += 1;
       continue;
     }
 
     if ('().,[]?:'.includes(char)) {
-      tokens.push({kind: 'punctuation', text: char, position: index});
+      tokens.push({ kind: 'punctuation', text: char, position: index });
       index += 1;
       continue;
     }
@@ -161,6 +166,6 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
     fail(`Unexpected character ${JSON.stringify(char)}`);
   }
 
-  tokens.push({kind: 'eof', text: '', position: source.length});
+  tokens.push({ kind: 'eof', text: '', position: source.length });
   return tokens;
 }

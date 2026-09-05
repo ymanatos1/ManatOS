@@ -1,5 +1,3 @@
-/* global bootstrap */
-
 (() => {
   /* =======================================================================
    * Global busy/remote-operation overlay
@@ -37,7 +35,9 @@
       busyMessage.textContent = message;
     }
 
-    if (busyIcon) { busyIcon.className = `bi ${icon}`; }
+    if (busyIcon) {
+      busyIcon.className = `bi ${icon}`;
+    }
     actionHandler = typeof onAction === 'function' ? onAction : null;
     if (busyActionWrap) busyActionWrap.hidden = !actionHandler;
     if (busyAction) busyAction.textContent = actionLabel || 'Cancel';
@@ -125,5 +125,4 @@
   document.querySelectorAll('.modal[data-auto-show="true"]').forEach((element) => {
     bootstrap.Modal.getOrCreateInstance(element).show();
   });
-
 })();

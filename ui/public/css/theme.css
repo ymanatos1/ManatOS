@@ -455,7 +455,6 @@ body[data-ui-theme='lighter'] .version-badge {
   font-size: 1rem;
 }
 
-
 /* Current-platform badge theme treatment. Geometry remains in ui.css.
  *
  * Use one light identity surface in both header themes. The Company logo still
@@ -485,8 +484,6 @@ body[data-ui-theme='lighter'] .current-platform-badge:focus-visible {
   border-color: rgba(18, 54, 93, 0.3);
 }
 
-
-
 .horizontal-debug-menu-toggle {
   margin-inline: 0.8rem 0.55rem;
   padding-inline: 0.35rem;
@@ -506,9 +503,13 @@ body[data-ui-theme='lighter'] .current-platform-badge:focus-visible {
   box-shadow: none !important;
 }
 
-
-.horizontal-debug-nav .dropdown-menu { min-width: 16rem; }
-.horizontal-debug-nav .debug-menu-check { width: 1rem; text-align: center; }
+.horizontal-debug-nav .dropdown-menu {
+  min-width: 16rem;
+}
+.horizontal-debug-nav .debug-menu-check {
+  width: 1rem;
+  text-align: center;
+}
 
 /* =========================================================================
    Metadata entity-field component palette
@@ -543,7 +544,7 @@ body[data-ui-theme='lighter'] {
   --manatos-field-tool-readonly-border: #aab4bf;
   --manatos-field-tool-border: #79a8de;
   --manatos-field-tool-color: #175ea8;
-  --manatos-field-tool-focus-ring: rgba(13, 110, 253, .22);
+  --manatos-field-tool-focus-ring: rgba(13, 110, 253, 0.22);
 }
 
 html[data-ui-theme='darker'],
@@ -571,7 +572,7 @@ body[data-ui-theme='darker'] {
   --manatos-field-tool-readonly-border: #929eaa;
   --manatos-field-tool-border: #668fbf;
   --manatos-field-tool-color: #124f91;
-  --manatos-field-tool-focus-ring: rgba(66, 133, 214, .28);
+  --manatos-field-tool-focus-ring: rgba(66, 133, 214, 0.28);
 }
 
 /* Compact, non-destructive theme preview inside Preferences. These swatches
@@ -585,7 +586,7 @@ body[data-ui-theme='darker'] {
   --preview-enum: #fff4dc;
   --preview-reference: #f2ecff;
 }
-.preferences-theme-preview[data-preview-theme="lighter"] {
+.preferences-theme-preview[data-preview-theme='lighter'] {
   --preview-header: #d9ebfb;
   --preview-title: #eaf4fd;
   --preview-text: #f3fbff;
@@ -609,13 +610,31 @@ body[data-ui-theme='darker'] {
   font-weight: 600;
   color: #24364a;
 }
-.preferences-theme-preview-swatch.is-header { background: var(--preview-header); color: #fff; }
-.preferences-theme-preview[data-preview-theme="lighter"] .preferences-theme-preview-swatch.is-header { color: #17324f; }
-.preferences-theme-preview-swatch.is-title { background: var(--preview-title); }
-.preferences-theme-preview-swatch.is-text { background: var(--preview-text); }
-.preferences-theme-preview-swatch.is-date { background: var(--preview-date); }
-.preferences-theme-preview-swatch.is-enum { background: var(--preview-enum); }
-.preferences-theme-preview-swatch.is-reference { background: var(--preview-reference); }
+.preferences-theme-preview-swatch.is-header {
+  background: var(--preview-header);
+  color: #fff;
+}
+.preferences-theme-preview[data-preview-theme='lighter']
+  .preferences-theme-preview-swatch.is-header {
+  color: #17324f;
+}
+.preferences-theme-preview-swatch.is-title {
+  background: var(--preview-title);
+}
+.preferences-theme-preview-swatch.is-text {
+  background: var(--preview-text);
+}
+.preferences-theme-preview-swatch.is-date {
+  background: var(--preview-date);
+}
+.preferences-theme-preview-swatch.is-enum {
+  background: var(--preview-enum);
+}
+.preferences-theme-preview-swatch.is-reference {
+  background: var(--preview-reference);
+}
 @media (max-width: 575.98px) {
-  .preferences-theme-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preferences-theme-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

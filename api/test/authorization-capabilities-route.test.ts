@@ -182,5 +182,4 @@ describe('SysBO authorization capability API', () => {
     expectQuerySuccess(response.body);
     expect(response.body.data.capabilities).toEqual({ platformAccess: true });
   });
-
 });

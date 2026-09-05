@@ -27,8 +27,9 @@ export const metadataOptionItemForField = (
   field: MetadataOptionField | null | undefined,
   value: unknown,
 ): MetadataOptionItem | null =>
-  [...(field?.optionItems ?? []), ...(field?.enumItems ?? [])]
-    .find((candidate) => candidate?.value === value) ?? null;
+  [...(field?.optionItems ?? []), ...(field?.enumItems ?? [])].find(
+    (candidate) => candidate?.value === value,
+  ) ?? null;
 
 export const metadataOptionToneClass = (item: MetadataOptionItem | null | undefined): string => {
   const tone = item?.tone;
@@ -71,7 +72,11 @@ export const formatMetadataValue = (
 
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const duration = value as Record<string, unknown>;
-    if (['years', 'months', 'days'].every((key) => Object.prototype.hasOwnProperty.call(duration, key))) {
+    if (
+      ['years', 'months', 'days'].every((key) =>
+        Object.prototype.hasOwnProperty.call(duration, key),
+      )
+    ) {
       const parts = [
         ['year', Number(duration.years || 0)],
         ['month', Number(duration.months || 0)],

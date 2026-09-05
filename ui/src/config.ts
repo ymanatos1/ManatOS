@@ -45,7 +45,6 @@ const schema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
 
-
   /**
    * Default SysBO pagination settings used by the UI definition registry.
    * Individual SysBO definitions may still override these values later.
@@ -90,4 +89,3 @@ if (!parsedConfig.UI_PAGE_SIZE_OPTIONS.includes(parsedConfig.UI_DEFAULT_PAGE_SIZ
 }
 
 export const config = parsedConfig;
-

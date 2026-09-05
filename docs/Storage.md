@@ -20,7 +20,6 @@ Sessions, reset tokens and verification tokens are outside business persistence 
 
 Canonical relationship metadata is also storage-neutral. Relationship integrity and delete-impact planning operate through metadata/repository boundaries, so cascade, unlink, set-null and restrict behavior can remain consistent when the current in-memory/JSON adapter is replaced by a relational implementation.
 
-
 ## Storage adapter flush contract
 
 Storage adapters expose an explicit asynchronous `flush()` capability and return provider/persistence information plus whether a physical flush occurred.

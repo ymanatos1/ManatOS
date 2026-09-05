@@ -2,12 +2,7 @@ import { Router } from 'express';
 
 import createError from 'http-errors';
 
-import {
-  AppError,
-  operationContext,
-  SysBOUserRole,
-  compileExpression,
-} from '@manatos/shared';
+import { AppError, operationContext, SysBOUserRole, compileExpression } from '@manatos/shared';
 
 import { apiClient } from '../api/client.js';
 
@@ -25,7 +20,10 @@ import { renderMetadataDrivenList } from './sysbo/list-renderer.js';
 import { renderMetadataDrivenRecord } from './sysbo/record-renderer.js';
 import { renderMetadataDrivenHierarchyWorkspace } from './sysbo/hierarchy-renderer.js';
 import { commitMetadataDrivenHierarchy } from './sysbo/hierarchy-write.js';
-import { ownerManagedEntryFromRequest, mergeOwnerManagedEntryFromRequest } from './sysbo/owner-managed-entry.js';
+import {
+  ownerManagedEntryFromRequest,
+  mergeOwnerManagedEntryFromRequest,
+} from './sysbo/owner-managed-entry.js';
 import {
   startExternalProviderCredentialTest,
   externalProviderCredentialTestStatus,
@@ -39,16 +37,11 @@ import {
   deleteMetadataDrivenEntry,
 } from './sysbo/entry-write.js';
 
-import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
 import { clearApiTrafficEntries, listApiTrafficEntries } from '../debug/api-traffic-store.js';
 
 import { addSessionError } from '../errors/session-error-log.js';
 
 import { getSysBODefinition } from '../sysbo/definitions.js';
-
-import type { SysBODefinition } from '../sysbo/types.js';
-
-
 
 /**
  * Generic metadata-driven SysBO administration routes.
@@ -88,14 +81,20 @@ export function createSysBORoutes() {
    * the UI-server process, so it naturally resets when that process restarts.
    */
   router.get('/debug/api-traffic', (req, res) => {
-    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    if (config.NODE_ENV === 'production') {
+      res.sendStatus(404);
+      return;
+    }
     const afterId = typeof req.query.after === 'string' ? req.query.after : undefined;
     res.set('Cache-Control', 'no-store');
     res.json({ entries: listApiTrafficEntries(afterId) });
   });
 
   router.post('/debug/api-traffic/clear', requireCsrf, (req, res) => {
-    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    if (config.NODE_ENV === 'production') {
+      res.sendStatus(404);
+      return;
+    }
     clearApiTrafficEntries();
     res.set('Cache-Control', 'no-store');
     res.json({ success: true });
@@ -103,15 +102,23 @@ export function createSysBORoutes() {
 
   /** Developer CLI compiles ad-hoc expressions with the canonical parser. */
   router.post('/debug/compile-expression', requireCsrf, (req, res) => {
-    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    if (config.NODE_ENV === 'production') {
+      res.sendStatus(404);
+      return;
+    }
     try {
       const expression = String(req.body?.expression ?? '').trim();
-      if (!expression) { res.status(400).json({ error: 'Expression is required.' }); return; }
+      if (!expression) {
+        res.status(400).json({ error: 'Expression is required.' });
+        return;
+      }
       const compiled = compileExpression(expression);
       res.set('Cache-Control', 'no-store');
       res.json({ expression: compiled.source, ast: compiled.ast });
     } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Expression could not be parsed.' });
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'Expression could not be parsed.',
+      });
     }
   });
 
@@ -122,7 +129,8 @@ export function createSysBORoutes() {
   router.get('/:key', async (req, res, next) => {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
-      if (definition.key === 'sys-ext-auth-providers') delete req.session.pendingExtAuthCredentialTest;
+      if (definition.key === 'sys-ext-auth-providers')
+        delete req.session.pendingExtAuthCredentialTest;
       const permissions = await resolveUIEntityPermissions(req, definition);
       requirePermission(permissions.read, 'Read access is required for this entity.');
       await renderMetadataDrivenList(req, res, definition, permissions);
@@ -165,7 +173,10 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const permissions = await resolveUIEntityPermissions(req, definition);
-      requirePermission(permissions.create || permissions.update || permissions.delete, 'Write access is required to commit this hierarchy.');
+      requirePermission(
+        permissions.create || permissions.update || permissions.delete,
+        'Write access is required to commit this hierarchy.',
+      );
 
       const result = await commitMetadataDrivenHierarchy(req, definition);
       res.json({ success: true, data: result });
@@ -185,7 +196,6 @@ export function createSysBORoutes() {
       next(error);
     }
   });
-
 
   /**
    * Open a full metadata-driven entry whose immediate owner is an in-memory
@@ -327,7 +337,10 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition('sys-ext-auth-providers');
       const permissions = await resolveUIEntityPermissions(req, definition);
-      requirePermission(permissions.update || permissions.create, 'Admin access is required to test provider credentials.');
+      requirePermission(
+        permissions.update || permissions.create,
+        'Admin access is required to test provider credentials.',
+      );
 
       res.json(await startExternalProviderCredentialTest(req));
     } catch (error) {
@@ -350,11 +363,18 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition('sys-ext-auth-providers');
       const permissions = await resolveUIEntityPermissions(req, definition);
-      requirePermission(permissions.update || permissions.create, 'Admin access is required to inspect provider credential tests.');
+      requirePermission(
+        permissions.update || permissions.create,
+        'Admin access is required to inspect provider credential tests.',
+      );
 
       const status = externalProviderCredentialTestStatus(req);
       if (!status) {
-        res.status(404).json({ success: false, status: 'missing', message: 'The provider credential test is no longer available.' });
+        res.status(404).json({
+          success: false,
+          status: 'missing',
+          message: 'The provider credential test is no longer available.',
+        });
         return;
       }
       res.set('Cache-Control', 'no-store');
@@ -372,52 +392,51 @@ export function createSysBORoutes() {
   /**
    * Create or update one SysBO entry.
    */
-  router.post(
-    '/:key/save',
-    requireCsrf,
-    async (req, res, next) => {
-      const definition = getSysBODefinition(routeParam(req.params.key));
-      const id = String(req.body.id ?? '');
-      const permissions = await resolveUIEntityPermissions(req, definition, id || undefined);
+  router.post('/:key/save', requireCsrf, async (req, res, next) => {
+    const definition = getSysBODefinition(routeParam(req.params.key));
+    const id = String(req.body.id ?? '');
+    const permissions = await resolveUIEntityPermissions(req, definition, id || undefined);
 
-      try {
-        requirePermission(
-          id ? permissions.update : permissions.create,
-          id ? 'Update access is required for this entity.' : 'Create access is required for this entity.',
-        );
+    try {
+      requirePermission(
+        id ? permissions.update : permissions.create,
+        id
+          ? 'Update access is required for this entity.'
+          : 'Create access is required for this entity.',
+      );
 
-        const providerSavedId = await handleExternalProviderCredentialSave(req, definition, id);
-        if (providerSavedId !== null) {
-          await completeMetadataDrivenSave(req, res, definition, providerSavedId || undefined);
-          return;
-        }
+      const providerSavedId = await handleExternalProviderCredentialSave(req, definition, id);
+      if (providerSavedId !== null) {
+        await completeMetadataDrivenSave(req, res, definition, providerSavedId || undefined);
+        return;
+      }
 
-        const { savedId, savedRecord } = await persistMetadataDrivenEntry(req, definition, id);
-        await completeMetadataDrivenSave(req, res, definition, savedId || undefined, savedRecord);
-      } catch (error) {
-        if (error instanceof AppError && error.code === 'UI_API_SESSION_EXPIRED') {
-          next(error);
-          return;
-        }
-        if (createError.isHttpError(error)) {
-          next(error);
-          return;
-        }
+      const { savedId, savedRecord } = await persistMetadataDrivenEntry(req, definition, id);
+      await completeMetadataDrivenSave(req, res, definition, savedId || undefined, savedRecord);
+    } catch (error) {
+      if (error instanceof AppError && error.code === 'UI_API_SESSION_EXPIRED') {
+        next(error);
+        return;
+      }
+      if (createError.isHttpError(error)) {
+        next(error);
+        return;
+      }
 
-        const appError = error instanceof AppError
+      const appError =
+        error instanceof AppError
           ? error
           : new AppError('UNEXPECTED_ERROR', String(error), 'The entry could not be saved.', true);
 
-        addSessionError(req, appError);
-        await renderMetadataDrivenRecord(req, res, definition, permissions, {
-          isNew: !id,
-          ...(id ? { recordId: id } : {}),
-          itemOverride: failedSaveItemOverride(req, definition, id),
-          applicationError: appError,
-        });
-      }
-    },
-  );
+      addSessionError(req, appError);
+      await renderMetadataDrivenRecord(req, res, definition, permissions, {
+        isNew: !id,
+        ...(id ? { recordId: id } : {}),
+        itemOverride: failedSaveItemOverride(req, definition, id),
+        applicationError: appError,
+      });
+    }
+  });
 
   /**
    * Delete one SysBO entry.
@@ -445,7 +464,6 @@ export function createSysBORoutes() {
       }
     },
   );
-
 
   return router;
 }

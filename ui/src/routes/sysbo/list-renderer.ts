@@ -40,16 +40,21 @@ export async function renderMetadataDrivenList(
     canonicalSysBOUIMetadata(req, definition),
   ]);
   const apiPath = apiPathFor(definition.key);
-  const listQuery = metadataDrivenListQuery(req, metadataUI, req.query, metadataEntrySearchField(metadata));
+  const listQuery = metadataDrivenListQuery(
+    req,
+    metadataUI,
+    req.query,
+    metadataEntrySearchField(metadata),
+  );
   const response = await apiClient.get<SysBOListData<Record<string, unknown>>>(
     `/api/v1/${apiPath}?${listQuery.params.toString()}`,
     apiSessionOptions(req),
   );
 
   let hasAnyEntries = response.data.paging.total > 0;
-  const filtersActive = Boolean(listQuery.query.search) || metadataUI.list.filterFields.some(
-    (field) => Boolean(listQuery.query[`filter.${field}`]),
-  );
+  const filtersActive =
+    Boolean(listQuery.query.search) ||
+    metadataUI.list.filterFields.some((field) => Boolean(listQuery.query[`filter.${field}`]));
 
   if (!hasAnyEntries && filtersActive) {
     const unfiltered = await apiClient.get<SysBOListData<Record<string, unknown>>>(
@@ -77,24 +82,30 @@ export async function renderMetadataDrivenList(
   }
 
   const entryType = entryTypeSource<Record<string, unknown>>(metadata);
-  const entryTypeField = entryType && 'field' in entryType
-    ? entryType.field
-    : (entryType && 'expression' in entryType && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entryType.expression.trim())
+  const entryTypeField =
+    entryType && 'field' in entryType
+      ? entryType.field
+      : entryType &&
+          'expression' in entryType &&
+          /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entryType.expression.trim())
         ? entryType.expression.trim()
-        : null);
+        : null;
   const entryUsesRelations = Object.values(metadata.entry ?? {}).some(
     (source) => source && 'expression' in source && source.expression.includes('relations.'),
   );
-  const listReferenceFields = [...new Set([
-    ...metadataUI.list.visibleFields,
-    ...metadataUI.list.filterFields,
-    ...(entryTypeField ? [entryTypeField] : []),
-  ])];
-  const listReferenceData = listReferenceFields.some(
-    (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
-  ) || entryUsesRelations
-    ? await references(req, definition)
-    : {};
+  const listReferenceFields = [
+    ...new Set([
+      ...metadataUI.list.visibleFields,
+      ...metadataUI.list.filterFields,
+      ...(entryTypeField ? [entryTypeField] : []),
+    ]),
+  ];
+  const listReferenceData =
+    listReferenceFields.some(
+      (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
+    ) || entryUsesRelations
+      ? await references(req, definition)
+      : {};
 
   const listPage = applySysBOListContext(res, definition, {
     metadata,
@@ -120,7 +131,12 @@ export async function renderMetadataDrivenList(
   );
 
   const resolveAddActionValue = (value: unknown, property: string): unknown => {
-    if (!value || typeof value !== 'object' || Array.isArray(value) || typeof (value as { expression?: unknown }).expression !== 'string') {
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      typeof (value as { expression?: unknown }).expression !== 'string'
+    ) {
       return value;
     }
     return evaluateExpression(
@@ -139,25 +155,30 @@ export async function renderMetadataDrivenList(
   const resolvedAddAction = {
     ...metadataUI.list.addAction,
     resolvedVisible: resolveAddActionValue(metadataUI.list.addAction.visible, 'visible') !== false,
-    resolvedEnabled: resolveAddActionValue(metadataUI.list.addAction.enabled ?? true, 'enabled') !== false,
-    resolvedDisabledReason: resolveAddActionValue(metadataUI.list.addAction.disabledReason ?? null, 'disabledReason'),
+    resolvedEnabled:
+      resolveAddActionValue(metadataUI.list.addAction.enabled ?? true, 'enabled') !== false,
+    resolvedDisabledReason: resolveAddActionValue(
+      metadataUI.list.addAction.disabledReason ?? null,
+      'disabledReason',
+    ),
   };
 
   const resolvedPageActions = Object.entries(metadataUI.list.pageActions ?? {})
     .map(([key, action]) => {
-      const visible = !action.visible || typeof action.visible !== 'object'
-        ? action.visible !== false
-        : evaluateExpression(
-            action.visible.expression,
-            res.locals.ctx as ManatOSContext,
-            listPage.fields,
-            {
-              source: 'ui-metadata',
-              sourcePath: `list.pageActions.${key}.visible`,
-              targetPath: `list.pageActions.${key}.visible`,
-              purpose: 'resolve list page action visibility',
-            },
-          ) !== false;
+      const visible =
+        !action.visible || typeof action.visible !== 'object'
+          ? action.visible !== false
+          : evaluateExpression(
+              action.visible.expression,
+              res.locals.ctx as ManatOSContext,
+              listPage.fields,
+              {
+                source: 'ui-metadata',
+                sourcePath: `list.pageActions.${key}.visible`,
+                targetPath: `list.pageActions.${key}.visible`,
+                purpose: 'resolve list page action visibility',
+              },
+            ) !== false;
       const tone = action.tone || 'secondary';
       const outline = action.emphasis === 'outline';
       return {

@@ -205,7 +205,6 @@ addConstraintReached !== true
 
 Expressions should describe domain/UI relationships, not reproduce renderer logic. Prefer one-level CTX names such as `entries` when a value is intentionally made available for upward resolution. Reusable entity calculations belong in canonical business-object metadata; UI-only visibility, editability, decoration, create defaults, navigation visibility and action state belong in metadata. Prefer resolved scalar facts from CTX (`permissions.create`, platform capabilities, mode, constraint facts) over testing whole structured objects or recreating entitlement/role logic in metadata. Keep facts and policy separate: CTX should expose `addConstraintReached`, not `disableAddButton`; metadata decides how that fact affects presentation. Evaluator-backed UI decisions never replace API/domain authorization. Functions must remain entity/field agnostic so the same evaluator can serve system pages, future application pages, server-side persistence calculations, and other renderers.
 
-
 ## Execution ownership and capabilities
 
 Expressions are execution-context independent. The current owner supplies the lexical scope and available capabilities. `TraverseCtx()` operates only on materialized context data; `TraverseEntity()` requires the canonical `entityResolver` capability and can be delegated by a browser owner when its lazy branch is actually reached. See [Expression Parsing and Evaluation Mechanics](Expression-Evaluation-Mechanics.md).

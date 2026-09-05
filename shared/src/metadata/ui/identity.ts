@@ -1,5 +1,11 @@
 import type { SysBOUIMetadata } from './types.js';
-import { standardAddAction, standardEntryActions, systemFieldOverrides, systemTab, tab } from './common.js';
+import {
+  standardAddAction,
+  standardEntryActions,
+  systemFieldOverrides,
+  systemTab,
+  tab,
+} from './common.js';
 
 /** Canonical UI metadata for identity and external-authentication administration. */
 
@@ -17,7 +23,17 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         'general',
         'General',
         10,
-        ['name', 'enabled', 'email', 'telephoneNumber', 'description', 'firstName', 'lastName', 'fullName', 'role'],
+        [
+          'name',
+          'enabled',
+          'email',
+          'telephoneNumber',
+          'description',
+          'firstName',
+          'lastName',
+          'fullName',
+          'role',
+        ],
         {
           icon: 'info-circle',
           layout: 'form',
@@ -42,12 +58,19 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         'authentication',
         'Authentication',
         20,
-        ['emailVerificationStatus', 'emailVerificationSource', 'emailVerifiedAt', 'localPasswordStatus', 'externalIdentities'],
+        [
+          'emailVerificationStatus',
+          'emailVerificationSource',
+          'emailVerifiedAt',
+          'localPasswordStatus',
+          'externalIdentities',
+        ],
         {
           icon: 'shield-lock',
           layout: 'summary',
           visible: {
-            expression: "mode !== 'create' && (user.permissions.userRole === 'Admin' || id === user.fields.id.value)",
+            expression:
+              "mode !== 'create' && (user.permissions.userRole === 'Admin' || id === user.fields.id.value)",
           },
         },
       ),
@@ -72,8 +95,13 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       },
       localPasswordStatus: {
         presentation: {
-          tone: { expression: "mode === 'create' ? 'secondary' : hasPassword ? 'success' : 'secondary'" },
-          icon: { expression: "mode === 'create' ? 'dash-circle' : hasPassword ? 'check-circle-fill' : 'dash-circle'" },
+          tone: {
+            expression: "mode === 'create' ? 'secondary' : hasPassword ? 'success' : 'secondary'",
+          },
+          icon: {
+            expression:
+              "mode === 'create' ? 'dash-circle' : hasPassword ? 'check-circle-fill' : 'dash-circle'",
+          },
         },
       },
 
@@ -143,9 +171,9 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         placement: 'footer-leading',
         visible: {
           expression:
-            "system.client.features.allowAdminEmailVerification && " +
+            'system.client.features.allowAdminEmailVerification && ' +
             "user.permissions.userRole === 'Admin' && " +
-            "id !== user.fields.id.value && emailVerified !== true",
+            'id !== user.fields.id.value && emailVerified !== true',
         },
         label: 'Verify email',
         icon: 'envelope-check',
@@ -155,7 +183,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       ...standardEntryActions,
       delete: {
         ...standardEntryActions.delete,
-        enabled: { expression: "id !== user.fields.id.value" },
+        enabled: { expression: 'id !== user.fields.id.value' },
         disabledReason: {
           expression:
             "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
@@ -199,7 +227,11 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
           // field exists; otherwise it consumes the full row. Grid-span remains
           // evaluator-backed metadata so the generic renderer/component has no
           // provider-specific layout branch.
-          { kind: 'field', field: 'callbackPath', span: { expression: "provider.option.tenant != null ? 6 : 12" } },
+          {
+            kind: 'field',
+            field: 'callbackPath',
+            span: { expression: 'provider.option.tenant != null ? 6 : 12' },
+          },
           { kind: 'field', field: 'tenant', span: 6 },
           {
             kind: 'component',
@@ -267,7 +299,8 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
       tenant: {
         visible: { expression: 'provider.option.tenant != null' },
         editable: false,
-        helpText: "Provider-defined tenant value. Hidden when the selected provider does not define a tenant.",
+        helpText:
+          'Provider-defined tenant value. Hidden when the selected provider does not define a tenant.',
       },
 
       /*
@@ -276,7 +309,8 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
        */
       clientId: { editable: false },
       callbackPath: {
-        helpText: 'Provider-defined callback path. ManatOS combines it with PUBLIC_BASE_URL; administrators cannot override it.',
+        helpText:
+          'Provider-defined callback path. ManatOS combines it with PUBLIC_BASE_URL; administrators cannot override it.',
       },
       enabled: { createDefaultValue: true },
       hasClientSecret: {

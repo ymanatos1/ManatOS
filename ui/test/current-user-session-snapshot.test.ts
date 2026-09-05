@@ -17,7 +17,9 @@ describe('current SysUser session snapshot', () => {
 
   it('refreshes the snapshot after saving the signed-in SysUser and clears it with auth state', () => {
     expect(entryWrite).toContain("definition.key === 'sys-users'");
-    expect(entryWrite).toContain('req.session.currentUserSnapshot = saved.data as unknown as SysBOUser');
+    expect(entryWrite).toContain(
+      'req.session.currentUserSnapshot = saved.data as unknown as SysBOUser',
+    );
     expect(apiSession).toContain('delete req.session.currentUserSnapshot');
   });
 });

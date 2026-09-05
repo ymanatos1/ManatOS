@@ -24,10 +24,6 @@ type DebugFieldStateProperty =
   | 'enabled'
   | 'disabled';
 
-interface DebugExpressionNode extends UnknownRecord {
-  expression: string;
-}
-
 interface DebugCalculation extends UnknownRecord {
   expression?: string;
 }
@@ -95,7 +91,10 @@ export interface MetadataDebuggingModelInput {
     fieldKey: string,
     field: DebugRelatedFieldMetadata,
   ) => Readonly<{ raw?: unknown }>;
-  relatedExpressionScope: (row: unknown, relatedMetadata: DebugCanonicalMetadata | undefined) => unknown;
+  relatedExpressionScope: (
+    row: unknown,
+    relatedMetadata: DebugCanonicalMetadata | undefined,
+  ) => unknown;
   entryContextPath?: string;
 }
 
@@ -123,7 +122,7 @@ export interface MetadataDebuggingModel {
 
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as UnknownRecord
+    ? (value as UnknownRecord)
     : null;
 
 const recordChild = (value: unknown, key: string): unknown => asRecord(value)?.[key];
@@ -152,13 +151,15 @@ const debugValueText = (value: unknown): string => {
   if (value === null) return 'null';
   if (value === '') return "''";
   if (Array.isArray(value)) {
-    return value.length
-      ? `[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]`
-      : '[]';
+    return value.length ? `[ ${value.map((entry) => debugValueText(entry)).join(', ')} ]` : '[]';
   }
   if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
   if (typeof value === 'object') {
-    try { return JSON.stringify(value); } catch { return String(value); }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
   }
   return String(value);
 };
@@ -172,7 +173,6 @@ const stringProperty = (value: unknown, key: string): string | null => {
   const candidate = asRecord(value)?.[key];
   return typeof candidate === 'string' ? candidate : null;
 };
-
 
 /**
  * Build the flat Debugging rows for a calculated CTX field collection.
@@ -209,15 +209,29 @@ export function buildCalculatedContextDebuggingRows(
     }));
 }
 
-export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput): MetadataDebuggingModel {
+export function buildMetadataDebuggingModel(
+  input: MetadataDebuggingModelInput,
+): MetadataDebuggingModel {
   const {
-    debuggingTabEnabled, metadata, metadataUI, compiledEntityContext, compiledEntityContextName, compiledUIRecord,
-    ctxFields, ctxValue, dynamicUIValue, overrides, relatedCollections,
-    relatedMetadataRegistry, pageRelatedData, collectionValue, relatedExpressionScope, entryContextPath = 'ctx.page.page',
+    debuggingTabEnabled,
+    metadata,
+    metadataUI,
+    compiledEntityContext,
+    compiledEntityContextName,
+    compiledUIRecord,
+    ctxFields,
+    ctxValue,
+    dynamicUIValue,
+    overrides,
+    relatedCollections,
+    relatedMetadataRegistry,
+    pageRelatedData,
+    collectionValue,
+    relatedExpressionScope,
+    entryContextPath = 'ctx.page.page',
   } = input;
 
   const debuggingRows: MetadataDebuggingRow[] = [];
-
 
   /*
    * `detailGroup` is optional provenance/classification beneath the semantic
@@ -345,7 +359,12 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
         `${fieldKey}.calculation`,
         calculationExpression,
         ctxValue(fieldKey),
-        compiledAstAt(compiledEntityContext, ['metadata', 'fieldDefinition', fieldKey, 'calculation']),
+        compiledAstAt(compiledEntityContext, [
+          'metadata',
+          'fieldDefinition',
+          fieldKey,
+          'calculation',
+        ]),
         fieldMetadata.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
         compiledEntityContextName
           ? `ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`
@@ -360,7 +379,14 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
      * editability/read-only state, required/nullable state, etc.
      */
     const fieldStatePropertyNames = new Set<DebugFieldStateProperty>([
-      'visible', 'editable', 'readOnly', 'readonly', 'required', 'nullable', 'enabled', 'disabled',
+      'visible',
+      'editable',
+      'readOnly',
+      'readonly',
+      'required',
+      'nullable',
+      'enabled',
+      'disabled',
     ]);
     for (const [fieldKey, fieldMetadata] of Object.entries(metadata.fieldDefinition ?? {})) {
       for (const propertyName of fieldStatePropertyNames) {
@@ -378,7 +404,12 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
             targetPath: `fields.${fieldKey}.${propertyName}`,
             purpose: 'inspect calculated field property',
           }),
-          compiledAstAt(compiledEntityContext, ['metadata', 'fieldDefinition', fieldKey, propertyName]),
+          compiledAstAt(compiledEntityContext, [
+            'metadata',
+            'fieldDefinition',
+            fieldKey,
+            propertyName,
+          ]),
           fieldMetadata.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
         );
       }
@@ -413,17 +444,14 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
       const sourceKey = stringProperty(collection, 'sourceKey') ?? collectionKey;
       const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
       for (const [fieldKey, field] of Object.entries(collection.fields ?? {})) {
-        const formula = expressionOf(field) ?? expressionOf(relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation);
+        const formula =
+          expressionOf(field) ??
+          expressionOf(relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation);
         if (!formula) continue;
-        const values = rows.map((row) => collectionValue(row, collectionKey, collection, fieldKey, field).raw);
-        addDebugRow(
-          'RELATED ENTITY',
-          null,
-          `${collectionKey}.${fieldKey}`,
-          formula,
-          values,
-          null,
+        const values = rows.map(
+          (row) => collectionValue(row, collectionKey, collection, fieldKey, field).raw,
         );
+        addDebugRow('RELATED ENTITY', null, `${collectionKey}.${fieldKey}`, formula, values, null);
       }
     }
 
@@ -457,7 +485,9 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
     const uiFieldOverrides: Record<string, UnknownRecord> = {};
     for (const [fieldKey, override] of Object.entries(overrides)) {
       uiFieldOverrides[fieldKey] = Object.fromEntries(
-        Object.entries(override).filter(([key]) => !fieldStatePropertyNames.has(key as DebugFieldStateProperty)),
+        Object.entries(override).filter(
+          ([key]) => !fieldStatePropertyNames.has(key as DebugFieldStateProperty),
+        ),
       );
     }
     collectDynamicExpressions(
@@ -481,7 +511,13 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
           'RELATED',
           `relatedCollections.${collectionKey}.fields.${fieldKey}.presentation`,
           field.presentation,
-          valueAtPath(compiledUIRecord, ['relatedCollections', collectionKey, 'fields', fieldKey, 'presentation']),
+          valueAtPath(compiledUIRecord, [
+            'relatedCollections',
+            collectionKey,
+            'fields',
+            fieldKey,
+            'presentation',
+          ]),
           expressionScopes,
         );
       }
@@ -515,9 +551,11 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
    * dotted prefixes become headings automatically while single-use prefixes stay
    * collapsed into the leaf label. No SysBO-specific path names are known here.
    */
-  const buildDebuggingDisplayRows = (sourceRows: MetadataDebuggingRow[]): MetadataDebuggingDisplayRow[] => {
+  const buildDebuggingDisplayRows = (
+    sourceRows: MetadataDebuggingRow[],
+  ): MetadataDebuggingDisplayRow[] => {
     const displayRows: MetadataDebuggingDisplayRow[] = [];
-    const orderedUnique = <T,>(values: T[]): T[] => [...new Set(values)];
+    const orderedUnique = <T>(values: T[]): T[] => [...new Set(values)];
     const commonPrefixLength = (
       rows: readonly { row: MetadataDebuggingRow; segments: string[] }[],
       fromIndex: number,
@@ -609,7 +647,11 @@ export function buildMetadataDebuggingModel(input: MetadataDebuggingModelInput):
   };
 
   return {
-    entityDebuggingDisplayRows: buildDebuggingDisplayRows(debuggingRows.filter((row) => row.group !== 'UI')),
-    uiDebuggingDisplayRows: buildDebuggingDisplayRows(debuggingRows.filter((row) => row.group === 'UI')),
+    entityDebuggingDisplayRows: buildDebuggingDisplayRows(
+      debuggingRows.filter((row) => row.group !== 'UI'),
+    ),
+    uiDebuggingDisplayRows: buildDebuggingDisplayRows(
+      debuggingRows.filter((row) => row.group === 'UI'),
+    ),
   };
 }

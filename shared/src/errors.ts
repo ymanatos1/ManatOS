@@ -205,7 +205,6 @@ export class StorageAppError extends AppError {
   }
 }
 
-
 /**
  * Transactional email could not be delivered.
  *

@@ -36,7 +36,7 @@ The entity/page icon remains the canonical SysBO definition icon used by navigat
 
 ## Browser-persistent drafts
 
-An unfinished **Create Organization** draft is a client-side working artifact, not persisted business data. `Close`/`Save draft` stores the complete working `entries[]` plus its `entriesOriginal[]` baseline in browser `localStorage`, scoped by signed-in user and entity under a stable `create` identity. Edit Organization does not read or write drafts. The create-draft key deliberately does **not** contain the UI-server boot id, so navigation and a ManatOS restart do not discard unfinished create work. Legacy boot-scoped *create* keys may be migrated, but legacy edit-workspace drafts are never restored into a new Create Organization session.
+An unfinished **Create Organization** draft is a client-side working artifact, not persisted business data. `Close`/`Save draft` stores the complete working `entries[]` plus its `entriesOriginal[]` baseline in browser `localStorage`, scoped by signed-in user and entity under a stable `create` identity. Edit Organization does not read or write drafts. The create-draft key deliberately does **not** contain the UI-server boot id, so navigation and a ManatOS restart do not discard unfinished create work. Legacy boot-scoped _create_ keys may be migrated, but legacy edit-workspace drafts are never restored into a new Create Organization session.
 
 Draft loading is compatibility-tolerant: recognizable entry records are restored even when an older envelope contains an unfamiliar version marker or additional properties. Unknown envelope data is ignored. A successful Commit removes the active draft. Older boot-scoped draft keys are recognized as a migration source and copied to the stable key when restored.
 

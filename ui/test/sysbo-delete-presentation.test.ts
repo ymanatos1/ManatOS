@@ -8,14 +8,23 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 describe('generic SysBO delete presentation', () => {
   it('derives friendly delete labels from canonical metadata instead of legacy EJS view-model metadata', async () => {
-    const entryWrite = await readFile(resolve(testDirectory, '../src/routes/sysbo/entry-write.ts'), 'utf8');
+    const entryWrite = await readFile(
+      resolve(testDirectory, '../src/routes/sysbo/entry-write.ts'),
+      'utf8',
+    );
     expect(entryWrite).toContain('definition.boMetadata.name');
     expect(entryWrite).not.toContain('editViewModel.deleteEntityLabel');
   });
 
   it('suppresses the native dirty-page warning only after destructive confirmation submits', async () => {
-    const view = await readFile(resolve(testDirectory, '../views/popups/messages/bo-edit-confirmations.ejs'), 'utf8');
-    const forms = await readFile(resolve(testDirectory, '../public/js/forms/entry-state.js'), 'utf8');
+    const view = await readFile(
+      resolve(testDirectory, '../views/popups/messages/bo-edit-confirmations.ejs'),
+      'utf8',
+    );
+    const forms = await readFile(
+      resolve(testDirectory, '../public/js/forms/entry-state.js'),
+      'utf8',
+    );
     expect(view).toContain('data-allow-dirty-page-exit="true"');
     expect(view).toContain('deletePresentation.displayValue');
     expect(view).toContain('deletePresentation.entityLabel');

@@ -74,13 +74,44 @@ describe('platform-aware licenses', () => {
 
     expect(licenseGrantsPlatformAccess(base, PROTOCRM_PLATFORM_ID, now)).toBe(true);
     expect(licenseGrantsApplicationAccess(base, PROTOCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
-    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, PROTOCRM_PLATFORM_ID, 'app-1', now)).toBe(true);
-    expect(licenseGrantsApplicationAccess({ ...base, applicationId: 'app-1' }, PROTOCRM_PLATFORM_ID, 'app-2', now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29T23:59:59.000Z' }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-30' }, PROTOCRM_PLATFORM_ID, new Date('2026-08-30T23:59:59.999Z'))).toBe(true);
-    expect(licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29' }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, quantity: 0 }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
-    expect(licenseGrantsPlatformAccess({ ...base, enabled: false }, PROTOCRM_PLATFORM_ID, now)).toBe(false);
+    expect(
+      licenseGrantsApplicationAccess(
+        { ...base, applicationId: 'app-1' },
+        PROTOCRM_PLATFORM_ID,
+        'app-1',
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      licenseGrantsApplicationAccess(
+        { ...base, applicationId: 'app-1' },
+        PROTOCRM_PLATFORM_ID,
+        'app-2',
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      licenseGrantsPlatformAccess(
+        { ...base, validUntil: '2026-08-29T23:59:59.000Z' },
+        PROTOCRM_PLATFORM_ID,
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      licenseGrantsPlatformAccess(
+        { ...base, validUntil: '2026-08-30' },
+        PROTOCRM_PLATFORM_ID,
+        new Date('2026-08-30T23:59:59.999Z'),
+      ),
+    ).toBe(true);
+    expect(
+      licenseGrantsPlatformAccess({ ...base, validUntil: '2026-08-29' }, PROTOCRM_PLATFORM_ID, now),
+    ).toBe(false);
+    expect(licenseGrantsPlatformAccess({ ...base, quantity: 0 }, PROTOCRM_PLATFORM_ID, now)).toBe(
+      false,
+    );
+    expect(
+      licenseGrantsPlatformAccess({ ...base, enabled: false }, PROTOCRM_PLATFORM_ID, now),
+    ).toBe(false);
   });
-
 });

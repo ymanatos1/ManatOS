@@ -2,7 +2,12 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 
 import { dirname, resolve } from 'node:path';
 
-import { PROTOCRM_PLATFORM_ID, StorageAppError, type SysBOExtAuthProvider, type SysBOLicense } from '@manatos/shared';
+import {
+  PROTOCRM_PLATFORM_ID,
+  StorageAppError,
+  type SysBOExtAuthProvider,
+  type SysBOLicense,
+} from '@manatos/shared';
 
 import { emptyDatabaseState, type DatabaseState, type PersistedDatabaseState } from './types.js';
 
@@ -44,7 +49,9 @@ export class JsonFilePersistence {
 
         sysLicenses: normalizeLegacyLicenses(fromPersistedRecords(raw.sysLicenses)),
 
-        sysExtAuthProviders: normalizeLegacyExternalAuthProviders(fromPersistedRecords(raw.sysExtAuthProviders)),
+        sysExtAuthProviders: normalizeLegacyExternalAuthProviders(
+          fromPersistedRecords(raw.sysExtAuthProviders),
+        ),
 
         sysExternalIdentities: fromPersistedRecords(raw.sysExternalIdentities),
 
@@ -167,7 +174,6 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
 }
 
-
 /**
  * Backward-compatible normalization for databases written before platform ownership was introduced or while protoCRM still used
  * the legacy 'mcrm' platform id. Those records necessarily refer to protoCRM, so
@@ -193,13 +199,17 @@ function normalizeLegacyLicenses(records: Map<string, SysBOLicense>): Map<string
  * credentialsVerifiedAt timestamp was already authoritative, so infer the new
  * flag once on load without requiring a destructive database migration.
  */
-function normalizeLegacyExternalAuthProviders(records: Map<string, SysBOExtAuthProvider>): Map<string, SysBOExtAuthProvider> {
+function normalizeLegacyExternalAuthProviders(
+  records: Map<string, SysBOExtAuthProvider>,
+): Map<string, SysBOExtAuthProvider> {
   for (const [id, provider] of records) {
     if (typeof provider.credentialsVerified !== 'boolean') {
       records.set(id, {
         ...provider,
         credentialsVerified: Boolean(
-          provider.clientId?.trim() && provider.clientSecretEncrypted && provider.credentialsVerifiedAt,
+          provider.clientId?.trim() &&
+          provider.clientSecretEncrypted &&
+          provider.credentialsVerifiedAt,
         ),
       });
     }

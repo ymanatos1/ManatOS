@@ -133,7 +133,14 @@ describe('SysBOExtAuthProvider API', () => {
     expect(JSON.stringify(read.body)).not.toContain('plain-secret');
     expect(JSON.stringify(read.body)).not.toContain('clientSecretEncrypted');
 
-    const stored = (await context.services.extAuthProviders.list({ page: 1, pageSize: 10, direction: 'asc', filters: {} })).items[0];
+    const stored = (
+      await context.services.extAuthProviders.list({
+        page: 1,
+        pageSize: 10,
+        direction: 'asc',
+        filters: {},
+      })
+    ).items[0];
     expect(stored?.clientSecretEncrypted).toBeTruthy();
     expect(stored?.clientSecretEncrypted).not.toContain('plain-secret');
   });
@@ -150,7 +157,14 @@ describe('SysBOExtAuthProvider API', () => {
       clientSecret: 'stable-google-secret',
     });
     const id = created.body.data.id as string;
-    const before = (await context.services.extAuthProviders.list({ page: 1, pageSize: 10, direction: 'asc', filters: {} })).items[0]!;
+    const before = (
+      await context.services.extAuthProviders.list({
+        page: 1,
+        pageSize: 10,
+        direction: 'asc',
+        filters: {},
+      })
+    ).items[0]!;
 
     const updated = await request(context.app)
       .patch(`/api/v1/SysExtAuthProviders/${id}`)
@@ -158,7 +172,14 @@ describe('SysBOExtAuthProvider API', () => {
       .send({ enabled: false });
 
     expect(updated.status).toBe(200);
-    const after = (await context.services.extAuthProviders.list({ page: 1, pageSize: 10, direction: 'asc', filters: {} })).items[0]!;
+    const after = (
+      await context.services.extAuthProviders.list({
+        page: 1,
+        pageSize: 10,
+        direction: 'asc',
+        filters: {},
+      })
+    ).items[0]!;
     expect(after.clientId).toBe(before.clientId);
     expect(after.clientSecretEncrypted).toBe(before.clientSecretEncrypted);
     expect(after.credentialsVerified).toBe(true);
@@ -177,17 +198,28 @@ describe('SysBOExtAuthProvider API', () => {
     const token = await loginAdmin(context.app);
 
     const created = await saveVerified(context, token, {
-      provider: 'facebook', enabled: true, clientId: 'old-id', clientSecret: 'old-secret',
+      provider: 'facebook',
+      enabled: true,
+      clientId: 'old-id',
+      clientSecret: 'old-secret',
     });
     const id = created.body.data.id as string;
 
     const missingSecret = await saveVerified(context, token, {
-      id, provider: 'facebook', enabled: true, clientId: 'new-id', clientSecret: '',
+      id,
+      provider: 'facebook',
+      enabled: true,
+      clientId: 'new-id',
+      clientSecret: '',
     });
     expect(missingSecret.status).toBe(400);
 
     const replaced = await saveVerified(context, token, {
-      id, provider: 'facebook', enabled: true, clientId: 'new-id', clientSecret: 'new-secret',
+      id,
+      provider: 'facebook',
+      enabled: true,
+      clientId: 'new-id',
+      clientSecret: 'new-secret',
     });
     expect(replaced.status).toBe(200);
 
@@ -202,7 +234,10 @@ describe('SysBOExtAuthProvider API', () => {
     await seedAdmin(context.services.users);
     const token = await loginAdmin(context.app);
     const created = await saveVerified(context, token, {
-      provider: 'github', enabled: true, clientId: 'github-id', clientSecret: 'github-secret',
+      provider: 'github',
+      enabled: true,
+      clientId: 'github-id',
+      clientSecret: 'github-secret',
     });
     const id = created.body.data.id as string;
 
@@ -215,7 +250,12 @@ describe('SysBOExtAuthProvider API', () => {
     const read = await request(context.app)
       .get(`/api/v1/SysExtAuthProviders/${id}`)
       .set('Authorization', bearer(token));
-    expect(read.body.data).toMatchObject({ enabled: false, clientId: '', hasClientSecret: false, credentialsVerified: false });
+    expect(read.body.data).toMatchObject({
+      enabled: false,
+      clientId: '',
+      hasClientSecret: false,
+      credentialsVerified: false,
+    });
     expect(read.body.data.credentialsVerified).toBe(false);
     expect(read.body.data.credentialsVerifiedAt).toBeNull();
   });
@@ -232,7 +272,9 @@ describe('SysBOExtAuthProvider API', () => {
     expect(draft.status).toBe(201);
 
     let publicState = await request(context.app).get('/api/v1/public/external-auth-providers');
-    expect(publicState.body.data.providers.find((x: { provider: string }) => x.provider === 'microsoft')).toMatchObject({ configured: false });
+    expect(
+      publicState.body.data.providers.find((x: { provider: string }) => x.provider === 'microsoft'),
+    ).toMatchObject({ configured: false });
 
     await saveVerified(context, token, {
       id: draft.body.data.id,
@@ -244,7 +286,9 @@ describe('SysBOExtAuthProvider API', () => {
     });
 
     publicState = await request(context.app).get('/api/v1/public/external-auth-providers');
-    expect(publicState.body.data.providers.find((x: { provider: string }) => x.provider === 'microsoft')).toMatchObject({ enabled: true, configured: true });
+    expect(
+      publicState.body.data.providers.find((x: { provider: string }) => x.provider === 'microsoft'),
+    ).toMatchObject({ enabled: true, configured: true });
     expect(JSON.stringify(publicState.body)).not.toContain('verified-id');
     expect(JSON.stringify(publicState.body)).not.toContain('verified-secret');
 
@@ -252,7 +296,11 @@ describe('SysBOExtAuthProvider API', () => {
       .get('/api/v1/internal/external-auth-providers/runtime')
       .set('x-internal-api-key', config.INTERNAL_API_KEY);
     expect(runtime.body.data.items).toHaveLength(1);
-    expect(runtime.body.data.items[0]).toMatchObject({ provider: 'microsoft', clientId: 'verified-id', clientSecret: 'verified-secret' });
+    expect(runtime.body.data.items[0]).toMatchObject({
+      provider: 'microsoft',
+      clientId: 'verified-id',
+      clientSecret: 'verified-secret',
+    });
   });
 
   it('keeps callback paths provider-defined and rejects direct overrides', async () => {
@@ -271,7 +319,9 @@ describe('SysBOExtAuthProvider API', () => {
     const context = await createTestApi();
     await seedAdmin(context.services.users);
     const token = await loginAdmin(context.app);
-    const admin = (await context.services.users.list({ page: 1, pageSize: 10, direction: 'asc', filters: {} })).items[0]!;
+    const admin = (
+      await context.services.users.list({ page: 1, pageSize: 10, direction: 'asc', filters: {} })
+    ).items[0]!;
 
     const created = await saveVerified(context, token, {
       provider: 'microsoft',
@@ -299,14 +349,16 @@ describe('SysBOExtAuthProvider API', () => {
 
     expect(preview.status).toBe(200);
     expect(preview.body.data).toMatchObject({ canExecute: true });
-    expect(preview.body.data.impacts).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        objectKey: 'external-identities',
-        relationship: 'providerConfiguration',
-        count: 1,
-        action: 'retain',
-      }),
-    ]));
+    expect(preview.body.data.impacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          objectKey: 'external-identities',
+          relationship: 'providerConfiguration',
+          count: 1,
+          action: 'retain',
+        }),
+      ]),
+    );
 
     const deleted = await request(context.app)
       .delete(`/api/v1/SysExtAuthProviders/${providerId}`)
@@ -315,5 +367,4 @@ describe('SysBOExtAuthProvider API', () => {
     expect(deleted.status).toBe(200);
     expect(context.store.externalIdentities().size).toBe(1);
   });
-
 });

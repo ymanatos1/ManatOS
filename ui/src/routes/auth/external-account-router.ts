@@ -1,10 +1,6 @@
 import { Router } from 'express';
 
-import {
-  AppError,
-  validatePassword,
-  type SysBOUser,
-} from '@manatos/shared';
+import { AppError, validatePassword, type SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { emailService } from '../../email/email-service.js';
@@ -55,16 +51,12 @@ export function createExternalAccountRouter() {
         return;
       }
 
-      await renderPage(
-        res,
-        'pages/external-existing-account',
-        {
-          title: 'Account already connected',
-          titleIcon: 'bi-person-check',
-          authProviders: availableProviders(),
-          profile: pending,
-        },
-      );
+      await renderPage(res, 'pages/external-existing-account', {
+        title: 'Account already connected',
+        titleIcon: 'bi-person-check',
+        authProviders: availableProviders(),
+        profile: pending,
+      });
     },
   );
 
@@ -355,9 +347,10 @@ export function createExternalAccountRouter() {
       }
 
       await renderPage(res, 'pages/external-registration', {
-        title: req.session.pendingExternalRegistrationIntent === 'signin'
-          ? 'Create account'
-          : 'Complete registration',
+        title:
+          req.session.pendingExternalRegistrationIntent === 'signin'
+            ? 'Create account'
+            : 'Complete registration',
         titleIcon: 'bi-person-plus',
         authProviders: availableProviders(),
         profile,

@@ -1,6 +1,10 @@
 import type { Request, Response } from 'express';
 
-import { type EmailVerificationSource, type ExternalProviderKey, type SysBOUser } from '@manatos/shared';
+import {
+  type EmailVerificationSource,
+  type ExternalProviderKey,
+  type SysBOUser,
+} from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { config } from '../../config.js';
@@ -47,9 +51,10 @@ export async function suggestExternalUserName(profile: ExternalProfile): Promise
     profile.email.split('@')[0],
   ];
 
-  const base = sources
-    .map((value) => normalizeSuggestedUserName(value ?? ''))
-    .find((value) => value.length >= 2) ?? 'User';
+  const base =
+    sources
+      .map((value) => normalizeSuggestedUserName(value ?? ''))
+      .find((value) => value.length >= 2) ?? 'User';
 
   for (let suffix = 0; suffix < 100; suffix += 1) {
     const candidate = suffix === 0 ? base : `${base}${suffix + 1}`;
@@ -246,11 +251,17 @@ export function providerCredentialTestCallbackError(
 }
 
 export function providerCredentialTestError(error: unknown): string {
-  if (!(error instanceof Error)) return 'The provider rejected the proposed credentials or OAuth configuration.';
+  if (!(error instanceof Error))
+    return 'The provider rejected the proposed credentials or OAuth configuration.';
   const normalized = error.message.replace(/\s+/g, ' ').trim();
-  if (/AADSTS7000215|invalid client secret/i.test(normalized)) return 'Microsoft rejected the Client secret. Confirm that you entered the secret Value, not the Secret ID.';
-  if (/invalid_client|client credential|client secret/i.test(normalized)) return 'The provider rejected the Client ID / Client secret pair.';
-  return normalized.slice(0, 300) || 'The provider rejected the proposed credentials or OAuth configuration.';
+  if (/AADSTS7000215|invalid client secret/i.test(normalized))
+    return 'Microsoft rejected the Client secret. Confirm that you entered the secret Value, not the Secret ID.';
+  if (/invalid_client|client credential|client secret/i.test(normalized))
+    return 'The provider rejected the Client ID / Client secret pair.';
+  return (
+    normalized.slice(0, 300) ||
+    'The provider rejected the proposed credentials or OAuth configuration.'
+  );
 }
 
 export function absoluteUrl(

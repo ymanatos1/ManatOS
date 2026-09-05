@@ -1,5 +1,3 @@
-/* global bootstrap */
-
 (() => {
   /* =======================================================================
    * Canonical SysBO form-state baseline + dirty navigation protection
@@ -19,10 +17,13 @@
       snapshot,
       isDirty: () => {
         const pendingCredentialSave = form.querySelector('[data-provider-pending-credential-save]');
-        const hasPendingCredentialSave = pendingCredentialSave instanceof HTMLInputElement
-          && pendingCredentialSave.value === 'true';
-        return hasPendingCredentialSave
-          || (state.baseline !== null && state.snapshot() !== state.baseline);
+        const hasPendingCredentialSave =
+          pendingCredentialSave instanceof HTMLInputElement &&
+          pendingCredentialSave.value === 'true';
+        return (
+          hasPendingCredentialSave ||
+          (state.baseline !== null && state.snapshot() !== state.baseline)
+        );
       },
       isValid: () => form.checkValidity(),
     };
@@ -37,7 +38,9 @@
     const dirty = () => state.isDirty();
 
     window.manatosRetry = () => form.requestSubmit();
-    window.manatosAllowDirtyPageExit = () => { allowPageExit = true; };
+    window.manatosAllowDirtyPageExit = () => {
+      allowPageExit = true;
+    };
 
     /*
      * Protect every normal same-origin navigation, not only the explicit
@@ -45,29 +48,39 @@
      * while leaving tabs, dropdowns, modal triggers, downloads and new-window
      * links alone. Browser back/refresh remains covered by beforeunload below.
      */
-    document.addEventListener('click', (event) => {
-      if (!dirty() || allowPageExit || event.defaultPrevented || event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    document.addEventListener(
+      'click',
+      (event) => {
+        if (!dirty() || allowPageExit || event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
-      const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
-      if (!(anchor instanceof HTMLAnchorElement)) return;
-      if (anchor.target && anchor.target !== '_self') return;
-      if (anchor.hasAttribute('download')) return;
-      if (anchor.dataset.bsToggle || anchor.dataset.bsTarget) return;
+        const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
+        if (!(anchor instanceof HTMLAnchorElement)) return;
+        if (anchor.target && anchor.target !== '_self') return;
+        if (anchor.hasAttribute('download')) return;
+        if (anchor.dataset.bsToggle || anchor.dataset.bsTarget) return;
 
-      let destination;
-      try {
-        destination = new URL(anchor.href, location.href);
-      } catch {
-        return;
-      }
-      if (destination.origin !== location.origin) return;
-      if (destination.href === location.href || (destination.pathname === location.pathname && destination.search === location.search && destination.hash)) return;
+        let destination;
+        try {
+          destination = new URL(anchor.href, location.href);
+        } catch {
+          return;
+        }
+        if (destination.origin !== location.origin) return;
+        if (
+          destination.href === location.href ||
+          (destination.pathname === location.pathname &&
+            destination.search === location.search &&
+            destination.hash)
+        )
+          return;
 
-      event.preventDefault();
-      pending = destination.href;
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('unsavedChangesModal')).show();
-    }, true);
+        event.preventDefault();
+        pending = destination.href;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('unsavedChangesModal')).show();
+      },
+      true,
+    );
 
     document.querySelectorAll('[data-unsaved-action]').forEach((button) => {
       button.addEventListener('click', () => {
@@ -89,7 +102,9 @@
     });
 
     document.querySelectorAll('form[data-allow-dirty-page-exit="true"]').forEach((actionForm) => {
-      actionForm.addEventListener('submit', () => { allowPageExit = true; });
+      actionForm.addEventListener('submit', () => {
+        allowPageExit = true;
+      });
     });
 
     const deleteModal = document.getElementById('deleteEntryModal');
@@ -107,11 +122,12 @@
 
     form.addEventListener('submit', (event) => {
       const submitter = event.submitter;
-      const inPlaceSave = form.dataset.recordMode !== 'create'
-        && form.dataset.ownerEditing !== 'true'
-        && submitter instanceof HTMLButtonElement
-        && submitter.name === '_saveMode'
-        && submitter.value === 'stay';
+      const inPlaceSave =
+        form.dataset.recordMode !== 'create' &&
+        form.dataset.ownerEditing !== 'true' &&
+        submitter instanceof HTMLButtonElement &&
+        submitter.name === '_saveMode' &&
+        submitter.value === 'stay';
       allowPageExit = !inPlaceSave;
       if (!inPlaceSave) window.manatosRetry = null;
     });
@@ -148,7 +164,11 @@
  * ======================================================================== */
 (() => {
   document.querySelectorAll('form[data-dirty-guard="true"]').forEach((form) => {
-    const saveButtons = [...form.querySelectorAll('[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]')].filter((button) => button instanceof HTMLButtonElement);
+    const saveButtons = [
+      ...form.querySelectorAll(
+        '[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]',
+      ),
+    ].filter((button) => button instanceof HTMLButtonElement);
     const save = form.querySelector('[data-form-save]');
 
     if (!(save instanceof HTMLButtonElement) || !saveButtons.length) return;
@@ -171,12 +191,11 @@
       if (!runtime?.value?.page) return null;
       let node = runtime.value.page;
       let path = 'ctx.page';
-      while (node?.page) { node = node.page; path += '.page'; }
+      while (node?.page) {
+        node = node.page;
+        path += '.page';
+      }
       return path;
-    };
-    const sameRecord = (left, right) => {
-      try { return JSON.stringify(left ?? {}) === JSON.stringify(right ?? {}); }
-      catch { return false; }
     };
 
     const setIndicator = ({ changed, valid, internalEditing, internalEditorCount }) => {
@@ -186,37 +205,44 @@
 
       if (internalEditing) {
         indicator.classList.add('text-warning-emphasis');
-        indicatorText.textContent = internalEditorCount > 1
-          ? `Editing ${internalEditorCount} related entries`
-          : 'Editing related entry';
-        if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-pencil-square me-1';
+        indicatorText.textContent =
+          internalEditorCount > 1
+            ? `Editing ${internalEditorCount} related entries`
+            : 'Editing related entry';
+        if (indicatorIcon instanceof HTMLElement)
+          indicatorIcon.className = 'bi bi-pencil-square me-1';
         return;
       }
 
       if (!changed) {
         indicator.classList.add('text-secondary');
-        indicatorText.textContent = recordMode === 'create'
-          ? (valid ? 'New entry · ready' : 'New entry · incomplete')
-          : 'No changes';
-        if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-check-circle me-1';
+        indicatorText.textContent =
+          recordMode === 'create'
+            ? valid
+              ? 'New entry · ready'
+              : 'New entry · incomplete'
+            : 'No changes';
+        if (indicatorIcon instanceof HTMLElement)
+          indicatorIcon.className = 'bi bi-check-circle me-1';
         return;
       }
 
       if (!valid) {
         indicator.classList.add('text-warning-emphasis');
         indicatorText.textContent = 'Unsaved changes · incomplete';
-        if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-exclamation-triangle me-1';
+        if (indicatorIcon instanceof HTMLElement)
+          indicatorIcon.className = 'bi bi-exclamation-triangle me-1';
         return;
       }
 
       indicator.classList.add('text-primary');
       indicatorText.textContent = 'Unsaved changes';
-      if (indicatorIcon instanceof HTMLElement) indicatorIcon.className = 'bi bi-pencil-square me-1';
+      if (indicatorIcon instanceof HTMLElement)
+        indicatorIcon.className = 'bi bi-pencil-square me-1';
     };
 
     const update = () => {
-      const formDataChanged = sharedState.baseline !== null
-        && snapshot() !== sharedState.baseline;
+      const formDataChanged = sharedState.baseline !== null && snapshot() !== sharedState.baseline;
       const pagePath = leafPagePath();
       // Navigation protection and Save enablement MUST consume the same
       // canonical dirty predicate.  CTX remains useful as an observable page
@@ -226,13 +252,13 @@
       // ctxDirty here previously produced the contradictory state where the
       // footer said "No changes"/disabled Save while Cancel correctly detected
       // unsaved credential edits.
-      const changed = typeof sharedState.isDirty === 'function'
-        ? sharedState.isDirty()
-        : formDataChanged;
-      const valid = typeof sharedState.isValid === 'function'
-        ? sharedState.isValid()
-        : form.checkValidity();
-      const internalEditors = [...form.querySelectorAll('[data-entry-child-editor][data-child-editor-active="true"]')];
+      const changed =
+        typeof sharedState.isDirty === 'function' ? sharedState.isDirty() : formDataChanged;
+      const valid =
+        typeof sharedState.isValid === 'function' ? sharedState.isValid() : form.checkValidity();
+      const internalEditors = [
+        ...form.querySelectorAll('[data-entry-child-editor][data-child-editor-active="true"]'),
+      ];
       const internalEditorCount = internalEditors.length;
       const internalEditing = internalEditorCount > 0;
 
@@ -245,7 +271,10 @@
         closeCancelLabel.textContent = changed || internalEditing ? 'Cancel' : 'Close';
       }
       if (closeCancel instanceof HTMLElement) {
-        closeCancel.setAttribute('aria-label', changed || internalEditing ? 'Cancel editing' : 'Close entry');
+        closeCancel.setAttribute(
+          'aria-label',
+          changed || internalEditing ? 'Cancel editing' : 'Close entry',
+        );
       }
 
       // Page state is itself CTX. Metadata/actions can therefore make live,
@@ -258,10 +287,14 @@
           runtime.replace(`${pagePath}.state.valid`, valid, { source: 'page-state' });
         }
         if (runtime.get?.(`${pagePath}.state.internalEditing`) !== internalEditing) {
-          runtime.replace(`${pagePath}.state.internalEditing`, internalEditing, { source: 'page-state' });
+          runtime.replace(`${pagePath}.state.internalEditing`, internalEditing, {
+            source: 'page-state',
+          });
         }
         if (runtime.get?.(`${pagePath}.state.internalEditorCount`) !== internalEditorCount) {
-          runtime.replace(`${pagePath}.state.internalEditorCount`, internalEditorCount, { source: 'page-state' });
+          runtime.replace(`${pagePath}.state.internalEditorCount`, internalEditorCount, {
+            source: 'page-state',
+          });
         }
       }
 

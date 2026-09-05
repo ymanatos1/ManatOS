@@ -32,12 +32,28 @@ export interface ExpressionVariableNode {
 }
 
 export type ExpressionBinaryOperator =
-  | '+' | '-' | '*' | '/' | '%' | '**'
-  | '==' | '!=' | '===' | '!=='
-  | '<' | '<=' | '>' | '>='
-  | '<<' | '>>' | '>>>'
-  | '&' | '^' | '|'
-  | '&&' | '||'
+  | '+'
+  | '-'
+  | '*'
+  | '/'
+  | '%'
+  | '**'
+  | '=='
+  | '!='
+  | '==='
+  | '!=='
+  | '<'
+  | '<='
+  | '>'
+  | '>='
+  | '<<'
+  | '>>'
+  | '>>>'
+  | '&'
+  | '^'
+  | '|'
+  | '&&'
+  | '||'
   | '??'
   | 'IN';
 export interface ExpressionBinaryOperationNode {
@@ -94,12 +110,7 @@ export interface CompiledExpression {
   requiredCapabilities: readonly ExpressionCapability[];
 }
 
-export type ExpressionFunctionArgumentType =
-  | 'any'
-  | 'number'
-  | 'string'
-  | 'boolean'
-  | 'scalar';
+export type ExpressionFunctionArgumentType = 'any' | 'number' | 'string' | 'boolean' | 'scalar';
 
 export interface ExpressionFunctionSignature {
   /** Human-readable signature shown in diagnostics/debugger tooling. */
@@ -141,10 +152,7 @@ export interface ExpressionFunctionDefinition {
   signature: ExpressionFunctionSignature;
   /** Execution capability needed by this function. `pure` is available everywhere. */
   capability: ExpressionCapability;
-  evaluate: (
-    args: readonly unknown[],
-    context: ExpressionFunctionEvaluationContext,
-  ) => unknown;
+  evaluate: (args: readonly unknown[], context: ExpressionFunctionEvaluationContext) => unknown;
   /** Optional asynchronous implementation for capability-backed functions such as database/entity traversal. */
   evaluateAsync?: (
     args: readonly unknown[],

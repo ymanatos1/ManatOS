@@ -76,14 +76,6 @@
     return control?.value ?? null;
   };
 
-
-  const formFieldValue = (name) => {
-    const escaped = globalThis.CSS?.escape ? CSS.escape(name) : name.replace(/"/g, '\\"');
-    const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
-    if (control) return controlValue(control);
-    return undefined;
-  };
-
   /**
    * Resolve a live form field as an evaluator value. Bare field references use
    * the control's scalar value, while member access keeps a tiny field wrapper
@@ -95,9 +87,11 @@
   let normalizationValueActive = false;
   let normalizationValue;
   const resolveLocalFieldVariable = (members) => {
-    if (!Array.isArray(members) || !members.length || typeof members[0] !== 'string') return undefined;
+    if (!Array.isArray(members) || !members.length || typeof members[0] !== 'string')
+      return undefined;
     const key = members[0];
-    if (normalizationValueActive && key === 'value' && members.length === 1) return normalizationValue;
+    if (normalizationValueActive && key === 'value' && members.length === 1)
+      return normalizationValue;
     const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
     const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
     let fieldValue;
@@ -113,7 +107,8 @@
 
     let value = { value: fieldValue, option };
     for (const member of members.slice(1)) {
-      if (value == null || (typeof value !== 'object' && typeof value !== 'function')) return undefined;
+      if (value == null || (typeof value !== 'object' && typeof value !== 'function'))
+        return undefined;
       value = value[member];
     }
     return value;
@@ -141,7 +136,10 @@
     }
 
     const [first, ...remaining] = members;
-    if (typeof first !== 'string' || !Object.prototype.hasOwnProperty.call(explicitEvaluationScopeValue, first)) {
+    if (
+      typeof first !== 'string' ||
+      !Object.prototype.hasOwnProperty.call(explicitEvaluationScopeValue, first)
+    ) {
       return { owned: false, value: undefined };
     }
 
@@ -186,20 +184,28 @@
 
     // Root/page/user/system paths continue through the generic CTX resolver.
     if (runtime?.resolve) {
-      const scopePath = explicitEvaluationScopePath ?? leafPageFieldsPath()?.replace(/\.fields$/, '') ?? undefined;
+      const scopePath =
+        explicitEvaluationScopePath ?? leafPageFieldsPath()?.replace(/\.fields$/, '') ?? undefined;
       const resolved = runtime.resolve(node.path, scopePath);
       if (resolved !== undefined) return resolved;
     }
-    throw new Error(`Reactive expression variable not available in this browser scope: ${node.path}`);
+    throw new Error(
+      `Reactive expression variable not available in this browser scope: ${node.path}`,
+    );
   };
 
-  const scalar = (value) => value === null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value) || value instanceof Date;
+  const scalar = (value) =>
+    value === null ||
+    ['string', 'number', 'boolean', 'undefined'].includes(typeof value) ||
+    value instanceof Date;
   const num = (value, op) => {
-    if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`${op} requires numbers`);
+    if (typeof value !== 'number' || !Number.isFinite(value))
+      throw new Error(`${op} requires numbers`);
     return value;
   };
   const truthy = (value) => {
-    if (!scalar(value)) throw new Error('Structured values are not supported by reactive scalar expressions yet.');
+    if (!scalar(value))
+      throw new Error('Structured values are not supported by reactive scalar expressions yet.');
     return Boolean(value);
   };
   const plus = (left, right) => {
@@ -226,14 +232,22 @@
     };
     return { years: part('years'), months: part('months'), days: part('days') };
   };
-  const daysInCalendarMonth = (year, monthIndex) => new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-  const withClampedCalendarYearMonth = (date, year, monthIndex) => new Date(Date.UTC(
-    year,
-    monthIndex,
-    Math.min(date.getUTCDate(), daysInCalendarMonth(year, monthIndex)),
-  ));
+  const daysInCalendarMonth = (year, monthIndex) =>
+    new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const withClampedCalendarYearMonth = (date, year, monthIndex) =>
+    new Date(
+      Date.UTC(
+        year,
+        monthIndex,
+        Math.min(date.getUTCDate(), daysInCalendarMonth(year, monthIndex)),
+      ),
+    );
   const addCalendarDuration = (start, duration) => {
-    let cursor = withClampedCalendarYearMonth(start, start.getUTCFullYear() + duration.years, start.getUTCMonth());
+    let cursor = withClampedCalendarYearMonth(
+      start,
+      start.getUTCFullYear() + duration.years,
+      start.getUTCMonth(),
+    );
     const monthTotal = cursor.getUTCFullYear() * 12 + cursor.getUTCMonth() + duration.months;
     cursor = withClampedCalendarYearMonth(cursor, Math.floor(monthTotal / 12), monthTotal % 12);
     return new Date(cursor.getTime() + duration.days * 24 * 60 * 60 * 1000);
@@ -241,21 +255,39 @@
   const calendarDurationBetween = (start, end) => {
     if (end.getTime() < start.getTime()) return null;
     let years = Math.max(0, end.getUTCFullYear() - start.getUTCFullYear());
-    while (years > 0 && addCalendarDuration(start, { years, months: 0, days: 0 }).getTime() > end.getTime()) years -= 1;
+    while (
+      years > 0 &&
+      addCalendarDuration(start, { years, months: 0, days: 0 }).getTime() > end.getTime()
+    )
+      years -= 1;
     let cursor = addCalendarDuration(start, { years, months: 0, days: 0 });
-    let months = Math.max(0, (end.getUTCFullYear() - cursor.getUTCFullYear()) * 12 + (end.getUTCMonth() - cursor.getUTCMonth()));
-    while (months > 0 && addCalendarDuration(cursor, { years: 0, months, days: 0 }).getTime() > end.getTime()) months -= 1;
+    let months = Math.max(
+      0,
+      (end.getUTCFullYear() - cursor.getUTCFullYear()) * 12 +
+        (end.getUTCMonth() - cursor.getUTCMonth()),
+    );
+    while (
+      months > 0 &&
+      addCalendarDuration(cursor, { years: 0, months, days: 0 }).getTime() > end.getTime()
+    )
+      months -= 1;
     cursor = addCalendarDuration(cursor, { years: 0, months, days: 0 });
-    const days = Math.max(0, Math.round((end.getTime() - cursor.getTime()) / (24 * 60 * 60 * 1000)));
+    const days = Math.max(
+      0,
+      Math.round((end.getTime() - cursor.getTime()) / (24 * 60 * 60 * 1000)),
+    );
     return { years, months, days };
   };
 
   const evaluate = (node) => {
     if (!node) return undefined;
     switch (node.kind) {
-      case 'literal': return node.value;
-      case 'variable': return resolveVariable(node);
-      case 'group': return evaluate(node.expression);
+      case 'literal':
+        return node.value;
+      case 'variable':
+        return resolveVariable(node);
+      case 'group':
+        return evaluate(node.expression);
       case 'unary': {
         const value = evaluate(node.operand);
         if (node.operator === '!') return !truthy(value);
@@ -271,31 +303,55 @@
         if (node.operator === '||') return truthy(left) ? left : evaluate(node.right);
         const right = evaluate(node.right);
         switch (node.operator) {
-          case '+': return plus(left, right);
-          case '-': return num(left, '-') - num(right, '-');
-          case '*': return num(left, '*') * num(right, '*');
-          case '/': return num(left, '/') / num(right, '/');
-          case '%': return num(left, '%') % num(right, '%');
-          case '**': return num(left, '**') ** num(right, '**');
+          case '+':
+            return plus(left, right);
+          case '-':
+            return num(left, '-') - num(right, '-');
+          case '*':
+            return num(left, '*') * num(right, '*');
+          case '/':
+            return num(left, '/') / num(right, '/');
+          case '%':
+            return num(left, '%') % num(right, '%');
+          case '**':
+            return num(left, '**') ** num(right, '**');
           // Intentional JS/TS-style scalar equality split, matching the server evaluator.
-          case '==': return left == right; // eslint-disable-line eqeqeq
-          case '!=': return left != right; // eslint-disable-line eqeqeq
-          case '===': return left === right;
-          case '!==': return left !== right;
-          case '<': return left < right;
-          case '<=': return left <= right;
-          case '>': return left > right;
-          case '>=': return left >= right;
-          case '<<': return num(left, '<<') << (num(right, '<<') & 31);
-          case '>>': return num(left, '>>') >> (num(right, '>>') & 31);
-          case '>>>': return (num(left, '>>>') >>> (num(right, '>>>') & 31)) >>> 0;
-          case '&': return num(left, '&') & num(right, '&');
-          case '^': return num(left, '^') ^ num(right, '^');
-          case '|': return num(left, '|') | num(right, '|');
-          default: return undefined;
+          case '==':
+            return left == right;
+          case '!=':
+            return left != right;
+          case '===':
+            return left === right;
+          case '!==':
+            return left !== right;
+          case '<':
+            return left < right;
+          case '<=':
+            return left <= right;
+          case '>':
+            return left > right;
+          case '>=':
+            return left >= right;
+          case '<<':
+            return num(left, '<<') << (num(right, '<<') & 31);
+          case '>>':
+            return num(left, '>>') >> (num(right, '>>') & 31);
+          case '>>>':
+            return (num(left, '>>>') >>> (num(right, '>>>') & 31)) >>> 0;
+          case '&':
+            return num(left, '&') & num(right, '&');
+          case '^':
+            return num(left, '^') ^ num(right, '^');
+          case '|':
+            return num(left, '|') | num(right, '|');
+          default:
+            return undefined;
         }
       }
-      case 'conditional': return truthy(evaluate(node.condition)) ? evaluate(node.whenTrue) : evaluate(node.whenFalse);
+      case 'conditional':
+        return truthy(evaluate(node.condition))
+          ? evaluate(node.whenTrue)
+          : evaluate(node.whenFalse);
       case 'function': {
         const args = (node.arguments || []).map(evaluate);
         if (node.functionName === 'CurrentDay') {
@@ -304,9 +360,12 @@
           return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T00:00`;
         }
         if (node.functionName === 'EmailAddress') {
-          const normalized = String(args[0] ?? '').trim().toLocaleLowerCase();
+          const normalized = String(args[0] ?? '')
+            .trim()
+            .toLocaleLowerCase();
           if (!normalized) return null;
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) throw new Error('EmailAddress requires a valid email address.');
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
+            throw new Error('EmailAddress requires a valid email address.');
           return normalized;
         }
         if (node.functionName === 'TelephoneNbr') {
@@ -315,22 +374,34 @@
             const raw = clean(args[0]);
             if (!raw) return null;
             const digits = raw.replace(/\D/g, '');
-            if (!raw.startsWith('+') || digits.length < 4 || digits.length > 15) throw new Error('TelephoneNbr requires an international number beginning with + and containing 4-15 digits.');
+            if (!raw.startsWith('+') || digits.length < 4 || digits.length > 15)
+              throw new Error(
+                'TelephoneNbr requires an international number beginning with + and containing 4-15 digits.',
+              );
             return `+${digits}`;
           }
           const country = clean(args[0]);
           const countryDigits = country.replace(/\D/g, '');
           const numberDigits = clean(args[1]).replace(/\D/g, '');
-          if (!country.startsWith('+') || !countryDigits || numberDigits.length < 3 || `${countryDigits}${numberDigits}`.length > 15) throw new Error('TelephoneNbr requires a valid country code and national number.');
+          if (
+            !country.startsWith('+') ||
+            !countryDigits ||
+            numberDigits.length < 3 ||
+            `${countryDigits}${numberDigits}`.length > 15
+          )
+            throw new Error('TelephoneNbr requires a valid country code and national number.');
           return `+${countryDigits}${numberDigits}`;
         }
         if (node.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
         if (node.functionName === 'TraverseCtx') {
           const [startId, collection, parentField, resultField] = args;
-          if (startId == null || startId === '' || !collection || typeof collection !== 'object') return null;
+          if (startId == null || startId === '' || !collection || typeof collection !== 'object')
+            return null;
           const keyed = (container, key) => {
             if (Array.isArray(container)) {
-              return container.find((item) => item && typeof item === 'object' && (item.id === key || item.key === key));
+              return container.find(
+                (item) => item && typeof item === 'object' && (item.id === key || item.key === key),
+              );
             }
             return container?.[key];
           };
@@ -343,7 +414,8 @@
             const row = keyed(collection, key);
             if (!row || typeof row !== 'object') return null;
             const parent = row[parentField];
-            if (parent == null || parent === '') return resultField ? (row[resultField] ?? null) : row;
+            if (parent == null || parent === '')
+              return resultField ? (row[resultField] ?? null) : row;
             id = parent;
           }
           throw new Error('TraverseCtx exceeded the maximum traversal depth of 256.');
@@ -351,7 +423,9 @@
         if (node.functionName === 'CalendarAddDuration') {
           const start = parseCalendarDate(args[0]);
           const duration = normalizedCalendarDuration(args[1]);
-          return start && duration ? formatCalendarDate(addCalendarDuration(start, duration)) : null;
+          return start && duration
+            ? formatCalendarDate(addCalendarDuration(start, duration))
+            : null;
         }
         if (node.functionName === 'CalendarDurationBetween') {
           const start = parseCalendarDate(args[0]);
@@ -360,11 +434,14 @@
         }
         if (node.functionName === 'GetTime') return Date.now();
         if (node.functionName === 'StrFormat') {
-          return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) => Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match);
+          return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) =>
+            Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match,
+          );
         }
         return undefined;
       }
-      default: return undefined;
+      default:
+        return undefined;
     }
   };
 
@@ -381,8 +458,11 @@
   const withOwnedCapabilityPass = async (action) => {
     if (ownedCapabilityPassCache) return action();
     ownedCapabilityPassCache = new Map();
-    try { return await action(); }
-    finally { ownedCapabilityPassCache = null; }
+    try {
+      return await action();
+    } finally {
+      ownedCapabilityPassCache = null;
+    }
   };
 
   /**
@@ -396,8 +476,10 @@
     if (!node) return undefined;
     switch (node.kind) {
       case 'literal':
-      case 'variable': return evaluate(node);
-      case 'group': return evaluateOwned(node.expression);
+      case 'variable':
+        return evaluate(node);
+      case 'group':
+        return evaluateOwned(node.expression);
       case 'unary': {
         const value = await evaluateOwned(node.operand);
         return evaluate({ ...node, operand: { kind: 'literal', value } });
@@ -408,11 +490,18 @@
         if (node.operator === '&&') return truthy(left) ? evaluateOwned(node.right) : left;
         if (node.operator === '||') return truthy(left) ? left : evaluateOwned(node.right);
         const right = await evaluateOwned(node.right);
-        return evaluate({ ...node, left: { kind: 'literal', value: left }, right: { kind: 'literal', value: right } });
+        return evaluate({
+          ...node,
+          left: { kind: 'literal', value: left },
+          right: { kind: 'literal', value: right },
+        });
       }
       case 'conditional': {
         const condition = await evaluateOwned(node.condition);
-        if (typeof condition !== 'boolean') throw new Error(`?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`);
+        if (typeof condition !== 'boolean')
+          throw new Error(
+            `?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`,
+          );
         return condition ? evaluateOwned(node.whenTrue) : evaluateOwned(node.whenFalse);
       }
       case 'function': {
@@ -428,25 +517,32 @@
               body: JSON.stringify({ _csrf: csrfToken, functionName: node.functionName, args }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error || payload.errorMessage || 'Remote expression capability failed.');
+            if (!response.ok)
+              throw new Error(
+                payload.error || payload.errorMessage || 'Remote expression capability failed.',
+              );
             return payload.value;
           };
           if (!ownedCapabilityPassCache) return executeRemote();
           if (!ownedCapabilityPassCache.has(cacheKey)) {
             ownedCapabilityPassCache.set(cacheKey, executeRemote());
           }
-          try { return await ownedCapabilityPassCache.get(cacheKey); }
-          catch (error) {
+          try {
+            return await ownedCapabilityPassCache.get(cacheKey);
+          } catch (error) {
             ownedCapabilityPassCache.delete(cacheKey);
             throw error;
           }
         }
         if (node.capability && !localCapabilities.has(node.capability)) {
-          throw new Error(`Function ${node.functionName} requires capability '${node.capability}', unavailable to browser evaluation owner.`);
+          throw new Error(
+            `Function ${node.functionName} requires capability '${node.capability}', unavailable to browser evaluation owner.`,
+          );
         }
         return evaluate({ ...node, arguments: args.map((value) => ({ kind: 'literal', value })) });
       }
-      default: return evaluate(node);
+      default:
+        return evaluate(node);
     }
   };
 
@@ -457,12 +553,20 @@
     evaluateAstAt: (ast, scopePath) => {
       const previousScope = explicitEvaluationScopePath;
       explicitEvaluationScopePath = scopePath || null;
-      try { return evaluate(ast); } finally { explicitEvaluationScopePath = previousScope; }
+      try {
+        return evaluate(ast);
+      } finally {
+        explicitEvaluationScopePath = previousScope;
+      }
     },
     evaluateAstOwnedAt: async (ast, scopePath) => {
       const previousScope = explicitEvaluationScopePath;
       explicitEvaluationScopePath = scopePath || null;
-      try { return await evaluateOwned(ast); } finally { explicitEvaluationScopePath = previousScope; }
+      try {
+        return await evaluateOwned(ast);
+      } finally {
+        explicitEvaluationScopePath = previousScope;
+      }
     },
     evaluateAstWithScope: (ast, scope) => {
       const previousPath = explicitEvaluationScopePath;
@@ -473,8 +577,9 @@
       explicitEvaluationScopeValue = scope && typeof scope === 'object' ? scope : null;
       explicitScopeMemo = new Map();
       explicitScopeActive = new Set();
-      try { return evaluate(ast); }
-      finally {
+      try {
+        return evaluate(ast);
+      } finally {
         explicitEvaluationScopePath = previousPath;
         explicitEvaluationScopeValue = previousValue;
         explicitScopeMemo = previousMemo;
@@ -492,8 +597,14 @@
   // edit values; this generic pipeline evaluates the field's precompiled
   // normalize AST on blur and publishes the normalized value through CTX.
   form.addEventListener('focusout', (event) => {
-    const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
-    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) return;
+    const control =
+      event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
+    if (!(
+      control instanceof HTMLInputElement ||
+      control instanceof HTMLSelectElement ||
+      control instanceof HTMLTextAreaElement
+    ))
+      return;
     const container = control.closest('[data-ctx-field-container]');
     if (!container?.dataset.fieldNormalizeAst) return;
     try {
@@ -503,13 +614,20 @@
       normalizationValueActive = true;
       normalizationValue = previous;
       let normalized;
-      try { normalized = evaluate(ast); }
-      finally { normalizationValueActive = false; normalizationValue = undefined; }
+      try {
+        normalized = evaluate(ast);
+      } finally {
+        normalizationValueActive = false;
+        normalizationValue = undefined;
+      }
       if (normalized == null && previous === '') return;
       const next = normalized == null ? '' : String(normalized);
       if (next !== previous) {
         control.value = next;
-        syncSourceField(control, { source: 'field-normalization', triggerField: control.dataset.ctxField });
+        syncSourceField(control, {
+          source: 'field-normalization',
+          triggerField: control.dataset.ctxField,
+        });
       }
     } catch (error) {
       control.setCustomValidity(error instanceof Error ? error.message : 'Invalid value.');
@@ -517,8 +635,14 @@
     }
   });
   form.addEventListener('input', (event) => {
-    const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
-    if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) control.setCustomValidity('');
+    const control =
+      event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
+    if (
+      control instanceof HTMLInputElement ||
+      control instanceof HTMLSelectElement ||
+      control instanceof HTMLTextAreaElement
+    )
+      control.setCustomValidity('');
   });
 
   /*
@@ -584,7 +708,11 @@
   const sameReactiveValue = (left, right) => {
     if (Object.is(left, right)) return true;
     if (left && right && typeof left === 'object' && typeof right === 'object') {
-      try { return JSON.stringify(left) === JSON.stringify(right); } catch { return false; }
+      try {
+        return JSON.stringify(left) === JSON.stringify(right);
+      } catch {
+        return false;
+      }
     }
     return false;
   };
@@ -608,10 +736,15 @@
     let triggeredBy = [];
     try {
       const parsed = JSON.parse(container.dataset.fieldCalculationTriggeredBy || '[]');
-      if (Array.isArray(parsed)) triggeredBy = parsed.filter((value) => typeof value === 'string' && value);
-    } catch { /* invalid metadata is already visible through server-side diagnostics */ }
+      if (Array.isArray(parsed))
+        triggeredBy = parsed.filter((value) => typeof value === 'string' && value);
+    } catch {
+      /* invalid metadata is already visible through server-side diagnostics */
+    }
     const scopePath = leafPagePath() ?? undefined;
-    const triggerPaths = new Set(triggeredBy.map((fieldKey) => runtime?.resolvePath?.(fieldKey, scopePath)).filter(Boolean));
+    const triggerPaths = new Set(
+      triggeredBy.map((fieldKey) => runtime?.resolvePath?.(fieldKey, scopePath)).filter(Boolean),
+    );
 
     registerEntry({
       kind: 'field-calculation',
@@ -621,7 +754,10 @@
         const authoritativePath = change?.cause?.triggerPath || change?.changedPath;
         if (triggerPaths.size) {
           if (!authoritativePath) return false;
-          if (![...triggerPaths].some((triggerPath) => pathsOverlap(triggerPath, authoritativePath))) return false;
+          if (
+            ![...triggerPaths].some((triggerPath) => pathsOverlap(triggerPath, authoritativePath))
+          )
+            return false;
         }
         try {
           const next = await evaluateOwned(ast);
@@ -655,10 +791,15 @@
     if (value === undefined) return 'undefined';
     if (value === null) return 'null';
     if (value === '') return "''";
-    if (Array.isArray(value)) return value.length ? `[ ${value.map(debugValueText).join(', ')} ]` : '[]';
+    if (Array.isArray(value))
+      return value.length ? `[ ${value.map(debugValueText).join(', ')} ]` : '[]';
     if (typeof value === 'string') return `'${value.replaceAll("'", "\\'")}'`;
     if (typeof value === 'object') {
-      try { return JSON.stringify(value); } catch { return String(value); }
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
     }
     return String(value);
   };
@@ -697,7 +838,10 @@
     if (!(container instanceof HTMLElement)) return;
     const spanAst = parseAst(container, 'data-ui-grid-span-ast');
     if (!spanAst) return;
-    const fallback = Math.max(1, Math.min(12, Number(container.dataset.uiGridSpanFallback || 12) || 12));
+    const fallback = Math.max(
+      1,
+      Math.min(12, Number(container.dataset.uiGridSpanFallback || 12) || 12),
+    );
 
     registerEntry({
       kind: 'grid-span',
@@ -755,25 +899,35 @@
             const hasReadOnlyValue = container.dataset.uiHasReadonlyValue === 'true';
             let readOnlyValue;
             if (hasReadOnlyValue) {
-              try { readOnlyValue = JSON.parse(container.dataset.uiReadonlyValue || 'null'); }
-              catch { readOnlyValue = null; }
+              try {
+                readOnlyValue = JSON.parse(container.dataset.uiReadonlyValue || 'null');
+              } catch {
+                readOnlyValue = null;
+              }
             }
 
             let changed = false;
             controls.forEach((control) => {
-              const wasEditable = control instanceof HTMLInputElement && control.type !== 'checkbox'
-                ? !control.readOnly
-                : !control.disabled;
+              const wasEditable =
+                control instanceof HTMLInputElement && control.type !== 'checkbox'
+                  ? !control.readOnly
+                  : !control.disabled;
 
               if (!editable && hasReadOnlyValue) {
                 const current = controlValue(control);
                 if (!Object.is(current, readOnlyValue)) {
                   if (control instanceof HTMLInputElement && control.type === 'checkbox') {
                     control.checked = Boolean(readOnlyValue);
-                  } else if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) {
+                  } else if (
+                    control instanceof HTMLInputElement ||
+                    control instanceof HTMLSelectElement ||
+                    control instanceof HTMLTextAreaElement
+                  ) {
                     control.value = readOnlyValue == null ? '' : String(readOnlyValue);
                   }
-                  window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
+                  window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), {
+                    emit: false,
+                  });
 
                   const key = control.dataset.ctxField;
                   const pagePath = leafPagePath();
@@ -796,9 +950,12 @@
                 }
               }
 
-              if (control instanceof HTMLInputElement && control.type !== 'checkbox') control.readOnly = !editable;
+              if (control instanceof HTMLInputElement && control.type !== 'checkbox')
+                control.readOnly = !editable;
               else control.disabled = !editable;
-              window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
+              window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), {
+                emit: false,
+              });
               if (wasEditable !== editable) changed = true;
             });
 
@@ -835,26 +992,34 @@
     let executions = 0;
     try {
       await withOwnedCapabilityPass(async () => {
-      while (pendingChanges.length) {
-        const currentChange = pendingChanges.shift();
-        pendingChangeKeys.delete(currentChange.queueKey);
+        while (pendingChanges.length) {
+          const currentChange = pendingChanges.shift();
+          pendingChangeKeys.delete(currentChange.queueKey);
 
-        for (const entry of reactiveEntries) {
-          if (![...entry.dependencyPaths].some((dependencyPath) => pathsOverlap(dependencyPath, currentChange.changedPath))) continue;
-          await entry.run(currentChange);
-          executions += 1;
-          if (executions > 512) {
-            console.error('[ManatOS CTX] Reactive calculation queue exceeded 512 executions; possible dependency cycle.', {
-              changedPath: currentChange.changedPath,
-              triggerPath: currentChange.cause?.triggerPath,
-              rootEventId: currentChange.cause?.rootEventId,
-            });
-            pendingChanges.length = 0;
-            pendingChangeKeys.clear();
-            return;
+          for (const entry of reactiveEntries) {
+            if (
+              ![...entry.dependencyPaths].some((dependencyPath) =>
+                pathsOverlap(dependencyPath, currentChange.changedPath),
+              )
+            )
+              continue;
+            await entry.run(currentChange);
+            executions += 1;
+            if (executions > 512) {
+              console.error(
+                '[ManatOS CTX] Reactive calculation queue exceeded 512 executions; possible dependency cycle.',
+                {
+                  changedPath: currentChange.changedPath,
+                  triggerPath: currentChange.cause?.triggerPath,
+                  rootEventId: currentChange.cause?.rootEventId,
+                },
+              );
+              pendingChanges.length = 0;
+              pendingChangeKeys.clear();
+              return;
+            }
           }
         }
-      }
       });
     } finally {
       processingChanges = false;
@@ -866,8 +1031,10 @@
   };
 
   const enqueueChange = (change) => {
-    const paths = [change?.path, ...(Array.isArray(change?.relatedPaths) ? change.relatedPaths : [])]
-      .filter((path) => typeof path === 'string' && path);
+    const paths = [
+      change?.path,
+      ...(Array.isArray(change?.relatedPaths) ? change.relatedPaths : []),
+    ].filter((path) => typeof path === 'string' && path);
     if (!paths.length) return;
     const cause = change?.cause || {};
     for (const changedPath of paths) {
@@ -897,13 +1064,17 @@
 
     window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
 
-    const source = typeof eventCause.source === 'string' && eventCause.source
-      ? eventCause.source
-      : 'form-field';
-    const triggerPath = eventCause.triggerField && fieldsPath
-      ? `${fieldsPath}.${eventCause.triggerField}.value`
-      : (eventCause.triggerPath || path);
-    const cause = { source, triggerPath, ...(eventCause.rootEventId ? { rootEventId: eventCause.rootEventId } : {}) };
+    const source =
+      typeof eventCause.source === 'string' && eventCause.source ? eventCause.source : 'form-field';
+    const triggerPath =
+      eventCause.triggerField && fieldsPath
+        ? `${fieldsPath}.${eventCause.triggerField}.value`
+        : eventCause.triggerPath || path;
+    const cause = {
+      source,
+      triggerPath,
+      ...(eventCause.rootEventId ? { rootEventId: eventCause.rootEventId } : {}),
+    };
 
     if (fieldsPath && runtime?.updateField) {
       const pagePath = leafPagePath();
@@ -913,17 +1084,23 @@
       runtime.replace(path, value, cause);
       syncCurrentValue(key, value, source, triggerPath);
     } else {
-      window.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
-        detail: {
-          operation: 'replace', path, relatedPaths: [], newValue: value,
-          cause,
-        },
-      }));
+      window.dispatchEvent(
+        new CustomEvent(CHANGE_EVENT, {
+          detail: {
+            operation: 'replace',
+            path,
+            relatedPaths: [],
+            newValue: value,
+            cause,
+          },
+        }),
+      );
     }
   };
 
   const react = (event) => {
-    const control = event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
+    const control =
+      event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
     if (control) syncSourceField(control, event.manatosCause || {});
   };
 
@@ -934,19 +1111,24 @@
   });
 
   form.addEventListener('click', (event) => {
-    const action = event.target instanceof Element ? event.target.closest('[data-debug-inspect-ctx]') : null;
+    const action =
+      event.target instanceof Element ? event.target.closest('[data-debug-inspect-ctx]') : null;
     if (!(action instanceof HTMLButtonElement)) return;
     const path = action.dataset.debugInspectPath;
     if (!path) return;
     window.dispatchEvent(new Event('manatos:ctx-viewer-show'));
-    window.dispatchEvent(new CustomEvent('manatos:ctx-viewer-select', { detail: { path, expand: true } }));
+    window.dispatchEvent(
+      new CustomEvent('manatos:ctx-viewer-select', { detail: { path, expand: true } }),
+    );
   });
 
   form.addEventListener('input', react);
   form.addEventListener('change', react);
   queueMicrotask(() => {
     form.querySelectorAll('[data-ctx-field]').forEach((control) => {
-      window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
+      window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), {
+        emit: false,
+      });
     });
     runAllReactiveEntries();
     form.dispatchEvent(new Event('change', { bubbles: true }));

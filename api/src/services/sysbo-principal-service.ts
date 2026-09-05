@@ -50,7 +50,14 @@ type PrincipalAddressInput = {
 };
 
 function normalizeEmailAddress(value: string): string {
-  return String(evaluateExpression('EmailAddress(value)', { value }, { value }, { source: 'field-normalization', purpose: 'normalize email address' }));
+  return String(
+    evaluateExpression(
+      'EmailAddress(value)',
+      { value },
+      { value },
+      { source: 'field-normalization', purpose: 'normalize email address' },
+    ),
+  );
 }
 
 type PrincipalRelatedChanges = {
@@ -59,7 +66,9 @@ type PrincipalRelatedChanges = {
   addresses?: { current?: PrincipalAddressInput[] };
 };
 
-function principalPayload<T extends object>(value: T): { entity: T; relatedChanges?: PrincipalRelatedChanges } {
+function principalPayload<T extends object>(
+  value: T,
+): { entity: T; relatedChanges?: PrincipalRelatedChanges } {
   const source = value as T & { relatedChanges?: PrincipalRelatedChanges };
   const { relatedChanges, ...entity } = source;
   return relatedChanges === undefined
@@ -67,19 +76,31 @@ function principalPayload<T extends object>(value: T): { entity: T; relatedChang
     : { entity: entity as T, relatedChanges };
 }
 
-
 function canonicalTelephoneKey(countryCode: string, number: string): string {
   return String(normalizeTelephoneNumber(countryCode, number));
 }
 
 function canonicalAddressKey(value: PrincipalAddressInput): string {
-  const normalize = (part: unknown) => String(part ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const normalize = (part: unknown) =>
+    String(part ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLocaleLowerCase();
   return [
-    value.recipientOrAttention, value.organization, value.addressLine1, value.addressLine2,
-    value.addressLine3, value.poBox, value.postalCode, value.city, value.stateOrProvince, value.country,
-  ].map(normalize).join('\u001f');
+    value.recipientOrAttention,
+    value.organization,
+    value.addressLine1,
+    value.addressLine2,
+    value.addressLine3,
+    value.poBox,
+    value.postalCode,
+    value.city,
+    value.stateOrProvince,
+    value.country,
+  ]
+    .map(normalize)
+    .join('\u001f');
 }
-
 
 export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
   constructor(store: InMemoryDataStore) {
@@ -120,15 +141,21 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
        * Keeping these protected generic hooks inside this single transaction
        * also lets Contact collection synchronization remain atomic with Save.
        */
-      const created = await this.repository.create(
-        split.entity,
-        actor,
-        (record) => this.materializePersistedCalculatedFields(record),
+      const created = await this.repository.create(split.entity, actor, (record) =>
+        this.materializePersistedCalculatedFields(record),
       );
       await this.refreshPersistedCalculatedCollection();
       const persisted = (await this.repository.getById(created.id)) ?? created;
-      await this.syncEmailAddresses(persisted.id, split.relatedChanges?.emailAddresses?.current, actor);
-      await this.syncTelephoneNumbers(persisted.id, split.relatedChanges?.telephoneNumbers?.current, actor);
+      await this.syncEmailAddresses(
+        persisted.id,
+        split.relatedChanges?.emailAddresses?.current,
+        actor,
+      );
+      await this.syncTelephoneNumbers(
+        persisted.id,
+        split.relatedChanges?.telephoneNumbers?.current,
+        actor,
+      );
       await this.syncAddresses(persisted.id, split.relatedChanges?.addresses?.current, actor);
       return persisted;
     });
@@ -150,7 +177,9 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     if (!current) throw new NotFoundError('SysBOPrincipal', id);
 
     const effectiveType = split.entity.principalType ?? current.principalType;
-    const normalizedChanges: SysBOUpdateInput<SysBOPrincipal> = principalTypeCanHaveParent(effectiveType)
+    const normalizedChanges: SysBOUpdateInput<SysBOPrincipal> = principalTypeCanHaveParent(
+      effectiveType,
+    )
       ? split.entity
       : { ...split.entity, parentId: null };
 
@@ -165,7 +194,7 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
         throw new ConflictError(
           'PRINCIPAL_TYPE_CANNOT_CONTAIN_EXISTING_MEMBERS',
           'The selected Principal type cannot contain members.',
-          "Move or remove this Principal\'s children before changing it to a non-container type.",
+          "Move or remove this Principal's children before changing it to a non-container type.",
         );
       }
     }
@@ -199,11 +228,8 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     }
 
     return this.store.executeTransaction(async () => {
-      const updated = await this.repository.update(
-        id,
-        normalizedChanges,
-        actor,
-        (record) => this.materializePersistedCalculatedFields(record),
+      const updated = await this.repository.update(id, normalizedChanges, actor, (record) =>
+        this.materializePersistedCalculatedFields(record),
       );
       await this.refreshPersistedCalculatedCollection();
       const persisted = (await this.repository.getById(updated.id)) ?? updated;
@@ -219,42 +245,66 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
    * Principal association rows. Shared email-address rows are never duplicated
    * or deleted as a side effect of editing one Principal.
    */
-  private async syncEmailAddresses(principalId: string, requested: string[] | undefined, actor: AuditActor) {
+  private async syncEmailAddresses(
+    principalId: string,
+    requested: string[] | undefined,
+    actor: AuditActor,
+  ) {
     if (requested === undefined) return;
 
-    const unique = [...new Map(
-      requested
-        .map((address) => address.trim())
-        .filter(Boolean)
-        .map((address) => [normalizeEmailAddress(address), address] as const),
-    ).values()];
+    const unique = [
+      ...new Map(
+        requested
+          .map((address) => address.trim())
+          .filter(Boolean)
+          .map((address) => [normalizeEmailAddress(address), address] as const),
+      ).values(),
+    ];
 
-    const existingLinks = (await this.store.sysPrincipalEmailAddresses.list({
-      page: 1, pageSize: 10000, direction: 'asc', filters: { principalId },
-    })).items;
+    const existingLinks = (
+      await this.store.sysPrincipalEmailAddresses.list({
+        page: 1,
+        pageSize: 10000,
+        direction: 'asc',
+        filters: { principalId },
+      })
+    ).items;
 
     const wantedIds = new Set<string>();
     for (const address of unique) {
       const normalized = normalizeEmailAddress(address);
-      const matches = (await this.store.sysEmailAddresses.list({
-        page: 1, pageSize: 10000, direction: 'asc', filters: { address: normalized },
-      })).items;
-      let email = matches.find((candidate) => normalizeEmailAddress(candidate.address) === normalized);
+      const matches = (
+        await this.store.sysEmailAddresses.list({
+          page: 1,
+          pageSize: 10000,
+          direction: 'asc',
+          filters: { address: normalized },
+        })
+      ).items;
+      let email = matches.find(
+        (candidate) => normalizeEmailAddress(candidate.address) === normalized,
+      );
       if (!email) {
-        email = await this.store.sysEmailAddresses.create({
-          name: normalized,
-          address,
-          enabled: true,
-        } as SysBOCreateInput<SysEmailAddress>, actor);
+        email = await this.store.sysEmailAddresses.create(
+          {
+            name: normalized,
+            address,
+            enabled: true,
+          } as SysBOCreateInput<SysEmailAddress>,
+          actor,
+        );
       }
       wantedIds.add(email.id);
       if (!existingLinks.some((link) => link.emailAddressId === email!.id)) {
-        await this.store.sysPrincipalEmailAddresses.create({
-          name: `${principalId}:${email.id}`,
-          principalId,
-          emailAddressId: email.id,
-          enabled: true,
-        } as SysBOCreateInput<SysPrincipalEmailAddress>, actor);
+        await this.store.sysPrincipalEmailAddresses.create(
+          {
+            name: `${principalId}:${email.id}`,
+            principalId,
+            emailAddressId: email.id,
+            enabled: true,
+          } as SysBOCreateInput<SysPrincipalEmailAddress>,
+          actor,
+        );
       }
     }
 
@@ -264,7 +314,6 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       }
     }
   }
-
 
   /**
    * Resolve-or-create canonical telephone rows and synchronize Principal links.
@@ -287,41 +336,67 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       if (!unique.has(key)) unique.set(key, { countryCode, number });
     }
 
-    const existingLinks = (await this.store.sysPrincipalTelephoneNumbers.list({
-      page: 1, pageSize: 10000, direction: 'asc', filters: { principalId },
-    })).items;
+    const existingLinks = (
+      await this.store.sysPrincipalTelephoneNumbers.list({
+        page: 1,
+        pageSize: 10000,
+        direction: 'asc',
+        filters: { principalId },
+      })
+    ).items;
 
     const wantedIds = new Set<string>();
     for (const [key, value] of unique) {
       let telephone = await this.store.sysTelephoneNumbers.findByUnique('fullNumber', key);
       if (!telephone) {
-        const legacyCandidates = (await this.store.sysTelephoneNumbers.list({ page: 1, pageSize: 10000, direction: 'asc', filters: {} })).items;
-        telephone = legacyCandidates.find((candidate) => {
-          try { return normalizeTelephoneNumber(candidate.countryCode, candidate.number) === key; }
-          catch { return false; }
-        }) ?? null;
+        const legacyCandidates = (
+          await this.store.sysTelephoneNumbers.list({
+            page: 1,
+            pageSize: 10000,
+            direction: 'asc',
+            filters: {},
+          })
+        ).items;
+        telephone =
+          legacyCandidates.find((candidate) => {
+            try {
+              return normalizeTelephoneNumber(candidate.countryCode, candidate.number) === key;
+            } catch {
+              return false;
+            }
+          }) ?? null;
         if (telephone && telephone.fullNumber !== key) {
-          telephone = await this.store.sysTelephoneNumbers.update(telephone.id, { name: key, fullNumber: key }, actor);
+          telephone = await this.store.sysTelephoneNumbers.update(
+            telephone.id,
+            { name: key, fullNumber: key },
+            actor,
+          );
         }
       }
       if (!telephone) {
-        telephone = await this.store.sysTelephoneNumbers.create({
-          name: key,
-          countryCode: value.countryCode,
-          number: value.number,
-          fullNumber: key,
-          enabled: true,
-        } as SysBOCreateInput<SysTelephoneNumber>, actor);
+        telephone = await this.store.sysTelephoneNumbers.create(
+          {
+            name: key,
+            countryCode: value.countryCode,
+            number: value.number,
+            fullNumber: key,
+            enabled: true,
+          } as SysBOCreateInput<SysTelephoneNumber>,
+          actor,
+        );
       }
 
       wantedIds.add(telephone.id);
       if (!existingLinks.some((link) => link.telephoneNumberId === telephone!.id)) {
-        await this.store.sysPrincipalTelephoneNumbers.create({
-          name: `${principalId}:${telephone.id}`,
-          principalId,
-          telephoneNumberId: telephone.id,
-          enabled: true,
-        } as SysBOCreateInput<SysPrincipalTelephoneNumber>, actor);
+        await this.store.sysPrincipalTelephoneNumbers.create(
+          {
+            name: `${principalId}:${telephone.id}`,
+            principalId,
+            telephoneNumberId: telephone.id,
+            enabled: true,
+          } as SysBOCreateInput<SysPrincipalTelephoneNumber>,
+          actor,
+        );
       }
     }
 
@@ -364,34 +439,47 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       if (!unique.has(key)) unique.set(key, value);
     }
 
-    const existingLinks = (await this.store.sysPrincipalAddresses.list({
-      page: 1, pageSize: 10000, direction: 'asc', filters: { principalId },
-    })).items;
+    const existingLinks = (
+      await this.store.sysPrincipalAddresses.list({
+        page: 1,
+        pageSize: 10000,
+        direction: 'asc',
+        filters: { principalId },
+      })
+    ).items;
     const wantedIds = new Set<string>();
 
     for (const [key, value] of unique) {
       let address = await this.store.sysAddresses.findByUnique('name', key);
       if (!address) {
-        address = await this.store.sysAddresses.create({
-          name: key,
-          ...value,
-          formattedAddress: '',
-          enabled: true,
-        } as SysBOCreateInput<SysAddress>, actor, (record) => this.materializeAddress(record));
+        address = await this.store.sysAddresses.create(
+          {
+            name: key,
+            ...value,
+            formattedAddress: '',
+            enabled: true,
+          } as SysBOCreateInput<SysAddress>,
+          actor,
+          (record) => this.materializeAddress(record),
+        );
       }
       wantedIds.add(address.id);
       if (!existingLinks.some((link) => link.addressId === address!.id)) {
-        await this.store.sysPrincipalAddresses.create({
-          name: `${principalId}:${address.id}`,
-          principalId,
-          addressId: address.id,
-          enabled: true,
-        } as SysBOCreateInput<SysPrincipalAddress>, actor);
+        await this.store.sysPrincipalAddresses.create(
+          {
+            name: `${principalId}:${address.id}`,
+            principalId,
+            addressId: address.id,
+            enabled: true,
+          } as SysBOCreateInput<SysPrincipalAddress>,
+          actor,
+        );
       }
     }
 
     for (const link of existingLinks) {
-      if (!wantedIds.has(link.addressId)) await this.store.sysPrincipalAddresses.delete(link.id, actor);
+      if (!wantedIds.has(link.addressId))
+        await this.store.sysPrincipalAddresses.delete(link.id, actor);
     }
   }
 
@@ -400,7 +488,14 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     if (!calculation) return record;
     return {
       ...record,
-      formattedAddress: String(evaluateExpression(calculation.expression, record as unknown as Record<string, unknown>, record as unknown as Record<string, unknown>, { source: 'calculated-field', purpose: 'materialize formatted address' })),
+      formattedAddress: String(
+        evaluateExpression(
+          calculation.expression,
+          record as unknown as Record<string, unknown>,
+          record as unknown as Record<string, unknown>,
+          { source: 'calculated-field', purpose: 'materialize formatted address' },
+        ),
+      ),
     };
   }
 }

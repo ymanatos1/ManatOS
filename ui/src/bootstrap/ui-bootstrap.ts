@@ -82,22 +82,29 @@ export function refreshUiBootstrap(): Promise<boolean> {
     try {
       const response = await apiClient.get<UiBootstrapState>('/api/v1/public/ui-bootstrap');
 
-      replaceState(Object.freeze({
-        server: Object.freeze({
-          alive: response.data.server.alive,
-          implementationVersion: response.data.server.implementationVersion,
+      replaceState(
+        Object.freeze({
+          server: Object.freeze({
+            alive: response.data.server.alive,
+            implementationVersion: response.data.server.implementationVersion,
+          }),
+          api: Object.freeze({ version: response.data.api.version }),
+          ui: Object.freeze({
+            ...response.data.ui,
+            pageSizeOptions: [...response.data.ui.pageSizeOptions],
+          }),
         }),
-        api: Object.freeze({ version: response.data.api.version }),
-        ui: Object.freeze({ ...response.data.ui, pageSizeOptions: [...response.data.ui.pageSizeOptions] }),
-      }));
+      );
 
       return true;
     } catch {
-      replaceState(Object.freeze({
-        server: Object.freeze({ ...currentState.server, alive: false }),
-        api: currentState.api,
-        ui: currentState.ui,
-      }));
+      replaceState(
+        Object.freeze({
+          server: Object.freeze({ ...currentState.server, alive: false }),
+          api: currentState.api,
+          ui: currentState.ui,
+        }),
+      );
       return false;
     } finally {
       bootstrapRefreshInFlight = null;
@@ -123,22 +130,26 @@ export async function refreshUiBootstrapHealth(): Promise<boolean> {
 
     if (!wasAlive && alive) return refreshUiBootstrap();
 
-    replaceState(Object.freeze({
-      server: Object.freeze({
-        alive,
-        implementationVersion: response.data.version ?? currentState.server.implementationVersion,
+    replaceState(
+      Object.freeze({
+        server: Object.freeze({
+          alive,
+          implementationVersion: response.data.version ?? currentState.server.implementationVersion,
+        }),
+        api: currentState.api,
+        ui: currentState.ui,
       }),
-      api: currentState.api,
-      ui: currentState.ui,
-    }));
+    );
 
     return alive;
   } catch {
-    replaceState(Object.freeze({
-      server: Object.freeze({ ...currentState.server, alive: false }),
-      api: currentState.api,
-      ui: currentState.ui,
-    }));
+    replaceState(
+      Object.freeze({
+        server: Object.freeze({ ...currentState.server, alive: false }),
+        api: currentState.api,
+        ui: currentState.ui,
+      }),
+    );
     return false;
   }
 }

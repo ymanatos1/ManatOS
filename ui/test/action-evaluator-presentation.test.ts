@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const source = (relativePath: string) => readFile(resolve(testDirectory, '..', relativePath), 'utf8');
+const source = (relativePath: string) =>
+  readFile(resolve(testDirectory, '..', relativePath), 'utf8');
 
 describe('evaluator-backed action presentation', () => {
   it('resolves list Add visible/enabled/reason from metadata against CTX facts', async () => {
@@ -13,7 +14,7 @@ describe('evaluator-backed action presentation', () => {
     const list = await source('views/pages/sysbo/list.ejs');
 
     expect(listRenderer).toContain('const resolvedAddAction = {');
-    expect(listRenderer).toContain("sourcePath: `list.addAction.${property}`");
+    expect(listRenderer).toContain('sourcePath: `list.addAction.${property}`');
     expect(listRenderer).toContain('addConstraintReached');
     expect(list).toContain('resolvedAddAction.resolvedVisible');
     expect(list).toContain('resolvedAddAction.resolvedEnabled');

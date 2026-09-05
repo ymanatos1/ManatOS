@@ -1,6 +1,5 @@
 import { Router } from 'express';
 
-
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { requireSignedIn } from '../../middleware/auth.js';

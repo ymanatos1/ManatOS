@@ -81,20 +81,20 @@ Start with the repository [`README.md`](../README.md), then use:
 
 ## Documentation map
 
-| Area | Documents | What they answer |
-|---|---|---|
-| System architecture | [`Architecture.md`](Architecture.md) | What are the major packages, responsibilities and durable boundaries? |
-| Metadata model | [`Entity-Metadata.md`](Entity-Metadata.md) | How are canonical SysBOs, fields, relationships and UI metadata declared? |
-| CTX / expressions | [`Expression-Evaluation-Mechanics.md`](Expression-Evaluation-Mechanics.md), [`Expressions.md`](Expressions.md) | How are expressions parsed, evaluated, scoped and inspected? |
-| Authentication / authorization | [`Authentication.md`](Authentication.md), [`Authorization.md`](Authorization.md), [`authentication-flows.md`](authentication-flows.md) | How do identity/session flows and authoritative access decisions work? |
-| Configuration | [`Configuration.md`](Configuration.md) | How is runtime/system configuration represented and administered? |
-| Relationships / hierarchy | [`Relationships.md`](Relationships.md), [`Hierarchy-Workspaces.md`](Hierarchy-Workspaces.md) | How are relations and aggregate hierarchy editing modeled? |
-| Persistence | [`Storage.md`](Storage.md) | What is the storage adapter/query/persistence contract? |
-| Errors | [`Error-Handling.md`](Error-Handling.md) | How are failures represented across API/UI boundaries? |
-| Development | [`Development.md`](Development.md), [`Testing.md`](Testing.md) | How should contributors work with and verify the repository? |
-| UI | [`ui/README.md`](ui/README.md) | How are forms, field components, composite components, pages and flows organized? |
-| Usage | [`USAGE.md`](USAGE.md) | How can an operator/developer use the current system? |
-| API exploration | [`postman/`](postman/) | How can API contracts be exercised interactively? |
+| Area                           | Documents                                                                                                                              | What they answer                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| System architecture            | [`Architecture.md`](Architecture.md)                                                                                                   | What are the major packages, responsibilities and durable boundaries?             |
+| Metadata model                 | [`Entity-Metadata.md`](Entity-Metadata.md)                                                                                             | How are canonical SysBOs, fields, relationships and UI metadata declared?         |
+| CTX / expressions              | [`Expression-Evaluation-Mechanics.md`](Expression-Evaluation-Mechanics.md), [`Expressions.md`](Expressions.md)                         | How are expressions parsed, evaluated, scoped and inspected?                      |
+| Authentication / authorization | [`Authentication.md`](Authentication.md), [`Authorization.md`](Authorization.md), [`Authentication-Flows.md`](Authentication-Flows.md) | How do identity/session flows and authoritative access decisions work?            |
+| Configuration                  | [`Configuration.md`](Configuration.md)                                                                                                 | How is runtime/system configuration represented and administered?                 |
+| Relationships / hierarchy      | [`Relationships.md`](Relationships.md), [`Hierarchy-Workspaces.md`](Hierarchy-Workspaces.md)                                           | How are relations and aggregate hierarchy editing modeled?                        |
+| Persistence                    | [`Storage.md`](Storage.md)                                                                                                             | What is the storage adapter/query/persistence contract?                           |
+| Errors                         | [`Error-Handling.md`](Error-Handling.md)                                                                                               | How are failures represented across API/UI boundaries?                            |
+| Development                    | [`Development.md`](Development.md), [`Testing.md`](Testing.md)                                                                         | How should contributors work with and verify the repository?                      |
+| UI                             | [`ui/README.md`](ui/README.md)                                                                                                         | How are forms, field components, composite components, pages and flows organized? |
+| Usage                          | [`USAGE.md`](USAGE.md)                                                                                                                 | How can an operator/developer use the current system?                             |
+| API exploration                | [`postman/`](../postman/)                                                                                                              | How can API contracts be exercised interactively?                                 |
 
 ## UI documentation
 

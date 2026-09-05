@@ -18,7 +18,7 @@ This document describes the current ManatOS website UI architecture implemented 
 
 The UI is an independently runnable **Express 5 + TypeScript** application using **EJS** for server-side rendering, **Bootstrap 5** and **Bootstrap Icons** for the presentation foundation, and small browser-side JavaScript modules for shell behavior, forms, lists, busy states and preferences.
 
-The UI is deliberately separate from the API. It owns website presentation and browser-session state, while business/security operations are delegated to the API through `src/api-client.ts`. SMTP configuration and mail delivery remain API responsibilities; the UI-side `IEmailService` is only a gateway to trusted internal API email endpoints.
+The UI is deliberately separate from the API. It owns website presentation and browser-session state, while business/security operations are delegated to the API through `src/api/client.ts`. SMTP configuration and mail delivery remain API responsibilities; the UI-side `IEmailService` is only a gateway to trusted internal API email endpoints.
 
 Main areas:
 
@@ -34,7 +34,7 @@ ui/
 ├── views/
 │   ├── layout/              outer application shell
 │   ├── pages/               page-specific EJS views
-│   ├── partials/            reusable non-popup page/shell fragments
+│   ├── components/          reusable layout/navigation/debugging/SysBO components
 │   ├── popups/              popup/modal architecture
 │   └── errors/              HTTP error presentation
 ├── public/
@@ -46,7 +46,7 @@ ui/
 
 ## 2. Rendering model
 
-Normal pages are rendered in two stages by `src/render.ts`:
+Normal pages are rendered in two stages by `src/presentation/render-page.ts`:
 
 1. the requested page view is rendered with `res.locals` plus its page model;
 2. that rendered body is injected into `views/layout/shell.ejs`.
@@ -140,7 +140,7 @@ A simplified visual representation is:
 
 ### 3.2 Top header
 
-`views/partials/header.ejs` provides:
+`views/components/layout/header.ejs` provides:
 
 - theme-aware clickable brand logo;
 - application version;
@@ -154,7 +154,7 @@ The Account dropdown contains the detailed account controls; it is distinct from
 
 ### 3.3 Horizontal navigation
 
-`views/partials/horizontal-nav.ejs` renders metadata/configuration-driven items from `src/navigation.ts` and supports nested menus.
+`views/components/navigation/horizontal-nav.ejs` renders metadata/configuration-driven items from `src/navigation.ts` and supports nested menus.
 
 The main navigation exposes **Home → Company → Platform → Resources** plus platform-owned shortcuts such as **Apps Playground** when the current user is entitled to them. The Platform entry is catalogue-driven: with one enabled platform it is a direct link to that platform; with multiple enabled platforms it becomes a dropdown of platform pages without requiring new shell markup. Apps Playground and SysApplications are protoCRM-owned capabilities: Admin bypass applies, while every non-Admin user requires a current effective protoCRM license linked through one of their principals.
 
@@ -233,7 +233,6 @@ On opening a record, the first editable field on the first tab receives focus. I
 
 Metadata-driven breadcrumbs are projected from the logical CTX page chain, so an entry opened under a list is represented as `ManatOS > <List> > <Entry>` and the owning list remains navigable. Reusable component tabs are likewise CTX/data driven. The Principal Organization component is the first hierarchy example: it reads the immediate owner's `entries[]` collection together with the child entry's live `entry` record when embedded in an entry page, redraws on relevant CTX changes/tab activation, and offers Tree/Chart presentations with Chart as the Principal default. On an ordinary Principal entry the visualization is informational only; node opening, drag/drop and structural commands are reserved for the dedicated Organization workspace.
 
-
 Hierarchy workspace footer semantics are explicit: **Cancel** leaves without checkpointing the current unsaved workspace changes, **Close** checkpoints the current owner graph in user-scoped browser-local draft storage (even when structurally incomplete) and leaves the page, and **Commit** first confirms the implied database operations and then performs the single aggregate persistence transaction only when the graph is finalizable.
 
 ### Entry representation metadata
@@ -255,8 +254,6 @@ Entry pages expose an immutable normalized `entryOriginal` baseline and a live `
 Metadata-driven list surfaces share the same toolbar, filters, column header and paging partials in browse and selection contexts. Browse mode navigates and exposes page actions; selection mode selects rows and deliberately suppresses create/actions navigation. Search is part of the shared toolbar. Aggregate-owned selectors publish their temporary list state below the owner page's `selections` branch and may expose a CTX shortcut when Developer Tools are open.
 
 Canonical calculated fields are ordinary typed `fieldDefinition` entries with `calculation.expression`. Calculation is a value-source concern and never selects a different field-component. `calculation.persisted: true` asks the generic service layer to recalculate the value before authoritative persistence so UI forms, direct API calls and automatic/background creation use the same rule. `SysPrincipal.rootPrincipalId` is the current acceptance example and uses resolver-capable `TraverseEntity(...)` independently of the current list snapshot.
-
-
 
 ### 5.3.1 Field components, UI components and calendar duration
 
@@ -288,14 +285,14 @@ Before an existing record can be deleted, the UI requests the API `$delete-impac
 
 The CSS is intentionally split by concern:
 
-| File | Primary responsibility |
-| --- | --- |
-| `base.css` | baseline/global element rules |
-| `layout.css` | application shell, navigation, workspace, details and major responsive geometry |
-| `ui.css` | reusable UI components, authentication/modal structures and controls |
-| `theme.css` | theme-dependent appearance, user preference presentation and selected shell refinements |
-| `pages.css` | generic page-specific presentation |
-| `platforms/<platform>.css` | platform-owned page presentation, selected from platform presentation metadata |
+| File                       | Primary responsibility                                                                  |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `base.css`                 | baseline/global element rules                                                           |
+| `layout.css`               | application shell, navigation, workspace, details and major responsive geometry         |
+| `ui.css`                   | reusable UI components, authentication/modal structures and controls                    |
+| `theme.css`                | theme-dependent appearance, user preference presentation and selected shell refinements |
+| `pages.css`                | generic page-specific presentation                                                      |
+| `platforms/<platform>.css` | platform-owned page presentation, selected from platform presentation metadata          |
 
 New reusable component styles should normally go to `ui.css`; shell geometry belongs in `layout.css`; genuinely page-specific rules belong in `pages.css`. Avoid putting page-specific fixes into global component rules merely because they happen to use the same Bootstrap primitive.
 
@@ -303,14 +300,14 @@ New reusable component styles should normally go to `ui.css`; shell geometry bel
 
 The shell loads focused browser modules rather than one large page script:
 
-| File | Responsibility |
-| --- | --- |
-| `shell.js` | shell state, left navigation, Details panel and general modal/shell behavior |
+| File                       | Responsibility                                                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `shell.js`                 | shell state, left navigation, Details panel and general modal/shell behavior                                                              |
 | `metadata-form-runtime.js` | metadata/CTX reactive runtime: canonical AST evaluation, dependencies, calculated fields, dynamic UI properties and live debugging values |
-| `forms.js` | form/page lifecycle: dirty/valid state, Save behavior, password/configuration helpers, focus and unsaved changes |
-| `lists.js` | list/grid interaction |
-| `busy.js` | full-screen busy/locked state during operations |
-| `prefs.js` | browser-local UI preferences such as theme and language |
+| `forms.js`                 | form/page lifecycle: dirty/valid state, Save behavior, password/configuration helpers, focus and unsaved changes                          |
+| `lists.js`                 | list/grid interaction                                                                                                                     |
+| `busy.js`                  | full-screen busy/locked state during operations                                                                                           |
+| `prefs.js`                 | browser-local UI preferences such as theme and language                                                                                   |
 
 The shell loads `metadata-form-runtime.js` immediately before `forms.js`. The split is by ownership rather than page: the reactive runtime owns metadata evaluation and CTX propagation, while `forms.js` owns form lifecycle/presentation behavior. Browser expression execution consumes the canonical compiled AST supplied by ManatOS; it does not reparse metadata expression strings on every field change.
 
@@ -464,23 +461,23 @@ Future illustrations may add other parameterized contexts; callers should pass s
 
 ## 8.6 Current popup inventory
 
-| Popup | Family | Modal title | Content title / body | Inputs or choices |
-| --- | --- | --- | --- | --- |
-| Account creation method | Rich/auth | Create your account | Welcome! | provider choices or Register with Email |
-| Email registration | Rich/auth | Register with Email | Create your account | user name, email, password, confirmation |
-| Sign in | Rich/auth | Sign in | Welcome back | provider choices or local identity/password |
-| Password request | Rich/auth | Forgot or set password | Recover access to your account | email or user name |
-| Password reset | Rich/auth | Set or reset password | Create a new password | new password + confirmation + rules |
-| Password-link unavailable | Rich/auth informational | Password link unavailable | Request a new link | Back to sign in / Request a new link |
-| Account password | Rich/auth | Change password / Set password | Secure your account / Create your password | current/new/confirm password as applicable |
-| External account link | Rich/auth, provider-specific | Link external account | provider/account ownership explanation | provider/email summary, existing identity, password |
-| Existing external account | Rich/auth, provider-specific | You already have an account | provider-specific welcome/explanation | continue sign-in or cancel |
-| Website preferences | Other/form | Website user preferences | settings body | theme choices and Save |
-| Information/success | Message | contextual | short message | OK or follow-up action |
-| Warning | Message | contextual | short warning | OK or follow-up action |
-| Operation failed | Message/error | Operation failed | safe error + optional operation trace | Cancel and optional Retry |
-| Delete entry | Message/confirmation | Friendly record/entity title (for example `Delete Google External Provider`) | destructive warning | Cancel / Delete |
-| Unsaved changes | Message/confirmation | Unsaved changes | unsaved-state warning | Cancel / Discard / Save |
+| Popup                     | Family                       | Modal title                                                                  | Content title / body                       | Inputs or choices                                   |
+| ------------------------- | ---------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------- |
+| Account creation method   | Rich/auth                    | Create your account                                                          | Welcome!                                   | provider choices or Register with Email             |
+| Email registration        | Rich/auth                    | Register with Email                                                          | Create your account                        | user name, email, password, confirmation            |
+| Sign in                   | Rich/auth                    | Sign in                                                                      | Welcome back                               | provider choices or local identity/password         |
+| Password request          | Rich/auth                    | Forgot or set password                                                       | Recover access to your account             | email or user name                                  |
+| Password reset            | Rich/auth                    | Set or reset password                                                        | Create a new password                      | new password + confirmation + rules                 |
+| Password-link unavailable | Rich/auth informational      | Password link unavailable                                                    | Request a new link                         | Back to sign in / Request a new link                |
+| Account password          | Rich/auth                    | Change password / Set password                                               | Secure your account / Create your password | current/new/confirm password as applicable          |
+| External account link     | Rich/auth, provider-specific | Link external account                                                        | provider/account ownership explanation     | provider/email summary, existing identity, password |
+| Existing external account | Rich/auth, provider-specific | You already have an account                                                  | provider-specific welcome/explanation      | continue sign-in or cancel                          |
+| Website preferences       | Other/form                   | Website user preferences                                                     | settings body                              | theme choices and Save                              |
+| Information/success       | Message                      | contextual                                                                   | short message                              | OK or follow-up action                              |
+| Warning                   | Message                      | contextual                                                                   | short warning                              | OK or follow-up action                              |
+| Operation failed          | Message/error                | Operation failed                                                             | safe error + optional operation trace      | Cancel and optional Retry                           |
+| Delete entry              | Message/confirmation         | Friendly record/entity title (for example `Delete Google External Provider`) | destructive warning                        | Cancel / Delete                                     |
+| Unsaved changes           | Message/confirmation         | Unsaved changes                                                              | unsaved-state warning                      | Cancel / Discard / Save                             |
 
 `external-registration.ejs` is currently a page/content-card flow rather than a modal; it is therefore not included as a popup despite belonging to the wider authentication UX.
 
@@ -578,7 +575,6 @@ The popup-refactor regression that produced `isOwnSysUser is not defined` is a g
 
 Presentation, unit and route/integration tests protect different layers of the UI contract. Test placement should follow those responsibility boundaries as the suite grows; directory organization is secondary to keeping each test's architectural purpose explicit.
 
-
 ### Future browser E2E layer
 
 Vitest/EJS/Cheerio/Supertest do not replace a real browser. Playwright is the planned higher-level layer for behaviors such as:
@@ -629,11 +625,9 @@ clear   alias of cls
 
 Expressions themselves are compiled by the canonical server parser and evaluated from the returned AST; the browser does not implement a second expression parser.
 
-
 ### Compact related-contact collections
 
 Reusable `collection-editor` instances may declare `collapsible: true`. Their heading then toggles between the ordinary row list and a compact wrapped summary whose values remain visually separated objects. When an inline Add/Edit editor is open, the heading toggle is disabled; collapsing never commits or cancels editor state. A fresh entry-page visit starts collapsible collections compact. The state then lives only in that page DOM instance, so tab switching preserves the user's choice while navigation away/back naturally restores the compact default. Clicking a compact summary object expands the collection and opens that exact item for editing.
-
 
 ### Parent/child entry editing state
 

@@ -1,6 +1,6 @@
-import type {ManatOSCalculatedContextField} from '../context.js';
-import {compileExpression} from './parser.js';
-import type {ExpressionDiagnosticSink} from './types.js';
+import type { ManatOSCalculatedContextField } from '../context.js';
+import { compileExpression } from './parser.js';
+import type { ExpressionDiagnosticSink } from './types.js';
 
 /**
  * Declare a calculated CTX variable. Parsing is intentionally context-agnostic:
@@ -16,7 +16,7 @@ export function calculatedContextField<T = unknown>(
   } = {},
 ): ManatOSCalculatedContextField<T> {
   const compiled = compileExpression(expression, {
-    ...(options.diagnosticSink ? {diagnosticSink: options.diagnosticSink} : {}),
+    ...(options.diagnosticSink ? { diagnosticSink: options.diagnosticSink } : {}),
   });
   return {
     expression,

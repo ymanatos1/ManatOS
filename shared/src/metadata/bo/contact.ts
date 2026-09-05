@@ -24,7 +24,16 @@ export const sysBOEmailAddressesMetadata: SysBOMetadata<SysEmailAddress> = {
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Canonical email key', readOnly: true },
-    address: { key: 'address', label: 'Email address', type: 'email', order: 20, required: true, unique: true, maxLength: 254, normalize: { expression: 'EmailAddress(value)' } },
+    address: {
+      key: 'address',
+      label: 'Email address',
+      type: 'email',
+      order: 20,
+      required: true,
+      unique: true,
+      maxLength: 254,
+      normalize: { expression: 'EmailAddress(value)' },
+    },
   },
 };
 
@@ -35,14 +44,38 @@ export const sysBOPrincipalEmailAddressesMetadata: SysBOMetadata<SysPrincipalEma
   pluralName: 'Principal email addresses',
   primaryField: 'name',
   relationships: {
-    principal: { fields: ['principalId'], references: { objectKey: 'sys-principals', fields: ['id'] }, cardinality: 'many-to-one', policies: { delete: { action: 'cascade', confirmation: 'silent' } } },
-    emailAddress: { fields: ['emailAddressId'], references: { objectKey: 'sys-email-addresses', fields: ['id'] }, cardinality: 'many-to-one', policies: { delete: { action: 'restrict', confirmation: 'confirm' } } },
+    principal: {
+      fields: ['principalId'],
+      references: { objectKey: 'sys-principals', fields: ['id'] },
+      cardinality: 'many-to-one',
+      policies: { delete: { action: 'cascade', confirmation: 'silent' } },
+    },
+    emailAddress: {
+      fields: ['emailAddressId'],
+      references: { objectKey: 'sys-email-addresses', fields: ['id'] },
+      cardinality: 'many-to-one',
+      policies: { delete: { action: 'restrict', confirmation: 'confirm' } },
+    },
   },
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Relationship key', readOnly: true },
-    principalId: { key: 'principalId', label: 'Principal', type: 'reference', order: 20, required: true, referenceBOKey: 'sys-principals' },
-    emailAddressId: { key: 'emailAddressId', label: 'Email address', type: 'reference', order: 30, required: true, referenceBOKey: 'sys-email-addresses' },
+    principalId: {
+      key: 'principalId',
+      label: 'Principal',
+      type: 'reference',
+      order: 20,
+      required: true,
+      referenceBOKey: 'sys-principals',
+    },
+    emailAddressId: {
+      key: 'emailAddressId',
+      label: 'Email address',
+      type: 'reference',
+      order: 30,
+      required: true,
+      referenceBOKey: 'sys-email-addresses',
+    },
   },
 };
 
@@ -61,11 +94,31 @@ export const sysBOTelephoneNumbersMetadata: SysBOMetadata<SysTelephoneNumber> = 
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Canonical telephone key', readOnly: true },
-    countryCode: { key: 'countryCode', label: 'Country code', type: 'string', order: 20, required: true, maxLength: 5 },
-    number: { key: 'number', label: 'Telephone number', type: 'string', order: 30, required: true, maxLength: 40 },
+    countryCode: {
+      key: 'countryCode',
+      label: 'Country code',
+      type: 'string',
+      order: 20,
+      required: true,
+      maxLength: 5,
+    },
+    number: {
+      key: 'number',
+      label: 'Telephone number',
+      type: 'string',
+      order: 30,
+      required: true,
+      maxLength: 40,
+    },
     fullNumber: {
-      key: 'fullNumber', label: 'Full number', type: 'telephone', order: 40, required: true,
-      readOnly: true, applicationManaged: true, unique: true,
+      key: 'fullNumber',
+      label: 'Full number',
+      type: 'telephone',
+      order: 40,
+      required: true,
+      readOnly: true,
+      applicationManaged: true,
+      unique: true,
       calculation: { expression: 'TelephoneNbr(countryCode, number)', persisted: true },
     },
   },
@@ -78,14 +131,38 @@ export const sysBOPrincipalTelephoneNumbersMetadata: SysBOMetadata<SysPrincipalT
   pluralName: 'Principal telephone numbers',
   primaryField: 'name',
   relationships: {
-    principal: { fields: ['principalId'], references: { objectKey: 'sys-principals', fields: ['id'] }, cardinality: 'many-to-one', policies: { delete: { action: 'cascade', confirmation: 'silent' } } },
-    telephoneNumber: { fields: ['telephoneNumberId'], references: { objectKey: 'sys-telephone-numbers', fields: ['id'] }, cardinality: 'many-to-one', policies: { delete: { action: 'restrict', confirmation: 'confirm' } } },
+    principal: {
+      fields: ['principalId'],
+      references: { objectKey: 'sys-principals', fields: ['id'] },
+      cardinality: 'many-to-one',
+      policies: { delete: { action: 'cascade', confirmation: 'silent' } },
+    },
+    telephoneNumber: {
+      fields: ['telephoneNumberId'],
+      references: { objectKey: 'sys-telephone-numbers', fields: ['id'] },
+      cardinality: 'many-to-one',
+      policies: { delete: { action: 'restrict', confirmation: 'confirm' } },
+    },
   },
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Relationship key', readOnly: true },
-    principalId: { key: 'principalId', label: 'Principal', type: 'reference', order: 20, required: true, referenceBOKey: 'sys-principals' },
-    telephoneNumberId: { key: 'telephoneNumberId', label: 'Telephone number', type: 'reference', order: 30, required: true, referenceBOKey: 'sys-telephone-numbers' },
+    principalId: {
+      key: 'principalId',
+      label: 'Principal',
+      type: 'reference',
+      order: 20,
+      required: true,
+      referenceBOKey: 'sys-principals',
+    },
+    telephoneNumberId: {
+      key: 'telephoneNumberId',
+      label: 'Telephone number',
+      type: 'reference',
+      order: 30,
+      required: true,
+      referenceBOKey: 'sys-telephone-numbers',
+    },
   },
 };
 
@@ -103,28 +180,84 @@ export const sysBOAddressesMetadata: SysBOMetadata<SysAddress> = {
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Canonical address key', readOnly: true },
-    recipientOrAttention: { key: 'recipientOrAttention', label: 'Recipient / attention', type: 'string', order: 20, maxLength: 160 },
-    organization: { key: 'organization', label: 'Organization', type: 'string', order: 30, maxLength: 180 },
-    addressLine1: { key: 'addressLine1', label: 'Address line 1', type: 'string', order: 40, required: true, maxLength: 200 },
-    addressLine2: { key: 'addressLine2', label: 'Address line 2', type: 'string', order: 50, maxLength: 200 },
-    addressLine3: { key: 'addressLine3', label: 'Address line 3', type: 'string', order: 60, maxLength: 200 },
+    recipientOrAttention: {
+      key: 'recipientOrAttention',
+      label: 'Recipient / attention',
+      type: 'string',
+      order: 20,
+      maxLength: 160,
+    },
+    organization: {
+      key: 'organization',
+      label: 'Organization',
+      type: 'string',
+      order: 30,
+      maxLength: 180,
+    },
+    addressLine1: {
+      key: 'addressLine1',
+      label: 'Address line 1',
+      type: 'string',
+      order: 40,
+      required: true,
+      maxLength: 200,
+    },
+    addressLine2: {
+      key: 'addressLine2',
+      label: 'Address line 2',
+      type: 'string',
+      order: 50,
+      maxLength: 200,
+    },
+    addressLine3: {
+      key: 'addressLine3',
+      label: 'Address line 3',
+      type: 'string',
+      order: 60,
+      maxLength: 200,
+    },
     poBox: { key: 'poBox', label: 'PO Box', type: 'string', order: 70, maxLength: 80 },
-    postalCode: { key: 'postalCode', label: 'Postal code', type: 'string', order: 80, maxLength: 40 },
+    postalCode: {
+      key: 'postalCode',
+      label: 'Postal code',
+      type: 'string',
+      order: 80,
+      maxLength: 40,
+    },
     city: { key: 'city', label: 'City', type: 'string', order: 90, required: true, maxLength: 120 },
-    stateOrProvince: { key: 'stateOrProvince', label: 'State / province', type: 'string', order: 100, maxLength: 120 },
-    country: { key: 'country', label: 'Country', type: 'string', order: 110, required: true, maxLength: 120 },
+    stateOrProvince: {
+      key: 'stateOrProvince',
+      label: 'State / province',
+      type: 'string',
+      order: 100,
+      maxLength: 120,
+    },
+    country: {
+      key: 'country',
+      label: 'Country',
+      type: 'string',
+      order: 110,
+      required: true,
+      maxLength: 120,
+    },
     formattedAddress: {
-      key: 'formattedAddress', label: 'Formatted address', type: 'string', order: 120, required: true,
-      readOnly: true, applicationManaged: true, maxLength: 1000,
+      key: 'formattedAddress',
+      label: 'Formatted address',
+      type: 'string',
+      order: 120,
+      required: true,
+      readOnly: true,
+      applicationManaged: true,
+      maxLength: 1000,
       calculation: {
         expression:
-        "(recipientOrAttention != '' ? recipientOrAttention + ', ' : '') + " +
-        "(organization != '' ? organization + ', ' : '') + addressLine1 + " +
-        "(addressLine2 != '' ? ', ' + addressLine2 : '') + " +
-        "(addressLine3 != '' ? ', ' + addressLine3 : '') + " +
-        "(poBox != '' ? ', PO Box ' + poBox : '') + " +
-        "(postalCode != '' ? ', ' + postalCode : '') + ', ' + city + " +
-        "(stateOrProvince != '' ? ', ' + stateOrProvince : '') + ', ' + country",
+          "(recipientOrAttention != '' ? recipientOrAttention + ', ' : '') + " +
+          "(organization != '' ? organization + ', ' : '') + addressLine1 + " +
+          "(addressLine2 != '' ? ', ' + addressLine2 : '') + " +
+          "(addressLine3 != '' ? ', ' + addressLine3 : '') + " +
+          "(poBox != '' ? ', PO Box ' + poBox : '') + " +
+          "(postalCode != '' ? ', ' + postalCode : '') + ', ' + city + " +
+          "(stateOrProvince != '' ? ', ' + stateOrProvince : '') + ', ' + country",
         persisted: true,
       },
     },
@@ -138,14 +271,37 @@ export const sysBOPrincipalAddressesMetadata: SysBOMetadata<SysPrincipalAddress>
   pluralName: 'Principal addresses',
   primaryField: 'name',
   relationships: {
-    principal: { fields: ['principalId'], references: { objectKey: 'sys-principals', fields: ['id'] }, cardinality: 'many-to-one', policies: { delete: { action: 'cascade', confirmation: 'silent' } } },
-    address: { fields: ['addressId'], references: { objectKey: 'sys-addresses', fields: ['id'] }, cardinality: 'many-to-one', policies: { delete: { action: 'restrict', confirmation: 'confirm' } } },
+    principal: {
+      fields: ['principalId'],
+      references: { objectKey: 'sys-principals', fields: ['id'] },
+      cardinality: 'many-to-one',
+      policies: { delete: { action: 'cascade', confirmation: 'silent' } },
+    },
+    address: {
+      fields: ['addressId'],
+      references: { objectKey: 'sys-addresses', fields: ['id'] },
+      cardinality: 'many-to-one',
+      policies: { delete: { action: 'restrict', confirmation: 'confirm' } },
+    },
   },
   fieldDefinition: {
     ...commonSysBOFields,
     name: { ...commonSysBOFields.name!, label: 'Relationship key', readOnly: true },
-    principalId: { key: 'principalId', label: 'Principal', type: 'reference', order: 20, required: true, referenceBOKey: 'sys-principals' },
-    addressId: { key: 'addressId', label: 'Address', type: 'reference', order: 30, required: true, referenceBOKey: 'sys-addresses' },
+    principalId: {
+      key: 'principalId',
+      label: 'Principal',
+      type: 'reference',
+      order: 20,
+      required: true,
+      referenceBOKey: 'sys-principals',
+    },
+    addressId: {
+      key: 'addressId',
+      label: 'Address',
+      type: 'reference',
+      order: 30,
+      required: true,
+      referenceBOKey: 'sys-addresses',
+    },
   },
 };
-

@@ -254,7 +254,6 @@ export function createSysBORouter<T extends SysBOEntity>(
 
   router.post('/', createHandler);
 
-
   /**
    * Atomically commit an owner-managed aggregate working set. The browser may
    * use temporary draft identities; the service resolves them transactionally.
@@ -268,14 +267,24 @@ export function createSysBORouter<T extends SysBOEntity>(
     }
     const subject = securityContext(req);
     const entries: Record<string, unknown>[] = Array.isArray(req.body?.entries)
-      ? req.body.entries.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+      ? req.body.entries.filter(
+          (row: unknown): row is Record<string, unknown> =>
+            Boolean(row) && typeof row === 'object' && !Array.isArray(row),
+        )
       : [];
     const entriesOriginal: Record<string, unknown>[] = Array.isArray(req.body?.entriesOriginal)
-      ? req.body.entriesOriginal.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+      ? req.body.entriesOriginal.filter(
+          (row: unknown): row is Record<string, unknown> =>
+            Boolean(row) && typeof row === 'object' && !Array.isArray(row),
+        )
       : [];
     const identityField = String(req.body?.identityField || 'id');
-    const originalIds = new Set<string>(entriesOriginal.map((row) => String(row[identityField] ?? '')).filter(Boolean));
-    const currentIds = new Set<string>(entries.map((row) => String(row[identityField] ?? '')).filter(Boolean));
+    const originalIds = new Set<string>(
+      entriesOriginal.map((row) => String(row[identityField] ?? '')).filter(Boolean),
+    );
+    const currentIds = new Set<string>(
+      entries.map((row) => String(row[identityField] ?? '')).filter(Boolean),
+    );
     const unexpectedPersistedId = entries
       .map((row) => String(row[identityField] ?? ''))
       .find((id) => id && !id.startsWith('draft:') && !originalIds.has(id));
@@ -304,7 +313,10 @@ export function createSysBORouter<T extends SysBOEntity>(
     }
 
     const actor = authenticatedAuditActor(subject.userId, subject.userName);
-    const result = await service.commitAggregate({ entries, entriesOriginal, identityField }, actor);
+    const result = await service.commitAggregate(
+      { entries, entriesOriginal, identityField },
+      actor,
+    );
     sendCommand(res, `${metadata.name} aggregate committed successfully.`, {
       items: result.items.map((item) => sanitize(item, metadata)),
       idMap: result.idMap,

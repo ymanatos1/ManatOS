@@ -8,7 +8,10 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 const appPath = resolve(testDirectory, '../src/app.ts');
 const authRoutesPath = resolve(testDirectory, '../src/routes/auth-routes.ts');
 const externalAuthRouterPath = resolve(testDirectory, '../src/routes/auth/external-auth-router.ts');
-const externalAccountRouterPath = resolve(testDirectory, '../src/routes/auth/external-account-router.ts');
+const externalAccountRouterPath = resolve(
+  testDirectory,
+  '../src/routes/auth/external-account-router.ts',
+);
 
 describe('public external-authentication provider route', () => {
   it('bypasses session/page-context middleware so stale sessions cannot hide sign-in providers', async () => {
@@ -30,7 +33,9 @@ describe('public external-authentication provider route', () => {
   it('keeps credential-test callbacks provider-neutral when OAuth state is omitted', async () => {
     const routes = await readFile(externalAuthRouterPath, 'utf8');
     expect(routes).toContain('pendingTestIsFresh');
-    expect(routes).toContain("stateTestId ?? (pendingTestIsFresh ? pendingTest?.testId ?? null : null)");
+    expect(routes).toMatch(
+      /stateTestId\s*\?\?\s*\(\s*pendingTestIsFresh\s*\?\s*\(?\s*pendingTest\?\.testId\s*\?\?\s*null\s*\)?\s*:\s*null\s*\)/,
+    );
     expect(routes).not.toContain("providerKey === 'microsoft'");
   });
 
@@ -65,5 +70,4 @@ describe('public external-authentication provider route', () => {
     expect(externalAccountSource).toContain("'/register/external'");
     expect(externalAccountSource).toContain('register-external');
   });
-
 });

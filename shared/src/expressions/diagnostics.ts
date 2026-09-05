@@ -1,4 +1,4 @@
-import type {ExpressionDiagnostic, ExpressionDiagnosticSink} from './types.js';
+import type { ExpressionDiagnostic, ExpressionDiagnosticSink } from './types.js';
 
 export class ExpressionParseError extends Error {
   constructor(
@@ -25,7 +25,7 @@ export class ExpressionEvaluationError extends Error {
 
 export function emitExpressionDiagnostic(
   sink: ExpressionDiagnosticSink | undefined,
-  diagnostic: Omit<ExpressionDiagnostic, 'timestamp'> & {timestamp?: string},
+  diagnostic: Omit<ExpressionDiagnostic, 'timestamp'> & { timestamp?: string },
 ): void {
   sink?.({
     ...diagnostic,

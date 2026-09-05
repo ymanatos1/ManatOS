@@ -18,6 +18,20 @@ function npmArgs(...args) {
 
 const steps = [
   {
+    key: 'lint',
+    label: 'ESLint',
+    command: npmCommand,
+    args: npmArgs('run', 'lint'),
+    kind: 'quality',
+  },
+  {
+    key: 'formatCheck',
+    label: 'Prettier',
+    command: npmCommand,
+    args: npmArgs('run', 'format:check'),
+    kind: 'quality',
+  },
+  {
     key: 'sharedBuild',
     label: 'Shared build',
     command: npmCommand,
@@ -189,6 +203,10 @@ function printSummary(success) {
   );
   console.log('============================================================');
 
+  console.log(`  ESLint:       ${colorStatus(results.lint.status)}`);
+  console.log(`  Prettier:     ${colorStatus(results.formatCheck.status)}`);
+
+  console.log('');
   console.log(`  Shared build: ${colorStatus(results.sharedBuild.status)}`);
   console.log(`  API build:    ${colorStatus(results.apiBuild.status)}`);
   console.log(`  UI build:     ${colorStatus(results.uiBuild.status)}`);

@@ -44,10 +44,14 @@ describe('generic transactional collection editor', () => {
   it('hydrates persisted relationship ids through canonical reference records', async () => {
     const dataAccess = await source('src/routes/sysbo/data-access.ts');
     const relatedCollections = await source('src/routes/sysbo/related-collections.ts');
-    expect(dataAccess).toContain('const referencedPrimaryField = referencedDefinition.boMetadata.primaryField');
+    expect(dataAccess).toContain(
+      'const referencedPrimaryField = referencedDefinition.boMetadata.primaryField',
+    );
     expect(dataAccess).toContain('value: id');
     expect(dataAccess).toContain('const representation = resolveEntryRepresentation(');
-    expect(dataAccess).toContain('const entryName = representation.name || primaryValue || record.name || id');
+    expect(dataAccess).toContain(
+      'const entryName = representation.name || primaryValue || record.name || id',
+    );
     expect(dataAccess).toContain('label: entryName');
     expect(dataAccess).toContain('__entryIcons: representation.icons');
     expect(relatedCollections).toContain('collection.source?.kind');
@@ -58,16 +62,14 @@ describe('generic transactional collection editor', () => {
     expect(relatedCollections).not.toContain("'sys-telephone-numbers'");
   });
 
-
   it('widens country-code menus and prioritizes the active language flag before other flagged countries', async () => {
     const editor = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     const css = await source('public/css/debugger/ctx-debug.css');
-    expect(editor).toContain("document.documentElement.dataset.uiLanguage");
-    expect(editor).toContain("preferredFlag");
-    expect(editor).toContain("aFlag === preferredFlag ? 0 : aFlag ? 1 : 2");
+    expect(editor).toContain('document.documentElement.dataset.uiLanguage');
+    expect(editor).toContain('preferredFlag');
+    expect(editor).toContain('aFlag === preferredFlag ? 0 : aFlag ? 1 : 2');
     expect(css).toContain('width: max(100%, 19rem) !important;');
   });
-
 
   it('uses the universal required-field label convention and shared country catalogue projections', async () => {
     const editor = await source('views/components/sysbo/entry/content/collection-editor.ejs');
@@ -108,5 +110,4 @@ describe('generic transactional collection editor', () => {
     expect(component).toContain('if (!editorDraftDirty()) clearEditor()');
     expect(component).not.toContain('if (editorDraftDirty()) clearEditor()');
   });
-
 });

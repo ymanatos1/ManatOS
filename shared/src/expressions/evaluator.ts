@@ -1,8 +1,12 @@
-import {contextPathOf, type ManatOSCalculatedContextField, type ManatOSContextField} from '../context.js';
-import {ExpressionEvaluationError, emitExpressionDiagnostic} from './diagnostics.js';
-import {expressionFunctions} from './functions/registry.js';
-import {compileExpression} from './parser.js';
-import {resolveExpressionVariable} from './resolver.js';
+import {
+  contextPathOf,
+  type ManatOSCalculatedContextField,
+  type ManatOSContextField,
+} from '../context.js';
+import { ExpressionEvaluationError, emitExpressionDiagnostic } from './diagnostics.js';
+import { expressionFunctions } from './functions/registry.js';
+import { compileExpression } from './parser.js';
+import { resolveExpressionVariable } from './resolver.js';
 import type {
   CompiledExpression,
   ExpressionEvaluationCaller,
@@ -29,10 +33,12 @@ function correlationId(): string {
 }
 
 function isCalculatedField(value: unknown): value is ManatOSCalculatedContextField {
-  return !!value && typeof value === 'object' &&
-    typeof (value as {expression?: unknown}).expression === 'string';
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as { expression?: unknown }).expression === 'string'
+  );
 }
-
 
 function fieldFallbackValue(field: ManatOSContextField): unknown {
   return Object.prototype.hasOwnProperty.call(field, 'value') ? field.value : null;
@@ -53,14 +59,15 @@ function evaluateCalculatedField(
   state.active.add(field);
   try {
     const compiled = field.ast
-      ? {source: field.expression, ast: field.ast, requiredCapabilities: []}
+      ? { source: field.expression, ast: field.ast, requiredCapabilities: [] }
       : compileExpression(field.expression, {
-          ...(state.options.diagnosticSink ? {diagnosticSink: state.options.diagnosticSink} : {}),
+          ...(state.options.diagnosticSink ? { diagnosticSink: state.options.diagnosticSink } : {}),
         });
 
-    const nextChain = state.evaluationChain[state.evaluationChain.length - 1] === fieldPath
-      ? state.evaluationChain
-      : [...state.evaluationChain, fieldPath];
+    const nextChain =
+      state.evaluationChain[state.evaluationChain.length - 1] === fieldPath
+        ? state.evaluationChain
+        : [...state.evaluationChain, fieldPath];
     try {
       const value = evaluateNode(compiled.ast, {
         ...state,
@@ -95,8 +102,11 @@ function effectiveVariableValue(
     return evaluateCalculatedField(resolvedValue, owner, state);
   }
 
-  if (resolvedValue && typeof resolvedValue === 'object' &&
-      Object.prototype.hasOwnProperty.call(resolvedValue, 'value')) {
+  if (
+    resolvedValue &&
+    typeof resolvedValue === 'object' &&
+    Object.prototype.hasOwnProperty.call(resolvedValue, 'value')
+  ) {
     return (resolvedValue as ManatOSContextField).value;
   }
 
@@ -105,7 +115,9 @@ function effectiveVariableValue(
 
 function numberOperand(value: unknown, operator: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new ExpressionEvaluationError(`${operator} requires numeric operands; received ${value === null ? 'null' : typeof value}.`);
+    throw new ExpressionEvaluationError(
+      `${operator} requires numeric operands; received ${value === null ? 'null' : typeof value}.`,
+    );
   }
   return value;
 }
@@ -122,8 +134,14 @@ function isDate(value: unknown): value is Date {
   return value instanceof Date && !Number.isNaN(value.getTime());
 }
 
-function isSupportedScalar(value: unknown): boolean {
-  return value === null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value) || isDate(value);
+type SupportedScalar = string | number | boolean | null | undefined | Date;
+
+function isSupportedScalar(value: unknown): value is SupportedScalar {
+  return (
+    value === null ||
+    ['string', 'number', 'boolean', 'undefined'].includes(typeof value) ||
+    isDate(value)
+  );
 }
 
 /**
@@ -135,7 +153,9 @@ function isSupportedScalar(value: unknown): boolean {
 function plus(left: unknown, right: unknown): string | number {
   if (typeof left === 'string' || typeof right === 'string') {
     if (!isSupportedScalar(left) || !isSupportedScalar(right)) {
-      throw new ExpressionEvaluationError('+ cannot concatenate arrays/objects until structured-value semantics are defined.');
+      throw new ExpressionEvaluationError(
+        '+ cannot concatenate arrays/objects until structured-value semantics are defined.',
+      );
     }
     return String(left) + String(right);
   }
@@ -152,7 +172,6 @@ function assertComparableScalars(left: unknown, right: unknown, operator: string
 function looseEqual(left: unknown, right: unknown): boolean {
   assertComparableScalars(left, right, '==');
   // Intentional JS/TS-style coercive equality; === remains available explicitly.
-  // eslint-disable-next-line eqeqeq
   return left == right;
 }
 
@@ -165,13 +184,29 @@ function relational(left: unknown, right: unknown, operator: '<' | '<=' | '>' | 
   if (!isSupportedScalar(left) || !isSupportedScalar(right)) {
     throw new ExpressionEvaluationError(`${operator} does not support arrays/objects.`);
   }
-  const l = isDate(left) ? left.getTime() : left;
-  const r = isDate(right) ? right.getTime() : right;
+  const l: string | number | boolean | null | undefined = isDate(left) ? left.getTime() : left;
+  const r: string | number | boolean | null | undefined = isDate(right) ? right.getTime() : right;
+
+  // Relational operators intentionally follow JavaScript scalar coercion after
+  // the evaluator has rejected structured values above. Number(...) would alter
+  // string-vs-string semantics, so use a narrow scalar helper rather than `any`.
+  const compare = (a: typeof l, b: typeof r): number => {
+    if (typeof a === 'string' && typeof b === 'string') return a < b ? -1 : a > b ? 1 : 0;
+    const leftNumber = Number(a);
+    const rightNumber = Number(b);
+    if (Number.isNaN(leftNumber) || Number.isNaN(rightNumber)) return Number.NaN;
+    return leftNumber < rightNumber ? -1 : leftNumber > rightNumber ? 1 : 0;
+  };
+  const order = compare(l, r);
   switch (operator) {
-    case '<': return (l as any) < (r as any);
-    case '<=': return (l as any) <= (r as any);
-    case '>': return (l as any) > (r as any);
-    case '>=': return (l as any) >= (r as any);
+    case '<':
+      return order < 0;
+    case '<=':
+      return order <= 0;
+    case '>':
+      return order > 0;
+    case '>=':
+      return order >= 0;
   }
 }
 
@@ -225,9 +260,7 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
       // their right branch is evaluated only when the left result requires it.
       const left = evaluateNode(node.left, state);
       if (node.operator === '??') {
-        return left === null || left === undefined
-          ? evaluateNode(node.right, state)
-          : left;
+        return left === null || left === undefined ? evaluateNode(node.right, state) : left;
       }
       if (node.operator === '&&') {
         return scalarTruthy(left, '&&') ? evaluateNode(node.right, state) : left;
@@ -238,9 +271,12 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
 
       const right = evaluateNode(node.right, state);
       switch (node.operator) {
-        case '+': return plus(left, right);
-        case '-': return numberOperand(left, '-') - numberOperand(right, '-');
-        case '*': return numberOperand(left, '*') * numberOperand(right, '*');
+        case '+':
+          return plus(left, right);
+        case '-':
+          return numberOperand(left, '-') - numberOperand(right, '-');
+        case '*':
+          return numberOperand(left, '*') * numberOperand(right, '*');
         case '/': {
           const divisor = numberOperand(right, '/');
           if (divisor === 0) throw new ExpressionEvaluationError('Division by zero.');
@@ -251,27 +287,45 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
           if (divisor === 0) throw new ExpressionEvaluationError('Modulo by zero.');
           return numberOperand(left, '%') % divisor;
         }
-        case '**': return numberOperand(left, '**') ** numberOperand(right, '**');
-        case '==': return looseEqual(left, right);
-        case '!=': return !looseEqual(left, right);
-        case '===': return strictEqual(left, right);
-        case '!==': return !strictEqual(left, right);
+        case '**':
+          return numberOperand(left, '**') ** numberOperand(right, '**');
+        case '==':
+          return looseEqual(left, right);
+        case '!=':
+          return !looseEqual(left, right);
+        case '===':
+          return strictEqual(left, right);
+        case '!==':
+          return !strictEqual(left, right);
         case 'IN': {
-          if (!Array.isArray(right)) throw new ExpressionEvaluationError('IN requires an array on the right-hand side.');
+          if (!Array.isArray(right))
+            throw new ExpressionEvaluationError('IN requires an array on the right-hand side.');
           return right.some((candidate) => strictEqual(left, candidate));
         }
-        case '<': return relational(left, right, '<');
-        case '<=': return relational(left, right, '<=');
-        case '>': return relational(left, right, '>');
-        case '>=': return relational(left, right, '>=');
-        case '<<': return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
-        case '>>': return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
-        case '>>>': return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
-        case '&': return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
-        case '^': return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
-        case '|': return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
+        case '<':
+          return relational(left, right, '<');
+        case '<=':
+          return relational(left, right, '<=');
+        case '>':
+          return relational(left, right, '>');
+        case '>=':
+          return relational(left, right, '>=');
+        case '<<':
+          return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
+        case '>>':
+          return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
+        case '>>>':
+          return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
+        case '&':
+          return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
+        case '^':
+          return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
+        case '|':
+          return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
         default:
-          throw new ExpressionEvaluationError(`Unsupported binary operator: ${String(node.operator)}.`);
+          throw new ExpressionEvaluationError(
+            `Unsupported binary operator: ${String(node.operator)}.`,
+          );
       }
     }
 
@@ -279,18 +333,22 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
       // Ternary evaluation is lazy: only the selected branch is evaluated.
       const condition = evaluateNode(node.condition, state);
       if (typeof condition !== 'boolean') {
-        throw new ExpressionEvaluationError(`?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`);
+        throw new ExpressionEvaluationError(
+          `?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`,
+        );
       }
-      return condition
-        ? evaluateNode(node.whenTrue, state)
-        : evaluateNode(node.whenFalse, state);
+      return condition ? evaluateNode(node.whenTrue, state) : evaluateNode(node.whenFalse, state);
     }
 
     case 'function': {
       const definition = expressionFunctions[node.functionName];
-      if (!definition) throw new ExpressionEvaluationError(`Unknown expression function ${node.functionName}.`);
+      if (!definition)
+        throw new ExpressionEvaluationError(`Unknown expression function ${node.functionName}.`);
       const args = node.arguments.map((argument) => evaluateNode(argument, state));
-      return definition.evaluate(args, {now: state.options.now ?? (() => new Date()), owner: 'sync'});
+      return definition.evaluate(args, {
+        now: state.options.now ?? (() => new Date()),
+        owner: 'sync',
+      });
     }
   }
 }
@@ -322,11 +380,11 @@ export function evaluateCompiledExpression(
         phase: 'evaluate',
         message: error.message,
         expression: compiled.source,
-        ...(error.variablePath ? {variablePath: error.variablePath} : {}),
+        ...(error.variablePath ? { variablePath: error.variablePath } : {}),
         caller,
         correlationId: id,
         currentContextPath: contextPathOf(ctxRoot, currentCtxNode) ?? '<detached-context>',
-        ...(caller.targetPath ? {targetPath: caller.targetPath} : {}),
+        ...(caller.targetPath ? { targetPath: caller.targetPath } : {}),
         evaluationChain: error.evaluationChain ?? (caller.targetPath ? [caller.targetPath] : []),
       });
     }
@@ -342,11 +400,10 @@ export function evaluateExpression(
   options: ExpressionEvaluationOptions = {},
 ): unknown {
   const compiled = compileExpression(expression, {
-    ...(options.diagnosticSink ? {diagnosticSink: options.diagnosticSink} : {}),
+    ...(options.diagnosticSink ? { diagnosticSink: options.diagnosticSink } : {}),
   });
   return evaluateCompiledExpression(compiled, ctxRoot, currentCtxNode, caller, options);
 }
-
 
 /**
  * Asynchronous owner-aware evaluator.
@@ -372,11 +429,17 @@ export async function evaluateCompiledExpressionAsync(
   const active = new Set<object>();
   const chain = caller.targetPath ? [caller.targetPath] : [];
 
-  const evaluate = async (node: ExpressionNode, scope: unknown = execution.scope): Promise<unknown> => {
+  const evaluate = async (
+    node: ExpressionNode,
+    scope: unknown = execution.scope,
+  ): Promise<unknown> => {
     switch (node.kind) {
-      case 'literal': return node.value;
-      case 'array': return Promise.all(node.items.map((item) => evaluate(item, scope)));
-      case 'group': return evaluate(node.expression, scope);
+      case 'literal':
+        return node.value;
+      case 'array':
+        return Promise.all(node.items.map((item) => evaluate(item, scope)));
+      case 'group':
+        return evaluate(node.expression, scope);
       case 'variable': {
         const resolved = resolveExpressionVariable(node, execution.root, scope);
         if (!resolved.found) {
@@ -394,7 +457,7 @@ export async function evaluateCompiledExpressionAsync(
           active.add(field);
           try {
             const nested = field.ast
-              ? {source: field.expression, ast: field.ast, requiredCapabilities: []}
+              ? { source: field.expression, ast: field.ast, requiredCapabilities: [] }
               : compileExpression(field.expression);
             const value = await evaluate(nested.ast, resolved.owner ?? scope);
             memo.set(field, value);
@@ -403,7 +466,11 @@ export async function evaluateCompiledExpressionAsync(
             active.delete(field);
           }
         }
-        if (resolved.value && typeof resolved.value === 'object' && Object.prototype.hasOwnProperty.call(resolved.value, 'value')) {
+        if (
+          resolved.value &&
+          typeof resolved.value === 'object' &&
+          Object.prototype.hasOwnProperty.call(resolved.value, 'value')
+        ) {
           return (resolved.value as ManatOSContextField).value;
         }
         return resolved.value;
@@ -418,52 +485,93 @@ export async function evaluateCompiledExpressionAsync(
       case 'binary': {
         const left = await evaluate(node.left, scope);
         if (node.operator === '??') return left == null ? evaluate(node.right, scope) : left;
-        if (node.operator === '&&') return scalarTruthy(left, '&&') ? evaluate(node.right, scope) : left;
-        if (node.operator === '||') return scalarTruthy(left, '||') ? left : evaluate(node.right, scope);
+        if (node.operator === '&&')
+          return scalarTruthy(left, '&&') ? evaluate(node.right, scope) : left;
+        if (node.operator === '||')
+          return scalarTruthy(left, '||') ? left : evaluate(node.right, scope);
         const right = await evaluate(node.right, scope);
         switch (node.operator) {
-          case '+': return plus(left, right);
-          case '-': return numberOperand(left, '-') - numberOperand(right, '-');
-          case '*': return numberOperand(left, '*') * numberOperand(right, '*');
-          case '/': { const divisor = numberOperand(right, '/'); if (divisor === 0) throw new ExpressionEvaluationError('Division by zero.'); return numberOperand(left, '/') / divisor; }
-          case '%': { const divisor = numberOperand(right, '%'); if (divisor === 0) throw new ExpressionEvaluationError('Modulo by zero.'); return numberOperand(left, '%') % divisor; }
-          case '**': return numberOperand(left, '**') ** numberOperand(right, '**');
-          case '==': return looseEqual(left, right);
-          case '!=': return !looseEqual(left, right);
-          case '===': return strictEqual(left, right);
-          case '!==': return !strictEqual(left, right);
-          case 'IN': { if (!Array.isArray(right)) throw new ExpressionEvaluationError('IN requires an array on the right-hand side.'); return right.some((candidate) => strictEqual(left, candidate)); }
-          case '<': return relational(left, right, '<');
-          case '<=': return relational(left, right, '<=');
-          case '>': return relational(left, right, '>');
-          case '>=': return relational(left, right, '>=');
-          case '<<': return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
-          case '>>': return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
-          case '>>>': return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
-          case '&': return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
-          case '^': return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
-          case '|': return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
-          default: throw new ExpressionEvaluationError(`Unsupported binary operator: ${String(node.operator)}.`);
+          case '+':
+            return plus(left, right);
+          case '-':
+            return numberOperand(left, '-') - numberOperand(right, '-');
+          case '*':
+            return numberOperand(left, '*') * numberOperand(right, '*');
+          case '/': {
+            const divisor = numberOperand(right, '/');
+            if (divisor === 0) throw new ExpressionEvaluationError('Division by zero.');
+            return numberOperand(left, '/') / divisor;
+          }
+          case '%': {
+            const divisor = numberOperand(right, '%');
+            if (divisor === 0) throw new ExpressionEvaluationError('Modulo by zero.');
+            return numberOperand(left, '%') % divisor;
+          }
+          case '**':
+            return numberOperand(left, '**') ** numberOperand(right, '**');
+          case '==':
+            return looseEqual(left, right);
+          case '!=':
+            return !looseEqual(left, right);
+          case '===':
+            return strictEqual(left, right);
+          case '!==':
+            return !strictEqual(left, right);
+          case 'IN': {
+            if (!Array.isArray(right))
+              throw new ExpressionEvaluationError('IN requires an array on the right-hand side.');
+            return right.some((candidate) => strictEqual(left, candidate));
+          }
+          case '<':
+            return relational(left, right, '<');
+          case '<=':
+            return relational(left, right, '<=');
+          case '>':
+            return relational(left, right, '>');
+          case '>=':
+            return relational(left, right, '>=');
+          case '<<':
+            return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
+          case '>>':
+            return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
+          case '>>>':
+            return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
+          case '&':
+            return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
+          case '^':
+            return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
+          case '|':
+            return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
+          default:
+            throw new ExpressionEvaluationError(
+              `Unsupported binary operator: ${String(node.operator)}.`,
+            );
         }
       }
       case 'conditional': {
         const condition = await evaluate(node.condition, scope);
         if (typeof condition !== 'boolean') {
-          throw new ExpressionEvaluationError(`?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`);
+          throw new ExpressionEvaluationError(
+            `?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`,
+          );
         }
         return condition ? evaluate(node.whenTrue, scope) : evaluate(node.whenFalse, scope);
       }
       case 'function': {
         const definition = expressionFunctions[node.functionName];
-        if (!definition) throw new ExpressionEvaluationError(`Unknown expression function ${node.functionName}.`);
+        if (!definition)
+          throw new ExpressionEvaluationError(`Unknown expression function ${node.functionName}.`);
         const args: unknown[] = [];
         for (const argument of node.arguments) args.push(await evaluate(argument, scope));
         const context = {
           now: options.now ?? (() => new Date()),
           owner: execution.owner,
-          ...(execution.entityResolver ? {entityResolver: execution.entityResolver} : {}),
+          ...(execution.entityResolver ? { entityResolver: execution.entityResolver } : {}),
         };
-        if (definition.capability !== 'pure' && !execution.capabilities.includes(definition.capability)) {
+        if (
+          definition.capability !== 'pure' &&
+          !execution.capabilities.includes(definition.capability)
+        ) {
           throw new ExpressionEvaluationError(
             `${node.functionName} requires capability '${definition.capability}', unavailable to evaluation owner '${execution.owner}'.`,
           );
@@ -475,7 +583,9 @@ export async function evaluateCompiledExpressionAsync(
             );
           }
           if (!definition.evaluateAsync) {
-            throw new ExpressionEvaluationError(`${node.functionName} has no asynchronous entityResolver implementation.`);
+            throw new ExpressionEvaluationError(
+              `${node.functionName} has no asynchronous entityResolver implementation.`,
+            );
           }
           return definition.evaluateAsync(args, context);
         }
@@ -492,11 +602,11 @@ export async function evaluateCompiledExpressionAsync(
         phase: 'evaluate',
         message: error.message,
         expression: compiled.source,
-        ...(error.variablePath ? {variablePath: error.variablePath} : {}),
+        ...(error.variablePath ? { variablePath: error.variablePath } : {}),
         caller,
         correlationId: id,
         currentContextPath: contextPathOf(execution.root, execution.scope) ?? '<detached-context>',
-        ...(caller.targetPath ? {targetPath: caller.targetPath} : {}),
+        ...(caller.targetPath ? { targetPath: caller.targetPath } : {}),
         evaluationChain: error.evaluationChain ?? chain,
       });
     }

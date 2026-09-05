@@ -15,7 +15,9 @@ describe('metadata-driven SysUser presentation', () => {
     const usersEnd = uiMetadata.indexOf('export const sysBOExtAuthProvidersUIMetadata', usersStart);
     const users = uiMetadata.slice(usersStart, usersEnd);
 
-    expect(users).toMatch(/field: 'name', span: 6[\s\S]*?field: 'enabled', span: 6[\s\S]*?field: 'description', span: 12/);
+    expect(users).toMatch(
+      /field: 'name', span: 6[\s\S]*?field: 'enabled', span: 6[\s\S]*?field: 'description', span: 12/,
+    );
     expect(users.indexOf("field: 'description'")).toBeLessThan(users.indexOf("field: 'firstName'"));
   });
 
@@ -23,8 +25,14 @@ describe('metadata-driven SysUser presentation', () => {
     const canonical = await sharedSource('src/metadata/bo/identity.ts');
     const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
 
-    expect(canonical).toContain("mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'");
-    expect(uiMetadata).toContain("mode === 'create' ? 'secondary' : hasPassword ? 'success' : 'secondary'");
-    expect(uiMetadata).toContain("mode === 'create' ? 'dash-circle' : hasPassword ? 'check-circle-fill' : 'dash-circle'");
+    expect(canonical).toContain(
+      "mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'",
+    );
+    expect(uiMetadata).toContain(
+      "mode === 'create' ? 'secondary' : hasPassword ? 'success' : 'secondary'",
+    );
+    expect(uiMetadata).toContain(
+      "mode === 'create' ? 'dash-circle' : hasPassword ? 'check-circle-fill' : 'dash-circle'",
+    );
   });
 });

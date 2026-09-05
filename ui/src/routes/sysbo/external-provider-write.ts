@@ -2,10 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { Request } from 'express';
 
-import {
-  AppError,
-  type ExternalProviderKey,
-} from '@manatos/shared';
+import { AppError, type ExternalProviderKey } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
@@ -35,8 +32,12 @@ export interface CredentialTestStatusResult {
 }
 
 /** Capture one proposed provider credential pair in the server-side session. */
-export async function startExternalProviderCredentialTest(req: Request): Promise<CredentialTestStartResult> {
-  const provider = String(req.body.provider ?? '').trim().toLowerCase() as ExternalProviderKey;
+export async function startExternalProviderCredentialTest(
+  req: Request,
+): Promise<CredentialTestStartResult> {
+  const provider = String(req.body.provider ?? '')
+    .trim()
+    .toLowerCase() as ExternalProviderKey;
   let clientId = String(req.body.clientId ?? '').trim();
   let clientSecret = String(req.body.clientSecret ?? '').trim();
   const recordId = String(req.body.id ?? '').trim();
@@ -72,7 +73,11 @@ export async function startExternalProviderCredentialTest(req: Request): Promise
   ).data.providers;
   const providerDefinition = definitions.find((item) => item.provider === provider);
   if (!providerDefinition) {
-    throw new AppError('VALIDATION_ERROR', 'Unsupported external authentication provider.', 'Choose a supported provider.');
+    throw new AppError(
+      'VALIDATION_ERROR',
+      'Unsupported external authentication provider.',
+      'Choose a supported provider.',
+    );
   }
 
   const pendingCredentialTest: NonNullable<typeof req.session.pendingExtAuthCredentialTest> = {
@@ -103,7 +108,9 @@ export async function startExternalProviderCredentialTest(req: Request): Promise
   };
 }
 
-export function externalProviderCredentialTestStatus(req: Request): CredentialTestStatusResult | null {
+export function externalProviderCredentialTestStatus(
+  req: Request,
+): CredentialTestStatusResult | null {
   const requestedTestId = String(req.query.testId ?? '');
   const pending = req.session.pendingExtAuthCredentialTest;
   if (!pending || pending.testId !== requestedTestId) return null;
@@ -120,11 +127,12 @@ export function externalProviderCredentialTestStatus(req: Request): CredentialTe
     testId: pending.testId,
     provider: pending.provider,
     status: pending.status,
-    message: pending.status === 'verified'
-      ? 'Provider credentials tested successfully. Save to commit this verified credential pair.'
-      : pending.status === 'failed'
-        ? (pending.errorMessage ?? 'The provider rejected the proposed credentials.')
-        : 'Waiting for the provider credential test to complete.',
+    message:
+      pending.status === 'verified'
+        ? 'Provider credentials tested successfully. Save to commit this verified credential pair.'
+        : pending.status === 'failed'
+          ? (pending.errorMessage ?? 'The provider rejected the proposed credentials.')
+          : 'Waiting for the provider credential test to complete.',
     ...(pending.verifiedAt ? { verifiedAt: pending.verifiedAt } : {}),
     ...(pending.status === 'verified' ? { verificationProofId: pending.testId } : {}),
   };
@@ -133,7 +141,8 @@ export function externalProviderCredentialTestStatus(req: Request): CredentialTe
 export function cancelExternalProviderCredentialTest(req: Request): void {
   const requestedTestId = String(req.body.testId ?? '');
   const pending = req.session.pendingExtAuthCredentialTest;
-  if (pending && pending.testId === requestedTestId) delete req.session.pendingExtAuthCredentialTest;
+  if (pending && pending.testId === requestedTestId)
+    delete req.session.pendingExtAuthCredentialTest;
 }
 
 /** Rebuild the runtime registry only after provider configuration changes. */
@@ -159,17 +168,26 @@ export async function handleExternalProviderCredentialSave(
   const action = String(req.body.providerCredentialAction ?? 'unchanged');
   const proofId = String(req.body.providerVerificationProofId ?? '');
 
-  let provider = String(req.body.provider ?? '').trim().toLowerCase();
+  let provider = String(req.body.provider ?? '')
+    .trim()
+    .toLowerCase();
   if (id) {
     const existingProvider = await apiClient.get<Record<string, unknown>>(
       `/api/v1/${apiPath}/${encodeURIComponent(id)}`,
       apiSessionOptions(req),
     );
-    provider = String(existingProvider.data.provider ?? '').trim().toLowerCase();
+    provider = String(existingProvider.data.provider ?? '')
+      .trim()
+      .toLowerCase();
   }
 
   if (!['unchanged', 'replace', 'remove'].includes(action)) {
-    throw new AppError('VALIDATION_ERROR', 'Unsupported provider credential action.', 'The credential change could not be saved.', false);
+    throw new AppError(
+      'VALIDATION_ERROR',
+      'Unsupported provider credential action.',
+      'The credential change could not be saved.',
+      false,
+    );
   }
 
   if (action === 'remove') {
@@ -189,7 +207,12 @@ export async function handleExternalProviderCredentialSave(
   const clientId = String(req.body.clientId ?? '').trim();
   const clientSecret = String(req.body.clientSecret ?? '');
   if (!clientId || !clientSecret) {
-    throw new AppError('VALIDATION_ERROR', 'Client ID and Client secret must be saved together.', 'Enter both Client ID and Client secret.', false);
+    throw new AppError(
+      'VALIDATION_ERROR',
+      'Client ID and Client secret must be saved together.',
+      'Enter both Client ID and Client secret.',
+      false,
+    );
   }
 
   const proofMatches =
@@ -211,7 +234,8 @@ export async function handleExternalProviderCredentialSave(
     {
       ...(id ? { id } : {}),
       provider,
-      enabled: req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
+      enabled:
+        req.body.enabled === 'on' || req.body.enabled === 'true' || req.body.enabled === true,
       clientId,
       clientSecret,
       callbackPath: req.body.callbackPath,

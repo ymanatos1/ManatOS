@@ -43,7 +43,10 @@ export function parseListQuery(req: Request): ListQuery {
    * both the default and maximum independently configurable.
    */
   const pageSize = Math.min(
-    positiveInteger(req.query.pageSize, runtimeNumber('API_DEFAULT_PAGE_SIZE', config.API_DEFAULT_PAGE_SIZE)),
+    positiveInteger(
+      req.query.pageSize,
+      runtimeNumber('API_DEFAULT_PAGE_SIZE', config.API_DEFAULT_PAGE_SIZE),
+    ),
 
     runtimeNumber('API_MAX_PAGE_SIZE', config.API_MAX_PAGE_SIZE),
   );
@@ -100,12 +103,9 @@ export function parseListQuery(req: Request): ListQuery {
     }
   }
 
-  const listExceptionsSource = typeof req.query.listExceptions === 'string'
-    ? req.query.listExceptions.trim()
-    : '';
-  const listExceptions = listExceptionsSource
-    ? compileExpression(listExceptionsSource)
-    : undefined;
+  const listExceptionsSource =
+    typeof req.query.listExceptions === 'string' ? req.query.listExceptions.trim() : '';
+  const listExceptions = listExceptionsSource ? compileExpression(listExceptionsSource) : undefined;
 
   return {
     page,

@@ -88,7 +88,10 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
           },
         );
 
-  const detailLevel = runtimeString('API_ERROR_DETAIL_LEVEL', config.API_ERROR_DETAIL_LEVEL) as typeof config.API_ERROR_DETAIL_LEVEL;
+  const detailLevel = runtimeString(
+    'API_ERROR_DETAIL_LEVEL',
+    config.API_ERROR_DETAIL_LEVEL,
+  ) as typeof config.API_ERROR_DETAIL_LEVEL;
 
   const httpStatus = httpStatusByErrorCode[appError.code] ?? 500;
 
@@ -99,9 +102,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
     errorCode: appError.code,
     retryable: appError.retryable,
     developerMessage: appError.message,
-    ...(appError.operationTrace?.[0]?.id
-      ? { operationId: appError.operationTrace[0].id }
-      : {}),
+    ...(appError.operationTrace?.[0]?.id ? { operationId: appError.operationTrace[0].id } : {}),
   };
 
   // Expected client/business/security rejections are warnings. Operational

@@ -81,7 +81,6 @@ describe('API integration - SysBOUser delete authorization', () => {
     await expect(context.services.users.get(otherUser.id)).resolves.toBeNull();
   });
 
-
   it('repairs a historical orphan External Identity from relationship metadata', () => {
     const now = new Date().toISOString();
     context.store.externalIdentities().set('orphan-identity', {
@@ -116,7 +115,7 @@ describe('API integration - SysBOUser delete authorization', () => {
         email: 'federated-target@example.test',
         emailVerified: true,
       },
-      {userId: adminId, userName: TEST_ADMIN.name},
+      { userId: adminId, userName: TEST_ADMIN.name },
     );
 
     expect(context.store.externalIdentities().size).toBe(1);
@@ -126,14 +125,16 @@ describe('API integration - SysBOUser delete authorization', () => {
       .set('Authorization', bearer(adminToken));
 
     expect(preview.status).toBe(200);
-    expect(preview.body.data.impacts).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        objectKey: 'external-identities',
-        relationship: 'user',
-        count: 1,
-        action: 'cascade',
-      }),
-    ]));
+    expect(preview.body.data.impacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          objectKey: 'external-identities',
+          relationship: 'user',
+          count: 1,
+          action: 'cascade',
+        }),
+      ]),
+    );
 
     const response = await request(context.app)
       .delete(`/api/v1/SysUsers/${otherUser.id}`)
@@ -178,7 +179,6 @@ describe('API integration - SysBOUser delete authorization', () => {
 
     expect(preserved?.id).toBe(target.id);
   });
-
 
   it('prevents a Superuser from assigning roles through a direct SysBOUser PATCH', async () => {
     const superuser = await createUser(

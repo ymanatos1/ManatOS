@@ -1,10 +1,6 @@
 import type { Request } from 'express';
 
-import {
-  type SysBOUIMetadata,
-  type SysBOUser,
-  resolveEntryRepresentation,
-} from '@manatos/shared';
+import { type SysBOUIMetadata, type SysBOUser, resolveEntryRepresentation } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import type { ExternalAuthProviderDefinition } from '../../auth/providers/types.js';
@@ -14,7 +10,6 @@ import type { SysBODefinition } from '../../sysbo/types.js';
 import { apiPathFor, references, type SysBOListData } from './data-access.js';
 import { loadRelatedCollections } from './related-collections.js';
 import type { UIEntityPermissions } from '../../sysbo/permissions.js';
-
 
 /**
  * Build supplemental data required by the canonical metadata-driven SysBO
@@ -44,36 +39,52 @@ export async function editPageSupplementalData(
     { externalIdentities: authenticationIdentities },
   );
 
-  const deleteImpact = !isNew && itemId && permissions?.delete
-    ? (
-        await apiClient.get<{
-          targetObjectKey: string;
-          targetId: string;
-          canExecute: boolean;
-          requiresConfirmation: boolean;
-          impacts: Array<{
-            objectKey: string;
-            objectName: string;
-            relationship: string;
-            count: number;
-            action: 'restrict' | 'cascade' | 'set-null' | 'unlink' | 'retain';
-            confirmation: 'silent' | 'confirm' | 'inherit';
-          }>;
-        }>(
-          `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(itemId)}/$delete-impact`,
-          apiSessionOptions(req),
-        )
-      ).data
-    : null;
+  const deleteImpact =
+    !isNew && itemId && permissions?.delete
+      ? (
+          await apiClient.get<{
+            targetObjectKey: string;
+            targetId: string;
+            canExecute: boolean;
+            requiresConfirmation: boolean;
+            impacts: Array<{
+              objectKey: string;
+              objectName: string;
+              relationship: string;
+              count: number;
+              action: 'restrict' | 'cascade' | 'set-null' | 'unlink' | 'retain';
+              confirmation: 'silent' | 'confirm' | 'inherit';
+            }>;
+          }>(
+            `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(itemId)}/$delete-impact`,
+            apiSessionOptions(req),
+          )
+        ).data
+      : null;
 
-  let externalAuthProviderDefinitions = definition.key === 'sys-ext-auth-providers'
-    ? (await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>('/api/v1/SysExtAuthProviders/definitions', apiSessionOptions(req))).data.providers
-    : [];
+  let externalAuthProviderDefinitions =
+    definition.key === 'sys-ext-auth-providers'
+      ? (
+          await apiClient.get<{ providers: ExternalAuthProviderDefinition[] }>(
+            '/api/v1/SysExtAuthProviders/definitions',
+            apiSessionOptions(req),
+          )
+        ).data.providers
+      : [];
   let suggestedProvider = '';
   if (definition.key === 'sys-ext-auth-providers' && isNew) {
-    const configured = (await apiClient.get<SysBOListData<Record<string, unknown>>>('/api/v1/SysExtAuthProviders?page=1&pageSize=100', apiSessionOptions(req))).data.items;
-    const configuredKeys = new Set(configured.map((entry) => String(entry.provider ?? '').toLowerCase()));
-    externalAuthProviderDefinitions = externalAuthProviderDefinitions.filter((entry) => !configuredKeys.has(entry.provider));
+    const configured = (
+      await apiClient.get<SysBOListData<Record<string, unknown>>>(
+        '/api/v1/SysExtAuthProviders?page=1&pageSize=100',
+        apiSessionOptions(req),
+      )
+    ).data.items;
+    const configuredKeys = new Set(
+      configured.map((entry) => String(entry.provider ?? '').toLowerCase()),
+    );
+    externalAuthProviderDefinitions = externalAuthProviderDefinitions.filter(
+      (entry) => !configuredKeys.has(entry.provider),
+    );
     suggestedProvider = externalAuthProviderDefinitions[0]?.provider ?? '';
   }
 
@@ -91,8 +102,9 @@ export async function editPageSupplementalData(
     item,
     { entityIcon: definition.icon, referenceData: pageReferenceData },
   );
-  const displayValue = entryRepresentation.name
-    || String(primaryPresentationItem?.label ?? rawPrimaryValue ?? 'entry');
+  const displayValue =
+    entryRepresentation.name ||
+    String(primaryPresentationItem?.label ?? rawPrimaryValue ?? 'entry');
 
   if (definition.key === 'sys-ext-auth-providers') {
     pageReferenceData.provider = externalAuthProviderDefinitions.map((providerDefinition) => ({
@@ -127,7 +139,8 @@ export async function editPageSupplementalData(
 export function credentialTestResultPresentation(req: Request) {
   const result = String(req.query.credentialsTest ?? '');
   if (result === 'verified') {
-    const storedPairVerified = req.session.pendingExtAuthCredentialTest?.usesStoredCredentials === true;
+    const storedPairVerified =
+      req.session.pendingExtAuthCredentialTest?.usesStoredCredentials === true;
     return {
       informationTitle: 'Credentials verified',
       informationMessage: storedPairVerified
@@ -139,8 +152,8 @@ export function credentialTestResultPresentation(req: Request) {
     return {
       warningTitle: 'Credential verification failed',
       warningMessage:
-        req.session.pendingExtAuthCredentialTest?.errorMessage
-        ?? 'The provider rejected the proposed credentials. Review the values on the Secrets tab and test them again.',
+        req.session.pendingExtAuthCredentialTest?.errorMessage ??
+        'The provider rejected the proposed credentials. Review the values on the Secrets tab and test them again.',
     };
   }
   return {};

@@ -69,9 +69,17 @@ const schema = z.object({
    * Persistent file logging. Relative paths are resolved from the API process
    * working directory. Empty values disable the corresponding file sink.
    */
-  LOG_FILE_PATH: z.string().trim().optional().transform((value) => value || undefined),
+  LOG_FILE_PATH: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
   LOG_FILE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('info'),
-  LOG_ERROR_FILE_PATH: z.string().trim().optional().transform((value) => value || undefined),
+  LOG_ERROR_FILE_PATH: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
   LOG_ERROR_FILE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('error'),
   LOG_FILE_MAX_BYTES: z.coerce.number().int().positive().default(5_242_880),
 
@@ -81,7 +89,11 @@ const schema = z.object({
    * The database sink is intentionally not coupled to the primary datastore.
    * A non-empty URL will enable it once the dedicated sink/provider is added.
    */
-  LOG_DATABASE_URL: z.string().trim().optional().transform((value) => value || undefined),
+  LOG_DATABASE_URL: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
   LOG_DATABASE_MIN_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('error'),
 
   /**
@@ -89,7 +101,11 @@ const schema = z.object({
    * The key itself must remain outside the database.
    */
   SECRETS_ENCRYPTION_ACTIVE_KEY_ID: z.string().trim().min(1).default('v1'),
-  SECRETS_ENCRYPTION_KEY: z.string().trim().optional().transform((value) => value || undefined),
+  SECRETS_ENCRYPTION_KEY: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
 
   /** Server-side SMTP delivery. SMTP secrets must never be exposed to the UI/browser. */
   MAIL_ENABLED: z
@@ -146,6 +162,5 @@ if (parsedConfig.API_DEFAULT_PAGE_SIZE > parsedConfig.API_MAX_PAGE_SIZE) {
 
 // Mail settings may be supplied by encrypted SysBOConfiguration after the datastore
 // initializes, so startup validation cannot require them to exist in .env.
-
 
 export const config = parsedConfig;

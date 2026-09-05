@@ -3,10 +3,7 @@ import {
   sysBOLicensesUIMetadata,
   sysBOPrincipalsUIMetadata,
 } from './business.js';
-import {
-  sysBOExtAuthProvidersUIMetadata,
-  sysBOUsersUIMetadata,
-} from './identity.js';
+import { sysBOExtAuthProvidersUIMetadata, sysBOUsersUIMetadata } from './identity.js';
 
 /**
  * Complete framework-neutral SysBO UI-metadata registry.

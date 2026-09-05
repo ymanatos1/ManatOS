@@ -14,13 +14,13 @@ A calculated reference is therefore still a `reference`; a calculated string is 
 
 You do not need to read this directory linearly.
 
-| Audience / goal | Recommended path |
-|---|---|
-| understand what the UI supports | `UI-Flows.md` → `Entity-Pages.md` / `System-Pages.md` |
-| review the UI architecture | `UI-Architecture.md` → `UI-Forms.md` → component guides |
-| implement or extend an entity | `Entity-Pages.md` → `UI-Forms.md` → `UI-Field-Components.md` |
+| Audience / goal                                       | Recommended path                                                         |
+| ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| understand what the UI supports                       | `UI-Flows.md` → `Entity-Pages.md` / `System-Pages.md`                    |
+| review the UI architecture                            | `UI-Architecture.md` → `UI-Forms.md` → component guides                  |
+| implement or extend an entity                         | `Entity-Pages.md` → `UI-Forms.md` → `UI-Field-Components.md`             |
 | implement a reusable multi-field or non-field feature | `UI-Composite-Components.md` / `UI-Components.md` → `UI-Architecture.md` |
-| inspect a workflow end to end | `UI-Flows.md` → the linked page/form/component sections |
+| inspect a workflow end to end                         | `UI-Flows.md` → the linked page/form/component sections                  |
 
 `UI-Flows.md` is the functional bridge: it describes the screens and transitions a user sees, then links those steps to the reusable architecture that implements them.
 
@@ -54,16 +54,16 @@ flowchart TB
     H --> G
 ```
 
-| If you are... | Read first | Then |
-|---|---|---|
-| changing UI architecture or metadata/rendering boundaries | `UI-Architecture.md` | the relevant specialized guide |
-| creating/changing an entry form | `UI-Forms.md` | `Entity-Pages.md`, field/composite guides |
-| adding a canonical field type | `UI-Field-Components.md` | `UI-Architecture.md` |
-| arranging several existing fields as one visual unit | `UI-Composite-Components.md` | `UI-Forms.md` |
-| adding a collection, hierarchy, panel or other non-field widget | `UI-Components.md` | `UI-Forms.md` |
-| implementing a new metadata-driven entity | `Entity-Pages.md` | `UI-Forms.md`, `UI-Field-Components.md` |
-| implementing authentication/account/debug/system UI | `System-Pages.md` | `UI-Components.md` |
-| tracing or documenting an end-to-end supported workflow | `UI-Flows.md` | linked page/form/component guides |
+| If you are...                                                   | Read first                   | Then                                      |
+| --------------------------------------------------------------- | ---------------------------- | ----------------------------------------- |
+| changing UI architecture or metadata/rendering boundaries       | `UI-Architecture.md`         | the relevant specialized guide            |
+| creating/changing an entry form                                 | `UI-Forms.md`                | `Entity-Pages.md`, field/composite guides |
+| adding a canonical field type                                   | `UI-Field-Components.md`     | `UI-Architecture.md`                      |
+| arranging several existing fields as one visual unit            | `UI-Composite-Components.md` | `UI-Forms.md`                             |
+| adding a collection, hierarchy, panel or other non-field widget | `UI-Components.md`           | `UI-Forms.md`                             |
+| implementing a new metadata-driven entity                       | `Entity-Pages.md`            | `UI-Forms.md`, `UI-Field-Components.md`   |
+| implementing authentication/account/debug/system UI             | `System-Pages.md`            | `UI-Components.md`                        |
+| tracing or documenting an end-to-end supported workflow         | `UI-Flows.md`                | linked page/form/component guides         |
 
 ## Responsibility map
 
@@ -83,15 +83,15 @@ flowchart LR
 
 ### Group-level ownership
 
-| Layer | Owns | Does not own |
-|---|---|---|
-| Canonical metadata | field semantics, type, constraints, relationships, calculations | HTML/control implementation |
-| UI metadata | tabs, layout, presentation policy, component declarations/options | duplicate business-field semantics |
-| CTX/evaluator | current state, expression evaluation, dependency propagation | field-type rendering |
-| Page/form infrastructure | composition, tabs, form transaction/lifecycle, dirty/valid state, page actions | concrete field-type editors |
-| Field components | complete canonical field UI: resolved value presentation, editing, formatting, icon/label representation, validation presentation, CTX/DOM synchronization and field tool menu | calculation engine, persistence orchestration, page layout |
-| Composite components | arrangement/coordination of multiple canonical fields/content items | alternative field/value semantics |
-| Non-field UI components | reusable collections, panels, hierarchy/workflow/debug/navigation interaction | pretending non-field content is a canonical field |
+| Layer                    | Owns                                                                                                                                                                           | Does not own                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Canonical metadata       | field semantics, type, constraints, relationships, calculations                                                                                                                | HTML/control implementation                                |
+| UI metadata              | tabs, layout, presentation policy, component declarations/options                                                                                                              | duplicate business-field semantics                         |
+| CTX/evaluator            | current state, expression evaluation, dependency propagation                                                                                                                   | field-type rendering                                       |
+| Page/form infrastructure | composition, tabs, form transaction/lifecycle, dirty/valid state, page actions                                                                                                 | concrete field-type editors                                |
+| Field components         | complete canonical field UI: resolved value presentation, editing, formatting, icon/label representation, validation presentation, CTX/DOM synchronization and field tool menu | calculation engine, persistence orchestration, page layout |
+| Composite components     | arrangement/coordination of multiple canonical fields/content items                                                                                                            | alternative field/value semantics                          |
+| Non-field UI components  | reusable collections, panels, hierarchy/workflow/debug/navigation interaction                                                                                                  | pretending non-field content is a canonical field          |
 
 ## Core implementation principle
 

@@ -1,20 +1,22 @@
 import { type Request } from 'express';
 
-import {
-  type SysBOMetadata,
-  type SysBOUIMetadata,
-} from '@manatos/shared';
+import { type SysBOMetadata, type SysBOUIMetadata } from '@manatos/shared';
 
 import { uiBootstrapState } from '../../bootstrap/ui-bootstrap.js';
 
 export function metadataEntrySearchField(metadata: SysBOMetadata<Record<string, unknown>>): string {
   const entryNameSource = metadata.entry?.name;
-  if (entryNameSource && 'field' in entryNameSource && metadata.fieldDefinition[entryNameSource.field]) {
+  if (
+    entryNameSource &&
+    'field' in entryNameSource &&
+    metadata.fieldDefinition[entryNameSource.field]
+  ) {
     return entryNameSource.field;
   }
   if (entryNameSource && 'expression' in entryNameSource) {
     const expression = entryNameSource.expression.trim();
-    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(expression) && metadata.fieldDefinition[expression]) return expression;
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(expression) && metadata.fieldDefinition[expression])
+      return expression;
   }
   return metadata.primaryField;
 }
@@ -56,7 +58,9 @@ export function metadataDrivenListQuery(
   query: Record<string, string>;
 } {
   const runtimeUi = uiBootstrapState().ui;
-  const pageSizeOptions = runtimeUi.pageSizeOptions.filter((value) => Number.isInteger(value) && value > 0);
+  const pageSizeOptions = runtimeUi.pageSizeOptions.filter(
+    (value) => Number.isInteger(value) && value > 0,
+  );
   const safePageSizeOptions = [...new Set([runtimeUi.defaultPageSize, ...pageSizeOptions])]
     .filter((value) => Number.isInteger(value) && value > 0)
     .sort((left, right) => left - right);

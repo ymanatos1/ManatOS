@@ -23,7 +23,6 @@ export interface AppNavMenuItem {
   dockBottom?: boolean;
   /** Static or evaluator-backed visibility against the current CTX root. */
   visible?: ManatOSDynamicValue<boolean>;
-
 }
 
 const baseHorizontalNavMenu: AppNavMenuItem[] = [
@@ -57,24 +56,25 @@ export function horizontalNavigation(
   platform: SysPlatform = resolvePlatform(company),
 ): AppNavMenuItem[] {
   const enabledPlatforms = company.platforms.filter((entry) => entry.enabled);
-  const platformItem: AppNavMenuItem = enabledPlatforms.length <= 1
-    ? {
-        id: 'platform',
-        text: 'Platform',
-        icon: platform.icon ?? 'bi-boxes',
-        url: `/platform/${encodeURIComponent(platform.id)}`,
-      }
-    : {
-        id: 'platform',
-        text: 'Platform',
-        icon: 'bi-boxes',
-        children: enabledPlatforms.map((entry) => ({
-          id: `platform-${entry.id}`,
-          text: entry.shortName,
-          icon: entry.icon ?? 'bi-boxes',
-          url: `/platform/${encodeURIComponent(entry.id)}`,
-        })),
-      };
+  const platformItem: AppNavMenuItem =
+    enabledPlatforms.length <= 1
+      ? {
+          id: 'platform',
+          text: 'Platform',
+          icon: platform.icon ?? 'bi-boxes',
+          url: `/platform/${encodeURIComponent(platform.id)}`,
+        }
+      : {
+          id: 'platform',
+          text: 'Platform',
+          icon: 'bi-boxes',
+          children: enabledPlatforms.map((entry) => ({
+            id: `platform-${entry.id}`,
+            text: entry.shortName,
+            icon: entry.icon ?? 'bi-boxes',
+            url: `/platform/${encodeURIComponent(entry.id)}`,
+          })),
+        };
 
   /*
    * Horizontal platform shortcuts reuse the SAME platform navigation
@@ -174,17 +174,14 @@ function dynamicNavigationVisible(
       compiled = compileExpression(value.expression);
       navigationExpressionCache.set(value.expression, compiled);
     }
-    return evaluateCompiledExpression(
-      compiled,
-      ctx,
-      ctx,
-      {
+    return (
+      evaluateCompiledExpression(compiled, ctx, ctx, {
         source: 'navigation',
         sourcePath: `navigation.${itemId}.visible`,
         targetPath: `navigation.${itemId}.visible`,
         purpose: 'resolve navigation visibility',
-      },
-    ) !== false;
+      }) !== false
+    );
   } catch {
     // Fail closed for access-related navigation. The API remains authoritative,
     // but a malformed visibility expression must never reveal an extra action.
@@ -207,18 +204,19 @@ export function navigationFor(
    */
   const fallbackPlatformAccess = false;
   const evaluationCtx = access.ctx ?? {
-    user: auth && role
-      ? {
-          permissions: {
-            userRole: role,
-            platforms: {
-              [platform.id]: {
-                capabilities: { platformAccess: fallbackPlatformAccess },
+    user:
+      auth && role
+        ? {
+            permissions: {
+              userRole: role,
+              platforms: {
+                [platform.id]: {
+                  capabilities: { platformAccess: fallbackPlatformAccess },
+                },
               },
             },
-          },
-        }
-      : null,
+          }
+        : null,
   };
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {

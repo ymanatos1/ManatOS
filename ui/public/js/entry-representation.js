@@ -15,7 +15,9 @@
       if (!fieldKey) continue;
       const value = row?.[fieldKey];
       const related = Array.isArray(referenceData[fieldKey])
-        ? referenceData[fieldKey].find((candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value ?? ''))
+        ? referenceData[fieldKey].find(
+            (candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value ?? ''),
+          )
         : null;
       if (related) result[relationshipKey] = related;
     }
@@ -34,8 +36,11 @@
     if (!source) return fallback;
     const evaluator = window.ManatOS?.expression;
     if (source.ast && evaluator?.evaluateAstWithScope) {
-      try { return evaluator.evaluateAstWithScope(source.ast, scopeFor(config, row)); }
-      catch (error) { console.warn('[ManatOS entry representation]', error); }
+      try {
+        return evaluator.evaluateAstWithScope(source.ast, scopeFor(config, row));
+      } catch (error) {
+        console.warn('[ManatOS entry representation]', error);
+      }
     }
     if (source.field) return row?.[source.field] ?? fallback;
     return fallback;
@@ -54,7 +59,7 @@
   const relationTypeRow = (config, row) => {
     const expression = String(config?.type?.expression || '').trim();
     const key = /^relations\.([A-Za-z_$][A-Za-z0-9_$]*)\./.exec(expression)?.[1];
-    return key ? relationScopeFor(config, row)?.[key] ?? null : null;
+    return key ? (relationScopeFor(config, row)?.[key] ?? null) : null;
   };
 
   const resolve = (config, row, options = {}) => {
@@ -66,25 +71,41 @@
       ? typeMetadata.enumItems.find((item) => String(item?.value ?? '') === String(typeValue ?? ''))
       : null;
     const relationRow = relationTypeRow(config, row);
-    const referenceRow = typeField && typeMetadata?.type === 'reference' && Array.isArray(config?.referenceData?.[typeField])
-      ? config.referenceData[typeField].find((candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(row?.[typeField] ?? ''))
-      : relationRow;
-    const typeIcon = normalizeIcon(enumItem?.icon ?? referenceRow?.__entryIcon ?? referenceRow?.icon ?? referenceRow?.__entityIcon);
+    const referenceRow =
+      typeField &&
+      typeMetadata?.type === 'reference' &&
+      Array.isArray(config?.referenceData?.[typeField])
+        ? config.referenceData[typeField].find(
+            (candidate) =>
+              String(candidate?.id ?? candidate?.value ?? '') === String(row?.[typeField] ?? ''),
+          )
+        : relationRow;
+    const typeIcon = normalizeIcon(
+      enumItem?.icon ??
+        referenceRow?.__entryIcon ??
+        referenceRow?.icon ??
+        referenceRow?.__entityIcon,
+    );
     const entityIcon = normalizeIcon(options.entityIcon);
     const iconConfig = config?.icon || {};
     const mode = String(iconConfig.mode || (typeIcon ? 'composed' : 'entity'));
-    const icons = mode === 'fixed'
-      ? [normalizeIcon(iconConfig.icon)].filter(Boolean)
-      : mode === 'type'
-        ? [typeIcon].filter(Boolean)
-        : mode === 'composed'
-          ? [entityIcon, typeIcon].filter(Boolean)
-          : [entityIcon].filter(Boolean);
+    const icons =
+      mode === 'fixed'
+        ? [normalizeIcon(iconConfig.icon)].filter(Boolean)
+        : mode === 'type'
+          ? [typeIcon].filter(Boolean)
+          : mode === 'composed'
+            ? [entityIcon, typeIcon].filter(Boolean)
+            : [entityIcon].filter(Boolean);
 
     return {
       name: String(sourceValue(config, config?.name, row, options.fallbackName ?? '') ?? ''),
       typeValue,
-      typeName: enumItem?.label ?? referenceRow?.label ?? referenceRow?.name ?? (typeValue == null ? null : String(typeValue)),
+      typeName:
+        enumItem?.label ??
+        referenceRow?.label ??
+        referenceRow?.name ??
+        (typeValue == null ? null : String(typeValue)),
       typeIcon,
       typeField,
       icons,

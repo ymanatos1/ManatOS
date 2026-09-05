@@ -13,8 +13,12 @@ describe('canonical email-address relationship metadata', () => {
       required: true,
       unique: true,
     });
-    expect(sysBOPrincipalEmailAddressesMetadata.relationships?.principal?.cardinality).toBe('many-to-one');
-    expect(sysBOPrincipalEmailAddressesMetadata.relationships?.emailAddress?.cardinality).toBe('many-to-one');
+    expect(sysBOPrincipalEmailAddressesMetadata.relationships?.principal?.cardinality).toBe(
+      'many-to-one',
+    );
+    expect(sysBOPrincipalEmailAddressesMetadata.relationships?.emailAddress?.cardinality).toBe(
+      'many-to-one',
+    );
   });
 
   it('marks supporting address/link SysBOs as internal canonical entities', () => {

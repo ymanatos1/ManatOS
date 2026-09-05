@@ -35,7 +35,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
     const formatValue = (value: unknown) => String(value ?? '');
 
     const fieldComponentContext = {
-          metadata,
+      metadata,
       ctxValue,
       referenceLabel: (_fieldKey: string, value: unknown) => String(value ?? ''),
       overrides,
@@ -61,7 +61,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
     const html = await renderFile(tabContentPath, {
       tabs: [{ id: 'general', label: 'General', order: 1, fields: ['name'] }],
       activeTabId: 'general',
-          relatedCollections: {},
+      relatedCollections: {},
       metadata,
       compiledUIRecord: {},
       ctxFields,

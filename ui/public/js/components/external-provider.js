@@ -14,7 +14,9 @@
   const callback = form.querySelector('#metadata-field-callbackPath');
   const tenant = form.querySelector('[data-ctx-field-container="tenant"]');
   const tenantSelect = form.querySelector('#metadata-field-tenant');
-  const providerIcon = form.querySelector('[data-provider-icon] i, [data-metadata-enum-toggle] [data-enum-selected-icon]');
+  const providerIcon = form.querySelector(
+    '[data-provider-icon] i, [data-metadata-enum-toggle] [data-enum-selected-icon]',
+  );
   const enabled = form.querySelector('#metadata-field-enabled');
   const clientId = form?.querySelector('[data-provider-client-id]');
   const clientSecret = form?.querySelector('[data-provider-client-secret]');
@@ -23,7 +25,9 @@
   const changeCredentials = form?.querySelector('[data-provider-change-credentials]');
   const testCredentials = form?.querySelector('[data-provider-test-credentials]');
   const credentialState = form?.querySelector('[data-provider-credential-test-state]');
-  const verificationIndicator = form?.querySelector('[data-provider-credentials-verified-indicator]');
+  const verificationIndicator = form?.querySelector(
+    '[data-provider-credentials-verified-indicator]',
+  );
   const credentialAction = form?.querySelector('[data-provider-credential-action]');
   const verificationProof = form?.querySelector('[data-provider-verification-proof]');
   const removeCredentials = form?.querySelector('[data-provider-remove-credentials]');
@@ -32,7 +36,13 @@
 
   const definitionSource = form.querySelector('[data-external-provider-definitions]');
   let metadataDefinitions = [];
-  try { metadataDefinitions = JSON.parse(definitionSource?.getAttribute('data-external-provider-definitions') || '[]'); } catch { metadataDefinitions = []; }
+  try {
+    metadataDefinitions = JSON.parse(
+      definitionSource?.getAttribute('data-external-provider-definitions') || '[]',
+    );
+  } catch {
+    metadataDefinitions = [];
+  }
 
   const optionMetadata = (option) => {
     try {
@@ -42,19 +52,39 @@
       return {};
     }
   };
-  const defaults = Object.fromEntries([
-    ...[...provider.options].map((option) => [option.value, optionMetadata(option).callbackPath || option.dataset.callbackDefault || '']),
-    ...metadataDefinitions.map((definition) => [definition.provider, definition.callbackPath || '']),
-  ].filter(([, value]) => value));
-  const providerIcons = Object.fromEntries([
-    ...[...provider.options].map((option) => [option.value, optionMetadata(option).icon || option.dataset.providerIcon || '']),
-    ...metadataDefinitions.map((definition) => [definition.provider, definition.icon || '']),
-  ].filter(([, value]) => value));
-  const tenantDefaults = Object.fromEntries([
-    ...[...provider.options].map((option) => [option.value, optionMetadata(option).tenant || option.dataset.tenantDefault || '']),
-    ...metadataDefinitions.map((definition) => [definition.provider, definition.tenant || '']),
-  ].filter(([, value]) => value));
-  const allowedProviders = new Set(metadataDefinitions.map((definition) => String(definition.provider || '')));
+  const defaults = Object.fromEntries(
+    [
+      ...[...provider.options].map((option) => [
+        option.value,
+        optionMetadata(option).callbackPath || option.dataset.callbackDefault || '',
+      ]),
+      ...metadataDefinitions.map((definition) => [
+        definition.provider,
+        definition.callbackPath || '',
+      ]),
+    ].filter(([, value]) => value),
+  );
+  const providerIcons = Object.fromEntries(
+    [
+      ...[...provider.options].map((option) => [
+        option.value,
+        optionMetadata(option).icon || option.dataset.providerIcon || '',
+      ]),
+      ...metadataDefinitions.map((definition) => [definition.provider, definition.icon || '']),
+    ].filter(([, value]) => value),
+  );
+  const tenantDefaults = Object.fromEntries(
+    [
+      ...[...provider.options].map((option) => [
+        option.value,
+        optionMetadata(option).tenant || option.dataset.tenantDefault || '',
+      ]),
+      ...metadataDefinitions.map((definition) => [definition.provider, definition.tenant || '']),
+    ].filter(([, value]) => value),
+  );
+  const allowedProviders = new Set(
+    metadataDefinitions.map((definition) => String(definition.provider || '')),
+  );
   const createMode = form.dataset.recordMode === 'create';
   const CREDENTIAL_TEST_POLL_MS = 750;
   const CREDENTIAL_TEST_SETTLE_POLL_MS = 250;
@@ -91,7 +121,8 @@
   };
 
   const updateCredentialRequirements = () => {
-    if (!(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement)) return;
+    if (!(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement))
+      return;
     if (clientId.readOnly || clientSecret.disabled) return;
     const providerEnabled = enabled instanceof HTMLInputElement && enabled.checked;
     const anyCredentialValue = Boolean(clientId.value.trim() || clientSecret.value.trim());
@@ -128,7 +159,8 @@
   };
 
   const beginCredentialChange = () => {
-    if (!(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement)) return;
+    if (!(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement))
+      return;
     clientId.readOnly = false;
     clientId.removeAttribute('aria-readonly');
     clientId.name = 'clientId';
@@ -168,13 +200,27 @@
     if (!(credentialAction instanceof HTMLInputElement)) return;
     credentialAction.value = 'remove';
     if (verificationProof instanceof HTMLInputElement) verificationProof.value = '';
-    if (clientId instanceof HTMLInputElement) { clientId.value = ''; clientId.readOnly = false; clientId.required = false; }
-    if (clientSecret instanceof HTMLInputElement) { clientSecret.value = ''; clientSecret.disabled = false; clientSecret.required = false; }
-    if (enabled instanceof HTMLInputElement) { enabled.checked = false; enabled.dispatchEvent(new Event('change', { bubbles: true })); }
+    if (clientId instanceof HTMLInputElement) {
+      clientId.value = '';
+      clientId.readOnly = false;
+      clientId.required = false;
+    }
+    if (clientSecret instanceof HTMLInputElement) {
+      clientSecret.value = '';
+      clientSecret.disabled = false;
+      clientSecret.required = false;
+    }
+    if (enabled instanceof HTMLInputElement) {
+      enabled.checked = false;
+      enabled.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     if (secretEditor instanceof HTMLElement) secretEditor.hidden = false;
     if (secretDisplay instanceof HTMLElement) secretDisplay.hidden = true;
     if (changeCredentials instanceof HTMLElement) changeCredentials.hidden = true;
-    if (testCredentials instanceof HTMLButtonElement) { testCredentials.hidden = false; testCredentials.disabled = true; }
+    if (testCredentials instanceof HTMLButtonElement) {
+      testCredentials.hidden = false;
+      testCredentials.disabled = true;
+    }
     if (credentialState instanceof HTMLInputElement) credentialState.value = 'required';
     setVerificationIndicator(false);
     notifyFormState();
@@ -193,11 +239,15 @@
       !(clientId instanceof HTMLInputElement) ||
       !(clientSecret instanceof HTMLInputElement) ||
       !(form instanceof HTMLFormElement)
-    ) return;
+    )
+      return;
 
     const feedback = form.querySelector('[data-provider-credential-test-feedback]');
-    const providerLabel = () => provider.options[provider.selectedIndex]?.text || provider.value || 'Provider';
-    const noReturnMessage = () => providerLabel() + ' did not return a credential-test result to ManatOS. Check the provider window for an error, confirm the provider application is active and available to this account, then retry. Your values were not changed.';
+    const providerLabel = () =>
+      provider.options[provider.selectedIndex]?.text || provider.value || 'Provider';
+    const noReturnMessage = () =>
+      providerLabel() +
+      ' did not return a credential-test result to ManatOS. Check the provider window for an error, confirm the provider application is active and available to this account, then retry. Your values were not changed.';
     const showFeedback = (message, success = false) => {
       if (!(feedback instanceof HTMLElement)) return;
       feedback.classList.remove('alert-danger', 'alert-success');
@@ -220,16 +270,37 @@
 
     const popupWidth = 720;
     const popupHeight = 760;
-    const popupLeft = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
-    const popupTop = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
-    const testWindow = window.open('', 'manatos-provider-credential-test', 'popup,width=' + popupWidth + ',height=' + popupHeight + ',left=' + popupLeft + ',top=' + popupTop + ',resizable=yes,scrollbars=yes');
+    const popupLeft = Math.max(
+      0,
+      Math.round(window.screenX + (window.outerWidth - popupWidth) / 2),
+    );
+    const popupTop = Math.max(
+      0,
+      Math.round(window.screenY + (window.outerHeight - popupHeight) / 2),
+    );
+    const testWindow = window.open(
+      '',
+      'manatos-provider-credential-test',
+      'popup,width=' +
+        popupWidth +
+        ',height=' +
+        popupHeight +
+        ',left=' +
+        popupLeft +
+        ',top=' +
+        popupTop +
+        ',resizable=yes,scrollbars=yes',
+    );
     if (!testWindow) {
-      showFeedback('Allow popups for ManatOS to test provider credentials without leaving this form.');
+      showFeedback(
+        'Allow popups for ManatOS to test provider credentials without leaving this form.',
+      );
       updateTestButton();
       return;
     }
     testWindow.document.title = 'Testing provider credentials';
-    testWindow.document.body.innerHTML = '<p style="font-family:sans-serif;padding:1.5rem">Preparing secure provider credential test…</p>';
+    testWindow.document.body.innerHTML =
+      '<p style="font-family:sans-serif;padding:1.5rem">Preparing secure provider credential test…</p>';
 
     const body = new URLSearchParams(new FormData(form));
     body.set('provider', provider.value);
@@ -239,7 +310,8 @@
       body.set('clientId', clientId.value.trim());
       body.set('clientSecret', clientSecret.value);
     }
-    if (enabled instanceof HTMLInputElement) body.set('enabled', enabled.checked ? 'true' : 'false');
+    if (enabled instanceof HTMLInputElement)
+      body.set('enabled', enabled.checked ? 'true' : 'false');
 
     let pollTimer = null;
     let completed = false;
@@ -278,16 +350,26 @@
       );
       const payload = await response.json().catch(() => null);
 
-      if (!response.ok || !payload?.success || !payload.redirectUrl || !payload.testId || !payload.statusUrl) {
+      if (
+        !response.ok ||
+        !payload?.success ||
+        !payload.redirectUrl ||
+        !payload.testId ||
+        !payload.statusUrl
+      ) {
         closeTestWindow();
-        showFeedback(payload?.errorMessage || 'ManatOS could not start the provider credential test. Your unsaved provider values have been kept on this page.');
+        showFeedback(
+          payload?.errorMessage ||
+            'ManatOS could not start the provider credential test. Your unsaved provider values have been kept on this page.',
+        );
         updateTestButton();
         return;
       }
 
       window.manatosBusy?.show({
         title: 'Testing ' + providerLabel() + ' credentials…',
-        message: 'Complete authentication in the provider window. We will continue automatically when verification finishes.',
+        message:
+          'Complete authentication in the provider window. We will continue automatically when verification finishes.',
         icon: providerIcons[provider.value] || 'bi-shield-check',
         actionLabel: 'Cancel test',
         onAction: async () => {
@@ -309,7 +391,10 @@
             cancellationConfirmed = cancelResponse.ok;
           } catch (error) {
             cancellationConfirmed = false;
-            console.warn('Could not confirm provider credential-test cancellation with ManatOS.', error);
+            console.warn(
+              'Could not confirm provider credential-test cancellation with ManatOS.',
+              error,
+            );
           }
 
           finishWaiting();
@@ -328,10 +413,17 @@
       const pollStatus = async () => {
         if (completed) return;
         try {
-          const statusResponse = await fetch(payload.statusUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+          const statusResponse = await fetch(payload.statusUrl, {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
+          });
           const statusPayload = await statusResponse.json().catch(() => null);
 
-          if (statusResponse.ok && statusPayload?.success && statusPayload.testId === payload.testId) {
+          if (
+            statusResponse.ok &&
+            statusPayload?.success &&
+            statusPayload.testId === payload.testId
+          ) {
             if (statusPayload.status === 'verified' || statusPayload.status === 'failed') {
               finishWaiting();
               closeTestWindow();
@@ -345,8 +437,10 @@
                 // The successful test is a non-persistent screen fact. The opaque
                 // proof is submitted by the ordinary Save transaction; no page
                 // reload and no datastore mutation occurs here.
-                if (verificationProof instanceof HTMLInputElement) verificationProof.value = statusPayload.verificationProofId || payload.testId;
-                if (credentialAction instanceof HTMLInputElement) credentialAction.value = 'replace';
+                if (verificationProof instanceof HTMLInputElement)
+                  verificationProof.value = statusPayload.verificationProofId || payload.testId;
+                if (credentialAction instanceof HTMLInputElement)
+                  credentialAction.value = 'replace';
                 notifyFormState();
               } else {
                 updateTestButton();
@@ -367,9 +461,12 @@
           const settlementElapsed = Date.now() - popupClosedAt;
           if (settlementElapsed >= POPUP_CLOSE_SETTLEMENT_MS) {
             finishWaiting();
-            showFeedback(providerReturnObserved
-              ? providerLabel() + ' returned from its authentication window, but ManatOS did not receive the final credential-test state in time. Retry the test; your values were not changed.'
-              : noReturnMessage());
+            showFeedback(
+              providerReturnObserved
+                ? providerLabel() +
+                    ' returned from its authentication window, but ManatOS did not receive the final credential-test state in time. Retry the test; your values were not changed.'
+                : noReturnMessage(),
+            );
             updateTestButton();
             return;
           }
@@ -397,17 +494,22 @@
       window.addEventListener('message', providerReturnHandler);
 
       pollTimer = window.setTimeout(pollStatus, 400);
-      window.setTimeout(() => {
-        if (completed) return;
-        finishWaiting();
-        showFeedback(noReturnMessage());
-        updateTestButton();
-      }, 2 * 60 * 1000);
+      window.setTimeout(
+        () => {
+          if (completed) return;
+          finishWaiting();
+          showFeedback(noReturnMessage());
+          updateTestButton();
+        },
+        2 * 60 * 1000,
+      );
     } catch (error) {
       console.warn('Provider credential testing failed before completion.', error);
       finishWaiting();
       closeTestWindow();
-      showFeedback('The credential test could not reach ManatOS. Your unsaved provider values have been kept on this page.');
+      showFeedback(
+        'The credential test could not reach ManatOS. Your unsaved provider values have been kept on this page.',
+      );
       updateTestButton();
     }
   });
@@ -420,7 +522,9 @@
       callback.dispatchEvent(new Event('input', { bubbles: true }));
       callback.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    const selectedDefinition = metadataDefinitions.find((definition) => definition.provider === key);
+    const selectedDefinition = metadataDefinitions.find(
+      (definition) => definition.provider === key,
+    );
     const selectedOption = provider.options[provider.selectedIndex];
     const selectedMetadata = selectedOption ? optionMetadata(selectedOption) : {};
     const tenantDefault = selectedDefinition?.tenant ?? selectedMetadata.tenant ?? null;
@@ -461,8 +565,9 @@
   const currentUrl = new URL(window.location.href);
   const requestedTab = currentUrl.searchParams.get('tab');
   if (requestedTab === 'secrets') {
-    const secretsTab = document.getElementById('bo-secrets-tab') || document.getElementById('metadata-secrets-tab');
-    if (secretsTab) bootstrap.Tab.getOrCreateInstance(secretsTab).show();
+    const secretsTab =
+      document.getElementById('bo-secrets-tab') || document.getElementById('metadata-secrets-tab');
+    if (secretsTab) window.bootstrap.Tab.getOrCreateInstance(secretsTab).show();
   }
   // Credential-result query parameters are one-shot presentation state. The
   // server has already rendered the standard ManatOS message popup, so remove
@@ -473,12 +578,17 @@
   }
 
   provider.addEventListener('change', apply);
-  enabled?.addEventListener('change', () => { updateCredentialRequirements(); updateTestButton(); notifyFormState(); });
+  enabled?.addEventListener('change', () => {
+    updateCredentialRequirements();
+    updateTestButton();
+    notifyFormState();
+  });
 
   if (createMode && !provider.value) {
-    const firstAvailable = metadataDefinitions[0]?.provider
-      || [...provider.options].find((option) => option.value && !option.disabled)?.value
-      || '';
+    const firstAvailable =
+      metadataDefinitions[0]?.provider ||
+      [...provider.options].find((option) => option.value && !option.disabled)?.value ||
+      '';
     if (firstAvailable) {
       provider.value = String(firstAvailable);
       provider.dispatchEvent(new Event('change', { bubbles: true }));
@@ -489,4 +599,3 @@
     apply();
   }
 })();
-

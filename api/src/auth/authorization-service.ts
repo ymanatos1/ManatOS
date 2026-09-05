@@ -142,8 +142,9 @@ export class AuthorizationService {
     platformId: string,
   ): Promise<PlatformAuthorizationCapabilities> {
     return {
-      platformAccess: subject.role === SysBOUserRole.Admin
-        || this.userHasPlatformAccess(subject.userId, platformId),
+      platformAccess:
+        subject.role === SysBOUserRole.Admin ||
+        this.userHasPlatformAccess(subject.userId, platformId),
     };
   }
 
@@ -166,7 +167,9 @@ export class AuthorizationService {
      * - an Administrator may never delete their own SysBOUser record.
      */
     if (action === 'delete' && sysBOKey === 'sys-users') {
-      return subject.role === SysBOUserRole.Admin && record !== undefined && record.id !== subject.userId;
+      return (
+        subject.role === SysBOUserRole.Admin && record !== undefined && record.id !== subject.userId
+      );
     }
 
     /**
@@ -208,7 +211,9 @@ export class AuthorizationService {
      * platformCapabilities().
      */
     if (action === 'read' && sysBOKey === 'sys-licenses') {
-      return record === undefined || this.userRelatesToLicense(subject.userId, record as SysBOLicense);
+      return (
+        record === undefined || this.userRelatesToLicense(subject.userId, record as SysBOLicense)
+      );
     }
 
     /** Other Company-owned SysBO reads retain the current baseline rule. */

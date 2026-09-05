@@ -21,8 +21,10 @@ describe('external authentication executable adapter boundary', () => {
     expect(passportSource).toContain('externalProviderAdapter(key).configureLive');
     expect(passportSource).not.toContain("key === 'microsoft'");
     expect(passportSource).not.toContain("key === 'google'");
-    expect(credentialSource).toContain('externalProviderAdapter(options.provider).configureCredentialTest');
-    expect(credentialSource).not.toContain("options.provider ===");
+    expect(credentialSource).toContain(
+      'externalProviderAdapter(options.provider).configureCredentialTest',
+    );
+    expect(credentialSource).not.toContain('options.provider ===');
     expect(registrySource).toContain('google: googleProviderAdapter');
     expect(registrySource).toContain('microsoft: microsoftProviderAdapter');
   });

@@ -20,8 +20,11 @@ import { createSysBORoutes } from './routes/sysbo-routes.js';
 import { createDebugRoutes } from './routes/debug-routes.js';
 import { createPlatformRoutes } from './platforms/routes.js';
 import { uiErrorHandler } from './middleware/error-handler.js';
-import { refreshUiBootstrap, uiBootstrapRevision, uiBootstrapState } from './bootstrap/ui-bootstrap.js';
-
+import {
+  refreshUiBootstrap,
+  uiBootstrapRevision,
+  uiBootstrapState,
+} from './bootstrap/ui-bootstrap.js';
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const uiRoot = resolve(moduleDirectory, '..');
@@ -60,7 +63,10 @@ export function createUiApp() {
   // This keeps CSS/JS working whether the UI is launched from the workspace
   // root, through npm --workspace, or directly from the ui package.
   app.use('/vendor/bootstrap', express.static(resolve(packageDirectory('bootstrap'), 'dist')));
-  app.use('/vendor/bootstrap-icons', express.static(resolve(packageDirectory('bootstrap-icons'), 'font')));
+  app.use(
+    '/vendor/bootstrap-icons',
+    express.static(resolve(packageDirectory('bootstrap-icons'), 'font')),
+  );
 
   /**
    * Browser-visible, same-origin projection of the public UI bootstrap state.

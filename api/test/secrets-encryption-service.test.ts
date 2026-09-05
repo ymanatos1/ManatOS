@@ -13,7 +13,9 @@ describe('SecretsEncryptionService', () => {
   });
 
   it('rejects malformed keys', () => {
-    expect(() => new SecretsEncryptionService('test', Buffer.from('short').toString('base64'))).toThrow(/32-byte/);
+    expect(
+      () => new SecretsEncryptionService('test', Buffer.from('short').toString('base64')),
+    ).toThrow(/32-byte/);
   });
 
   it('detects ciphertext tampering', () => {

@@ -4,7 +4,12 @@ import { join } from 'node:path';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { SysBOPrincipalType, sysBOApplicationsMetadata, sysBOExtAuthProvidersMetadata, sysBOPrincipalsMetadata } from '@manatos/shared';
+import {
+  SysBOPrincipalType,
+  sysBOApplicationsMetadata,
+  sysBOExtAuthProvidersMetadata,
+  sysBOPrincipalsMetadata,
+} from '@manatos/shared';
 
 import { SYSTEM_AUDIT_ACTOR } from '../src/audit/audit-service.js';
 
@@ -50,15 +55,20 @@ describe('storage contract', () => {
       JSON.stringify({
         sysExtAuthProviders: {
           [legacyId]: {
-            name: 'google', provider: 'google', enabled: true,
-            clientId: 'legacy-client', clientSecretEncrypted: 'encrypted-envelope',
+            name: 'google',
+            provider: 'google',
+            enabled: true,
+            clientId: 'legacy-client',
+            clientSecretEncrypted: 'encrypted-envelope',
             callbackPath: '/auth/google/callback',
             secretUpdatedAt: '2026-08-27T10:00:00.000Z',
             credentialsVerifiedAt: '2026-08-27T10:01:00.000Z',
-            createdAt: '2026-08-27T09:00:00.000Z', createdBy: 'Admin',
-            updatedAt: '2026-08-27T10:01:00.000Z', updatedBy: 'Admin'
-          }
-        }
+            createdAt: '2026-08-27T09:00:00.000Z',
+            createdBy: 'Admin',
+            updatedAt: '2026-08-27T10:01:00.000Z',
+            updatedBy: 'Admin',
+          },
+        },
       }),
       'utf8',
     );
@@ -88,13 +98,28 @@ describe('storage contract', () => {
   });
 
   it('commits owner-managed hierarchy drafts atomically and resolves draft references', async () => {
-    const result = await principals.commitAggregate({
-      entriesOriginal: [],
-      entries: [
-        { id: 'draft:root', name: 'Acme', principalType: SysBOPrincipalType.Group, enabled: true, parentId: null },
-        { id: 'draft:child', name: 'Alice', principalType: SysBOPrincipalType.Person, enabled: true, parentId: 'draft:root' },
-      ],
-    }, SYSTEM_AUDIT_ACTOR);
+    const result = await principals.commitAggregate(
+      {
+        entriesOriginal: [],
+        entries: [
+          {
+            id: 'draft:root',
+            name: 'Acme',
+            principalType: SysBOPrincipalType.Group,
+            enabled: true,
+            parentId: null,
+          },
+          {
+            id: 'draft:child',
+            name: 'Alice',
+            principalType: SysBOPrincipalType.Person,
+            enabled: true,
+            parentId: 'draft:root',
+          },
+        ],
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
 
     expect(result.idMap['draft:root']).toBeTruthy();
     expect(result.idMap['draft:child']).toBeTruthy();
@@ -165,7 +190,6 @@ describe('storage contract', () => {
     expect(reloaded?.id).toBe(created.id);
 
     expect(reloaded?.name).toBe('Persistence Demo');
-
   });
 
   it('supports filtering, ordering and pagination through the repository contract', async () => {
@@ -173,10 +197,7 @@ describe('storage contract', () => {
 
     await applications.create(applicationInput('Billing'), SYSTEM_AUDIT_ACTOR);
 
-    await applications.create(
-      applicationInput('Accounts Reports'),
-      SYSTEM_AUDIT_ACTOR,
-    );
+    await applications.create(applicationInput('Accounts Reports'), SYSTEM_AUDIT_ACTOR);
 
     const result = await applications.list({
       page: 1,
@@ -249,10 +270,7 @@ describe('storage contract', () => {
      */
     await expect(
       store.executeTransaction(async () => {
-        await store.sysApplications.create(
-          applicationInput('Rolled Back'),
-          SYSTEM_AUDIT_ACTOR,
-        );
+        await store.sysApplications.create(applicationInput('Rolled Back'), SYSTEM_AUDIT_ACTOR);
 
         throw new Error('force rollback');
       }),

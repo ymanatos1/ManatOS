@@ -1,11 +1,5 @@
-import {
-  SysBOLicenseStatus,
-  type SysBOLicense,
-} from './domain.js';
-import type {
-  CompanyInfo,
-  SysPlatform,
-} from './platforms/types.js';
+import { SysBOLicenseStatus, type SysBOLicense } from './domain.js';
+import type { CompanyInfo, SysPlatform } from './platforms/types.js';
 import { PROTOCRM_PLATFORM, PROTOCRM_PLATFORM_ID } from './platforms/protocrm/platform.js';
 
 /*
@@ -192,7 +186,6 @@ export function effectiveEntityKeys(company: CompanyInfo, platform: SysPlatform)
   ]);
 }
 
-
 /**
  * True when a persisted license is effective at the supplied instant.
  *
@@ -200,10 +193,7 @@ export function effectiveEntityKeys(company: CompanyInfo, platform: SysPlatform)
  * API authorization and related server/domain logic. UI navigation receives only
  * the resolved platform capability and does not evaluate license rows itself.
  */
-export function licenseIsEffective(
-  license: SysBOLicense,
-  at: Date = new Date(),
-): boolean {
+export function licenseIsEffective(license: SysBOLicense, at: Date = new Date()): boolean {
   if (!license.enabled || license.status !== SysBOLicenseStatus.Active || license.quantity <= 0) {
     return false;
   }
@@ -247,6 +237,8 @@ export function licenseGrantsApplicationAccess(
   applicationId: string,
   at: Date = new Date(),
 ): boolean {
-  return licenseGrantsPlatformAccess(license, platformId, at)
-    && (!license.applicationId || license.applicationId === applicationId);
+  return (
+    licenseGrantsPlatformAccess(license, platformId, at) &&
+    (!license.applicationId || license.applicationId === applicationId)
+  );
 }

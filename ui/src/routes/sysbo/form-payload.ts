@@ -12,7 +12,6 @@ export function formPayload(
   body: Record<string, unknown>,
   definition: SysBODefinition,
 ): Record<string, unknown> {
-
   const output: Record<string, unknown> = {};
 
   for (const field of Object.values(definition.boMetadata.fieldDefinition)) {
@@ -93,7 +92,6 @@ export function formPayload(
       output[field.key] = null;
     }
   }
-
 
   return output;
 }

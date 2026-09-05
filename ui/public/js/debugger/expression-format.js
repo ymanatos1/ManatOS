@@ -9,16 +9,24 @@
    * ManatOS already compiled from metadata.
    */
   const systemRoots = new Set([
-    'mode', 'user', 'system', 'company', 'platform', 'page', 'ctx', 'app',
+    'mode',
+    'user',
+    'system',
+    'company',
+    'platform',
+    'page',
+    'ctx',
+    'app',
   ]);
   const literalKeywords = new Set(['true', 'false', 'null', 'undefined']);
 
-  const escapeHtml = (value) => String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+  const escapeHtml = (value) =>
+    String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
 
   const highlight = (formula) => {
     const source = String(formula ?? '');
@@ -49,8 +57,14 @@
         let escaped = false;
         while (index < source.length) {
           const current = source[index++];
-          if (escaped) { escaped = false; continue; }
-          if (current === '\\') { escaped = true; continue; }
+          if (escaped) {
+            escaped = false;
+            continue;
+          }
+          if (current === '\\') {
+            escaped = true;
+            continue;
+          }
           if (current === quote) break;
         }
         emit(source.slice(start, index), 'string');
@@ -94,7 +108,11 @@
         continue;
       }
 
-      const operatorMatch = source.slice(index).match(/^(>>>|<<|>>|===|!==|==|!=|<=|>=|&&|\|\||\?\?|=>|\+\+|--|\+|-|\*|\/|%|&|\||\^|~|<|>|!|\?|:|=)/);
+      const operatorMatch = source
+        .slice(index)
+        .match(
+          /^(>>>|<<|>>|===|!==|==|!=|<=|>=|&&|\|\||\?\?|=>|\+\+|--|\+|-|\*|\/|%|&|\||\^|~|<|>|!|\?|:|=)/,
+        );
       if (operatorMatch) {
         emit(operatorMatch[0], 'operator');
         index += operatorMatch[0].length;

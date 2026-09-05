@@ -61,24 +61,29 @@ export async function parentListContextForEntry(
   );
 
   const entryType = entryTypeSource<Record<string, unknown>>(metadata);
-  const entryTypeField = entryType && 'field' in entryType
-    ? entryType.field
-    : (entryType && 'expression' in entryType && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entryType.expression.trim())
+  const entryTypeField =
+    entryType && 'field' in entryType
+      ? entryType.field
+      : entryType &&
+          'expression' in entryType &&
+          /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entryType.expression.trim())
         ? entryType.expression.trim()
-        : null);
+        : null;
   const entryUsesRelations = Object.values(metadata.entry ?? {}).some(
     (source) => source && 'expression' in source && source.expression.includes('relations.'),
   );
-  const referenceFields = [...new Set([
-    ...metadataUI.list.visibleFields,
-    ...metadataUI.list.filterFields,
-    ...(entryTypeField ? [entryTypeField] : []),
-  ])];
-  const referenceData = referenceFields.some(
-    (fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference',
-  ) || entryUsesRelations
-    ? await references(req, definition)
-    : {};
+  const referenceFields = [
+    ...new Set([
+      ...metadataUI.list.visibleFields,
+      ...metadataUI.list.filterFields,
+      ...(entryTypeField ? [entryTypeField] : []),
+    ]),
+  ];
+  const referenceData =
+    referenceFields.some((fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference') ||
+    entryUsesRelations
+      ? await references(req, definition)
+      : {};
 
   return {
     items: response.data.items,

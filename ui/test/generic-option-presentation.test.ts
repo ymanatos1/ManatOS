@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const source = (path: string) =>
-  readFileSync(new URL(path, import.meta.url), 'utf8');
+const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 describe('generic discrete-value option presentation', () => {
   it('supports presentation-only optionItems without turning open string fields into enums', () => {
@@ -48,5 +47,4 @@ describe('generic discrete-value option presentation', () => {
     expect(entry).not.toContain("presentation.format === 'verification-source'");
     expect(presentation).not.toContain('verification-source');
   });
-
 });

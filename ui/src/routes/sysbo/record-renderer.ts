@@ -2,21 +2,14 @@ import type { Request, Response } from 'express';
 
 import createError from 'http-errors';
 
-import {
-  AppError,
-  type SysBOUser,
-} from '@manatos/shared';
+import { AppError, type SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { renderPage } from '../../presentation/render-page.js';
 import { metadataComponentPartialFor } from '../../presentation/metadata-component-registry.js';
 import { applySysBOEntryContext } from './context.js';
-import {
-  apiPathFor,
-  canonicalSysBOMetadata,
-  canonicalSysBOUIMetadata,
-} from './data-access.js';
+import { apiPathFor, canonicalSysBOMetadata, canonicalSysBOUIMetadata } from './data-access.js';
 import { parentListContextForEntry } from './parent-list.js';
 import type { UIEntityPermissions } from '../../sysbo/permissions.js';
 import { compiledEntryRepresentationRuntime } from './entry-representation-runtime.js';
@@ -62,19 +55,25 @@ export async function renderMetadataDrivenRecord(
   const primaryField = metadata.fieldDefinition[metadata.primaryField];
 
   if (!primaryField) {
-    throw createError(500, `Primary field '${metadata.primaryField}' is missing from ${metadata.key} metadata.`);
+    throw createError(
+      500,
+      `Primary field '${metadata.primaryField}' is missing from ${metadata.key} metadata.`,
+    );
   }
 
-  const item = record.itemOverride ?? (record.recordId
-    ? (
-        await apiClient.get<Record<string, unknown>>(
-          `/api/v1/${apiPathFor(definition.key)}/${record.recordId}`,
-          apiSessionOptions(req),
-        )
-      ).data
-    : {});
+  const item =
+    record.itemOverride ??
+    (record.recordId
+      ? (
+          await apiClient.get<Record<string, unknown>>(
+            `/api/v1/${apiPathFor(definition.key)}/${record.recordId}`,
+            apiSessionOptions(req),
+          )
+        ).data
+      : {});
 
-  const ownerDraft = Boolean(record.parentOwnerContext) && String(record.recordId ?? '').startsWith('draft:');
+  const ownerDraft =
+    Boolean(record.parentOwnerContext) && String(record.recordId ?? '').startsWith('draft:');
   const supplemental = await editPageSupplementalData(
     req,
     definition,
@@ -92,35 +91,32 @@ export async function renderMetadataDrivenRecord(
     effectivePermissions,
   );
 
-  applySysBOEntryContext(
-    res,
-    definition,
-    recordMode,
-    record.isNew ? null : item,
-    {
-      recordId: record.recordId ?? null,
-      formValues: item,
-      metadata,
-      // applySysBOEntryContext expects the effective UI contract under the
-      // uiMetadata key. Passing `metadataUI` as a shorthand property silently
-      // left that parameter undefined, so the CTX entity registry missed the
-      // effective UI metadata even though the renderer itself received it. The
-      // compiled browser AST for
-      // reactive field rules (for example Parent principal editability) was absent.
-      uiMetadata: metadataUI,
-      permissions: effectivePermissions,
-      referenceData: supplemental.referenceData,
-      editingCollections: supplemental.relatedEditingData,
-      ...supplemental.relatedData,
-      activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
-      parentListContext,
-      ...(record.parentOwnerContext ? { parentOwnerContext: record.parentOwnerContext } : {}),
-    },
-  );
+  applySysBOEntryContext(res, definition, recordMode, record.isNew ? null : item, {
+    recordId: record.recordId ?? null,
+    formValues: item,
+    metadata,
+    // applySysBOEntryContext expects the effective UI contract under the
+    // uiMetadata key. Passing `metadataUI` as a shorthand property silently
+    // left that parameter undefined, so the CTX entity registry missed the
+    // effective UI metadata even though the renderer itself received it. The
+    // compiled browser AST for
+    // reactive field rules (for example Parent principal editability) was absent.
+    uiMetadata: metadataUI,
+    permissions: effectivePermissions,
+    referenceData: supplemental.referenceData,
+    editingCollections: supplemental.relatedEditingData,
+    ...supplemental.relatedData,
+    activeTab: typeof req.query.tab === 'string' ? req.query.tab : null,
+    parentListContext,
+    ...(record.parentOwnerContext ? { parentOwnerContext: record.parentOwnerContext } : {}),
+  });
 
-  const primaryDisplayValue = !record.isNew && supplemental.primaryDisplayValue && supplemental.primaryDisplayValue !== 'entry'
-    ? ` - ${supplemental.primaryDisplayValue}`
-    : '';
+  const primaryDisplayValue =
+    !record.isNew &&
+    supplemental.primaryDisplayValue &&
+    supplemental.primaryDisplayValue !== 'entry'
+      ? ` - ${supplemental.primaryDisplayValue}`
+      : '';
 
   await renderPage(res, 'pages/sysbo/entry', {
     title: `${modeLabel} ${metadata.name}${primaryDisplayValue}`,
@@ -139,6 +135,10 @@ export async function renderMetadataDrivenRecord(
     metadataComponentPartialFor,
     ownerEditing: Boolean(record.parentOwnerContext),
     ownerContext: record.parentOwnerContext ?? null,
-    entryRepresentationRuntime: compiledEntryRepresentationRuntime(metadata, metadataUI, supplemental.referenceData),
+    entryRepresentationRuntime: compiledEntryRepresentationRuntime(
+      metadata,
+      metadataUI,
+      supplemental.referenceData,
+    ),
   });
 }

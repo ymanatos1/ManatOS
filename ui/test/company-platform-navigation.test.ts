@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { MANATOS_COMPANY, PROTOCRM_PLATFORM, SysBOUserRole, resolvePlatform } from '@manatos/shared';
+import {
+  MANATOS_COMPANY,
+  PROTOCRM_PLATFORM,
+  SysBOUserRole,
+  resolvePlatform,
+} from '@manatos/shared';
 
 import { createManatOSContext } from '../src/context/manatos-context.js';
 import { navigationFor } from '../src/navigation.js';
 import { effectiveSysBODefinitions } from '../src/sysbo/definitions.js';
-
 
 const navigationCtx = (role: SysBOUserRole, platformAccess: boolean) => {
   const platform = resolvePlatform(MANATOS_COMPANY);
@@ -67,8 +71,12 @@ describe('company/platform navigation composition', () => {
       platforms: [...MANATOS_COMPANY.platforms, secondPlatform],
     };
 
-    const platformItem = navigationFor(SysBOUserRole.Admin, true, company, resolvePlatform(company)).horizontal
-      .find((item) => item.id === 'platform');
+    const platformItem = navigationFor(
+      SysBOUserRole.Admin,
+      true,
+      company,
+      resolvePlatform(company),
+    ).horizontal.find((item) => item.id === 'platform');
 
     expect(platformItem?.url).toBeUndefined();
     expect(platformItem?.children?.map((item) => item.text)).toEqual(['protoCRM', 'Analytics']);
@@ -76,13 +84,9 @@ describe('company/platform navigation composition', () => {
 
   it('merges Company and protoCRM contributions into the current left-nav order', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
-    const navigation = navigationFor(
-      SysBOUserRole.Admin,
-      true,
-      MANATOS_COMPANY,
-      platform,
-      { ctx: navigationCtx(SysBOUserRole.Admin, true) },
-    ).vertical;
+    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform, {
+      ctx: navigationCtx(SysBOUserRole.Admin, true),
+    }).vertical;
 
     expect(navigation.map((item) => item.id)).toEqual([
       'account',
@@ -105,7 +109,9 @@ describe('company/platform navigation composition', () => {
     const preferences = navigation.find((item) => item.id === 'preferences');
     expect(configuration?.separatorBefore).toBe(true);
     expect(preferences?.separatorBefore).toBe(true);
-    expect(configuration?.children?.find((item) => item.id === 'external-authentication')?.icon).toBe('bi-globe2');
+    expect(
+      configuration?.children?.find((item) => item.id === 'external-authentication')?.icon,
+    ).toBe('bi-globe2');
     expect(configuration?.children?.map((item) => item.id)).toEqual([
       'system-configuration',
       'external-authentication',
@@ -154,12 +160,11 @@ describe('company/platform navigation composition', () => {
     expect(navigation.vertical.some((item) => item.id === 'app-playground')).toBe(false);
     expect(navigation.horizontal.some((item) => item.id === 'app-playground')).toBe(false);
     expect(
-      navigation.vertical.find((item) => item.id === 'administration')?.children?.some(
-        (item) => item.id === 'applications',
-      ),
+      navigation.vertical
+        .find((item) => item.id === 'administration')
+        ?.children?.some((item) => item.id === 'applications'),
     ).toBe(false);
   });
-
 
   it('uses evaluator-backed CTX visibility for navigation decisions', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
@@ -175,9 +180,9 @@ describe('company/platform navigation composition', () => {
       expect(unlicensed.vertical.some((item) => item.id === 'app-playground')).toBe(false);
       expect(unlicensed.horizontal.some((item) => item.id === 'app-playground')).toBe(false);
       expect(
-        unlicensed.vertical.find((item) => item.id === 'administration')?.children?.some(
-          (item) => item.id === 'applications',
-        ),
+        unlicensed.vertical
+          .find((item) => item.id === 'administration')
+          ?.children?.some((item) => item.id === 'applications'),
       ).toBe(false);
 
       const licensed = navigationFor(
@@ -190,9 +195,9 @@ describe('company/platform navigation composition', () => {
       expect(licensed.vertical.some((item) => item.id === 'app-playground')).toBe(true);
       expect(licensed.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
       expect(
-        licensed.vertical.find((item) => item.id === 'administration')?.children?.some(
-          (item) => item.id === 'applications',
-        ),
+        licensed.vertical
+          .find((item) => item.id === 'administration')
+          ?.children?.some((item) => item.id === 'applications'),
       ).toBe(true);
     }
 

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const uiSource = (relativePath: string) => readFile(resolve(testDirectory, '..', relativePath), 'utf8');
+const uiSource = (relativePath: string) =>
+  readFile(resolve(testDirectory, '..', relativePath), 'utf8');
 
 describe('generic existing-record selector', () => {
   it('composes the selector from the same metadata-driven list components as browse pages', async () => {
@@ -67,8 +68,8 @@ describe('generic existing-record selector', () => {
     expect(runtime).toContain("source: 'record-selector'");
     expect(runtime).toContain('popupRuntime?.toggleInspection?.({');
     expect(runtime).toContain('path: popupPath');
-    expect(runtime).toContain("runtime.replace(popupPath, null");
-    expect(runtime).toContain("manatos:record-selector-selection");
+    expect(runtime).toContain('runtime.replace(popupPath, null');
+    expect(runtime).toContain('manatos:record-selector-selection');
     expect(runtime).toMatch(/evaluateUIRule\(\s*'title'/);
     expect(runtime).toContain('resolvedCallingParams.queryPredicate');
     expect(runtime).not.toContain('listExceptions = null');
@@ -106,11 +107,15 @@ describe('generic existing-record selector', () => {
     expect(hierarchy).toContain("purpose: 'hierarchy-add-existing'");
     expect(hierarchy).toContain('relationCandidateEligibility');
     expect(hierarchy).toContain('queryPredicate: listExceptions');
-    expect(hierarchy).not.toContain('title: `Select ${entityLabel} to place as ${memberName} ${relationLabel}`');
+    expect(hierarchy).not.toContain(
+      'title: `Select ${entityLabel} to place as ${memberName} ${relationLabel}`',
+    );
     expect(hierarchy).toContain('factsForCandidate: (candidate) =>');
     expect(hierarchy).not.toContain('noteForSelection:');
     expect(hierarchy).not.toContain('rowClass:');
-    expect(hierarchy).not.toContain('selector.open({\n      template,\n      source,\n      listExceptions,');
+    expect(hierarchy).not.toContain(
+      'selector.open({\n      template,\n      source,\n      listExceptions,',
+    );
     expect(hierarchy).toContain('visible: result.eligible');
     expect(selector).toContain('typeof eligibility ===');
     expect(selector).not.toContain('relationCandidateEligibility');
@@ -120,7 +125,9 @@ describe('generic existing-record selector', () => {
     const formRuntime = await uiSource('public/js/metadata-form-runtime.js');
 
     expect(formRuntime).toContain('return { owned: false, value: undefined }');
-    expect(formRuntime).toContain('Object.prototype.hasOwnProperty.call(explicitEvaluationScopeValue, first)');
+    expect(formRuntime).toContain(
+      'Object.prototype.hasOwnProperty.call(explicitEvaluationScopeValue, first)',
+    );
     expect(formRuntime).toContain('return { owned: true, value: undefined }');
     expect(formRuntime).toContain('if (scoped.owned) return scoped.value');
     expect(formRuntime).toContain('nested member lookup is strictly downward');
@@ -139,14 +146,16 @@ describe('generic existing-record selector', () => {
     expect(selectorView).toContain('callingParams.presentationMode');
     expect(selectorView).toContain('callingParams.targetFieldLabel');
     expect(selectorView).toContain('callingParams.relation');
-    expect(selectorView).toContain("'Select ' + callingParams.targetFieldLabel + ' for ' + callingParams.sourceEntityLabel");
+    expect(selectorView).toContain(
+      "'Select ' + callingParams.targetFieldLabel + ' for ' + callingParams.sourceEntityLabel",
+    );
     expect(selectorRuntime).toMatch(/evaluateUIRule\(\s*'title'/);
     expect(renderPage).toContain('compileExpression(expression)');
     expect(selectorRuntime).toContain('callingParams: resolvedCallingParams');
     expect(selectorRuntime).toContain('const popupRuntime = window.ManatOSPopupRuntime');
     expect(selectorRuntime).toContain('title: callingParams.title ?? null');
     expect(selectorRuntime).toContain('autofocusSearch: callingParams.autofocusSearch ?? null');
-    expect(selectorRuntime).toContain("{ alreadyInContext: false, ...scope.candidateFacts }");
+    expect(selectorRuntime).toContain('{ alreadyInContext: false, ...scope.candidateFacts }');
     expect(selectorView).toContain('selectedEntry.__entryName ?');
     expect(selectorView).not.toContain('selectedEntry ? (callingParams.targetFieldLabel');
     expect(selectorRuntime).toMatch(/evaluateUIRule\(\s*'contextNote'/);
@@ -160,5 +169,4 @@ describe('generic existing-record selector', () => {
     expect(css).toContain('.metadata-record-selector.is-entry-presentation');
     expect(css).toContain('.metadata-record-selector.is-subtle-presentation');
   });
-
 });

@@ -41,12 +41,7 @@ export class SecurityTokenStore {
 
   constructor(private readonly now: () => number = Date.now) {}
 
-  create(
-    userId: string,
-    purpose: Purpose,
-    minutes = 30,
-    options: { subjectLabel?: string } = {},
-  ) {
+  create(userId: string, purpose: Purpose, minutes = 30, options: { subjectLabel?: string } = {}) {
     if (purpose === 'reset-password') {
       // A newly requested recovery link supersedes every older outstanding
       // reset link for the same account. Only one recovery credential may be
@@ -96,12 +91,12 @@ export class SecurityTokenStore {
     const token = this.tokens.get(id);
 
     if (
-      !token
-      || token.purpose !== purpose
-      || token.tokenHash !== hash(raw)
-      || token.usedAt
-      || token.invalidatedAt
-      || token.expiresAt < this.now()
+      !token ||
+      token.purpose !== purpose ||
+      token.tokenHash !== hash(raw) ||
+      token.usedAt ||
+      token.invalidatedAt ||
+      token.expiresAt < this.now()
     ) {
       return null;
     }
@@ -166,10 +161,10 @@ export class SecurityTokenStore {
   invalidatePasswordResetTokens(userId: string): void {
     for (const token of this.tokens.values()) {
       if (
-        token.userId === userId
-        && token.purpose === 'reset-password'
-        && !token.usedAt
-        && !token.invalidatedAt
+        token.userId === userId &&
+        token.purpose === 'reset-password' &&
+        !token.usedAt &&
+        !token.invalidatedAt
       ) {
         token.invalidatedAt = this.now();
       }
@@ -180,10 +175,7 @@ export class SecurityTokenStore {
    * Invalidate every still-live email-verification link for this account
    * while retaining enough transient provenance to explain an old click.
    */
-  invalidateEmailVerificationTokens(
-    userId: string,
-    source: EmailVerificationSource,
-  ): void {
+  invalidateEmailVerificationTokens(userId: string, source: EmailVerificationSource): void {
     for (const token of this.tokens.values()) {
       if (
         token.userId === userId &&

@@ -6,7 +6,7 @@ import {
   type ManatOSRelationshipMetadata,
 } from '@manatos/shared';
 
-import type {InMemoryDataStore} from '../storage/in-memory-data-store.js';
+import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 
 export interface DeleteImpactItem {
   objectKey: string;
@@ -16,7 +16,6 @@ export interface DeleteImpactItem {
   action: ManatOSRelationshipDeleteAction;
   confirmation: ManatOSRelationshipConfirmationPolicy;
 }
-
 
 export interface RelationshipRepairReport {
   repaired: number;
@@ -63,7 +62,6 @@ export class RelationshipIntegrityService {
     this.applyRecursive(targetObjectKey, targetId, new Set<string>());
   }
 
-
   /**
    * Startup/maintenance integrity pass. It repairs historical orphans using the
    * same metadata policy that would have prevented them during deletion. This
@@ -79,7 +77,8 @@ export class RelationshipIntegrityService {
       if (!source) continue;
 
       for (const [relationshipKey, relationship] of Object.entries(metadata.relationships ?? {})) {
-        if (relationship.fields.length !== 1 || relationship.references.fields.length !== 1) continue;
+        if (relationship.fields.length !== 1 || relationship.references.fields.length !== 1)
+          continue;
         const target = this.store.collectionForObjectKey(relationship.references.objectKey);
         if (!target) continue;
         const sourceField = relationship.fields[0]!;
@@ -89,7 +88,7 @@ export class RelationshipIntegrityService {
           if (referencedId === null || referencedId === undefined || referencedId === '') continue;
           if (typeof referencedId !== 'string' || target.has(referencedId)) continue;
 
-          const policy = relationship.policies?.delete ?? {action: 'restrict' as const};
+          const policy = relationship.policies?.delete ?? { action: 'restrict' as const };
           if (policy.action === 'retain') {
             // Semantic/non-destructive relationships may legitimately outlive
             // their target configuration (for example an External Identity
@@ -117,7 +116,7 @@ export class RelationshipIntegrityService {
       }
     }
 
-    return {repaired, unresolved};
+    return { repaired, unresolved };
   }
 
   private applyRecursive(targetObjectKey: string, targetId: string, active: Set<string>): void {
@@ -135,7 +134,10 @@ export class RelationshipIntegrityService {
         );
         if (matching.length === 0) continue;
 
-        const policy = entry.relationship.policies?.delete ?? {action: 'restrict' as const, confirmation: 'inherit' as const};
+        const policy = entry.relationship.policies?.delete ?? {
+          action: 'restrict' as const,
+          confirmation: 'inherit' as const,
+        };
         if (policy.action === 'restrict') {
           throw new ConflictError(
             'DELETE_RESTRICTED_BY_RELATIONSHIP',
@@ -177,7 +179,10 @@ export class RelationshipIntegrityService {
       ).length;
       if (count === 0) continue;
 
-      const policy = entry.relationship.policies?.delete ?? {action: 'restrict' as const, confirmation: 'inherit' as const};
+      const policy = entry.relationship.policies?.delete ?? {
+        action: 'restrict' as const,
+        confirmation: 'inherit' as const,
+      };
       result.push({
         objectKey: entry.metadata.key,
         objectName: entry.metadata.pluralName,
@@ -204,7 +209,7 @@ export class RelationshipIntegrityService {
     for (const metadata of Object.values(allManatOSObjectMetadata) as ObjectMetadata[]) {
       for (const [relationshipKey, relationship] of Object.entries(metadata.relationships ?? {})) {
         if (relationship.references.objectKey === targetObjectKey) {
-          result.push({metadata, relationshipKey, relationship});
+          result.push({ metadata, relationshipKey, relationship });
         }
       }
     }
@@ -217,7 +222,10 @@ export class RelationshipIntegrityService {
     targetObjectKey: string,
     targetId: string,
   ): boolean {
-    if (relationship.fields.length !== relationship.references.fields.length || relationship.fields.length === 0) {
+    if (
+      relationship.fields.length !== relationship.references.fields.length ||
+      relationship.fields.length === 0
+    ) {
       return false;
     }
 

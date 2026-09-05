@@ -33,7 +33,9 @@ describe('ManatOS ctx tree', () => {
     expect(contextCollectionMemberKey(ctx.company.platforms[0])).toBe(platform.id);
     expect(resolveContextMember(ctx.company.platforms, 0)).toBe(ctx.company.platforms[0]);
     expect(resolveContextMember(ctx.company.platforms, platform.id)).toBe(ctx.company.platforms[0]);
-    expect(resolveContextMembers(ctx, ['company', 'platforms', platform.id, 'id'])).toBe(platform.id);
+    expect(resolveContextMembers(ctx, ['company', 'platforms', platform.id, 'id'])).toBe(
+      platform.id,
+    );
     expect(resolveContextMembers(ctx, ['company', 'platforms', 0, 'id'])).toBe(platform.id);
 
     const uuid = 'ce34b655-e494-438f-a091-ab18d2b37bad';
@@ -51,7 +53,6 @@ describe('ManatOS ctx tree', () => {
     expect(ctx.system.runtime.mode).toBe('development');
     expect(ctx.system.runtime.developerMode).toBe(true);
   });
-
 
   it('exposes the safe runtime/developer mode under ctx.system', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
@@ -76,7 +77,6 @@ describe('ManatOS ctx tree', () => {
     expect(ctx.company.currentPlatform).toBe(platform.id);
     expect(ctx.company.platforms[ctx.company.currentPlatformIndex]?.id).toBe(platform.id);
   });
-
 
   it('normalizes enum choices into the same option/options CTX shape used by references', () => {
     const fields = contextFields(
@@ -133,7 +133,10 @@ describe('ManatOS ctx tree', () => {
       { provider: null },
       {
         provider: {
-          key: 'provider', label: 'Provider', type: 'enum', order: 10,
+          key: 'provider',
+          label: 'Provider',
+          type: 'enum',
+          order: 10,
           enumValues: ['microsoft', 'google'],
         },
       },
@@ -199,7 +202,9 @@ describe('ManatOS ctx tree', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
     registerContextEntity(base, 'sys-principals', {
-      name: 'Principal', pluralName: 'Principals', primaryField: 'name',
+      name: 'Principal',
+      pluralName: 'Principals',
+      primaryField: 'name',
     });
 
     const hierarchy = pageContextNode(
@@ -235,12 +240,13 @@ describe('ManatOS ctx tree', () => {
     ]);
   });
 
-
   it('supports a member entry as a third page level beneath a hierarchy workspace', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
     registerContextEntity(base, 'sys-principals', {
-      name: 'Principal', pluralName: 'Principals', primaryField: 'name',
+      name: 'Principal',
+      pluralName: 'Principals',
+      primaryField: 'name',
     });
 
     const memberEntry = pageContextNode(
@@ -306,7 +312,8 @@ describe('ManatOS ctx tree', () => {
 
     registerContextEntity(ctx, 'sys-users', sysBOUsersMetadata);
 
-    const fullName = (ctx.entities.sysUsers?.metadata as any)?.fieldDefinition?.fullName?.calculation;
+    const fullName = (ctx.entities.sysUsers?.metadata as any)?.fieldDefinition?.fullName
+      ?.calculation;
     expect(fullName?.expression).toBe(
       "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName",
     );
@@ -315,37 +322,69 @@ describe('ManatOS ctx tree', () => {
 
   it('rejects ctx identifiers that the future expression grammar cannot address', () => {
     expect(() => contextFields({ 'bad-name': 1 })).toThrow(/Invalid ManatOS ctx field identifier/);
-    expect(() => pageContextNode('bad-name', 'page', 'none')).toThrow(/Invalid ManatOS ctx page identifier/);
+    expect(() => pageContextNode('bad-name', 'page', 'none')).toThrow(
+      /Invalid ManatOS ctx page identifier/,
+    );
   });
-
 
   it('gives authenticated-user calculations a nearest-owner mode pointer', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const user = {
-      id: 'u1', name: 'Admin', email: 'admin@example.test', emailVerified: true,
-      hasPassword: true, passwordHash: 'never-exposed', role: 'Admin', firstName: '', lastName: '',
-      description: '', enabled: true, createdAt: '', updatedAt: '',
+      id: 'u1',
+      name: 'Admin',
+      email: 'admin@example.test',
+      emailVerified: true,
+      hasPassword: true,
+      passwordHash: 'never-exposed',
+      role: 'Admin',
+      firstName: '',
+      lastName: '',
+      description: '',
+      enabled: true,
+      createdAt: '',
+      updatedAt: '',
     } as any;
-    const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0', user);
+    const ctx = createManatOSContext(
+      MANATOS_COMPANY,
+      platform,
+      'http://localhost:3000',
+      '0.1.0',
+      user,
+    );
 
     expect(ctx.user?.mode).toEqual({ kind: 'pointer', value: 'view' });
     const localPasswordStatus = ctx.user?.fields.localPasswordStatus as any;
-    expect(evaluateExpression(
-      localPasswordStatus.expression,
-      ctx,
-      ctx.user?.fields,
-      { source: 'test', purpose: 'verify nearest-owner mode pointer' },
-    )).toBe('Configured');
+    expect(
+      evaluateExpression(localPasswordStatus.expression, ctx, ctx.user?.fields, {
+        source: 'test',
+        purpose: 'verify nearest-owner mode pointer',
+      }),
+    ).toBe('Configured');
   });
 
   it('names the logged-in user entity context explicitly as entityName', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const user = {
-      id: 'u1', name: 'Admin', email: 'admin@example.test', emailVerified: true,
-      passwordHash: 'never-exposed', role: 'Admin', firstName: '', lastName: '',
-      description: '', enabled: true, createdAt: '', updatedAt: '',
+      id: 'u1',
+      name: 'Admin',
+      email: 'admin@example.test',
+      emailVerified: true,
+      passwordHash: 'never-exposed',
+      role: 'Admin',
+      firstName: '',
+      lastName: '',
+      description: '',
+      enabled: true,
+      createdAt: '',
+      updatedAt: '',
     } as any;
-    const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0', user);
+    const ctx = createManatOSContext(
+      MANATOS_COMPANY,
+      platform,
+      'http://localhost:3000',
+      '0.1.0',
+      user,
+    );
     expect(ctx.user?.scope).toBe('sys');
     expect(ctx.user?.entityName).toBe('sysUsers');
     expect('entity' in (ctx.user ?? {})).toBe(false);
@@ -401,7 +440,8 @@ describe('ManatOS ctx tree', () => {
     });
 
     const entity = ctx.entities.sysUsers as any;
-    const field = entity?.uiMetadata?.record?.relatedCollections?.externalIdentities?.fields?.status;
+    const field =
+      entity?.uiMetadata?.record?.relatedCollections?.externalIdentities?.fields?.status;
     expect(field?.expression).toContain('emailVerified');
     expect(field?.ast?.kind).toBe('conditional');
 
@@ -427,10 +467,18 @@ describe('ManatOS ctx tree', () => {
       updatedBy: 'test',
     } as any;
 
-    const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0', user);
+    const ctx = createManatOSContext(
+      MANATOS_COMPANY,
+      platform,
+      'http://localhost:3000',
+      '0.1.0',
+      user,
+    );
 
     expect(ctx.user?.permissions.userRole).toBe('Guest');
-    expect(ctx.user?.permissions.platforms[platform.id]).toEqual({ capabilities: { platformAccess: false } });
+    expect(ctx.user?.permissions.platforms[platform.id]).toEqual({
+      capabilities: { platformAccess: false },
+    });
     expect(contextPlatformAccess(ctx, platform.id)).toBe(false);
 
     const entitled = createManatOSContext(
@@ -444,10 +492,11 @@ describe('ManatOS ctx tree', () => {
       'development',
       { platformAccess: true },
     );
-    expect(entitled.user?.permissions.platforms[platform.id]).toEqual({ capabilities: { platformAccess: true } });
+    expect(entitled.user?.permissions.platforms[platform.id]).toEqual({
+      capabilities: { platformAccess: true },
+    });
     expect(contextPlatformAccess(entitled, platform.id)).toBe(true);
   });
-
 });
 
 it('keeps list API rows and filter values directly on the page context instead of page.fields', () => {
@@ -479,7 +528,6 @@ it('keeps list API rows and filter values directly on the page context instead o
   expect(ctx.page?.fields).not.toHaveProperty('items');
 });
 
-
 it('keeps entryOriginal/entry entry values directly on the child entry page context', () => {
   const platform = resolvePlatform(MANATOS_COMPANY);
   const base = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
@@ -509,8 +557,18 @@ it('keeps entryOriginal/entry entry values directly on the child entry page cont
   expect(ctx.page?.scope).toBe('sys');
   expect(ctx.page?.page?.scope).toBe('sys');
   expect(ctx.page?.page?.entryOriginal).toEqual({
-    id: 'p2', name: 'Our Admin', principalType: 'Person', parentId: 'p1',
+    id: 'p2',
+    name: 'Our Admin',
+    principalType: 'Person',
+    parentId: 'p1',
   });
   expect(ctx.page?.page?.entry).toEqual(ctx.page?.page?.entryOriginal);
-  expect(ctx.page?.page?.state).toEqual({ dirty: false, valid: true, internalEditing: false, internalEditorCount: 0, saving: false, deleting: false });
+  expect(ctx.page?.page?.state).toEqual({
+    dirty: false,
+    valid: true,
+    internalEditing: false,
+    internalEditorCount: 0,
+    saving: false,
+    deleting: false,
+  });
 });

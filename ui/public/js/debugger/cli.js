@@ -5,10 +5,12 @@
   const roots = [...document.querySelectorAll('[data-debugging-cli]')];
   if (!roots.length) return;
 
-  const bootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
+  const bootId =
+    document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
   const ctxRuntime = () => window.ManatOS?.ctx;
   const pageExpressionRuntime = () => window.ManatOS?.expression;
-  const pretty = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2) ?? String(value);
+  const pretty = (value) =>
+    typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? String(value));
 
   /** Parent-path handling is intentionally useful for both dotted and indexed CTX paths. */
   const parentPath = (path) => {
@@ -33,21 +35,27 @@
    */
   const evaluateDebugAst = async (node, scopePath, csrfToken) => {
     const runtime = ctxRuntime();
-    const scalar = (value) => value == null || ['string', 'number', 'boolean', 'undefined'].includes(typeof value) || value instanceof Date;
+    const scalar = (value) =>
+      value == null ||
+      ['string', 'number', 'boolean', 'undefined'].includes(typeof value) ||
+      value instanceof Date;
     const truthy = (value) => {
-      if (!scalar(value)) throw new Error('Structured values are not supported by CLI scalar operators.');
+      if (!scalar(value))
+        throw new Error('Structured values are not supported by CLI scalar operators.');
       return Boolean(value);
     };
     const evaluate = async (candidate) => {
       if (!candidate) return undefined;
       switch (candidate.kind) {
-        case 'literal': return candidate.value;
+        case 'literal':
+          return candidate.value;
         case 'variable': {
           const resolved = runtime?.resolve?.(candidate.path, scopePath);
           if (resolved !== undefined) return resolved;
           throw new Error(`Expression variable not available from ${scopePath}: ${candidate.path}`);
         }
-        case 'group': return evaluate(candidate.expression);
+        case 'group':
+          return evaluate(candidate.expression);
         case 'unary': {
           const value = await evaluate(candidate.operand);
           if (candidate.operator === '!') return !truthy(value);
@@ -63,32 +71,58 @@
           if (candidate.operator === '||') return truthy(left) ? left : evaluate(candidate.right);
           const right = await evaluate(candidate.right);
           switch (candidate.operator) {
-            case '+': return typeof left === 'string' || typeof right === 'string' ? String(left) + String(right) : Number(left) + Number(right);
-            case '-': return Number(left) - Number(right);
-            case '*': return Number(left) * Number(right);
-            case '/': return Number(left) / Number(right);
-            case '%': return Number(left) % Number(right);
-            case '**': return Number(left) ** Number(right);
-            case '==': return left == right; // eslint-disable-line eqeqeq
-            case '!=': return left != right; // eslint-disable-line eqeqeq
-            case '===': return left === right;
-            case '!==': return left !== right;
-            case '<': return left < right;
-            case '<=': return left <= right;
-            case '>': return left > right;
-            case '>=': return left >= right;
-            case '<<': return Number(left) << (Number(right) & 31);
-            case '>>': return Number(left) >> (Number(right) & 31);
-            case '>>>': return (Number(left) >>> (Number(right) & 31)) >>> 0;
-            case '&': return Number(left) & Number(right);
-            case '^': return Number(left) ^ Number(right);
-            case '|': return Number(left) | Number(right);
-            default: throw new Error(`Unsupported binary operator: ${candidate.operator}`);
+            case '+':
+              return typeof left === 'string' || typeof right === 'string'
+                ? String(left) + String(right)
+                : Number(left) + Number(right);
+            case '-':
+              return Number(left) - Number(right);
+            case '*':
+              return Number(left) * Number(right);
+            case '/':
+              return Number(left) / Number(right);
+            case '%':
+              return Number(left) % Number(right);
+            case '**':
+              return Number(left) ** Number(right);
+            case '==':
+              return left == right;
+            case '!=':
+              return left != right;
+            case '===':
+              return left === right;
+            case '!==':
+              return left !== right;
+            case '<':
+              return left < right;
+            case '<=':
+              return left <= right;
+            case '>':
+              return left > right;
+            case '>=':
+              return left >= right;
+            case '<<':
+              return Number(left) << (Number(right) & 31);
+            case '>>':
+              return Number(left) >> (Number(right) & 31);
+            case '>>>':
+              return (Number(left) >>> (Number(right) & 31)) >>> 0;
+            case '&':
+              return Number(left) & Number(right);
+            case '^':
+              return Number(left) ^ Number(right);
+            case '|':
+              return Number(left) | Number(right);
+            default:
+              throw new Error(`Unsupported binary operator: ${candidate.operator}`);
           }
         }
         case 'conditional': {
           const condition = await evaluate(candidate.condition);
-          if (typeof condition !== 'boolean') throw new Error(`?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`);
+          if (typeof condition !== 'boolean')
+            throw new Error(
+              `?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`,
+            );
           return condition ? evaluate(candidate.whenTrue) : evaluate(candidate.whenFalse);
         }
         case 'function': {
@@ -98,23 +132,36 @@
             const response = await fetch('/bo/expression/evaluate-function', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ _csrf: csrfToken, functionName: candidate.functionName, args }),
+              body: JSON.stringify({
+                _csrf: csrfToken,
+                functionName: candidate.functionName,
+                args,
+              }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error || payload.errorMessage || 'Remote expression capability failed.');
+            if (!response.ok)
+              throw new Error(
+                payload.error || payload.errorMessage || 'Remote expression capability failed.',
+              );
             return payload.value;
           }
           if (candidate.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
           if (candidate.functionName === 'GetTime') return Date.now();
-          if (candidate.functionName === 'StrFormat') return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) => Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match);
+          if (candidate.functionName === 'StrFormat')
+            return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) =>
+              Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match,
+            );
           if (candidate.functionName === 'CurrentDay') {
             const now = new Date();
             const pad = (value) => String(value).padStart(2, '0');
             return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T00:00`;
           }
-          throw new Error(`Function ${candidate.functionName} is not available in the shell CLI evaluator on this page.`);
+          throw new Error(
+            `Function ${candidate.functionName} is not available in the shell CLI evaluator on this page.`,
+          );
         }
-        default: return undefined;
+        default:
+          return undefined;
       }
     };
     return evaluate(node);
@@ -132,8 +179,11 @@
     let history = [];
     try {
       const parsed = JSON.parse(localStorage.getItem(historyStorageKey) || '[]');
-      if (Array.isArray(parsed)) history = parsed.filter((value) => typeof value === 'string').slice(-MAX_HISTORY);
-    } catch { /* developer history must never affect the page */ }
+      if (Array.isArray(parsed))
+        history = parsed.filter((value) => typeof value === 'string').slice(-MAX_HISTORY);
+    } catch {
+      /* developer history must never affect the page */
+    }
     let historyIndex = history.length;
 
     const input = root.querySelector('[data-cli-input]');
@@ -149,7 +199,9 @@
       try {
         currentPath = nearestExistingPath(localStorage.getItem(pathStorageKey) || currentPath);
         restoredOpen = localStorage.getItem(openStorageKey) === 'true';
-      } catch { /* developer state only */ }
+      } catch {
+        /* developer state only */
+      }
     } else if (instanceKey === 'page' && pageExpressionRuntime()?.currentCtxPath) {
       currentPath = nearestExistingPath(pageExpressionRuntime().currentCtxPath());
     }
@@ -159,13 +211,17 @@
       try {
         localStorage.setItem(openStorageKey, String(!root.classList.contains('d-none')));
         localStorage.setItem(pathStorageKey, currentPath);
-      } catch { /* developer state only */ }
+      } catch {
+        /* developer state only */
+      }
     };
 
     const reportOpenState = () => {
-      window.dispatchEvent(new CustomEvent('manatos:debug-cli-state', {
-        detail: { instanceKey, open: !root.classList.contains('d-none'), path: currentPath },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('manatos:debug-cli-state', {
+          detail: { instanceKey, open: !root.classList.contains('d-none'), path: currentPath },
+        }),
+      );
     };
 
     const setOpen = (open) => {
@@ -210,7 +266,11 @@
       if (!command || history.at(-1) === command) return;
       history.push(command);
       if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
-      try { localStorage.setItem(historyStorageKey, JSON.stringify(history)); } catch { /* developer history only */ }
+      try {
+        localStorage.setItem(historyStorageKey, JSON.stringify(history));
+      } catch {
+        /* developer history only */
+      }
       historyIndex = history.length;
     };
 
@@ -231,17 +291,19 @@
 
     const showHistory = () => {
       if (!historyMenu || !prompt) return;
-      historyMenu.replaceChildren(...[...history].reverse().map((command) => {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.className = 'debugging-cli-history-item';
-        option.textContent = command;
-        option.title = command;
-        option.setAttribute('role', 'option');
-        option.addEventListener('mousedown', (event) => event.preventDefault());
-        option.addEventListener('click', () => insertHistory(command));
-        return option;
-      }));
+      historyMenu.replaceChildren(
+        ...[...history].reverse().map((command) => {
+          const option = document.createElement('button');
+          option.type = 'button';
+          option.className = 'debugging-cli-history-item';
+          option.textContent = command;
+          option.title = command;
+          option.setAttribute('role', 'option');
+          option.addEventListener('mousedown', (event) => event.preventDefault());
+          option.addEventListener('click', () => insertHistory(command));
+          return option;
+        }),
+      );
       const hasHistory = history.length > 0;
       historyMenu.classList.toggle('d-none', !hasHistory);
       prompt.setAttribute('aria-expanded', String(hasHistory));
@@ -268,8 +330,14 @@
       resizeInput();
 
       try {
-        if (command === '.') { printCtx(path); return; }
-        if (command === '..') { printCtx(parentPath(path)); return; }
+        if (command === '.') {
+          printCtx(path);
+          return;
+        }
+        if (command === '..') {
+          printCtx(parentPath(path));
+          return;
+        }
 
         const response = await fetch('/bo/debug/compile-expression', {
           method: 'POST',
@@ -308,7 +376,12 @@
         closeHistory();
         return;
       }
-      if (!(input instanceof HTMLTextAreaElement) || !history.length || input.selectionStart !== input.selectionEnd) return;
+      if (
+        !(input instanceof HTMLTextAreaElement) ||
+        !history.length ||
+        input.selectionStart !== input.selectionEnd
+      )
+        return;
       if (event.key === 'ArrowUp' && input.selectionStart === 0) {
         event.preventDefault();
         historyIndex = Math.max(0, historyIndex - 1);
@@ -330,13 +403,23 @@
     });
 
     window.addEventListener('manatos:debug-cli-toggle', (event) => {
-      if (!(event instanceof CustomEvent) || event.detail?.instanceKey !== instanceKey || !persistentOpen) return;
-      const requestedPath = typeof event.detail?.path === 'string' && event.detail.path
-        ? nearestExistingPath(event.detail.path)
-        : currentPath;
+      if (
+        !(event instanceof CustomEvent) ||
+        event.detail?.instanceKey !== instanceKey ||
+        !persistentOpen
+      )
+        return;
+      const requestedPath =
+        typeof event.detail?.path === 'string' && event.detail.path
+          ? nearestExistingPath(event.detail.path)
+          : currentPath;
       const isOpen = !root.classList.contains('d-none');
       let ownerPage = '';
-      try { ownerPage = localStorage.getItem(ownerPageStorageKey) || ''; } catch { /* developer state only */ }
+      try {
+        ownerPage = localStorage.getItem(ownerPageStorageKey) || '';
+      } catch {
+        /* developer state only */
+      }
 
       /*
        * Same-page selection changes retarget an already-open CLI, preserving the
@@ -350,7 +433,11 @@
       }
       if (isOpen && requestedPath !== currentPath) {
         currentPath = requestedPath;
-        try { localStorage.setItem(ownerPageStorageKey, currentPageKey); } catch { /* developer state only */ }
+        try {
+          localStorage.setItem(ownerPageStorageKey, currentPageKey);
+        } catch {
+          /* developer state only */
+        }
         refreshPath();
         input?.focus();
         reportOpenState();
@@ -358,7 +445,11 @@
       }
       if (!isOpen) {
         currentPath = requestedPath;
-        try { localStorage.setItem(ownerPageStorageKey, currentPageKey); } catch { /* developer state only */ }
+        try {
+          localStorage.setItem(ownerPageStorageKey, currentPageKey);
+        } catch {
+          /* developer state only */
+        }
       }
       refreshPath();
       setOpen(!isOpen);

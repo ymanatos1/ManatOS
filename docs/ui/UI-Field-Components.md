@@ -133,18 +133,18 @@ The popup invocation identifies the source entity/record and target field in `ca
 
 ## Other current canonical field types
 
-| Type | Component responsibility highlights |
-|---|---|
-| boolean | switch/boolean state and readonly representation |
-| string/email | text input/display; email semantics from metadata |
-| number | numeric control/format and numeric synchronization |
-| date | date value/control and date-specific tools/format |
-| datetime | datetime value/control and formatting |
-| duration | canonical duration editing/presentation |
-| version | structured version editing/presentation |
-| telephone | telephone-specific presentation/input behavior |
-| enum | metadata option label/icon/tone + selection |
-| reference | related-entry lookup, canonical icon/name + selection |
+| Type         | Component responsibility highlights                   |
+| ------------ | ----------------------------------------------------- |
+| boolean      | switch/boolean state and readonly representation      |
+| string/email | text input/display; email semantics from metadata     |
+| number       | numeric control/format and numeric synchronization    |
+| date         | date value/control and date-specific tools/format     |
+| datetime     | datetime value/control and formatting                 |
+| duration     | canonical duration editing/presentation               |
+| version      | structured version editing/presentation               |
+| telephone    | telephone-specific presentation/input behavior        |
+| enum         | metadata option label/icon/tone + selection           |
+| reference    | related-entry lookup, canonical icon/name + selection |
 
 ## Runtime binding
 

@@ -23,9 +23,9 @@ function resolveConfiguredPath(value: string | undefined): string | undefined {
 function isTransientFileError(error: unknown): error is NodeJS.ErrnoException {
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      transientFileErrorCodes.has(String((error as NodeJS.ErrnoException).code ?? '')),
+    typeof error === 'object' &&
+    'code' in error &&
+    transientFileErrorCodes.has(String((error as NodeJS.ErrnoException).code ?? '')),
   );
 }
 
@@ -77,10 +77,7 @@ export class FileLogSink implements LogSink {
   write(entry: LogEntry): void {
     const line = `${JSON.stringify(entry)}\n`;
 
-    if (
-      this.normalFile &&
-      priorities[entry.level] >= priorities[config.LOG_FILE_MIN_LEVEL]
-    ) {
+    if (this.normalFile && priorities[entry.level] >= priorities[config.LOG_FILE_MIN_LEVEL]) {
       this.writeFile(this.normalFile, line);
     }
 
@@ -88,10 +85,7 @@ export class FileLogSink implements LogSink {
      * Treat destinations independently: a temporary lock on one file must not
      * prevent another configured destination from receiving the same entry.
      */
-    if (
-      this.errorFile &&
-      priorities[entry.level] >= priorities[config.LOG_ERROR_FILE_MIN_LEVEL]
-    ) {
+    if (this.errorFile && priorities[entry.level] >= priorities[config.LOG_ERROR_FILE_MIN_LEVEL]) {
       this.writeFile(this.errorFile, line);
     }
   }

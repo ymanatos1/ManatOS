@@ -35,12 +35,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "health"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
             }
           },
           "response": []
@@ -69,12 +65,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/ready",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ready"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["ready"]
             }
           },
           "response": []
@@ -101,12 +93,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/flush-db",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "flush-db"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["flush-db"]
             }
           },
           "response": []
@@ -157,15 +145,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "register"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "register"]
             }
           },
           "response": []
@@ -216,15 +197,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "login"]
             }
           },
           "response": []
@@ -250,15 +224,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "me"]
             }
           },
           "response": []
@@ -285,15 +252,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "sessions"]
             }
           },
           "response": []
@@ -319,15 +279,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "password"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "password"]
             }
           },
           "response": [],
@@ -369,15 +322,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "logout"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "logout"]
             }
           },
           "response": []
@@ -408,15 +354,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/logout-all",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "logout-all"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "logout-all"]
             }
           },
           "response": []
@@ -467,15 +406,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "login"]
             }
           },
           "response": []
@@ -525,15 +457,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "login"]
             }
           },
           "response": []
@@ -570,15 +495,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "sessions"]
             }
           },
           "response": []
@@ -607,16 +525,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/auth/verify-local",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "internal",
-                    "auth",
-                    "verify-local"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "internal", "auth", "verify-local"]
                 }
               },
               "response": [],
@@ -642,16 +552,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-identities/resolve?provider=Google&subject=test-subject",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "internal",
-                    "external-identities",
-                    "resolve"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "internal", "external-identities", "resolve"],
                   "query": [
                     {
                       "key": "provider",
@@ -701,9 +603,7 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/password",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "{{apiVersion}}",
@@ -737,9 +637,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/email-verified",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "{{apiVersion}}",
@@ -787,9 +685,7 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/principals",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "{{apiVersion}}",
@@ -888,15 +784,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/expressions/evaluate-function",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "expressions",
-                "evaluate-function"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "expressions", "evaluate-function"]
             },
             "description": "Capability-provider endpoint. The caller owns the full expression and delegates only a reached EntityResolver-backed function call."
           },
@@ -919,14 +808,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers"]
                 },
                 "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
@@ -955,15 +838,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$capabilities",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "$capabilities"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "$capabilities"]
                 },
                 "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
               },
@@ -990,15 +866,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "$metadata"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "$metadata"]
                 }
               },
               "response": [],
@@ -1025,15 +894,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/$metadata-ui",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "$metadata-ui"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "$metadata-ui"]
                 },
                 "description": "Framework-neutral UI metadata used by metadata-driven clients."
               },
@@ -1089,14 +951,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers"]
                 }
               },
               "response": []
@@ -1108,15 +964,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "{{testUserId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "{{testUserId}}"]
                 }
               },
               "response": [],
@@ -1142,16 +991,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{userId}}/$capabilities",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "{{userId}}",
-                    "$capabilities"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "{{userId}}", "$capabilities"]
                 },
                 "description": "Record-sensitive authorization projection. Useful for rules such as Admin self-delete."
               },
@@ -1192,15 +1033,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "{{testUserId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "{{testUserId}}"]
                 }
               },
               "response": [],
@@ -1226,16 +1060,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}/$delete-impact",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "{{testUserId}}",
-                    "$delete-impact"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "{{testUserId}}", "$delete-impact"]
                 },
                 "description": "Non-mutating relationship-impact preflight. Inspect this before destructive deletion."
               },
@@ -1263,15 +1089,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysUsers",
-                    "{{testUserId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysUsers", "{{testUserId}}"]
                 }
               },
               "response": [],
@@ -1303,14 +1122,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals"]
                 },
                 "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
@@ -1339,15 +1152,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$capabilities",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals",
-                    "$capabilities"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals", "$capabilities"]
                 },
                 "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
               },
@@ -1374,14 +1180,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals?listExceptions=principalType%20IN%20%5B%27Person%27%5D&pageSize=10",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals"],
                   "query": [
                     {
                       "key": "listExceptions",
@@ -1405,15 +1205,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals",
-                    "$metadata"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals", "$metadata"]
                 }
               },
               "response": [],
@@ -1440,15 +1233,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$metadata-ui",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals",
-                    "$metadata-ui"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals", "$metadata-ui"]
                 },
                 "description": "Framework-neutral UI metadata used by metadata-driven clients."
               },
@@ -1516,14 +1302,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals"]
                 }
               },
               "response": []
@@ -1535,15 +1315,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals",
-                    "{{testPrincipalId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals", "{{testPrincipalId}}"]
                 }
               },
               "response": [],
@@ -1584,15 +1357,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals",
-                    "{{testPrincipalId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals", "{{testPrincipalId}}"]
                 }
               },
               "response": [],
@@ -1618,9 +1384,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}/$delete-impact",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "{{apiVersion}}",
@@ -1655,15 +1419,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals",
-                    "{{testPrincipalId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals", "{{testPrincipalId}}"]
                 }
               },
               "response": [],
@@ -1704,15 +1461,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/$aggregate-commit",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysPrincipals",
-                    "$aggregate-commit"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysPrincipals", "$aggregate-commit"]
                 },
                 "description": "Atomically commits one owner-managed Principal aggregate. Temporary draft:* ids are resolved server-side. The UI clears any Create Organization browser draft and returns to the Principals list only after this request succeeds; failed commits keep the working state."
               },
@@ -1730,14 +1480,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications"]
                 },
                 "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
@@ -1766,15 +1510,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$capabilities",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications",
-                    "$capabilities"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications", "$capabilities"]
                 },
                 "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
               },
@@ -1801,15 +1538,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications",
-                    "$metadata"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications", "$metadata"]
                 }
               },
               "response": [],
@@ -1836,15 +1566,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/$metadata-ui",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications",
-                    "$metadata-ui"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications", "$metadata-ui"]
                 },
                 "description": "Framework-neutral UI metadata used by metadata-driven clients."
               },
@@ -1900,14 +1623,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications"]
                 }
               },
               "response": []
@@ -1919,15 +1636,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications",
-                    "{{testApplicationId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications", "{{testApplicationId}}"]
                 }
               },
               "response": [],
@@ -1967,15 +1677,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications",
-                    "{{testApplicationId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications", "{{testApplicationId}}"]
                 }
               },
               "response": [],
@@ -2001,9 +1704,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}/$delete-impact",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "{{apiVersion}}",
@@ -2038,15 +1739,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysApplications",
-                    "{{testApplicationId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysApplications", "{{testApplicationId}}"]
                 }
               },
               "response": [],
@@ -2078,14 +1772,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses"]
                 },
                 "description": "Standard paged list. Add ?includeMetadata=true for canonical metadata or ?includeMetadataUI=true to receive both canonical and framework-neutral UI metadata in the same response."
               },
@@ -2114,15 +1802,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$capabilities",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses",
-                    "$capabilities"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses", "$capabilities"]
                 },
                 "description": "API-authoritative collection capability projection. Presentation input only; operations are authorized again when executed."
               },
@@ -2149,15 +1830,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses",
-                    "$metadata"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses", "$metadata"]
                 }
               },
               "response": [],
@@ -2185,15 +1859,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/$metadata-ui",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses",
-                    "$metadata-ui"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses", "$metadata-ui"]
                 },
                 "description": "Framework-neutral UI metadata used by metadata-driven clients. The License General tab composes validFrom, validityDuration and validUntil through the reusable date-duration-range component."
               },
@@ -2251,14 +1918,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses"]
                 },
                 "description": "Creates a license using date-only validFrom/validUntil and the structured calendar-duration field validityDuration. Duration values preserve years/months/days semantics rather than converting months or years to fixed day counts."
               },
@@ -2271,15 +1932,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses",
-                    "{{testLicenseId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses", "{{testLicenseId}}"]
                 }
               },
               "response": [],
@@ -2319,15 +1973,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses",
-                    "{{testLicenseId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses", "{{testLicenseId}}"]
                 }
               },
               "response": [],
@@ -2353,9 +2000,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}/$delete-impact",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "{{apiVersion}}",
@@ -2390,15 +2035,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "SysLicenses",
-                    "{{testLicenseId}}"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "SysLicenses", "{{testLicenseId}}"]
                 }
               },
               "response": [],
@@ -2430,16 +2068,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/{{apiVersion}}/platforms/protocrm/$capabilities",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "{{apiVersion}}",
-                    "platforms",
-                    "protocrm",
-                    "$capabilities"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "platforms", "protocrm", "$capabilities"]
                 },
                 "description": "Returns only API-resolved platform capability facts. The UI must not fetch SysLicenses to reconstruct platform entitlement."
               },
@@ -2483,14 +2113,8 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysEmailAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysEmailAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysEmailAddresses"]
                     }
                   },
                   "response": [],
@@ -2520,14 +2144,8 @@
                     ],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysEmailAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysEmailAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysEmailAddresses"]
                     },
                     "description": "Creates/reuses a canonical email value. The service normalizes the address according to metadata.",
                     "body": {
@@ -2568,14 +2186,8 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalEmailAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysPrincipalEmailAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysPrincipalEmailAddresses"]
                     }
                   },
                   "response": [],
@@ -2605,14 +2217,8 @@
                     ],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalEmailAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysPrincipalEmailAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysPrincipalEmailAddresses"]
                     },
                     "description": "Associates the current test Principal with the canonical email address created above.",
                     "body": {
@@ -2659,14 +2265,8 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysTelephoneNumbers",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysTelephoneNumbers"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysTelephoneNumbers"]
                     }
                   },
                   "response": [],
@@ -2696,14 +2296,8 @@
                     ],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysTelephoneNumbers",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysTelephoneNumbers"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysTelephoneNumbers"]
                     },
                     "description": "Creates/reuses a canonical telephone value. fullNumber is application-managed/derived and is intentionally omitted.",
                     "body": {
@@ -2744,14 +2338,8 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalTelephoneNumbers",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysPrincipalTelephoneNumbers"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysPrincipalTelephoneNumbers"]
                     }
                   },
                   "response": [],
@@ -2781,14 +2369,8 @@
                     ],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalTelephoneNumbers",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysPrincipalTelephoneNumbers"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysPrincipalTelephoneNumbers"]
                     },
                     "description": "Associates the current test Principal with the canonical telephone number created above.",
                     "body": {
@@ -2835,14 +2417,8 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysAddresses"]
                     }
                   },
                   "response": [],
@@ -2872,14 +2448,8 @@
                     ],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysAddresses"]
                     },
                     "description": "Creates/reuses a canonical structured address. formattedAddress is application-managed/derived and is intentionally omitted.",
                     "body": {
@@ -2920,14 +2490,8 @@
                     "header": [],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysPrincipalAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysPrincipalAddresses"]
                     }
                   },
                   "response": [],
@@ -2957,14 +2521,8 @@
                     ],
                     "url": {
                       "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipalAddresses",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "{{apiVersion}}",
-                        "SysPrincipalAddresses"
-                      ]
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "{{apiVersion}}", "SysPrincipalAddresses"]
                     },
                     "description": "Associates the current test Principal with the canonical address created above.",
                     "body": {
@@ -3010,14 +2568,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysConfigurations",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysConfigurations"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysConfigurations"]
             }
           },
           "response": []
@@ -3034,16 +2586,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysConfigurations/{{configurationId}}/value",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysConfigurations",
-                "{{configurationId}}",
-                "value"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysConfigurations", "{{configurationId}}", "value"]
             },
             "body": {
               "mode": "raw",
@@ -3070,15 +2614,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/public/ui-bootstrap",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "public",
-                "ui-bootstrap"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "public", "ui-bootstrap"]
             },
             "description": "Anonymous-safe, no-store runtime bootstrap used by the UI for API/server status and persisted UI configuration."
           },
@@ -3091,15 +2628,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/public/external-auth-providers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "public",
-                "external-auth-providers"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "public", "external-auth-providers"]
             },
             "auth": {
               "type": "noauth"
@@ -3135,14 +2665,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders"]
             }
           },
           "response": [],
@@ -3170,15 +2694,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/$metadata",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders",
-                "$metadata"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders", "$metadata"]
             }
           },
           "response": [],
@@ -3203,15 +2720,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/$metadata-ui",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders",
-                "$metadata-ui"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders", "$metadata-ui"]
             }
           },
           "response": [],
@@ -3246,15 +2756,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/definitions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders",
-                "definitions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders", "definitions"]
             }
           },
           "response": [],
@@ -3274,14 +2777,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders"]
             },
             "body": {
               "mode": "raw",
@@ -3323,15 +2820,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders",
-                "{{testExtAuthProviderId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders", "{{testExtAuthProviderId}}"]
             },
             "body": {
               "mode": "raw",
@@ -3365,15 +2855,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders",
-                "{{testExtAuthProviderId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders", "{{testExtAuthProviderId}}"]
             }
           },
           "response": [],
@@ -3386,9 +2869,7 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}/$delete-impact",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "{{apiVersion}}",
@@ -3422,15 +2903,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysExtAuthProviders/{{testExtAuthProviderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysExtAuthProviders",
-                "{{testExtAuthProviderId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysExtAuthProviders", "{{testExtAuthProviderId}}"]
             }
           },
           "response": [],
@@ -3475,9 +2949,7 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/stored-credentials",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "{{apiVersion}}",
@@ -3523,9 +2995,7 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/{{testExtAuthProviderId}}/credentials",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "{{apiVersion}}",
@@ -3556,16 +3026,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/runtime",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "internal",
-                "external-auth-providers",
-                "runtime"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "internal", "external-auth-providers", "runtime"]
             },
             "description": "Trusted UI runtime projection including provider material needed server-side. Never expose this endpoint directly to browser code."
           },
@@ -3596,9 +3058,7 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/{{testExtAuthProviderId}}/credentials-for-test",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "{{apiVersion}}",
@@ -3642,9 +3102,7 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/external-auth-providers/{{testExtAuthProviderId}}/credentials-verified",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "{{apiVersion}}",
@@ -3710,14 +3168,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysUsers"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysUsers"]
             }
           },
           "response": []
@@ -3743,15 +3195,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "SysApplications",
-                "{{testApplicationId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "SysApplications", "{{testApplicationId}}"]
             }
           },
           "response": [],
@@ -3796,15 +3241,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "{{apiVersion}}",
-                "auth",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "me"]
             }
           },
           "response": []

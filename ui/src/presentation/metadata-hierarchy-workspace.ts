@@ -1,4 +1,11 @@
-import {entryNameSource, entryTypeSource, type ManatOSEntryValueSourceMetadata, type SysBOMetadata, type SysBOUIComponentMetadata, type SysBOUIMetadata} from '@manatos/shared';
+import {
+  entryNameSource,
+  entryTypeSource,
+  type ManatOSEntryValueSourceMetadata,
+  type SysBOMetadata,
+  type SysBOUIComponentMetadata,
+  type SysBOUIMetadata,
+} from '@manatos/shared';
 
 /**
  * Renderer-neutral contract for a self-referencing entity hierarchy workspace.
@@ -32,10 +39,7 @@ export interface MetadataHierarchyFinalizationState {
   reason: string | null;
 }
 
-function optionString(
-  component: Readonly<SysBOUIComponentMetadata>,
-  key: string,
-): string | null {
+function optionString(component: Readonly<SysBOUIComponentMetadata>, key: string): string | null {
   const value = component.options?.[key];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -54,7 +58,7 @@ export function metadataHierarchyWorkspaceDescriptor<T extends object>(
   for (const tab of uiMetadata.record.tabs) {
     const candidates = [
       ...(tab.component ? [tab.component] : []),
-      ...(tab.content ?? []).flatMap((item) => item.kind === 'component' ? [item.component] : []),
+      ...(tab.content ?? []).flatMap((item) => (item.kind === 'component' ? [item.component] : [])),
     ];
 
     for (const component of candidates) {
@@ -156,7 +160,12 @@ export function hierarchyFinalizationState<T extends object>(
 ): MetadataHierarchyFinalizationState {
   const memberCount = rows.length;
   if (!memberCount) {
-    return { memberCount: 0, rootId: null, complete: false, reason: 'The hierarchy has no members yet.' };
+    return {
+      memberCount: 0,
+      rootId: null,
+      complete: false,
+      reason: 'The hierarchy has no members yet.',
+    };
   }
 
   const roots = rows.filter((row) => {
@@ -168,14 +177,20 @@ export function hierarchyFinalizationState<T extends object>(
       memberCount,
       rootId: null,
       complete: false,
-      reason: roots.length ? 'The hierarchy has more than one root candidate.' : 'The hierarchy has no root candidate.',
+      reason: roots.length
+        ? 'The hierarchy has more than one root candidate.'
+        : 'The hierarchy has no root candidate.',
     };
   }
 
   const root = roots[0]!;
   const rootIdValue = root[descriptor.idField];
   const rootId = rootIdValue === null || rootIdValue === undefined ? null : String(rootIdValue);
-  if (!descriptor.typeField || !descriptor.rootEligibleTrait || !descriptor.standAloneEligibleTrait) {
+  if (
+    !descriptor.typeField ||
+    !descriptor.rootEligibleTrait ||
+    !descriptor.standAloneEligibleTrait
+  ) {
     return { memberCount, rootId, complete: true, reason: null };
   }
 
@@ -192,8 +207,9 @@ export function hierarchyFinalizationState<T extends object>(
         memberCount,
         rootId,
         complete: false,
-        reason: memberCount === 1
-          ? 'This member type is not eligible to finalize a standalone hierarchy.'
-          : 'This hierarchy needs an eligible root member type before it is finalized.',
+        reason:
+          memberCount === 1
+            ? 'This member type is not eligible to finalize a standalone hierarchy.'
+            : 'This hierarchy needs an eligible root member type before it is finalized.',
       };
 }

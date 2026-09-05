@@ -6,8 +6,15 @@ import { EmailDeliveryError, type SysBOUser } from '@manatos/shared';
 import { logger } from '../logging/logger.js';
 
 export interface MailRuntimeConfiguration {
-  enabled:boolean; host:string | undefined; port:number; secure:boolean; user:string | undefined; password:string | undefined;
-  fromAddress:string | undefined; fromName:string; tlsRejectUnauthorized:boolean;
+  enabled: boolean;
+  host: string | undefined;
+  port: number;
+  secure: boolean;
+  user: string | undefined;
+  password: string | undefined;
+  fromAddress: string | undefined;
+  fromName: string;
+  tlsRejectUnauthorized: boolean;
 }
 
 /** Server-side application mail boundary. */

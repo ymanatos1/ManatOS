@@ -15,14 +15,20 @@ export function createDebugRoutes(): Router {
   const router = Router();
 
   router.get('/api-traffic', (_req, res) => {
-    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    if (config.NODE_ENV === 'production') {
+      res.sendStatus(404);
+      return;
+    }
     const afterId = typeof _req.query.after === 'string' ? _req.query.after : undefined;
     res.set('Cache-Control', 'no-store');
     res.json({ entries: listApiTrafficEntries(afterId) });
   });
 
   router.post('/api-traffic/clear', requireCsrf, (_req, res) => {
-    if (config.NODE_ENV === 'production') { res.sendStatus(404); return; }
+    if (config.NODE_ENV === 'production') {
+      res.sendStatus(404);
+      return;
+    }
     clearApiTrafficEntries();
     res.set('Cache-Control', 'no-store');
     res.json({ success: true });

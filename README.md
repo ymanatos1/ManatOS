@@ -129,19 +129,19 @@ Credential/secret handling remains server-side.
 
 The complete documentation entrance is [`docs/README.md`](docs/README.md). It offers audience-oriented reading paths for architects, developers, power users and repository/portfolio visitors.
 
-| Interest | Start here |
-|---|---|
-| documentation hub / choose a reading path | [`docs/README.md`](docs/README.md) |
-| system vision, boundaries and major runtime responsibilities | [`docs/Architecture.md`](docs/Architecture.md) |
-| canonical business-object and UI metadata | [`docs/Entity-Metadata.md`](docs/Entity-Metadata.md) |
-| CTX/expression ownership and execution mechanics | [`docs/Expression-Evaluation-Mechanics.md`](docs/Expression-Evaluation-Mechanics.md) |
-| authentication and authorization/security boundaries | [`docs/Authentication.md`](docs/Authentication.md), [`docs/Authorization.md`](docs/Authorization.md) |
-| persistence and adapter contracts | [`docs/Storage.md`](docs/Storage.md) |
-| UI architecture and component ownership | [`docs/ui/README.md`](docs/ui/README.md) |
-| supported end-to-end UI workflows | [`docs/ui/UI-Flows.md`](docs/ui/UI-Flows.md) |
-| metadata-driven entity pages | [`docs/ui/Entity-Pages.md`](docs/ui/Entity-Pages.md) |
-| authentication/account/configuration/developer UI surfaces | [`docs/ui/System-Pages.md`](docs/ui/System-Pages.md) |
-| development and verification | [`docs/Development.md`](docs/Development.md), [`docs/Testing.md`](docs/Testing.md) |
+| Interest                                                     | Start here                                                                                           |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| documentation hub / choose a reading path                    | [`docs/README.md`](docs/README.md)                                                                   |
+| system vision, boundaries and major runtime responsibilities | [`docs/Architecture.md`](docs/Architecture.md)                                                       |
+| canonical business-object and UI metadata                    | [`docs/Entity-Metadata.md`](docs/Entity-Metadata.md)                                                 |
+| CTX/expression ownership and execution mechanics             | [`docs/Expression-Evaluation-Mechanics.md`](docs/Expression-Evaluation-Mechanics.md)                 |
+| authentication and authorization/security boundaries         | [`docs/Authentication.md`](docs/Authentication.md), [`docs/Authorization.md`](docs/Authorization.md) |
+| persistence and adapter contracts                            | [`docs/Storage.md`](docs/Storage.md)                                                                 |
+| UI architecture and component ownership                      | [`docs/ui/README.md`](docs/ui/README.md)                                                             |
+| supported end-to-end UI workflows                            | [`docs/ui/UI-Flows.md`](docs/ui/UI-Flows.md)                                                         |
+| metadata-driven entity pages                                 | [`docs/ui/Entity-Pages.md`](docs/ui/Entity-Pages.md)                                                 |
+| authentication/account/configuration/developer UI surfaces   | [`docs/ui/System-Pages.md`](docs/ui/System-Pages.md)                                                 |
+| development and verification                                 | [`docs/Development.md`](docs/Development.md), [`docs/Testing.md`](docs/Testing.md)                   |
 
 ## Development
 
@@ -153,7 +153,7 @@ The authoritative repository verification command is:
 npm run verifyrun
 ```
 
-`verifyrun` performs the project verification and starts the system only after verification succeeds.
+`verifyrun` performs the complete repository quality/build/test gate and starts the system only after verification succeeds.
 
 Generated build output should not be committed as source changes unless explicitly required by repository policy.
 

@@ -1,0 +1,39 @@
+# ManatOS repository text/binary normalization policy.
+#
+# `.editorconfig` controls editor behavior; this file controls how Git stores
+# and checks out repository content. Keeping source/documentation files as LF
+# avoids platform-dependent CRLF churn while leaving binary artifacts untouched.
+* text=auto
+
+# Source, configuration, templates and documentation are canonical LF text.
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.json text eol=lf
+*.ejs  text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sh   text eol=lf
+*.ps1  text eol=lf
+*.dot  text eol=lf
+*.svg  text eol=lf
+*.txt  text eol=lf
+*.env.example text eol=lf
+
+# Binary assets must never undergo text conversion.
+*.png  -text
+*.jpg  -text
+*.jpeg -text
+*.gif  -text
+*.webp -text
+*.ico  -text
+*.pdf  -text
+*.zip  -text
+*.woff -text
+*.woff2 -text
+*.ttf  -text
+*.eot  -text

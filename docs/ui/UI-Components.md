@@ -177,7 +177,6 @@ flowchart LR
 
 The External Authentication Provider credential editor is the model example: `clientId` is a canonical entity field and therefore goes through `entity-field.ejs`; plaintext `clientSecret` is transient workflow state and therefore uses the non-entity workflow input.
 
-
 ## Inline collection-editor focus semantics
 
 The reusable collection editor owns a local child draft until Add/Update or Cancel. Focus movement is not a persistence command. To keep the form compact without risking data loss, a pristine open editor closes when interaction focus genuinely leaves that collection, while a dirty editor remains open. Focus transitions inside the collection (including dropdown menus) do not close it.

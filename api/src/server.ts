@@ -46,10 +46,16 @@ try {
   const relationshipRepair = new RelationshipIntegrityService(store).repairOrphanedReferences();
   if (relationshipRepair.repaired > 0) {
     await store.save();
-    logger.warn('Repaired orphaned relationship records during startup', { repaired: relationshipRepair.repaired, unresolved: relationshipRepair.unresolved });
+    logger.warn('Repaired orphaned relationship records during startup', {
+      repaired: relationshipRepair.repaired,
+      unresolved: relationshipRepair.unresolved,
+    });
   }
   if (relationshipRepair.unresolved.length > 0) {
-    logger.error('Unresolved relationship-integrity problems detected during startup', { repaired: relationshipRepair.repaired, unresolved: relationshipRepair.unresolved });
+    logger.error('Unresolved relationship-integrity problems detected during startup', {
+      repaired: relationshipRepair.repaired,
+      unresolved: relationshipRepair.unresolved,
+    });
   }
 
   logger.info('Primary datastore initialized', { dataFile: config.DATA_FILE });
@@ -81,15 +87,18 @@ await configurations.seedMissing();
 await configurations.bindRuntime();
 
 const email = createEmailService({
-  enabled: (await configurations.resolve('MAIL_ENABLED') ?? String(config.MAIL_ENABLED)) === 'true',
-  host: await configurations.resolve('SMTP_HOST') ?? config.SMTP_HOST,
-  port: Number(await configurations.resolve('SMTP_PORT') ?? config.SMTP_PORT),
-  secure: (await configurations.resolve('SMTP_SECURE') ?? String(config.SMTP_SECURE)) === 'true',
-  user: await configurations.resolve('SMTP_USER') ?? config.SMTP_USER,
-  password: await configurations.resolve('SMTP_PASSWORD') ?? config.SMTP_PASSWORD,
-  fromAddress: await configurations.resolve('MAIL_FROM_ADDRESS') ?? config.MAIL_FROM_ADDRESS,
-  fromName: await configurations.resolve('MAIL_FROM_NAME') ?? config.MAIL_FROM_NAME,
-  tlsRejectUnauthorized: (await configurations.resolve('SMTP_TLS_REJECT_UNAUTHORIZED') ?? String(config.SMTP_TLS_REJECT_UNAUTHORIZED)) === 'true',
+  enabled:
+    ((await configurations.resolve('MAIL_ENABLED')) ?? String(config.MAIL_ENABLED)) === 'true',
+  host: (await configurations.resolve('SMTP_HOST')) ?? config.SMTP_HOST,
+  port: Number((await configurations.resolve('SMTP_PORT')) ?? config.SMTP_PORT),
+  secure: ((await configurations.resolve('SMTP_SECURE')) ?? String(config.SMTP_SECURE)) === 'true',
+  user: (await configurations.resolve('SMTP_USER')) ?? config.SMTP_USER,
+  password: (await configurations.resolve('SMTP_PASSWORD')) ?? config.SMTP_PASSWORD,
+  fromAddress: (await configurations.resolve('MAIL_FROM_ADDRESS')) ?? config.MAIL_FROM_ADDRESS,
+  fromName: (await configurations.resolve('MAIL_FROM_NAME')) ?? config.MAIL_FROM_NAME,
+  tlsRejectUnauthorized:
+    ((await configurations.resolve('SMTP_TLS_REJECT_UNAUTHORIZED')) ??
+      String(config.SMTP_TLS_REJECT_UNAUTHORIZED)) === 'true',
 });
 
 const services = {

@@ -176,9 +176,11 @@ For the preferred full pre-commit validation pass:
 npm run verify
 ```
 
-`npm run verify` builds `shared`, `api` and `ui`, runs both test suites, and finishes with a compact PASS/FAIL summary containing API, UI and total test counts. `npm run lint` remains separate and is used as a code-quality diagnostic rather than a target to satisfy by suppression.
+`npm run verify` is the complete repository gate. It first runs ESLint and Prettier's non-mutating format check, then builds `shared`, `api` and `ui`, runs both test suites, and finishes with a compact PASS/FAIL summary covering quality checks, builds, API/UI test counts and total tests. Verification stops at the first failing stage and reports later stages as `NOT RUN`, preserving the original failure signal.
 
-`npm run verifyrun` first performs that same verification and starts ManatOS only if it passes.
+`npm run quality:check` remains useful when only the quality portion of the gate is needed; it runs `npm run lint` followed by `npm run format:check`.
+
+`npm run verifyrun` first performs the same complete quality/build/test verification and starts ManatOS only if every stage passes.
 
 For the API workspace only, if the workspace package exposes the normal test script:
 
@@ -206,7 +208,6 @@ Add tests when the corresponding functionality becomes real rather than pre-buil
 - operation-trace pruning/masking tests;
 - readiness failure tests using a deliberately unhealthy adapter;
 - a small Playwright E2E suite for only the most important browser workflows.
-
 
 Platform organization has a presentation contract test (`platform-feature-organization.test.ts`) that prevents protoCRM playground handlers from drifting back into generic page/SysBO routers and verifies the platform-owned view/style paths. External-provider adapter coverage requires every canonical provider key to have exactly one executable adapter used by both live sign-in and credential testing.
 

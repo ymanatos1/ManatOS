@@ -3,17 +3,40 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { sourceWithoutWhitespace } from './source-contract.js';
+
 const shellSource = readFileSync(resolve(process.cwd(), 'public/js/shell.js'), 'utf8');
-const viewerSource = readFileSync(resolve(process.cwd(), 'public/js/debugger/api-traffic.js'), 'utf8');
-const navSource = readFileSync(resolve(process.cwd(), 'views/components/navigation/horizontal-nav.ejs'), 'utf8');
+const viewerSource = readFileSync(
+  resolve(process.cwd(), 'public/js/debugger/api-traffic.js'),
+  'utf8',
+);
+const navSource = readFileSync(
+  resolve(process.cwd(), 'views/components/navigation/horizontal-nav.ejs'),
+  'utf8',
+);
 const shellViewSource = readFileSync(resolve(process.cwd(), 'views/layout/shell.ejs'), 'utf8');
-const viewerViewSource = readFileSync(resolve(process.cwd(), 'views/components/debugging/api-traffic.ejs'), 'utf8');
-const developerToolsViewSource = readFileSync(resolve(process.cwd(), 'views/components/debugging/developer-tools.ejs'), 'utf8');
-const debuggerCssSource = readFileSync(resolve(process.cwd(), 'public/css/debugger/ctx-debug.css'), 'utf8');
+const viewerViewSource = readFileSync(
+  resolve(process.cwd(), 'views/components/debugging/api-traffic.ejs'),
+  'utf8',
+);
+const developerToolsViewSource = readFileSync(
+  resolve(process.cwd(), 'views/components/debugging/developer-tools.ejs'),
+  'utf8',
+);
+const debuggerCssSource = readFileSync(
+  resolve(process.cwd(), 'public/css/debugger/ctx-debug.css'),
+  'utf8',
+);
 const layoutSource = readFileSync(resolve(process.cwd(), 'public/css/layout.css'), 'utf8');
 const appSource = readFileSync(resolve(process.cwd(), 'src/app.ts'), 'utf8');
-const bootstrapSource = readFileSync(resolve(process.cwd(), 'src/bootstrap/ui-bootstrap.ts'), 'utf8');
-const browserBootstrapSource = readFileSync(resolve(process.cwd(), 'public/js/ui-bootstrap-runtime.js'), 'utf8');
+const bootstrapSource = readFileSync(
+  resolve(process.cwd(), 'src/bootstrap/ui-bootstrap.ts'),
+  'utf8',
+);
+const browserBootstrapSource = readFileSync(
+  resolve(process.cwd(), 'public/js/ui-bootstrap-runtime.js'),
+  'utf8',
+);
 
 describe('API Traffic developer viewer', () => {
   it('hosts CTX Viewer and API Traffic as tabs of one dock and remembers the active tab', () => {
@@ -28,8 +51,14 @@ describe('API Traffic developer viewer', () => {
     expect(developerToolsViewSource).toContain('data-developer-tool-tab="apiTraffic"');
     expect(developerToolsViewSource).toContain('class="developer-tools-tab-caption">CTX VIEWER');
     expect(developerToolsViewSource).toContain('class="developer-tools-tab-caption">API TRAFFIC');
-    expect(debuggerCssSource).toContain('.developer-tools-tab-caption { color: #172b4d; font-weight: 400; }');
-    expect(debuggerCssSource).toContain('.developer-tools-tab.is-active .developer-tools-tab-caption { color: #0d6efd; font-weight: 700; }');
+    expect(sourceWithoutWhitespace(debuggerCssSource)).toContain(
+      sourceWithoutWhitespace('.developer-tools-tab-caption { color: #172b4d; font-weight: 400; }'),
+    );
+    expect(sourceWithoutWhitespace(debuggerCssSource)).toContain(
+      sourceWithoutWhitespace(
+        '.developer-tools-tab.is-active .developer-tools-tab-caption { color: #0d6efd; font-weight: 700; }',
+      ),
+    );
     expect(shellSource).toContain("DEVELOPER_TOOL_TAB_STORAGE_KEY = 'manatos.debug.activeTab.v1'");
     expect(shellSource).toContain('setDeveloperToolTab(tab, persist = true)');
     expect(shellSource).toContain('toggleDeveloperTools()');
@@ -50,13 +79,17 @@ describe('API Traffic developer viewer', () => {
     expect(viewerSource).toContain('setInterval');
     expect(viewerSource).toContain('hiddenRoutes');
     expect(viewerSource).toContain('ignoreRouteSelections');
-    expect(viewerSource).toContain('!state.ignoreRouteSelections && state.hiddenRoutes.has(routeKey(entry))');
+    expect(viewerSource).toContain(
+      '!state.ignoreRouteSelections && state.hiddenRoutes.has(routeKey(entry))',
+    );
     expect(viewerSource).toContain('refreshIgnoreRoutesButton');
     expect(viewerSource).toContain('routeKey');
     expect(viewerSource).toContain('routeCounts');
     expect(viewerSource).toContain('ROUTE_COUNT_STATE_KEY');
     expect(viewerSource).toContain('countTraffic(incoming)');
-    expect(viewerSource).toContain('sessionStorage.setItem(ROUTE_COUNT_STATE_KEY');
+    expect(sourceWithoutWhitespace(viewerSource)).toContain(
+      sourceWithoutWhitespace('sessionStorage.setItem(ROUTE_COUNT_STATE_KEY'),
+    );
     expect(viewerSource).not.toContain('counterStartedAt');
     expect(viewerSource).toContain('ROUTE_CATALOG_KEY');
     expect(viewerSource).toContain("separator.className = 'api-traffic-route-separator'");
@@ -74,7 +107,9 @@ describe('API Traffic developer viewer', () => {
     expect(viewerViewSource).toContain('apiTrafficRoutes');
     expect(viewerViewSource).toContain('apiTrafficIgnoreRoutes');
     expect(viewerViewSource).toContain('placeholder="Search traffic"');
-    expect(viewerViewSource.indexOf('apiTrafficDetails')).toBeLessThan(viewerViewSource.indexOf('apiTrafficList'));
+    expect(viewerViewSource.indexOf('apiTrafficDetails')).toBeLessThan(
+      viewerViewSource.indexOf('apiTrafficList'),
+    );
     expect(viewerViewSource).toContain('apiTrafficDetails');
   });
 
@@ -93,8 +128,6 @@ describe('API Traffic developer viewer', () => {
     expect(debuggerCssSource).toContain('.api-traffic-route-count.is-active');
     expect(debuggerCssSource).toContain('.api-traffic-route-path');
   });
-
-
 
   it('keeps selected detail inspection stable while traffic continues and uses health for routine bootstrap monitoring', () => {
     expect(viewerSource).toContain('if (!force && state.renderedDetailKey === detailKey) return;');
@@ -118,11 +151,13 @@ import { sanitizeTrafficValue } from '../src/debug/api-traffic-store.js';
 
 describe('API Traffic sanitization', () => {
   it('redacts secrets before developer traces are stored', () => {
-    expect(sanitizeTrafficValue({
-      authorization: 'Bearer abc',
-      password: 'secret',
-      nested: { accessToken: 'abc', safe: 'visible' },
-    })).toEqual({
+    expect(
+      sanitizeTrafficValue({
+        authorization: 'Bearer abc',
+        password: 'secret',
+        nested: { accessToken: 'abc', safe: 'visible' },
+      }),
+    ).toEqual({
       authorization: '[REDACTED]',
       password: '[REDACTED]',
       nested: { accessToken: '[REDACTED]', safe: 'visible' },
@@ -133,7 +168,9 @@ describe('API Traffic sanitization', () => {
     expect(developerToolsViewSource).toContain('id="ctxDebugPanelResize"');
     expect(viewerViewSource).not.toContain('apiTrafficPanelResize');
     expect(viewerSource).not.toContain('manatos.debug.apiTraffic.split');
-    expect(shellSource).toContain("document.addEventListener('pointermove', onDeveloperDockResizeMove");
+    expect(shellSource).toContain(
+      "document.addEventListener('pointermove', onDeveloperDockResizeMove",
+    );
     expect(shellSource).toContain("document.body.classList.add('is-resizing-developer-dock')");
     expect(shellSource).toContain('DEVELOPER_DOCK_WIDTH_KEY');
     expect(debuggerCssSource).toContain('left: -5px;');
@@ -150,5 +187,4 @@ describe('API Traffic sanitization', () => {
     expect(debuggerCssSource).toContain('height: 100%;');
     expect(layoutSource).not.toContain('has-developer-tools.has-debug.has-api-traffic');
   });
-
 });

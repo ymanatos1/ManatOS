@@ -192,11 +192,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    * The UI consumes this resolved fact instead of reading SysLicenses and
    * reproducing entitlement policy locally.
    */
-  app.use(
-    '/api/v1/platforms',
-    requireAuthenticated,
-    createPlatformCapabilityRouter(authorization),
-  );
+  app.use('/api/v1/platforms', requireAuthenticated, createPlatformCapabilityRouter(authorization));
 
   /**
    * SysBOUser CRUD.
@@ -204,11 +200,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    * SysBOUser creation requires specialized processing because a supplied
    * password must be validated and hashed before persistence.
    */
-  app.use(
-    '/api/v1/SysUsers',
-    requireAuthenticated,
-    createSysBOUserCommandRouter(services.users),
-  );
+  app.use('/api/v1/SysUsers', requireAuthenticated, createSysBOUserCommandRouter(services.users));
 
   app.use(
     '/api/v1/SysUsers',
@@ -301,37 +293,73 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysEmailAddresses',
     requireAuthenticated,
-    createSysBORouter(new GenericSysBOService(_store, _store.sysEmailAddresses, sysBOEmailAddressesMetadata), sysBOEmailAddressesMetadata, authorization),
+    createSysBORouter(
+      new GenericSysBOService(_store, _store.sysEmailAddresses, sysBOEmailAddressesMetadata),
+      sysBOEmailAddressesMetadata,
+      authorization,
+    ),
   );
 
   app.use(
     '/api/v1/SysPrincipalEmailAddresses',
     requireAuthenticated,
-    createSysBORouter(new GenericSysBOService(_store, _store.sysPrincipalEmailAddresses, sysBOPrincipalEmailAddressesMetadata), sysBOPrincipalEmailAddressesMetadata, authorization),
+    createSysBORouter(
+      new GenericSysBOService(
+        _store,
+        _store.sysPrincipalEmailAddresses,
+        sysBOPrincipalEmailAddressesMetadata,
+      ),
+      sysBOPrincipalEmailAddressesMetadata,
+      authorization,
+    ),
   );
 
   app.use(
     '/api/v1/SysTelephoneNumbers',
     requireAuthenticated,
-    createSysBORouter(new GenericSysBOService(_store, _store.sysTelephoneNumbers, sysBOTelephoneNumbersMetadata), sysBOTelephoneNumbersMetadata, authorization),
+    createSysBORouter(
+      new GenericSysBOService(_store, _store.sysTelephoneNumbers, sysBOTelephoneNumbersMetadata),
+      sysBOTelephoneNumbersMetadata,
+      authorization,
+    ),
   );
 
   app.use(
     '/api/v1/SysPrincipalTelephoneNumbers',
     requireAuthenticated,
-    createSysBORouter(new GenericSysBOService(_store, _store.sysPrincipalTelephoneNumbers, sysBOPrincipalTelephoneNumbersMetadata), sysBOPrincipalTelephoneNumbersMetadata, authorization),
+    createSysBORouter(
+      new GenericSysBOService(
+        _store,
+        _store.sysPrincipalTelephoneNumbers,
+        sysBOPrincipalTelephoneNumbersMetadata,
+      ),
+      sysBOPrincipalTelephoneNumbersMetadata,
+      authorization,
+    ),
   );
 
   app.use(
     '/api/v1/SysAddresses',
     requireAuthenticated,
-    createSysBORouter(new GenericSysBOService(_store, _store.sysAddresses, sysBOAddressesMetadata), sysBOAddressesMetadata, authorization),
+    createSysBORouter(
+      new GenericSysBOService(_store, _store.sysAddresses, sysBOAddressesMetadata),
+      sysBOAddressesMetadata,
+      authorization,
+    ),
   );
 
   app.use(
     '/api/v1/SysPrincipalAddresses',
     requireAuthenticated,
-    createSysBORouter(new GenericSysBOService(_store, _store.sysPrincipalAddresses, sysBOPrincipalAddressesMetadata), sysBOPrincipalAddressesMetadata, authorization),
+    createSysBORouter(
+      new GenericSysBOService(
+        _store,
+        _store.sysPrincipalAddresses,
+        sysBOPrincipalAddressesMetadata,
+      ),
+      sysBOPrincipalAddressesMetadata,
+      authorization,
+    ),
   );
 
   app.use(
@@ -355,11 +383,19 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       services.extAuthProviders,
       sysBOExtAuthProvidersMetadata,
       authorization,
-      (body, actor) => services.extAuthProviders.createProvider(body as unknown as SaveSysBOExtAuthProviderInput, actor),
-      (id, body, actor) => services.extAuthProviders.updateProvider(id, body as unknown as SaveSysBOExtAuthProviderInput, actor),
+      (body, actor) =>
+        services.extAuthProviders.createProvider(
+          body as unknown as SaveSysBOExtAuthProviderInput,
+          actor,
+        ),
+      (id, body, actor) =>
+        services.extAuthProviders.updateProvider(
+          id,
+          body as unknown as SaveSysBOExtAuthProviderInput,
+          actor,
+        ),
     ),
   );
-
 
   /**
    * Server-level operational routes:

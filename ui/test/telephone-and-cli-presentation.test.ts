@@ -2,9 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+import { sourceWithoutWhitespace } from './source-contract.js';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const uiSource = (relativePath: string) => readFile(resolve(testDirectory, '..', relativePath), 'utf8');
-const sharedSource = (relativePath: string) => readFile(resolve(testDirectory, '..', '..', 'shared', relativePath), 'utf8');
+const uiSource = (relativePath: string) =>
+  readFile(resolve(testDirectory, '..', relativePath), 'utf8');
+const sharedSource = (relativePath: string) =>
+  readFile(resolve(testDirectory, '..', '..', 'shared', relativePath), 'utf8');
 
 describe('telephone field normalization and debugging CLI presentation', () => {
   it('keeps normalization metadata-driven and uses the reusable telephone field component', async () => {
@@ -20,7 +24,9 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(formField).toContain('data-field-normalize-ast');
     expect(telephone).not.toContain('TelephoneNbr');
     expect(runtime).toContain('container?.dataset.fieldNormalizeAst');
-    expect(runtime).toContain("syncSourceField(control, { source: 'field-normalization'");
+    expect(sourceWithoutWhitespace(runtime)).toContain(
+      sourceWithoutWhitespace("syncSourceField(control, { source: 'field-normalization'"),
+    );
     expect(runtime).not.toContain('publish(control');
   });
 
@@ -63,7 +69,7 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(cliView).not.toContain('data-cli-run');
     expect(cliView).toContain('data-cli-history');
     expect(cli).toContain("event.key === 'Enter' && !event.shiftKey");
-    expect(cli).toContain('input.style.height = \'auto\'');
+    expect(cli).toContain("input.style.height = 'auto'");
     expect(cli).toContain("command === '.'");
     expect(cli).toContain("command === '..'");
     expect(cli).toContain("command === 'cls'");
@@ -91,6 +97,8 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(css).toContain("html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none");
     expect(css).toContain('height: auto;');
     expect(css).toContain('max-height: calc(100vh - var(--top-header-height, 0px));');
-    expect(css).not.toMatch(/^\s*height:\s*calc\(100vh - var\(--top-header-height,\s*0px\)\);\s*$/m);
+    expect(css).not.toMatch(
+      /^\s*height:\s*calc\(100vh - var\(--top-header-height,\s*0px\)\);\s*$/m,
+    );
   });
 });

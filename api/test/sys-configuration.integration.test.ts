@@ -7,7 +7,9 @@ describe('SysBOConfiguration API', () => {
     const { app, services } = await createTestApi();
     await seedAdmin(services.users);
     const token = await loginAdmin(app);
-    const list = await request(app).get('/api/v1/SysConfigurations').set('Authorization', bearer(token));
+    const list = await request(app)
+      .get('/api/v1/SysConfigurations')
+      .set('Authorization', bearer(token));
     expect(list.status).toBe(200);
     const items = list.body.data.items as Array<Record<string, unknown>>;
     const smtpPassword = items.find((item) => item.name === 'SMTP_PASSWORD');
@@ -24,7 +26,10 @@ describe('SysBOConfiguration API', () => {
     expect(items.some((item) => item.name === 'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE')).toBe(false);
 
     const pageSize = items.find((item) => item.name === 'API_DEFAULT_PAGE_SIZE');
-    const update = await request(app).patch(`/api/v1/SysConfigurations/${pageSize?.id}/value`).set('Authorization', bearer(token)).send({ value:'25' });
+    const update = await request(app)
+      .patch(`/api/v1/SysConfigurations/${pageSize?.id}/value`)
+      .set('Authorization', bearer(token))
+      .send({ value: '25' });
     expect(update.status).toBe(200);
     expect(await services.configurations.resolve('API_DEFAULT_PAGE_SIZE')).toBe('25');
   });

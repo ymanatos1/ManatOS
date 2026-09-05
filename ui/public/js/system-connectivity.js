@@ -82,12 +82,14 @@
     document.documentElement.dataset.manatosSystemUnavailable = 'true';
     dismissTransientUi();
     localErrorPage();
-    window.dispatchEvent(new CustomEvent(UNAVAILABLE_EVENT, {
-      detail: {
-        consecutiveFailures: state.consecutiveFailures,
-        source: state.lastFailureSource,
-      },
-    }));
+    window.dispatchEvent(
+      new CustomEvent(UNAVAILABLE_EVENT, {
+        detail: {
+          consecutiveFailures: state.consecutiveFailures,
+          source: state.lastFailureSource,
+        },
+      }),
+    );
   };
 
   const reportFailure = (source = 'unknown') => {
@@ -113,18 +115,24 @@
    * click: the navigation request itself is the fresh connectivity probe.
    * Pollers remain stopped while the current document unloads.
    */
-  document.addEventListener('click', (event) => {
-    if (!state.unavailable) return;
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const navigation = target.closest('a[href]');
-    if (!navigation) return;
-    requestRetry();
-  }, true);
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!state.unavailable) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const navigation = target.closest('a[href]');
+      if (!navigation) return;
+      requestRetry();
+    },
+    true,
+  );
 
   window.ManatOSConnectivity = Object.freeze({
     failureThreshold: FAILURE_THRESHOLD,
-    get unavailable() { return state.unavailable; },
+    get unavailable() {
+      return state.unavailable;
+    },
     reportFailure,
     reportSuccess,
     requestRetry,

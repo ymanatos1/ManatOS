@@ -3,35 +3,24 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { sourceWithoutWhitespace } from './source-contract.js';
+
 const debuggerSource = readFileSync(
   resolve(process.cwd(), 'public/js/debugger/ctx-debug.js'),
   'utf8',
 );
 
-const shellSource = readFileSync(
-  resolve(process.cwd(), 'public/js/shell.js'),
-  'utf8',
-);
+const shellSource = readFileSync(resolve(process.cwd(), 'public/js/shell.js'), 'utf8');
 
-const themeSource = readFileSync(
-  resolve(process.cwd(), 'public/css/theme.css'),
-  'utf8',
-);
+const themeSource = readFileSync(resolve(process.cwd(), 'public/css/theme.css'), 'utf8');
 
 const expressionFormatSource = readFileSync(
   resolve(process.cwd(), 'public/js/debugger/expression-format.js'),
   'utf8',
 );
 
-const shellViewSource = readFileSync(
-  resolve(process.cwd(), 'views/layout/shell.ejs'),
-  'utf8',
-);
+const shellViewSource = readFileSync(resolve(process.cwd(), 'views/layout/shell.ejs'), 'utf8');
 
-const debuggerViewSource = readFileSync(
-  resolve(process.cwd(), 'views/components/debugging/ctx-debug.ejs'),
-  'utf8',
-);
 const developerToolsViewSource = readFileSync(
   resolve(process.cwd(), 'views/components/debugging/developer-tools.ejs'),
   'utf8',
@@ -68,11 +57,13 @@ const fieldToolsSource = readFileSync(
 );
 
 describe('CTX debugger presentation state', () => {
-
-
   it('shows company above system at the CTX root without mutating CTX semantics', () => {
-    expect(debuggerSource).toContain("const preferred = ['company', 'system', 'entities', 'user', 'page']");
-    expect(debuggerSource).toContain("const presentedEntries = path === 'ctx'");
+    expect(debuggerSource).toContain(
+      "const preferred = ['company', 'system', 'entities', 'user', 'page']",
+    );
+    expect(sourceWithoutWhitespace(debuggerSource)).toContain(
+      sourceWithoutWhitespace("const presentedEntries = path === 'ctx'"),
+    );
     expect(debuggerSource).toContain('return presentedEntries.map');
   });
 
@@ -106,16 +97,19 @@ describe('CTX debugger presentation state', () => {
   it('uses one shared lexical highlighter for entry-form and CTX expressions', () => {
     expect(expressionFormatSource).toContain('window.ManatOSDebugExpression');
     expect(expressionFormatSource).toContain("emit(identifier, 'path')");
-    expect(debuggerSource).toContain("const isExpressionSourcePath = (path)");
-    expect(debuggerSource).toContain("label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path))");
-    expect(debuggerSource).toContain("typeof value === 'string' && isExpressionSourcePath(path)");
+    expect(debuggerSource).toContain('const isExpressionSourcePath = (path)');
+    expect(debuggerSource).toContain(
+      "label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path))",
+    );
+    expect(sourceWithoutWhitespace(debuggerSource)).toContain(
+      sourceWithoutWhitespace("typeof value === 'string' && isExpressionSourcePath(path)"),
+    );
     expect(debuggerSource).toContain('window.ManatOSDebugExpression.highlightElement');
     expect(shellViewSource).toContain('/js/debugger/expression-format.js');
     expect(shellViewSource.indexOf('/js/debugger/expression-format.js')).toBeLessThan(
       shellViewSource.indexOf('/js/debugger/ctx-debug.js'),
     );
   });
-
 
   it('moves focus outside the unified developer dock before hiding it and uses inert for inactive tabs', () => {
     expect(developerToolsViewSource).toContain('inert');
@@ -135,7 +129,7 @@ describe('CTX debugger presentation state', () => {
     expect(shellViewSource).toContain('app.ui?.debugTools');
     expect(fieldToolsSource).toContain('showDeveloperTools');
     expect(fieldToolsSource).toContain('Inspect in CTX Viewer');
-    expect(fieldRuntimeSource).toContain("manatos:ctx-viewer-show");
+    expect(fieldRuntimeSource).toContain('manatos:ctx-viewer-show');
     expect(fieldRuntimeSource.indexOf('manatos:ctx-viewer-show')).toBeLessThan(
       fieldRuntimeSource.indexOf('manatos:ctx-viewer-select'),
     );
@@ -157,14 +151,18 @@ describe('CTX debugger presentation state', () => {
     expect(debuggingPanelSource).not.toContain("debugRow.inspectPath || 'ctx.page.page'");
     expect(metadataEntrySource).toContain('buildMetadataDebuggingModel({');
     expect(metadataDebuggingModelSource).toContain("entryContextPath = 'ctx.page.page'");
-    expect(metadataDebuggingModelSource).toContain('`ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`');
+    expect(metadataDebuggingModelSource).toContain(
+      '`ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`',
+    );
     expect(metadataDebuggingModelSource).toContain('`${entryContextPath}.entry.${fieldKey}`');
-    expect(metadataEntrySource).toContain("entryContextPath: ownerEditing ? 'ctx.page.page.page' : 'ctx.page.page'");
+    expect(metadataEntrySource).toContain(
+      "entryContextPath: ownerEditing ? 'ctx.page.page.page' : 'ctx.page.page'",
+    );
     expect(metadataDebuggingModelSource).toContain('definitionPath');
     expect(metadataDebuggingModelSource).toContain('valuePath');
-    expect(debuggingPanelSource).toContain('const hasInspectionActions = Boolean(debugRow.definitionPath || debugRow.valuePath)');
+    expect(debuggingPanelSource).toContain(
+      'const hasInspectionActions = Boolean(debugRow.definitionPath || debugRow.valuePath)',
+    );
     expect(debuggingPanelSource).toContain('<% if (hasInspectionActions) { %>');
   });
-
-
 });

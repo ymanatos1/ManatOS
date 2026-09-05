@@ -9,7 +9,23 @@ const source = (relativePath: string) => readFile(resolve(testDirectory, relativ
 
 describe('SysBO route responsibility boundaries', () => {
   it('keeps permissions, form coercion and entry-representation compilation outside route orchestration', async () => {
-    const [routes, permissions, definitions, types, navigation, apiPath, payload, representation, listRenderer, hierarchyRenderer, recordRenderer, hierarchyWrite, ownerManagedEntry, entryWrite, providerWrite] = await Promise.all([
+    const [
+      routes,
+      permissions,
+      definitions,
+      types,
+      navigation,
+      apiPath,
+      payload,
+      representation,
+      listRenderer,
+      hierarchyRenderer,
+      recordRenderer,
+      hierarchyWrite,
+      ownerManagedEntry,
+      entryWrite,
+      providerWrite,
+    ] = await Promise.all([
       source('../src/routes/sysbo-routes.ts'),
       source('../src/sysbo/permissions.ts'),
       source('../src/sysbo/definitions.ts'),
@@ -37,7 +53,9 @@ describe('SysBO route responsibility boundaries', () => {
     expect(routes).toContain("from './sysbo/list-renderer.js'");
     expect(listRenderer).toContain('export async function renderMetadataDrivenList(');
     expect(routes).toContain("from './sysbo/hierarchy-renderer.js'");
-    expect(hierarchyRenderer).toContain('export async function renderMetadataDrivenHierarchyWorkspace(');
+    expect(hierarchyRenderer).toContain(
+      'export async function renderMetadataDrivenHierarchyWorkspace(',
+    );
     expect(routes).not.toContain('async function renderMetadataDrivenHierarchyWorkspace(');
     expect(routes).toContain("from './sysbo/record-renderer.js'");
     expect(recordRenderer).toContain('export async function renderMetadataDrivenRecord(');
@@ -48,13 +66,13 @@ describe('SysBO route responsibility boundaries', () => {
     expect(routes).toContain("from './sysbo/owner-managed-entry.js'");
     expect(ownerManagedEntry).toContain('export function ownerManagedEntryFromRequest(');
     expect(ownerManagedEntry).toContain('export function mergeOwnerManagedEntryFromRequest(');
-    expect(routes).not.toContain("const parseRows = (value: unknown)");
+    expect(routes).not.toContain('const parseRows = (value: unknown)');
     expect(routes).toContain("from './sysbo/entry-write.js'");
     expect(entryWrite).toContain('export async function persistMetadataDrivenEntry(');
     expect(entryWrite).toContain('export async function completeMetadataDrivenSave(');
     expect(routes).toContain("from './sysbo/external-provider-write.js'");
     expect(providerWrite).toContain('export async function handleExternalProviderCredentialSave(');
-    expect(routes).not.toContain("const action = String(req.body.providerCredentialAction");
+    expect(routes).not.toContain('const action = String(req.body.providerCredentialAction');
 
     expect(permissions).toContain('export async function resolveUIEntityPermissions(');
     expect(permissions).toContain("from './api-path.js'");

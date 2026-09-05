@@ -100,12 +100,13 @@ export class InMemoryRepository<T extends SysBOEntity> {
      */
     if (query.listExceptions) {
       const compiled = query.listExceptions;
-      items = items.filter((item) => evaluateCompiledExpression(
-        compiled,
-        item,
-        item,
-        { source: 'other', purpose: 'apply list exception predicate' },
-      ) !== true);
+      items = items.filter(
+        (item) =>
+          evaluateCompiledExpression(compiled, item, item, {
+            source: 'other',
+            purpose: 'apply list exception predicate',
+          }) !== true,
+      );
     }
 
     /*

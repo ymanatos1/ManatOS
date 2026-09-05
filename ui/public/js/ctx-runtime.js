@@ -5,8 +5,11 @@
   if (!snapshotElement) return;
 
   let ctx;
-  try { ctx = JSON.parse(snapshotElement.textContent || 'null'); }
-  catch { ctx = null; }
+  try {
+    ctx = JSON.parse(snapshotElement.textContent || 'null');
+  } catch {
+    ctx = null;
+  }
   if (!ctx || typeof ctx !== 'object') return;
 
   const CHANGE_EVENT = 'manatos:ctx-change';
@@ -38,14 +41,22 @@
     const tokens = [];
     let index = 0;
     while (index < normalized.length) {
-      if (normalized[index] === '.') { index += 1; continue; }
+      if (normalized[index] === '.') {
+        index += 1;
+        continue;
+      }
       if (normalized[index] === '[') {
         const end = normalized.indexOf(']', index);
         if (end < 0) throw new Error(`Invalid ctx array path: ${path}`);
         const raw = normalized.slice(index + 1, end).trim();
         if (/^\d+$/.test(raw)) tokens.push(Number(raw));
-        else if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
-          tokens.push(raw.startsWith('"') ? JSON.parse(raw) : raw.slice(1, -1).replace(/\\'/g, "'"));
+        else if (
+          (raw.startsWith('"') && raw.endsWith('"')) ||
+          (raw.startsWith("'") && raw.endsWith("'"))
+        ) {
+          tokens.push(
+            raw.startsWith('"') ? JSON.parse(raw) : raw.slice(1, -1).replace(/\\'/g, "'"),
+          );
         } else throw new Error(`Invalid ctx array index/key: ${raw}`);
         index = end + 1;
         continue;
@@ -71,7 +82,10 @@
   const leafPagePath = () => {
     let node = ctx.page;
     let path = 'ctx.page';
-    while (node?.page) { node = node.page; path += '.page'; }
+    while (node?.page) {
+      node = node.page;
+      path += '.page';
+    }
     return node ? path : 'ctx';
   };
 
@@ -126,7 +140,10 @@
 
     for (const scope of scopes) {
       const scopeValue = getExact(scope);
-      if (isObject(scopeValue?.fields) && Object.prototype.hasOwnProperty.call(scopeValue.fields, first)) {
+      if (
+        isObject(scopeValue?.fields) &&
+        Object.prototype.hasOwnProperty.call(scopeValue.fields, first)
+      ) {
         const field = scopeValue.fields[first];
         const fieldPath = `${scope}.fields.${first}`;
         if (!members.length) {
@@ -157,10 +174,8 @@
     const first = members.shift();
     if (typeof first !== 'string') return undefined;
 
-    const appendRemaining = (base) => members.reduce(
-      (path, member) => appendPathMember(path, member),
-      base,
-    );
+    const appendRemaining = (base) =>
+      members.reduce((path, member) => appendPathMember(path, member), base);
 
     if (explicitRoot) return appendRemaining(appendPathMember('ctx', first));
 
@@ -175,7 +190,10 @@
 
     for (const scope of scopes) {
       const scopeValue = getExact(scope);
-      if (isObject(scopeValue?.fields) && Object.prototype.hasOwnProperty.call(scopeValue.fields, first)) {
+      if (
+        isObject(scopeValue?.fields) &&
+        Object.prototype.hasOwnProperty.call(scopeValue.fields, first)
+      ) {
         const fieldPath = `${scope}.fields.${first}`;
         return members.length ? appendRemaining(fieldPath) : `${fieldPath}.value`;
       }
@@ -193,7 +211,11 @@
       ? cause.relatedPaths.filter((candidate) => typeof candidate === 'string')
       : [];
     const detail = {
-      operation, path, relatedPaths, oldValue, newValue,
+      operation,
+      path,
+      relatedPaths,
+      oldValue,
+      newValue,
       cause: {
         source: cause.source || 'ctx-runtime',
         eventId,
@@ -212,7 +234,8 @@
    */
   const updateField = (pagePath, key, value, option, cause = {}) => {
     const page = getExact(pagePath);
-    if (!isObject(page?.fields?.[key])) throw new Error(`ctx field not found: ${pagePath}.fields.${key}`);
+    if (!isObject(page?.fields?.[key]))
+      throw new Error(`ctx field not found: ${pagePath}.fields.${key}`);
     const field = page.fields[key];
     const oldValue = field.value;
     const oldOption = field.option;

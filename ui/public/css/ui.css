@@ -116,16 +116,12 @@
 }
 
 .auth-primary-modal-body {
-  padding:
-    var(--popup-body-padding-top)
-    var(--popup-body-padding-x)
+  padding: var(--popup-body-padding-top) var(--popup-body-padding-x)
     var(--popup-body-padding-bottom);
 }
 
 .auth-primary-modal .modal-footer {
-  padding:
-    var(--popup-footer-padding-top)
-    var(--popup-footer-padding-x)
+  padding: var(--popup-footer-padding-top) var(--popup-footer-padding-x)
     var(--popup-footer-padding-bottom);
 }
 
@@ -842,7 +838,6 @@ body.anonymous .workspace {
   box-shadow: var(--manatos-shadow);
 }
 
-
 /* Email registration is the second step of the registration journey. */
 .auth-email-form-dialog {
   --bs-modal-width: 820px;
@@ -1062,7 +1057,6 @@ body.anonymous .workspace {
   }
 }
 
-
 /* ==========================================================================
  * Password recovery / reset presentation
  * ========================================================================== */
@@ -1248,7 +1242,6 @@ body.anonymous .workspace {
   color: var(--bs-secondary-color);
 }
 
-
 /* Optional password branch used by provider-based account registration. */
 .auth-optional-password-section {
   padding-top: 0.2rem;
@@ -1311,7 +1304,7 @@ body.anonymous .workspace {
 .platform-intro {
   max-width: 1180px;
   color: var(--bs-body-color);
-  font-size: calc(.9rem * var(--entry-type-scale, 1.15));
+  font-size: calc(0.9rem * var(--entry-type-scale, 1.15));
   line-height: 1.55;
 }
 
@@ -1377,7 +1370,6 @@ body.anonymous .workspace {
   }
 }
 
-
 /* ==========================================================================
  * Metadata-driven informational/read-only tabs
  * ========================================================================== */
@@ -1412,7 +1404,6 @@ body.anonymous .workspace {
 .metadata-driven-record-form .form-select:disabled {
   background-color: var(--manatos-readonly-field-bg);
 }
-
 
 /* -------------------------------------------------------------------------
    Development-only calculated-expression inventory.
@@ -1465,13 +1456,28 @@ body.anonymous .workspace {
   font-weight: 600;
 }
 
-.debugging-formula .debug-expression-path { color: var(--manatos-debug-path); }
-.debugging-formula .debug-expression-string { color: var(--manatos-debug-string); }
-.debugging-formula .debug-expression-number { color: var(--manatos-debug-number); }
-.debugging-formula .debug-expression-literal { color: var(--manatos-debug-literal); font-weight: 600; }
-.debugging-formula .debug-expression-identifier { color: var(--manatos-debug-identifier); }
-.debugging-formula .debug-expression-operator { color: var(--manatos-debug-operator); }
-.debugging-formula .debug-expression-punctuation { color: var(--manatos-debug-punctuation); }
+.debugging-formula .debug-expression-path {
+  color: var(--manatos-debug-path);
+}
+.debugging-formula .debug-expression-string {
+  color: var(--manatos-debug-string);
+}
+.debugging-formula .debug-expression-number {
+  color: var(--manatos-debug-number);
+}
+.debugging-formula .debug-expression-literal {
+  color: var(--manatos-debug-literal);
+  font-weight: 600;
+}
+.debugging-formula .debug-expression-identifier {
+  color: var(--manatos-debug-identifier);
+}
+.debugging-formula .debug-expression-operator {
+  color: var(--manatos-debug-operator);
+}
+.debugging-formula .debug-expression-punctuation {
+  color: var(--manatos-debug-punctuation);
+}
 
 .debugging-current-value {
   min-width: 10rem;
@@ -1489,7 +1495,6 @@ body.anonymous .workspace {
   text-transform: uppercase;
 }
 
-
 /* Development-only calculated-expression hierarchy. */
 .debugging-calculation-provenance th,
 .debugging-calculation-detail-category th {
@@ -1506,12 +1511,18 @@ body.anonymous .workspace {
   padding-left: calc(1.25rem + (var(--debug-prefix-depth, 0) * 0.9rem));
 }
 
-.debugging-calculation-prefix[data-debug-prefix-level="1"] th,
-.debugging-calculation-path-category[data-debug-path-depth="1"] th { padding-left: 2.15rem; }
-.debugging-calculation-prefix[data-debug-prefix-level="2"] th,
-.debugging-calculation-path-category[data-debug-path-depth="2"] th { padding-left: 3.05rem; }
-.debugging-calculation-prefix[data-debug-prefix-level="3"] th,
-.debugging-calculation-path-category[data-debug-path-depth="3"] th { padding-left: 3.95rem; }
+.debugging-calculation-prefix[data-debug-prefix-level='1'] th,
+.debugging-calculation-path-category[data-debug-path-depth='1'] th {
+  padding-left: 2.15rem;
+}
+.debugging-calculation-prefix[data-debug-prefix-level='2'] th,
+.debugging-calculation-path-category[data-debug-path-depth='2'] th {
+  padding-left: 3.05rem;
+}
+.debugging-calculation-prefix[data-debug-prefix-level='3'] th,
+.debugging-calculation-path-category[data-debug-path-depth='3'] th {
+  padding-left: 3.95rem;
+}
 .debugging-element-name {
   padding-left: calc(0.5rem + (var(--debug-depth, 0) * 0.9rem)) !important;
   color: var(--bs-body-color) !important;
@@ -1526,7 +1537,6 @@ body.anonymous .workspace {
   color: inherit;
   font-weight: 700;
 }
-
 
 /* -------------------------------------------------------------------------
    Development CTX diagnostics panel. One floating window collects all current
@@ -1594,10 +1604,20 @@ body.anonymous .workspace {
 }
 
 /* Reusable rich enum selector for metadata-driven forms. */
-.metadata-enum-select { position: relative; }
-.metadata-enum-select-toggle { display: block; padding-right: 2.25rem; }
-.metadata-enum-select-menu { max-height: 18rem; overflow-y: auto; }
-.metadata-enum-select-menu .dropdown-item { min-height: 2.25rem; }
+.metadata-enum-select {
+  position: relative;
+}
+.metadata-enum-select-toggle {
+  display: block;
+  padding-right: 2.25rem;
+}
+.metadata-enum-select-menu {
+  max-height: 18rem;
+  overflow-y: auto;
+}
+.metadata-enum-select-menu .dropdown-item {
+  min-height: 2.25rem;
+}
 
 /* Metadata-driven hierarchy visualization. Data/state comes from CTX; these
  * rules intentionally contain no entity-specific selectors. The same component
@@ -1611,8 +1631,8 @@ body.anonymous .workspace {
 [data-metadata-component='hierarchy-tree'] {
   background: var(--manatos-visualization-bg);
   border: 1px solid var(--manatos-border);
-  border-radius: .55rem;
-  padding: .9rem;
+  border-radius: 0.55rem;
+  padding: 0.9rem;
 }
 
 .metadata-hierarchy-toolbar .btn {
@@ -1639,7 +1659,7 @@ body.anonymous .workspace {
 .metadata-hierarchy-node-row {
   display: flex;
   align-items: center;
-  gap: .35rem;
+  gap: 0.35rem;
   min-height: 2.25rem;
 }
 
@@ -1659,9 +1679,9 @@ body.anonymous .workspace {
 .metadata-hierarchy-node-link {
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
-  padding: .3rem .55rem;
-  border-radius: .45rem;
+  gap: 0.5rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.45rem;
   color: inherit;
   text-decoration: none;
 }
@@ -1671,16 +1691,16 @@ body.anonymous .workspace {
 }
 
 .metadata-hierarchy-node.is-current > .metadata-hierarchy-node-row .metadata-hierarchy-node-link {
-  background: rgba(var(--bs-primary-rgb), .12);
+  background: rgba(var(--bs-primary-rgb), 0.12);
   color: var(--bs-primary);
   font-weight: 700;
-  outline: 1px solid rgba(var(--bs-primary-rgb), .28);
+  outline: 1px solid rgba(var(--bs-primary-rgb), 0.28);
 }
 
 /* Organization-chart mode reuses the exact same CTX/model and node markup. */
 .metadata-hierarchy-view-chart {
   overflow-x: auto;
-  padding: .75rem .5rem 1rem;
+  padding: 0.75rem 0.5rem 1rem;
 }
 
 .metadata-hierarchy-view-chart > .metadata-hierarchy-root {
@@ -1706,17 +1726,17 @@ body.anonymous .workspace {
 .metadata-hierarchy-view-chart .metadata-hierarchy-node-link {
   min-width: 8.5rem;
   justify-content: center;
-  padding: .55rem .8rem;
+  padding: 0.55rem 0.8rem;
   border: 1px solid var(--bs-border-color);
   background: var(--bs-body-bg);
-  box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .05);
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
 }
 
 .metadata-hierarchy-view-chart .metadata-hierarchy-toggle,
 .metadata-hierarchy-view-chart .metadata-hierarchy-toggle-spacer {
   position: absolute;
   right: 100%;
-  margin-right: .15rem;
+  margin-right: 0.15rem;
 }
 
 .metadata-hierarchy-view-chart .metadata-hierarchy-children {
@@ -1724,7 +1744,7 @@ body.anonymous .workspace {
   display: flex;
   gap: 1.25rem;
   margin: 0;
-  padding: 1.6rem .5rem 0;
+  padding: 1.6rem 0.5rem 0;
   border: 0;
 }
 
@@ -1738,33 +1758,37 @@ body.anonymous .workspace {
   position: absolute;
   top: 0;
   left: 50%;
-  height: .75rem;
+  height: 0.75rem;
   border-left: 1px solid var(--bs-border-color);
 }
 
 .metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node::before {
   content: '';
   position: absolute;
-  top: -.85rem;
-  left: -.625rem;
-  right: -.625rem;
+  top: -0.85rem;
+  left: -0.625rem;
+  right: -0.625rem;
   border-top: 1px solid var(--bs-border-color);
 }
 
-.metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node:first-child::before {
+.metadata-hierarchy-view-chart
+  .metadata-hierarchy-children
+  > .metadata-hierarchy-node:first-child::before {
   left: 50%;
 }
 
-.metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node:last-child::before {
+.metadata-hierarchy-view-chart
+  .metadata-hierarchy-children
+  > .metadata-hierarchy-node:last-child::before {
   right: 50%;
 }
 
 .metadata-hierarchy-view-chart .metadata-hierarchy-children > .metadata-hierarchy-node::after {
   content: '';
   position: absolute;
-  top: -.85rem;
+  top: -0.85rem;
   left: 50%;
-  height: .85rem;
+  height: 0.85rem;
   border-left: 1px solid var(--bs-border-color);
 }
 
@@ -1772,14 +1796,13 @@ body.anonymous .workspace {
   display: none !important;
 }
 
-
 /* Transactional hierarchy-workspace node controls. Structural actions stay
  * physically attached to the node they affect; the ordinary embedded hierarchy
  * tab remains unchanged because these controls render only in workspace mode.
  * Keep the original comfortable hit area: these controls are intentionally
  * easier to click than the later compact experiment. */
 .metadata-hierarchy-workspace .metadata-hierarchy-node-row {
-  padding: .8rem 1rem;
+  padding: 0.8rem 1rem;
 }
 .metadata-hierarchy-workspace .metadata-hierarchy-node-shell {
   position: relative;
@@ -1798,25 +1821,46 @@ body.anonymous .workspace {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  font-size: .62rem;
+  font-size: 0.62rem;
   line-height: 1;
 }
-.metadata-hierarchy-workspace .metadata-hierarchy-node-delete { left: -.48rem; top: -.48rem; }
-.metadata-hierarchy-workspace .metadata-hierarchy-node-parent { left: 50%; top: -.52rem; transform: translate(-50%, -50%); }
-.metadata-hierarchy-workspace .metadata-hierarchy-node-sibling { right: -.52rem; top: 50%; transform: translate(50%, -50%); }
-.metadata-hierarchy-workspace .metadata-hierarchy-node-child { left: 50%; bottom: -.52rem; transform: translate(-50%, 50%); }
-.metadata-hierarchy-workspace .metadata-hierarchy-view-tree .metadata-hierarchy-node-row { position: relative; width: fit-content; }
+.metadata-hierarchy-workspace .metadata-hierarchy-node-delete {
+  left: -0.48rem;
+  top: -0.48rem;
+}
+.metadata-hierarchy-workspace .metadata-hierarchy-node-parent {
+  left: 50%;
+  top: -0.52rem;
+  transform: translate(-50%, -50%);
+}
+.metadata-hierarchy-workspace .metadata-hierarchy-node-sibling {
+  right: -0.52rem;
+  top: 50%;
+  transform: translate(50%, -50%);
+}
+.metadata-hierarchy-workspace .metadata-hierarchy-node-child {
+  left: 50%;
+  bottom: -0.52rem;
+  transform: translate(-50%, 50%);
+}
+.metadata-hierarchy-workspace .metadata-hierarchy-view-tree .metadata-hierarchy-node-row {
+  position: relative;
+  width: fit-content;
+}
 
 /* Preserve the accepted comfortable hit area while keeping frequent Add actions
    visually secondary. Bootstrap btn-primary must not turn the graph into a field
    of blue circles; only hover/focus promotes an Add affordance to primary. */
-.metadata-hierarchy-workspace .metadata-hierarchy-node-command:not(.metadata-hierarchy-node-delete) {
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node-command:not(.metadata-hierarchy-node-delete) {
   color: var(--bs-secondary-color);
   background: var(--bs-body-bg);
   border-color: var(--bs-border-color);
 }
-.metadata-hierarchy-workspace .metadata-hierarchy-node-command:not(.metadata-hierarchy-node-delete):hover,
-.metadata-hierarchy-workspace .metadata-hierarchy-node-command:not(.metadata-hierarchy-node-delete):focus-visible {
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node-command:not(.metadata-hierarchy-node-delete):hover,
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node-command:not(.metadata-hierarchy-node-delete):focus-visible {
   color: #fff;
   background: var(--bs-primary);
   border-color: var(--bs-primary);
@@ -1827,7 +1871,7 @@ body.anonymous .workspace {
 .metadata-hierarchy-workspace .metadata-hierarchy-node-delete {
   color: var(--bs-danger);
   background: var(--bs-body-bg);
-  border-color: rgba(var(--bs-danger-rgb), .42);
+  border-color: rgba(var(--bs-danger-rgb), 0.42);
 }
 .metadata-hierarchy-workspace .metadata-hierarchy-node-delete:hover,
 .metadata-hierarchy-workspace .metadata-hierarchy-node-delete:focus-visible,
@@ -1844,20 +1888,24 @@ body.anonymous .workspace {
   position: fixed;
   z-index: 1090;
   min-width: 10.5rem;
-  padding: .3rem 0;
+  padding: 0.3rem 0;
   border: 1px solid var(--bs-border-color);
-  border-radius: .4rem;
+  border-radius: 0.4rem;
   background: var(--bs-tertiary-bg, #f1f3f5);
   box-shadow: var(--bs-box-shadow-sm);
-  font-size: .82rem;
+  font-size: 0.82rem;
 }
-.metadata-hierarchy-node-remove-menu[hidden] { display: none !important; }
+.metadata-hierarchy-node-remove-menu[hidden] {
+  display: none !important;
+}
 .metadata-hierarchy-node-remove-menu .dropdown-item {
-  padding: .35rem .65rem;
+  padding: 0.35rem 0.65rem;
   white-space: nowrap;
 }
-.metadata-hierarchy-node-remove-menu .dropdown-item:not(:disabled):not([aria-disabled='true']):hover,
-.metadata-hierarchy-node-remove-menu .dropdown-item:not(:disabled):not([aria-disabled='true']):focus-visible {
+.metadata-hierarchy-node-remove-menu
+  .dropdown-item:not(:disabled):not([aria-disabled='true']):hover,
+.metadata-hierarchy-node-remove-menu
+  .dropdown-item:not(:disabled):not([aria-disabled='true']):focus-visible {
   background: var(--bs-secondary-bg, #e9ecef);
   color: var(--bs-body-color);
 }
@@ -1868,45 +1916,62 @@ body.anonymous .workspace {
 }
 .metadata-hierarchy-node-remove-menu .dropdown-item:disabled,
 .metadata-hierarchy-node-remove-menu .dropdown-item[aria-disabled='true'] {
-  opacity: .5;
+  opacity: 0.5;
   cursor: not-allowed;
 }
-.metadata-hierarchy-node-remove-menu .dropdown-divider { margin: .25rem 0; }
+.metadata-hierarchy-node-remove-menu .dropdown-divider {
+  margin: 0.25rem 0;
+}
 
 /* Workspace drag/drop Move UX. A node body is the drag handle; dropping it on
    a compatible container changes only the working owner entries[] graph. */
-.metadata-hierarchy-workspace .metadata-hierarchy-node-workspace[draggable="true"] { cursor: grab; }
-.metadata-hierarchy-workspace .metadata-hierarchy-node.is-dragging > .metadata-hierarchy-node-row .metadata-hierarchy-node-link {
-  opacity: .45;
+.metadata-hierarchy-workspace .metadata-hierarchy-node-workspace[draggable='true'] {
+  cursor: grab;
+}
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node.is-dragging
+  > .metadata-hierarchy-node-row
+  .metadata-hierarchy-node-link {
+  opacity: 0.45;
   cursor: grabbing;
 }
-.metadata-hierarchy-workspace .metadata-hierarchy-node.is-drop-target > .metadata-hierarchy-node-row .metadata-hierarchy-node-link {
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node.is-drop-target
+  > .metadata-hierarchy-node-row
+  .metadata-hierarchy-node-link {
   background: var(--bs-primary-bg-subtle, #cfe2ff);
   border-color: var(--bs-primary);
-  outline: 2px solid rgba(var(--bs-primary-rgb), .28);
+  outline: 2px solid rgba(var(--bs-primary-rgb), 0.28);
   outline-offset: 2px;
 }
-.metadata-hierarchy-workspace .metadata-hierarchy-node.is-drop-invalid > .metadata-hierarchy-node-row .metadata-hierarchy-node-link {
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node.is-drop-invalid
+  > .metadata-hierarchy-node-row
+  .metadata-hierarchy-node-link {
   background: var(--bs-danger-bg-subtle, #f8d7da);
   border-color: var(--bs-danger);
-  outline: 2px solid rgba(var(--bs-danger-rgb), .22);
+  outline: 2px solid rgba(var(--bs-danger-rgb), 0.22);
   outline-offset: 2px;
   cursor: not-allowed;
 }
 
-.metadata-hierarchy-workspace .metadata-hierarchy-node-link[data-drop-hint] { position: relative; }
-.metadata-hierarchy-workspace .metadata-hierarchy-node:is(.is-drop-target, .is-drop-invalid) .metadata-hierarchy-node-link[data-drop-hint]::after {
+.metadata-hierarchy-workspace .metadata-hierarchy-node-link[data-drop-hint] {
+  position: relative;
+}
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node:is(.is-drop-target, .is-drop-invalid)
+  .metadata-hierarchy-node-link[data-drop-hint]::after {
   content: attr(data-drop-hint);
   position: absolute;
   left: 50%;
-  top: calc(100% + .45rem);
+  top: calc(100% + 0.45rem);
   transform: translateX(-50%);
   z-index: 30;
-  padding: .2rem .45rem;
-  border-radius: .3rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.3rem;
   background: var(--bs-body-color);
   color: var(--bs-body-bg);
-  font-size: .72rem;
+  font-size: 0.72rem;
   font-weight: 500;
   white-space: nowrap;
   pointer-events: none;
@@ -1919,7 +1984,7 @@ body.anonymous .workspace {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .5rem;
+  gap: 0.5rem;
 }
 .metadata-hierarchy-workspace .metadata-hierarchy-empty-add {
   width: 3rem;
@@ -1940,20 +2005,20 @@ body.anonymous .workspace {
   width: 1.55rem;
   height: 1.2rem;
   align-items: center;
-  margin-right: .22rem;
+  margin-right: 0.22rem;
 }
 .metadata-hierarchy-node-entity-icon {
   position: absolute;
-  left: .02rem;
-  bottom: .02rem;
+  left: 0.02rem;
+  bottom: 0.02rem;
   z-index: 1;
-  font-size: calc(.92rem * var(--entry-entity-scale, .72));
-  opacity: .72;
+  font-size: calc(0.92rem * var(--entry-entity-scale, 0.72));
+  opacity: 0.72;
 }
 .metadata-hierarchy-node-type-icon {
   position: absolute;
-  right: .02rem;
-  top: -.04rem;
+  right: 0.02rem;
+  top: -0.04rem;
   z-index: 2;
   font-size: 1.02rem;
   line-height: 1;
@@ -1961,7 +2026,7 @@ body.anonymous .workspace {
 
 .metadata-hierarchy-workspace .metadata-record-quick {
   width: min(32rem, calc(100vw - 4rem));
-  margin-top: .75rem;
+  margin-top: 0.75rem;
   text-align: left;
 }
 .metadata-hierarchy-workspace.is-quick-editing .metadata-hierarchy-node-command,
@@ -1969,7 +2034,7 @@ body.anonymous .workspace {
 .metadata-hierarchy-workspace.is-quick-editing .metadata-hierarchy-toggle,
 .metadata-hierarchy-workspace.is-quick-editing [data-hierarchy-view-mode] {
   pointer-events: none;
-  opacity: .55;
+  opacity: 0.55;
 }
 .metadata-hierarchy-workspace.is-quick-editing .metadata-record-quick,
 .metadata-hierarchy-workspace.is-quick-editing .metadata-record-quick * {
@@ -1999,12 +2064,14 @@ body.anonymous .workspace {
 }
 .metadata-hierarchy-node-link:hover,
 .metadata-hierarchy-node-draft:hover {
-  background: rgba(var(--bs-primary-rgb), .08);
-  outline: 1px solid rgba(var(--bs-primary-rgb), .20);
+  background: rgba(var(--bs-primary-rgb), 0.08);
+  outline: 1px solid rgba(var(--bs-primary-rgb), 0.2);
 }
 
 /* Hierarchy workspace member body is an explicit in-memory Open/Edit target. */
-.metadata-hierarchy-node-workspace { cursor: pointer; }
+.metadata-hierarchy-node-workspace {
+  cursor: pointer;
+}
 .metadata-hierarchy-node-workspace:hover,
 .metadata-hierarchy-node-workspace:focus-visible {
   background: var(--bs-primary-bg-subtle, #cfe2ff);
@@ -2028,12 +2095,12 @@ body.anonymous .workspace {
   width: max-content;
   min-width: 8rem;
   max-width: 16rem;
-  margin: 0 auto .5rem;
-  padding: .55rem .85rem;
+  margin: 0 auto 0.5rem;
+  padding: 0.55rem 0.85rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .45rem;
+  border-radius: 0.45rem;
   background: var(--bs-body-bg);
-  box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   text-align: center;
   color: var(--bs-secondary-color);
 }
@@ -2047,20 +2114,41 @@ body.anonymous .workspace {
   height: 1.1rem;
   vertical-align: middle;
 }
-.metadata-entry-icons .metadata-entry-icon { position: absolute; line-height: 1; }
-.metadata-entry-icons .metadata-entry-icon-0 { left: 0; bottom: 0; font-size: calc(.94rem * var(--entry-entity-scale, .72)); opacity: .72; z-index: 1; }
-.metadata-entry-icons .metadata-entry-icon-1 { right: 0; top: -.08rem; font-size: calc(.9rem * var(--entry-type-scale, 1.15)); z-index: 2; }
+.metadata-entry-icons .metadata-entry-icon {
+  position: absolute;
+  line-height: 1;
+}
+.metadata-entry-icons .metadata-entry-icon-0 {
+  left: 0;
+  bottom: 0;
+  font-size: calc(0.94rem * var(--entry-entity-scale, 0.72));
+  opacity: 0.72;
+  z-index: 1;
+}
+.metadata-entry-icons .metadata-entry-icon-1 {
+  right: 0;
+  top: -0.08rem;
+  font-size: calc(0.9rem * var(--entry-type-scale, 1.15));
+  z-index: 2;
+}
 
 /* Add/relate menus share the proven body-portal geometry of the X menu. */
-.metadata-hierarchy-node-add-menu { min-width: 15rem; }
+.metadata-hierarchy-node-add-menu {
+  min-width: 15rem;
+}
 .metadata-hierarchy-existing-node-choice {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  padding: .18rem .65rem;
+  gap: 0.5rem;
+  padding: 0.18rem 0.65rem;
 }
-.metadata-hierarchy-existing-node-choice:hover { background: var(--bs-secondary-bg, #e9ecef); }
-.metadata-hierarchy-existing-node-choice .btn { padding: .05rem .28rem; text-decoration: none; }
+.metadata-hierarchy-existing-node-choice:hover {
+  background: var(--bs-secondary-bg, #e9ecef);
+}
+.metadata-hierarchy-existing-node-choice .btn {
+  padding: 0.05rem 0.28rem;
+  text-decoration: none;
+}
 .metadata-hierarchy-node-command[data-hierarchy-add-toggle][aria-expanded='true'] {
   color: #fff;
   background: var(--bs-primary);
@@ -2081,7 +2169,7 @@ body.anonymous .workspace {
    * allowing a tall card/list to push the shell footer below the viewport.
    */
   overflow: hidden;
-  background: rgba(0, 0, 0, .28);
+  background: rgba(0, 0, 0, 0.28);
 }
 .metadata-record-selector,
 .metadata-hierarchy-entry-selector {
@@ -2107,41 +2195,60 @@ body.anonymous .workspace {
 /* Relationship-aware [+] menu. The clicked geometric affordance already says
    parent/sibling/child, so the menu exposes only that relationship and keeps
    existing in-workspace nodes in a compact, scrollable fly-out submenu. */
-.metadata-hierarchy-existing-node-submenu { position: relative; display: block; }
+.metadata-hierarchy-existing-node-submenu {
+  position: relative;
+  display: block;
+}
 .metadata-hierarchy-existing-node-menu {
   display: none;
   position: absolute;
-  left: calc(100% - .15rem);
-  top: -.3rem;
+  left: calc(100% - 0.15rem);
+  top: -0.3rem;
   z-index: 1100;
   min-width: 12rem;
   max-width: 20rem;
   max-height: 16rem;
   overflow-y: auto;
-  padding: .3rem 0;
+  padding: 0.3rem 0;
   border: 1px solid var(--bs-border-color);
-  border-radius: .4rem;
+  border-radius: 0.4rem;
   background: var(--bs-tertiary-bg, #f1f3f5);
   box-shadow: var(--bs-box-shadow-sm);
 }
 .metadata-hierarchy-existing-node-submenu:hover > .metadata-hierarchy-existing-node-menu,
-.metadata-hierarchy-existing-node-submenu:focus-within > .metadata-hierarchy-existing-node-menu { display: block; }
-.metadata-hierarchy-existing-node-menu .dropdown-item { overflow: hidden; text-overflow: ellipsis; }
+.metadata-hierarchy-existing-node-submenu:focus-within > .metadata-hierarchy-existing-node-menu {
+  display: block;
+}
+.metadata-hierarchy-existing-node-menu .dropdown-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Generic existing-record selectors intentionally look and behave like compact
    list pages because they reuse the same metadata-driven list components.
    Rows select rather than navigate and no create/actions UI exists. */
-.metadata-hierarchy-selector-search { width: min(20rem, 45vw); }
+.metadata-hierarchy-selector-search {
+  width: min(20rem, 45vw);
+}
 .metadata-hierarchy-selector-filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: .65rem;
+  gap: 0.65rem;
   background: var(--bs-tertiary-bg);
 }
-.metadata-record-selector [data-selector-row] { cursor: pointer; }
-.metadata-record-selector [data-selector-row][aria-disabled='true'] { cursor: not-allowed; }
-.metadata-record-selector [data-selector-row]:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
-.metadata-record-selector [data-selector-page-size] { width: auto; }
+.metadata-record-selector [data-selector-row] {
+  cursor: pointer;
+}
+.metadata-record-selector [data-selector-row][aria-disabled='true'] {
+  cursor: not-allowed;
+}
+.metadata-record-selector [data-selector-row]:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -2px;
+}
+.metadata-record-selector [data-selector-page-size] {
+  width: auto;
+}
 
 /* Record-selector visual orientation is invocation metadata resolved through
    callingParams + evaluator rules. Workspace/hierarchy selectors stay quiet;
@@ -2150,17 +2257,17 @@ body.anonymous .workspace {
   border-color: var(--bs-border-color);
 }
 .metadata-record-selector.is-entry-presentation {
-  border-color: rgba(var(--bs-primary-rgb), .45);
-  box-shadow: 0 .5rem 1.25rem rgba(var(--bs-primary-rgb), .12) !important;
+  border-color: rgba(var(--bs-primary-rgb), 0.45);
+  box-shadow: 0 0.5rem 1.25rem rgba(var(--bs-primary-rgb), 0.12) !important;
 }
 .metadata-record-selector.is-entry-presentation > .card-header {
   color: var(--bs-primary-text-emphasis);
   background: var(--bs-primary-bg-subtle);
-  border-bottom-color: rgba(var(--bs-primary-rgb), .28);
+  border-bottom-color: rgba(var(--bs-primary-rgb), 0.28);
 }
 .metadata-record-selector.is-entry-presentation > .card-footer {
   background: var(--bs-tertiary-bg);
-  border-top-color: rgba(var(--bs-primary-rgb), .22);
+  border-top-color: rgba(var(--bs-primary-rgb), 0.22);
 }
 
 /* Existing/persisted hierarchy members are subtly distinguished from draft:* nodes. */
@@ -2168,48 +2275,82 @@ body.anonymous .workspace {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: .18rem;
-  font-size: .76rem;
+  margin-left: 0.18rem;
+  font-size: 0.76rem;
   line-height: 1;
   color: var(--bs-secondary-color);
-  opacity: .72;
+  opacity: 0.72;
 }
-.metadata-hierarchy-node-persistence:hover { opacity: 1; }
-.metadata-hierarchy-add-primary-divider { margin: .3rem 0; opacity: .25; }
-.metadata-record-selector .sysbo-paging-row { margin-top: 0 !important; }
-.metadata-record-selector [data-selector-context-note] { min-height: 1.25rem; }
+.metadata-hierarchy-node-persistence:hover {
+  opacity: 1;
+}
+.metadata-hierarchy-add-primary-divider {
+  margin: 0.3rem 0;
+  opacity: 0.25;
+}
+.metadata-record-selector .sysbo-paging-row {
+  margin-top: 0 !important;
+}
+.metadata-record-selector [data-selector-context-note] {
+  min-height: 1.25rem;
+}
 
 /* Shared list toolbar: browse pages and selector popups intentionally use the
    same presentation. Context-specific actions may follow Search without moving
    the common Filters/Search affordances. */
-.metadata-list-toolbar-actions { min-width: min(100%, 22rem); }
-.metadata-list-search-form { margin: 0; }
-.metadata-list-search { width: min(19rem, 42vw); min-width: 12rem; }
+.metadata-list-toolbar-actions {
+  min-width: min(100%, 22rem);
+}
+.metadata-list-search-form {
+  margin: 0;
+}
+.metadata-list-search {
+  width: min(19rem, 42vw);
+  min-width: 12rem;
+}
 
 /* Selection mode keeps semantic values neutral/colorless and uses a quiet row
    treatment for entries already represented by a workspace node. They remain
    selectable because selection means repositioning, not rejection. */
 .metadata-record-selector .metadata-selector-boolean,
-.metadata-hierarchy-entry-selector .metadata-selector-boolean { color: var(--bs-body-color); white-space: nowrap; }
+.metadata-hierarchy-entry-selector .metadata-selector-boolean {
+  color: var(--bs-body-color);
+  white-space: nowrap;
+}
 .metadata-record-selector [data-selector-row].is-in-context:not(.table-primary) > td,
 .metadata-hierarchy-entry-selector [data-selector-row].is-in-organization:not(.table-primary) > td {
   color: var(--bs-secondary-color);
   background: var(--bs-tertiary-bg);
 }
-.metadata-record-selector [data-selector-row].is-in-context:not(.table-primary) .metadata-entry-icons,
+.metadata-record-selector
+  [data-selector-row].is-in-context:not(.table-primary)
+  .metadata-entry-icons,
 .metadata-record-selector [data-selector-row].is-in-context:not(.table-primary) i,
-.metadata-hierarchy-entry-selector [data-selector-row].is-in-organization:not(.table-primary) .metadata-entry-icons,
-.metadata-hierarchy-entry-selector [data-selector-row].is-in-organization:not(.table-primary) i { opacity: .68; }
+.metadata-hierarchy-entry-selector
+  [data-selector-row].is-in-organization:not(.table-primary)
+  .metadata-entry-icons,
+.metadata-hierarchy-entry-selector [data-selector-row].is-in-organization:not(.table-primary) i {
+  opacity: 0.68;
+}
 
-.metadata-hierarchy-commit-confirm { width: min(42rem, 92vw); }
-.metadata-hierarchy-commit-summary strong { font-size: 1.15rem; }
-.metadata-hierarchy-workspace .metadata-hierarchy-node-workspace { position: relative; }
-.metadata-hierarchy-workspace .metadata-hierarchy-node-workspace:has(.metadata-hierarchy-node-persistence) { padding-right: 1.1rem; }
+.metadata-hierarchy-commit-confirm {
+  width: min(42rem, 92vw);
+}
+.metadata-hierarchy-commit-summary strong {
+  font-size: 1.15rem;
+}
+.metadata-hierarchy-workspace .metadata-hierarchy-node-workspace {
+  position: relative;
+}
+.metadata-hierarchy-workspace
+  .metadata-hierarchy-node-workspace:has(.metadata-hierarchy-node-persistence) {
+  padding-right: 1.1rem;
+}
 .metadata-hierarchy-workspace .metadata-hierarchy-node-persistence {
   position: absolute;
-  right: .18rem;
-  top: .16rem;
+  right: 0.18rem;
+  top: 0.16rem;
   margin-left: 0;
-  font-size: .52rem;
-  opacity: .58;
+  font-size: 0.52rem;
+  opacity: 0.58;
 }

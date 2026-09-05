@@ -1,10 +1,5 @@
 import { Router, type Request } from 'express';
-import {
-  ForbiddenAppError,
-  NotFoundError,
-  SysBOUserRole,
-  operationContext,
-} from '@manatos/shared';
+import { ForbiddenAppError, NotFoundError, SysBOUserRole, operationContext } from '@manatos/shared';
 
 import { internalAuditActor } from '../../audit/audit-service.js';
 import { accessTokenStore, type SessionClientInfo } from '../../auth/access-token-store.js';

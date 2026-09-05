@@ -19,7 +19,11 @@ describe('canonical telephone-number relationship metadata', () => {
       required: true,
       maxLength: 5,
     });
-    expect(sysBOTelephoneNumbersMetadata.fieldDefinition.fullNumber).toMatchObject({ type: 'telephone', unique: true, readOnly: true });
+    expect(sysBOTelephoneNumbersMetadata.fieldDefinition.fullNumber).toMatchObject({
+      type: 'telephone',
+      unique: true,
+      readOnly: true,
+    });
     expect(sysBOTelephoneNumbersMetadata.fieldDefinition.fullNumber?.calculation).toMatchObject({
       expression: 'TelephoneNbr(countryCode, number)',
       persisted: true,
@@ -28,8 +32,12 @@ describe('canonical telephone-number relationship metadata', () => {
       type: 'string',
       required: true,
     });
-    expect(sysBOPrincipalTelephoneNumbersMetadata.relationships?.principal?.cardinality).toBe('many-to-one');
-    expect(sysBOPrincipalTelephoneNumbersMetadata.relationships?.telephoneNumber?.cardinality).toBe('many-to-one');
+    expect(sysBOPrincipalTelephoneNumbersMetadata.relationships?.principal?.cardinality).toBe(
+      'many-to-one',
+    );
+    expect(sysBOPrincipalTelephoneNumbersMetadata.relationships?.telephoneNumber?.cardinality).toBe(
+      'many-to-one',
+    );
   });
 
   it('marks telephone/link SysBOs as internal canonical entities', () => {
@@ -43,12 +51,25 @@ describe('canonical telephone-number relationship metadata', () => {
   });
 
   it('normalizes both TelephoneNbr signatures and declares User normalization through metadata', () => {
-    expect(evaluateExpression('TelephoneNbr(value)', { value: '+30 694-438-6714' }, { value: '+30 694-438-6714' }, { source: 'test' })).toBe('+306944386714');
-    expect(evaluateExpression("TelephoneNbr(countryCode, number)", { countryCode: '+30', number: '694 438 6714' }, { countryCode: '+30', number: '694 438 6714' }, { source: 'test' })).toBe('+306944386714');
+    expect(
+      evaluateExpression(
+        'TelephoneNbr(value)',
+        { value: '+30 694-438-6714' },
+        { value: '+30 694-438-6714' },
+        { source: 'test' },
+      ),
+    ).toBe('+306944386714');
+    expect(
+      evaluateExpression(
+        'TelephoneNbr(countryCode, number)',
+        { countryCode: '+30', number: '694 438 6714' },
+        { countryCode: '+30', number: '694 438 6714' },
+        { source: 'test' },
+      ),
+    ).toBe('+306944386714');
     expect(sysBOUsersMetadata.fieldDefinition.telephoneNumber).toMatchObject({
       type: 'telephone',
       normalize: { expression: 'TelephoneNbr(value)' },
     });
   });
-
 });

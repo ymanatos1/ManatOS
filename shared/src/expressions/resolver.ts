@@ -1,5 +1,5 @@
-import {resolveContextMember} from '../context.js';
-import type {ExpressionPathMember, ExpressionVariableNode} from './types.js';
+import { resolveContextMember } from '../context.js';
+import type { ExpressionPathMember, ExpressionVariableNode } from './types.js';
 
 export interface ResolvedExpressionVariable {
   found: boolean;
@@ -46,23 +46,29 @@ function resolveMemberForExpression(container: unknown, member: ExpressionPathMe
    * still win above, so enum/reference/calculated-field introspection keeps its
    * existing semantics.
    */
-  if (container && typeof container === 'object' &&
-      Object.prototype.hasOwnProperty.call(container, 'value')) {
+  if (
+    container &&
+    typeof container === 'object' &&
+    Object.prototype.hasOwnProperty.call(container, 'value')
+  ) {
     return resolveContextMember((container as { value?: unknown }).value, member);
   }
 
   return undefined;
 }
 
-function resolveDownward(start: unknown, members: readonly ExpressionPathMember[]): ResolvedExpressionVariable {
+function resolveDownward(
+  start: unknown,
+  members: readonly ExpressionPathMember[],
+): ResolvedExpressionVariable {
   let value = start;
   let owner: unknown = undefined;
   for (const member of members) {
     owner = value;
     value = resolveMemberForExpression(value, member);
-    if (value === undefined) return {found: false, value: undefined, owner};
+    if (value === undefined) return { found: false, value: undefined, owner };
   }
-  return {found: true, value, owner};
+  return { found: true, value, owner };
 }
 
 /**
@@ -76,17 +82,17 @@ export function resolveExpressionVariable(
   currentCtxNode: unknown,
 ): ResolvedExpressionVariable {
   const members = [...variable.members];
-  if (!members.length) return {found: false, value: undefined, owner: undefined};
+  if (!members.length) return { found: false, value: undefined, owner: undefined };
 
   if (variable.absolute) {
     members.shift(); // explicit ctx root marker
     return members.length
       ? resolveDownward(ctxRoot, members)
-      : {found: true, value: ctxRoot, owner: undefined};
+      : { found: true, value: ctxRoot, owner: undefined };
   }
 
   const first = members.shift()!;
-  if (typeof first !== 'string') return {found: false, value: undefined, owner: undefined};
+  if (typeof first !== 'string') return { found: false, value: undefined, owner: undefined };
 
   // A detached current scope (for example a related-record row) is not a child
   // of the root object. Preserve the same lexical rule by constructing the
@@ -97,10 +103,10 @@ export function resolveExpressionVariable(
     const scope = ancestry[index];
     const firstValue = resolveContextMember(scope, first);
     if (firstValue === undefined) continue;
-    if (!members.length) return {found: true, value: firstValue, owner: scope};
+    if (!members.length) return { found: true, value: firstValue, owner: scope };
     const resolved = resolveDownward(firstValue, members);
-    return resolved.found ? resolved : {found: false, value: undefined, owner: resolved.owner};
+    return resolved.found ? resolved : { found: false, value: undefined, owner: resolved.owner };
   }
 
-  return {found: false, value: undefined, owner: undefined};
+  return { found: false, value: undefined, owner: undefined };
 }

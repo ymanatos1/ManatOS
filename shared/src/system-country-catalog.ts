@@ -44,7 +44,12 @@ export const systemCountryCatalog: readonly SystemCountry[] = [
   { code: 'ES', name: 'Spain', callingCode: '+34' },
   { code: 'SE', name: 'Sweden', callingCode: '+46' },
   { code: 'CH', name: 'Switzerland', callingCode: '+41' },
-  { code: 'GB', name: 'United Kingdom', callingCode: '+44', languageFlagSrc: '/assets/flags/en.svg' },
+  {
+    code: 'GB',
+    name: 'United Kingdom',
+    callingCode: '+44',
+    languageFlagSrc: '/assets/flags/en.svg',
+  },
   { code: 'US', name: 'United States', callingCode: '+1' },
   { code: 'CA', name: 'Canada', callingCode: '+1' },
   { code: 'AU', name: 'Australia', callingCode: '+61' },

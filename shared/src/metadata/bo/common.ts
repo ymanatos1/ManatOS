@@ -93,4 +93,3 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
     readOnly: true,
   },
 };
-

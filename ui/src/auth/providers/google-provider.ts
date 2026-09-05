@@ -21,7 +21,8 @@ export const googleProviderAdapter: ExternalProviderAdapter = {
           if (!email) return done(new Error('Google did not supply an email.'));
 
           const emailVerified = Boolean(
-            (profile as typeof profile & { _json?: { email_verified?: boolean } })._json?.email_verified,
+            (profile as typeof profile & { _json?: { email_verified?: boolean } })._json
+              ?.email_verified,
           );
 
           const externalProfile: ExternalProfile = {

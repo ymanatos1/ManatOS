@@ -1,5 +1,5 @@
-import {resolveContextMember} from '../../context.js';
-import {ExpressionEvaluationError} from '../diagnostics.js';
+import { resolveContextMember } from '../../context.js';
+import { ExpressionEvaluationError } from '../diagnostics.js';
 import type {
   ExpressionFunctionArgumentType,
   ExpressionFunctionDefinition,
@@ -38,9 +38,11 @@ function valueMatches(type: ExpressionFunctionArgumentType, value: unknown): boo
  */
 function checked(definition: ExpressionFunctionDefinition): ExpressionFunctionDefinition {
   const validate = (args: readonly unknown[]) => {
-    const {signature} = definition;
-    if (args.length < signature.minArguments ||
-        (signature.maxArguments !== null && args.length > signature.maxArguments)) {
+    const { signature } = definition;
+    if (
+      args.length < signature.minArguments ||
+      (signature.maxArguments !== null && args.length > signature.maxArguments)
+    ) {
       throw new ExpressionEvaluationError(
         `${definition.name} expects ${signature.text}; received ${args.length} argument(s).`,
       );
@@ -62,16 +64,16 @@ function checked(definition: ExpressionFunctionDefinition): ExpressionFunctionDe
       validate(args);
       return definition.evaluate(args, context);
     },
-    ...(definition.evaluateAsync ? {
-      async evaluateAsync(args, context) {
-        validate(args);
-        return definition.evaluateAsync!(args, context);
-      },
-    } : {}),
+    ...(definition.evaluateAsync
+      ? {
+          async evaluateAsync(args, context) {
+            validate(args);
+            return definition.evaluateAsync!(args, context);
+          },
+        }
+      : {}),
   };
 }
-
-
 
 const durationDayMs = 24 * 60 * 60 * 1000;
 
@@ -96,33 +98,58 @@ function withClampedCalendarYearMonth(date: Date, year: number, monthIndex: numb
   return new Date(Date.UTC(year, monthIndex, day));
 }
 
-function normalizeDurationValue(value: unknown): {years: number; months: number; days: number} | null {
+function normalizeDurationValue(
+  value: unknown,
+): { years: number; months: number; days: number } | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const source = value as Record<string, unknown>;
   const part = (key: string) => {
     const numeric = Number(source[key] ?? 0);
     return Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : 0;
   };
-  return {years: part('years'), months: part('months'), days: part('days')};
+  return { years: part('years'), months: part('months'), days: part('days') };
 }
 
-function addCalendarDurationValue(start: Date, duration: {years: number; months: number; days: number}): Date {
-  let cursor = withClampedCalendarYearMonth(start, start.getUTCFullYear() + duration.years, start.getUTCMonth());
+function addCalendarDurationValue(
+  start: Date,
+  duration: { years: number; months: number; days: number },
+): Date {
+  let cursor = withClampedCalendarYearMonth(
+    start,
+    start.getUTCFullYear() + duration.years,
+    start.getUTCMonth(),
+  );
   const monthTotal = cursor.getUTCFullYear() * 12 + cursor.getUTCMonth() + duration.months;
   cursor = withClampedCalendarYearMonth(cursor, Math.floor(monthTotal / 12), monthTotal % 12);
   return new Date(cursor.getTime() + duration.days * durationDayMs);
 }
 
-function calendarDurationBetweenValues(start: Date, end: Date): {years: number; months: number; days: number} | null {
+function calendarDurationBetweenValues(
+  start: Date,
+  end: Date,
+): { years: number; months: number; days: number } | null {
   if (end.getTime() < start.getTime()) return null;
   let years = Math.max(0, end.getUTCFullYear() - start.getUTCFullYear());
-  while (years > 0 && addCalendarDurationValue(start, {years, months: 0, days: 0}).getTime() > end.getTime()) years -= 1;
-  let cursor = addCalendarDurationValue(start, {years, months: 0, days: 0});
-  let months = Math.max(0, (end.getUTCFullYear() - cursor.getUTCFullYear()) * 12 + end.getUTCMonth() - cursor.getUTCMonth());
-  while (months > 0 && addCalendarDurationValue(cursor, {years: 0, months, days: 0}).getTime() > end.getTime()) months -= 1;
-  cursor = addCalendarDurationValue(cursor, {years: 0, months, days: 0});
+  while (
+    years > 0 &&
+    addCalendarDurationValue(start, { years, months: 0, days: 0 }).getTime() > end.getTime()
+  )
+    years -= 1;
+  let cursor = addCalendarDurationValue(start, { years, months: 0, days: 0 });
+  let months = Math.max(
+    0,
+    (end.getUTCFullYear() - cursor.getUTCFullYear()) * 12 +
+      end.getUTCMonth() -
+      cursor.getUTCMonth(),
+  );
+  while (
+    months > 0 &&
+    addCalendarDurationValue(cursor, { years: 0, months, days: 0 }).getTime() > end.getTime()
+  )
+    months -= 1;
+  cursor = addCalendarDurationValue(cursor, { years: 0, months, days: 0 });
   const days = Math.max(0, Math.round((end.getTime() - cursor.getTime()) / durationDayMs));
-  return {years, months, days};
+  return { years, months, days };
 }
 
 /* ==========================================================================
@@ -147,7 +174,9 @@ function calendarDurationBetweenValues(start: Date, end: Date): {years: number; 
  */
 export function normalizeTelephoneNumber(...rawArgs: unknown[]): string | null {
   if (rawArgs.length !== 1 && rawArgs.length !== 2) {
-    throw new ExpressionEvaluationError('TelephoneNbr expects one full-number value or countryCode + number.');
+    throw new ExpressionEvaluationError(
+      'TelephoneNbr expects one full-number value or countryCode + number.',
+    );
   }
   const clean = (value: unknown) => String(value ?? '').trim();
   if (rawArgs.length === 1) {
@@ -156,7 +185,9 @@ export function normalizeTelephoneNumber(...rawArgs: unknown[]): string | null {
     const hasPlus = raw.startsWith('+');
     const digits = raw.replace(/\D/g, '');
     if (!hasPlus || digits.length < 4 || digits.length > 15) {
-      throw new ExpressionEvaluationError('TelephoneNbr requires an international number beginning with + and containing 4-15 digits.');
+      throw new ExpressionEvaluationError(
+        'TelephoneNbr requires an international number beginning with + and containing 4-15 digits.',
+      );
     }
     return `+${digits}`;
   }
@@ -164,11 +195,21 @@ export function normalizeTelephoneNumber(...rawArgs: unknown[]): string | null {
   const numberRaw = clean(rawArgs[1]);
   const countryDigits = countryRaw.replace(/\D/g, '');
   const numberDigits = numberRaw.replace(/\D/g, '');
-  if (!countryRaw.startsWith('+') || countryDigits.length < 1 || countryDigits.length > 4 || numberDigits.length < 3) {
-    throw new ExpressionEvaluationError('TelephoneNbr requires a +country code and a valid national number.');
+  if (
+    !countryRaw.startsWith('+') ||
+    countryDigits.length < 1 ||
+    countryDigits.length > 4 ||
+    numberDigits.length < 3
+  ) {
+    throw new ExpressionEvaluationError(
+      'TelephoneNbr requires a +country code and a valid national number.',
+    );
   }
   const full = `${countryDigits}${numberDigits}`;
-  if (full.length > 15) throw new ExpressionEvaluationError('TelephoneNbr exceeds the 15-digit international telephone limit.');
+  if (full.length > 15)
+    throw new ExpressionEvaluationError(
+      'TelephoneNbr exceeds the 15-digit international telephone limit.',
+    );
   return `+${full}`;
 }
 
@@ -181,7 +222,9 @@ export function normalizeTelephoneNumber(...rawArgs: unknown[]): string | null {
  * without embedding provider-specific policy in the expression language.
  */
 export function normalizeEmailAddress(value: unknown): string | null {
-  const normalized = String(value ?? '').trim().toLocaleLowerCase();
+  const normalized = String(value ?? '')
+    .trim()
+    .toLocaleLowerCase();
   if (!normalized) return null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
     throw new ExpressionEvaluationError('EmailAddress requires a valid email address.');
@@ -228,7 +271,12 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
   EmailAddress: checked({
     name: 'EmailAddress',
     capability: 'pure',
-    signature: { text: 'EmailAddress(value: scalar)', minArguments: 1, maxArguments: 1, argumentTypes: ['scalar'] },
+    signature: {
+      text: 'EmailAddress(value: scalar)',
+      minArguments: 1,
+      maxArguments: 1,
+      argumentTypes: ['scalar'],
+    },
     evaluate: ([value]) => normalizeEmailAddress(value),
   }),
 
@@ -300,9 +348,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
         ? collection[0]
         : Object.values(collection as Record<string, unknown>)[0];
       if (first === undefined) return null;
-      return resultField
-        ? resolveContextMember(first, resultField as string) ?? null
-        : first;
+      return resultField ? (resolveContextMember(first, resultField as string) ?? null) : first;
     },
   }),
 
@@ -334,7 +380,6 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
       return `${year}-${month}-${day}T00:00`;
     },
   }),
-
 
   /**
    * Add a structured `{years, months, days}` duration to a calendar date.
@@ -402,7 +447,7 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     name: 'TraverseCtx',
     capability: 'ctx',
     signature: {
-      text: "TraverseCtx(startId, collection, parentField: string, resultField?: string)",
+      text: 'TraverseCtx(startId, collection, parentField: string, resultField?: string)',
       minArguments: 3,
       maxArguments: 4,
       argumentTypes: ['scalar', 'any', 'string', 'string'],
@@ -428,14 +473,14 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
 
         const parent = resolveContextMember(row, parentField as string);
         if (parent === null || parent === undefined || parent === '') {
-          return resultField
-            ? resolveContextMember(root, resultField as string) ?? null
-            : root;
+          return resultField ? (resolveContextMember(root, resultField as string) ?? null) : root;
         }
         id = parent;
       }
 
-      throw new ExpressionEvaluationError('TraverseCtx exceeded the maximum traversal depth of 256.');
+      throw new ExpressionEvaluationError(
+        'TraverseCtx exceeded the maximum traversal depth of 256.',
+      );
     },
   }),
 
@@ -458,13 +503,15 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     name: 'TraverseEntity',
     capability: 'entityResolver',
     signature: {
-      text: "TraverseEntity(startId, entityKey: string, parentField: string, resultField?: string)",
+      text: 'TraverseEntity(startId, entityKey: string, parentField: string, resultField?: string)',
       minArguments: 3,
       maxArguments: 4,
       argumentTypes: ['scalar', 'string', 'string', 'string'],
     },
     evaluate: () => {
-      throw new ExpressionEvaluationError('TraverseEntity requires asynchronous entityResolver execution.');
+      throw new ExpressionEvaluationError(
+        'TraverseEntity requires asynchronous entityResolver execution.',
+      );
     },
     async evaluateAsync([startId, entityKey, parentField, resultField], context) {
       if (startId === null || startId === undefined || startId === '') return null;
@@ -496,7 +543,9 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
         id = parent;
       }
 
-      throw new ExpressionEvaluationError('TraverseEntity exceeded the maximum traversal depth of 256.');
+      throw new ExpressionEvaluationError(
+        'TraverseEntity exceeded the maximum traversal depth of 256.',
+      );
     },
   }),
 

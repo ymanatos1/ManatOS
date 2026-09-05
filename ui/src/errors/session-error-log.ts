@@ -20,7 +20,9 @@ export function addSessionError(req: Request, e: AppError): SessionErrorEntry {
     developerMessage: e.message,
     retryable: e.retryable,
     ...(e.operationTrace ? { operationTrace: e.operationTrace } : {}),
-    ...(uiBootstrapState().ui.showTechnicalErrorDetails && e.stack ? { technicalStack: e.stack } : {}),
+    ...(uiBootstrapState().ui.showTechnicalErrorDetails && e.stack
+      ? { technicalStack: e.stack }
+      : {}),
   };
   const a = req.session.errorLog ?? [];
   a.unshift(x);

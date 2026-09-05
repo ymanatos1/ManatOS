@@ -51,9 +51,7 @@ export function availableProviders(): AuthProviderOption[] {
 export function externalProviderOption(provider: string): AuthProviderOption | undefined {
   const key = provider.trim().toLowerCase() as ExternalProviderKey;
   const runtime = registry.get(key);
-  return runtime
-    ? { key, label: runtime.label, icon: runtime.icon, configured: true }
-    : undefined;
+  return runtime ? { key, label: runtime.label, icon: runtime.icon, configured: true } : undefined;
 }
 
 export function externalVerificationSource(provider: ExternalProviderKey): EmailVerificationSource {

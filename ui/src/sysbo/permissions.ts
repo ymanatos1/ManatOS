@@ -50,9 +50,10 @@ export async function resolveUIEntityPermissions(
   const apiPath = apiPathFor(definition.key);
 
   const isDraft = Boolean(recordId?.startsWith('draft:'));
-  const capabilityPath = recordId && !isDraft
-    ? `/api/v1/${apiPath}/${encodeURIComponent(recordId)}/$capabilities`
-    : `/api/v1/${apiPath}/$capabilities`;
+  const capabilityPath =
+    recordId && !isDraft
+      ? `/api/v1/${apiPath}/${encodeURIComponent(recordId)}/$capabilities`
+      : `/api/v1/${apiPath}/$capabilities`;
 
   const response = await apiClient.get<SysBOCapabilityProjection>(
     capabilityPath,

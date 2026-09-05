@@ -18,8 +18,11 @@ function npmArgs(...args) {
 }
 
 /** Keep verifyrun.log readable even when child processes emit ANSI colours. */
+const ansiEscape = String.fromCharCode(27);
+const ansiPattern = new RegExp(`${ansiEscape}(?:[@-Z\\-_]|\\[[0-?]*[ -/]*[@-~])`, 'g');
+
 function stripAnsi(value) {
-  return String(value).replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+  return String(value).replace(ansiPattern, '');
 }
 
 /** Write a verifyrun-owned line to both console and the current-run log. */
@@ -36,9 +39,11 @@ function printLine(value = '', color = '') {
  */
 function healthyRuntimeLine(line) {
   const plain = stripAnsi(line);
-  return /\bManatOS UI:\s*http:\/\//.test(plain)
-    || /\bAPI:\s*http:\/\//.test(plain)
-    || /Found 0 errors\. Watching for file changes\./.test(plain);
+  return (
+    /\bManatOS UI:\s*http:\/\//.test(plain) ||
+    /\bAPI:\s*http:\/\//.test(plain) ||
+    /Found 0 errors\. Watching for file changes\./.test(plain)
+  );
 }
 
 /**
@@ -119,15 +124,16 @@ printLine();
 
 /*
  * Verification is the gate. The authoritative repository verification remains
- * exactly `npm run verify`; verifyrun only tees its output and starts ManatOS
- * when that command returns success.
+ * exactly `npm run verify`; that command now includes lint, non-mutating format
+ * validation, builds and tests. verifyrun only tees its output and starts ManatOS
+ * when the complete quality/build/test gate returns success.
  */
 const verifyExitCode = await runNpm(['run', 'verify']);
 
 if (verifyExitCode !== 0) {
   printLine();
   printLine('============================================================');
-  printLine('  ManatOS NOT started - verification failed');
+  printLine('  ManatOS NOT started - verification/quality gate failed');
   printLine('============================================================');
   printLine();
   logStream.end();

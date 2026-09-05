@@ -4,11 +4,7 @@ import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { metadataHierarchyWorkspaceDescriptor } from '../../presentation/metadata-hierarchy-workspace.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
-import {
-  apiPathFor,
-  canonicalSysBOMetadata,
-  canonicalSysBOUIMetadata,
-} from './data-access.js';
+import { apiPathFor, canonicalSysBOMetadata, canonicalSysBOUIMetadata } from './data-access.js';
 
 /**
  * Persist one metadata-driven hierarchy aggregate and derive the committed root
@@ -26,10 +22,16 @@ export async function commitMetadataDrivenHierarchy(
   rootId: string;
 }> {
   const entries = Array.isArray(req.body?.entries)
-    ? req.body.entries.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+    ? req.body.entries.filter(
+        (row: unknown): row is Record<string, unknown> =>
+          Boolean(row) && typeof row === 'object' && !Array.isArray(row),
+      )
     : [];
   const entriesOriginal = Array.isArray(req.body?.entriesOriginal)
-    ? req.body.entriesOriginal.filter((row: unknown): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+    ? req.body.entriesOriginal.filter(
+        (row: unknown): row is Record<string, unknown> =>
+          Boolean(row) && typeof row === 'object' && !Array.isArray(row),
+      )
     : [];
   const identityField = String(req.body?.identityField || 'id');
 
@@ -49,7 +51,10 @@ export async function commitMetadataDrivenHierarchy(
   ]);
   const descriptor = metadataHierarchyWorkspaceDescriptor(metadata, metadataUI);
   const root = descriptor
-    ? items.find((row) => row[descriptor.parentField] == null || String(row[descriptor.parentField] ?? '') === '')
+    ? items.find(
+        (row) =>
+          row[descriptor.parentField] == null || String(row[descriptor.parentField] ?? '') === '',
+      )
     : null;
 
   return {

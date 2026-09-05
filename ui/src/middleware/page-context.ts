@@ -1,6 +1,13 @@
 import type { RequestHandler } from 'express';
 
-import { MANATOS_COMPANY, allManatOSObjectMetadata, resolvePlatform, type PlatformAuthorizationCapabilities, type SysBOApplication, type SysBOUser } from '@manatos/shared';
+import {
+  MANATOS_COMPANY,
+  allManatOSObjectMetadata,
+  resolvePlatform,
+  type PlatformAuthorizationCapabilities,
+  type SysBOApplication,
+  type SysBOUser,
+} from '@manatos/shared';
 
 import { config } from '../config.js';
 
@@ -16,7 +23,6 @@ import { buildRootScope } from '../context/root-scope.js';
 
 import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
 import { createManatOSContext, registerContextEntity } from '../context/manatos-context.js';
-
 
 /**
  * Supplies the complete SysBO definitions and scope tree to every EJS page

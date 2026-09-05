@@ -72,12 +72,14 @@
     const visibleRight = Math.min(rect.right, window.innerWidth);
     const visibleTop = Math.max(rect.top, 0);
     const visibleBottom = Math.min(rect.bottom, window.innerHeight);
-    const centerX = visibleRight > visibleLeft
-      ? visibleLeft + (visibleRight - visibleLeft) / 2
-      : window.innerWidth / 2;
-    const centerY = visibleBottom > visibleTop
-      ? visibleTop + (visibleBottom - visibleTop) / 2
-      : window.innerHeight / 2;
+    const centerX =
+      visibleRight > visibleLeft
+        ? visibleLeft + (visibleRight - visibleLeft) / 2
+        : window.innerWidth / 2;
+    const centerY =
+      visibleBottom > visibleTop
+        ? visibleTop + (visibleBottom - visibleTop) / 2
+        : window.innerHeight / 2;
 
     modal.classList.add('workspace-centered-modal');
     modal.style.setProperty('--workspace-modal-center-x', `${centerX}px`);
@@ -89,16 +91,15 @@
   };
 
   const popupTitle = (modal) =>
-    String(modal.querySelector('.modal-title')?.textContent || '').replace(/\s+/g, ' ').trim();
+    String(modal.querySelector('.modal-title')?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   const resolveCallingParams = (modal, event) => {
     const trigger = event?.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
     return Object.freeze({
       purpose: String(
-        trigger?.dataset.popupPurpose
-        || modal.dataset.popupPurpose
-        || modal.id
-        || 'popup',
+        trigger?.dataset.popupPurpose || modal.dataset.popupPurpose || modal.id || 'popup',
       ),
       popupId: modal.id || null,
       triggerId: trigger?.id || null,
@@ -113,7 +114,13 @@
    * learn a different top-level popup contract for each implementation.
    * Domain-specific state may be added without changing the common envelope.
    */
-  const createPayload = ({ kind = 'popup', callingParams = {}, presentation = {}, state = {}, ...domainState } = {}) => ({
+  const createPayload = ({
+    kind = 'popup',
+    callingParams = {},
+    presentation = {},
+    state = {},
+    ...domainState
+  } = {}) => ({
     kind: String(kind || 'popup'),
     callingParams: { ...callingParams },
     presentation: { ...presentation },
@@ -121,22 +128,24 @@
     state: { ...state },
   });
 
-  const popupPayload = (modal, callingParams, phase) => createPayload({
-    kind: String(modal.dataset.popupKind || 'modal'),
-    callingParams,
-    presentation: {
-      mode: String(callingParams.presentationMode || modal.dataset.popupPresentation || 'standard'),
-      title: String(callingParams.title || popupTitle(modal)),
-    },
-    state: {
-      phase,
-      open: phase === 'opening' || phase === 'open',
-    },
-  });
+  const popupPayload = (modal, callingParams, phase) =>
+    createPayload({
+      kind: String(modal.dataset.popupKind || 'modal'),
+      callingParams,
+      presentation: {
+        mode: String(
+          callingParams.presentationMode || modal.dataset.popupPresentation || 'standard',
+        ),
+        title: String(callingParams.title || popupTitle(modal)),
+      },
+      state: {
+        phase,
+        open: phase === 'opening' || phase === 'open',
+      },
+    });
 
   const syncModalContext = (modal, phase) => {
-    const callingParams = invocationByModal.get(modal)
-      || resolveCallingParams(modal, null);
+    const callingParams = invocationByModal.get(modal) || resolveCallingParams(modal, null);
     replaceContext(popupPayload(modal, callingParams, phase), {
       source: 'bootstrap-popup',
       action: `popup-${phase}`,
@@ -168,19 +177,18 @@
 
     if (raised) {
       window.ManatOS?.shell?.setDeveloperToolTab?.('ctx', false);
-      window.dispatchEvent(new CustomEvent('manatos:ctx-viewer-select', {
-        detail: { path, expand: true, revealExpandedRange: true },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('manatos:ctx-viewer-select', {
+          detail: { path, expand: true, revealExpandedRange: true },
+        }),
+      );
     }
 
     return raised;
   };
 
   const toggleInspection = (options = {}) =>
-    setInspectionVisible(
-      !developerToolsDock?.classList.contains('is-popup-inspection'),
-      options,
-    );
+    setInspectionVisible(!developerToolsDock?.classList.contains('is-popup-inspection'), options);
 
   const clearInspection = (button = null) => {
     if (!developerToolsDock) return;
@@ -234,11 +242,12 @@
     modal.dataset.bsFocus = 'false';
 
     modal.addEventListener('show.bs.modal', (event) => {
-      const trigger = event.relatedTarget instanceof HTMLElement
-        ? event.relatedTarget
-        : document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
+      const trigger =
+        event.relatedTarget instanceof HTMLElement
+          ? event.relatedTarget
+          : document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
 
       if (trigger && !modal.contains(trigger)) returnFocus.set(modal, trigger);
       else returnFocus.delete(modal);

@@ -50,8 +50,7 @@ describe('home presentation', () => {
     const app = await readFile(resolve(testDirectory, '../src/app.ts'), 'utf8');
     const shell = await readFile(resolve(testDirectory, '../views/layout/shell.ejs'), 'utf8');
 
-    expect(app).toContain("public/assets/m1/favicon.ico");
+    expect(app).toContain('public/assets/m1/favicon.ico');
     expect(shell).toContain('/assets/m1/favicon.ico');
   });
-
 });

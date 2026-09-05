@@ -1,5 +1,3 @@
-/* global bootstrap */
-
 (() => {
   /* =======================================================================
    * Website theme preference
@@ -102,7 +100,6 @@
     });
   });
 
-
   /* =======================================================================
    * Preferences popup
    * ===================================================================== */
@@ -130,7 +127,8 @@
     option.addEventListener('change', () => {
       if (!(option instanceof HTMLInputElement) || !option.checked) return;
       const preview = preferencesModal.querySelector('[data-ui-theme-preview]');
-      if (preview instanceof HTMLElement) preview.dataset.previewTheme = normalizeTheme(option.value);
+      if (preview instanceof HTMLElement)
+        preview.dataset.previewTheme = normalizeTheme(option.value);
     });
   });
 
@@ -144,6 +142,4 @@
 
     bootstrap.Modal.getInstance(preferencesModal)?.hide();
   });
-
-
 })();

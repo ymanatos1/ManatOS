@@ -17,7 +17,6 @@ describe('metadata-driven SysBO UI conventions', () => {
     }
   });
 
-
   it('places Enabled second in every General tab after the entity identity field', () => {
     for (const metadata of Object.values(allSysBOUIMetadata)) {
       const general = metadata.record.tabs.find((tab) => tab.id === 'general');
@@ -26,21 +25,33 @@ describe('metadata-driven SysBO UI conventions', () => {
 
       if (general?.content?.length) {
         const fieldContent = general.content.filter((content) => content.kind === 'field');
-        expect(fieldContent[0]).toMatchObject({ kind: 'field', field: metadata.key === 'sys-ext-auth-providers' ? 'provider' : 'name' });
+        expect(fieldContent[0]).toMatchObject({
+          kind: 'field',
+          field: metadata.key === 'sys-ext-auth-providers' ? 'provider' : 'name',
+        });
         expect(fieldContent[1]).toMatchObject({ kind: 'field', field: 'enabled' });
       } else {
-        expect(general?.fields[0]).toBe(metadata.key === 'sys-ext-auth-providers' ? 'provider' : 'name');
+        expect(general?.fields[0]).toBe(
+          metadata.key === 'sys-ext-auth-providers' ? 'provider' : 'name',
+        );
       }
     }
   });
-
 
   it('keeps the User General tab identity/state first, then Email and Telephone before a dedicated Description row', () => {
     const user = allSysBOUIMetadata['sys-users'];
     const general = user.record.tabs.find((tab) => tab.id === 'general');
 
-    expect(general?.fields.slice(0, 5)).toEqual(['name', 'enabled', 'email', 'telephoneNumber', 'description']);
-    expect(general?.fields.indexOf('description')).toBeLessThan(general?.fields.indexOf('firstName') ?? -1);
+    expect(general?.fields.slice(0, 5)).toEqual([
+      'name',
+      'enabled',
+      'email',
+      'telephoneNumber',
+      'description',
+    ]);
+    expect(general?.fields.indexOf('description')).toBeLessThan(
+      general?.fields.indexOf('firstName') ?? -1,
+    );
     expect(general?.content?.slice(0, 6)).toEqual([
       { kind: 'field', field: 'name', span: 6 },
       { kind: 'field', field: 'enabled', span: 6 },
@@ -101,21 +112,32 @@ describe('metadata-driven SysBO UI conventions', () => {
 
     for (const metadata of entries) {
       const actions = Object.values(metadata.record.entryActions || {});
-      expect(actions.some((action) => action.kind === 'save'), `${metadata.key} should expose the standard Save action`).toBe(true);
-      expect(actions.some((action) => action.kind === 'delete'), `${metadata.key} should expose the standard Delete action`).toBe(true);
+      expect(
+        actions.some((action) => action.kind === 'save'),
+        `${metadata.key} should expose the standard Save action`,
+      ).toBe(true);
+      expect(
+        actions.some((action) => action.kind === 'delete'),
+        `${metadata.key} should expose the standard Delete action`,
+      ).toBe(true);
     }
   });
 
   it('keeps standard entry and list lifecycle authorization declarative in evaluator-backed metadata', () => {
     for (const metadata of Object.values(allSysBOUIMetadata)) {
-      const deleteAction = Object.values(metadata.record.entryActions || {}).find((action) => action.kind === 'delete');
-      const saveAction = Object.values(metadata.record.entryActions || {}).find((action) => action.kind === 'save');
+      const deleteAction = Object.values(metadata.record.entryActions || {}).find(
+        (action) => action.kind === 'delete',
+      );
+      const saveAction = Object.values(metadata.record.entryActions || {}).find(
+        (action) => action.kind === 'save',
+      );
 
       expect(deleteAction?.visible).toEqual({
         expression: "mode !== 'create' && permissions.delete === true",
       });
       expect(saveAction?.visible).toEqual({
-        expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)",
+        expression:
+          "mode !== 'view' && (permissions.create === true || permissions.update === true)",
       });
       expect(metadata.list.addAction.visible).toEqual({
         expression: 'permissions.create === true',
@@ -125,20 +147,29 @@ describe('metadata-driven SysBO UI conventions', () => {
 
   it('keeps common action placement generic and lets SysUser own-record delete policy stay declarative', () => {
     for (const metadata of Object.values(allSysBOUIMetadata)) {
-      const deleteAction = Object.values(metadata.record.entryActions || {}).find((action) => action.kind === 'delete');
-      const saveAction = Object.values(metadata.record.entryActions || {}).find((action) => action.kind === 'save');
+      const deleteAction = Object.values(metadata.record.entryActions || {}).find(
+        (action) => action.kind === 'delete',
+      );
+      const saveAction = Object.values(metadata.record.entryActions || {}).find(
+        (action) => action.kind === 'save',
+      );
 
-      expect(deleteAction?.placement, `${metadata.key} Delete should use the common leading footer region`).toBe('footer-leading');
-      expect(saveAction?.placement, `${metadata.key} Save should use the common trailing footer region`).toBe('footer-trailing');
+      expect(
+        deleteAction?.placement,
+        `${metadata.key} Delete should use the common leading footer region`,
+      ).toBe('footer-leading');
+      expect(
+        saveAction?.placement,
+        `${metadata.key} Save should use the common trailing footer region`,
+      ).toBe('footer-trailing');
     }
 
     const sysUser = allSysBOUIMetadata['sys-users'];
     expect(sysUser.record.entryActions?.delete?.enabled).toEqual({
-      expression: "id !== user.fields.id.value",
+      expression: 'id !== user.fields.id.value',
     });
     expect(sysUser.record.entryActions?.delete?.disabledReason).toEqual({
-      expression:
-        "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
+      expression: "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
     });
     expect(sysUser.record.entryActions?.verifyEmail).toMatchObject({
       kind: 'command',
@@ -165,7 +196,9 @@ describe('metadata-driven SysBO UI conventions', () => {
       label: 'protoCRM',
     });
     expect(licenses.record.fieldOverrides.status?.createDefaultValue).toBe('Active');
-    expect(licenses.record.fieldOverrides.validFrom?.createDefaultValue).toEqual({ expression: 'CurrentDay()' });
+    expect(licenses.record.fieldOverrides.validFrom?.createDefaultValue).toEqual({
+      expression: 'CurrentDay()',
+    });
     expect(sysBOLicensesMetadata.fieldDefinition.validFrom?.type).toBe('date');
     expect(sysBOLicensesMetadata.fieldDefinition.validUntil?.type).toBe('date');
     expect(sysBOLicensesMetadata.fieldDefinition.validityDuration).toMatchObject({
@@ -210,7 +243,14 @@ describe('metadata-driven SysBO UI conventions', () => {
       order: 20,
       icon: 'box-seam',
       layout: 'form',
-      fields: ['validFrom', 'validityDuration', 'validUntil', 'platformId', 'applicationId', 'rules'],
+      fields: [
+        'validFrom',
+        'validityDuration',
+        'validUntil',
+        'platformId',
+        'applicationId',
+        'rules',
+      ],
     });
     expect(licenses.list.filterFields).toEqual([
       'name',
@@ -221,7 +261,8 @@ describe('metadata-driven SysBO UI conventions', () => {
       'enabled',
     ]);
 
-    const principalLicenses = allSysBOUIMetadata['sys-principals'].record.relatedCollections?.licenses;
+    const principalLicenses =
+      allSysBOUIMetadata['sys-principals'].record.relatedCollections?.licenses;
     const applicationLicenses = applications.record.relatedCollections?.licenses;
     expect(principalLicenses).toMatchObject({
       entityKey: 'sys-licenses',
@@ -282,5 +323,4 @@ describe('metadata-driven SysBO UI conventions', () => {
     expect(providers.record.fieldOverrides.callbackPath?.helpText).toContain('PUBLIC_BASE_URL');
     expect(providers.record.fieldOverrides.enabled?.createDefaultValue).toBe(true);
   });
-
 });

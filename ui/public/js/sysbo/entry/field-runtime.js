@@ -36,10 +36,18 @@
     // Never move focus into a hidden backing control: doing so leaves focus inside
     // an aria-hidden subtree when the rich dropdown closes and triggers browser
     // accessibility warnings. Visible component controls own user focus.
-    const focusableBackingControl = control.getAttribute?.('aria-hidden') !== 'true'
-      && !control.classList?.contains('visually-hidden')
-      && control.tabIndex >= 0;
-    if (focus && focusableBackingControl && typeof control.focus === 'function' && !control.disabled && control.type !== 'hidden') control.focus();
+    const focusableBackingControl =
+      control.getAttribute?.('aria-hidden') !== 'true' &&
+      !control.classList?.contains('visually-hidden') &&
+      control.tabIndex >= 0;
+    if (
+      focus &&
+      focusableBackingControl &&
+      typeof control.focus === 'function' &&
+      !control.disabled &&
+      control.type !== 'hidden'
+    )
+      control.focus();
   };
 
   const isReadOnly = (control) =>
@@ -66,7 +74,9 @@
   };
 
   const durationIsEmpty = (root) =>
-    [...root.querySelectorAll('[data-duration-part]')].every((control) => !String(control.value ?? '').trim());
+    [...root.querySelectorAll('[data-duration-part]')].every(
+      (control) => !String(control.value ?? '').trim(),
+    );
 
   const durationValue = (root) => {
     if (!(root instanceof Element)) return null;
@@ -90,7 +100,9 @@
       ['year', normalized.years],
       ['month', normalized.months],
       ['day', normalized.days],
-    ].filter(([, count]) => count > 0).map(([unit, count]) => `${count} ${unit}${count === 1 ? '' : 's'}`);
+    ]
+      .filter(([, count]) => count > 0)
+      .map(([unit, count]) => `${count} ${unit}${count === 1 ? '' : 's'}`);
     return parts.length ? parts.join(', ') : '0 days';
   };
 
@@ -125,10 +137,12 @@
   };
 
   document.addEventListener('input', (event) => {
-    const part = event.target instanceof Element ? event.target.closest('[data-duration-part]') : null;
+    const part =
+      event.target instanceof Element ? event.target.closest('[data-duration-part]') : null;
     if (part instanceof HTMLInputElement) syncDurationFromParts(part);
 
-    const versionPart = event.target instanceof Element ? event.target.closest('[data-version-part]') : null;
+    const versionPart =
+      event.target instanceof Element ? event.target.closest('[data-version-part]') : null;
     if (versionPart instanceof HTMLInputElement) {
       const root = versionPart.closest('[data-version-field]');
       const canonical = root?.querySelector('[data-version-canonical-value]');
@@ -137,10 +151,12 @@
         const allEmpty = parts.every((control) => !String(control.value ?? '').trim());
         canonical.value = allEmpty
           ? ''
-          : parts.map((control) => {
-              const numeric = Number(control.value || 0);
-              return String(Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : 0);
-            }).join('.');
+          : parts
+              .map((control) => {
+                const numeric = Number(control.value || 0);
+                return String(Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : 0);
+              })
+              .join('.');
         publish(canonical, false);
       }
     }
@@ -150,11 +166,12 @@
     if (root?.matches('[data-enhanced-field-input][data-field-component="duration"]')) {
       return formatDuration(control.value);
     }
-    if (control instanceof HTMLInputElement && control.type === 'checkbox') return control.checked ? 'true' : 'false';
-    if (control instanceof HTMLSelectElement) return control.selectedOptions[0]?.textContent?.trim() || control.value;
+    if (control instanceof HTMLInputElement && control.type === 'checkbox')
+      return control.checked ? 'true' : 'false';
+    if (control instanceof HTMLSelectElement)
+      return control.selectedOptions[0]?.textContent?.trim() || control.value;
     return control.value;
   };
-
 
   const referenceOptionIcons = (option) => {
     if (!(option instanceof HTMLOptionElement)) return [];
@@ -168,7 +185,8 @@
 
   const renderReferenceSelection = (selected, control) => {
     if (!(selected instanceof Element) || !(control instanceof HTMLSelectElement)) return;
-    const option = [...control.options].find((candidate) => candidate.value === control.value) || null;
+    const option =
+      [...control.options].find((candidate) => candidate.value === control.value) || null;
     const name = option?.dataset.entryName || option?.textContent?.trim() || '';
     const icons = referenceOptionIcons(option);
 
@@ -194,9 +212,11 @@
     control.value = value == null ? '' : String(value);
     const root = control.closest('[data-metadata-reference-select]');
     if (!root) return;
-    const choice = [...root.querySelectorAll('[data-reference-choice]')]
-      .find((candidate) => candidate instanceof HTMLButtonElement
-        && String(candidate.dataset.referenceChoice || '') === control.value);
+    const choice = [...root.querySelectorAll('[data-reference-choice]')].find(
+      (candidate) =>
+        candidate instanceof HTMLButtonElement &&
+        String(candidate.dataset.referenceChoice || '') === control.value,
+    );
     root.querySelectorAll('[data-reference-choice]').forEach((candidate) => {
       const isSelected = candidate === choice;
       candidate.classList.toggle('active', isSelected);
@@ -222,9 +242,11 @@
     control.value = value == null ? '' : String(value);
     const root = control.closest('[data-metadata-enum-select]');
     if (!root) return;
-    const choice = [...root.querySelectorAll('[data-enum-choice]')]
-      .find((candidate) => candidate instanceof HTMLButtonElement
-        && String(candidate.dataset.enumChoice || '') === control.value);
+    const choice = [...root.querySelectorAll('[data-enum-choice]')].find(
+      (candidate) =>
+        candidate instanceof HTMLButtonElement &&
+        String(candidate.dataset.enumChoice || '') === control.value,
+    );
     root.querySelectorAll('[data-enum-choice]').forEach((candidate) => {
       const selected = candidate === choice;
       candidate.classList.toggle('active', selected);
@@ -234,7 +256,11 @@
     const icon = root.querySelector('[data-enum-selected-icon]');
     const selectedOption = control.selectedOptions[0];
     let item = null;
-    try { item = selectedOption?.dataset.enumItem ? JSON.parse(selectedOption.dataset.enumItem) : null; } catch { item = null; }
+    try {
+      item = selectedOption?.dataset.enumItem ? JSON.parse(selectedOption.dataset.enumItem) : null;
+    } catch {
+      item = null;
+    }
     if (label) label.textContent = item?.label || item?.value || 'Choose...';
     if (icon instanceof HTMLElement) {
       icon.className = item?.icon ? `bi bi-${item.icon}` : 'bi d-none';
@@ -261,11 +287,20 @@
     const selectedOption = control.selectedOptions?.[0];
     const raw = selectedOption?.dataset?.enumItem;
     if (!raw) return undefined;
-    try { return JSON.parse(raw); } catch { return undefined; }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return undefined;
+    }
   };
 
   const setFieldValue = (control, value, { emit = false, cause = {} } = {}) => {
-    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) return;
+    if (!(
+      control instanceof HTMLInputElement ||
+      control instanceof HTMLSelectElement ||
+      control instanceof HTMLTextAreaElement
+    ))
+      return;
     const root = control.closest('[data-enhanced-field-input]');
     const component = root?.dataset.fieldComponent;
     if (component === 'duration') {
@@ -274,7 +309,8 @@
     }
     if (component === 'reference') setReferenceValue(control, value);
     else if (component === 'enum') setEnumValue(control, value);
-    else if (control instanceof HTMLInputElement && control.type === 'checkbox') control.checked = Boolean(value);
+    else if (control instanceof HTMLInputElement && control.type === 'checkbox')
+      control.checked = Boolean(value);
     else control.value = value == null ? '' : String(value);
     if (emit) publish(control, false, cause);
   };
@@ -313,7 +349,11 @@
     switch (action.dataset.fieldInputAction) {
       case 'copy': {
         const value = controlValue(control, root);
-        try { await navigator.clipboard.writeText(value); } catch { /* Clipboard may be unavailable in insecure contexts. */ }
+        try {
+          await navigator.clipboard.writeText(value);
+        } catch {
+          /* Clipboard may be unavailable in insecure contexts. */
+        }
         return;
       }
       case 'inspect-ctx': {
@@ -325,9 +365,11 @@
         // selection event is emitted below, the shell has already made the
         // viewer available without this field component knowing its DOM/layout.
         window.dispatchEvent(new Event('manatos:ctx-viewer-show'));
-        window.dispatchEvent(new CustomEvent('manatos:ctx-viewer-select', {
-          detail: { path: `ctx.page.page.fields.${fieldKey}`, expand: true },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('manatos:ctx-viewer-select', {
+            detail: { path: `ctx.page.page.fields.${fieldKey}`, expand: true },
+          }),
+        );
         return;
       }
       case 'select-existing': {
@@ -349,22 +391,24 @@
         if (!source.length) return;
 
         const currentEntry = ctxRuntime.resolve?.(`${pagePath}.entry`);
-        const sourceRecordId = currentEntry && typeof currentEntry === 'object'
-          ? String(currentEntry.id ?? '')
-          : '';
+        const sourceRecordId =
+          currentEntry && typeof currentEntry === 'object' ? String(currentEntry.id ?? '') : '';
         const entities = ctxRuntime.value?.entities;
-        const targetContext = entities && typeof entities === 'object'
-          ? Object.values(entities).find((entity) => entity?.key === targetEntityKey)
-          : null;
+        const targetContext =
+          entities && typeof entities === 'object'
+            ? Object.values(entities).find((entity) => entity?.key === targetEntityKey)
+            : null;
         const targetName = targetContext?.metadata?.name || 'entry';
-        const sourceContext = entities && typeof entities === 'object'
-          ? Object.values(entities).find((entity) => entity?.key === sourceEntityKey)
-          : null;
+        const sourceContext =
+          entities && typeof entities === 'object'
+            ? Object.values(entities).find((entity) => entity?.key === sourceEntityKey)
+            : null;
         const sourceEntityLabel = sourceContext?.metadata?.name || sourceEntityKey || 'entry';
         const sourcePrimaryField = sourceContext?.metadata?.primaryField || 'name';
-        const sourceRecordName = currentEntry && typeof currentEntry === 'object'
-          ? String(currentEntry[sourcePrimaryField] ?? currentEntry.name ?? '').trim()
-          : '';
+        const sourceRecordName =
+          currentEntry && typeof currentEntry === 'object'
+            ? String(currentEntry[sourcePrimaryField] ?? currentEntry.name ?? '').trim()
+            : '';
 
         selector.open({
           template,
@@ -386,7 +430,11 @@
           },
           eligibility: (candidate) => {
             const candidateId = String(candidate?.id ?? candidate?.value ?? '');
-            if (sourceRecordId && sourceEntityKey === targetEntityKey && candidateId === sourceRecordId) {
+            if (
+              sourceRecordId &&
+              sourceEntityKey === targetEntityKey &&
+              candidateId === sourceRecordId
+            ) {
               return {
                 eligible: false,
                 visible: true,
@@ -432,7 +480,9 @@
 
     const durationRoot = root?.closest('[data-duration-field]');
     if (durationRoot) {
-      const editablePart = durationRoot.querySelector('[data-duration-part]:not([readonly]):not([disabled])');
+      const editablePart = durationRoot.querySelector(
+        '[data-duration-part]:not([readonly]):not([disabled])',
+      );
       if (!editablePart) return;
       if (action.dataset.fieldInputAction === 'duration-zero') {
         setDurationValue(durationRoot, { years: 0, months: 0, days: 0 });
@@ -454,11 +504,13 @@
         break;
       case 'today':
         if (!(control instanceof HTMLInputElement)) return;
-        control.value = control.type === 'date' ? localDate(new Date()) : localDateTime(new Date(), true);
+        control.value =
+          control.type === 'date' ? localDate(new Date()) : localDateTime(new Date(), true);
         break;
       case 'now':
         if (!(control instanceof HTMLInputElement)) return;
-        control.value = control.type === 'date' ? localDate(new Date()) : localDateTime(new Date(), false);
+        control.value =
+          control.type === 'date' ? localDate(new Date()) : localDateTime(new Date(), false);
         break;
       case 'zero':
         if (!(control instanceof HTMLInputElement) || control.type !== 'number') return;
@@ -496,9 +548,11 @@
   // Server rendering already supplies the initial visible state. Reconcile it
   // once through the same field-component functions so dynamically inserted or
   // locally drafted controls also begin from the canonical native value.
-  document.querySelectorAll('[data-metadata-enum-select] select[data-enum-items]').forEach((control) => {
-    if (control instanceof HTMLSelectElement) setEnumValue(control, control.value);
-  });
+  document
+    .querySelectorAll('[data-metadata-enum-select] select[data-enum-items]')
+    .forEach((control) => {
+      if (control instanceof HTMLSelectElement) setEnumValue(control, control.value);
+    });
   document.querySelectorAll('[data-metadata-reference-select] select').forEach((control) => {
     if (control instanceof HTMLSelectElement) setReferenceValue(control, control.value);
   });

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const source = (relativePath: string) => readFile(resolve(testDirectory, '..', relativePath), 'utf8');
+const source = (relativePath: string) =>
+  readFile(resolve(testDirectory, '..', relativePath), 'utf8');
 
 describe('#16 metadata-driven SysBO UI closure', () => {
   it('uses metadata-driven list/record routes exclusively and removes the temporary engine selector', async () => {
@@ -32,7 +33,6 @@ describe('#16 metadata-driven SysBO UI closure', () => {
   });
 
   it('loads canonical BO and UI metadata for every generic list/record page', async () => {
-    const routes = await source('src/routes/sysbo-routes.ts');
     const dataAccess = await source('src/routes/sysbo/data-access.ts');
     const listRenderer = await source('src/routes/sysbo/list-renderer.ts');
     const recordRenderer = await source('src/routes/sysbo/record-renderer.ts');
@@ -74,7 +74,6 @@ describe('#16 metadata-driven SysBO UI closure', () => {
 
   it('keeps framework-neutral UI metadata as the only presentation contract', async () => {
     const contracts = await source('../shared/src/metadata/ui/types.ts');
-    const metadata = await source('../shared/src/bo-ui-metadata.ts');
     const businessMetadata = await source('../shared/src/metadata/ui/business.ts');
 
     expect(contracts).toContain('interface SysBOUIMetadata');
@@ -103,6 +102,8 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     expect(toolbar).toContain('data-selector-filters-toggle');
     expect(toolbar).toContain('data-bs-toggle="collapse"');
     expect(toolbar).toContain('data-bs-target="#<%= filterCollapseId %>"');
-    expect(toolbar).not.toContain('`data-bs-toggle="collapse" data-bs-target="#${filterCollapseId}"`');
+    expect(toolbar).not.toContain(
+      '`data-bs-toggle="collapse" data-bs-target="#${filterCollapseId}"`',
+    );
   });
 });

@@ -6,7 +6,8 @@
   if (!runtime?.value || !treeElement) return;
 
   const CHANGE_EVENT = 'manatos:ctx-change';
-  const bootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
+  const bootId =
+    document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
 
   const ctx = runtime.value;
 
@@ -31,27 +32,36 @@
 
   const persisted = readPersistedState();
   const state = {
-    expanded: new Set(Array.isArray(persisted?.expanded) && persisted.expanded.length ? persisted.expanded : ['ctx']),
+    expanded: new Set(
+      Array.isArray(persisted?.expanded) && persisted.expanded.length
+        ? persisted.expanded
+        : ['ctx'],
+    ),
     selected: typeof persisted?.selected === 'string' ? persisted.selected : 'ctx',
     scrollTop: Number.isFinite(persisted?.scrollTop) ? persisted.scrollTop : 0,
     propertiesOpen: persisted?.propertiesOpen === true,
-    propertiesHeight: Number.isFinite(persisted?.propertiesHeight) ? persisted.propertiesHeight : 256,
+    propertiesHeight: Number.isFinite(persisted?.propertiesHeight)
+      ? persisted.propertiesHeight
+      : 256,
     debuggerWidth: Number.isFinite(persisted?.debuggerWidth) ? persisted.debuggerWidth : null,
   };
 
   const persistState = () => {
     try {
-      sessionStorage.setItem(DEBUG_STATE_KEY, JSON.stringify({
-        expanded: [...state.expanded],
-        selected: state.selected,
-        scrollTop: state.scrollTop,
-        propertiesOpen: state.propertiesOpen,
-        propertiesHeight: state.propertiesHeight,
-        debuggerWidth: state.debuggerWidth,
-        historyEntries: history?.entries ?? [],
-        historyIndex: history?.index ?? -1,
-        watchedPath,
-      }));
+      sessionStorage.setItem(
+        DEBUG_STATE_KEY,
+        JSON.stringify({
+          expanded: [...state.expanded],
+          selected: state.selected,
+          scrollTop: state.scrollTop,
+          propertiesOpen: state.propertiesOpen,
+          propertiesHeight: state.propertiesHeight,
+          debuggerWidth: state.debuggerWidth,
+          historyEntries: history?.entries ?? [],
+          historyIndex: history?.index ?? -1,
+          watchedPath,
+        }),
+      );
     } catch {
       // Debugging must never interfere with normal application behavior.
     }
@@ -114,12 +124,30 @@
 
     const visit = (value) => {
       nodes += 1;
-      if (value === null || value === undefined) { bytes += 8; return; }
-      if (typeof value === 'string') { bytes += 16 + value.length * 2; return; }
-      if (typeof value === 'number') { bytes += 8; return; }
-      if (typeof value === 'boolean') { bytes += 4; return; }
-      if (typeof value !== 'object') { bytes += 8; return; }
-      if (seen.has(value)) { bytes += 8; return; }
+      if (value === null || value === undefined) {
+        bytes += 8;
+        return;
+      }
+      if (typeof value === 'string') {
+        bytes += 16 + value.length * 2;
+        return;
+      }
+      if (typeof value === 'number') {
+        bytes += 8;
+        return;
+      }
+      if (typeof value === 'boolean') {
+        bytes += 4;
+        return;
+      }
+      if (typeof value !== 'object') {
+        bytes += 8;
+        return;
+      }
+      if (seen.has(value)) {
+        bytes += 8;
+        return;
+      }
       seen.add(value);
       bytes += Array.isArray(value) ? 24 : 32;
       for (const [key, child] of Object.entries(value)) {
@@ -233,14 +261,17 @@
       const semanticKeys = value.map(collectionMemberKey);
       return value.map((item, index) => {
         const semanticKey = semanticKeys[index];
-        const uniqueSemanticKey = semanticKey && semanticKeys.filter((key) => key === semanticKey).length === 1
-          ? semanticKey
-          : null;
+        const uniqueSemanticKey =
+          semanticKey && semanticKeys.filter((key) => key === semanticKey).length === 1
+            ? semanticKey
+            : null;
         return {
           // Keep array ordering while presenting the stable record identity as
           // the member key whenever one exists (for example a SysBO UUID).
           key: uniqueSemanticKey ? `[${uniqueSemanticKey}]` : `[${index}]`,
-          path: uniqueSemanticKey ? semanticArrayPath(path, uniqueSemanticKey) : `${path}[${index}]`,
+          path: uniqueSemanticKey
+            ? semanticArrayPath(path, uniqueSemanticKey)
+            : `${path}[${index}]`,
           value: item,
           derived: false,
           arrayIndex: index,
@@ -248,7 +279,9 @@
       });
     }
 
-    const entries = Object.entries(value).filter(([key]) => !(isCalculatedContextField(value) && key === 'ast'));
+    const entries = Object.entries(value).filter(
+      ([key]) => !(isCalculatedContextField(value) && key === 'ast'),
+    );
 
     /*
      * Root CTX ordering is presentation-only. Keep company first for the
@@ -256,17 +289,18 @@
      * or changing evaluator/path semantics. Unknown future root nodes retain
      * their original relative order after the known roots.
      */
-    const presentedEntries = path === 'ctx'
-      ? [...entries].sort(([leftKey], [rightKey]) => {
-          const preferred = ['company', 'system', 'entities', 'user', 'page'];
-          const leftIndex = preferred.indexOf(leftKey);
-          const rightIndex = preferred.indexOf(rightKey);
-          if (leftIndex < 0 && rightIndex < 0) return 0;
-          if (leftIndex < 0) return 1;
-          if (rightIndex < 0) return -1;
-          return leftIndex - rightIndex;
-        })
-      : entries;
+    const presentedEntries =
+      path === 'ctx'
+        ? [...entries].sort(([leftKey], [rightKey]) => {
+            const preferred = ['company', 'system', 'entities', 'user', 'page'];
+            const leftIndex = preferred.indexOf(leftKey);
+            const rightIndex = preferred.indexOf(rightKey);
+            if (leftIndex < 0 && rightIndex < 0) return 0;
+            if (leftIndex < 0) return 1;
+            if (rightIndex < 0) return -1;
+            return leftIndex - rightIndex;
+          })
+        : entries;
 
     return presentedEntries.map(([key, item]) => ({
       key: Array.isArray(item) ? `${key}[]` : key,
@@ -317,9 +351,14 @@
         const raw = normalized.slice(index + 1, end).trim();
         if (/^\d+$/.test(raw)) {
           tokens.push(Number(raw));
-        } else if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+        } else if (
+          (raw.startsWith('"') && raw.endsWith('"')) ||
+          (raw.startsWith("'") && raw.endsWith("'"))
+        ) {
           try {
-            tokens.push(raw.startsWith('"') ? JSON.parse(raw) : raw.slice(1, -1).replace(/\\'/g, "'"));
+            tokens.push(
+              raw.startsWith('"') ? JSON.parse(raw) : raw.slice(1, -1).replace(/\\'/g, "'"),
+            );
           } catch {
             throw new Error(`Invalid ctx array key: ${raw}`);
           }
@@ -338,7 +377,6 @@
     return tokens;
   }
 
-
   /**
    * Lexical resolver contract used by the future expression evaluator:
    * resolve the FIRST identifier at the current page scope, then parent pages,
@@ -351,100 +389,6 @@
    * `metadata()` is a virtual field operation backed by ctx.entities.
    * `path()` is a virtual page operation. Both are calculated, never stored.
    */
-  const resolve = (expressionPath, scopePath) => {
-    const explicitRoot = expressionPath === 'ctx' || expressionPath.startsWith('ctx.');
-    const normalized = explicitRoot ? expressionPath.replace(/^ctx\.?/, '') : expressionPath;
-    const parts = normalized.replace(/\.\[/g, '[').split('.').filter(Boolean);
-    if (!parts.length) return explicitRoot ? ctx : undefined;
-
-    const first = parts.shift();
-    const firstTokens = tokenize(first);
-    if (firstTokens.length !== 1 || typeof firstTokens[0] !== 'string') {
-      throw new Error(`A ctx expression must start with an identifier: ${expressionPath}`);
-    }
-
-    let basePath = 'ctx';
-    let value;
-
-    if (explicitRoot) {
-      value = resolveMember(ctx, firstTokens[0]);
-      basePath = `ctx.${firstTokens[0]}`;
-    } else {
-      const scopes = [];
-      let candidate = scopePath || (() => {
-        let path = 'ctx.page';
-        let node = ctx.page;
-        while (node?.page) {
-          node = node.page;
-          path += '.page';
-        }
-        return node ? path : 'ctx';
-      })();
-
-      while (candidate.startsWith('ctx.page')) {
-        scopes.push(candidate);
-        if (!candidate.endsWith('.page')) break;
-        candidate = candidate.slice(0, -5);
-      }
-      scopes.push('ctx');
-
-      for (const scope of scopes) {
-        const scopeValue = getExact(scope);
-
-        // Page/user field collections form the lexical variable namespace.
-        if (
-          isObject(scopeValue?.fields) &&
-          Object.prototype.hasOwnProperty.call(scopeValue.fields, firstTokens[0])
-        ) {
-          const field = scopeValue.fields[firstTokens[0]];
-          /*
-           * Match the server evaluator's lexical field semantics. A bare field
-           * name resolves to its scalar `.value`, but a path continuing below
-           * the field (for example `principalType.option.canHaveParent`) must
-           * keep the field wrapper so declarative metadata attached to the
-           * selected enum item remains addressable in browser-side reactivity.
-           */
-          value = parts.length ? field : field?.value;
-          basePath = `${scope}.fields.${firstTokens[0]}`;
-          break;
-        }
-
-        if (isObject(scopeValue) && Object.prototype.hasOwnProperty.call(scopeValue, firstTokens[0])) {
-          value = scopeValue[firstTokens[0]];
-          basePath = `${scope}.${firstTokens[0]}`;
-          break;
-        }
-      }
-    }
-
-    if (value === undefined) return undefined;
-
-    for (const part of parts) {
-      if (part === 'metadata()') {
-        value = metadataForField(basePath);
-        basePath += '.metadata()';
-        if (value === undefined) return undefined;
-        continue;
-      }
-
-      if (part === 'path()') {
-        value = derivedPagePath(basePath);
-        basePath += '.path()';
-        if (value === null) return undefined;
-        continue;
-      }
-
-      const tokens = tokenize(part);
-      for (const token of tokens) {
-        if (value == null) return undefined;
-        value = resolveMember(value, token);
-        basePath += typeof token === 'number' ? `[${token}]` : `.${token}`;
-      }
-    }
-
-    return value;
-  };
-
   const sourceForDerived = (path) => {
     if (path.endsWith('.metadata()')) {
       const fieldPath = path.slice(0, -11);
@@ -480,7 +424,9 @@
   };
 
   const history = {
-    entries: Array.isArray(persisted?.historyEntries) ? persisted.historyEntries.filter((value) => typeof value === 'string') : [],
+    entries: Array.isArray(persisted?.historyEntries)
+      ? persisted.historyEntries.filter((value) => typeof value === 'string')
+      : [],
     index: Number.isInteger(persisted?.historyIndex) ? persisted.historyIndex : -1,
   };
   if (history.index >= history.entries.length) history.index = history.entries.length - 1;
@@ -499,7 +445,7 @@
    * layout and must escape the debug panel's overflow clipping.
    */
   if (statsElement && window.bootstrap?.Tooltip) {
-    bootstrap.Tooltip.getOrCreateInstance(statsElement, {
+    window.bootstrap.Tooltip.getOrCreateInstance(statsElement, {
       container: 'body',
       placement: 'bottom',
       trigger: 'hover focus',
@@ -530,12 +476,18 @@
     if (path.endsWith('.path()')) return derivedPagePath(path.slice(0, -7)) !== null;
     if (path.endsWith('.metadata()')) return metadataForField(path.slice(0, -11)) !== undefined;
     if (path.endsWith('.__source')) return sourceForDerived(path.slice(0, -9)) !== null;
-    try { return getExact(path) !== undefined; } catch { return false; }
+    try {
+      return getExact(path) !== undefined;
+    } catch {
+      return false;
+    }
   };
 
   const parentPath = (path) => {
     if (!path || path === 'ctx') return 'ctx';
-    const withoutVirtual = path.replace(/\.__source$/, '').replace(/\.metadata\(\)$|\.path\(\)$/, '');
+    const withoutVirtual = path
+      .replace(/\.__source$/, '')
+      .replace(/\.metadata\(\)$|\.path\(\)$/, '');
     const withoutIndex = withoutVirtual.replace(/\[\d+\]$/, '');
     if (withoutIndex !== withoutVirtual) return withoutIndex || 'ctx';
     return withoutVirtual.replace(/\.[^.]+$/, '') || 'ctx';
@@ -558,7 +510,8 @@
 
   const updateToolbar = () => {
     if (backButton) backButton.disabled = history.index <= 0;
-    if (forwardButton) forwardButton.disabled = history.index < 0 || history.index >= history.entries.length - 1;
+    if (forwardButton)
+      forwardButton.disabled = history.index < 0 || history.index >= history.entries.length - 1;
     if (selectionElement) {
       selectionElement.textContent = nodeNameFromPath(state.selected);
       selectionElement.title = state.selected;
@@ -571,9 +524,10 @@
       const isDerived = state.selected.endsWith('()') || state.selected.endsWith('.__source');
       watchButton.disabled = isDerived;
       watchButton.classList.toggle('is-active', watchedPath === state.selected);
-      watchButton.title = watchedPath === state.selected
-        ? 'Stop watching selected CTX value'
-        : 'Watch selected CTX value for changes';
+      watchButton.title =
+        watchedPath === state.selected
+          ? 'Stop watching selected CTX value'
+          : 'Watch selected CTX value for changes';
     }
   };
 
@@ -584,9 +538,8 @@
     history.index = history.entries.length - 1;
   };
 
-  const selectedRowElement = () => treeElement.querySelector(
-    `.ctx-debug-row[data-ctx-path="${CSS.escape(state.selected)}"]`,
-  );
+  const selectedRowElement = () =>
+    treeElement.querySelector(`.ctx-debug-row[data-ctx-path="${CSS.escape(state.selected)}"]`);
 
   const ensureSelectedVisible = ({ align = 'nearest' } = {}) => {
     selectedRowElement()?.scrollIntoView({ block: align, inline: 'nearest' });
@@ -624,8 +577,16 @@
     expandAncestors(path);
     if (expandSelected) {
       let selectedValue;
-      try { selectedValue = path === 'ctx' ? ctx : getExact(path); } catch { selectedValue = undefined; }
-      if (isObject(selectedValue) && !isCalculatedContextField(selectedValue) && objectChildren(path, selectedValue).length > 0) {
+      try {
+        selectedValue = path === 'ctx' ? ctx : getExact(path);
+      } catch {
+        selectedValue = undefined;
+      }
+      if (
+        isObject(selectedValue) &&
+        !isCalculatedContextField(selectedValue) &&
+        objectChildren(path, selectedValue).length > 0
+      ) {
         state.expanded.add(path);
       }
     }
@@ -645,17 +606,22 @@
   };
 
   cliButton?.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('manatos:debug-cli-toggle', {
-      detail: { instanceKey: 'ctx-viewer', path: state.selected },
-    }));
+    window.dispatchEvent(
+      new CustomEvent('manatos:debug-cli-toggle', {
+        detail: { instanceKey: 'ctx-viewer', path: state.selected },
+      }),
+    );
   });
 
   window.addEventListener('manatos:debug-cli-state', (event) => {
-    if (!(event instanceof CustomEvent) || event.detail?.instanceKey !== 'ctx-viewer' || !cliButton) return;
+    if (!(event instanceof CustomEvent) || event.detail?.instanceKey !== 'ctx-viewer' || !cliButton)
+      return;
     const open = event.detail?.open === true;
     cliButton.classList.toggle('is-active', open);
     cliButton.setAttribute('aria-pressed', String(open));
-    cliButton.title = open ? 'CTX CLI is open; click to hide or retarget from another node' : `Open CLI at ${state.selected}`;
+    cliButton.title = open
+      ? 'CTX CLI is open; click to hide or retarget from another node'
+      : `Open CLI at ${state.selected}`;
   });
 
   window.addEventListener('manatos:ctx-viewer-select', (event) => {
@@ -690,7 +656,9 @@
       return Array.isArray(values)
         ? values.filter((v) => typeof v === 'string' && v.trim()).slice(0, FIND_HISTORY_LIMIT)
         : [];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   };
 
   const closeFindHistory = () => findHistoryList?.classList.add('d-none');
@@ -698,27 +666,36 @@
   const refreshFindHistory = () => {
     if (!findHistoryList) return;
     const values = readFindHistory();
-    findHistoryList.replaceChildren(...values.map((value) => {
-      const option = document.createElement('button');
-      option.type = 'button';
-      option.className = 'ctx-debug-find-history-item';
-      option.textContent = value;
-      option.title = value;
-      option.setAttribute('role', 'option');
-      option.addEventListener('mousedown', (event) => event.preventDefault());
-      option.addEventListener('click', () => {
-        if (findInput) findInput.value = value;
-        closeFindHistory();
-        findNextByName(value);
-      });
-      return option;
-    }));
+    findHistoryList.replaceChildren(
+      ...values.map((value) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'ctx-debug-find-history-item';
+        option.textContent = value;
+        option.title = value;
+        option.setAttribute('role', 'option');
+        option.addEventListener('mousedown', (event) => event.preventDefault());
+        option.addEventListener('click', () => {
+          if (findInput) findInput.value = value;
+          closeFindHistory();
+          findNextByName(value);
+        });
+        return option;
+      }),
+    );
     findHistoryList.classList.toggle('d-none', values.length === 0);
   };
 
   const rememberFind = (term) => {
-    const values = [term, ...readFindHistory().filter((v) => v !== term)].slice(0, FIND_HISTORY_LIMIT);
-    try { sessionStorage.setItem(FIND_HISTORY_KEY, JSON.stringify(values)); } catch { /* debugger only */ }
+    const values = [term, ...readFindHistory().filter((v) => v !== term)].slice(
+      0,
+      FIND_HISTORY_LIMIT,
+    );
+    try {
+      sessionStorage.setItem(FIND_HISTORY_KEY, JSON.stringify(values));
+    } catch {
+      /* debugger only */
+    }
     refreshFindHistory();
   };
 
@@ -730,7 +707,9 @@
     const current = Math.max(0, paths.indexOf(state.selected));
     const ordered = [...paths.slice(current + 1), ...paths.slice(0, current + 1)];
     const exact = ordered.find((path) => nodeNameFromPath(path) === term);
-    const match = exact ?? ordered.find((path) => nodeNameFromPath(path).toLowerCase().includes(term.toLowerCase()));
+    const match =
+      exact ??
+      ordered.find((path) => nodeNameFromPath(path).toLowerCase().includes(term.toLowerCase()));
     if (match) selectPath(match);
   };
 
@@ -751,49 +730,83 @@
       return { path, value: sourcePath, derived: false, source: true, sourcePath };
     }
     if (path.endsWith('.metadata()')) {
-      return { path, value: metadataForField(path.slice(0, -11)), derived: true, source: false, sourcePath: sourceForDerived(path) };
+      return {
+        path,
+        value: metadataForField(path.slice(0, -11)),
+        derived: true,
+        source: false,
+        sourcePath: sourceForDerived(path),
+      };
     }
     if (path.endsWith('.path()')) {
-      return { path, value: derivedPagePath(path.slice(0, -7)), derived: true, source: false, sourcePath: sourceForDerived(path) };
+      return {
+        path,
+        value: derivedPagePath(path.slice(0, -7)),
+        derived: true,
+        source: false,
+        sourcePath: sourceForDerived(path),
+      };
     }
     return { path, value: getExact(path), derived: false, source: false, sourcePath: null };
   };
 
   const astDescriptor = (node) => {
-    if (!node || typeof node !== 'object') return { value: 'Invalid', type: 'AST node', icon: 'bi-exclamation-triangle' };
+    if (!node || typeof node !== 'object')
+      return { value: 'Invalid', type: 'AST node', icon: 'bi-exclamation-triangle' };
     switch (node.kind) {
       case 'literal': {
-        const literalValue = typeof node.value === 'string'
-          ? `'${String(node.value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
-          : displayValue(node.value);
+        const literalValue =
+          typeof node.value === 'string'
+            ? `'${String(node.value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+            : displayValue(node.value);
         return { value: literalValue, type: 'literal', icon: 'bi-quote' };
       }
-      case 'variable': return { value: node.path, type: 'variable', icon: 'bi-tag' };
-      case 'binary': return { value: node.operator, type: 'binary', icon: 'bi-calculator' };
-      case 'unary': return { value: node.operator, type: 'unary', icon: 'bi-calculator' };
-      case 'group': return { value: '(...)', type: 'group', icon: 'bi-parentheses' };
-      case 'conditional': return { value: '?:', type: 'conditional', icon: 'bi-signpost-split' };
-      case 'function': return { value: node.functionName, type: 'function', icon: 'bi-gear' };
-      default: return { value: String(node.kind ?? 'Unknown'), type: 'unknown', icon: 'bi-question-circle' };
+      case 'variable':
+        return { value: node.path, type: 'variable', icon: 'bi-tag' };
+      case 'binary':
+        return { value: node.operator, type: 'binary', icon: 'bi-calculator' };
+      case 'unary':
+        return { value: node.operator, type: 'unary', icon: 'bi-calculator' };
+      case 'group':
+        return { value: '(...)', type: 'group', icon: 'bi-parentheses' };
+      case 'conditional':
+        return { value: '?:', type: 'conditional', icon: 'bi-signpost-split' };
+      case 'function':
+        return { value: node.functionName, type: 'function', icon: 'bi-gear' };
+      default:
+        return {
+          value: String(node.kind ?? 'Unknown'),
+          type: 'unknown',
+          icon: 'bi-question-circle',
+        };
     }
   };
 
   const astChildren = (node) => {
     if (!node || typeof node !== 'object') return [];
     switch (node.kind) {
-      case 'binary': return [
-        {role: 'left', node: node.left},
-        {role: 'right', node: node.right},
-      ];
-      case 'unary': return [{role: 'operand', node: node.operand}];
-      case 'group': return [{role: 'expression', node: node.expression}];
-      case 'conditional': return [
-        {role: 'condition', node: node.condition},
-        {role: 'true', node: node.whenTrue},
-        {role: 'false', node: node.whenFalse},
-      ];
-      case 'function': return (node.arguments || []).map((argument, index) => ({role: `arg[${index}]`, node: argument}));
-      default: return [];
+      case 'binary':
+        return [
+          { role: 'left', node: node.left },
+          { role: 'right', node: node.right },
+        ];
+      case 'unary':
+        return [{ role: 'operand', node: node.operand }];
+      case 'group':
+        return [{ role: 'expression', node: node.expression }];
+      case 'conditional':
+        return [
+          { role: 'condition', node: node.condition },
+          { role: 'true', node: node.whenTrue },
+          { role: 'false', node: node.whenFalse },
+        ];
+      case 'function':
+        return (node.arguments || []).map((argument, index) => ({
+          role: `arg[${index}]`,
+          node: argument,
+        }));
+      default:
+        return [];
     }
   };
 
@@ -876,7 +889,10 @@
     const rows = [
       ['Path', info.path],
       ['Kind', calculated ? 'calculated' : kind],
-      ['JavaScript type', info.value === null ? 'null' : Array.isArray(info.value) ? 'array' : typeof info.value],
+      [
+        'JavaScript type',
+        info.value === null ? 'null' : Array.isArray(info.value) ? 'array' : typeof info.value,
+      ],
       ['Value', displayValue(info.value)],
       ['Children', String(children.length)],
       ['Watchable', info.derived || info.source ? 'no' : 'yes'],
@@ -893,7 +909,8 @@
       labelElement.textContent = label;
       const valueElement = document.createElement('span');
       valueElement.className = 'ctx-debug-property-value';
-      const formulaValue = label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path));
+      const formulaValue =
+        label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path));
       if (formulaValue && typeof value === 'string' && window.ManatOSDebugExpression) {
         valueElement.classList.add('ctx-debug-expression');
         window.ManatOSDebugExpression.highlightElement(valueElement, value);
@@ -940,7 +957,10 @@
     toggle.tabIndex = expandable ? 0 : -1;
     toggle.textContent = expandable ? (expanded ? '[-]' : '[+]') : '';
     toggle.disabled = !expandable;
-    toggle.setAttribute('aria-label', expandable ? (expanded ? `Collapse ${key}` : `Expand ${key}`) : 'Leaf node');
+    toggle.setAttribute(
+      'aria-label',
+      expandable ? (expanded ? `Collapse ${key}` : `Expand ${key}`) : 'Leaf node',
+    );
     if (expandable) {
       toggle.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -965,7 +985,11 @@
       if (derived) {
         valueElement.textContent = '= derived';
       } else if (!isObject(value)) {
-        if (typeof value === 'string' && isExpressionSourcePath(path) && window.ManatOSDebugExpression) {
+        if (
+          typeof value === 'string' &&
+          isExpressionSourcePath(path) &&
+          window.ManatOSDebugExpression
+        ) {
           valueElement.appendChild(document.createTextNode('= '));
           const formulaElement = document.createElement('span');
           formulaElement.className = 'ctx-debug-expression';
@@ -1085,19 +1109,22 @@
     }
   });
   document.addEventListener('click', (event) => {
-    if (findBox && !findBox.contains(event.target) && event.target !== findButton) closeFindHistory();
+    if (findBox && !findBox.contains(event.target) && event.target !== findButton)
+      closeFindHistory();
   });
 
   // The shared shell owns the outer Developer Tools dock resize.
-
 
   const DEFAULT_PROPERTIES_HEIGHT = 256;
   const applyPropertiesHeight = (requested = state.propertiesHeight) => {
     if (!propertiesPanel) return;
     const panelHeight = document.getElementById('debugPanel')?.clientHeight || window.innerHeight;
     const minHeight = 136;
-    const maxHeight = Math.max(minHeight, Math.floor(panelHeight * 2 / 3));
-    state.propertiesHeight = Math.max(minHeight, Math.min(Number(requested) || DEFAULT_PROPERTIES_HEIGHT, maxHeight));
+    const maxHeight = Math.max(minHeight, Math.floor((panelHeight * 2) / 3));
+    state.propertiesHeight = Math.max(
+      minHeight,
+      Math.min(Number(requested) || DEFAULT_PROPERTIES_HEIGHT, maxHeight),
+    );
     propertiesPanel.style.height = `${state.propertiesHeight}px`;
   };
 
@@ -1133,7 +1160,10 @@
     state.propertiesOpen = opening;
     propertiesPanel.classList.toggle('d-none', !opening);
     propertiesPanel.setAttribute('aria-hidden', String(!opening));
-    if (opening) { applyPropertiesHeight(); renderProperties(); }
+    if (opening) {
+      applyPropertiesHeight();
+      renderProperties();
+    }
     persistState();
     requestAnimationFrame(ensureSelectedVisible);
   });
@@ -1149,10 +1179,19 @@
   // CTX mutation/event infrastructure is provided by /js/ctx-runtime.js.
   window.addEventListener(CHANGE_EVENT, (event) => {
     const path = event.detail?.path;
-    if (watchedPath && typeof path === 'string' && (path === watchedPath || path.startsWith(`${watchedPath}.`) || path.startsWith(`${watchedPath}[`))) {
+    if (
+      watchedPath &&
+      typeof path === 'string' &&
+      (path === watchedPath ||
+        path.startsWith(`${watchedPath}.`) ||
+        path.startsWith(`${watchedPath}[`))
+    ) {
       changedPath = watchedPath;
       window.clearTimeout(changedTimer);
-      changedTimer = window.setTimeout(() => { changedPath = null; render(); }, 1400);
+      changedTimer = window.setTimeout(() => {
+        changedPath = null;
+        render();
+      }, 1400);
     }
     render();
   });

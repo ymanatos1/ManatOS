@@ -84,9 +84,7 @@ export const popupContent = {
         modalTitle: 'Set password',
         modalSubtitle: 'Create a local password for your account.',
         contentTitle: 'Create your password',
-        contentParagraphs: [
-          'Choose and confirm a password that satisfies all password rules.',
-        ],
+        contentParagraphs: ['Choose and confirm a password that satisfies all password rules.'],
       },
     },
   },

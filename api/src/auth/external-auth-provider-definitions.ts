@@ -59,17 +59,17 @@ export const externalAuthProviderDefinitions: Record<
         {
           title: 'Client ID',
           steps: [
-        'Open Microsoft Entra admin center → App registrations → your ManatOS application.',
-        'On Overview, copy Application (client) ID into Client ID below.',
-        'Do not use the Object ID or Directory (tenant) ID as the Client ID.',
+            'Open Microsoft Entra admin center → App registrations → your ManatOS application.',
+            'On Overview, copy Application (client) ID into Client ID below.',
+            'Do not use the Object ID or Directory (tenant) ID as the Client ID.',
           ],
         },
         {
           title: 'Client secret',
           steps: [
-        'Open Certificates & secrets → Client secrets and choose New client secret.',
-        'Choose an appropriate description and expiry, then create the secret.',
-        'Copy the secret Value into Client secret below. The Secret ID is not the client secret.',
+            'Open Certificates & secrets → Client secrets and choose New client secret.',
+            'Choose an appropriate description and expiry, then create the secret.',
+            'Copy the secret Value into Client secret below. The Secret ID is not the client secret.',
           ],
         },
       ],
@@ -102,16 +102,16 @@ export const externalAuthProviderDefinitions: Record<
         {
           title: 'Client ID',
           steps: [
-        'Open Google Cloud Console → APIs & Services → Credentials.',
-        'Open the OAuth 2.0 Client ID created for ManatOS.',
-        'Copy its Client ID into Client ID below.',
+            'Open Google Cloud Console → APIs & Services → Credentials.',
+            'Open the OAuth 2.0 Client ID created for ManatOS.',
+            'Copy its Client ID into Client ID below.',
           ],
         },
         {
           title: 'Client secret',
           steps: [
-        'From the same OAuth client, copy the Client secret into Client secret below.',
-        'If Google requires a new credential, create/rotate the OAuth client secret in the provider console and save the replacement here.',
+            'From the same OAuth client, copy the Client secret into Client secret below.',
+            'If Google requires a new credential, create/rotate the OAuth client secret in the provider console and save the replacement here.',
           ],
         },
       ],
@@ -143,15 +143,15 @@ export const externalAuthProviderDefinitions: Record<
         {
           title: 'Client ID',
           steps: [
-        'Open Meta for Developers → your application → App settings → Basic.',
-        'Copy the App ID into Client ID below.',
+            'Open Meta for Developers → your application → App settings → Basic.',
+            'Copy the App ID into Client ID below.',
           ],
         },
         {
           title: 'Client secret',
           steps: [
-        'On the same App settings → Basic page, reveal the App secret when permitted.',
-        'Copy the App secret into Client secret below.',
+            'On the same App settings → Basic page, reveal the App secret when permitted.',
+            'Copy the App secret into Client secret below.',
           ],
         },
       ],
@@ -183,15 +183,15 @@ export const externalAuthProviderDefinitions: Record<
         {
           title: 'Client ID',
           steps: [
-        'Open GitHub Settings → Developer settings → OAuth Apps → your ManatOS OAuth App.',
-        'Copy Client ID into Client ID below.',
+            'Open GitHub Settings → Developer settings → OAuth Apps → your ManatOS OAuth App.',
+            'Copy Client ID into Client ID below.',
           ],
         },
         {
           title: 'Client secret',
           steps: [
-        'In the same OAuth App, generate a new client secret when one is required.',
-        'Copy the generated client-secret value into Client secret below.',
+            'In the same OAuth App, generate a new client secret when one is required.',
+            'Copy the generated client-secret value into Client secret below.',
           ],
         },
       ],
@@ -204,7 +204,9 @@ export const externalAuthProviderDefinitions: Record<
 export function externalAuthProviderDefinitionFor(
   provider: string | null | undefined,
 ): ExternalAuthProviderDefinition {
-  const normalized = String(provider ?? '').trim().toLowerCase() as SysBOExtAuthProviderType;
+  const normalized = String(provider ?? '')
+    .trim()
+    .toLowerCase() as SysBOExtAuthProviderType;
 
   return (
     externalAuthProviderDefinitions[normalized] ??

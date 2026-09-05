@@ -8,9 +8,7 @@ import { apiClient } from '../api/client.js';
  * The browser never calls the trusted internal endpoint directly; this runs
  * only on the server-rendered UI tier.
  */
-export async function externalIdentitiesForUser(
-  userId: string,
-): Promise<SysBOExternalIdentity[]> {
+export async function externalIdentitiesForUser(userId: string): Promise<SysBOExternalIdentity[]> {
   return (
     await apiClient.get<SysBOExternalIdentity[]>(
       `/api/v1/internal/SysUsers/${encodeURIComponent(userId)}/external-identities`,

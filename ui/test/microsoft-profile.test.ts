@@ -37,8 +37,8 @@ describe('Microsoft external profile normalization', () => {
   });
 
   it('rejects a Microsoft profile that cannot supply an email address', () => {
-    expect(() =>
-      normalizeMicrosoftProfile({ id: 'microsoft-user-id' }),
-    ).toThrow('Microsoft did not supply an email address.');
+    expect(() => normalizeMicrosoftProfile({ id: 'microsoft-user-id' })).toThrow(
+      'Microsoft did not supply an email address.',
+    );
   });
 });

@@ -16,7 +16,9 @@ describe('platform presentation', () => {
     const html = await ejs.renderFile(platformView, { platform });
     const $ = load(html);
 
-    expect($('.platform-hero-image').attr('src')).toBe('/assets/platforms/protocrm/protocrm-customer-network.png');
+    expect($('.platform-hero-image').attr('src')).toBe(
+      '/assets/platforms/protocrm/protocrm-customer-network.png',
+    );
     expect($('.platform-feature-card').length).toBe(6);
     expect($('.platform-feature-card').text()).toContain('Customer 360°');
     expect($('.platform-feature-card').text()).toContain('Documents');
@@ -60,5 +62,4 @@ describe('platform presentation', () => {
     expect($('.header-donate-button').hasClass('d-none')).toBe(false);
     expect($('.header-donate-button').is(':disabled')).toBe(true);
   });
-
 });

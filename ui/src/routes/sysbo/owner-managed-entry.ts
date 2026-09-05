@@ -16,7 +16,10 @@ function parseRows(value: unknown): Record<string, unknown>[] {
   if (typeof value !== 'string') return [];
   const parsed = JSON.parse(value);
   return Array.isArray(parsed)
-    ? parsed.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    ? parsed.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+      )
     : [];
 }
 
@@ -31,9 +34,10 @@ export function ownerManagedEntryFromRequest(
 ): { item: Record<string, unknown>; parentOwnerContext: OwnerManagedEntryContext } {
   const entries = parseRows(req.body._ownerEntries);
   const entriesOriginal = parseRows(req.body._ownerEntriesOriginal);
-  const fields = typeof req.body._ownerFields === 'string'
-    ? JSON.parse(req.body._ownerFields) as Record<string, unknown>
-    : {};
+  const fields =
+    typeof req.body._ownerFields === 'string'
+      ? (JSON.parse(req.body._ownerFields) as Record<string, unknown>)
+      : {};
   const identityField = String(req.body._ownerIdentityField || 'id');
   const item = entries.find((candidate) => String(candidate[identityField] ?? '') === id);
   if (!item) throw createError(404, 'The requested owner-managed entry could not be found.');
@@ -71,12 +75,18 @@ export function mergeOwnerManagedEntryFromRequest(
   const entriesOriginal = parseRows(req.body._ownerEntriesOriginal);
   const edited = Object.fromEntries(
     Object.keys(metadata.fieldDefinition)
-      .filter((key) => metadata.fieldDefinition[key]?.sensitive !== true && Object.prototype.hasOwnProperty.call(req.body, key))
+      .filter(
+        (key) =>
+          metadata.fieldDefinition[key]?.sensitive !== true &&
+          Object.prototype.hasOwnProperty.call(req.body, key),
+      )
       .map((key) => [key, req.body[key]]),
   );
-  const nextEntries = entries.map((candidate) => String(candidate[identityField] ?? '') === id
-    ? { ...candidate, ...edited, [identityField]: id }
-    : { ...candidate });
+  const nextEntries = entries.map((candidate) =>
+    String(candidate[identityField] ?? '') === id
+      ? { ...candidate, ...edited, [identityField]: id }
+      : { ...candidate },
+  );
   const focusedMemberId = String(req.body._ownerFocusedMemberId || id || '') || null;
 
   return {

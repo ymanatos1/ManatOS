@@ -139,24 +139,13 @@ export interface SysBOFieldMetadata {
   calculation?: Readonly<SysBOFieldCalculationMetadata>;
 }
 
-
 export type ManatOSRelationshipCardinality =
-  | 'one-to-one'
-  | 'many-to-one'
-  | 'one-to-many'
-  | 'many-to-many';
+  'one-to-one' | 'many-to-one' | 'one-to-many' | 'many-to-many';
 
 export type ManatOSRelationshipDeleteAction =
-  | 'restrict'
-  | 'cascade'
-  | 'set-null'
-  | 'unlink'
-  | 'retain';
+  'restrict' | 'cascade' | 'set-null' | 'unlink' | 'retain';
 
-export type ManatOSRelationshipConfirmationPolicy =
-  | 'silent'
-  | 'confirm'
-  | 'inherit';
+export type ManatOSRelationshipConfirmationPolicy = 'silent' | 'confirm' | 'inherit';
 
 export interface ManatOSRelationshipDeletePolicy {
   /** Referential-integrity consequence when the referenced record is deleted. */
@@ -220,8 +209,7 @@ export interface ManatOSRelationshipMetadata {
  * is calculated from multiple fields or other calculated values.
  */
 export type ManatOSEntryValueSourceMetadata =
-  | Readonly<{ field: string; expression?: never }>
-  | Readonly<{ expression: string; field?: never }>;
+  Readonly<{ field: string; expression?: never }> | Readonly<{ expression: string; field?: never }>;
 
 /**
  * Canonical, UI-neutral semantics for representing one entity entry.

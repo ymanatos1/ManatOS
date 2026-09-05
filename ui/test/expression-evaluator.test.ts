@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   ExpressionEvaluationError,
   ExpressionParseError,
@@ -7,7 +7,6 @@ import {
   evaluateExpression,
   type ExpressionNode,
 } from '@manatos/shared';
-
 
 const TEST_CALLER = {
   source: 'test' as const,
@@ -24,14 +23,14 @@ function evaluateTest(
 }
 
 function testCtx() {
-  const protoCrm = {id: 'protocrm', name: 'ManatOS CRM Platform', enabled: true};
+  const protoCrm = { id: 'protocrm', name: 'ManatOS CRM Platform', enabled: true };
   return {
-    company: {platforms: [protoCrm]},
+    company: { platforms: [protoCrm] },
     page: {
       fields: {
-        firstname: {value: 'Yiannis'},
-        lastname: {value: 'Manatos'},
-        amount: {value: 12},
+        firstname: { value: 'Yiannis' },
+        lastname: { value: 'Manatos' },
+        amount: { value: 12 },
       },
     },
   };
@@ -39,9 +38,11 @@ function testCtx() {
 
 describe('ManatOS expression parser/evaluator', () => {
   it('annotates function capabilities while preserving lazy execution semantics', () => {
-    const compiled = compileExpression("parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')");
+    const compiled = compileExpression(
+      "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
+    );
     expect(compiled.requiredCapabilities).toContain('entityResolver');
-    expect(JSON.stringify(compiled.ast)).toContain('\"capability\":\"entityResolver\"');
+    expect(JSON.stringify(compiled.ast)).toContain('"capability":"entityResolver"');
   });
 
   it('supports generic calendar duration expressions used by metadata-declared components', () => {
@@ -51,8 +52,14 @@ describe('ManatOS expression parser/evaluator', () => {
       validUntil: { value: '2026-10-15' },
     };
     const ctx = { page: { page: { fields } } };
-    expect(evaluateTest('CalendarAddDuration(validFrom, validityDuration)', ctx, fields)).toBe('2026-10-15');
-    expect(evaluateTest('CalendarDurationBetween(validFrom, validUntil)', ctx, fields)).toEqual({ years: 0, months: 1, days: 14 });
+    expect(evaluateTest('CalendarAddDuration(validFrom, validityDuration)', ctx, fields)).toBe(
+      '2026-10-15',
+    );
+    expect(evaluateTest('CalendarDurationBetween(validFrom, validUntil)', ctx, fields)).toEqual({
+      years: 0,
+      months: 1,
+      days: 14,
+    });
   });
 
   it('resolves nested members transparently through CTX field values without hiding explicit field metadata', () => {
@@ -115,8 +122,16 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(evaluateTest("TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields)).toBe('Root');
-    expect(evaluateTest("parentId == null ? name : TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields)).toBe('Root');
+    expect(evaluateTest("TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields)).toBe(
+      'Root',
+    );
+    expect(
+      evaluateTest(
+        "parentId == null ? name : TraverseCtx(parentId, entries, 'parentId', 'name')",
+        ctx,
+        fields,
+      ),
+    ).toBe('Root');
   });
 
   it('terminates malformed hierarchy cycles instead of looping forever', () => {
@@ -131,10 +146,10 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(() => evaluateTest("TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields))
-      .toThrow(/parent cycle/i);
+    expect(() =>
+      evaluateTest("TraverseCtx(parentId, entries, 'parentId', 'name')", ctx, fields),
+    ).toThrow(/parent cycle/i);
   });
-
 
   it('builds the expected left-associative AST for string concatenation', () => {
     const compiled = compileExpression("firstname + ' ' + lastname");
@@ -144,10 +159,10 @@ describe('ManatOS expression parser/evaluator', () => {
       left: {
         kind: 'binary',
         operator: '+',
-        left: {kind: 'variable', path: 'firstname', members: ['firstname'], absolute: false},
-        right: {kind: 'literal', value: ' '},
+        left: { kind: 'variable', path: 'firstname', members: ['firstname'], absolute: false },
+        right: { kind: 'literal', value: ' ' },
       },
-      right: {kind: 'variable', path: 'lastname', members: ['lastname'], absolute: false},
+      right: { kind: 'variable', path: 'lastname', members: ['lastname'], absolute: false },
     } satisfies ExpressionNode);
   });
 
@@ -167,8 +182,6 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(() => evaluateTest("'10' - 2", ctx, ctx.page.fields)).toThrow(ExpressionEvaluationError);
   });
 
-
-
   it('supports JS-like loose/strict equality and scalar relational comparisons', () => {
     const ctx = testCtx();
     expect(evaluateTest("10 == '10'", ctx, ctx.page.fields)).toBe(true);
@@ -185,12 +198,11 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest("null + ':value'", ctx, ctx.page.fields)).toBe('null:value');
   });
 
-
   it('prepares runtime Date values for relational comparison and string concatenation', () => {
     const ctx = {
       fields: {
-        earlier: {value: new Date('2026-01-01T00:00:00Z')},
-        later: {value: new Date('2026-01-02T00:00:00Z')},
+        earlier: { value: new Date('2026-01-01T00:00:00Z') },
+        later: { value: new Date('2026-01-02T00:00:00Z') },
       },
     };
     expect(evaluateTest('earlier < later', ctx, ctx.fields)).toBe(true);
@@ -200,38 +212,42 @@ describe('ManatOS expression parser/evaluator', () => {
   it('supports boolean equality and right-associative ternary conditionals', () => {
     const ctx = {
       fields: {
-        emailVerified: {value: true},
-        enabled: {value: false},
+        emailVerified: { value: true },
+        enabled: { value: false },
       },
     };
 
-    expect(evaluateTest("emailVerified ? 'Verified' : 'Not verified'", ctx, ctx.fields)).toBe('Verified');
+    expect(evaluateTest("emailVerified ? 'Verified' : 'Not verified'", ctx, ctx.fields)).toBe(
+      'Verified',
+    );
     expect(evaluateTest("enabled ? 'Enabled' : 'Disabled'", ctx, ctx.fields)).toBe('Disabled');
-    expect(evaluateTest("emailVerified != false ? 'Verified' : 'Not verified'", ctx, ctx.fields)).toBe('Verified');
+    expect(
+      evaluateTest("emailVerified != false ? 'Verified' : 'Not verified'", ctx, ctx.fields),
+    ).toBe('Verified');
     expect(evaluateTest("false ? missingVariable : 'safe'", ctx, ctx.fields)).toBe('safe');
 
     const compiled = compileExpression("emailVerified ? 'Verified' : 'Not verified'");
     expect(compiled.ast).toMatchObject({
       kind: 'conditional',
-      condition: {kind: 'variable', path: 'emailVerified'},
-      whenTrue: {kind: 'literal', value: 'Verified'},
-      whenFalse: {kind: 'literal', value: 'Not verified'},
+      condition: { kind: 'variable', path: 'emailVerified' },
+      whenTrue: { kind: 'literal', value: 'Verified' },
+      whenFalse: { kind: 'literal', value: 'Not verified' },
     });
   });
 
   it('supports lazy nullish coalescing with ??', () => {
     const ctx = {
       fields: {
-        nullable: {value: null},
-        present: {value: 'kept'},
+        nullable: { value: null },
+        present: { value: 'kept' },
       },
     };
 
     expect(evaluateTest("nullable ?? 'fallback'", ctx, ctx.fields)).toBe('fallback');
-    expect(evaluateTest("present ?? missingVariable", ctx, ctx.fields)).toBe('kept');
+    expect(evaluateTest('present ?? missingVariable', ctx, ctx.fields)).toBe('kept');
 
     const compiled = compileExpression("nullable ?? 'fallback'");
-    expect(compiled.ast).toMatchObject({kind: 'binary', operator: '??'});
+    expect(compiled.ast).toMatchObject({ kind: 'binary', operator: '??' });
   });
 
   it('supports lazy JS/TS-like scalar logical operators for metadata decisions', () => {
@@ -246,11 +262,9 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(evaluateTest(
-      "mode !== 'create' && user.fields.role.value === 'Admin'",
-      ctx,
-      ctx.page.fields,
-    )).toBe(true);
+    expect(
+      evaluateTest("mode !== 'create' && user.fields.role.value === 'Admin'", ctx, ctx.page.fields),
+    ).toBe(true);
 
     expect(evaluateTest('false && missingVariable', ctx, ctx.page.fields)).toBe(false);
     expect(evaluateTest('true || missingVariable', ctx, ctx.page.fields)).toBe(true);
@@ -287,18 +301,40 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest('5 ^ 1', ctx, ctx.page.fields)).toBe(4);
     expect(evaluateTest('16 << 2', ctx, ctx.page.fields)).toBe(64);
     expect(evaluateTest('16 >> 2', ctx, ctx.page.fields)).toBe(4);
-    expect(() => evaluateTest("'5' & 3", ctx, ctx.page.fields)).toThrow(/requires numeric operands/i);
+    expect(() => evaluateTest("'5' & 3", ctx, ctx.page.fields)).toThrow(
+      /requires numeric operands/i,
+    );
   });
 
   it('parses function calls against the hard-coded registry and evaluates nested arguments', () => {
     const ctx = testCtx();
     expect(evaluateTest('SqRoot(9)', ctx, ctx.page.fields)).toBe(3);
-    expect(evaluateTest("StrFormat('{0} {1}', firstname, lastname)", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
-    expect(evaluateTest('GetTime()', ctx, ctx.page.fields, {now: () => new Date(123456)})).toBe(123456);
-    expect(evaluateTest("FirstCtx(options, 'id')", { options: [{ id: 'first' }, { id: 'second' }] }, { options: [{ id: 'first' }, { id: 'second' }] })).toBe('first');
-    expect(evaluateTest("FirstCtx(options, 'value')", { options: [{ value: 'protocrm' }] }, { options: [{ value: 'protocrm' }] })).toBe('protocrm');
+    expect(evaluateTest("StrFormat('{0} {1}', firstname, lastname)", ctx, ctx.page.fields)).toBe(
+      'Yiannis Manatos',
+    );
+    expect(evaluateTest('GetTime()', ctx, ctx.page.fields, { now: () => new Date(123456) })).toBe(
+      123456,
+    );
+    expect(
+      evaluateTest(
+        "FirstCtx(options, 'id')",
+        { options: [{ id: 'first' }, { id: 'second' }] },
+        { options: [{ id: 'first' }, { id: 'second' }] },
+      ),
+    ).toBe('first');
+    expect(
+      evaluateTest(
+        "FirstCtx(options, 'value')",
+        { options: [{ value: 'protocrm' }] },
+        { options: [{ value: 'protocrm' }] },
+      ),
+    ).toBe('protocrm');
     expect(evaluateTest("FirstCtx(options, 'id')", { options: [] }, { options: [] })).toBeNull();
-    expect(evaluateTest('CurrentDay()', ctx, ctx.page.fields, {now: () => new Date(2026, 7, 31, 15, 45)})).toBe('2026-08-31T00:00');
+    expect(
+      evaluateTest('CurrentDay()', ctx, ctx.page.fields, {
+        now: () => new Date(2026, 7, 31, 15, 45),
+      }),
+    ).toBe('2026-08-31T00:00');
     expect(() => compileExpression('MissingFunction(1)')).toThrow(ExpressionParseError);
     expect(() => compileExpression('SqRoot()')).toThrow(ExpressionParseError);
     expect(() => compileExpression("SqRoot('x')")).toThrow(ExpressionParseError);
@@ -308,12 +344,16 @@ describe('ManatOS expression parser/evaluator', () => {
     const compiled = compileExpression('future.page.value + 1');
     const ctx = testCtx();
     expect(compiled.ast.kind).toBe('binary');
-    expect(() => evaluateTest(compiled.source, ctx, ctx.page.fields)).toThrow(/variable not found/i);
+    expect(() => evaluateTest(compiled.source, ctx, ctx.page.fields)).toThrow(
+      /variable not found/i,
+    );
   });
 
   it('resolves lexical variables from the current ctx node and explicit ctx paths from root', () => {
     const ctx = testCtx();
-    expect(evaluateTest("firstname + ' ' + lastname", ctx, ctx.page.fields)).toBe('Yiannis Manatos');
+    expect(evaluateTest("firstname + ' ' + lastname", ctx, ctx.page.fields)).toBe(
+      'Yiannis Manatos',
+    );
     expect(evaluateTest('ctx.page.fields.amount.value * 2', ctx, ctx.page.fields)).toBe(24);
   });
 
@@ -338,24 +378,30 @@ describe('ManatOS expression parser/evaluator', () => {
     };
     const entry = ctx.page.page;
     expect(evaluateTest('ctx.company.platforms[0].name', ctx, entry)).toBe('ManatOS CRM Platform');
-    expect(evaluateTest('ctx.company.platforms.protocrm.name', ctx, entry)).toBe('ManatOS CRM Platform');
+    expect(evaluateTest('ctx.company.platforms.protocrm.name', ctx, entry)).toBe(
+      'ManatOS CRM Platform',
+    );
     expect(evaluateTest('entry.emailAddresses[1].address', ctx, entry)).toBe('second@example.com');
-    expect(evaluateTest("entry.emailAddresses['mail-b'].address", ctx, entry)).toBe('second@example.com');
+    expect(evaluateTest("entry.emailAddresses['mail-b'].address", ctx, entry)).toBe(
+      'second@example.com',
+    );
     expect(evaluateTest('entry.telephoneNumbers[1].fullNumber', ctx, entry)).toBe('+302222222222');
-    expect(evaluateTest("entry.telephoneNumbers['tel-b'].fullNumber", ctx, entry)).toBe('+302222222222');
+    expect(evaluateTest("entry.telephoneNumbers['tel-b'].fullNumber", ctx, entry)).toBe(
+      '+302222222222',
+    );
   });
 
   it('evaluates the SysUser Full name expression against camelCase page fields', () => {
     const ctx = {
       page: {
         fields: {
-          firstName: {value: 'Yiannis'},
-          lastName: {value: 'Manatos'},
+          firstName: { value: 'Yiannis' },
+          lastName: { value: 'Manatos' },
         },
       },
     };
     const fullName = calculatedContextField("firstName + ' ' + lastName");
-    ctx.page.fields = {...ctx.page.fields, fullName};
+    ctx.page.fields = { ...ctx.page.fields, fullName };
 
     expect(evaluateTest('fullName', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
   });
@@ -363,7 +409,7 @@ describe('ManatOS expression parser/evaluator', () => {
   it('parses calculated fields when declared but resolves fresh variable values only when read', () => {
     const ctx = testCtx();
     const fullName = calculatedContextField("firstname + ' ' + lastname");
-    ctx.page.fields = {...ctx.page.fields, fullname: fullName};
+    ctx.page.fields = { ...ctx.page.fields, fullname: fullName };
 
     expect(fullName.ast.kind).toBe('binary');
     expect(evaluateTest('fullname', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
@@ -376,18 +422,18 @@ describe('ManatOS expression parser/evaluator', () => {
   it('memoizes repeated calculated-field reads only inside one evaluation cycle', () => {
     let tick = 0;
     const now = () => new Date(++tick);
-    const ctx = {fields: {b: calculatedContextField('GetTime()')}};
-    expect(evaluateTest('b + b', ctx, ctx.fields, {now})).toBe(2);
+    const ctx = { fields: { b: calculatedContextField('GetTime()') } };
+    expect(evaluateTest('b + b', ctx, ctx.fields, { now })).toBe(2);
     expect(tick).toBe(1);
-    expect(evaluateTest('b + b', ctx, ctx.fields, {now})).toBe(4);
+    expect(evaluateTest('b + b', ctx, ctx.fields, { now })).toBe(4);
     expect(tick).toBe(2);
   });
 
   it('allows cyclical calculated fields and terminates only the repeated active branch', () => {
     const ctx = {
       fields: {
-        a: calculatedContextField('b - 1', {value: 10}),
-        b: calculatedContextField('a + 1', {value: 11}),
+        a: calculatedContextField('b - 1', { value: 10 }),
+        b: calculatedContextField('a + 1', { value: 11 }),
       },
     };
 
@@ -397,9 +443,11 @@ describe('ManatOS expression parser/evaluator', () => {
 
   it('reports timestamped parser/evaluator diagnostics with caller and actual context path', () => {
     const diagnostics: any[] = [];
-    expect(() => compileExpression('2 + )', {
-      diagnosticSink: (diagnostic) => diagnostics.push(diagnostic),
-    })).toThrow(ExpressionParseError);
+    expect(() =>
+      compileExpression('2 + )', {
+        diagnosticSink: (diagnostic) => diagnostics.push(diagnostic),
+      }),
+    ).toThrow(ExpressionParseError);
     expect(diagnostics[0]?.phase).toBe('parse');
     expect(Number.isNaN(Date.parse(diagnostics[0]?.timestamp))).toBe(false);
 
@@ -410,13 +458,11 @@ describe('ManatOS expression parser/evaluator', () => {
       targetPath: 'ctx.page.fields.fullName',
       purpose: 'diagnostic provenance test',
     };
-    expect(() => evaluateExpression(
-      'missing + 1',
-      ctx,
-      ctx.page.fields,
-      caller,
-      {diagnosticSink: (diagnostic) => diagnostics.push(diagnostic)},
-    )).toThrow(ExpressionEvaluationError);
+    expect(() =>
+      evaluateExpression('missing + 1', ctx, ctx.page.fields, caller, {
+        diagnosticSink: (diagnostic) => diagnostics.push(diagnostic),
+      }),
+    ).toThrow(ExpressionEvaluationError);
 
     const diagnostic = diagnostics.find((item) => item.phase === 'evaluate');
     expect(diagnostic?.caller).toEqual(caller);
@@ -435,17 +481,19 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
 
-    expect(() => evaluateExpression(
-      'a',
-      ctx,
-      ctx.fields,
-      {
-        source: 'renderer',
-        targetPath: 'ctx.fields.a',
-        purpose: 'nested provenance test',
-      },
-      {diagnosticSink: (diagnostic) => diagnostics.push(diagnostic)},
-    )).toThrow(ExpressionEvaluationError);
+    expect(() =>
+      evaluateExpression(
+        'a',
+        ctx,
+        ctx.fields,
+        {
+          source: 'renderer',
+          targetPath: 'ctx.fields.a',
+          purpose: 'nested provenance test',
+        },
+        { diagnosticSink: (diagnostic) => diagnostics.push(diagnostic) },
+      ),
+    ).toThrow(ExpressionEvaluationError);
 
     const diagnostic = diagnostics.find((item) => item.phase === 'evaluate');
     expect(diagnostic?.evaluationChain).toEqual(['ctx.fields.a', 'ctx.fields.b']);
@@ -464,5 +512,4 @@ describe('ManatOS expression parser/evaluator', () => {
       ),
     ).toBe('Provider email verified');
   });
-
 });

@@ -23,16 +23,34 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
     ...commonSysBOFields,
 
     fullName: {
-      key: 'fullName', label: 'Full name', type: 'string', order: 90, readOnly: true,
-      calculation: { expression: "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName" },
+      key: 'fullName',
+      label: 'Full name',
+      type: 'string',
+      order: 90,
+      readOnly: true,
+      calculation: {
+        expression:
+          "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName",
+      },
     },
     emailVerificationStatus: {
-      key: 'emailVerificationStatus', label: 'Email verification', type: 'string', order: 33, readOnly: true,
+      key: 'emailVerificationStatus',
+      label: 'Email verification',
+      type: 'string',
+      order: 33,
+      readOnly: true,
       calculation: { expression: "emailVerified ? 'Verified' : 'Not verified'" },
     },
     localPasswordStatus: {
-      key: 'localPasswordStatus', label: 'Local password', type: 'string', order: 51, readOnly: true,
-      calculation: { expression: "mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'" },
+      key: 'localPasswordStatus',
+      label: 'Local password',
+      type: 'string',
+      order: 51,
+      readOnly: true,
+      calculation: {
+        expression:
+          "mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'",
+      },
     },
 
     /*
@@ -229,8 +247,14 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
   fieldDefinition: {
     ...commonSysBOFields,
     providerEmailVerificationStatus: {
-      key: 'providerEmailVerificationStatus', label: 'Provider email verification', type: 'string', order: 61, readOnly: true,
-      calculation: { expression: "emailVerified ? 'Provider email verified' : 'Provider email not verified'" },
+      key: 'providerEmailVerificationStatus',
+      label: 'Provider email verification',
+      type: 'string',
+      order: 61,
+      readOnly: true,
+      calculation: {
+        expression: "emailVerified ? 'Provider email verified' : 'Provider email not verified'",
+      },
     },
     userId: {
       key: 'userId',

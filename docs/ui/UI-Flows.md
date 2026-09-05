@@ -243,7 +243,6 @@ Two current examples deliberately share this flow:
 
 The selector reuses ordinary list toolbar/filter/header/paging components. Selection eligibility and result meaning remain caller-owned. Presentation policy is evaluator-driven from the same `callingParams` visible in CTX: Organization currently requests the subdued workspace treatment, while reference-field invocation requests the entry-oriented treatment.
 
-
 ## 6. Principal reference recalculation flow
 
 Principals provide the strongest current example of direct and calculated references sharing one presentation pipeline.

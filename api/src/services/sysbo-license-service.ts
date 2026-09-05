@@ -76,9 +76,8 @@ export class SysBOLicenseService extends GenericSysBOService<SysBOLicense> {
     }
 
     const platformId = changes.platformId ?? existing.platformId;
-    const applicationId = changes.applicationId !== undefined
-      ? changes.applicationId
-      : existing.applicationId;
+    const applicationId =
+      changes.applicationId !== undefined ? changes.applicationId : existing.applicationId;
 
     const platform = resolvePlatform(MANATOS_COMPANY, platformId);
     if (platform.id !== platformId) {

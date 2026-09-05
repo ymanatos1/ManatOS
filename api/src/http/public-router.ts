@@ -23,14 +23,15 @@ export function createPublicRouter(
       server: { alive: true, implementationVersion: API_IMPLEMENTATION_VERSION },
       api: { version: API_VERSION },
       ui: {
-        pageSizeOptions: (await value('UI_PAGE_SIZE_OPTIONS') ?? '2,5,10,20,50,100')
+        pageSizeOptions: ((await value('UI_PAGE_SIZE_OPTIONS')) ?? '2,5,10,20,50,100')
           .split(',')
           .map(Number)
           .filter((n) => Number.isInteger(n) && n > 0),
-        defaultPageSize: Number(await value('UI_DEFAULT_PAGE_SIZE') ?? 10),
-        showTechnicalErrorDetails: (await value('SHOW_TECHNICAL_ERROR_DETAILS') ?? 'false') === 'true',
-        sessionErrorLogMaxEntries: Number(await value('SESSION_ERROR_LOG_MAX_ENTRIES') ?? 20),
-        donationsShow: (await value('DONATIONS_SHOW') ?? 'false') === 'true',
+        defaultPageSize: Number((await value('UI_DEFAULT_PAGE_SIZE')) ?? 10),
+        showTechnicalErrorDetails:
+          ((await value('SHOW_TECHNICAL_ERROR_DETAILS')) ?? 'false') === 'true',
+        sessionErrorLogMaxEntries: Number((await value('SESSION_ERROR_LOG_MAX_ENTRIES')) ?? 20),
+        donationsShow: ((await value('DONATIONS_SHOW')) ?? 'false') === 'true',
       },
     });
   });

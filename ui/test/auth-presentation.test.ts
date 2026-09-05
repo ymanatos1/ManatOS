@@ -8,7 +8,6 @@ import { describe, expect, it } from 'vitest';
 
 import { popupContent } from '../src/presentation/popup-content.js';
 
-
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const authModalsView = resolve(testDirectory, '../views/popups/auth/auth-modals.ejs');
 const externalLinkView = resolve(testDirectory, '../views/pages/external-link.ejs');
@@ -89,7 +88,9 @@ describe('authentication presentation', () => {
     expect($('#signInModal .auth-entry-illustration.is-signin').length).toBe(1);
     expect($('#signInModal .modal-subtitle').text().trim()).toBe('Choose how you want to login.');
     expect($('#signInCredentialsHeading').text().trim()).toContain('Your credentials');
-    const signInParagraphs = $('#signInModal .auth-entry-copy p').map((_index, element) => $(element).text().trim()).get();
+    const signInParagraphs = $('#signInModal .auth-entry-copy p')
+      .map((_index, element) => $(element).text().trim())
+      .get();
     expect(signInParagraphs).toEqual([
       'Continue with a connected external provider or use your user name/email and password.',
       'Either option brings you securely back to the same account.',
@@ -98,7 +99,9 @@ describe('authentication presentation', () => {
 
     expect($('#signUpMethodModal .auth-entry-copy h3').text().trim()).toBe('Welcome!');
     expect($('#signUpMethodModal .auth-entry-illustration.is-register').length).toBe(1);
-    expect($('#signUpMethodModal .modal-subtitle').text().trim()).toBe('Choose how you want to join us.');
+    expect($('#signUpMethodModal .modal-subtitle').text().trim()).toBe(
+      'Choose how you want to join us.',
+    );
     expect($('#registerEmailHeading').text().trim()).toContain('Your account');
     const createAccountParagraphs = $('#signUpMethodModal .auth-entry-copy p')
       .map((_index, element) => $(element).text().trim())
@@ -190,7 +193,9 @@ describe('authentication presentation', () => {
     expect(modal.find('.auth-entry-illustration.is-password').length).toBe(1);
     expect(modal.find('.auth-entry-copy h3').text().trim()).toBe('Recover access to your account');
     expect(modal.find('.auth-entry-copy p').length).toBe(2);
-    expect(modal.find('.auth-entry-copy p').eq(0).text().trim()).toBe('Enter your email address or user name.');
+    expect(modal.find('.auth-entry-copy p').eq(0).text().trim()).toBe(
+      'Enter your email address or user name.',
+    );
     expect(modal.find('#passwordRequestIdentity').length).toBe(1);
     expect(modal.find('#passwordRequestIdentity').is('[data-recovery-identity]')).toBe(true);
     expect(modal.find('[data-recovery-submit]').is('[disabled]')).toBe(true);
@@ -282,16 +287,26 @@ describe('authentication presentation', () => {
   });
 });
 
-
 describe('external registration user-name suggestion', () => {
   it('uses a provider display name as a normalized, uniqueness-checked suggestion', async () => {
-    const routeSource = await readFile(resolve(testDirectory, '../src/routes/auth/external-account-router.ts'), 'utf8');
-    const sharedSource = await readFile(resolve(testDirectory, '../src/routes/auth/shared.ts'), 'utf8');
-    const viewSource = await readFile(resolve(testDirectory, '../views/pages/external-registration.ejs'), 'utf8');
+    const routeSource = await readFile(
+      resolve(testDirectory, '../src/routes/auth/external-account-router.ts'),
+      'utf8',
+    );
+    const sharedSource = await readFile(
+      resolve(testDirectory, '../src/routes/auth/shared.ts'),
+      'utf8',
+    );
+    const viewSource = await readFile(
+      resolve(testDirectory, '../views/pages/external-registration.ejs'),
+      'utf8',
+    );
 
     expect(routeSource).toContain('suggestedUserName: await suggestExternalUserName(profile)');
     expect(sharedSource).toContain('profile.displayName');
     expect(sharedSource).toContain('if (!(await lookup(candidate))) return candidate');
-    expect(viewSource).toContain("profile.userName || (typeof suggestedUserName !== 'undefined' ? suggestedUserName : '')");
+    expect(viewSource).toContain(
+      "profile.userName || (typeof suggestedUserName !== 'undefined' ? suggestedUserName : '')",
+    );
   });
 });

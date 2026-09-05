@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
 import { popupContent } from './popup-content.js';
-import { buildCalculatedContextDebuggingRows, buildMetadataDebuggingModel } from './metadata-debugging-model.js';
+import {
+  buildCalculatedContextDebuggingRows,
+  buildMetadataDebuggingModel,
+} from './metadata-debugging-model.js';
 import {
   formatMetadataValue,
   metadataOptionItemForField,
@@ -38,18 +41,12 @@ const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const uiRoot = resolve(moduleDirectory, '../..');
 const viewsDirectory = resolve(uiRoot, 'views');
 
-
-
 // Changes on every UI-server process start. Browser debugger state is keyed by
 // this value so normal page reloads preserve state, while a ManatOS restart
 // deliberately starts a fresh debugging session.
 const uiBootId = randomUUID();
 
-export async function renderPage(
-  res: Response,
-  view: string,
-  model: Record<string, unknown> = {},
-) {
+export async function renderPage(res: Response, view: string, model: Record<string, unknown> = {}) {
   /*
    * Give the merged model an explicit open shape. Express locals are broadly
    * typed and popupContent is intentionally narrow; without this annotation
@@ -64,31 +61,36 @@ export async function renderPage(
   // Every rendered page receives a page scope. Routes with richer semantics
   // attach their own branch first; ordinary pages receive a neutral page scope.
   const baseCtx = viewModel.ctx as ManatOSContext | undefined;
-  const ctx = baseCtx && !baseCtx.page
-    ? setPageContext(
-        baseCtx,
-        pageContextNode(
-          'page',
-          'page',
-          'none',
-          contextFields({
-            view,
-            title: typeof viewModel.title === 'string' ? viewModel.title : null,
-          }),
-        ),
-      )
-    : baseCtx;
+  const ctx =
+    baseCtx && !baseCtx.page
+      ? setPageContext(
+          baseCtx,
+          pageContextNode(
+            'page',
+            'page',
+            'none',
+            contextFields({
+              view,
+              title: typeof viewModel.title === 'string' ? viewModel.title : null,
+            }),
+          ),
+        )
+      : baseCtx;
 
   // EJS convenience cursor only. The canonical structure remains ctx.page.page...
   const ctxPage = ctx ? currentPageContext(ctx) : null;
 
+  const appRuntime = viewModel.app as
+    | {
+        scopes?: { request?: { requestId?: unknown } };
+      }
+    | undefined;
   const requestId =
-    typeof (viewModel.app as any)?.scopes?.request?.requestId === 'string'
-      ? (viewModel.app as any).scopes.request.requestId as string
+    typeof appRuntime?.scopes?.request?.requestId === 'string'
+      ? appRuntime.scopes.request.requestId
       : undefined;
   const evaluationCaller = (caller: ExpressionEvaluationCaller): ExpressionEvaluationCaller =>
     requestId ? { ...caller, requestId } : caller;
-
 
   // Render-time CTX/evaluator diagnostics are both logged server-side and
   // carried once into the rendered page. The browser Debug menu may surface
@@ -115,9 +117,14 @@ export async function renderPage(
       const calculated = field as ManatOSCalculatedContextField;
       try {
         const fieldsPath = contextPathOf(ctx, ctxPage.fields) ?? 'ctx.page.fields';
-        if (expressionCapabilities(calculated.ast).includes('entityResolver')) return calculated.value;
+        if (expressionCapabilities(calculated.ast).includes('entityResolver'))
+          return calculated.value;
         return evaluateCompiledExpression(
-          { source: calculated.expression, ast: calculated.ast, requiredCapabilities: expressionCapabilities(calculated.ast) },
+          {
+            source: calculated.expression,
+            ast: calculated.ast,
+            requiredCapabilities: expressionCapabilities(calculated.ast),
+          },
           ctx,
           ctxPage.fields,
           evaluationCaller({
@@ -146,9 +153,14 @@ export async function renderPage(
       const calculated = field as ManatOSCalculatedContextField;
       try {
         const fieldsPath = contextPathOf(ctx, ctx.user?.fields ?? null) ?? 'ctx.user.fields';
-        if (expressionCapabilities(calculated.ast).includes('entityResolver')) return calculated.value;
+        if (expressionCapabilities(calculated.ast).includes('entityResolver'))
+          return calculated.value;
         return evaluateCompiledExpression(
-          { source: calculated.expression, ast: calculated.ast, requiredCapabilities: expressionCapabilities(calculated.ast) },
+          {
+            source: calculated.expression,
+            ast: calculated.ast,
+            requiredCapabilities: expressionCapabilities(calculated.ast),
+          },
           ctx,
           ctx.user?.fields ?? null,
           evaluationCaller({
@@ -166,8 +178,6 @@ export async function renderPage(
     return field.value;
   };
 
-
-
   /**
    * Generic expression accessor for presentation metadata whose current scope
    * is not a page field collection (for example a related-record row). The
@@ -184,20 +194,13 @@ export async function renderPage(
   ): unknown => {
     if (!ctx) return undefined;
     try {
-      return evaluateExpression(
-        expression,
-        ctx,
-        currentCtxNode,
-        evaluationCaller(caller),
-        {
-          diagnosticSink: recordDiagnostic,
-        },
-      );
+      return evaluateExpression(expression, ctx, currentCtxNode, evaluationCaller(caller), {
+        diagnosticSink: recordDiagnostic,
+      });
     } catch {
       return undefined;
     }
   };
-
 
   /**
    * Resolve one record's canonical entry presentation at the rendering boundary.
@@ -224,7 +227,8 @@ export async function renderPage(
 
   /** Return one current UI-metadata related-collection declaration, when any. */
   const relatedCollectionMetadataFor = (ownerEntityKey: string, collectionKey: string) =>
-    allSysBOUIMetadata[ownerEntityKey as keyof typeof allSysBOUIMetadata]?.record.relatedCollections?.[collectionKey] ?? null;
+    allSysBOUIMetadata[ownerEntityKey as keyof typeof allSysBOUIMetadata]?.record
+      .relatedCollections?.[collectionKey] ?? null;
 
   // Compile reusable UI expressions at the rendering boundary. Browser components
   // receive canonical ASTs and never reparse expression source strings.

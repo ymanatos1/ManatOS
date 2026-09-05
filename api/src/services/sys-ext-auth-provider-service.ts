@@ -89,7 +89,10 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
    * stored/verified commands so the secret can be encrypted immediately and
    * never appear in normal SysBO CRUD responses.
    */
-  async createProvider(input: SaveSysBOExtAuthProviderInput, actor: AuditActor): Promise<SysBOExtAuthProvider> {
+  async createProvider(
+    input: SaveSysBOExtAuthProviderInput,
+    actor: AuditActor,
+  ): Promise<SysBOExtAuthProvider> {
     const provider = parseProvider(input.provider);
 
     if (await this.repository.findByUnique('provider', provider)) {
@@ -128,14 +131,19 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
    * generic CRUD; the trusted internal credential commands own encryption and
    * verification-state transitions.
    */
-  async updateProvider(id: string, input: SaveSysBOExtAuthProviderInput, actor: AuditActor): Promise<SysBOExtAuthProvider> {
+  async updateProvider(
+    id: string,
+    input: SaveSysBOExtAuthProviderInput,
+    actor: AuditActor,
+  ): Promise<SysBOExtAuthProvider> {
     const existing = await this.get(id);
 
     if (!existing) {
       throw new ValidationAppError(`SysBOExtAuthProvider '${id}' was not found.`);
     }
 
-    const provider = input.provider === undefined ? existing.provider : parseProvider(input.provider);
+    const provider =
+      input.provider === undefined ? existing.provider : parseProvider(input.provider);
 
     if (provider !== existing.provider) {
       throw new ValidationAppError('The provider type cannot be changed after creation.');
@@ -187,7 +195,9 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
       }
 
       if (existing.provider !== provider) {
-        throw new ValidationAppError('The tested provider does not match the existing provider record.');
+        throw new ValidationAppError(
+          'The tested provider does not match the existing provider record.',
+        );
       }
 
       return this.update(
@@ -200,7 +210,7 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
           clientSecretEncrypted: this.encryption.encrypt(clientSecret),
           secretUpdatedAt: verifiedAt,
           credentialsVerified: true,
-        credentialsVerifiedAt: verifiedAt,
+          credentialsVerifiedAt: verifiedAt,
           callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
           ...(provider === SysBOExtAuthProviderType.Microsoft
             ? { tenant: normalizeMicrosoftTenant(input.tenant ?? existing.tenant) }
@@ -227,7 +237,7 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
         clientSecretEncrypted: this.encryption.encrypt(clientSecret),
         secretUpdatedAt: verifiedAt,
         credentialsVerified: true,
-          credentialsVerifiedAt: verifiedAt,
+        credentialsVerifiedAt: verifiedAt,
         callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
         ...(provider === SysBOExtAuthProviderType.Microsoft
           ? { tenant: normalizeMicrosoftTenant(input.tenant) }
@@ -278,7 +288,7 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
           clientSecretEncrypted: this.encryption.encrypt(clientSecret),
           secretUpdatedAt: updatedAt,
           credentialsVerified: false,
-        credentialsVerifiedAt: null,
+          credentialsVerifiedAt: null,
           callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
           ...(provider === SysBOExtAuthProviderType.Microsoft
             ? { tenant: normalizeMicrosoftTenant(input.tenant ?? existing.tenant) }
@@ -305,7 +315,7 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
         clientSecretEncrypted: this.encryption.encrypt(clientSecret),
         secretUpdatedAt: updatedAt,
         credentialsVerified: false,
-          credentialsVerifiedAt: null,
+        credentialsVerifiedAt: null,
         callbackPath: providerCallbackPath(input.callbackPath, definition.callbackPath),
         ...(provider === SysBOExtAuthProviderType.Microsoft
           ? { tenant: normalizeMicrosoftTenant(input.tenant) }
@@ -323,8 +333,15 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
   async storedCredentialMaterial(id: string): Promise<StoredExternalAuthCredentialMaterial> {
     const existing = await this.get(id);
 
-    if (!existing || !existing.clientId.trim() || !existing.clientSecretEncrypted || !existing.secretUpdatedAt) {
-      throw new ValidationAppError('This provider does not have a complete stored credential pair.');
+    if (
+      !existing ||
+      !existing.clientId.trim() ||
+      !existing.clientSecretEncrypted ||
+      !existing.secretUpdatedAt
+    ) {
+      throw new ValidationAppError(
+        'This provider does not have a complete stored credential pair.',
+      );
     }
 
     return {
@@ -357,7 +374,10 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
       throw new ValidationAppError('The stored provider credentials are no longer available.');
     }
 
-    if (existing.clientId !== expectedClientId || existing.secretUpdatedAt !== expectedSecretUpdatedAt) {
+    if (
+      existing.clientId !== expectedClientId ||
+      existing.secretUpdatedAt !== expectedSecretUpdatedAt
+    ) {
       throw new ConflictError(
         'EXT_AUTH_PROVIDER_CREDENTIALS_CHANGED',
         'The provider credentials changed while verification was in progress.',
@@ -388,7 +408,7 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
         clientSecretEncrypted: null,
         secretUpdatedAt: null,
         credentialsVerified: false,
-          credentialsVerifiedAt: null,
+        credentialsVerifiedAt: null,
       },
       actor,
     );
@@ -456,7 +476,12 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
 }
 
 function credentialsReadyForRuntime(item: SysBOExtAuthProvider): boolean {
-  if (!item.credentialsVerified || !item.clientId.trim() || !item.clientSecretEncrypted || !item.credentialsVerifiedAt) {
+  if (
+    !item.credentialsVerified ||
+    !item.clientId.trim() ||
+    !item.clientSecretEncrypted ||
+    !item.credentialsVerifiedAt
+  ) {
     return false;
   }
 
@@ -477,10 +502,14 @@ function rejectCredentialChangeAgainstExisting(
   input: SaveSysBOExtAuthProviderInput,
   existing: SysBOExtAuthProvider,
 ): void {
-  const suppliedClientId = input.clientId === undefined ? undefined : optionalText(input.clientId) ?? '';
+  const suppliedClientId =
+    input.clientId === undefined ? undefined : (optionalText(input.clientId) ?? '');
   const suppliedSecret = optionalText(input.clientSecret);
 
-  if ((suppliedClientId !== undefined && suppliedClientId !== existing.clientId) || suppliedSecret) {
+  if (
+    (suppliedClientId !== undefined && suppliedClientId !== existing.clientId) ||
+    suppliedSecret
+  ) {
     throw new ValidationAppError(
       'Client ID and Client secret must be changed and verified together.',
       'Choose Change credentials, provide both values, and complete Test credentials before saving.',
@@ -489,7 +518,9 @@ function rejectCredentialChangeAgainstExisting(
 }
 
 function parseProvider(value: unknown): SysBOExtAuthProviderType {
-  const normalized = String(value ?? '').trim().toLowerCase();
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
 
   if (!Object.values(SysBOExtAuthProviderType).includes(normalized as SysBOExtAuthProviderType)) {
     throw new ValidationAppError(`Unsupported external authentication provider '${normalized}'.`);

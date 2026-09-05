@@ -39,13 +39,17 @@ entry?: {
 Each `EntryValueSource` is one of:
 
 ```ts
-{ field: 'fieldName' }
+{
+  field: 'fieldName';
+}
 ```
 
 or:
 
 ```ts
-{ expression: "ManatOS expression" }
+{
+  expression: 'ManatOS expression';
+}
 ```
 
 ### 2.1 Formula-first rule
@@ -56,7 +60,9 @@ Preferred:
 
 ```ts
 entry: {
-  name: { expression: "firstName + ' ' + lastName" }
+  name: {
+    expression: "firstName + ' ' + lastName";
+  }
 }
 ```
 
@@ -65,7 +71,9 @@ Avoid inventing secondary concatenation metadata such as `fields: [...]` plus `s
 A simple expression such as:
 
 ```ts
-type: { expression: 'principalType' }
+type: {
+  expression: 'principalType';
+}
 ```
 
 is treated as a direct field expression for metadata discovery, so enum/reference metadata can still provide type captions, icons and traits.
@@ -254,7 +262,6 @@ This is especially important for aggregate workspaces: a hierarchy can contain `
 `entry.type` declares semantic entry type independently of a physical field name. For example, `sys-ext-auth-providers` declares `provider` as its entry type. Because `provider` is an enum whose canonical option items carry Microsoft/Google/Facebook/GitHub icons, the generic entry-representation resolver obtains the provider label and icon from that metadata. UI metadata separately chooses `entry.icon.mode: 'type'`; the routed entity icon remains the entity's globe icon.
 
 Reference fields use the referenced entity's resolved entry representation when reference data is projected into a list/selector. This allows fields such as Principal parent/root references to show the referenced Principal's semantic type icon without Principal-specific rendering code or additional component API calls.
-
 
 ## Authorization is not entity metadata
 

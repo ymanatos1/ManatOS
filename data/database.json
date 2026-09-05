@@ -501,12 +501,7 @@
       "group": "Errors & diagnostics",
       "description": "Diagnostic detail returned by API failures.",
       "valueType": "enum",
-      "allowedValues": [
-        "none",
-        "basic",
-        "operations",
-        "full"
-      ],
+      "allowedValues": ["none", "basic", "operations", "full"],
       "defaultValue": "basic",
       "restartRequired": false,
       "editable": true,
@@ -523,13 +518,7 @@
       "group": "Logging",
       "description": "Minimum severity written to the API console.",
       "valueType": "enum",
-      "allowedValues": [
-        "debug",
-        "info",
-        "warn",
-        "error",
-        "fatal"
-      ],
+      "allowedValues": ["debug", "info", "warn", "error", "fatal"],
       "defaultValue": "info",
       "restartRequired": false,
       "editable": true,
@@ -708,10 +697,7 @@
       "group": "#16 SysBO UI migration",
       "description": "Temporary Users UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
       "valueType": "enum",
-      "allowedValues": [
-        "CurrentEJS",
-        "MetadataDriven"
-      ],
+      "allowedValues": ["CurrentEJS", "MetadataDriven"],
       "defaultValue": "CurrentEJS",
       "restartRequired": false,
       "editable": true,
@@ -729,10 +715,7 @@
       "group": "#16 SysBO UI migration",
       "description": "Temporary Principals UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
       "valueType": "enum",
-      "allowedValues": [
-        "CurrentEJS",
-        "MetadataDriven"
-      ],
+      "allowedValues": ["CurrentEJS", "MetadataDriven"],
       "defaultValue": "CurrentEJS",
       "restartRequired": false,
       "editable": true,
@@ -750,10 +733,7 @@
       "group": "#16 SysBO UI migration",
       "description": "Temporary Applications UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
       "valueType": "enum",
-      "allowedValues": [
-        "CurrentEJS",
-        "MetadataDriven"
-      ],
+      "allowedValues": ["CurrentEJS", "MetadataDriven"],
       "defaultValue": "CurrentEJS",
       "restartRequired": false,
       "editable": true,
@@ -771,10 +751,7 @@
       "group": "#16 SysBO UI migration",
       "description": "Temporary Licenses UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
       "valueType": "enum",
-      "allowedValues": [
-        "CurrentEJS",
-        "MetadataDriven"
-      ],
+      "allowedValues": ["CurrentEJS", "MetadataDriven"],
       "defaultValue": "CurrentEJS",
       "restartRequired": false,
       "editable": true,
@@ -792,10 +769,7 @@
       "group": "#16 SysBO UI migration",
       "description": "Temporary External authentication providers UI engine selection used while comparing Current EJS with the metadata-driven renderer.",
       "valueType": "enum",
-      "allowedValues": [
-        "CurrentEJS",
-        "MetadataDriven"
-      ],
+      "allowedValues": ["CurrentEJS", "MetadataDriven"],
       "defaultValue": "CurrentEJS",
       "restartRequired": false,
       "editable": true,

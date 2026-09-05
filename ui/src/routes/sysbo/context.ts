@@ -34,21 +34,19 @@ export function applySysBOListContext(
   const ctx = res.locals.ctx as ManatOSContext;
   const { metadata, uiMetadata, items, query, ...pageValues } = values;
 
-  registerContextEntity(
-    ctx,
-    definition.key,
-    metadata ?? definition.boMetadata,
-    uiMetadata,
-  );
+  registerContextEntity(ctx, definition.key, metadata ?? definition.boMetadata, uiMetadata);
 
   const effectiveUI = uiMetadata as SysBOUIMetadata | undefined;
-  const filterFields = effectiveUI?.list?.filterFields
-    ?? [];
-  const safeQuery = query && typeof query === 'object' && !Array.isArray(query)
-    ? query as Readonly<Record<string, unknown>>
-    : {};
+  const filterFields = effectiveUI?.list?.filterFields ?? [];
+  const safeQuery =
+    query && typeof query === 'object' && !Array.isArray(query)
+      ? (query as Readonly<Record<string, unknown>>)
+      : {};
   const safeItems = Array.isArray(items)
-    ? items.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    ? items.filter(
+        (item): item is Readonly<Record<string, unknown>> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+      )
     : [];
   const runtime = pageListRuntimeContext(safeItems, filterFields, safeQuery);
 
@@ -84,19 +82,22 @@ export function applySysBOEntryContext(
   values: Readonly<Record<string, unknown>>,
 ) {
   const ctx = res.locals.ctx as ManatOSContext;
-  const { metadata, uiMetadata, formValues, parentListContext, parentOwnerContext, editingCollections, ...pageValues } = values;
-
-  registerContextEntity(
-    ctx,
-    definition.key,
-    metadata ?? definition.boMetadata,
+  const {
+    metadata,
     uiMetadata,
-  );
+    formValues,
+    parentListContext,
+    parentOwnerContext,
+    editingCollections,
+    ...pageValues
+  } = values;
+
+  registerContextEntity(ctx, definition.key, metadata ?? definition.boMetadata, uiMetadata);
 
   const runtimeEntryValues =
     formValues && typeof formValues === 'object' && !Array.isArray(formValues)
       ? (formValues as Record<string, unknown>)
-      : entry ?? {};
+      : (entry ?? {});
 
   const canonical = (metadata ?? definition.boMetadata) as SysBOMetadata<Record<string, unknown>>;
   const ui = uiMetadata as SysBOUIMetadata | undefined;
@@ -125,10 +126,14 @@ export function applySysBOEntryContext(
    */
   const initialRecordValues: Record<string, unknown> = {
     ...Object.fromEntries(
-      Object.entries(runtimeEntryValues).filter(([key]) => canonical.fieldDefinition[key]?.sensitive !== true),
+      Object.entries(runtimeEntryValues).filter(
+        ([key]) => canonical.fieldDefinition[key]?.sensitive !== true,
+      ),
     ),
-    ...((editingCollections && typeof editingCollections === 'object' && !Array.isArray(editingCollections))
-      ? editingCollections as Record<string, unknown>
+    ...(editingCollections &&
+    typeof editingCollections === 'object' &&
+    !Array.isArray(editingCollections)
+      ? (editingCollections as Record<string, unknown>)
       : {}),
   };
 
@@ -139,9 +144,8 @@ export function applySysBOEntryContext(
       continue;
     }
 
-    const createDefault = mode === 'create'
-      ? ui?.record?.fieldOverrides?.[key]?.createDefaultValue
-      : undefined;
+    const createDefault =
+      mode === 'create' ? ui?.record?.fieldOverrides?.[key]?.createDefaultValue : undefined;
     const staticCreateDefault =
       createDefault === null || ['string', 'number', 'boolean'].includes(typeof createDefault)
         ? createDefault
@@ -159,9 +163,14 @@ export function applySysBOEntryContext(
     }
   }
 
-  const referenceData = pageValues.referenceData && typeof pageValues.referenceData === 'object' && !Array.isArray(pageValues.referenceData)
-    ? pageValues.referenceData as Readonly<Record<string, readonly Readonly<Record<string, unknown>>[]>>
-    : {};
+  const referenceData =
+    pageValues.referenceData &&
+    typeof pageValues.referenceData === 'object' &&
+    !Array.isArray(pageValues.referenceData)
+      ? (pageValues.referenceData as Readonly<
+          Record<string, readonly Readonly<Record<string, unknown>>[]>
+        >)
+      : {};
 
   let entryFields = contextFields(
     {
@@ -183,7 +192,11 @@ export function applySysBOEntryContext(
   if (mode === 'create') {
     for (const [key, override] of Object.entries(ui?.record?.fieldOverrides ?? {})) {
       const dynamicDefault = override?.createDefaultValue;
-      if (!dynamicDefault || typeof dynamicDefault !== 'object' || typeof dynamicDefault.expression !== 'string') {
+      if (
+        !dynamicDefault ||
+        typeof dynamicDefault !== 'object' ||
+        typeof dynamicDefault.expression !== 'string'
+      ) {
         continue;
       }
 
@@ -193,17 +206,12 @@ export function applySysBOEntryContext(
       }
 
       try {
-        initialRecordValues[key] = evaluateExpression(
-          dynamicDefault.expression,
-          ctx,
-          entryFields,
-          {
-            source: 'ui-metadata',
-            sourcePath: `record.fieldOverrides.${key}.createDefaultValue`,
-            targetPath: `ctx.page.page.fields.${key}.value`,
-            purpose: 'resolve metadata-driven create default',
-          },
-        );
+        initialRecordValues[key] = evaluateExpression(dynamicDefault.expression, ctx, entryFields, {
+          source: 'ui-metadata',
+          sourcePath: `record.fieldOverrides.${key}.createDefaultValue`,
+          targetPath: `ctx.page.page.fields.${key}.value`,
+          purpose: 'resolve metadata-driven create default',
+        });
 
         // Later defaults may depend on values resolved earlier in this pass.
         entryFields = contextFields(
@@ -244,8 +252,6 @@ export function applySysBOEntryContext(
     });
   }
 
-
-
   const entryPage = pageContextNode(
     'entry',
     'sysbo-entry',
@@ -255,17 +261,21 @@ export function applySysBOEntryContext(
     pageEntryRuntimeContext(initialRecordValues),
   );
 
-  const parentList = parentListContext && typeof parentListContext === 'object' && !Array.isArray(parentListContext)
-    ? parentListContext as Readonly<Record<string, unknown>>
-    : {};
+  const parentList =
+    parentListContext && typeof parentListContext === 'object' && !Array.isArray(parentListContext)
+      ? (parentListContext as Readonly<Record<string, unknown>>)
+      : {};
   const parentItems = Array.isArray(parentList.items)
-    ? parentList.items.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    ? parentList.items.filter(
+        (item): item is Readonly<Record<string, unknown>> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+      )
     : [];
-  const parentQuery = parentList.query && typeof parentList.query === 'object' && !Array.isArray(parentList.query)
-    ? parentList.query as Readonly<Record<string, unknown>>
-    : {};
-  const parentFilterFields = ui?.list?.filterFields
-    ?? [];
+  const parentQuery =
+    parentList.query && typeof parentList.query === 'object' && !Array.isArray(parentList.query)
+      ? (parentList.query as Readonly<Record<string, unknown>>)
+      : {};
+  const parentFilterFields = ui?.list?.filterFields ?? [];
 
   /*
    * The entry page is a logical child of the list page, not a replacement for
@@ -274,17 +284,28 @@ export function applySysBOEntryContext(
    * active. The parent is discarded only when navigation leaves this hierarchy.
    */
   let childPage = entryPage;
-  if (parentOwnerContext && typeof parentOwnerContext === 'object' && !Array.isArray(parentOwnerContext)) {
+  if (
+    parentOwnerContext &&
+    typeof parentOwnerContext === 'object' &&
+    !Array.isArray(parentOwnerContext)
+  ) {
     const owner = parentOwnerContext as Readonly<Record<string, unknown>>;
     const ownerEntries = Array.isArray(owner.entries)
-      ? owner.entries.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      ? owner.entries.filter(
+          (item): item is Readonly<Record<string, unknown>> =>
+            Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+        )
       : [];
     const ownerEntriesOriginal = Array.isArray(owner.entriesOriginal)
-      ? owner.entriesOriginal.filter((item): item is Readonly<Record<string, unknown>> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      ? owner.entriesOriginal.filter(
+          (item): item is Readonly<Record<string, unknown>> =>
+            Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+        )
       : [];
-    const ownerFieldValues = owner.fields && typeof owner.fields === 'object' && !Array.isArray(owner.fields)
-      ? owner.fields as Readonly<Record<string, unknown>>
-      : {};
+    const ownerFieldValues =
+      owner.fields && typeof owner.fields === 'object' && !Array.isArray(owner.fields)
+        ? (owner.fields as Readonly<Record<string, unknown>>)
+        : {};
     childPage = pageContextNode(
       String(owner.name ?? 'organization'),
       String(owner.kind ?? 'sysbo-hierarchy'),
@@ -292,7 +313,9 @@ export function applySysBOEntryContext(
       contextFields(ownerFieldValues),
       entryPage,
       {
-        entriesOriginal: Object.freeze(ownerEntriesOriginal.map((item) => Object.freeze({ ...item }))),
+        entriesOriginal: Object.freeze(
+          ownerEntriesOriginal.map((item) => Object.freeze({ ...item })),
+        ),
         entries: Object.freeze(ownerEntries.map((item) => Object.freeze({ ...item }))),
       },
     );
@@ -306,7 +329,9 @@ export function applySysBOEntryContext(
       entity: entityContextName(definition.key),
       ...(parentList.paging !== undefined ? { paging: parentList.paging } : {}),
       ...(parentList.permissions !== undefined ? { permissions: parentList.permissions } : {}),
-      ...(parentList.referenceData !== undefined ? { referenceData: parentList.referenceData } : {}),
+      ...(parentList.referenceData !== undefined
+        ? { referenceData: parentList.referenceData }
+        : {}),
     }),
     childPage,
     pageListRuntimeContext(parentItems, parentFilterFields, parentQuery),

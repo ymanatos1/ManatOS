@@ -67,15 +67,15 @@ It does **not** own concrete type controls, reference/enum icon rendering, field
 
 Form lifecycle behavior is split into focused browser modules. `layout/shell.ejs` loads them explicitly in dependency-safe order.
 
-| Module | Owns | Must not own |
-|---|---|---|
-| `forms/auth.js` | password visibility, optional-local-password UX, password-policy/recovery form behavior | canonical entity-field rendering or CTX evaluation |
-| `forms/entry-state.js` | form baseline, dirty/valid state, unsaved-navigation protection, Save enablement, Close/Cancel semantics, child-editor state | concrete field-type presentation |
-| `forms/entry-field-state.js` | reversible per-field changed decoration from canonical current-vs-baseline values | value calculation or field-type formatting |
-| `forms/entry-save.js` | metadata-entry in-place Save, persisted-record reconciliation into CTX/baselines | business persistence rules or field rendering |
-| `forms/entry-focus.js` | initial editable-field discovery and tab activation | field editability semantics themselves |
-| `forms/configuration.js` | progressive in-place Apply for configuration surfaces | metadata-entry transaction behavior |
-| `components/popup-runtime.js` | generic Bootstrap popup lifecycle: explicit dismissal, workspace centering, focus return, Developer-Tools inspection, and the live `popup.callingParams / presentation / state` CTX contract | popup business actions |
+| Module                        | Owns                                                                                                                                                                                         | Must not own                                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `forms/auth.js`               | password visibility, optional-local-password UX, password-policy/recovery form behavior                                                                                                      | canonical entity-field rendering or CTX evaluation |
+| `forms/entry-state.js`        | form baseline, dirty/valid state, unsaved-navigation protection, Save enablement, Close/Cancel semantics, child-editor state                                                                 | concrete field-type presentation                   |
+| `forms/entry-field-state.js`  | reversible per-field changed decoration from canonical current-vs-baseline values                                                                                                            | value calculation or field-type formatting         |
+| `forms/entry-save.js`         | metadata-entry in-place Save, persisted-record reconciliation into CTX/baselines                                                                                                             | business persistence rules or field rendering      |
+| `forms/entry-focus.js`        | initial editable-field discovery and tab activation                                                                                                                                          | field editability semantics themselves             |
+| `forms/configuration.js`      | progressive in-place Apply for configuration surfaces                                                                                                                                        | metadata-entry transaction behavior                |
+| `components/popup-runtime.js` | generic Bootstrap popup lifecycle: explicit dismissal, workspace centering, focus return, Developer-Tools inspection, and the live `popup.callingParams / presentation / state` CTX contract | popup business actions                             |
 
 ```mermaid
 flowchart LR

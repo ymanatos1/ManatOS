@@ -54,7 +54,12 @@ export class DataStoreEntityResolver implements EntityResolver {
     const record = collection?.get(normalizedId) ?? null;
 
     if (record && this.authorization && this.subject) {
-      await this.authorization.assertCan('read', this.subject, entityKey, record as unknown as SysBOEntity);
+      await this.authorization.assertCan(
+        'read',
+        this.subject,
+        entityKey,
+        record as unknown as SysBOEntity,
+      );
     }
 
     if (!record) {

@@ -59,7 +59,6 @@
   grid-template-areas: 'left workspace details';
 }
 
-
 /* -------------------------------------------------------------------------
  * Development debugger visible
  * ---------------------------------------------------------------------- */
@@ -94,7 +93,6 @@
     var(--manatos-debug-width, 28vw);
   grid-template-areas: 'left workspace details debug';
 }
-
 
 /*
  * Pre-paint debugger restoration.
@@ -496,7 +494,6 @@ body.anonymous .workspace {
   flex: 1 1 auto;
 }
 
-
 .home-hero-lead {
   max-width: 720px;
   margin: 0 0 1.45rem;
@@ -790,7 +787,6 @@ body.anonymous .workspace {
   color: #2e70c4;
   background: #dceaff;
 }
-
 
 /*
  * The Home hero is laid out according to the workspace width after optional
@@ -1123,8 +1119,6 @@ body.anonymous .workspace {
   }
 }
 
-
-
 /* -------------------------------------------------------------------------
    Active workspace navigation
    -------------------------------------------------------------------------
@@ -1155,7 +1149,7 @@ body.anonymous .workspace {
   display: grid;
   place-items: center;
   padding: 1.5rem;
-  background: rgba(0, 0, 0, .28);
+  background: rgba(0, 0, 0, 0.28);
 }
 
 /* =========================================================================
@@ -1192,7 +1186,6 @@ body.anonymous .workspace {
   background: #f8fafc;
   border-left: 1px solid var(--manatos-border);
 }
-
 
 .developer-tools-dock.is-popup-inspection {
   z-index: 1200;

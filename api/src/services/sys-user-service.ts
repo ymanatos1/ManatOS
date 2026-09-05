@@ -148,7 +148,9 @@ export class SysBOUserService extends GenericSysBOService<SysBOUser> {
    *
    * The caller can never choose User/Admin here.
    */
-  async registerGuest(input: Omit<CreateSysBOUserInput, 'role' | 'emailVerified'>): Promise<SysBOUser> {
+  async registerGuest(
+    input: Omit<CreateSysBOUserInput, 'role' | 'emailVerified'>,
+  ): Promise<SysBOUser> {
     return this.createUser(
       {
         ...input,

@@ -38,7 +38,8 @@ export function sanitizeTrafficValue(value: unknown, depth = 0): unknown {
     return value.length > 4000 ? `${value.slice(0, 4000)}…` : value;
   }
   if (value == null || typeof value === 'number' || typeof value === 'boolean') return value;
-  if (Array.isArray(value)) return value.slice(0, 100).map((item) => sanitizeTrafficValue(item, depth + 1));
+  if (Array.isArray(value))
+    return value.slice(0, 100).map((item) => sanitizeTrafficValue(item, depth + 1));
   if (typeof value === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, child] of Object.entries(value as Record<string, unknown>)) {

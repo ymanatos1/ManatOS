@@ -3,13 +3,34 @@ import { describe, expect, it } from 'vitest';
 
 describe('generic related-collection presentation', () => {
   it('resolves canonical row entry presentation at the component/rendering boundary', () => {
-    const view = readFileSync(new URL('../views/components/sysbo/entry/content/related-collections.ejs', import.meta.url), 'utf8');
-    const entryIcons = readFileSync(new URL('../views/components/sysbo/entry/shell/entry-icons.ejs', import.meta.url), 'utf8');
-    const loader = readFileSync(new URL('../src/routes/sysbo/related-collections.ts', import.meta.url), 'utf8');
-    const renderPage = readFileSync(new URL('../src/presentation/render-page.ts', import.meta.url), 'utf8');
-    const identity = readFileSync(new URL('../../shared/src/metadata/ui/identity.ts', import.meta.url), 'utf8');
-    const business = readFileSync(new URL('../../shared/src/metadata/ui/business.ts', import.meta.url), 'utf8');
-    const common = readFileSync(new URL('../../shared/src/metadata/ui/common.ts', import.meta.url), 'utf8');
+    const view = readFileSync(
+      new URL('../views/components/sysbo/entry/content/related-collections.ejs', import.meta.url),
+      'utf8',
+    );
+    const entryIcons = readFileSync(
+      new URL('../views/components/sysbo/entry/shell/entry-icons.ejs', import.meta.url),
+      'utf8',
+    );
+    const loader = readFileSync(
+      new URL('../src/routes/sysbo/related-collections.ts', import.meta.url),
+      'utf8',
+    );
+    const renderPage = readFileSync(
+      new URL('../src/presentation/render-page.ts', import.meta.url),
+      'utf8',
+    );
+    const identity = readFileSync(
+      new URL('../../shared/src/metadata/ui/identity.ts', import.meta.url),
+      'utf8',
+    );
+    const business = readFileSync(
+      new URL('../../shared/src/metadata/ui/business.ts', import.meta.url),
+      'utf8',
+    );
+    const common = readFileSync(
+      new URL('../../shared/src/metadata/ui/common.ts', import.meta.url),
+      'utf8',
+    );
 
     // Routes load domain rows and relationship/reference data only. They must not
     // manufacture presentation properties that metadata + the renderer can derive.
@@ -21,7 +42,9 @@ describe('generic related-collection presentation', () => {
     // entry metadata without any entity-specific route branch.
     expect(renderPage).toContain('const entryRepresentationFor = (');
     expect(renderPage).toContain('resolveEntryRepresentation(');
-    expect(renderPage).toContain('allSysBOUIMetadata[entityKey as keyof typeof allSysBOUIMetadata]');
+    expect(renderPage).toContain(
+      'allSysBOUIMetadata[entityKey as keyof typeof allSysBOUIMetadata]',
+    );
 
     // The common related-collection component owns row-entry icon placement.
     expect(view).toContain('entryRepresentationFor(collection.entityKey, row, relatedRowIcon)');

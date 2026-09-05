@@ -42,9 +42,7 @@ export function entityContextName(sysBOKey: string): string {
   }
 
   const name = parts
-    .map((part, index) =>
-      index === 0 ? part : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`,
-    )
+    .map((part, index) => (index === 0 ? part : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`))
     .join('');
 
   return assertContextIdentifier(name, 'entity');
@@ -103,7 +101,9 @@ export function contextField<T>(
   }
 
   if (metadata?.type === 'reference') {
-    const options = Object.freeze((referenceOptions ?? []).map((option) => Object.freeze({ ...option })));
+    const options = Object.freeze(
+      (referenceOptions ?? []).map((option) => Object.freeze({ ...option })),
+    );
     const selected = options.find((option) => option.id === value) ?? null;
     return {
       value,
@@ -148,7 +148,8 @@ function userContext(
   if (!user) return null;
 
   // passwordHash is intentionally never exposed to the browser/debug context.
-  const { passwordHash: _passwordHash, ...safeUser } = user;
+  const { passwordHash, ...safeUser } = user;
+  void passwordHash;
   const fields = contextFields(safeUser);
   for (const [fieldName, field] of Object.entries(sysBOUsersMetadata.fieldDefinition)) {
     const calculation = field.calculation;
@@ -196,7 +197,6 @@ export function contextPlatformAccess(
   const permission = ctx.user.permissions.platforms[platformId];
   return permission?.capabilities.platformAccess === true;
 }
-
 
 export function createManatOSContext(
   company: CompanyInfo,
@@ -253,7 +253,6 @@ export function createManatOSContext(
     page: null,
   };
 }
-
 
 /**
  * Copy metadata into the runtime CTX registry and precompile every declared
@@ -316,10 +315,7 @@ export function registerContextEntity(
   return entity;
 }
 
-export function setPageContext(
-  ctx: ManatOSContext,
-  page: ManatOSPageContextNode,
-): ManatOSContext {
+export function setPageContext(ctx: ManatOSContext, page: ManatOSPageContextNode): ManatOSContext {
   return { ...ctx, page };
 }
 
@@ -375,29 +371,27 @@ export function pageBreadcrumbItems(ctx: ManatOSContext): ManatOSBreadcrumbItem[
       const entityName = String(node.fields?.entity?.value ?? node.name ?? '');
       activeEntity = ctx.entities[entityName] ?? null;
       const metadata = activeEntity?.metadata as Record<string, unknown> | undefined;
-      const label = typeof metadata?.pluralName === 'string' && metadata.pluralName
-        ? metadata.pluralName
-        : typeof metadata?.name === 'string' && metadata.name
-          ? metadata.name
-          : node.name;
+      const label =
+        typeof metadata?.pluralName === 'string' && metadata.pluralName
+          ? metadata.pluralName
+          : typeof metadata?.name === 'string' && metadata.name
+            ? metadata.name
+            : node.name;
       items.push({
         label,
         href: activeEntity?.key ? `/bo/${encodeURIComponent(activeEntity.key)}` : null,
       });
     } else if (node.kind === 'sysbo-entry' && activeEntity) {
       const metadata = activeEntity.metadata as Record<string, unknown> | undefined;
-      const entityLabel = typeof metadata?.name === 'string' && metadata.name
-        ? metadata.name
-        : activeEntity.key;
-      const primaryField = typeof metadata?.primaryField === 'string'
-        ? metadata.primaryField
-        : null;
+      const entityLabel =
+        typeof metadata?.name === 'string' && metadata.name ? metadata.name : activeEntity.key;
+      const primaryField =
+        typeof metadata?.primaryField === 'string' ? metadata.primaryField : null;
       const current = node.entry ?? node.entryOriginal ?? {};
       const primaryValue = primaryField ? current[primaryField] : null;
       const modeLabel = node.mode === 'create' ? 'Add' : node.mode === 'view' ? 'View' : 'Edit';
-      const suffix = primaryValue != null && String(primaryValue).trim()
-        ? ` - ${String(primaryValue)}`
-        : '';
+      const suffix =
+        primaryValue != null && String(primaryValue).trim() ? ` - ${String(primaryValue)}` : '';
       items.push({ label: `${modeLabel} ${entityLabel}${suffix}`, href: null });
     } else {
       const title = node.fields?.title?.value;
@@ -427,7 +421,14 @@ export function pageContextNode(
     mode,
     fields,
     ...runtime,
-    state: { dirty: false, valid: true, internalEditing: false, internalEditorCount: 0, saving: false, deleting: false },
+    state: {
+      dirty: false,
+      valid: true,
+      internalEditing: false,
+      internalEditorCount: 0,
+      saving: false,
+      deleting: false,
+    },
     page,
   };
 }
@@ -453,9 +454,10 @@ export function pageListRuntimeContext(
     // Every list-like CTX exposes the same exclusion-predicate slot. Normal
     // browse pages usually carry null; selectors/search callers may supply the
     // same canonical formula through the API/storage query contract.
-    listExceptions: typeof query.listExceptions === 'string' && query.listExceptions.trim()
-      ? query.listExceptions.trim()
-      : null,
+    listExceptions:
+      typeof query.listExceptions === 'string' && query.listExceptions.trim()
+        ? query.listExceptions.trim()
+        : null,
   };
 
   const entriesOriginal = Object.freeze(items.map((item) => Object.freeze({ ...item })));

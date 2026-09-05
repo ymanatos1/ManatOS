@@ -54,7 +54,7 @@
   min-height: 0;
   overflow: auto;
   padding: 0.55rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 0.76rem;
   line-height: 1.45;
 }
@@ -73,10 +73,10 @@
 }
 
 .ctx-debug-row:hover {
-  background: rgba(13, 110, 253, 0.10);
+  background: rgba(13, 110, 253, 0.1);
 }
 .ctx-debug-row.is-selected {
-  background: rgba(13, 110, 253, 0.20);
+  background: rgba(13, 110, 253, 0.2);
 }
 
 .ctx-debug-toggle {
@@ -114,7 +114,6 @@
 .ctx-debug-children {
   margin-left: 1rem;
 }
-
 
 /* Compact one-line debugger identity plus debugger-specific command strip. */
 .debug-panel-heading {
@@ -166,7 +165,7 @@
   margin-left: 0.35rem;
   overflow: hidden;
   color: #6c757d;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 0.68rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -269,7 +268,7 @@
 .ctx-debug-property-value {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }
 
 .ctx-debug-property-value.is-link {
@@ -279,7 +278,9 @@
   text-decoration: underline dotted;
   text-underline-offset: 0.12rem;
 }
-.debug-panel { position: sticky; }
+.debug-panel {
+  position: sticky;
+}
 
 /* -------------------------------------------------------------------------
    CTX debugger interaction refinements
@@ -301,7 +302,6 @@
   font-weight: 400;
   letter-spacing: 0;
 }
-
 
 /* [+]/[-] is the sole expansion hit target and is always left-most. */
 .ctx-debug-toggle {
@@ -368,7 +368,7 @@
 /* Parsed expression AST is displayed only in selected calculated-node properties. */
 .ctx-debug-ast-section {
   padding: 0.45rem 0 0.1rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 0.7rem;
 }
 
@@ -427,13 +427,16 @@
 }
 
 /* Compact in-toolbar CTX variable finder. */
-.ctx-debug-find { min-width: 7rem; max-width: 11rem; }
+.ctx-debug-find {
+  min-width: 7rem;
+  max-width: 11rem;
+}
 .ctx-debug-find input {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--bs-border-color);
-  border-radius: .2rem;
-  padding: .12rem .3rem;
+  border-radius: 0.2rem;
+  padding: 0.12rem 0.3rem;
   font: inherit;
   background: var(--bs-body-bg);
   color: var(--bs-body-color);
@@ -462,8 +465,8 @@
   height: 6px;
   cursor: ns-resize;
   border-top: 1px solid #d5dde7;
-  background:
-    linear-gradient(to bottom, transparent 1px, #9aa9bb 1px, #9aa9bb 2px, transparent 2px) center / 2rem 4px no-repeat;
+  background: linear-gradient(to bottom, transparent 1px, #9aa9bb 1px, #9aa9bb 2px, transparent 2px)
+    center / 2rem 4px no-repeat;
 }
 
 .ctx-debug-properties-resize:hover {
@@ -508,7 +511,6 @@
   color: #0d6efd;
   outline: 0;
 }
-
 
 /* AST rows read left-to-right as: value/operator (role) - node type. */
 .ctx-debug-ast-line {
@@ -563,7 +565,6 @@
   font-weight: 700;
 }
 
-
 /* Horizontal debugger resizing from its left edge. */
 .ctx-debug-panel-resize {
   position: absolute;
@@ -583,7 +584,6 @@
 .debug-tool-selection {
   font-weight: 700;
 }
-
 
 .ctx-debug-stats {
   margin-left: auto;
@@ -635,39 +635,135 @@ html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none 
   overflow-wrap: anywhere;
 }
 
-.ctx-debug-expression .debug-expression-field { color: var(--manatos-debug-field); font-weight: 700; }
-.ctx-debug-expression .debug-expression-system { color: var(--manatos-debug-system); font-weight: 600; }
-.ctx-debug-expression .debug-expression-string { color: var(--manatos-debug-string); }
-.ctx-debug-expression .debug-expression-number { color: var(--manatos-debug-number); }
-.ctx-debug-expression .debug-expression-literal { color: var(--manatos-debug-literal); font-weight: 600; }
-.ctx-debug-expression .debug-expression-identifier { color: var(--manatos-debug-identifier); }
-.ctx-debug-expression .debug-expression-operator { color: var(--manatos-debug-operator); }
-.ctx-debug-expression .debug-expression-punctuation { color: var(--manatos-debug-punctuation); }
+.ctx-debug-expression .debug-expression-field {
+  color: var(--manatos-debug-field);
+  font-weight: 700;
+}
+.ctx-debug-expression .debug-expression-system {
+  color: var(--manatos-debug-system);
+  font-weight: 600;
+}
+.ctx-debug-expression .debug-expression-string {
+  color: var(--manatos-debug-string);
+}
+.ctx-debug-expression .debug-expression-number {
+  color: var(--manatos-debug-number);
+}
+.ctx-debug-expression .debug-expression-literal {
+  color: var(--manatos-debug-literal);
+  font-weight: 600;
+}
+.ctx-debug-expression .debug-expression-identifier {
+  color: var(--manatos-debug-identifier);
+}
+.ctx-debug-expression .debug-expression-operator {
+  color: var(--manatos-debug-operator);
+}
+.ctx-debug-expression .debug-expression-punctuation {
+  color: var(--manatos-debug-punctuation);
+}
 
 /* Shared formula syntax palette for calculated-expression properties. */
-.ctx-debug-expression .debug-expression-path { color: var(--manatos-debug-path); }
-
+.ctx-debug-expression .debug-expression-path {
+  color: var(--manatos-debug-path);
+}
 
 /* Metadata entry Debugging > CLI. */
-.debugging-cli-console { min-height: 14rem; max-height: 28rem; overflow: auto; background: #111827; color: #d1d5db; border-color: #374151 !important; }
-.debugging-cli-console pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-.debugging-cli-input-line { display: flex; align-items: center; gap: .45rem; border-top: 1px solid #374151; margin: .5rem -.5rem -.5rem; padding: .5rem; }
-.debugging-cli-prompt { color: #93c5fd; font-weight: 600; white-space: nowrap; }
-.debugging-cli-input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; color: #f9fafb; font: inherit; caret-color: #f9fafb; }
-.debugging-cli-run { border: 0; background: transparent; color: #93c5fd; padding: .1rem .25rem; }
-.debugging-cli-run:hover, .debugging-cli-run:focus { color: #fff; }
-.metadata-collection-editable-value { cursor: pointer; }
-.metadata-collection-editable-value:hover { text-decoration: underline; text-decoration-style: dotted; }
-.metadata-collection-editable-value:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; border-radius: .15rem; }
-.debugging-cli-command { color: #93c5fd; font-weight: 600; }
-.debugging-cli-result { margin-left: 1rem; color: #d1fae5; }
-.debugging-cli-error { margin-left: 1rem; color: var(--bs-danger); }
+.debugging-cli-console {
+  min-height: 14rem;
+  max-height: 28rem;
+  overflow: auto;
+  background: #111827;
+  color: #d1d5db;
+  border-color: #374151 !important;
+}
+.debugging-cli-console pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.debugging-cli-input-line {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-top: 1px solid #374151;
+  margin: 0.5rem -0.5rem -0.5rem;
+  padding: 0.5rem;
+}
+.debugging-cli-prompt {
+  color: #93c5fd;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.debugging-cli-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f9fafb;
+  font: inherit;
+  caret-color: #f9fafb;
+}
+.debugging-cli-run {
+  border: 0;
+  background: transparent;
+  color: #93c5fd;
+  padding: 0.1rem 0.25rem;
+}
+.debugging-cli-run:hover,
+.debugging-cli-run:focus {
+  color: #fff;
+}
+.metadata-collection-editable-value {
+  cursor: pointer;
+}
+.metadata-collection-editable-value:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+.metadata-collection-editable-value:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+  border-radius: 0.15rem;
+}
+.debugging-cli-command {
+  color: #93c5fd;
+  font-weight: 600;
+}
+.debugging-cli-result {
+  margin-left: 1rem;
+  color: #d1fae5;
+}
+.debugging-cli-error {
+  margin-left: 1rem;
+  color: var(--bs-danger);
+}
 
-.metadata-collection-select-menu { max-height: 20rem; overflow-y: auto; }
-.metadata-collection-select-menu .dropdown-item { display: flex; align-items: center; gap: .45rem; }
-.metadata-country-flag, .metadata-country-flag-space { width: 1.15rem; height: .8rem; flex: 0 0 1.15rem; display: inline-block; object-fit: cover; }
-.metadata-country-flag { border: 1px solid rgba(0,0,0,.1); }
-[data-collection-select-label] { display: inline-flex; align-items: center; gap: .45rem; }
+.metadata-collection-select-menu {
+  max-height: 20rem;
+  overflow-y: auto;
+}
+.metadata-collection-select-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.metadata-country-flag,
+.metadata-country-flag-space {
+  width: 1.15rem;
+  height: 0.8rem;
+  flex: 0 0 1.15rem;
+  display: inline-block;
+  object-fit: cover;
+}
+.metadata-country-flag {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+[data-collection-select-label] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
 
 /* -------------------------------------------------------------------------
  * Shared developer CLI component (page Debugging tab + persistent CTX dock)
@@ -689,10 +785,10 @@ html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none 
 .debugging-cli-input-line {
   display: flex;
   align-items: flex-start;
-  gap: .45rem;
+  gap: 0.45rem;
   border-top: 1px solid #374151;
-  margin: .5rem -.5rem -.5rem;
-  padding: .5rem;
+  margin: 0.5rem -0.5rem -0.5rem;
+  padding: 0.5rem;
 }
 
 .debugging-cli-prompt-wrap {
@@ -743,24 +839,24 @@ html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none 
 .debugging-cli-history {
   position: absolute;
   z-index: 40;
-  top: calc(100% + .35rem);
+  top: calc(100% + 0.35rem);
   left: 0;
   min-width: min(36rem, 70vw);
   max-width: min(48rem, 80vw);
   max-height: 16rem;
   overflow: auto;
   border: 1px solid #94a3b8;
-  border-radius: .3rem;
+  border-radius: 0.3rem;
   background: #e2e8f0;
-  box-shadow: 0 .45rem 1rem rgba(0, 0, 0, .35);
+  box-shadow: 0 0.45rem 1rem rgba(0, 0, 0, 0.35);
 }
 
 .debugging-cli-history-item {
   display: block;
   width: 100%;
   border: 0;
-  border-bottom: 1px solid rgba(148, 163, 184, .16);
-  padding: .38rem .55rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 0.38rem 0.55rem;
   background: #e2e8f0;
   color: #1e293b;
   font: inherit;
@@ -778,7 +874,7 @@ html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none 
 
 .debugging-cli-dock {
   margin: 0 1.5rem 1rem;
-  padding-top: .65rem;
+  padding-top: 0.65rem;
   border-top: 1px solid var(--bs-border-color);
 }
 
@@ -787,15 +883,14 @@ html[data-manatos-debug-properties-open='true'] #ctxDebugPropertiesPanel.d-none 
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: .4rem;
-  font-size: .82rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.82rem;
 }
 
 .debugging-cli-dock .debugging-cli-console {
   min-height: 12rem;
   max-height: 36rem;
 }
-
 
 /* Shell-level CTX CLI first-paint restoration. The boot-keyed local state is
  * applied before JS so a console intentionally kept open does not disappear
@@ -871,17 +966,37 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
   background: #fff;
   color: #26384d;
   text-align: left;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 0.68rem;
 }
-.api-traffic-row:hover { background: #eef5ff; }
-.api-traffic-row.is-selected { background: #cfe2ff; box-shadow: inset 3px 0 0 #0d6efd; }
-.api-traffic-row.is-error { background: #fff3f3; color: #a61e2c; }
-.api-traffic-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.api-traffic-method { color: #315f9b; }
+.api-traffic-row:hover {
+  background: #eef5ff;
+}
+.api-traffic-row.is-selected {
+  background: #cfe2ff;
+  box-shadow: inset 3px 0 0 #0d6efd;
+}
+.api-traffic-row.is-error {
+  background: #fff3f3;
+  color: #a61e2c;
+}
+.api-traffic-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.api-traffic-method {
+  color: #315f9b;
+}
 .api-traffic-status,
-.api-traffic-duration { text-align: right; }
-.api-traffic-empty { padding: 1rem; color: #7a8795; font-size: 0.75rem; }
+.api-traffic-duration {
+  text-align: right;
+}
+.api-traffic-empty {
+  padding: 1rem;
+  color: #7a8795;
+  font-size: 0.75rem;
+}
 
 .api-traffic-columns {
   flex: 0 0 auto;
@@ -892,28 +1007,43 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
     var(--api-traffic-col-path, minmax(7rem, 1fr))
     var(--api-traffic-col-status, 3.2rem)
     var(--api-traffic-col-duration, 4.2rem);
-  gap: .35rem;
-  padding: .25rem .55rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
   border-top: 1px solid #dbe3ec;
   border-bottom: 1px solid #cbd6e2;
   background: #edf2f7;
   color: #52606d;
-  font: 600 .62rem/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font:
+    600 0.62rem/1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    'Liberation Mono',
+    monospace;
   text-transform: uppercase;
   user-select: none;
 }
-.api-traffic-columns > span { position: relative; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-traffic-columns > span {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .api-traffic-column-resize {
   position: absolute;
   z-index: 2;
-  top: -.25rem;
-  right: -.25rem;
-  bottom: -.25rem;
-  width: .5rem;
+  top: -0.25rem;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  width: 0.5rem;
   cursor: col-resize;
   touch-action: none;
 }
-.api-traffic-column-resize:hover { background: rgba(13, 110, 253, .18); }
+.api-traffic-column-resize:hover {
+  background: rgba(13, 110, 253, 0.18);
+}
 
 .api-traffic-details {
   flex: 0 0 auto;
@@ -933,17 +1063,68 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
   background: #f8fafc;
   font-size: 0.72rem;
 }
-.api-traffic-details-tabs { display: flex; gap: .25rem; padding: .35rem .55rem 0; background: #f8fafc; }
-.api-traffic-details-tab { border: 1px solid #b8c7d9; border-bottom: 0; border-radius: .25rem .25rem 0 0; padding: .25rem .65rem; background: #eef2f6; color: #425466; font-size: .7rem; }
-.api-traffic-details-tab.is-active { background: #fff; color: #0d6efd; font-weight: 600; }
-.api-traffic-details-body { padding: 0.55rem 0.65rem 0.75rem; font-size: 0.72rem; }
-.api-traffic-details-body h4 { margin: 0.7rem 0 0.3rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.api-traffic-details-body pre { max-height: 14rem; overflow: auto; margin: 0; padding: 0.5rem; background: #111c2e; color: #dce8f7; border-radius: 0.25rem; font-size: 0.68rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-.api-traffic-meta { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.25rem 0.5rem; margin: 0; }
-.api-traffic-meta dt { color: #52606d; }
-.api-traffic-meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+.api-traffic-details-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.35rem 0.55rem 0;
+  background: #f8fafc;
+}
+.api-traffic-details-tab {
+  border: 1px solid #b8c7d9;
+  border-bottom: 0;
+  border-radius: 0.25rem 0.25rem 0 0;
+  padding: 0.25rem 0.65rem;
+  background: #eef2f6;
+  color: #425466;
+  font-size: 0.7rem;
+}
+.api-traffic-details-tab.is-active {
+  background: #fff;
+  color: #0d6efd;
+  font-weight: 600;
+}
+.api-traffic-details-body {
+  padding: 0.55rem 0.65rem 0.75rem;
+  font-size: 0.72rem;
+}
+.api-traffic-details-body h4 {
+  margin: 0.7rem 0 0.3rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.api-traffic-details-body pre {
+  max-height: 14rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0.5rem;
+  background: #111c2e;
+  color: #dce8f7;
+  border-radius: 0.25rem;
+  font-size: 0.68rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.api-traffic-meta {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+}
+.api-traffic-meta dt {
+  color: #52606d;
+}
+.api-traffic-meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
 
-.api-traffic-route-filter-wrap { position: relative; flex: 0 0 auto; }
+.api-traffic-route-filter-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
 .api-traffic-route-menu {
   position: fixed;
   z-index: 2147483000;
@@ -953,58 +1134,84 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
   display: flex;
   flex-direction: column;
   border: 1px solid #b8c7d9;
-  border-radius: .35rem;
+  border-radius: 0.35rem;
   background: #fff;
-  box-shadow: 0 .5rem 1.25rem rgba(15, 23, 42, .18);
+  box-shadow: 0 0.5rem 1.25rem rgba(15, 23, 42, 0.18);
   overflow: hidden;
 }
 .api-traffic-route-menu-actions {
   display: flex;
-  gap: .4rem;
-  padding: .4rem .5rem;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
   border-bottom: 1px solid #d9e2ec;
   background: #f8fafc;
 }
 .api-traffic-route-menu-actions button {
   border: 0;
-  padding: .1rem .25rem;
+  padding: 0.1rem 0.25rem;
   background: transparent;
   color: #0d6efd;
-  font-size: .7rem;
+  font-size: 0.7rem;
 }
-.api-traffic-route-menu-list { overflow: auto; padding: .3rem 0; }
+.api-traffic-route-menu-list {
+  overflow: auto;
+  padding: 0.3rem 0;
+}
 .api-traffic-route-option {
   display: flex;
   align-items: flex-start;
-  gap: .45rem;
-  padding: .3rem .55rem;
+  gap: 0.45rem;
+  padding: 0.3rem 0.55rem;
   cursor: pointer;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: .68rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.68rem;
   line-height: 1.3;
 }
-.api-traffic-route-option:hover { background: #eef5ff; }
-.api-traffic-route-option input { margin-top: .08rem; }
-.api-traffic-route-call { min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
-.api-traffic-route-method { color: #425466; font-weight: 400; }
-.api-traffic-route-path { color: #172b4d; font-weight: 700; }
+.api-traffic-route-option:hover {
+  background: #eef5ff;
+}
+.api-traffic-route-option input {
+  margin-top: 0.08rem;
+}
+.api-traffic-route-call {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+.api-traffic-route-method {
+  color: #425466;
+  font-weight: 400;
+}
+.api-traffic-route-path {
+  color: #172b4d;
+  font-weight: 700;
+}
 .api-traffic-route-count {
   flex: 0 0 auto;
   min-width: 1.55rem;
-  margin-left: .35rem;
-  padding: .02rem .28rem;
+  margin-left: 0.35rem;
+  padding: 0.02rem 0.28rem;
   border-radius: 999px;
   background: #eef2f6;
   color: #7a8795;
   text-align: center;
-  font-size: .64rem;
+  font-size: 0.64rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.api-traffic-route-count.is-active { background: #e7f1ff; color: #0d6efd; }
-.api-traffic-route-separator { margin: .25rem 0; border-top: 1px solid #cbd5e1; }
-.api-traffic-route-empty { padding: .7rem; color: #6c757d; font-size: .7rem; }
-
+.api-traffic-route-count.is-active {
+  background: #e7f1ff;
+  color: #0d6efd;
+}
+.api-traffic-route-separator {
+  margin: 0.25rem 0;
+  border-top: 1px solid #cbd5e1;
+}
+.api-traffic-route-empty {
+  padding: 0.7rem;
+  color: #6c757d;
+  font-size: 0.7rem;
+}
 
 /* =========================================================================
    Unified Developer Tools dock
@@ -1029,30 +1236,43 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
   border: 0;
   border-right: 1px solid var(--manatos-border);
   border-bottom: 2px solid transparent;
-  padding: .48rem .62rem .4rem;
+  padding: 0.48rem 0.62rem 0.4rem;
   background: transparent;
   color: #52606d;
   text-align: left;
-  font-size: .72rem;
+  font-size: 0.72rem;
   line-height: 1.15;
   white-space: nowrap;
 }
 
-.developer-tools-tab-caption { color: #172b4d; font-weight: 400; }
-.developer-tools-tab-subtitle { margin-left: .2rem; color: #7a8796; font-size: .66rem; font-weight: 400; }
-.developer-tools-tab:hover { background: #eef5ff; }
+.developer-tools-tab-caption {
+  color: #172b4d;
+  font-weight: 400;
+}
+.developer-tools-tab-subtitle {
+  margin-left: 0.2rem;
+  color: #7a8796;
+  font-size: 0.66rem;
+  font-weight: 400;
+}
+.developer-tools-tab:hover {
+  background: #eef5ff;
+}
 .developer-tools-tab.is-active {
   border-bottom-color: #0d6efd;
   background: #fff;
   color: #0d6efd;
 }
-.developer-tools-tab.is-active .developer-tools-tab-caption { color: #0d6efd; font-weight: 700; }
+.developer-tools-tab.is-active .developer-tools-tab-caption {
+  color: #0d6efd;
+  font-weight: 700;
+}
 
 .developer-tools-close {
   flex: 0 0 auto;
   align-self: center;
-  margin: 0 .5rem 0 auto;
-  font-size: .7rem;
+  margin: 0 0.5rem 0 auto;
+  font-size: 0.7rem;
 }
 
 .developer-tools-body > .debug-panel,
@@ -1070,18 +1290,32 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
 }
 
 /* Tool chrome stays tight to the dock edges. */
-.developer-tools-body .debug-panel-tools { padding-left: .38rem; padding-right: .38rem; }
-.developer-tools-body .ctx-debug-tree { padding: .38rem; }
+.developer-tools-body .debug-panel-tools {
+  padding-left: 0.38rem;
+  padding-right: 0.38rem;
+}
+.developer-tools-body .ctx-debug-tree {
+  padding: 0.38rem;
+}
 
 .ctx-debug-stats,
-.api-traffic-stats { margin-left: auto; margin-right: 0; }
+.api-traffic-stats {
+  margin-left: auto;
+  margin-right: 0;
+}
 
 /* One generous invisible outer hit zone, one thin visible divider. */
 .developer-tools-dock > .ctx-debug-panel-resize {
   z-index: 60;
   left: -5px;
   width: 10px;
-  background: linear-gradient(to right, transparent 4px, rgba(69, 94, 122, .32) 4px, rgba(69, 94, 122, .32) 5px, transparent 5px);
+  background: linear-gradient(
+    to right,
+    transparent 4px,
+    rgba(69, 94, 122, 0.32) 4px,
+    rgba(69, 94, 122, 0.32) 5px,
+    transparent 5px
+  );
   cursor: col-resize;
   touch-action: none;
 }
@@ -1100,6 +1334,7 @@ body.is-resizing-developer-dock * {
 html[data-manatos-debug-visible='true'][data-manatos-debug-tab='ctx'] #debugPanel.d-none {
   display: flex !important;
 }
-html[data-manatos-debug-visible='true'][data-manatos-debug-tab='apiTraffic'] #apiTrafficPanel.d-none {
+html[data-manatos-debug-visible='true'][data-manatos-debug-tab='apiTraffic']
+  #apiTrafficPanel.d-none {
   display: flex !important;
 }

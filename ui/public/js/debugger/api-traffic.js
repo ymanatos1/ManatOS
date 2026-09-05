@@ -27,7 +27,8 @@
   const responseTab = document.getElementById('apiTrafficResponseTab');
   const columns = document.getElementById('apiTrafficColumns');
   const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-  const bootId = document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
+  const bootId =
+    document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
   const STATE_KEY = `manatos.debug.apiTraffic.state.v2.${bootId}`;
   // Route choices are a durable developer preference. Unlike traffic counts,
   // they intentionally survive browser/UI restarts.
@@ -43,27 +44,35 @@
     try {
       const value = JSON.parse(sessionStorage.getItem(STATE_KEY) || 'null');
       return value && typeof value === 'object' ? value : {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   };
   const saved = readState();
   const readSessionObject = (key) => {
     try {
       const value = JSON.parse(sessionStorage.getItem(key) || 'null');
       return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   };
   const savedRouteCounts = readSessionObject(ROUTE_COUNT_STATE_KEY);
   const readLocalArray = (key) => {
     try {
       const value = JSON.parse(localStorage.getItem(key) || '[]');
       return Array.isArray(value) ? value : [];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   };
   const readLocalObject = (key) => {
     try {
       const value = JSON.parse(localStorage.getItem(key) || 'null');
       return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   };
   const savedColumns = readLocalObject(COLUMN_STATE_KEY);
   const state = {
@@ -74,19 +83,25 @@
     lastId: null,
     selectedId: typeof saved.selectedId === 'string' ? saved.selectedId : null,
     detailTab: saved.detailTab === 'response' ? 'response' : 'request',
-    hiddenRoutes: new Set((() => {
-      const current = readLocalArray(ROUTE_STATE_KEY);
-      return current.length ? current : readLocalArray(LEGACY_ROUTE_STATE_KEY);
-    })()),
+    hiddenRoutes: new Set(
+      (() => {
+        const current = readLocalArray(ROUTE_STATE_KEY);
+        return current.length ? current : readLocalArray(LEGACY_ROUTE_STATE_KEY);
+      })(),
+    ),
     knownRoutes: new Set(readLocalArray(ROUTE_CATALOG_KEY)),
     // Boot-scoped counters live in sessionStorage, never durable localStorage.
     // Persisting seen request ids prevents a full page navigation from counting
     // the diagnostic store's existing rows a second time.
     routeCounts: new Map(
-      Object.entries(savedRouteCounts.counts || {}).filter(([, count]) => Number.isFinite(Number(count))),
+      Object.entries(savedRouteCounts.counts || {}).filter(([, count]) =>
+        Number.isFinite(Number(count)),
+      ),
     ),
     countedEntryIds: new Set(
-      Array.isArray(savedRouteCounts.seenIds) ? savedRouteCounts.seenIds.filter((id) => typeof id === 'string') : [],
+      Array.isArray(savedRouteCounts.seenIds)
+        ? savedRouteCounts.seenIds.filter((id) => typeof id === 'string')
+        : [],
     ),
     textFilter: typeof saved.textFilter === 'string' ? saved.textFilter : '',
     consecutiveFailures: 0,
@@ -97,37 +112,59 @@
 
   const persistState = () => {
     try {
-      sessionStorage.setItem(STATE_KEY, JSON.stringify({
-        paused: state.paused,
-        errorsOnly: state.errorsOnly,
-        ignoreRouteSelections: state.ignoreRouteSelections,
-        selectedId: state.selectedId,
-        detailTab: state.detailTab,
-        textFilter: String(filter?.value || ''),
-      }));
-    } catch { /* debugger state must never affect application behavior */ }
+      sessionStorage.setItem(
+        STATE_KEY,
+        JSON.stringify({
+          paused: state.paused,
+          errorsOnly: state.errorsOnly,
+          ignoreRouteSelections: state.ignoreRouteSelections,
+          selectedId: state.selectedId,
+          detailTab: state.detailTab,
+          textFilter: String(filter?.value || ''),
+        }),
+      );
+    } catch {
+      /* debugger state must never affect application behavior */
+    }
   };
 
   const persistRouteState = () => {
     try {
       localStorage.setItem(ROUTE_STATE_KEY, JSON.stringify([...state.hiddenRoutes]));
       localStorage.setItem(ROUTE_CATALOG_KEY, JSON.stringify([...state.knownRoutes]));
-    } catch { /* debugger only */ }
+    } catch {
+      /* debugger only */
+    }
   };
 
   const persistRouteCounts = () => {
     try {
-      sessionStorage.setItem(ROUTE_COUNT_STATE_KEY, JSON.stringify({
-        counts: Object.fromEntries(state.routeCounts),
-        seenIds: [...state.countedEntryIds],
-      }));
-    } catch { /* boot-scoped debugger telemetry must never affect the application */ }
+      sessionStorage.setItem(
+        ROUTE_COUNT_STATE_KEY,
+        JSON.stringify({
+          counts: Object.fromEntries(state.routeCounts),
+          seenIds: [...state.countedEntryIds],
+        }),
+      );
+    } catch {
+      /* boot-scoped debugger telemetry must never affect the application */
+    }
   };
 
-  const escapeHtml = (value) => String(value)
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-  const pretty = (value) => { try { return JSON.stringify(value, null, 2); } catch { return String(value); } };
+  const escapeHtml = (value) =>
+    String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  const pretty = (value) => {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  };
   const compactPath = (path) => String(path).replace(/^\/api\/v1(?:\/|$)/, './');
 
   /**
@@ -148,7 +185,7 @@
   const routeKey = (entry) => {
     const raw = String(entry.path || '').split('?')[0];
     const normalized = compactPath(raw)
-      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/ig, '{id}')
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, '{id}')
       .replace(/\/[0-9]+(?=\/|$)/g, '/{id}');
     return `${String(entry.method || 'GET').toUpperCase()} ${normalized}`;
   };
@@ -198,12 +235,16 @@
   };
 
   const visibleEntries = () => {
-    const q = String(filter?.value || '').trim().toLowerCase();
+    const q = String(filter?.value || '')
+      .trim()
+      .toLowerCase();
     return state.entries.filter((entry) => {
       if (state.errorsOnly && entry.ok) return false;
       if (!state.ignoreRouteSelections && state.hiddenRoutes.has(routeKey(entry))) return false;
       if (!q) return true;
-      return `${entry.method} ${entry.path} ${entry.status ?? ''} ${entry.requestId}`.toLowerCase().includes(q);
+      return `${entry.method} ${entry.path} ${entry.status ?? ''} ${entry.requestId}`
+        .toLowerCase()
+        .includes(q);
     });
   };
 
@@ -213,14 +254,19 @@
     const counts = routeCounts();
     routeMenuList.replaceChildren();
     if (!keys.length) {
-      routeMenuList.innerHTML = '<div class="api-traffic-route-empty">No API calls have been discovered yet.</div>';
+      routeMenuList.innerHTML =
+        '<div class="api-traffic-route-empty">No API calls have been discovered yet.</div>';
       return;
     }
 
     let insertedInactiveSeparator = false;
     for (const key of keys) {
       const count = counts.get(key) || 0;
-      if (count === 0 && !insertedInactiveSeparator && keys.some((candidate) => (counts.get(candidate) || 0) > 0)) {
+      if (
+        count === 0 &&
+        !insertedInactiveSeparator &&
+        keys.some((candidate) => (counts.get(candidate) || 0) > 0)
+      ) {
         const separator = document.createElement('div');
         separator.className = 'api-traffic-route-separator';
         separator.setAttribute('role', 'separator');
@@ -235,7 +281,8 @@
       input.type = 'checkbox';
       input.checked = !state.hiddenRoutes.has(key);
       input.addEventListener('change', () => {
-        if (input.checked) state.hiddenRoutes.delete(key); else state.hiddenRoutes.add(key);
+        if (input.checked) state.hiddenRoutes.delete(key);
+        else state.hiddenRoutes.add(key);
         persistRouteState();
         persistState();
         render();
@@ -303,12 +350,14 @@
 
   const render = () => {
     const entries = visibleEntries();
-    if (stats) stats.textContent = `${state.entries.length} request${state.entries.length === 1 ? '' : 's'}`;
+    if (stats)
+      stats.textContent = `${state.entries.length} request${state.entries.length === 1 ? '' : 's'}`;
     renderDetails();
     if (routeMenu && !routeMenu.classList.contains('d-none')) renderRouteMenu();
     list.replaceChildren();
     if (!entries.length) {
-      list.innerHTML = '<div class="api-traffic-empty">No captured API traffic matches the current filters.</div>';
+      list.innerHTML =
+        '<div class="api-traffic-empty">No captured API traffic matches the current filters.</div>';
       return;
     }
     // Store order is chronological; developer presentation is always newest first.
@@ -317,7 +366,12 @@
       row.type = 'button';
       row.className = `api-traffic-row${entry.id === state.selectedId ? ' is-selected' : ''}${entry.ok ? '' : ' is-error'}`;
       row.setAttribute('role', 'listitem');
-      const time = new Date(entry.startedAt).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const time = new Date(entry.startedAt).toLocaleTimeString([], {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
       const path = compactPath(entry.path);
       row.innerHTML = `<span class="api-traffic-time">${escapeHtml(time)}</span><strong class="api-traffic-method">${escapeHtml(entry.method)}</strong><span class="api-traffic-path" title="${escapeHtml(entry.path)}">${resourcePathHtml(path)}</span><span class="api-traffic-status">${escapeHtml(entry.status ?? 'ERR')}</span><span class="api-traffic-duration">${escapeHtml(entry.durationMs)} ms</span>`;
       row.addEventListener('click', () => {
@@ -331,8 +385,14 @@
   };
 
   const poll = async () => {
-    if (state.paused || state.pollingSuspended || state.pollInFlight ||
-        window.ManatOSConnectivity?.unavailable === true || panel.classList.contains('d-none')) return;
+    if (
+      state.paused ||
+      state.pollingSuspended ||
+      state.pollInFlight ||
+      window.ManatOSConnectivity?.unavailable === true ||
+      panel.classList.contains('d-none')
+    )
+      return;
 
     /*
      * Polls are deliberately sequential. setInterval may fire again while a
@@ -345,7 +405,10 @@
       const query = state.lastId ? `?after=${encodeURIComponent(state.lastId)}` : '';
       let response;
       try {
-        response = await fetch(`/bo/debug/api-traffic${query}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+        response = await fetch(`/bo/debug/api-traffic${query}`, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
       } catch (error) {
         window.ManatOSConnectivity?.reportFailure?.('api-traffic');
         throw error;
@@ -355,7 +418,8 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
       const incoming = Array.isArray(payload.entries) ? payload.entries : [];
-      if (!state.lastId) state.entries = incoming; else state.entries.push(...incoming);
+      if (!state.lastId) state.entries = incoming;
+      else state.entries.push(...incoming);
       observeRoutes(incoming);
       countTraffic(incoming);
       if (state.entries.length > 500) state.entries.splice(0, state.entries.length - 500);
@@ -363,7 +427,8 @@
       state.consecutiveFailures = 0;
       // Preserve selection across polling and full navigation. If the selected
       // record fell out of the bounded server buffer, close details explicitly.
-      if (state.selectedId && !selectedEntry() && state.entries.length >= 500) state.selectedId = null;
+      if (state.selectedId && !selectedEntry() && state.entries.length >= 500)
+        state.selectedId = null;
       persistState();
       render();
     } catch {
@@ -383,7 +448,6 @@
     void poll();
   };
 
-
   const refreshIgnoreRoutesButton = () => {
     if (!(ignoreRoutesButton instanceof HTMLButtonElement)) return;
     ignoreRoutesButton.classList.toggle('is-active', state.ignoreRouteSelections);
@@ -393,7 +457,8 @@
       : 'Ignore API call visibility selections (show all calls)';
     ignoreRoutesButton.setAttribute('aria-label', ignoreRoutesButton.title);
     const icon = ignoreRoutesButton.querySelector('i');
-    if (icon instanceof HTMLElement) icon.className = `bi ${state.ignoreRouteSelections ? 'bi-eye-fill' : 'bi-eye'}`;
+    if (icon instanceof HTMLElement)
+      icon.className = `bi ${state.ignoreRouteSelections ? 'bi-eye-fill' : 'bi-eye'}`;
   };
 
   pause?.classList.toggle('is-active', state.paused);
@@ -412,7 +477,10 @@
     pause.querySelector('i')?.classList.toggle('bi-play', state.paused);
     pause.querySelector('i')?.classList.toggle('bi-pause', !state.paused);
     persistState();
-    if (!state.paused) { state.pollingSuspended = false; void poll(); }
+    if (!state.paused) {
+      state.pollingSuspended = false;
+      void poll();
+    }
   });
   errors?.addEventListener('click', () => {
     state.errorsOnly = !state.errorsOnly;
@@ -427,10 +495,28 @@
     persistState();
     render();
   });
-  filter?.addEventListener('input', () => { persistState(); render(); });
-  requestTab?.addEventListener('click', () => { state.detailTab = 'request'; state.renderedDetailKey = null; persistState(); renderDetails(true); });
-  responseTab?.addEventListener('click', () => { state.detailTab = 'response'; state.renderedDetailKey = null; persistState(); renderDetails(true); });
-  detailsClose?.addEventListener('click', () => { state.selectedId = null; state.renderedDetailKey = null; persistState(); render(); });
+  filter?.addEventListener('input', () => {
+    persistState();
+    render();
+  });
+  requestTab?.addEventListener('click', () => {
+    state.detailTab = 'request';
+    state.renderedDetailKey = null;
+    persistState();
+    renderDetails(true);
+  });
+  responseTab?.addEventListener('click', () => {
+    state.detailTab = 'response';
+    state.renderedDetailKey = null;
+    persistState();
+    renderDetails(true);
+  });
+  detailsClose?.addEventListener('click', () => {
+    state.selectedId = null;
+    state.renderedDetailKey = null;
+    persistState();
+    render();
+  });
 
   const positionRouteMenu = () => {
     if (!routeMenu || !routesButton || routeMenu.classList.contains('d-none')) return;
@@ -448,7 +534,10 @@
     const open = routeMenu?.classList.contains('d-none') ?? true;
     routeMenu?.classList.toggle('d-none', !open);
     routesButton.setAttribute('aria-expanded', String(open));
-    if (open) { renderRouteMenu(); requestAnimationFrame(positionRouteMenu); }
+    if (open) {
+      renderRouteMenu();
+      requestAnimationFrame(positionRouteMenu);
+    }
   });
   window.addEventListener('resize', positionRouteMenu);
   routeMenu?.addEventListener('click', (event) => event.stopPropagation());
@@ -457,19 +546,30 @@
     routesButton?.setAttribute('aria-expanded', 'false');
   });
   routeMenu?.querySelector('[data-api-routes-all]')?.addEventListener('click', () => {
-    state.hiddenRoutes.clear(); persistRouteState(); persistState(); render(); renderRouteMenu();
+    state.hiddenRoutes.clear();
+    persistRouteState();
+    persistState();
+    render();
+    renderRouteMenu();
   });
   routeMenu?.querySelector('[data-api-routes-none]')?.addEventListener('click', () => {
-    state.hiddenRoutes = new Set(knownRouteKeys()); persistRouteState(); persistState(); render(); renderRouteMenu();
+    state.hiddenRoutes = new Set(knownRouteKeys());
+    persistRouteState();
+    persistState();
+    render();
+    renderRouteMenu();
   });
 
   clear?.addEventListener('click', async () => {
     try {
       await fetch('/bo/debug/api-traffic/clear', {
-        method: 'POST', headers: { Accept: 'application/json', 'content-type': 'application/json' },
+        method: 'POST',
+        headers: { Accept: 'application/json', 'content-type': 'application/json' },
         body: JSON.stringify({ _csrf: csrf }),
       });
-    } catch { /* local reset still proceeds */ }
+    } catch {
+      /* local reset still proceeds */
+    }
     state.entries = [];
     state.lastId = null;
     state.selectedId = null;
@@ -505,16 +605,25 @@
     for (const [name, fallback] of Object.entries(columnDefaults)) {
       const savedWidth = Number(savedColumns[name]);
       const width = Number.isFinite(savedWidth) ? Math.max(columnMin[name], savedWidth) : fallback;
-      document.documentElement.style.setProperty(`--api-traffic-col-${name}`, `${Math.round(width)}px`);
+      document.documentElement.style.setProperty(
+        `--api-traffic-col-${name}`,
+        `${Math.round(width)}px`,
+      );
     }
   };
   const persistColumnWidths = () => {
     const next = {};
     for (const name of Object.keys(columnDefaults)) {
-      const raw = getComputedStyle(document.documentElement).getPropertyValue(`--api-traffic-col-${name}`);
+      const raw = getComputedStyle(document.documentElement).getPropertyValue(
+        `--api-traffic-col-${name}`,
+      );
       next[name] = Math.round(Number.parseFloat(raw) || columnDefaults[name]);
     }
-    try { localStorage.setItem(COLUMN_STATE_KEY, JSON.stringify(next)); } catch { /* debugger only */ }
+    try {
+      localStorage.setItem(COLUMN_STATE_KEY, JSON.stringify(next));
+    } catch {
+      /* debugger only */
+    }
   };
   applyColumnWidths();
   columns?.querySelectorAll('[data-api-traffic-column-resize]').forEach((handle) => {
@@ -534,14 +643,20 @@
     handle.addEventListener('pointermove', (event) => {
       if (!handle.hasPointerCapture?.(event.pointerId)) return;
       const width = Math.max(columnMin[name], startWidth + event.clientX - startX);
-      document.documentElement.style.setProperty(`--api-traffic-col-${name}`, `${Math.round(width)}px`);
+      document.documentElement.style.setProperty(
+        `--api-traffic-col-${name}`,
+        `${Math.round(width)}px`,
+      );
     });
     handle.addEventListener('pointerup', (event) => {
       handle.releasePointerCapture?.(event.pointerId);
       persistColumnWidths();
     });
     handle.addEventListener('dblclick', (event) => {
-      document.documentElement.style.setProperty(`--api-traffic-col-${name}`, `${columnDefaults[name]}px`);
+      document.documentElement.style.setProperty(
+        `--api-traffic-col-${name}`,
+        `${columnDefaults[name]}px`,
+      );
       persistColumnWidths();
       event.preventDefault();
       event.stopPropagation();
@@ -558,7 +673,9 @@
 
   render();
   void poll();
-  pollTimer = window.setInterval(() => { void poll(); }, 1000);
+  pollTimer = window.setInterval(() => {
+    void poll();
+  }, 1000);
   window.__manatosApiTrafficRuntime = {
     dispose: () => {
       if (pollTimer !== null) window.clearInterval(pollTimer);

@@ -1,10 +1,6 @@
 import type { Request, Response } from 'express';
 
-import {
-  AppError,
-  operationContext,
-  type SysBOUser,
-} from '@manatos/shared';
+import { AppError, operationContext, type SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
@@ -14,10 +10,16 @@ import { apiPathFor } from './data-access.js';
 import { formPayload } from './form-payload.js';
 import { refreshExternalProviderRuntime } from './external-provider-write.js';
 
-function principalRelatedChanges(body: Record<string, unknown>): Record<string, { current: unknown[] }> {
+function principalRelatedChanges(
+  body: Record<string, unknown>,
+): Record<string, { current: unknown[] }> {
   const relatedChanges: Record<string, { current: unknown[] }> = {};
 
-  const parse = (key: string, developerMessage: string, invalidMessage: string): unknown[] | null => {
+  const parse = (
+    key: string,
+    developerMessage: string,
+    invalidMessage: string,
+  ): unknown[] | null => {
     const raw = body[`relatedChanges.${key}`];
     if (typeof raw !== 'string' || !raw) return null;
     try {
@@ -28,28 +30,45 @@ function principalRelatedChanges(body: Record<string, unknown>): Record<string, 
     }
   };
 
-  const emails = parse('emailAddresses', 'Invalid email-address collection payload.', 'The Contact email-address list could not be saved.');
+  const emails = parse(
+    'emailAddresses',
+    'Invalid email-address collection payload.',
+    'The Contact email-address list could not be saved.',
+  );
   if (emails) relatedChanges.emailAddresses = { current: emails.map(String) };
 
-  const telephones = parse('telephoneNumbers', 'Invalid telephone-number collection payload.', 'The Contact telephone-number list could not be saved.');
+  const telephones = parse(
+    'telephoneNumbers',
+    'Invalid telephone-number collection payload.',
+    'The Contact telephone-number list could not be saved.',
+  );
   if (telephones) {
     relatedChanges.telephoneNumbers = {
       current: telephones.map((item) => {
-        const record = item && typeof item === 'object' && !Array.isArray(item)
-          ? item as Record<string, unknown>
-          : {};
-        return { countryCode: String(record.countryCode ?? ''), number: String(record.number ?? '') };
+        const record =
+          item && typeof item === 'object' && !Array.isArray(item)
+            ? (item as Record<string, unknown>)
+            : {};
+        return {
+          countryCode: String(record.countryCode ?? ''),
+          number: String(record.number ?? ''),
+        };
       }),
     };
   }
 
-  const addresses = parse('addresses', 'Invalid address collection payload.', 'The Contact address list could not be saved.');
+  const addresses = parse(
+    'addresses',
+    'Invalid address collection payload.',
+    'The Contact address list could not be saved.',
+  );
   if (addresses) {
     relatedChanges.addresses = {
       current: addresses.map((item) => {
-        const record = item && typeof item === 'object' && !Array.isArray(item)
-          ? item as Record<string, unknown>
-          : {};
+        const record =
+          item && typeof item === 'object' && !Array.isArray(item)
+            ? (item as Record<string, unknown>)
+            : {};
         return {
           recipientOrAttention: String(record.recipientOrAttention ?? ''),
           organization: String(record.organization ?? ''),
@@ -102,11 +121,7 @@ export async function persistMetadataDrivenEntry(
       const savedId = String(saved.data.id ?? id);
       if (definition.key === 'sys-ext-auth-providers') await refreshExternalProviderRuntime();
 
-      if (
-        definition.key === 'sys-users' &&
-        savedId &&
-        req.session.userId === savedId
-      ) {
+      if (definition.key === 'sys-users' && savedId && req.session.userId === savedId) {
         req.session.currentUserSnapshot = saved.data as unknown as SysBOUser;
       }
 
@@ -134,10 +149,14 @@ export async function completeMetadataDrivenSave(
   }
 
   const apiPath = apiPathFor(definition.key);
-  const record = savedRecord ?? (await apiClient.get<Record<string, unknown>>(
-    `/api/v1/${apiPath}/${encodeURIComponent(savedId)}`,
-    apiSessionOptions(req),
-  )).data;
+  const record =
+    savedRecord ??
+    (
+      await apiClient.get<Record<string, unknown>>(
+        `/api/v1/${apiPath}/${encodeURIComponent(savedId)}`,
+        apiSessionOptions(req),
+      )
+    ).data;
 
   res.set('Cache-Control', 'no-store');
   res.json({ success: true, data: { id: savedId, record, entryUrl } });
@@ -163,14 +182,8 @@ export async function deleteMetadataDrivenEntry(
   definition: SysBODefinition,
   id: string,
 ): Promise<void> {
-  await operationContext.runRoot(
-    `Delete ${definition.boMetadata.name}`,
-    async () => {
-      await apiClient.delete(
-        `/api/v1/${apiPathFor(definition.key)}/${id}`,
-        apiSessionOptions(req),
-      );
-      if (definition.key === 'sys-ext-auth-providers') await refreshExternalProviderRuntime();
-    },
-  );
+  await operationContext.runRoot(`Delete ${definition.boMetadata.name}`, async () => {
+    await apiClient.delete(`/api/v1/${apiPathFor(definition.key)}/${id}`, apiSessionOptions(req));
+    if (definition.key === 'sys-ext-auth-providers') await refreshExternalProviderRuntime();
+  });
 }

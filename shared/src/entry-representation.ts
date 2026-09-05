@@ -76,7 +76,11 @@ function resolveSource<T>(
   // every field-component.
   if ('field' in source) {
     const calculation = metadata.fieldDefinition[source.field]?.calculation;
-    if (!calculation?.expression || calculation.triggeredBy?.length || Object.prototype.hasOwnProperty.call(entry, source.field)) {
+    if (
+      !calculation?.expression ||
+      calculation.triggeredBy?.length ||
+      Object.prototype.hasOwnProperty.call(entry, source.field)
+    ) {
       return entry[source.field];
     }
     const scope = buildEntryScope(metadata, entry, relations);
@@ -91,7 +95,11 @@ function resolveSource<T>(
   // A simple expression naming one canonical non-calculated field has the same
   // dependency as `{ field: ... }` and can be resolved without evaluator work.
   const directExpressionField = directSourceField(metadata, source);
-  if (directExpressionField && (!metadata.fieldDefinition[directExpressionField]?.calculation?.expression || metadata.fieldDefinition[directExpressionField]?.calculation?.triggeredBy?.length)) {
+  if (
+    directExpressionField &&
+    (!metadata.fieldDefinition[directExpressionField]?.calculation?.expression ||
+      metadata.fieldDefinition[directExpressionField]?.calculation?.triggeredBy?.length)
+  ) {
     return entry[directExpressionField];
   }
 

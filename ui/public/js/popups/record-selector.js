@@ -44,10 +44,18 @@
     String(candidate?.[primaryIdField] ?? candidate?.id ?? candidate?.value ?? '');
 
   const entryName = (candidate, primaryField) =>
-    String(candidate?.__entryName ?? candidate?.label ?? candidate?.[primaryField] ?? candidate?.name ?? candidate?.id ?? '');
+    String(
+      candidate?.__entryName ??
+        candidate?.label ??
+        candidate?.[primaryField] ??
+        candidate?.name ??
+        candidate?.id ??
+        '',
+    );
 
   const normalizeEligibility = (result) => {
-    if (result === false) return { eligible: false, visible: true, reason: 'This entry cannot be selected.' };
+    if (result === false)
+      return { eligible: false, visible: true, reason: 'This entry cannot be selected.' };
     if (result === true || result == null) return { eligible: true, visible: true, reason: '' };
     if (typeof result !== 'object') return { eligible: true, visible: true, reason: '' };
     return {
@@ -82,16 +90,21 @@
     const metadata = entityContext?.metadata;
     if (!entityKey || !metadata?.fieldDefinition) return null;
 
-    const primaryField = String(panel.dataset.selectorPrimaryField || metadata.primaryField || 'name');
+    const primaryField = String(
+      panel.dataset.selectorPrimaryField || metadata.primaryField || 'name',
+    );
     const visibleFields = parseJson(panel.dataset.selectorVisibleFields, [primaryField]);
-    const filterFields = parseJson(panel.dataset.selectorFilterFields, []);
     const filterModes = parseJson(panel.dataset.selectorFilterModes, {});
     const uiRules = parseJson(panel.dataset.selectorUiRules, {});
     const candidateRowsTemplate = panel.querySelector('[data-selector-candidate-rows]');
-    const candidateRows = candidateRowsTemplate instanceof HTMLTemplateElement
-      ? new Map([...candidateRowsTemplate.content.querySelectorAll('[data-selector-candidate-row]')]
-          .map((row) => [String(row.dataset.candidateId || ''), row]))
-      : new Map();
+    const candidateRows =
+      candidateRowsTemplate instanceof HTMLTemplateElement
+        ? new Map(
+            [
+              ...candidateRowsTemplate.content.querySelectorAll('[data-selector-candidate-row]'),
+            ].map((row) => [String(row.dataset.candidateId || ''), row]),
+          )
+        : new Map();
     const selectionMode = callingParams.selectionMode === 'multiple' ? 'multiple' : 'single';
     const idField = String(callingParams.idField || 'id');
     const resolvedCallingParams = Object.freeze({
@@ -100,8 +113,6 @@
       // explicit null as a resolved scalar value; an absent/undefined nested
       // member would otherwise fall through to the page CTX resolver.
       purpose: String(callingParams.purpose || 'select-existing-entry'),
-      entityKey,
-      selectionMode,
       presentationMode: callingParams.presentationMode ?? null,
       title: callingParams.title ?? null,
       targetField: callingParams.targetField ?? null,
@@ -135,18 +146,20 @@
       // selector object a stable scalar-facing shape so a missing property is
       // represented by null/false rather than accidentally escaping the
       // explicit scope and resolving against the surrounding page CTX.
-      const selectedEntry = scope.selectedEntry && typeof scope.selectedEntry === 'object'
-        ? { __entryName: '', ...scope.selectedEntry }
-        : { __entryName: '' };
-      const candidate = scope.candidate && typeof scope.candidate === 'object'
-        ? scope.candidate
-        : {};
-      const selectionFacts = scope.selectionFacts && typeof scope.selectionFacts === 'object'
-        ? { alreadyInContext: false, ...scope.selectionFacts }
-        : { alreadyInContext: false };
-      const candidateFacts = scope.candidateFacts && typeof scope.candidateFacts === 'object'
-        ? { alreadyInContext: false, ...scope.candidateFacts }
-        : { alreadyInContext: false };
+      const selectedEntry =
+        scope.selectedEntry && typeof scope.selectedEntry === 'object'
+          ? { __entryName: '', ...scope.selectedEntry }
+          : { __entryName: '' };
+      const candidate =
+        scope.candidate && typeof scope.candidate === 'object' ? scope.candidate : {};
+      const selectionFacts =
+        scope.selectionFacts && typeof scope.selectionFacts === 'object'
+          ? { alreadyInContext: false, ...scope.selectionFacts }
+          : { alreadyInContext: false };
+      const candidateFacts =
+        scope.candidateFacts && typeof scope.candidateFacts === 'object'
+          ? { alreadyInContext: false, ...scope.candidateFacts }
+          : { alreadyInContext: false };
 
       try {
         const value = expressionRuntime.evaluateAstWithScope(ast, {
@@ -164,10 +177,12 @@
       }
     };
     const presentationMode = String(evaluateUIRule('presentationMode', 'subtle'));
-    const selectorTitleText = String(evaluateUIRule(
-      'title',
-      resolvedCallingParams.title || `Select existing ${metadata.name || 'entry'}`,
-    ));
+    const selectorTitleText = String(
+      evaluateUIRule(
+        'title',
+        resolvedCallingParams.title || `Select existing ${metadata.name || 'entry'}`,
+      ),
+    );
     const showContextNote = Boolean(evaluateUIRule('showContextNote', true));
     const autofocusSearch = Boolean(evaluateUIRule('autofocusSearch', true));
     panel.dataset.selectorPresentation = presentationMode;
@@ -191,7 +206,12 @@
     let pageSize = Number(panel.querySelector('[data-selector-page-size]')?.value) || 10;
     let currentPage = 1;
     const selectedIds = new Set(
-      (Array.isArray(initialSelection) ? initialSelection : initialSelection == null ? [] : [initialSelection])
+      (Array.isArray(initialSelection)
+        ? initialSelection
+        : initialSelection == null
+          ? []
+          : [initialSelection]
+      )
         .map((value) => String(value))
         .filter(Boolean),
     );
@@ -214,15 +234,18 @@
       });
     }
 
-    const fieldFilterValues = () => Object.fromEntries(
-      [...panel.querySelectorAll('[data-selector-field-filter]')]
-        .map((control) => [control.dataset.selectorFieldFilter, control.value]),
-    );
+    const fieldFilterValues = () =>
+      Object.fromEntries(
+        [...panel.querySelectorAll('[data-selector-field-filter]')].map((control) => [
+          control.dataset.selectorFieldFilter,
+          control.value,
+        ]),
+      );
 
     const candidateEligibility = (candidate) =>
-      normalizeEligibility(typeof eligibility === 'function'
-        ? eligibility(candidate, resolvedCallingParams)
-        : true);
+      normalizeEligibility(
+        typeof eligibility === 'function' ? eligibility(candidate, resolvedCallingParams) : true,
+      );
 
     // Callers may project domain facts for a candidate, but presentation remains
     // selector-owned and evaluator-driven. This keeps hierarchy membership,
@@ -235,7 +258,8 @@
         : { alreadyInContext: false };
     };
 
-    const presentationRowFor = (candidate) => candidateRows.get(candidateId(candidate, idField)) || null;
+    const presentationRowFor = (candidate) =>
+      candidateRows.get(candidateId(candidate, idField)) || null;
 
     const filterValuesFor = (candidate) => {
       const row = presentationRowFor(candidate);
@@ -244,11 +268,16 @@
 
     const searchTextFor = (candidate) => {
       const row = presentationRowFor(candidate);
-      return String(row?.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      return String(row?.textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
     };
 
     const matchingRows = () => {
-      const term = String(search?.value || '').trim().toLowerCase();
+      const term = String(search?.value || '')
+        .trim()
+        .toLowerCase();
       const activeFilters = [...panel.querySelectorAll('[data-selector-field-filter]')];
 
       return source.filter((candidate) => {
@@ -265,9 +294,13 @@
 
         return activeFilters.every((control) => {
           const key = control.dataset.selectorFieldFilter;
-          const wanted = String(control.value || '').trim().toLowerCase();
+          const wanted = String(control.value || '')
+            .trim()
+            .toLowerCase();
           if (!wanted) return true;
-          const actual = String(filterValuesFor(candidate)?.[key] ?? '').trim().toLowerCase();
+          const actual = String(filterValuesFor(candidate)?.[key] ?? '')
+            .trim()
+            .toLowerCase();
           return filterModes?.[key] === 'exact' ? actual === wanted : actual.includes(wanted);
         });
       });
@@ -317,7 +350,11 @@
         kind: 'record-selector',
         callingParams: { ...resolvedCallingParams },
         presentation: { mode: presentationMode, title: selectorTitleText },
-        state: { phase, open: phase === 'opening' || phase === 'open', valid: selectedIds.size > 0 },
+        state: {
+          phase,
+          open: phase === 'opening' || phase === 'open',
+          valid: selectedIds.size > 0,
+        },
       };
       runtime.replace(popupPath, payload, {
         source: 'record-selector',
@@ -373,7 +410,8 @@
       if (summary) summary.textContent = `Page ${currentPage} of ${pages}`;
     };
 
-    const selectedCandidates = () => source.filter((candidate) => selectedIds.has(candidateId(candidate, idField)));
+    const selectedCandidates = () =>
+      source.filter((candidate) => selectedIds.has(candidateId(candidate, idField)));
 
     let currentContextNote = '';
     const updateNote = () => {
@@ -381,17 +419,19 @@
       const selected = selectedCandidates();
       const selectedEntry = selected[0] || null;
       const fallback = selected.length
-        ? (selectionMode === 'single'
+        ? selectionMode === 'single'
           ? `Selected ${entryName(selectedEntry, primaryField)}.`
-          : `${selected.length} entries selected.`)
-        : (selectionMode === 'multiple'
+          : `${selected.length} entries selected.`
+        : selectionMode === 'multiple'
           ? 'Select one or more entries to continue.'
-          : 'Select an entry to continue.');
-      currentContextNote = String(evaluateUIRule('contextNote', fallback, {
-        selectedEntry,
-        selectedEntries: selected,
-        selectionFacts: selectedEntry ? candidateFactsFor(selectedEntry) : {},
-      }));
+          : 'Select an entry to continue.';
+      currentContextNote = String(
+        evaluateUIRule('contextNote', fallback, {
+          selectedEntry,
+          selectedEntries: selected,
+          selectionFacts: selectedEntry ? candidateFactsFor(selectedEntry) : {},
+        }),
+      );
       note.textContent = currentContextNote;
     };
 
@@ -413,34 +453,44 @@
       const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
       if (rowsHost) {
-        const renderedRows = pageRows.map((candidate) => {
-          const id = candidateId(candidate, idField);
-          const prototype = presentationRowFor(candidate);
-          if (!(prototype instanceof HTMLTableRowElement)) {
-            console.warn(`[ManatOS record selector] Missing canonical list-row presentation for candidate ${id}`);
-            return null;
-          }
+        const renderedRows = pageRows
+          .map((candidate) => {
+            const id = candidateId(candidate, idField);
+            const prototype = presentationRowFor(candidate);
+            if (!(prototype instanceof HTMLTableRowElement)) {
+              console.warn(
+                `[ManatOS record selector] Missing canonical list-row presentation for candidate ${id}`,
+              );
+              return null;
+            }
 
-          const row = prototype.cloneNode(true);
-          const eligibilityResult = candidateEligibility(candidate);
-          const selected = selectedIds.has(id);
-          const candidateFacts = candidateFactsFor(candidate);
-          const policyRowClass = String(evaluateUIRule('rowClass', '', { candidate, candidateFacts }) || '');
+            const row = prototype.cloneNode(true);
+            const eligibilityResult = candidateEligibility(candidate);
+            const selected = selectedIds.has(id);
+            const candidateFacts = candidateFactsFor(candidate);
+            const policyRowClass = String(
+              evaluateUIRule('rowClass', '', { candidate, candidateFacts }) || '',
+            );
 
-          row.removeAttribute('data-selector-candidate-row');
-          row.dataset.selectorRow = '';
-          row.tabIndex = eligibilityResult.eligible ? 0 : -1;
-          row.classList.toggle('table-primary', selected);
-          row.classList.toggle('text-secondary', !eligibilityResult.eligible);
-          row.classList.toggle('opacity-50', !eligibilityResult.eligible);
-          if (policyRowClass) policyRowClass.split(/\s+/).filter(Boolean).forEach((name) => row.classList.add(name));
-          row.setAttribute('aria-selected', String(selected));
-          if (!eligibilityResult.eligible) {
-            row.setAttribute('aria-disabled', 'true');
-            row.title = eligibilityResult.reason || 'This entry cannot be selected.';
-          }
-          return row;
-        }).filter(Boolean);
+            row.removeAttribute('data-selector-candidate-row');
+            row.dataset.selectorRow = '';
+            row.tabIndex = eligibilityResult.eligible ? 0 : -1;
+            row.classList.toggle('table-primary', selected);
+            row.classList.toggle('text-secondary', !eligibilityResult.eligible);
+            row.classList.toggle('opacity-50', !eligibilityResult.eligible);
+            if (policyRowClass)
+              policyRowClass
+                .split(/\s+/)
+                .filter(Boolean)
+                .forEach((name) => row.classList.add(name));
+            row.setAttribute('aria-selected', String(selected));
+            if (!eligibilityResult.eligible) {
+              row.setAttribute('aria-disabled', 'true');
+              row.title = eligibilityResult.reason || 'This entry cannot be selected.';
+            }
+            return row;
+          })
+          .filter(Boolean);
 
         if (renderedRows.length) {
           rowsHost.replaceChildren(...renderedRows);
@@ -449,7 +499,8 @@
           const cell = document.createElement('td');
           cell.colSpan = Math.max(1, visibleFields.length);
           cell.className = 'empty-table-state';
-          cell.innerHTML = '<i class="bi bi-search"></i><strong>No entries found</strong><span>No existing entries match the current filter. Change or clear the filters.</span>';
+          cell.innerHTML =
+            '<i class="bi bi-search"></i><strong>No entries found</strong><span>No existing entries match the current filter. Change or clear the filters.</span>';
           emptyRow.append(cell);
           rowsHost.replaceChildren(emptyRow);
         }
@@ -485,31 +536,37 @@
       const selected = selectedCandidates();
       if (!selected.length) return;
       const result = selectionMode === 'single' ? selected[0] : selected;
-      if (typeof onSelect === 'function' && onSelect(result, resolvedCallingParams) === false) return;
-      window.dispatchEvent(new CustomEvent('manatos:record-selector-selection', {
-        detail: {
-          entityKey,
-          purpose: resolvedCallingParams.purpose,
-          callingParams: { ...resolvedCallingParams },
-          selected: result,
-        },
-      }));
+      if (typeof onSelect === 'function' && onSelect(result, resolvedCallingParams) === false)
+        return;
+      window.dispatchEvent(
+        new CustomEvent('manatos:record-selector-selection', {
+          detail: {
+            entityKey,
+            purpose: resolvedCallingParams.purpose,
+            callingParams: { ...resolvedCallingParams },
+            selected: result,
+          },
+        }),
+      );
       close();
     };
 
     panel.addEventListener('click', (event) => {
-      const row = event.target instanceof Element ? event.target.closest('[data-selector-row]') : null;
+      const row =
+        event.target instanceof Element ? event.target.closest('[data-selector-row]') : null;
       if (row instanceof HTMLElement) selectRow(row);
     });
     panel.addEventListener('dblclick', (event) => {
       if (selectionMode !== 'single') return;
-      const row = event.target instanceof Element ? event.target.closest('[data-selector-row]') : null;
+      const row =
+        event.target instanceof Element ? event.target.closest('[data-selector-row]') : null;
       if (!(row instanceof HTMLElement) || row.getAttribute('aria-disabled') === 'true') return;
       selectRow(row);
       commitSelection();
     });
     panel.addEventListener('keydown', (event) => {
-      const row = event.target instanceof Element ? event.target.closest('[data-selector-row]') : null;
+      const row =
+        event.target instanceof Element ? event.target.closest('[data-selector-row]') : null;
       if (!(row instanceof HTMLElement) || row.getAttribute('aria-disabled') === 'true') return;
       if (event.key === 'Enter' && selectionMode === 'single') {
         event.preventDefault();

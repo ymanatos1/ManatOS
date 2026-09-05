@@ -17,7 +17,9 @@ export interface ManatOSCompanyContext extends Omit<CompanyInfo, 'platforms'> {
   currentPlatformIndex: number;
 }
 
-export interface ManatOSServerContext { apiBaseUrl: string; }
+export interface ManatOSServerContext {
+  apiBaseUrl: string;
+}
 export interface ManatOSRuntimeContext {
   /** Raw safe runtime mode (normally development/test/production). */
   mode: string;
@@ -103,8 +105,7 @@ export interface ManatOSCalculatedContextField<T = unknown> {
 }
 
 export type ManatOSContextField<T = unknown> =
-  | ManatOSStoredContextField<T>
-  | ManatOSCalculatedContextField<T>;
+  ManatOSStoredContextField<T> | ManatOSCalculatedContextField<T>;
 export type ManatOSContextFields = Record<string, ManatOSContextField>;
 
 export interface ManatOSPlatformPermissionContext {
@@ -147,7 +148,6 @@ export interface ManatOSUserContext {
   permissions: ManatOSUserPermissionsContext;
 }
 
-
 /**
  * A collection member may expose a stable semantic key in addition to its
  * positional array index. The expression evaluator can therefore resolve the
@@ -181,10 +181,7 @@ export function contextCollectionMemberKey(value: unknown): string | null {
  * underlying CTX value remains a normal array and is not duplicated into a
  * second keyed object.
  */
-export function resolveContextMember(
-  container: unknown,
-  member: string | number,
-): unknown {
+export function resolveContextMember(container: unknown, member: string | number): unknown {
   if (container == null) return undefined;
 
   if (Array.isArray(container)) {
@@ -213,7 +210,6 @@ export function resolveContextMembers(
   }
   return value;
 }
-
 
 /**
  * Return the canonical debugger/diagnostic path of a value inside a CTX tree.

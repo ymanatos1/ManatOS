@@ -1,10 +1,6 @@
 import { Router } from 'express';
 
-import {
-  AppError,
-  EXTERNAL_PROVIDER_KEYS,
-  type ExternalProviderKey,
-} from '@manatos/shared';
+import { AppError, EXTERNAL_PROVIDER_KEYS, type ExternalProviderKey } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { config } from '../../config.js';
@@ -55,13 +51,24 @@ export function createExternalAuthRouter() {
   router.get('/:provider/test-credentials', (req, res, next) => {
     const providerKey = String(req.params.provider ?? '').toLowerCase() as ExternalProviderKey;
     const pending = req.session.pendingExtAuthCredentialTest;
-    if (!pending || pending.provider !== providerKey || pending.status !== 'pending' || Date.now() - Date.parse(pending.createdAt) > 10 * 60 * 1000) {
-      sendProviderCredentialTestResult(res, 'failed', 'The provider credential test expired. Return to the ManatOS editor and test the credentials again.');
+    if (
+      !pending ||
+      pending.provider !== providerKey ||
+      pending.status !== 'pending' ||
+      Date.now() - Date.parse(pending.createdAt) > 10 * 60 * 1000
+    ) {
+      sendProviderCredentialTestResult(
+        res,
+        'failed',
+        'The provider credential test expired. Return to the ManatOS editor and test the credentials again.',
+      );
       return;
     }
     try {
       const strategyName = configureProviderCredentialTest({
-        testId: pending.testId, provider: pending.provider, clientId: pending.clientId,
+        testId: pending.testId,
+        provider: pending.provider,
+        clientId: pending.clientId,
         clientSecret: pending.clientSecret ?? '',
         callbackUrl: new URL(pending.callbackPath, config.PUBLIC_BASE_URL).toString(),
         ...(pending.tenant ? { tenant: pending.tenant } : {}),
@@ -102,8 +109,7 @@ export function createExternalAuthRouter() {
             return;
           }
 
-          req.session.externalAuthIntent =
-            req.query.intent === 'register' ? 'register' : 'signin';
+          req.session.externalAuthIntent = req.query.intent === 'register' ? 'register' : 'signin';
 
           passport.authenticate(providerKey, {
             session: false,
@@ -129,9 +135,10 @@ export function createExternalAuthRouter() {
           pendingTest &&
           pendingTest.provider === providerKey &&
           pendingTest.status === 'pending' &&
-          Date.now() - Date.parse(pendingTest.createdAt) <= 10 * 60 * 1000
+          Date.now() - Date.parse(pendingTest.createdAt) <= 10 * 60 * 1000,
         );
-        const callbackTestId = stateTestId ?? (pendingTestIsFresh ? pendingTest?.testId ?? null : null);
+        const callbackTestId =
+          stateTestId ?? (pendingTestIsFresh ? (pendingTest?.testId ?? null) : null);
 
         if (callbackTestId) {
           if (
@@ -147,7 +154,6 @@ export function createExternalAuthRouter() {
             );
             return;
           }
-
 
           /*
            * OAuth providers may return a standards-based error directly to the
@@ -172,61 +178,69 @@ export function createExternalAuthRouter() {
           }
 
           const strategyName = configureProviderCredentialTest({
-            testId: pendingTest.testId, provider: pendingTest.provider, clientId: pendingTest.clientId,
+            testId: pendingTest.testId,
+            provider: pendingTest.provider,
+            clientId: pendingTest.clientId,
             clientSecret: pendingTest.clientSecret ?? '',
             callbackUrl: new URL(pendingTest.callbackPath, config.PUBLIC_BASE_URL).toString(),
             ...(pendingTest.tenant ? { tenant: pendingTest.tenant } : {}),
           });
-          passport.authenticate(strategyName, { session: false }, async (error: unknown, user: Express.User | false | null) => {
-            removeProviderCredentialTest(strategyName);
-            if (error || !user) {
-              pendingTest.status = 'failed';
-              pendingTest.errorMessage = providerCredentialTestError(error);
-              console.warn(
-                `[AUTH] ${pendingTest.provider} credential test failed: ${pendingTest.errorMessage}`,
-              );
-            } else {
-              try {
-                if (
-                  pendingTest.usesStoredCredentials &&
-                  pendingTest.recordId &&
-                  pendingTest.storedSecretUpdatedAt
-                ) {
-                  const verified = await apiClient.post<{ credentialsVerifiedAt?: string }>(
-                    `/api/v1/internal/external-auth-providers/${encodeURIComponent(pendingTest.recordId)}/credentials-verified`,
-                    {
-                      clientId: pendingTest.clientId,
-                      secretUpdatedAt: pendingTest.storedSecretUpdatedAt,
-                    },
-                    { ...apiSessionOptions(req), internal: true },
-                  );
-                  pendingTest.verifiedAt = String(verified.data.credentialsVerifiedAt ?? new Date().toISOString());
-                  // The persisted pair is now verified; no pending plaintext
-                  // secret needs to survive until a separate Save action.
-                  delete pendingTest.clientSecret;
-                } else {
-                  pendingTest.verifiedAt = new Date().toISOString();
-                }
-                pendingTest.status = 'verified';
-                delete pendingTest.errorMessage;
-              } catch (verificationCommitError) {
+          passport.authenticate(
+            strategyName,
+            { session: false },
+            async (error: unknown, user: Express.User | false | null) => {
+              removeProviderCredentialTest(strategyName);
+              if (error || !user) {
                 pendingTest.status = 'failed';
-                pendingTest.errorMessage =
-                  verificationCommitError instanceof Error
-                    ? verificationCommitError.message
-                    : 'The stored credentials passed the provider test but could not be marked verified.';
+                pendingTest.errorMessage = providerCredentialTestError(error);
+                console.warn(
+                  `[AUTH] ${pendingTest.provider} credential test failed: ${pendingTest.errorMessage}`,
+                );
+              } else {
+                try {
+                  if (
+                    pendingTest.usesStoredCredentials &&
+                    pendingTest.recordId &&
+                    pendingTest.storedSecretUpdatedAt
+                  ) {
+                    const verified = await apiClient.post<{ credentialsVerifiedAt?: string }>(
+                      `/api/v1/internal/external-auth-providers/${encodeURIComponent(pendingTest.recordId)}/credentials-verified`,
+                      {
+                        clientId: pendingTest.clientId,
+                        secretUpdatedAt: pendingTest.storedSecretUpdatedAt,
+                      },
+                      { ...apiSessionOptions(req), internal: true },
+                    );
+                    pendingTest.verifiedAt = String(
+                      verified.data.credentialsVerifiedAt ?? new Date().toISOString(),
+                    );
+                    // The persisted pair is now verified; no pending plaintext
+                    // secret needs to survive until a separate Save action.
+                    delete pendingTest.clientSecret;
+                  } else {
+                    pendingTest.verifiedAt = new Date().toISOString();
+                  }
+                  pendingTest.status = 'verified';
+                  delete pendingTest.errorMessage;
+                } catch (verificationCommitError) {
+                  pendingTest.status = 'failed';
+                  pendingTest.errorMessage =
+                    verificationCommitError instanceof Error
+                      ? verificationCommitError.message
+                      : 'The stored credentials passed the provider test but could not be marked verified.';
+                }
               }
-            }
-            sendProviderCredentialTestResult(
-              res,
-              pendingTest.status,
-              pendingTest.status === 'verified'
-                ? (pendingTest.usesStoredCredentials
+              sendProviderCredentialTestResult(
+                res,
+                pendingTest.status,
+                pendingTest.status === 'verified'
+                  ? pendingTest.usesStoredCredentials
                     ? 'Stored provider credentials tested successfully and are now verified.'
-                    : 'Provider credentials tested successfully. They are ready to save.')
-                : (pendingTest.errorMessage ?? 'The provider rejected the proposed credentials.'),
-            );
-          })(req, res, next);
+                    : 'Provider credentials tested successfully. They are ready to save.'
+                  : (pendingTest.errorMessage ?? 'The provider rejected the proposed credentials.'),
+              );
+            },
+          )(req, res, next);
           return;
         }
         try {
@@ -282,8 +296,7 @@ export function createExternalAuthRouter() {
                 provider: profile.provider,
                 email: profile.email,
                 existingUserId: linkedUserId,
-                existingUserName:
-                  matchingUser?.name ?? profile.displayName ?? profile.email,
+                existingUserName: matchingUser?.name ?? profile.displayName ?? profile.email,
               };
 
               res.redirect('/auth/register/existing-external');
@@ -401,7 +414,6 @@ export function createExternalAuthRouter() {
       },
     );
   }
-
 
   return router;
 }

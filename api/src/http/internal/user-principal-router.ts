@@ -17,12 +17,7 @@ export function createInternalUserPrincipalRouter(links: UserPrincipalService) {
     const isDefault = Boolean(req.body.isDefault);
 
     const link = await links.link(userId, principalId, relationship, isDefault, actor);
-    sendCommand(
-      res,
-      `User ${userId} linked to principal ${principalId} successfully.`,
-      link,
-      201,
-    );
+    sendCommand(res, `User ${userId} linked to principal ${principalId} successfully.`, link, 201);
   });
 
   return router;

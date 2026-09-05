@@ -89,16 +89,16 @@ Licenses demonstrate multiple reusable field types in one entity: reference (`Cu
 
 ## Model-selection guide
 
-| Need | Inspect first |
-|---|---|
-| minimal metadata-driven entity entry | Applications |
-| enum field with icons | Users Role / Licenses Status |
-| editable + calculated references | Principals Parent/Root principal |
-| typed related-entry icon/name | Principals |
-| related collections | Applications Licenses; Users Authentication |
-| date + duration composition | Licenses Contents |
-| hierarchy/organization UI | Principals Organization |
-| informational/authentication tab | Users Authentication |
+| Need                                 | Inspect first                               |
+| ------------------------------------ | ------------------------------------------- |
+| minimal metadata-driven entity entry | Applications                                |
+| enum field with icons                | Users Role / Licenses Status                |
+| editable + calculated references     | Principals Parent/Root principal            |
+| typed related-entry icon/name        | Principals                                  |
+| related collections                  | Applications Licenses; Users Authentication |
+| date + duration composition          | Licenses Contents                           |
+| hierarchy/organization UI            | Principals Organization                     |
+| informational/authentication tab     | Users Authentication                        |
 
 ## Rule for future entities
 
@@ -108,12 +108,12 @@ A new entity should normally require **metadata**, not a new rendering architect
 
 The current entities illustrate the intended boundaries:
 
-| Example | What to copy |
-|---|---|
-| User General | ordinary form-field pipeline; enum + calculated string fields |
-| Principal General | ordinary direct and calculated `reference` fields using one reference component |
-| License Contents | composite layout that reuses normal canonical fields through `form-field.ejs` |
+| Example                          | What to copy                                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| User General                     | ordinary form-field pipeline; enum + calculated string fields                                             |
+| Principal General                | ordinary direct and calculated `reference` fields using one reference component                           |
+| License Contents                 | composite layout that reuses normal canonical fields through `form-field.ejs`                             |
 | Principal hierarchy quick editor | component-owned canonical draft fields dispatched through `entity-field.ejs` with local binding ownership |
-| External Provider credentials | mixed workflow: canonical `clientId` via dispatcher; transient secret via non-entity workflow input |
+| External Provider credentials    | mixed workflow: canonical `clientId` via dispatcher; transient secret via non-entity workflow input       |
 
 The examples are models for **responsibility boundaries**, not invitations to copy entity-specific markup.

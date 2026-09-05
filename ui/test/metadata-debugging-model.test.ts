@@ -13,11 +13,14 @@ const baseInput = () => ({
   metadataUI: { record: { tabs: [], entryActions: {} } },
   compiledEntityContextName: 'SysUser',
   compiledEntityContext: {
-    metadata: { fieldDefinition: { fullName: { calculation: { ast: { type: 'BinaryExpression' } } } } },
+    metadata: {
+      fieldDefinition: { fullName: { calculation: { ast: { type: 'BinaryExpression' } } } },
+    },
   },
   compiledUIRecord: {},
   ctxFields: { firstName: { value: 'Ada' }, fullName: { value: 'Ada Test' } },
-  ctxValue: (key: string) => key === 'fullName' ? 'Ada Test' : key === 'firstName' ? 'Ada' : undefined,
+  ctxValue: (key: string) =>
+    key === 'fullName' ? 'Ada Test' : key === 'firstName' ? 'Ada' : undefined,
   dynamicUIValue: vi.fn((value: unknown) => value),
   overrides: {},
   relatedCollections: {},
@@ -37,7 +40,9 @@ describe('metadata Debugging model', () => {
     expect(valueRow?.row.formula).toBe("firstName + ' Test'");
     expect(valueRow?.row.value).toBe("'Ada Test'");
     expect(valueRow?.row.detailGroup).toBe('DECLARED FIELDS');
-    expect(valueRow?.row.definitionPath).toBe('ctx.entities.SysUser.metadata.fieldDefinition.fullName.calculation.expression');
+    expect(valueRow?.row.definitionPath).toBe(
+      'ctx.entities.SysUser.metadata.fieldDefinition.fullName.calculation.expression',
+    );
     expect(valueRow?.row.valuePath).toBe('ctx.page.page.entry.fullName');
   });
 

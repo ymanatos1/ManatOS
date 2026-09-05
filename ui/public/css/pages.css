@@ -31,7 +31,6 @@
   color: #132a47;
 }
 
-
 /* =========================================================================
    Workspace context/action row
    ========================================================================= */
@@ -677,21 +676,57 @@ body.manatos-busy {
 }
 
 /* Editable field-tool menus inherit the semantic field-type surface. */
-.metadata-field-input[data-field-component='text'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-text-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-text-hover-bg); }
-.metadata-field-input[data-field-component='email'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-email-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-email-hover-bg); }
-.metadata-field-input[data-field-component='enum'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-enum-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-enum-hover-bg); }
-.metadata-field-input[data-field-component='reference'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-reference-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-reference-hover-bg); }
-.metadata-field-input[data-field-component='date'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-date-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-date-hover-bg); }
-.metadata-field-input[data-field-component='datetime'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-datetime-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-datetime-hover-bg); }
-.metadata-field-input[data-field-component='duration'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-duration-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-duration-hover-bg); }
-.metadata-field-input[data-field-component='version'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-number-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-number-hover-bg); }
-.metadata-field-input[data-field-component='number'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-number-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-number-hover-bg); }
-.metadata-field-input[data-field-component='boolean'] { --manatos-current-field-tool-bg: var(--manatos-field-tool-boolean-bg); --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-boolean-hover-bg); }
+.metadata-field-input[data-field-component='text'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-text-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-text-hover-bg);
+}
+.metadata-field-input[data-field-component='email'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-email-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-email-hover-bg);
+}
+.metadata-field-input[data-field-component='enum'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-enum-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-enum-hover-bg);
+}
+.metadata-field-input[data-field-component='reference'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-reference-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-reference-hover-bg);
+}
+.metadata-field-input[data-field-component='date'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-date-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-date-hover-bg);
+}
+.metadata-field-input[data-field-component='datetime'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-datetime-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-datetime-hover-bg);
+}
+.metadata-field-input[data-field-component='duration'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-duration-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-duration-hover-bg);
+}
+.metadata-field-input[data-field-component='version'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-number-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-number-hover-bg);
+}
+.metadata-field-input[data-field-component='number'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-number-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-number-hover-bg);
+}
+.metadata-field-input[data-field-component='boolean'] {
+  --manatos-current-field-tool-bg: var(--manatos-field-tool-boolean-bg);
+  --manatos-current-field-tool-hover-bg: var(--manatos-field-tool-boolean-hover-bg);
+}
 
 .metadata-field-input-menu.is-enabled {
   --bs-dropdown-bg: var(--manatos-current-field-tool-bg, var(--manatos-field-tool-text-bg));
-  --bs-dropdown-link-hover-bg: var(--manatos-current-field-tool-hover-bg, var(--manatos-field-tool-text-hover-bg));
-  --bs-dropdown-link-active-bg: var(--manatos-current-field-tool-hover-bg, var(--manatos-field-tool-text-hover-bg));
+  --bs-dropdown-link-hover-bg: var(
+    --manatos-current-field-tool-hover-bg,
+    var(--manatos-field-tool-text-hover-bg)
+  );
+  --bs-dropdown-link-active-bg: var(
+    --manatos-current-field-tool-hover-bg,
+    var(--manatos-field-tool-text-hover-bg)
+  );
   border-color: var(--manatos-field-tool-border);
 }
 
@@ -742,14 +777,14 @@ body.manatos-busy {
   position: relative;
   z-index: 4;
   border-radius: var(--bs-border-radius);
-  box-shadow: 0 0 0 .2rem var(--manatos-field-tool-focus-ring);
+  box-shadow: 0 0 0 0.2rem var(--manatos-field-tool-focus-ring);
 }
 
 .metadata-field-type-glyph {
   display: inline-block;
-  font-size: .78rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: -.04em;
+  letter-spacing: -0.04em;
   line-height: 1;
 }
 
@@ -757,9 +792,6 @@ body.manatos-busy {
   position: relative;
   min-height: 2.4rem;
 }
-
-
-
 
 /*
  * Calendar/time values have naturally compact native editors. Keep standalone
@@ -796,9 +828,9 @@ body.manatos-busy {
 .metadata-duration-editor {
   display: grid;
   grid-template-columns: repeat(3, minmax(5.25rem, 1fr));
-  gap: .5rem;
+  gap: 0.5rem;
   align-items: end;
-  padding: .35rem .5rem;
+  padding: 0.35rem 0.5rem;
   min-width: 0;
 }
 
@@ -809,11 +841,11 @@ body.manatos-busy {
 .metadata-duration-part {
   display: grid;
   grid-template-columns: auto minmax(3.5rem, 1fr);
-  gap: .35rem;
+  gap: 0.35rem;
   align-items: center;
   margin: 0;
   color: var(--bs-secondary-color);
-  font-size: .78rem;
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
@@ -838,7 +870,7 @@ body.manatos-busy {
 .metadata-related-primary-value {
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
+  gap: 0.5rem;
 }
 
 .metadata-related-primary-value .authentication-provider {
@@ -968,16 +1000,17 @@ body.manatos-busy {
   font-weight: 700;
 }
 
-.metadata-driven-record-form .metadata-field-changed :is(
-  .form-control,
-  .form-select,
-  [data-reference-selected],
-  .metadata-duration-editor,
-  .metadata-duration-part input
-) {
+.metadata-driven-record-form
+  .metadata-field-changed
+  :is(
+    .form-control,
+    .form-select,
+    [data-reference-selected],
+    .metadata-duration-editor,
+    .metadata-duration-part input
+  ) {
   font-weight: 700;
 }
-
 
 /* Shared split-Save dropdown keeps the primary action's visual language. */
 .metadata-save-dropdown-menu {
@@ -989,13 +1022,15 @@ body.manatos-busy {
   --bs-dropdown-link-active-color: #fff;
   --bs-dropdown-link-active-bg: color-mix(in srgb, var(--bs-primary) 72%, #000);
 }
-.metadata-save-dropdown-menu .dropdown-item:disabled { color: rgba(255, 255, 255, .65); }
-
-/* Collection editor items use the same changed-value language as entity fields. */
-.metadata-collection-field.metadata-field-changed :is(.form-control, .form-select, [data-collection-select-label]) {
-  font-weight: 700;
+.metadata-save-dropdown-menu .dropdown-item:disabled {
+  color: rgba(255, 255, 255, 0.65);
 }
 
+/* Collection editor items use the same changed-value language as entity fields. */
+.metadata-collection-field.metadata-field-changed
+  :is(.form-control, .form-select, [data-collection-select-label]) {
+  font-weight: 700;
+}
 
 /* Generic compact/expanded state for reusable related-contact collections. */
 .metadata-collection-title-toggle {
@@ -1013,16 +1048,29 @@ body.manatos-busy {
 .metadata-collection-title-toggle:hover:not(:disabled) > span,
 .metadata-collection-title-toggle:focus-visible:not(:disabled) > span {
   text-decoration: underline dotted;
-  text-underline-offset: .18rem;
+  text-underline-offset: 0.18rem;
 }
-.metadata-collection-title-toggle:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 3px; border-radius: .15rem; }
-.metadata-collection-title-toggle:disabled { cursor: default; opacity: 1; }
-.metadata-collection-title-toggle:disabled .metadata-collection-title-chevron { opacity: .35; }
-.metadata-collection-title-chevron { font-size: .68rem; opacity: .62; transition: transform .12s ease-in-out; }
+.metadata-collection-title-toggle:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 3px;
+  border-radius: 0.15rem;
+}
+.metadata-collection-title-toggle:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.metadata-collection-title-toggle:disabled .metadata-collection-title-chevron {
+  opacity: 0.35;
+}
+.metadata-collection-title-chevron {
+  font-size: 0.68rem;
+  opacity: 0.62;
+  transition: transform 0.12s ease-in-out;
+}
 .metadata-collection-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: .3rem .4rem;
+  gap: 0.3rem 0.4rem;
   min-width: 0;
   line-height: 1.45;
 }
@@ -1031,19 +1079,21 @@ body.manatos-busy {
   align-items: baseline;
   min-width: 0;
   max-width: 100%;
-  padding: .16rem .42rem;
+  padding: 0.16rem 0.42rem;
   border: 1px solid var(--bs-border-color);
-  border-radius: .28rem;
-  background: rgba(var(--bs-secondary-rgb), .045);
+  border-radius: 0.28rem;
+  background: rgba(var(--bs-secondary-rgb), 0.045);
   color: inherit;
   font: inherit;
   text-align: left;
   overflow-wrap: anywhere;
 }
-button.metadata-collection-summary-item { cursor: pointer; }
+button.metadata-collection-summary-item {
+  cursor: pointer;
+}
 button.metadata-collection-summary-item:hover,
 button.metadata-collection-summary-item:focus-visible {
-  border-color: rgba(var(--bs-primary-rgb), .45);
-  background: rgba(var(--bs-primary-rgb), .08);
+  border-color: rgba(var(--bs-primary-rgb), 0.45);
+  background: rgba(var(--bs-primary-rgb), 0.08);
   outline: 0;
 }

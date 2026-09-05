@@ -299,9 +299,7 @@ export function createLocalAuthRouter() {
     async (req, res) => {
       try {
         const identity = String(req.body.identity ?? '').trim();
-        const user = isRecoveryIdentitySyntaxValid(identity)
-          ? await lookup(identity)
-          : null;
+        const user = isRecoveryIdentitySyntaxValid(identity) ? await lookup(identity) : null;
 
         if (user) {
           const token = securityTokenStore.create(user.id, 'reset-password', 30, {

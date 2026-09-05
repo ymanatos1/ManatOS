@@ -11,7 +11,7 @@ const filesBelow = async (directory: string): Promise<string[]> => {
   const result: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) result.push(...await filesBelow(path));
+    if (entry.isDirectory()) result.push(...(await filesBelow(path)));
     else if (entry.isFile() && entry.name.endsWith('.ejs')) result.push(path);
   }
   return result;
@@ -22,8 +22,16 @@ describe('UI component responsibility boundaries', () => {
     const viewsRoot = resolve(uiRoot, 'views');
     const dispatcherPath = resolve(viewsRoot, 'components/sysbo/entry/fields/entity-field.ejs');
     const concreteNames = [
-      'boolean-field', 'enum-select', 'reference-select', 'date-field', 'datetime-field',
-      'duration-field', 'version-field', 'telephone-field', 'text-field', 'number-field',
+      'boolean-field',
+      'enum-select',
+      'reference-select',
+      'date-field',
+      'datetime-field',
+      'duration-field',
+      'version-field',
+      'telephone-field',
+      'text-field',
+      'number-field',
     ];
 
     for (const file of await filesBelow(viewsRoot)) {
@@ -39,8 +47,14 @@ describe('UI component responsibility boundaries', () => {
   });
 
   it('allows canonical compact/composite editors to embed the dispatcher without CTX field binding', async () => {
-    const quick = await readFile(resolve(uiRoot, 'views/components/sysbo/hierarchy/record-quick.ejs'), 'utf8');
-    const credentials = await readFile(resolve(uiRoot, 'views/components/sysbo/entry/content/provider-credentials.ejs'), 'utf8');
+    const quick = await readFile(
+      resolve(uiRoot, 'views/components/sysbo/hierarchy/record-quick.ejs'),
+      'utf8',
+    );
+    const credentials = await readFile(
+      resolve(uiRoot, 'views/components/sysbo/entry/content/provider-credentials.ejs'),
+      'utf8',
+    );
 
     expect(quick).toContain("include('../entry/fields/entity-field'");
     expect(quick).toContain('bindCtx: false');
@@ -50,8 +64,14 @@ describe('UI component responsibility boundaries', () => {
   });
 
   it('keeps transient workflow values outside canonical field metadata and field tools', async () => {
-    const credentials = await readFile(resolve(uiRoot, 'views/components/sysbo/entry/content/provider-credentials.ejs'), 'utf8');
-    const workflow = await readFile(resolve(uiRoot, 'views/components/sysbo/entry/content/workflow-input.ejs'), 'utf8');
+    const credentials = await readFile(
+      resolve(uiRoot, 'views/components/sysbo/entry/content/provider-credentials.ejs'),
+      'utf8',
+    );
+    const workflow = await readFile(
+      resolve(uiRoot, 'views/components/sysbo/entry/content/workflow-input.ejs'),
+      'utf8',
+    );
 
     expect(credentials).toContain("include('workflow-input'");
     expect(credentials).toContain("name: 'clientSecret'");
@@ -61,24 +81,27 @@ describe('UI component responsibility boundaries', () => {
   });
 
   it('keeps summary a higher-level container rather than an interactive field-component host', async () => {
-    const summary = await readFile(resolve(uiRoot, 'views/components/sysbo/entry/content/summary.ejs'), 'utf8');
+    const summary = await readFile(
+      resolve(uiRoot, 'views/components/sysbo/entry/content/summary.ejs'),
+      'utf8',
+    );
     expect(summary).toContain('Higher-level read-only field container');
     expect(summary).toContain("include('related-collections'");
     expect(summary).not.toContain('components/sysbo/entry/fields/');
     expect(summary).not.toContain('data-field-control');
   });
   it('keeps reusable EJS components self-documenting and free of extreme source lines', async () => {
-    const reusableRoots = [
-      resolve(uiRoot, 'views/components'),
-      resolve(uiRoot, 'views/popups'),
-    ];
+    const reusableRoots = [resolve(uiRoot, 'views/components'), resolve(uiRoot, 'views/popups')];
 
     for (const reusableRoot of reusableRoots) {
       for (const file of await filesBelow(reusableRoot)) {
         const source = await readFile(file, 'utf8');
         const relativeName = relative(uiRoot, file);
 
-        expect(source.startsWith('<%#\n  COMPONENT:'), `${relativeName} needs the standard component header`).toBe(true);
+        expect(
+          source.startsWith('<%#\n  COMPONENT:'),
+          `${relativeName} needs the standard component header`,
+        ).toBe(true);
         for (const section of [
           'Purpose:',
           'Inputs / metadata:',
@@ -90,7 +113,10 @@ describe('UI component responsibility boundaries', () => {
         }
 
         const longestLine = Math.max(...source.split(/\r?\n/).map((line) => line.length));
-        expect(longestLine, `${relativeName} contains an excessively long source line`).toBeLessThanOrEqual(180);
+        expect(
+          longestLine,
+          `${relativeName} contains an excessively long source line`,
+        ).toBeLessThanOrEqual(180);
       }
     }
   });
@@ -109,7 +135,8 @@ describe('UI component responsibility boundaries', () => {
       'public/js/sysbo/hierarchy/hierarchy-workspace.js',
     ];
 
-    for (const path of required) await expect(access(resolve(uiRoot, path))).resolves.toBeUndefined();
+    for (const path of required)
+      await expect(access(resolve(uiRoot, path))).resolves.toBeUndefined();
 
     for (const obsolete of [
       'views/field-components',
@@ -118,9 +145,9 @@ describe('UI component responsibility boundaries', () => {
       'public/js/field-components',
       'public/js/components/record-selector.js',
       'public/js/components/popup-runtime.js',
+      'public/js/forms/modal-focus.js',
     ]) {
       await expect(access(resolve(uiRoot, obsolete))).rejects.toThrow();
     }
   });
-
 });

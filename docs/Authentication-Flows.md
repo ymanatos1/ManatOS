@@ -22,19 +22,19 @@ The browser never receives SMTP credentials, password hashes, the internal API k
 
 ## 2. Storage map
 
-| Artifact | Owner | Stored where | Stored form | Lifetime / invalidation |
-| --- | --- | --- | --- | --- |
-| `SysUser.passwordHash` | API | Current business datastore (`data/database.json`) | Argon2id hash | Replaced when password is set/changed |
-| `SysUser.passwordChangedAt` | API | Business datastore | ISO timestamp | Updated with password |
-| Email verification state | API | `SysUser` in business datastore | `emailVerified`, timestamp, source | Persistent |
-| External identities | API | Business datastore | Provider, provider subject, provider email/metadata | Persistent until unlinked/deleted |
-| API access token | API | `AccessTokenStore` in API memory | Raw token returned once; SHA-256 hash retained in store | Expiry, logout/revocation, or API restart |
-| UI session | UI/BFF | Default `express-session` MemoryStore | Session data referenced by `manatos.sid` cookie | Idle timeout, logout, or UI restart |
-| CSRF token | UI/BFF | UI session | Random session value; copied into forms | Session lifetime |
-| Email-verification token | UI/BFF | `SecurityTokenStore` in UI memory | Token id + SHA-256 hash; raw secret only in URL/email | One-time, expiry, invalidation, or UI restart |
-| Password-reset token | UI/BFF | `SecurityTokenStore` in UI memory | Token id + SHA-256 hash + user id + display label | One active reset token per user; one-time; 30 min; UI restart |
-| SMTP credentials | API | `SysConfiguration` + deployment bootstrap defaults | Host/user settings as configuration; password encrypted at rest | Persistent configuration; never returned to UI |
-| External-provider Client Secret | API | `SysExtAuthProvider` in business datastore | AES-GCM encrypted | Replaced/removed by Admin; never returned to UI |
+| Artifact                        | Owner  | Stored where                                       | Stored form                                                     | Lifetime / invalidation                                       |
+| ------------------------------- | ------ | -------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------- |
+| `SysUser.passwordHash`          | API    | Current business datastore (`data/database.json`)  | Argon2id hash                                                   | Replaced when password is set/changed                         |
+| `SysUser.passwordChangedAt`     | API    | Business datastore                                 | ISO timestamp                                                   | Updated with password                                         |
+| Email verification state        | API    | `SysUser` in business datastore                    | `emailVerified`, timestamp, source                              | Persistent                                                    |
+| External identities             | API    | Business datastore                                 | Provider, provider subject, provider email/metadata             | Persistent until unlinked/deleted                             |
+| API access token                | API    | `AccessTokenStore` in API memory                   | Raw token returned once; SHA-256 hash retained in store         | Expiry, logout/revocation, or API restart                     |
+| UI session                      | UI/BFF | Default `express-session` MemoryStore              | Session data referenced by `manatos.sid` cookie                 | Idle timeout, logout, or UI restart                           |
+| CSRF token                      | UI/BFF | UI session                                         | Random session value; copied into forms                         | Session lifetime                                              |
+| Email-verification token        | UI/BFF | `SecurityTokenStore` in UI memory                  | Token id + SHA-256 hash; raw secret only in URL/email           | One-time, expiry, invalidation, or UI restart                 |
+| Password-reset token            | UI/BFF | `SecurityTokenStore` in UI memory                  | Token id + SHA-256 hash + user id + display label               | One active reset token per user; one-time; 30 min; UI restart |
+| SMTP credentials                | API    | `SysConfiguration` + deployment bootstrap defaults | Host/user settings as configuration; password encrypted at rest | Persistent configuration; never returned to UI                |
+| External-provider Client Secret | API    | `SysExtAuthProvider` in business datastore         | AES-GCM encrypted                                               | Replaced/removed by Admin; never returned to UI               |
 
 ### Password hashing
 

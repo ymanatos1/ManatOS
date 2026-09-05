@@ -94,13 +94,7 @@ export interface SysBOUIListMetadata {
  */
 export type SysBOUIIconKey = string;
 
-export type SysBOUIStatusTone =
-  | 'primary'
-  | 'secondary'
-  | 'success'
-  | 'danger'
-  | 'warning'
-  | 'info';
+export type SysBOUIStatusTone = 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info';
 
 export type SysBOUIValueFormat = 'text' | 'datetime' | 'datetime-elapsed';
 
@@ -424,13 +418,17 @@ export interface SysBOUIRecordMetadata {
   relatedCollections?: Readonly<Record<string, SysBOUIRelatedCollectionMetadata>>;
 }
 
-
 /** Presentation of one entity instance, distinct from the entity/page icon. */
 export type SysBOUIEntryIconMetadata =
   | Readonly<{ mode: 'entity' }>
   | Readonly<{ mode: 'type' }>
   | Readonly<{ mode: 'fixed'; icon: string }>
-  | Readonly<{ mode: 'composed'; entityScale?: number; typeScale?: number; typeEmphasis?: 'primary' | 'secondary' }>;
+  | Readonly<{
+      mode: 'composed';
+      entityScale?: number;
+      typeScale?: number;
+      typeEmphasis?: 'primary' | 'secondary';
+    }>;
 
 export interface SysBOUIEntryRepresentationMetadata {
   /**

@@ -14,7 +14,10 @@
     if (!runtime?.value?.page) return null;
     let node = runtime.value.page;
     let path = 'ctx.page';
-    while (node?.page) { node = node.page; path += '.page'; }
+    while (node?.page) {
+      node = node.page;
+      path += '.page';
+    }
     return path;
   };
 
@@ -25,12 +28,14 @@
 
     const current = runtime.get?.(`${pagePath}.entry`);
     const original = runtime.get?.(`${pagePath}.entryOriginal`);
-    const mergedCurrent = current && typeof current === 'object' && !Array.isArray(current)
-      ? { ...current, ...record }
-      : { ...record };
-    const mergedOriginal = original && typeof original === 'object' && !Array.isArray(original)
-      ? { ...original, ...record }
-      : { ...mergedCurrent };
+    const mergedCurrent =
+      current && typeof current === 'object' && !Array.isArray(current)
+        ? { ...current, ...record }
+        : { ...record };
+    const mergedOriginal =
+      original && typeof original === 'object' && !Array.isArray(original)
+        ? { ...original, ...record }
+        : { ...mergedCurrent };
 
     runtime.replace(`${pagePath}.entry`, mergedCurrent, { source: 'save-reconcile' });
     runtime.replace(`${pagePath}.entryOriginal`, mergedOriginal, { source: 'save-reconcile' });
@@ -46,18 +51,30 @@
   let saving = false;
   form.addEventListener('submit', async (event) => {
     const submitter = event.submitter;
-    const isStay = submitter instanceof HTMLButtonElement
-      && submitter.name === '_saveMode'
-      && submitter.value === 'stay';
-    if (!isStay || form.dataset.recordMode === 'create' || form.dataset.ownerEditing === 'true' || saving) return;
+    const isStay =
+      submitter instanceof HTMLButtonElement &&
+      submitter.name === '_saveMode' &&
+      submitter.value === 'stay';
+    if (
+      !isStay ||
+      form.dataset.recordMode === 'create' ||
+      form.dataset.ownerEditing === 'true' ||
+      saving
+    )
+      return;
 
     event.preventDefault();
     if (!form.reportValidity()) return;
 
     saving = true;
-    const saveControls = [...form.querySelectorAll('[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]')]
-      .filter((control) => control instanceof HTMLButtonElement);
-    saveControls.forEach((control) => { control.disabled = true; });
+    const saveControls = [
+      ...form.querySelectorAll(
+        '[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]',
+      ),
+    ].filter((control) => control instanceof HTMLButtonElement);
+    saveControls.forEach((control) => {
+      control.disabled = true;
+    });
 
     try {
       /*
@@ -81,13 +98,16 @@
       });
       const contentType = response.headers.get('content-type') || '';
       const payload = contentType.includes('application/json') ? await response.json() : null;
-      if (!response.ok || !payload?.success) throw new Error('Save could not be completed in place.');
+      if (!response.ok || !payload?.success)
+        throw new Error('Save could not be completed in place.');
 
       mergePersistedCtx(payload.data?.record);
-      form.dispatchEvent(new CustomEvent('manatos:form-saved', {
-        bubbles: true,
-        detail: payload.data || {},
-      }));
+      form.dispatchEvent(
+        new CustomEvent('manatos:form-saved', {
+          bubbles: true,
+          detail: payload.data || {},
+        }),
+      );
     } catch (error) {
       /*
        * Plain Save is an in-place operation by contract. Never fall back to a

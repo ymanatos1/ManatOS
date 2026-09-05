@@ -69,14 +69,14 @@ Registry functions declare the capability needed to execute them. The current ca
 
 Examples:
 
-| Function | Capability | Meaning |
-|---|---|---|
-| `SqRoot` | `pure` | local numeric operation |
-| `StrFormat` | `pure` | local formatting |
-| `CurrentDay` / `GetTime` | `clock` | owner-provided clock |
-| `FirstCtx` | `ctx` | materialized context lookup |
-| `TraverseCtx` | `ctx` | hierarchy traversal inside an already-materialized collection |
-| `TraverseEntity` | `entityResolver` | canonical persisted hierarchy traversal |
+| Function                 | Capability       | Meaning                                                       |
+| ------------------------ | ---------------- | ------------------------------------------------------------- |
+| `SqRoot`                 | `pure`           | local numeric operation                                       |
+| `StrFormat`              | `pure`           | local formatting                                              |
+| `CurrentDay` / `GetTime` | `clock`          | owner-provided clock                                          |
+| `FirstCtx`               | `ctx`            | materialized context lookup                                   |
+| `TraverseCtx`            | `ctx`            | hierarchy traversal inside an already-materialized collection |
+| `TraverseEntity`         | `entityResolver` | canonical persisted hierarchy traversal                       |
 
 Capabilities describe requirements, not hard-coded deployment locations. Today the API supplies `entityResolver`; a future trusted worker may also supply it.
 
@@ -92,7 +92,7 @@ parentId == null ? null : TraverseEntity(...)
 
 when the browser's live `parentId` is null, the false branch is never reached. The result becomes null immediately and no API/resolver request occurs.
 
-Static parsing may mark the expression as *potentially* requiring `entityResolver`; only runtime reachability activates delegation.
+Static parsing may mark the expression as _potentially_ requiring `entityResolver`; only runtime reachability activates delegation.
 
 ## 7. Browser-owned hybrid execution
 
@@ -254,7 +254,7 @@ This keeps facts reusable. `addConstraintReached`, for example, only says that t
 The framework-neutral dynamic-value contract is:
 
 ```ts
-T | { expression: string }
+T | { expression: string };
 ```
 
 and is named `ManatOSDynamicValue<T>`. UI metadata's `SysBOUIDynamicValue<T>` aliases this type instead of owning a separate expression concept. Navigation/platform metadata can therefore use the same contract without depending on SysBO UI types.

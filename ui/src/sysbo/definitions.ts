@@ -101,7 +101,5 @@ export function effectiveSysBODefinitions(
   platform: SysPlatform = resolvePlatform(company),
 ): Record<string, SysBODefinition> {
   const keys = effectiveEntityKeys(company, platform);
-  return Object.fromEntries(
-    Object.entries(sysBODefinitions).filter(([key]) => keys.has(key)),
-  );
+  return Object.fromEntries(Object.entries(sysBODefinitions).filter(([key]) => keys.has(key)));
 }

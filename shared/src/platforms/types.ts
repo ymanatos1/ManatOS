@@ -64,7 +64,6 @@ export interface SysPlatform {
   navigation: NavigationContribution[];
 }
 
-
 /**
  * Code-defined ManatOS company catalogue.
  *

@@ -20,7 +20,10 @@ import type {
 } from '../storage/in-memory-repository.js';
 
 import { DataStoreEntityResolver } from './entity-resolver.js';
-import { RelationshipIntegrityService, type DeleteImpactPlan } from './relationship-integrity-service.js';
+import {
+  RelationshipIntegrityService,
+  type DeleteImpactPlan,
+} from './relationship-integrity-service.js';
 
 export interface AggregateCommitInput {
   entries: ReadonlyArray<Record<string, unknown>>;
@@ -65,7 +68,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
 
     return {
       ...result,
-      items: await Promise.all(result.items.map((item) => this.materializePersistedCalculatedFields(item))),
+      items: await Promise.all(
+        result.items.map((item) => this.materializePersistedCalculatedFields(item)),
+      ),
     };
   }
 
@@ -105,11 +110,11 @@ export class GenericSysBOService<T extends SysBOEntity> {
 
           scope.comment('createdBy', actor.userName);
 
-          const normalizedInput = this.normalizeFields(input as unknown as Record<string, unknown>) as SysBOCreateInput<T>;
-          const created = await this.repository.create(
-            normalizedInput,
-            actor,
-            (record) => this.materializePersistedCalculatedFields(record),
+          const normalizedInput = this.normalizeFields(
+            input as unknown as Record<string, unknown>,
+          ) as SysBOCreateInput<T>;
+          const created = await this.repository.create(normalizedInput, actor, (record) =>
+            this.materializePersistedCalculatedFields(record),
           );
           await this.refreshPersistedCalculatedCollection();
           return (await this.repository.getById(created.id)) ?? created;
@@ -139,12 +144,11 @@ export class GenericSysBOService<T extends SysBOEntity> {
             updatedBy: actor.userName,
           });
 
-          const normalizedChanges = this.normalizeFields(changes as unknown as Record<string, unknown>) as SysBOUpdateInput<T>;
-          const updated = await this.repository.update(
-            id,
-            normalizedChanges,
-            actor,
-            (record) => this.materializePersistedCalculatedFields(record),
+          const normalizedChanges = this.normalizeFields(
+            changes as unknown as Record<string, unknown>,
+          ) as SysBOUpdateInput<T>;
+          const updated = await this.repository.update(id, normalizedChanges, actor, (record) =>
+            this.materializePersistedCalculatedFields(record),
           );
           await this.refreshPersistedCalculatedCollection();
           return (await this.repository.getById(updated.id)) ?? updated;
@@ -165,7 +169,12 @@ export class GenericSysBOService<T extends SysBOEntity> {
         expression,
         { value },
         { value },
-        { source: 'field-normalization', sourcePath: `fieldDefinition.${key}.normalize`, targetPath: key, purpose: 'normalize field before persistence' },
+        {
+          source: 'field-normalization',
+          sourcePath: `fieldDefinition.${key}.normalize`,
+          targetPath: key,
+          purpose: 'normalize field before persistence',
+        },
       );
     }
     return candidate;
@@ -173,7 +182,9 @@ export class GenericSysBOService<T extends SysBOEntity> {
 
   /** Whether this entity declares any calculated value that must be stored. */
   private hasPersistedCalculatedFields(): boolean {
-    return Object.values(this.metadata.fieldDefinition).some((field) => field.calculation?.persisted === true);
+    return Object.values(this.metadata.fieldDefinition).some(
+      (field) => field.calculation?.persisted === true,
+    );
   }
 
   /**
@@ -280,22 +291,34 @@ export class GenericSysBOService<T extends SysBOEntity> {
     );
   }
 
-
   /**
    * Atomically persist an owner-managed working collection. Temporary `draft:*`
    * identities are resolved inside the transaction and same-entity references
    * are rewritten before persistence. This is intentionally entity-agnostic so
    * hierarchy/aggregate workspaces do not need bespoke persistence code.
    */
-  async commitAggregate(input: AggregateCommitInput, actor: AuditActor): Promise<AggregateCommitResult<T>> {
+  async commitAggregate(
+    input: AggregateCommitInput,
+    actor: AuditActor,
+  ): Promise<AggregateCommitResult<T>> {
     const identityField = String(input.identityField || 'id');
     const current = input.entries.map((row) => ({ ...row }));
     const original = input.entriesOriginal.map((row) => ({ ...row }));
-    const originalIds = new Set(original.map((row) => String(row[identityField] ?? '')).filter(Boolean));
-    const originalById = new Map(original.map((row) => [String(row[identityField] ?? ''), row] as const));
-    const currentIds = new Set(current.map((row) => String(row[identityField] ?? '')).filter(Boolean));
-    const draftRows = current.filter((row) => String(row[identityField] ?? '').startsWith('draft:'));
-    const existingRows = current.filter((row) => !String(row[identityField] ?? '').startsWith('draft:'));
+    const originalIds = new Set(
+      original.map((row) => String(row[identityField] ?? '')).filter(Boolean),
+    );
+    const originalById = new Map(
+      original.map((row) => [String(row[identityField] ?? ''), row] as const),
+    );
+    const currentIds = new Set(
+      current.map((row) => String(row[identityField] ?? '')).filter(Boolean),
+    );
+    const draftRows = current.filter((row) =>
+      String(row[identityField] ?? '').startsWith('draft:'),
+    );
+    const existingRows = current.filter(
+      (row) => !String(row[identityField] ?? '').startsWith('draft:'),
+    );
     const deletedIds = [...originalIds].filter((id) => !currentIds.has(id));
     const idMap: Record<string, string> = {};
 
@@ -303,7 +326,10 @@ export class GenericSysBOService<T extends SysBOEntity> {
       .filter((field) => field.type === 'reference' && field.referenceBOKey === this.metadata.key)
       .map((field) => field.key);
     const editableFieldKeys = Object.values(this.metadata.fieldDefinition)
-      .filter((field) => field.generated !== true && field.readOnly !== true && field.applicationManaged !== true)
+      .filter(
+        (field) =>
+          field.generated !== true && field.readOnly !== true && field.applicationManaged !== true,
+      )
       .map((field) => field.key);
 
     const persistenceValues = (row: Record<string, unknown>) => {
@@ -318,22 +344,34 @@ export class GenericSysBOService<T extends SysBOEntity> {
       return this.normalizeFields(values);
     };
 
-    return this.store.executeTransaction(() => operationContext.run(
-      `Commit ${this.metadata.name} aggregate`,
-      async (scope) => {
-        scope.addContext({ created: draftRows.length, updated: existingRows.length, deleted: deletedIds.length, actor: actor.userName });
+    return this.store.executeTransaction(() =>
+      operationContext.run(`Commit ${this.metadata.name} aggregate`, async (scope) => {
+        scope.addContext({
+          created: draftRows.length,
+          updated: existingRows.length,
+          deleted: deletedIds.length,
+          actor: actor.userName,
+        });
 
         // Create drafts in dependency order so same-entity draft references can
         // be rewritten to real generated IDs before each repository insert.
         const pending = [...draftRows];
         while (pending.length) {
-          const index = pending.findIndex((row) => sameEntityReferenceFields.every((key) => {
-            const value = row[key];
-            return !(typeof value === 'string' && value.startsWith('draft:')) || Boolean(idMap[value]);
-          }));
-          if (index < 0) throw new Error(`Aggregate ${this.metadata.name} contains unresolved/cyclic draft references.`);
+          const index = pending.findIndex((row) =>
+            sameEntityReferenceFields.every((key) => {
+              const value = row[key];
+              return (
+                !(typeof value === 'string' && value.startsWith('draft:')) || Boolean(idMap[value])
+              );
+            }),
+          );
+          if (index < 0)
+            throw new Error(
+              `Aggregate ${this.metadata.name} contains unresolved/cyclic draft references.`,
+            );
           const row = pending.splice(index, 1)[0];
-          if (!row) throw new Error(`Aggregate ${this.metadata.name} draft queue changed unexpectedly.`);
+          if (!row)
+            throw new Error(`Aggregate ${this.metadata.name} draft queue changed unexpectedly.`);
           const draftId = String(row[identityField] ?? '');
           const created = await this.repository.create(
             persistenceValues(row) as SysBOCreateInput<T>,
@@ -352,11 +390,8 @@ export class GenericSysBOService<T extends SysBOEntity> {
           const baseline = originalById.get(id);
           const baselineValues = baseline ? persistenceValues(baseline) : {};
           if (JSON.stringify(nextValues) === JSON.stringify(baselineValues)) continue;
-          await this.repository.update(
-            id,
-            nextValues as SysBOUpdateInput<T>,
-            actor,
-            (record) => this.materializePersistedCalculatedFields(record),
+          await this.repository.update(id, nextValues as SysBOUpdateInput<T>, actor, (record) =>
+            this.materializePersistedCalculatedFields(record),
           );
         }
 
@@ -383,8 +418,8 @@ export class GenericSysBOService<T extends SysBOEntity> {
         }
 
         return { items, idMap };
-      },
-    ));
+      }),
+    );
   }
 
   /** Preview relationship-driven consequences before deleting this record. */

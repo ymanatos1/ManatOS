@@ -18,42 +18,57 @@
     if (!runtime?.value?.page) return null;
     let node = runtime.value.page;
     let path = 'ctx.page';
-    while (node?.page) { node = node.page; path += '.page'; }
+    while (node?.page) {
+      node = node.page;
+      path += '.page';
+    }
     return path;
   };
 
   const cloneValue = (value) => {
     if (value === undefined) return undefined;
-    try { return structuredClone(value); }
-    catch {
-      try { return JSON.parse(JSON.stringify(value)); }
-      catch { return value; }
+    try {
+      return structuredClone(value);
+    } catch {
+      try {
+        return JSON.parse(JSON.stringify(value));
+      } catch {
+        return value;
+      }
     }
   };
 
   const sameValue = (left, right) => {
-    try { return JSON.stringify(left ?? null) === JSON.stringify(right ?? null); }
-    catch { return String(left ?? '') === String(right ?? ''); }
+    try {
+      return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+    } catch {
+      return String(left ?? '') === String(right ?? '');
+    }
   };
 
-  const domFieldValue = (container, key) => {
+  const domFieldValue = (container) => {
     const control = container.querySelector('[data-ctx-field]');
     if (control instanceof HTMLInputElement) {
       if (control.type === 'checkbox') return control.checked;
       if (control.dataset.ctxValueType === 'duration') {
         if (!control.value) return null;
-        try { return JSON.parse(control.value); } catch { return control.value; }
+        try {
+          return JSON.parse(control.value);
+        } catch {
+          return control.value;
+        }
       }
       return control.value;
     }
-    if (control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) return control.value;
+    if (control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)
+      return control.value;
     return undefined;
   };
 
   const fieldValue = (container, key) => {
     const pagePath = leafPagePath();
     const ctxValue = pagePath ? runtime?.get?.(`${pagePath}.entry.${key}`) : undefined;
-    return ctxValue !== undefined ? ctxValue : domFieldValue(container, key);
+    return ctxValue !== undefined ? ctxValue : domFieldValue(container);
   };
 
   const baselines = new Map();

@@ -103,7 +103,6 @@ export class InMemoryDataStore implements StorageAdapter {
     return this.state.sysUserInvitations;
   }
 
-
   /**
    * Resolve a persisted collection by canonical ManatOS metadata key.
    * Relationship/delete planning uses this instead of hard-coding one target
@@ -113,22 +112,38 @@ export class InMemoryDataStore implements StorageAdapter {
   collectionForObjectKey(objectKey: string): Map<string, Record<string, unknown>> | null {
     const map = (() => {
       switch (objectKey) {
-        case 'sys-users': return this.state.sysUsers;
-        case 'sys-principals': return this.state.sysPrincipals;
-        case 'sys-email-addresses': return this.state.sysEmailAddresses;
-        case 'sys-principal-email-addresses': return this.state.sysPrincipalEmailAddresses;
-        case 'sys-telephone-numbers': return this.state.sysTelephoneNumbers;
-        case 'sys-principal-telephone-numbers': return this.state.sysPrincipalTelephoneNumbers;
-        case 'sys-addresses': return this.state.sysAddresses;
-        case 'sys-principal-addresses': return this.state.sysPrincipalAddresses;
-        case 'sys-applications': return this.state.sysApplications;
-        case 'sys-configurations': return this.state.sysConfigurations;
-        case 'sys-licenses': return this.state.sysLicenses;
-        case 'sys-ext-auth-providers': return this.state.sysExtAuthProviders;
-        case 'external-identities': return this.state.sysExternalIdentities;
-        case 'user-principals': return this.state.sysUserPrincipals;
-        case 'user-invitations': return this.state.sysUserInvitations;
-        default: return null;
+        case 'sys-users':
+          return this.state.sysUsers;
+        case 'sys-principals':
+          return this.state.sysPrincipals;
+        case 'sys-email-addresses':
+          return this.state.sysEmailAddresses;
+        case 'sys-principal-email-addresses':
+          return this.state.sysPrincipalEmailAddresses;
+        case 'sys-telephone-numbers':
+          return this.state.sysTelephoneNumbers;
+        case 'sys-principal-telephone-numbers':
+          return this.state.sysPrincipalTelephoneNumbers;
+        case 'sys-addresses':
+          return this.state.sysAddresses;
+        case 'sys-principal-addresses':
+          return this.state.sysPrincipalAddresses;
+        case 'sys-applications':
+          return this.state.sysApplications;
+        case 'sys-configurations':
+          return this.state.sysConfigurations;
+        case 'sys-licenses':
+          return this.state.sysLicenses;
+        case 'sys-ext-auth-providers':
+          return this.state.sysExtAuthProviders;
+        case 'external-identities':
+          return this.state.sysExternalIdentities;
+        case 'user-principals':
+          return this.state.sysUserPrincipals;
+        case 'user-invitations':
+          return this.state.sysUserInvitations;
+        default:
+          return null;
       }
     })();
 
@@ -259,19 +274,37 @@ export class InMemoryDataStore implements StorageAdapter {
     this.sysUsers = new InMemoryRepository(this.state.sysUsers, sysBOUsersMetadata);
 
     this.sysPrincipals = new InMemoryRepository(this.state.sysPrincipals, sysBOPrincipalsMetadata);
-    this.sysEmailAddresses = new InMemoryRepository(this.state.sysEmailAddresses, sysBOEmailAddressesMetadata);
-    this.sysPrincipalEmailAddresses = new InMemoryRepository(this.state.sysPrincipalEmailAddresses, sysBOPrincipalEmailAddressesMetadata);
-    this.sysTelephoneNumbers = new InMemoryRepository(this.state.sysTelephoneNumbers, sysBOTelephoneNumbersMetadata);
-    this.sysPrincipalTelephoneNumbers = new InMemoryRepository(this.state.sysPrincipalTelephoneNumbers, sysBOPrincipalTelephoneNumbersMetadata);
+    this.sysEmailAddresses = new InMemoryRepository(
+      this.state.sysEmailAddresses,
+      sysBOEmailAddressesMetadata,
+    );
+    this.sysPrincipalEmailAddresses = new InMemoryRepository(
+      this.state.sysPrincipalEmailAddresses,
+      sysBOPrincipalEmailAddressesMetadata,
+    );
+    this.sysTelephoneNumbers = new InMemoryRepository(
+      this.state.sysTelephoneNumbers,
+      sysBOTelephoneNumbersMetadata,
+    );
+    this.sysPrincipalTelephoneNumbers = new InMemoryRepository(
+      this.state.sysPrincipalTelephoneNumbers,
+      sysBOPrincipalTelephoneNumbersMetadata,
+    );
     this.sysAddresses = new InMemoryRepository(this.state.sysAddresses, sysBOAddressesMetadata);
-    this.sysPrincipalAddresses = new InMemoryRepository(this.state.sysPrincipalAddresses, sysBOPrincipalAddressesMetadata);
+    this.sysPrincipalAddresses = new InMemoryRepository(
+      this.state.sysPrincipalAddresses,
+      sysBOPrincipalAddressesMetadata,
+    );
 
     this.sysApplications = new InMemoryRepository(
       this.state.sysApplications,
       sysBOApplicationsMetadata,
     );
 
-    this.sysConfigurations = new InMemoryRepository(this.state.sysConfigurations, sysBOConfigurationsMetadata);
+    this.sysConfigurations = new InMemoryRepository(
+      this.state.sysConfigurations,
+      sysBOConfigurationsMetadata,
+    );
 
     this.sysLicenses = new InMemoryRepository(this.state.sysLicenses, sysBOLicensesMetadata);
 
@@ -281,7 +314,6 @@ export class InMemoryDataStore implements StorageAdapter {
     );
   }
 }
-
 
 /**
  * Restore a Map to a previously cloned snapshot without changing the Map

@@ -5,10 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const entryTemplatePath = resolve(
-  testDirectory,
-  '../views/pages/sysbo/entry.ejs',
-);
+const entryTemplatePath = resolve(testDirectory, '../views/pages/sysbo/entry.ejs');
 
 describe('metadata-driven entry render contract', () => {
   it('passes canonical compiled entity metadata explicitly to field components', async () => {
@@ -25,7 +22,7 @@ describe('metadata-driven entry render contract', () => {
       /const\s+fieldComponentContext\s*=\s*\{[\s\S]*?\bcompiledEntityMetadata\b[\s\S]*?\};/,
     );
     expect(tabContent).toMatch(
-      /include\(['\"]\.\.\/fields\/form-field['\"],\s*\{\s*\.\.\.fieldComponentContext/,
+      /include\(['"]\.\.\/fields\/form-field['"],\s*\{\s*\.\.\.fieldComponentContext/,
     );
   });
   it('keeps the split Debugging panel data contract in sync with its partial', async () => {
@@ -68,9 +65,13 @@ describe('metadata-driven entry render contract', () => {
       'utf8',
     );
 
-    expect(source).toContain("include('../../components/sysbo/entry/shell/entry-tabs-nav', { tabs, activeTabId })");
+    expect(source).toContain(
+      "include('../../components/sysbo/entry/shell/entry-tabs-nav', { tabs, activeTabId })",
+    );
     expect(source).toContain("include('../../components/sysbo/entry/shell/entry-tab-content', {");
-    expect(source).toContain("include('../../components/sysbo/entry/shell/entry-actions-footer', {");
+    expect(source).toContain(
+      "include('../../components/sysbo/entry/shell/entry-actions-footer', {",
+    );
     expect(source).toContain("include('../../components/sysbo/entry/shell/entry-command-forms', {");
     expect(tabsNav).toContain('for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1)');
     expect(actionsFooter).toContain("include('save-split-action', { saveAction, actionClass })");
@@ -79,7 +80,8 @@ describe('metadata-driven entry render contract', () => {
     // Renderer decomposition must remain generic: entity names belong in metadata,
     // never in reusable entry-shell presentation components.
     const reusableRendererSource = `${tabsNav}\n${tabContent}\n${actionsFooter}\n${commandForms}`;
-    expect(reusableRendererSource).not.toMatch(/SysUsers|SysPrincipals|SysExtAuthProviders|SysLicenses/);
+    expect(reusableRendererSource).not.toMatch(
+      /SysUsers|SysPrincipals|SysExtAuthProviders|SysLicenses/,
+    );
   });
-
 });

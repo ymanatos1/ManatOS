@@ -229,7 +229,11 @@ export class ApiClient {
     const method = String(init.method ?? 'GET').toUpperCase();
     let requestBody: unknown;
     if (typeof init.body === 'string' && init.body) {
-      try { requestBody = JSON.parse(init.body); } catch { requestBody = init.body; }
+      try {
+        requestBody = JSON.parse(init.body);
+      } catch {
+        requestBody = init.body;
+      }
     }
 
     const recordTraffic = (entry: Parameters<typeof addApiTrafficEntry>[0]) => {
@@ -239,64 +243,64 @@ export class ApiClient {
     let response: Response;
     try {
       response = await fetch(
-      config.API_BASE_URL + path,
+        config.API_BASE_URL + path,
 
-      {
-        ...init,
+        {
+          ...init,
 
-        headers: {
-          accept: 'application/json',
+          headers: {
+            accept: 'application/json',
 
-          /**
-           * Add Content-Type only when a request body exists.
-           */
-          ...(init.body
-            ? {
-                'content-type': 'application/json',
-              }
-            : {}),
+            /**
+             * Add Content-Type only when a request body exists.
+             */
+            ...(init.body
+              ? {
+                  'content-type': 'application/json',
+                }
+              : {}),
 
-          /**
-           * Normal authenticated business/API operation.
-           *
-           * This is the Bearer token belonging to the
-           * current server-side website session.
-           */
-          ...(options.accessToken
-            ? {
-                authorization: `Bearer ${options.accessToken}`,
-              }
-            : {}),
+            /**
+             * Normal authenticated business/API operation.
+             *
+             * This is the Bearer token belonging to the
+             * current server-side website session.
+             */
+            ...(options.accessToken
+              ? {
+                  authorization: `Bearer ${options.accessToken}`,
+                }
+              : {}),
 
-          /**
-           * Trusted process-to-process operation.
-           *
-           * Only explicitly internal API endpoints should
-           * use this mechanism.
-           *
-           * It must never replace normal Bearer authorization
-           * for business operations.
-           */
-          ...(options.internal
-            ? {
-                'x-internal-api-key': config.INTERNAL_API_KEY,
-              }
-            : {}),
+            /**
+             * Trusted process-to-process operation.
+             *
+             * Only explicitly internal API endpoints should
+             * use this mechanism.
+             *
+             * It must never replace normal Bearer authorization
+             * for business operations.
+             */
+            ...(options.internal
+              ? {
+                  'x-internal-api-key': config.INTERNAL_API_KEY,
+                }
+              : {}),
 
-          /**
-           * Optional non-security-critical client information.
-           *
-           * Primarily useful while creating API sessions so
-           * they can later be identified in the Sessions view.
-           */
-          ...(options.clientName
-            ? {
-                'x-client-name': options.clientName,
-              }
-            : {}),
+            /**
+             * Optional non-security-critical client information.
+             *
+             * Primarily useful while creating API sessions so
+             * they can later be identified in the Sessions view.
+             */
+            ...(options.clientName
+              ? {
+                  'x-client-name': options.clientName,
+                }
+              : {}),
+          },
         },
-      },
-    );
+      );
     } catch (error) {
       recordTraffic({
         requestId: operationContext.getRequestId(),
