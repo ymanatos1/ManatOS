@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: Popup action
+
+  Purpose:
+  - Renders one semantic popup action as a button or navigation control.
+
+  Inputs / metadata:
+  - Action label/icon/tone/dismiss/href metadata.
+
+  CTX contract:
+  - None.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Bootstrap dismissal or normal navigation according to action metadata.
+%>
+
+<%#
   Render one semantic popup action as either a link or a button.
 
   The action model deliberately carries behavior (dismiss/toggle/target/data attributes)

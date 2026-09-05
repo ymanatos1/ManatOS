@@ -1,0 +1,38 @@
+<%#
+  COMPONENT: Boolean field
+
+  Purpose:
+  - Renders the canonical boolean value as a compact switch.
+
+  Inputs / metadata:
+  - key, field, value, editable; optional inputId/inputName/bindCtx.
+
+  CTX contract:
+  - Binds the canonical field through data-ctx-field when bindCtx is true.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - data-enhanced-field-input and data-field-component="boolean".
+%>
+<%
+  /*
+   * Boolean fields deliberately use the switch itself as the complete editing
+   * affordance. Unlike other entity-field components, no separate field-tools
+   * glyph/menu is rendered: duplicating Toggle beside a switch adds noise and
+   * makes compact recordQuick layouts harder to scan.
+   */
+  const effectiveId = typeof inputId === 'string' ? inputId : `metadata-field-${key}`;
+  const effectiveName = typeof inputName === 'string' ? inputName : key;
+  const ctxBound = typeof bindCtx === 'boolean' ? bindCtx : true;
+%>
+<div class="metadata-boolean-field d-flex align-items-center gap-2" data-enhanced-field-input data-field-component="boolean">
+  <div class="form-check form-switch mb-0">
+    <input
+      class="form-check-input"
+      id="<%= effectiveId %>"
+      type="checkbox"
+      name="<%= effectiveName %>" <% if (ctxBound) { %>data-ctx-field="<%= key %>"<% } %> <%= value === true ? 'checked' : '' %> <%= editable ? '' : 'disabled' %>>
+  </div>
+</div>

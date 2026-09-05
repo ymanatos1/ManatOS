@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Vertical navigation
+
+  Purpose:
+  - Renders the authenticated workspace navigation tree from the canonical navigation projection.
+
+  Inputs / metadata:
+  - app.navigation.vertical and current route/section state.
+
+  CTX contract:
+  - None; permissions/visibility are resolved before presentation.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - shell runtime owns collapse/restore behavior; Bootstrap owns nested collapse affordances where present.
+%>
+
 <ul class="vertical-menu level-<%= level %>">
   <% for (const item of items) { %>
     <% if (item.separatorBefore) { %>

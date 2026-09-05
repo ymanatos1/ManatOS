@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Developer Tools dock
+
+  Purpose:
+  - Composes the unified right-side developer dock and its CTX/API Traffic tabs.
+
+  Inputs / metadata:
+  - Developer-mode shell state and child panel locals.
+
+  CTX contract:
+  - Hosts CTX inspection but does not itself read/write business CTX.
+
+  Embeds / delegates:
+  - ctx-debug.ejs and api-traffic.ejs.
+
+  Runtime contract:
+  - shell.js owns tab selection, visibility, persistence and dock geometry.
+%>
+
 <!--
   One shell-owned developer dock.
 

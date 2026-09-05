@@ -1,0 +1,41 @@
+<%#
+  COMPONENT: Entry tabs navigation
+
+  Purpose:
+  - Renders metadata-declared entry tabs with canonical labels/icons and active state.
+
+  Inputs / metadata:
+  - metadataUI entry tab definitions and selected tab key.
+
+  CTX contract:
+  - None.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Bootstrap/tab navigation plus shell persistence where configured.
+%>
+
+<ul class="nav nav-tabs entity-tabs" role="tablist" aria-label="Metadata-driven record tabs">
+      <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
+        <% const tab = tabs[tabIndex]; %>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link <%= tab.id === activeTabId ? 'active' : '' %>"
+            id="metadata-<%= tab.id %>-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#metadata-<%= tab.id %>-pane"
+            type="button"
+            role="tab"
+            aria-controls="metadata-<%= tab.id %>-pane"
+            aria-selected="<%= tab.id === activeTabId ? 'true' : 'false' %>"
+          >
+            <% if (tab.icon) { %>
+              <i class="bi bi-<%= tab.icon %> me-1" aria-hidden="true"></i>
+            <% } %>
+            <%= tab.label %>
+          </button>
+        </li>
+      <% } %>
+    </ul>

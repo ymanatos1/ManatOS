@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: External-provider buttons
+
+  Purpose:
+  - Renders a reusable list of external authentication provider actions.
+
+  Inputs / metadata:
+  - Provider definitions, mode and configured/available state.
+
+  CTX contract:
+  - None directly.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Authentication provider runtime handles provider actions.
+%>
+
+<%#
   Shared external-provider action list used by Sign in and Register.
 
   The initial server-side value is deliberately allowed to be empty. The browser

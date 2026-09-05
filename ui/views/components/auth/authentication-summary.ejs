@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Authentication summary
+
+  Purpose:
+  - Renders the canonical authentication/external-identity summary for an account or SysUser projection.
+
+  Inputs / metadata:
+  - Canonical SysUser metadata, related-collection metadata, current values, auth provider presentation helpers.
+
+  CTX contract:
+  - Reads already-resolved account/SysUser values; it does not mutate CTX.
+
+  Embeds / delegates:
+  - entry-icons.ejs for canonical entity/provider icon presentation.
+
+  Runtime contract:
+  - Pure server-rendered presentation; links/actions are owned by their surrounding page.
+%>
+
 <%
   const externalIdentityCollection = relatedCollectionMetadataFor('sys-users', 'externalIdentities');
   const externalIdentityMetadata = externalIdentityCollection
@@ -101,7 +120,7 @@
                 ? entryRepresentationFor(externalIdentityCollection.entityKey, identity, externalIdentityEntityIcon)
                 : null;
             %>
-            <%- include('../sysbo/entry/entry-icons', {
+            <%- include('../sysbo/entry/shell/entry-icons', {
               entryRepresentation: identityRepresentation,
               iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
             }) %>

@@ -63,7 +63,7 @@ describe('SysBO flattened page CTX data flow', () => {
   it('opens aggregate-owned entries from owner entries without the ordinary record GET path', async () => {
     const routes = await readFile(resolve(testDirectory, '../src/routes/sysbo-routes.ts'), 'utf8');
     const ownerManaged = await readFile(resolve(testDirectory, '../src/routes/sysbo/owner-managed-entry.ts'), 'utf8');
-    const workspace = await readFile(resolve(testDirectory, '../public/js/components/hierarchy-workspace.js'), 'utf8');
+    const workspace = await readFile(resolve(testDirectory, '../public/js/sysbo/hierarchy/hierarchy-workspace.js'), 'utf8');
 
     expect(routes).toContain("router.post('/:key/owned-entry/:id'");
     expect(routes).toContain('itemOverride: { ...item }');

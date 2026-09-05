@@ -9,11 +9,11 @@ const source = (path: string) => readFile(resolve(testDirectory, '..', path), 'u
 
 describe('metadata-driven entity field components', () => {
   it('routes canonical date, datetime and duration entity inputs through explicit reusable field components', async () => {
-    const renderer = await source('views/field-components/entity-field.ejs');
-    const date = await source('views/field-components/date-field.ejs');
-    const datetime = await source('views/field-components/datetime-field.ejs');
-    const duration = await source('views/field-components/duration-field.ejs');
-    const runtime = await source('public/js/field-components/runtime.js');
+    const renderer = await source('views/components/sysbo/entry/fields/entity-field.ejs');
+    const date = await source('views/components/sysbo/entry/fields/date-field.ejs');
+    const datetime = await source('views/components/sysbo/entry/fields/datetime-field.ejs');
+    const duration = await source('views/components/sysbo/entry/fields/duration-field.ejs');
+    const runtime = await source('public/js/sysbo/entry/field-runtime.js');
 
     expect(renderer).toContain("field.type === 'date'");
     expect(renderer).toContain("field.type === 'datetime'");
@@ -27,7 +27,7 @@ describe('metadata-driven entity field components', () => {
   });
 
   it('keeps generic tab rendering entity-agnostic while allowing ordered field/component content', async () => {
-    const renderer = await source('views/components/sysbo/entry/entry-tab-content.ejs');
+    const renderer = await source('views/components/sysbo/entry/shell/entry-tab-content.ejs');
     const registry = await source('src/presentation/metadata-component-registry.ts');
 
     expect(renderer).toContain('const tabContents = Array.isArray(tab.content)');

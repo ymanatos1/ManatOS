@@ -260,7 +260,7 @@ Canonical calculated fields are ordinary typed `fieldDefinition` entries with `c
 
 ### 5.3.1 Field components, UI components and calendar duration
 
-Entity-field controls live under `views/field-components/`. Text, date, datetime, enum, reference, number, boolean and structured **duration** fields use the same canonical dispatcher; read-only/calculated controls retain their field-tool button, with mutating actions disabled rather than hiding the component surface. A duration is one canonical field value with `years`, `months` and `days`, not three unrelated persisted properties.
+Entity-field controls live under `views/components/sysbo/entry/fields/`. Text, date, datetime, enum, reference, number, boolean and structured **duration** fields use the same canonical dispatcher; read-only/calculated controls retain their field-tool button, with mutating actions disabled rather than hiding the component surface. A duration is one canonical field value with `years`, `months` and `days`, not three unrelated persisted properties.
 
 Reusable non-field/compound visualizations live under `views/components/sysbo/`. Examples include contextual help, related collections, list filters, Debugging and compound workflows. A compound component composes canonical field-components instead of recreating their controls. The License `date-duration-range` component is the acceptance example: `validFrom` and `validUntil` are date-only fields, `validityDuration` is a structured calendar duration, and the three values remain ordinary CTX fields.
 

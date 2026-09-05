@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: SysBO list paging
+
+  Purpose:
+  - Renders one paging/page-size presentation contract for server-driven browse lists and client-reactive selectors.
+
+  Inputs / metadata:
+  - paging, pageSizeOptions, filterFields/query, definition and selectorMode.
+
+  CTX contract:
+  - None.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Browse controls navigate through query strings; selector controls expose data-selector-* hooks to record-selector.js.
+%>
+
 <%
   const isSelectorPaging = typeof selectorMode !== 'undefined' && selectorMode === true;
   const minimumPageSize = pageSizeOptions.length ? Math.min(...pageSizeOptions) : paging.pageSize;
@@ -10,11 +29,24 @@
   const showPagingControls = isSelectorPaging || paging.totalPages > 1;
   const pagingInitiallyHidden = isSelectorPaging && paging.totalPages <= 1;
   const showPageSizeSelector = paging.total >= minimumPageSize;
+  const pageHrefFor = (page) => `?${new URLSearchParams({
+    ...query,
+    page: String(page),
+  }).toString()}`;
 %>
 <% if (showPagingControls || showPageSizeSelector) { %>
   <div class="sysbo-paging-row mt-2" <%= isSelectorPaging ? 'data-selector-paging' : '' %>>
     <% if (showPagingControls) { %>
-      <div class="small text-secondary me-auto" <%= isSelectorPaging ? `data-selector-page-summary-wrap${pagingInitiallyHidden ? ' hidden' : ''}` : '' %>><span <%= isSelectorPaging ? 'data-selector-page-summary' : '' %>>Page <%= paging.page %> of <%= paging.totalPages %></span></div>
+      <div
+        class="small text-secondary me-auto"
+        <%= isSelectorPaging
+          ? `data-selector-page-summary-wrap${pagingInitiallyHidden ? ' hidden' : ''}`
+          : '' %>
+      >
+        <span <%= isSelectorPaging ? 'data-selector-page-summary' : '' %>>
+          Page <%= paging.page %> of <%= paging.totalPages %>
+        </span>
+      </div>
     <% } else { %>
       <div class="me-auto"></div>
     <% } %>
@@ -24,17 +56,93 @@
         <nav aria-label="Result pages" <%= isSelectorPaging ? `data-selector-pagination-nav${pagingInitiallyHidden ? ' hidden' : ''}` : '' %>>
           <ul class="pagination pagination-sm mb-0">
             <% if (isSelectorPaging) { %>
-              <li class="page-item disabled" data-selector-first-item><button type="button" class="page-link pagination-nav" data-selector-first title="First page" aria-label="First page"><i class="bi bi-chevron-bar-left" aria-hidden="true"></i></button></li>
-              <li class="page-item disabled" data-selector-prev-item><button type="button" class="page-link pagination-nav" data-selector-prev title="Previous page" aria-label="Previous page"><i class="bi bi-chevron-left" aria-hidden="true"></i></button></li>
+              <li class="page-item disabled" data-selector-first-item>
+                <button
+                  type="button"
+                  class="page-link pagination-nav"
+                  data-selector-first
+                  title="First page"
+                  aria-label="First page"
+                >
+                  <i class="bi bi-chevron-bar-left" aria-hidden="true"></i>
+                </button>
+              </li>
+              <li class="page-item disabled" data-selector-prev-item>
+                <button
+                  type="button"
+                  class="page-link pagination-nav"
+                  data-selector-prev
+                  title="Previous page"
+                  aria-label="Previous page"
+                >
+                  <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </button>
+              </li>
               <li class="page-item active" aria-current="page"><span class="page-link" data-selector-current-page>1</span></li>
-              <li class="page-item disabled" data-selector-next-item><button type="button" class="page-link pagination-nav" data-selector-next title="Next page" aria-label="Next page"><i class="bi bi-chevron-right" aria-hidden="true"></i></button></li>
-              <li class="page-item disabled" data-selector-last-item><button type="button" class="page-link pagination-nav" data-selector-last title="Last page" aria-label="Last page"><i class="bi bi-chevron-bar-right" aria-hidden="true"></i></button></li>
+              <li class="page-item disabled" data-selector-next-item>
+                <button
+                  type="button"
+                  class="page-link pagination-nav"
+                  data-selector-next
+                  title="Next page"
+                  aria-label="Next page"
+                >
+                  <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+              </li>
+              <li class="page-item disabled" data-selector-last-item>
+                <button
+                  type="button"
+                  class="page-link pagination-nav"
+                  data-selector-last
+                  title="Last page"
+                  aria-label="Last page"
+                >
+                  <i class="bi bi-chevron-bar-right" aria-hidden="true"></i>
+                </button>
+              </li>
             <% } else { %>
-              <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>"><a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: '1'}).toString() %>" title="First page" aria-label="First page"><i class="bi bi-chevron-bar-left" aria-hidden="true"></i></a></li>
-              <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>"><a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.max(1, paging.page - 1))}).toString() %>" title="Previous page" aria-label="Previous page"><i class="bi bi-chevron-left" aria-hidden="true"></i></a></li>
+              <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
+                <a
+                  class="page-link pagination-nav"
+                  href="<%= pageHrefFor(1) %>"
+                  title="First page"
+                  aria-label="First page"
+                >
+                  <i class="bi bi-chevron-bar-left" aria-hidden="true"></i>
+                </a>
+              </li>
+              <li class="page-item <%= paging.page <= 1 ? 'disabled' : '' %>">
+                <a
+                  class="page-link pagination-nav"
+                  href="<%= pageHrefFor(Math.max(1, paging.page - 1)) %>"
+                  title="Previous page"
+                  aria-label="Previous page"
+                >
+                  <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </a>
+              </li>
               <li class="page-item active" aria-current="page"><span class="page-link"><%= paging.page %></span></li>
-              <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>"><a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(Math.min(paging.totalPages, paging.page + 1))}).toString() %>" title="Next page" aria-label="Next page"><i class="bi bi-chevron-right" aria-hidden="true"></i></a></li>
-              <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>"><a class="page-link pagination-nav" href="?<%= new URLSearchParams({...query, page: String(paging.totalPages)}).toString() %>" title="Last page" aria-label="Last page"><i class="bi bi-chevron-bar-right" aria-hidden="true"></i></a></li>
+              <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
+                <a
+                  class="page-link pagination-nav"
+                  href="<%= pageHrefFor(Math.min(paging.totalPages, paging.page + 1)) %>"
+                  title="Next page"
+                  aria-label="Next page"
+                >
+                  <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+              </li>
+              <li class="page-item <%= paging.page >= paging.totalPages ? 'disabled' : '' %>">
+                <a
+                  class="page-link pagination-nav"
+                  href="<%= pageHrefFor(paging.totalPages) %>"
+                  title="Last page"
+                  aria-label="Last page"
+                >
+                  <i class="bi bi-chevron-bar-right" aria-hidden="true"></i>
+                </a>
+              </li>
             <% } %>
           </ul>
         </nav>
@@ -45,7 +153,11 @@
           <div class="d-flex align-items-center gap-2" data-selector-page-size-wrap>
             <label class="small text-secondary" for="metadata-selector-pageSize-<%= definition.key %>">Rows</label>
             <select class="form-select form-select-sm page-size-select" id="metadata-selector-pageSize-<%= definition.key %>" data-selector-page-size>
-              <% for (const size of pageSizeOptions) { %><option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>><%= size %></option><% } %>
+              <% for (const size of pageSizeOptions) { %>
+                <option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>>
+                  <%= size %>
+                </option>
+              <% } %>
             </select>
           </div>
         <% } else { %>
@@ -53,10 +165,22 @@
             <% if (query.sort) { %><input type="hidden" name="sort" value="<%= query.sort %>"><% } %>
             <% if (query.direction) { %><input type="hidden" name="direction" value="<%= query.direction %>"><% } %>
             <% if (query.search) { %><input type="hidden" name="search" value="<%= query.search %>"><% } %>
-            <% for (const field of filterFields) { %><% if (query[`filter.${field}`]) { %><input type="hidden" name="filter.<%= field %>" value="<%= query[`filter.${field}`] %>"><% } %><% } %>
+            <% for (const field of filterFields) { %>
+              <% if (query[`filter.${field}`]) { %>
+                <input
+                  type="hidden"
+                  name="filter.<%= field %>"
+                  value="<%= query[`filter.${field}`] %>"
+                >
+              <% } %>
+            <% } %>
             <label class="small text-secondary" for="metadata-pageSize-<%= definition.key %>">Rows</label>
             <select class="form-select form-select-sm page-size-select" id="metadata-pageSize-<%= definition.key %>" name="pageSize" data-page-size-select>
-              <% for (const size of pageSizeOptions) { %><option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>><%= size %></option><% } %>
+              <% for (const size of pageSizeOptions) { %>
+                <option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>>
+                  <%= size %>
+                </option>
+              <% } %>
             </select>
           </form>
         <% } %>

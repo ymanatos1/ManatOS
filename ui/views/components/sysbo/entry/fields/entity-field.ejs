@@ -1,0 +1,84 @@
+<%#
+  COMPONENT: Entity field dispatcher
+
+  Purpose:
+  - Routes a canonical field.type to exactly one reusable concrete field component.
+
+  Inputs / metadata:
+  - Canonical field/value/editability plus helper locals and optional embedded-input overrides.
+
+  CTX contract:
+  - Delegated to the selected concrete field component.
+
+  Embeds / delegates:
+  - All concrete field-components selected by canonical field.type.
+
+  Runtime contract:
+  - Dispatcher only; concrete components own browser hooks and behavior.
+%>
+<%
+  /*
+   * FIELD-COMPONENT DISPATCHER (not a concrete visual component).
+   *
+   * This is the single routing point from canonical field.type to exactly one
+   * reusable concrete field-component. Keep this layer intentionally
+   * mechanical: it selects the component solely from the canonical field type.
+   * The selected component owns how that field type looks and behaves wherever
+   * a canonical field is embedded, including compact/composite entity editors.
+   */
+  const entityBindCtx = typeof bindCtx === 'boolean' ? bindCtx : true;
+  const entityInputId = typeof inputId === 'string' ? inputId : undefined;
+  const entityInputName = typeof inputName === 'string' ? inputName : undefined;
+  const entityControlEditable = typeof controlEditable === 'boolean' ? controlEditable : undefined;
+  const entityInputTypeOverride = typeof inputTypeOverride === 'string' ? inputTypeOverride : undefined;
+  const entityInputValue = typeof inputValue !== 'undefined' ? inputValue : undefined;
+  const entityInputAutocomplete = typeof inputAutocomplete === 'string' ? inputAutocomplete : undefined;
+  const entityInputDataAttributes = typeof inputDataAttributes !== 'undefined' ? inputDataAttributes : undefined;
+%>
+<% if (field.type === 'boolean') { %>
+  <%- include('boolean-field', { key, field, value, editable, fieldLabel, bindCtx: entityBindCtx, inputId: entityInputId, inputName: entityInputName }) %>
+<% } else if (field.type === 'enum') { %>
+  <% const enumItems = enumItemsFor(field); %>
+  <%- include('enum-select', { key, field, value, editable, enumItems, fieldLabel, bindCtx: entityBindCtx, inputId: entityInputId, inputName: entityInputName }) %>
+<% } else if (field.type === 'reference') { %>
+  <%- include('reference-select', { key, field, value, editable, referenceValues, fieldLabel }) %>
+<% } else if (field.type === 'date') { %>
+  <%- include('date-field', { key, field, value, editable, fieldLabel, dateOnlyValue }) %>
+<% } else if (field.type === 'datetime') { %>
+  <%- include('datetime-field', { key, field, value, editable, fieldLabel, datetimeLocalValue }) %>
+<% } else if (field.type === 'duration') { %>
+  <%- include('duration-field', { key, field, value, editable, fieldLabel, durationParts, durationSerializedValue }) %>
+<% } else if (field.type === 'version') { %>
+  <%- include('version-field', { key, field, value, editable, fieldLabel }) %>
+<% } else if (field.type === 'telephone') { %>
+  <%- include('telephone-field', { key, field, value, editable, fieldLabel }) %>
+<% } else if (field.type === 'string' || field.type === 'email') { %>
+  <%- include('text-field', {
+    key,
+    field,
+    value,
+    editable,
+    fieldLabel,
+    bindCtx: entityBindCtx,
+    inputId: entityInputId,
+    inputName: entityInputName,
+    controlEditable: entityControlEditable,
+    inputTypeOverride: entityInputTypeOverride,
+    inputValue: entityInputValue,
+    inputAutocomplete: entityInputAutocomplete,
+    inputDataAttributes: entityInputDataAttributes
+  }) %>
+<% } else if (field.type === 'number') { %>
+  <%- include('number-field', { key, field, value, editable, fieldLabel }) %>
+<% } else { %>
+  <input
+    class="form-control"
+    id="metadata-field-<%= key %>"
+    name="<%= key %>"
+    data-ctx-field="<%= key %>"
+    type="text"
+    value="<%= value %>"
+    <%= field.required ? 'required' : '' %>
+    <%= editable ? '' : 'readonly' %>
+  >
+<% } %>

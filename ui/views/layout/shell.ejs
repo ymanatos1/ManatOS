@@ -549,6 +549,13 @@
     <script src="/js/debugger/api-traffic.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <% } %>
   <script src="/js/lists.js"></script>
+  <!--
+    Popup lifecycle must be installed before any script can auto-show a modal.
+    busy.js owns data-auto-show bootstrapping, so loading popup-runtime first
+    guarantees every initially visible popup receives its canonical CTX envelope,
+    CTX inspection action, explicit-dismissal policy and workspace centering.
+  -->
+  <script src="/js/popups/popup-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/busy.js"></script>
   <script src="/js/metadata-form-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/forms/auth.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
@@ -557,13 +564,13 @@
   <script src="/js/forms/entry-save.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/forms/entry-focus.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/forms/configuration.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/forms/modal-focus.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/entry-representation.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/popups/record-selector.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/debugger/cli.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/field-components/runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/field-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/components/external-provider.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/components/hierarchy-tree.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/components/hierarchy-workspace.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/hierarchy/hierarchy-tree.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/hierarchy/hierarchy-workspace.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/auth-providers.js"></script>
 
 </body>

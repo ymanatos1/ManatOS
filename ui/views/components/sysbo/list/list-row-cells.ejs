@@ -1,0 +1,111 @@
+<%#
+  COMPONENT: SysBO list row cells
+
+  Purpose:
+  - Renders canonical metadata-driven field cells shared by browse rows and record-selector rows.
+
+  Inputs / metadata:
+  - entry, visibleFields, canonical metadata/UI metadata, reference values and option presentation helpers.
+
+  CTX contract:
+  - None; row selection/navigation belongs to the surrounding owner.
+
+  Embeds / delegates:
+  - ../entry/shell/entry-icons.ejs where composed entry icons are required.
+
+  Runtime contract:
+  - Pure row-cell presentation; selector/list runtimes may clone or decorate the surrounding row.
+%>
+
+<%
+  /*
+   * Canonical metadata-driven record-cell presentation shared by ordinary
+   * SysBO browse rows and the generic Record Selector.
+   *
+   * The surrounding row owns navigation/selection semantics. This partial owns
+   * only field presentation, so icon/name/enum/reference/boolean formatting
+   * cannot drift between list pages and selector popups.
+   */
+  const rowSelectorMode = Boolean(typeof selectorMode !== 'undefined' && selectorMode);
+  const rowVisibleFields = Array.isArray(visibleFields) ? visibleFields : (metadataUI?.list?.visibleFields || []);
+  const rowReferenceValues = typeof listReferenceValues !== 'undefined' && listReferenceValues ? listReferenceValues : {};
+  const rowOptionItem = typeof optionItem === 'function' ? optionItem : metadataOptionItemForField;
+  const rowEnumToneClass = typeof enumToneClass === 'function' ? enumToneClass : metadataOptionToneClass;
+  const rowReferenceEntry = (fieldKey, fieldValue) => {
+    if (fieldValue === undefined || fieldValue === null || fieldValue === '') return null;
+    return (rowReferenceValues[fieldKey] || []).find((candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(fieldValue)) || null;
+  };
+  const rowReferenceName = (reference, fallback) =>
+    reference?.__entryName
+    || reference?.label
+    || reference?.name
+    || (fallback == null || fallback === '' ? '—' : String(fallback));
+  const rowEntryIcons = (entry) => {
+    if (Array.isArray(entry?.icons) && entry.icons.length) return entry.icons;
+    if (Array.isArray(entry?.__entryIcons) && entry.__entryIcons.length) return entry.__entryIcons;
+    if (entry?.__entryIcon) return [entry.__entryIcon];
+    if (entry?.__entityIcon) return [entry.__entityIcon];
+    return [];
+  };
+  const rowPrimaryRepresentation = typeof entryRepresentation !== 'undefined' && entryRepresentation
+    ? entryRepresentation
+    : {
+        name: item?.__entryName || item?.label || item?.[metadata.primaryField] || item?.name || '',
+        icons: rowEntryIcons(item),
+      };
+  const composedIcon = metadataUI.entry?.icon?.mode === 'composed';
+  const entityIconScale = composedIcon ? (metadataUI.entry.icon.entityScale || .72) : .72;
+  const typeIconScale = composedIcon ? (metadataUI.entry.icon.typeScale || 1.15) : 1.15;
+%>
+<% for (const key of rowVisibleFields) { %>
+  <% const field = metadata.fieldDefinition[key]; %>
+  <% if (!field) continue; %>
+  <td>
+    <% if (key === metadata.primaryField) { %>
+      <% const primaryOptionItem = rowOptionItem(field, item[key]); %>
+      <% const primaryIcons = rowEntryIcons(rowPrimaryRepresentation); %>
+      <% const primaryName = rowPrimaryRepresentation?.name || primaryOptionItem?.label || item[key] || ''; %>
+      <% if (!rowSelectorMode) { %>
+        <a class="fw-semibold metadata-entry-name" href="/bo/<%= definition.key %>/<%= item.id %>">
+      <% } %>
+      <% if (primaryIcons.length) { %>
+        <span
+          class="metadata-entry-icons me-1"
+          aria-hidden="true"
+          style="--entry-entity-scale:<%= entityIconScale %>;--entry-type-scale:<%= typeIconScale %>"
+        >
+          <% for (const [iconIndex, icon] of primaryIcons.entries()) { %><i class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"></i><% } %>
+        </span>
+      <% } else if (primaryOptionItem?.icon) { %>
+        <i class="bi bi-<%= primaryOptionItem.icon %> <%= rowEnumToneClass(primaryOptionItem) %> me-1" aria-hidden="true"></i>
+      <% } %><%= primaryName %>
+      <% if (!rowSelectorMode) { %></a><% } %>
+    <% } else if (field.type === 'reference') { %>
+      <% const reference = rowReferenceEntry(key, item[key]); %>
+      <% const referenceIcons = rowEntryIcons(reference); %>
+      <% if (referenceIcons.length) { %>
+        <span class="metadata-entry-icons me-1" aria-hidden="true">
+          <% for (const [iconIndex, icon] of referenceIcons.entries()) { %>
+            <i class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"></i>
+          <% } %>
+        </span>
+      <% } %><%= rowReferenceName(reference, item[key]) %>
+    <% } else if (rowOptionItem(field, item[key])) { %>
+      <% const selectedOptionItem = rowOptionItem(field, item[key]); %>
+      <% if (selectedOptionItem?.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= rowEnumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
+      <%= selectedOptionItem?.label || item[key] || '' %>
+    <% } else if (field.type === 'duration') { %>
+      <%= formatMetadataValue(item[key]) %>
+    <% } else if (field.type === 'boolean') { %>
+      <% const positive = Boolean(item[key]); %>
+      <% const positiveLabel = key === 'emailVerified' ? 'Verified' : (key === 'enabled' ? 'Enabled' : 'Yes'); %>
+      <% const negativeLabel = key === 'emailVerified' ? 'Not verified' : (key === 'enabled' ? 'Disabled' : 'No'); %>
+      <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
+        <i class="bi <%= positive ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"></i>
+        <%= positive ? positiveLabel : negativeLabel %>
+      </span>
+    <% } else { %>
+      <%= item[key] ?? '' %>
+    <% } %>
+  </td>
+<% } %>

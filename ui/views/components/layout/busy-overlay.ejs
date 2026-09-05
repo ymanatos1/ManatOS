@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Busy overlay
+
+  Purpose:
+  - Renders the global blocking/busy affordance used while a ManatOS workflow is in progress.
+
+  Inputs / metadata:
+  - Static shell component; runtime supplies message and optional cancel action.
+
+  CTX contract:
+  - None.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - busy runtime owns visibility, message text and cancellation behavior.
+%>
+
 <div
   class="manatos-busy-overlay"
   id="manatosBusyOverlay"

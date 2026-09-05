@@ -124,26 +124,48 @@
   let explicitScopeMemo = new Map();
   let explicitScopeActive = new Set();
 
+  /**
+   * Resolve a non-absolute variable against an explicit caller scope.
+   *
+   * `evaluateAstWithScope()` is used for detached, structured scopes such as a
+   * selector invocation or a list-row presentation. Once the first identifier
+   * belongs to that scope, all remaining members must stay inside it. A missing
+   * optional child is therefore a resolved `undefined` value; it must not fall
+   * through and accidentally bind to a same-named value in the surrounding
+   * page CTX. This mirrors ManatOS' lexical rule: first identifier lookup may
+   * search outward, but nested member lookup is strictly downward.
+   */
   const scopedValue = (members) => {
-    if (!explicitEvaluationScopeValue || !Array.isArray(members) || !members.length) return undefined;
-    let value = explicitEvaluationScopeValue;
-    for (const member of members) {
-      if (value == null || (typeof value !== 'object' && typeof value !== 'function')) return undefined;
+    if (!explicitEvaluationScopeValue || !Array.isArray(members) || !members.length) {
+      return { owned: false, value: undefined };
+    }
+
+    const [first, ...remaining] = members;
+    if (typeof first !== 'string' || !Object.prototype.hasOwnProperty.call(explicitEvaluationScopeValue, first)) {
+      return { owned: false, value: undefined };
+    }
+
+    let value = explicitEvaluationScopeValue[first];
+    for (const member of remaining) {
+      if (value == null || (typeof value !== 'object' && typeof value !== 'function')) {
+        return { owned: true, value: undefined };
+      }
       value = value[member];
     }
+
     if (value && typeof value === 'object' && value.__manatosExpressionAst) {
-      if (explicitScopeMemo.has(value)) return explicitScopeMemo.get(value);
-      if (explicitScopeActive.has(value)) return value.value ?? null;
+      if (explicitScopeMemo.has(value)) return { owned: true, value: explicitScopeMemo.get(value) };
+      if (explicitScopeActive.has(value)) return { owned: true, value: value.value ?? null };
       explicitScopeActive.add(value);
       try {
         const calculated = evaluate(value.__manatosExpressionAst);
         explicitScopeMemo.set(value, calculated);
-        return calculated;
+        return { owned: true, value: calculated };
       } finally {
         explicitScopeActive.delete(value);
       }
     }
-    return value;
+    return { owned: true, value };
   };
 
   const resolveVariable = (node) => {
@@ -151,7 +173,7 @@
 
     if (!node.absolute && explicitEvaluationScopeValue) {
       const scoped = scopedValue(node.members);
-      if (scoped !== undefined) return scoped;
+      if (scoped.owned) return scoped.value;
     }
 
     // Non-absolute expressions resolve local form fields first. This includes

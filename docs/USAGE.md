@@ -4,7 +4,7 @@ This guide shows how to use the current ManatOS metadata-driven SysBO UI archite
 
 ## 1. Golden rule
 
-Business meaning belongs in canonical metadata and domain services. Presentation belongs in UI metadata. Reusable controls belong in `field-components/` or `ui-components/`. Generic renderers must not branch on concrete entity keys when the behavior can be expressed through metadata.
+Business meaning belongs in canonical metadata and domain services. Presentation belongs in UI metadata. Reusable controls belong in `components/sysbo/entry/fields/` or `ui-components/`. Generic renderers must not branch on concrete entity keys when the behavior can be expressed through metadata.
 
 A reusable UI component may arrange canonical fields, but it must not own business calculations for those fields.
 
@@ -104,7 +104,7 @@ The generic CTX/evaluator pipeline owns dependency propagation and cycle/runaway
 Entity-field controls live under:
 
 ```text
-ui/views/field-components/
+ui/views/components/sysbo/entry/fields/
 ```
 
 `form-field.ejs` supplies the form-field wrapper/lifecycle context and delegates to `entity-field.ejs`. `entity-field.ejs` is the single canonical field-type dispatcher and chooses the concrete component from `field.type` only. A field-component owns field-specific interaction and presentation, not entity-specific business logic.

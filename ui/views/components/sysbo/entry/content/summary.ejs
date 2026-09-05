@@ -1,0 +1,78 @@
+<%#
+  COMPONENT: Entry summary
+
+  Purpose:
+  - Renders a compact metadata-driven read-only summary for entry fields and values.
+
+  Inputs / metadata:
+  - Canonical metadata/UI metadata, current entry values, option/reference presentation helpers.
+
+  CTX contract:
+  - Reads current entry values only; no CTX mutation.
+
+  Embeds / delegates:
+  - entry-icons.ejs where entry representation is shown.
+
+  Runtime contract:
+  - Pure presentation.
+%>
+
+<%
+  /*
+   * Higher-level read-only field container. Summary owns compact arrangement
+   * and decoration only; canonical fields keep their normal type/value-source
+   * semantics. A calculation never creates a second summary field model.
+   */
+%>
+<div class="account-summary-grid authentication-summary-grid" data-metadata-summary>
+  <% for (const key of tab.fields) { %>
+    <% const collection = relatedCollections[key]; %>
+    <% const field = metadata.fieldDefinition[key]; %>
+    <% if (collection || !field || !fieldVisible(field) || field.sensitive) continue; %>
+    <% const presentation = overrides[key]?.presentation || {}; %>
+    <% const rawValue = valueFor(key); %>
+    <% const tone = dynamicUIValue(presentation.tone, ctxFields, {
+      source: 'ui-metadata',
+      sourcePath: `fieldOverrides.${key}.presentation.tone`,
+      targetPath: `fields.${key}.tone`,
+      purpose: 'resolve summary field presentation tone',
+    }); %>
+    <% const stateIcon = dynamicUIValue(presentation.icon, ctxFields, {
+      source: 'ui-metadata',
+      sourcePath: `fieldOverrides.${key}.presentation.icon`,
+      targetPath: `fields.${key}.icon`,
+      purpose: 'resolve summary field presentation icon',
+    }); %>
+    <% const rendered = field.type === 'reference'
+      ? referenceLabel(key, rawValue)
+      : formatValue(rawValue, presentation); %>
+    <div class="account-summary-label"><%= fieldLabel(field) %>:</div>
+    <div class="account-summary-value">
+      <% if (stateIcon) { %>
+        <span class="status-value <%= tone === 'success' ? 'status-positive' : 'status-neutral' %>">
+          <i class="bi bi-<%= stateIcon %>" aria-hidden="true"></i>
+          <%= rendered %>
+        </span>
+      <% } else if (tone) { %>
+        <span class="badge text-bg-<%= tone %>"><%= rendered %></span>
+      <% } else if (rendered === (presentation.emptyText || '—')) { %>
+        <span class="text-secondary"><%= rendered %></span>
+      <% } else { %>
+        <%= rendered %>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<%- include('related-collections', {
+  tab,
+  relatedCollections,
+  pageRelatedData,
+  relatedMetadataRegistry,
+  collectionValue,
+  relatedRowHref,
+  relatedReferenceLabel,
+  optionItemForField,
+  enumToneClass,
+  formatValue,
+}) %>

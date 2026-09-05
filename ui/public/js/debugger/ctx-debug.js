@@ -584,14 +584,42 @@
     history.index = history.entries.length - 1;
   };
 
-  const ensureSelectedVisible = () => {
-    const selectedRow = treeElement.querySelector(
-      `.ctx-debug-row[data-ctx-path="${CSS.escape(state.selected)}"]`,
-    );
-    selectedRow?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  const selectedRowElement = () => treeElement.querySelector(
+    `.ctx-debug-row[data-ctx-path="${CSS.escape(state.selected)}"]`,
+  );
+
+  const ensureSelectedVisible = ({ align = 'nearest' } = {}) => {
+    selectedRowElement()?.scrollIntoView({ block: align, inline: 'nearest' });
   };
 
-  const selectPath = (requestedPath, { remember = true, expandSelected = false } = {}) => {
+  /**
+   * Reveal the complete rendered range of an expanded inspected node once,
+   * then return the selected node to the top of the CTX viewport.
+   *
+   * Popup CTX payloads can contain enough children that their first and last
+   * rows cannot be visible simultaneously. Scrolling to the last rendered row
+   * first guarantees the expanded subtree has been laid out and is reachable;
+   * the second frame restores the popup root as the developer's visual anchor.
+   */
+  const revealExpandedSelectionRange = () => {
+    const selectedRow = selectedRowElement();
+    const selectedNode = selectedRow?.closest('.ctx-debug-node');
+    const visibleRows = selectedNode?.querySelectorAll('.ctx-debug-row');
+    const lastRow = visibleRows?.length ? visibleRows[visibleRows.length - 1] : null;
+
+    if (!(lastRow instanceof HTMLElement) || lastRow === selectedRow) {
+      ensureSelectedVisible({ align: 'start' });
+      return;
+    }
+
+    lastRow.scrollIntoView({ block: 'end', inline: 'nearest' });
+    requestAnimationFrame(() => ensureSelectedVisible({ align: 'start' }));
+  };
+
+  const selectPath = (
+    requestedPath,
+    { remember = true, expandSelected = false, revealExpandedRange = false } = {},
+  ) => {
     const path = nearestExistingPath(requestedPath);
     expandAncestors(path);
     if (expandSelected) {
@@ -610,7 +638,10 @@
     propertiesPanel?.classList.toggle('d-none', !state.propertiesOpen);
     propertiesPanel?.setAttribute('aria-hidden', String(!state.propertiesOpen));
     saveState();
-    render({ revealSelection: true });
+    render({
+      revealSelection: true,
+      revealExpandedRange,
+    });
   };
 
   cliButton?.addEventListener('click', () => {
@@ -630,7 +661,10 @@
   window.addEventListener('manatos:ctx-viewer-select', (event) => {
     const requestedPath = event instanceof CustomEvent ? event.detail?.path : null;
     if (typeof requestedPath !== 'string' || !requestedPath) return;
-    selectPath(requestedPath, { expandSelected: event.detail?.expand === true });
+    selectPath(requestedPath, {
+      expandSelected: event.detail?.expand === true,
+      revealExpandedRange: event.detail?.revealExpandedRange === true,
+    });
   });
 
   const allRealNodePaths = () => {
@@ -967,7 +1001,7 @@
     return node;
   };
 
-  const render = ({ revealSelection = false } = {}) => {
+  const render = ({ revealSelection = false, revealExpandedRange = false } = {}) => {
     const scrollTop = treeElement.scrollTop;
     const recovered = nearestExistingPath(state.selected);
     if (recovered !== state.selected) {
@@ -993,7 +1027,12 @@
 
     updateToolbar();
     renderProperties();
-    if (revealSelection) requestAnimationFrame(ensureSelectedVisible);
+    if (revealSelection) {
+      requestAnimationFrame(() => {
+        if (revealExpandedRange) revealExpandedSelectionRange();
+        else ensureSelectedVisible();
+      });
+    }
     saveState();
   };
 

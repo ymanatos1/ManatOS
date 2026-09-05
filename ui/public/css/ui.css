@@ -2067,6 +2067,7 @@ body.anonymous .workspace {
   border-color: var(--bs-primary);
 }
 
+.metadata-record-selector-backdrop,
 .metadata-hierarchy-entry-selector-backdrop {
   position: fixed;
   inset: 0;
@@ -2074,11 +2075,34 @@ body.anonymous .workspace {
   display: grid;
   place-items: center;
   padding: 1.5rem;
+  /*
+   * A fixed popup must never enlarge the page's scrollable overflow area.
+   * Keep all selector overflow inside the viewport-owned backdrop instead of
+   * allowing a tall card/list to push the shell footer below the viewport.
+   */
+  overflow: hidden;
   background: rgba(0, 0, 0, .28);
 }
-.metadata-hierarchy-entry-selector { width: min(58rem, 94vw); max-height: 82vh; }
-.metadata-hierarchy-entry-selector .card-body { min-height: 0; }
-.metadata-hierarchy-entry-selector-list { max-height: 58vh; overflow: auto; }
+.metadata-record-selector,
+.metadata-hierarchy-entry-selector {
+  width: min(58rem, 94vw);
+  max-height: min(82vh, calc(100dvh - 3rem));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.metadata-record-selector .card-body,
+.metadata-hierarchy-entry-selector .card-body {
+  min-height: 0;
+  overflow: hidden;
+}
+.metadata-record-selector-list,
+.metadata-hierarchy-entry-selector-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 58vh;
+  overflow: auto;
+}
 
 /* Relationship-aware [+] menu. The clicked geometric affordance already says
    parent/sibling/child, so the menu exposes only that relationship and keeps
@@ -2104,8 +2128,9 @@ body.anonymous .workspace {
 .metadata-hierarchy-existing-node-submenu:focus-within > .metadata-hierarchy-existing-node-menu { display: block; }
 .metadata-hierarchy-existing-node-menu .dropdown-item { overflow: hidden; text-overflow: ellipsis; }
 
-/* Existing-entry selector intentionally looks and behaves like a compact list
-   page, but rows select rather than navigate and no create/actions UI exists. */
+/* Generic existing-record selectors intentionally look and behave like compact
+   list pages because they reuse the same metadata-driven list components.
+   Rows select rather than navigate and no create/actions UI exists. */
 .metadata-hierarchy-selector-search { width: min(20rem, 45vw); }
 .metadata-hierarchy-selector-filters {
   display: grid;
@@ -2113,9 +2138,30 @@ body.anonymous .workspace {
   gap: .65rem;
   background: var(--bs-tertiary-bg);
 }
-.metadata-hierarchy-entry-selector [data-selector-row] { cursor: pointer; }
-.metadata-hierarchy-entry-selector [data-selector-row]:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
-.metadata-hierarchy-entry-selector [data-selector-page-size] { width: auto; }
+.metadata-record-selector [data-selector-row] { cursor: pointer; }
+.metadata-record-selector [data-selector-row][aria-disabled='true'] { cursor: not-allowed; }
+.metadata-record-selector [data-selector-row]:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
+.metadata-record-selector [data-selector-page-size] { width: auto; }
+
+/* Record-selector visual orientation is invocation metadata resolved through
+   callingParams + evaluator rules. Workspace/hierarchy selectors stay quiet;
+   entry/reference selectors deliberately echo metadata-driven entry forms. */
+.metadata-record-selector.is-subtle-presentation {
+  border-color: var(--bs-border-color);
+}
+.metadata-record-selector.is-entry-presentation {
+  border-color: rgba(var(--bs-primary-rgb), .45);
+  box-shadow: 0 .5rem 1.25rem rgba(var(--bs-primary-rgb), .12) !important;
+}
+.metadata-record-selector.is-entry-presentation > .card-header {
+  color: var(--bs-primary-text-emphasis);
+  background: var(--bs-primary-bg-subtle);
+  border-bottom-color: rgba(var(--bs-primary-rgb), .28);
+}
+.metadata-record-selector.is-entry-presentation > .card-footer {
+  background: var(--bs-tertiary-bg);
+  border-top-color: rgba(var(--bs-primary-rgb), .22);
+}
 
 /* Existing/persisted hierarchy members are subtly distinguished from draft:* nodes. */
 .metadata-hierarchy-node-persistence {
@@ -2130,8 +2176,8 @@ body.anonymous .workspace {
 }
 .metadata-hierarchy-node-persistence:hover { opacity: 1; }
 .metadata-hierarchy-add-primary-divider { margin: .3rem 0; opacity: .25; }
-.metadata-hierarchy-entry-selector .sysbo-paging-row { margin-top: 0 !important; }
-.metadata-hierarchy-entry-selector [data-selector-context-note] { min-height: 1.25rem; }
+.metadata-record-selector .sysbo-paging-row { margin-top: 0 !important; }
+.metadata-record-selector [data-selector-context-note] { min-height: 1.25rem; }
 
 /* Shared list toolbar: browse pages and selector popups intentionally use the
    same presentation. Context-specific actions may follow Search without moving
@@ -2143,11 +2189,15 @@ body.anonymous .workspace {
 /* Selection mode keeps semantic values neutral/colorless and uses a quiet row
    treatment for entries already represented by a workspace node. They remain
    selectable because selection means repositioning, not rejection. */
+.metadata-record-selector .metadata-selector-boolean,
 .metadata-hierarchy-entry-selector .metadata-selector-boolean { color: var(--bs-body-color); white-space: nowrap; }
+.metadata-record-selector [data-selector-row].is-in-context:not(.table-primary) > td,
 .metadata-hierarchy-entry-selector [data-selector-row].is-in-organization:not(.table-primary) > td {
   color: var(--bs-secondary-color);
   background: var(--bs-tertiary-bg);
 }
+.metadata-record-selector [data-selector-row].is-in-context:not(.table-primary) .metadata-entry-icons,
+.metadata-record-selector [data-selector-row].is-in-context:not(.table-primary) i,
 .metadata-hierarchy-entry-selector [data-selector-row].is-in-organization:not(.table-primary) .metadata-entry-icons,
 .metadata-hierarchy-entry-selector [data-selector-row].is-in-organization:not(.table-primary) i { opacity: .68; }
 

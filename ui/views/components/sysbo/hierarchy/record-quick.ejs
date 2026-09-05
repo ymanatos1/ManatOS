@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Hierarchy quick record editor
+
+  Purpose:
+  - Renders the metadata-declared quick create/edit surface used inside a hierarchy workspace.
+
+  Inputs / metadata:
+  - recordQuick UI metadata, canonical entity metadata and shared field component context.
+
+  CTX contract:
+  - Edits a workspace-owned draft; canonical field components render values without independently persisting them.
+
+  Embeds / delegates:
+  - ../../../components/sysbo/entry/fields/entity-field.ejs.
+
+  Runtime contract:
+  - hierarchy runtime collects the draft and commits it atomically into the workspace entries graph.
+%>
+
 <%
   /*
    * Generic compact owner-managed record editor. `recordQuick` chooses the
@@ -32,9 +51,14 @@
             <% const key = content.field; const field = metadata.fieldDefinition[key]; const quickValue = quickDraft?.[key] ?? quickDefaultValue(key, field); %>
             <% if (field && !field.sensitive) { %>
               <div class="col-12 col-md-<%= Number(content.span || 12) %>">
-                <label class="form-label small fw-semibold" for="record-quick-<%= key %>"><%= quickFieldLabel(field) %>:<% if (field.required) { %><span class="metadata-field-required-marker" aria-label="required"> (*)</span><% } %></label>
+                <label class="form-label small fw-semibold" for="record-quick-<%= key %>">
+                  <%= quickFieldLabel(field) %>:
+                  <% if (field.required) { %>
+                    <span class="metadata-field-required-marker" aria-label="required"> (*)</span>
+                  <% } %>
+                </label>
                 <div data-record-quick-field="<%= key %>">
-                  <%- include('../../../field-components/entity-field', {
+                  <%- include('../entry/fields/entity-field', {
                     key, field, value: quickValue, editable: true,
                     fieldLabel: quickFieldLabel, enumItemsFor: quickEnumItemsFor,
                     referenceValues: emptyReferences,

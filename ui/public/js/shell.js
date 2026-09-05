@@ -49,6 +49,13 @@
    */
   const normalizeDeveloperToolTab = (value) => value === 'apiTraffic' ? 'apiTraffic' : 'ctx';
 
+  // Popup runtime is loaded independently from the shell. Keep shell geometry
+  // changes safe during boot and delegate modal recentering once that runtime
+  // is available. This avoids a hard global-symbol dependency from shell.js.
+  const refreshVisibleModalCenters = () => {
+    window.ManatOSPopupRuntime?.refreshVisibleModalCenters?.();
+  };
+
 
   const DEVELOPER_DOCK_WIDTH_KEY = `manatos.debug.developerDock.width.${debugBootId}`;
   const DEFAULT_DEVELOPER_DOCK_WIDTH = 430;
@@ -108,158 +115,6 @@
       try { sessionStorage.removeItem(DEVELOPER_DOCK_WIDTH_KEY); } catch { /* debugger only */ }
     });
   }
-
-  /* =======================================================================
-   * Workspace-centered Bootstrap modals
-   * ===================================================================== */
-
-  const workspace = document.querySelector('.workspace');
-
-  const centerModalInWorkspace = (modal) => {
-    if (!workspace || !modal) {
-      return;
-    }
-
-    const rect = workspace.getBoundingClientRect();
-
-    /*
-     * Center in the visible portion of the workspace. This remains correct
-     * when the left navigation or right Details panel changes width, and
-     * when the document is vertically scrolled.
-     */
-    const visibleLeft = Math.max(rect.left, 0);
-    const visibleRight = Math.min(rect.right, window.innerWidth);
-    const visibleTop = Math.max(rect.top, 0);
-    const visibleBottom = Math.min(rect.bottom, window.innerHeight);
-
-    const centerX =
-      visibleRight > visibleLeft
-        ? visibleLeft + (visibleRight - visibleLeft) / 2
-        : window.innerWidth / 2;
-
-    const centerY =
-      visibleBottom > visibleTop
-        ? visibleTop + (visibleBottom - visibleTop) / 2
-        : window.innerHeight / 2;
-
-    modal.classList.add('workspace-centered-modal');
-    modal.style.setProperty('--workspace-modal-center-x', `${centerX}px`);
-    modal.style.setProperty('--workspace-modal-center-y', `${centerY}px`);
-  };
-
-  const refreshVisibleModalCenters = () => {
-    document.querySelectorAll('.modal.show').forEach((modal) => {
-      centerModalInWorkspace(modal);
-    });
-  };
-
-  const popupCtxPath = (modal) => {
-    const explicit = modal.getAttribute('data-popup-ctx-path') || modal.dataset?.popupCtxPath;
-    if (explicit) return explicit;
-    const runtime = window.ManatOS?.ctx;
-    let node = runtime?.value?.page;
-    if (!node) return null;
-    let path = 'ctx.page';
-    while (node?.page) { node = node.page; path += '.page'; }
-    return path;
-  };
-
-  const ensurePopupCtxButton = (modal) => {
-    if (!developerToolsDock || developerToolsDock.classList.contains('d-none')) return null;
-    const header = modal.querySelector('.modal-header');
-    if (!(header instanceof HTMLElement)) return null;
-    let button = header.querySelector('[data-popup-ctx-inspect]');
-    if (!(button instanceof HTMLButtonElement)) {
-      button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'btn btn-sm btn-outline-secondary ms-auto me-2';
-      button.dataset.popupCtxInspect = '';
-      button.innerHTML = '<i class="bi bi-bug me-1" aria-hidden="true"></i>CTX';
-      const close = header.querySelector('.btn-close');
-      if (close) header.insertBefore(button, close); else header.append(button);
-      button.addEventListener('click', () => {
-        developerToolsDock.classList.add('is-popup-inspection');
-        window.ManatOS?.shell?.setDeveloperToolTab?.('ctx', false);
-        const path = popupCtxPath(modal);
-        if (path) window.dispatchEvent(new CustomEvent('manatos:ctx-viewer-select', { detail: { path, expand: true } }));
-      });
-    }
-    button.classList.remove('d-none');
-    return button;
-  };
-
-  document.querySelectorAll('.modal').forEach((modal) => {
-    /*
-     * ManatOS popups are deliberate interactions: clicking the shaded page
-     * behind them must not silently dismiss them.
-     */
-    modal.dataset.bsBackdrop = 'static';
-    modal.dataset.bsKeyboard = 'false';
-    /*
-     * Keep Bootstrap's focus trap disabled so the existing Developer Tools dock
-     * can be exposed on demand by a popup CTX action. The dock normally remains
-     * below the popup backdrop, so the application and developer surface are both
-     * blocked until the explicit inspection action is used.
-     */
-    modal.dataset.bsFocus = 'false';
-
-    let returnFocusTarget = null;
-
-    modal.addEventListener('show.bs.modal', (event) => {
-      /*
-       * Bootstrap supplies relatedTarget when a normal data-bs-toggle trigger
-       * opened the modal. Keep a defensive activeElement fallback for
-       * programmatic opens so every popup has the same focus-return contract.
-       */
-      const trigger = event.relatedTarget instanceof HTMLElement
-        ? event.relatedTarget
-        : document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
-      returnFocusTarget = trigger && !modal.contains(trigger) ? trigger : null;
-      ensurePopupCtxButton(modal);
-      centerModalInWorkspace(modal);
-    });
-
-    modal.addEventListener('shown.bs.modal', () => {
-      centerModalInWorkspace(modal);
-    });
-
-    modal.addEventListener('hide.bs.modal', () => {
-      /*
-       * Bootstrap fires hide.bs.modal before it deactivates the modal's focus
-       * trap. Moving focus synchronously here can therefore be pulled straight
-       * back into the modal, leaving a focused descendant when Bootstrap later
-       * applies aria-hidden=true. Defer by one microtask: Modal.hide() has then
-       * deactivated its focus trap, while the fade transition has not yet reached
-       * the aria-hidden step. This keeps the fix generic for every ManatOS modal.
-       */
-      const active = document.activeElement;
-      if (!(active instanceof HTMLElement) || !modal.contains(active)) return;
-
-      queueMicrotask(() => {
-        const focused = document.activeElement;
-        if (!(focused instanceof HTMLElement) || !modal.contains(focused)) return;
-
-        if (returnFocusTarget?.isConnected) {
-          returnFocusTarget.focus({ preventScroll: true });
-        } else {
-          focused.blur();
-        }
-      });
-    });
-
-    modal.addEventListener('hidden.bs.modal', () => {
-      developerToolsDock?.classList.remove('is-popup-inspection');
-      modal.querySelector('[data-popup-ctx-inspect]')?.classList.add('d-none');
-      if (returnFocusTarget?.isConnected) {
-        returnFocusTarget.focus({ preventScroll: true });
-      }
-      returnFocusTarget = null;
-    });
-  });
-
-  window.addEventListener('resize', refreshVisibleModalCenters);
 
   /* =======================================================================
       Helpers

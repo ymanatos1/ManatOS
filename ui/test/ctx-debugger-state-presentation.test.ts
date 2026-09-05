@@ -58,12 +58,12 @@ const metadataDebuggingModelSource = readFileSync(
 );
 
 const fieldRuntimeSource = readFileSync(
-  resolve(process.cwd(), 'public/js/field-components/runtime.js'),
+  resolve(process.cwd(), 'public/js/sysbo/entry/field-runtime.js'),
   'utf8',
 );
 
 const fieldToolsSource = readFileSync(
-  resolve(process.cwd(), 'views/field-components/field-tools-menu.ejs'),
+  resolve(process.cwd(), 'views/components/sysbo/entry/fields/field-tools-menu.ejs'),
   'utf8',
 );
 
@@ -144,6 +144,9 @@ describe('CTX debugger presentation state', () => {
     expect(fieldRuntimeSource).toContain('expand: true');
     expect(debuggerSource).toContain('expandSelected = false');
     expect(debuggerSource).toContain('state.expanded.add(path)');
+    expect(debuggerSource).toContain('revealExpandedSelectionRange');
+    expect(debuggerSource).toContain("lastRow.scrollIntoView({ block: 'end'");
+    expect(debuggerSource).toContain("ensureSelectedVisible({ align: 'start' })");
   });
 
   it('separates formula-definition inspection from the live calculated record value', () => {

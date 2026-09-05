@@ -107,44 +107,18 @@
 
           <% for (const item of items) { %>
             <tr>
-              <% for (const key of metadataUI.list.visibleFields) { %>
-                <% const field = metadata.fieldDefinition[key]; %>
-                <% if (!field) continue; %>
-                <td>
-                  <% if (key === metadata.primaryField) { %>
-                    <% const primaryOptionItem = optionItem(field, item[key]); %>
-                    <% const entryRep = typeof entryRepresentations !== 'undefined' ? entryRepresentations.get(String(item.id || '')) : null; %>
-                    <a class="fw-semibold metadata-entry-name" href="/bo/<%= definition.key %>/<%= item.id %>">
-                      <% if (entryRep?.icons?.length) { %>
-                        <span class="metadata-entry-icons me-1" aria-hidden="true" style="--entry-entity-scale:<%= metadataUI.entry?.icon?.mode === 'composed' ? (metadataUI.entry.icon.entityScale || .72) : .72 %>;--entry-type-scale:<%= metadataUI.entry?.icon?.mode === 'composed' ? (metadataUI.entry.icon.typeScale || 1.15) : 1.15 %>">
-                          <% for (const [iconIndex, icon] of entryRep.icons.entries()) { %><i class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"></i><% } %>
-                        </span>
-                      <% } else if (primaryOptionItem?.icon) { %>
-                        <i class="bi bi-<%= primaryOptionItem.icon %> <%= enumToneClass(primaryOptionItem) %> me-1" aria-hidden="true"></i>
-                      <% } %><%= entryRep?.name || primaryOptionItem?.label || item[key] || '' %>
-                    </a>
-                  <% } else if (field.type === 'reference') { %>
-                    <% const reference = referenceEntry(key, item[key]); %>
-                    <% if (reference?.__entryIcon) { %><i class="bi bi-<%= reference.__entryIcon %> me-1" aria-hidden="true"></i><% } %><%= referenceLabel(key, item[key]) %>
-                  <% } else if (optionItem(field, item[key])) { %>
-                    <% const selectedOptionItem = optionItem(field, item[key]); %>
-                    <% if (selectedOptionItem?.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
-                    <%= selectedOptionItem?.label || item[key] || '' %>
-                  <% } else if (field.type === 'duration') { %>
-                    <%= durationLabel(item[key]) %>
-                  <% } else if (field.type === 'boolean') { %>
-                    <% const positive = Boolean(item[key]); %>
-                    <% const positiveLabel = key === 'emailVerified' ? 'Verified' : (key === 'enabled' ? 'Enabled' : 'Yes'); %>
-                    <% const negativeLabel = key === 'emailVerified' ? 'Not verified' : (key === 'enabled' ? 'Disabled' : 'No'); %>
-                    <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
-                      <i class="bi <%= positive ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"></i>
-                      <%= positive ? positiveLabel : negativeLabel %>
-                    </span>
-                  <% } else { %>
-                    <%= item[key] ?? '' %>
-                  <% } %>
-                </td>
-              <% } %>
+              <%- include('../../components/sysbo/list/list-row-cells', {
+                item,
+                metadata,
+                metadataUI,
+                definition,
+                visibleFields: metadataUI.list.visibleFields,
+                listReferenceValues,
+                optionItem,
+                enumToneClass,
+                entryRepresentation: typeof entryRepresentations !== 'undefined' ? entryRepresentations.get(String(item.id || '')) : null,
+                selectorMode: false
+              }) %>
               <% if (rowActions.length) { %>
                 <td class="text-end">
                   <div class="d-inline-flex gap-1">

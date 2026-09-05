@@ -75,7 +75,7 @@ Form lifecycle behavior is split into focused browser modules. `layout/shell.ejs
 | `forms/entry-save.js` | metadata-entry in-place Save, persisted-record reconciliation into CTX/baselines | business persistence rules or field rendering |
 | `forms/entry-focus.js` | initial editable-field discovery and tab activation | field editability semantics themselves |
 | `forms/configuration.js` | progressive in-place Apply for configuration surfaces | metadata-entry transaction behavior |
-| `forms/modal-focus.js` | generic Bootstrap modal focus return/accessibility lifecycle | popup business actions |
+| `components/popup-runtime.js` | generic Bootstrap popup lifecycle: explicit dismissal, workspace centering, focus return, Developer-Tools inspection, and the live `popup.callingParams / presentation / state` CTX contract | popup business actions |
 
 ```mermaid
 flowchart LR

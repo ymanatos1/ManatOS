@@ -1,0 +1,95 @@
+<%#
+  COMPONENT: Version field
+
+  Purpose:
+  - Edits one canonical semantic version through major/minor/patch presentation controls.
+
+  Inputs / metadata:
+  - key, field, value, editable, fieldLabel.
+
+  CTX contract:
+  - A hidden control carries the canonical data-ctx-field value.
+
+  Embeds / delegates:
+  - field-tools-menu.ejs.
+
+  Runtime contract:
+  - Version-field runtime synchronizes visible numeric parts with the canonical value.
+%>
+<%
+  /*
+   * Semantic-version field component.
+   *
+   * The three visible numeric parts are presentation only. One hidden native
+   * control remains the canonical form/CTX value, so dirty tracking, CTX
+   * propagation and persistence continue through the standard field pipeline.
+   * The first version grammar deliberately supports numeric major.minor.patch;
+   * prerelease/build segments can extend the same canonical type later.
+   */
+  const source = String(value ?? '').trim();
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(source);
+  const major = match?.[1] ?? '';
+  const minor = match?.[2] ?? '';
+  const patch = match?.[3] ?? '';
+%>
+<div
+  class="input-group metadata-field-input"
+  data-enhanced-field-input
+  data-field-component="version"
+  data-version-field
+  data-version-format="<%= field.versionFormat || 'semver' %>"
+>
+  <button
+    class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+    title="Version field tools"
+    aria-label="Version field tools for <%= fieldLabel(field) %>"
+  ><span class="metadata-field-type-glyph" aria-hidden="true">v</span></button>
+
+  <div class="form-control metadata-version-editor <%= editable ? '' : 'bg-body-secondary' %>">
+    <input
+      class="form-control metadata-version-part"
+      id="metadata-field-<%= key %>"
+      type="number"
+      min="0"
+      step="1"
+      inputmode="numeric"
+      aria-label="Major version"
+      data-version-part="major"
+      value="<%= major %>" <%= editable ? '' : 'readonly' %>>
+    <span class="metadata-version-separator" aria-hidden="true">.</span>
+    <input
+      class="form-control metadata-version-part"
+      type="number"
+      min="0"
+      step="1"
+      inputmode="numeric"
+      aria-label="Minor version"
+      data-version-part="minor"
+      value="<%= minor %>" <%= editable ? '' : 'readonly' %>>
+    <span class="metadata-version-separator" aria-hidden="true">.</span>
+    <input
+      class="form-control metadata-version-part"
+      type="number"
+      min="0"
+      step="1"
+      inputmode="numeric"
+      aria-label="Patch version"
+      data-version-part="patch"
+      value="<%= patch %>" <%= editable ? '' : 'readonly' %>>
+  </div>
+
+  <input
+    type="hidden"
+    name="<%= key %>"
+    data-ctx-field="<%= key %>"
+    data-version-canonical-value
+    value="<%= source %>"
+  >
+
+  <%- include('field-tools-menu', { key, editable, actions: [
+    { action: 'clear', icon: 'eraser', label: 'Clear value' },
+  ] }) %>
+</div>

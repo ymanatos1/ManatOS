@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: Message popup
+
+  Purpose:
+  - Composes a reusable semantic message modal from shared popup chrome.
+
+  Inputs / metadata:
+  - Message title/body/tone/actions and popup identifiers.
+
+  CTX contract:
+  - Shared popup runtime projects active modal state.
+
+  Embeds / delegates:
+  - popup-header.ejs, popup-footer.ejs and popup-action.ejs.
+
+  Runtime contract:
+  - Bootstrap popup runtime owns lifecycle.
+%>
+
+<%#
   Compact message/confirmation popup layout.
 
   Message popups intentionally use the same shared header/footer infrastructure as rich
@@ -15,6 +34,9 @@
 <div
   class="modal fade"
   id="<%= modalId %>"
+  data-popup-purpose="<%= typeof popupPurpose !== 'undefined' && popupPurpose ? popupPurpose : 'message' %>"
+  data-popup-kind="message-modal"
+  data-popup-presentation="compact"
   tabindex="-1"
   data-auto-show="true"
   aria-labelledby="<%= labelId %>"

@@ -1,9 +1,0 @@
-<div class="input-group metadata-field-input" data-enhanced-field-input data-field-component="datetime">
-  <button class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Date/time field tools" aria-label="Date/time field tools for <%= fieldLabel(field) %>"><i class="bi bi-calendar2-week" aria-hidden="true"></i></button>
-  <input class="form-control" id="metadata-field-<%= key %>" name="<%= key %>" data-ctx-field="<%= key %>" type="datetime-local" value="<%= datetimeLocalValue(value) %>" <%= field.required ? 'required' : '' %> <%= editable ? '' : 'readonly' %>>
-  <%- include('field-tools-menu', { key, editable, actions: [
-    { action: 'today', icon: 'calendar-check', label: 'Today at midnight' },
-    { action: 'now', icon: 'clock', label: 'Current date/time' },
-    { action: 'clear', icon: 'eraser', label: 'Clear value' },
-  ] }) %>
-</div>

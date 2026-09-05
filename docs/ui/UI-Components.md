@@ -6,17 +6,31 @@ UI components are reusable presentation/interaction units that are **not themsel
 
 ## Component families in the current UI
 
-```mermaid
-flowchart TB
-    U[Reusable UI components]
-    U --> C[Common\ninformation/help/date-duration]
-    U --> S[SysBO\nentry/list/collections/hierarchy]
-    U --> A[Authentication\nauth summary/password rules]
-    U --> D[Debugging\nCTX/API traffic/CLI/tools]
-    U --> L[Layout/navigation\nheader/footer/nav/busy overlay]
+```text
+ui/views/components/
+├── auth/                  reusable authentication presentation
+├── debugging/             CTX/API/CLI developer tooling
+├── layout/                application-shell presentation
+├── navigation/            horizontal/vertical navigation
+├── presentation/          generic help/information surfaces
+└── sysbo/
+    ├── list/              canonical list/browse presentation
+    ├── entry/
+    │   ├── shell/         entry tabs/actions/orchestration
+    │   ├── fields/        canonical metadata-driven field controls
+    │   └── content/       composite entry-tab content
+    └── hierarchy/         hierarchy workspace interactions
+
+ui/views/popups/
+├── auth/
+├── illustrations/
+├── messages/
+├── preferences/
+├── selectors/
+└── shared/
 ```
 
-Representative implementation locations include `ui/views/components/common/`, `components/sysbo/`, `components/auth/`, `components/debugging/`, `components/layout/` and `components/navigation/`.
+The placement rule is responsibility-first: a record selector belongs under `popups/selectors/` because it owns a popup workflow, even though it composes canonical SysBO list components. Likewise, canonical field controls belong under `sysbo/entry/fields/`, while higher-level tab content belongs under `sysbo/entry/content/`.
 
 ## Responsibilities
 
@@ -62,9 +76,70 @@ owner entry
 
 Current examples include User/Account external identities and Principal/Application license relationships. The owner page may differ, but the representation rule must not.
 
+## Existing-record selector
+
+`views/popups/selectors/record-selector.ejs` plus `public/js/popups/record-selector.js` implement the generic **Select existing entry** surface.
+
+The selector is not an entity-specific page and not a field component. It is a reusable non-field component that consumes canonical entity/list metadata and candidate records, then adds selection semantics for the caller.
+
+```mermaid
+flowchart LR
+    LM[Canonical entity + list metadata]
+    CAND[Candidate records]
+    CALL[callingParams]
+    LM --> RS[Record selector]
+    CAND --> RS
+    CALL --> RS
+    RS --> LIST[Shared list toolbar / filters / header / paging]
+    RS --> CTX[popup CTX state]
+    RS --> RESULT[Canonical selected record(s)]
+```
+
+The selector deliberately composes the same `list-toolbar`, `list-filters`, `list-table-header` and `list-paging` partials used by ordinary SysBO list pages. That shared structure is an architectural contract: changes to common list presentation must be reviewed for both browse and selection contexts.
+
+### Calling context vs selector state
+
+The live popup CTX distinguishes **why the selector was opened** from **what the selector is currently doing**:
+
+```text
+ctx.page....popup
+├── kind = "record-selector"
+├── callingParams
+│   ├── purpose
+│   ├── entityKey
+│   ├── selectionMode
+│   ├── sourceEntityKey / sourceRecordId
+│   ├── targetField or relation context
+│   └── query/eligibility hints when applicable
+├── entriesOriginal / entries
+├── filters / search / paging
+├── selectedId / selectedIds
+└── state
+```
+
+`callingParams` is intentionally debugger/expression friendly. It describes the resolved invocation contract and remains separate from mutable search/filter/paging/selection state. It is also an **active evaluator input**: selector UI-policy expressions are compiled on the server and evaluated in the browser against `{ callingParams }`. The browser never reparses those expression strings.
+
+The current presentation policy supports two invocation orientations:
+
+- `subtle` — quiet/list-like treatment used by the Organization workspace;
+- `entry` — stronger entry-form-oriented treatment used when a reference field opens the selector.
+
+Callers provide intent (for example `presentationMode`); the selector metadata/evaluator resolves that intent into UI behavior. The resolved presentation is exposed separately under `popup.presentation`, while `callingParams` remains the immutable invocation contract.
+
+Caption policy follows the same rule. Reference-field callers provide semantic facts such as `targetFieldLabel`, `sourceEntityLabel` and `sourceRecordName`; a precompiled selector UI expression derives captions such as **Select Application for License 'First sample license'**. Callers do not assemble reference-field captions in JavaScript. Specialized contexts may provide an explicit title when the generic field-oriented caption does not describe the operation, as the Organization hierarchy does for relationship placement. The resolved caption is published under `popup.presentation.title` for CTX inspection.
+
+Current consumers include:
+
+- Principal Organization workspace — **Add existing entry…** with hierarchy relationship eligibility;
+- canonical reference fields — **Select existing entry…** from the field tools menu.
+
+The selector returns canonical selected record(s). The caller remains responsible for the meaning of that result: a reference field updates its canonical reference value through the field-component runtime; the Organization workspace creates/repositions a hierarchy relation through its own relationship rules.
+
+The generic selector must not contain Principal-specific hierarchy policy, field-component DOM logic or direct persistence behavior.
+
 ## Hierarchy/workspace components
 
-Hierarchy components (`hierarchy-workspace`, `record-quick`) present organization/tree interactions over domain relationships. They consume metadata and records but do not redefine Principal field/reference semantics.
+Hierarchy components under `views/components/sysbo/hierarchy/` (`hierarchy-workspace`, `record-quick`) present organization/tree interactions over domain relationships. They consume metadata and records but do not redefine Principal field/reference semantics. Relationship eligibility remains in the hierarchy caller even when the generic record selector presents the candidates.
 
 ## Debugging components
 
@@ -85,7 +160,7 @@ flowchart TD
 
 Non-entity UI sometimes needs ordinary input controls: transient secrets, search/filter terms, confirmation values, test parameters, CLI text and similar workflow-local state. These are **UI inputs, not entity field-components**.
 
-`views/components/common/workflow-input.ejs` is the small reusable server-rendered input primitive for such transient/system workflows where an ordinary Bootstrap input is appropriate. It intentionally does not:
+`views/components/sysbo/entry/content/workflow-input.ejs` is the small reusable server-rendered input primitive for such transient/system workflows where an ordinary Bootstrap input is appropriate. It intentionally does not:
 
 - read canonical `fieldDefinition` metadata;
 - bind `data-ctx-field` into `ctx.page.page.fields`;

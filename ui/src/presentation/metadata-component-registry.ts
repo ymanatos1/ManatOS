@@ -8,11 +8,11 @@
  * generic data-metadata-component marker instead.
  */
 const componentPartials: Readonly<Record<string, string>> = {
-  'information-panel': '../../common/information-panel',
-  'contextual-help': '../../common/contextual-help',
-  'provider-credentials': 'provider-credentials',
-  'date-duration-range': '../../common/date-duration-range',
-  'collection-editor': '../collections/collection-editor',
+  'information-panel': '../../../presentation/information-panel',
+  'contextual-help': '../../../presentation/contextual-help',
+  'provider-credentials': '../content/provider-credentials',
+  'date-duration-range': '../content/date-duration-range',
+  'collection-editor': '../content/collection-editor',
 };
 
 /** Resolve a server-rendered metadata component, or null for browser-mounted components. */

@@ -18,12 +18,14 @@ describe('generic discrete-value option presentation', () => {
 
   it('renders option labels/icons generically in lists, related collections and entry display names', () => {
     const list = source('../views/pages/sysbo/list.ejs');
-    const related = source('../views/components/sysbo/collections/related-collections.ejs');
+    const rowCells = source('../views/components/sysbo/list/list-row-cells.ejs');
+    const related = source('../views/components/sysbo/entry/content/related-collections.ejs');
     const entry = source('../views/pages/sysbo/entry.ejs');
     const supplemental = source('../src/routes/sysbo/entry-supplemental-data.ts');
 
     expect(list).toContain('const optionItem = metadataOptionItemForField;');
-    expect(list).toContain('primaryOptionItem');
+    expect(list).toContain("include('../../components/sysbo/list/list-row-cells'");
+    expect(rowCells).toContain('primaryOptionItem');
     expect(related).toContain('optionItemForField(canonicalField, renderedValue.raw)');
     expect(related).not.toContain("collectionField.format === 'auth-provider'");
     expect(entry).toContain('const optionItemForField = metadataOptionItemForField;');

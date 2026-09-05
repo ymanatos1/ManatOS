@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 describe('generic related-collection presentation', () => {
   it('resolves canonical row entry presentation at the component/rendering boundary', () => {
-    const view = readFileSync(new URL('../views/components/sysbo/collections/related-collections.ejs', import.meta.url), 'utf8');
-    const entryIcons = readFileSync(new URL('../views/components/sysbo/entry/entry-icons.ejs', import.meta.url), 'utf8');
+    const view = readFileSync(new URL('../views/components/sysbo/entry/content/related-collections.ejs', import.meta.url), 'utf8');
+    const entryIcons = readFileSync(new URL('../views/components/sysbo/entry/shell/entry-icons.ejs', import.meta.url), 'utf8');
     const loader = readFileSync(new URL('../src/routes/sysbo/related-collections.ts', import.meta.url), 'utf8');
     const renderPage = readFileSync(new URL('../src/presentation/render-page.ts', import.meta.url), 'utf8');
     const identity = readFileSync(new URL('../../shared/src/metadata/ui/identity.ts', import.meta.url), 'utf8');
@@ -25,7 +25,7 @@ describe('generic related-collection presentation', () => {
 
     // The common related-collection component owns row-entry icon placement.
     expect(view).toContain('entryRepresentationFor(collection.entityKey, row, relatedRowIcon)');
-    expect(view).toContain("include('../entry/entry-icons'");
+    expect(view).toContain("include('../shell/entry-icons'");
     expect(entryIcons).toContain('entryRepresentation?.icons');
     expect(entryIcons).toContain('metadata-entry-icon-<%= iconIndex %>');
     expect(view).toContain('metadata-related-primary-value');

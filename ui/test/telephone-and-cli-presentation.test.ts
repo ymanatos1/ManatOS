@@ -10,9 +10,9 @@ describe('telephone field normalization and debugging CLI presentation', () => {
   it('keeps normalization metadata-driven and uses the reusable telephone field component', async () => {
     const metadata = await sharedSource('src/metadata/bo/identity.ts');
     const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
-    const dispatcher = await uiSource('views/field-components/entity-field.ejs');
-    const formField = await uiSource('views/field-components/form-field.ejs');
-    const telephone = await uiSource('views/field-components/telephone-field.ejs');
+    const dispatcher = await uiSource('views/components/sysbo/entry/fields/entity-field.ejs');
+    const formField = await uiSource('views/components/sysbo/entry/fields/form-field.ejs');
+    const telephone = await uiSource('views/components/sysbo/entry/fields/telephone-field.ejs');
     const runtime = await uiSource('public/js/metadata-form-runtime.js');
     expect(metadata).toContain("normalize: { expression: 'TelephoneNbr(value)' }");
     expect(uiMetadata).toContain("field: 'telephoneNumber'");

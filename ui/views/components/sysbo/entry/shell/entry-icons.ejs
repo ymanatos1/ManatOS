@@ -1,0 +1,41 @@
+<%#
+  COMPONENT: Entry icons
+
+  Purpose:
+  - Renders the canonical one-or-composed icon representation for a SysBO entry.
+
+  Inputs / metadata:
+  - entryRepresentation.icons plus optional wrapper/icon classes.
+
+  CTX contract:
+  - None.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Pure presentation shared by lists, related collections and entry surfaces.
+%>
+
+<%#
+  Canonical entry-icon renderer shared by related-record presentation surfaces.
+
+  Callers resolve the entry representation from metadata and pass it here; this
+  component owns the ordered icon composition only. Entity-specific templates
+  must not rebuild entity/type icon combinations themselves.
+%>
+<%
+  const icons = Array.isArray(entryRepresentation?.icons)
+    ? entryRepresentation.icons.filter((icon) => typeof icon === 'string' && icon)
+    : [];
+  const classes = typeof iconGroupClass === 'string' && iconGroupClass
+    ? iconGroupClass
+    : 'metadata-entry-icons me-1';
+%>
+<% if (icons.length) { %>
+  <span class="<%= classes %>" aria-hidden="true">
+    <% for (const [iconIndex, icon] of icons.entries()) { %>
+      <i class="bi bi-<%= String(icon).replace(/^bi-/, '') %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"></i>
+    <% } %>
+  </span>
+<% } %>

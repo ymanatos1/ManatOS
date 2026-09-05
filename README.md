@@ -127,8 +127,11 @@ Credential/secret handling remains server-side.
 
 ## Documentation map
 
+The complete documentation entrance is [`docs/README.md`](docs/README.md). It offers audience-oriented reading paths for architects, developers, power users and repository/portfolio visitors.
+
 | Interest | Start here |
 |---|---|
+| documentation hub / choose a reading path | [`docs/README.md`](docs/README.md) |
 | system vision, boundaries and major runtime responsibilities | [`docs/Architecture.md`](docs/Architecture.md) |
 | canonical business-object and UI metadata | [`docs/Entity-Metadata.md`](docs/Entity-Metadata.md) |
 | CTX/expression ownership and execution mechanics | [`docs/Expression-Evaluation-Mechanics.md`](docs/Expression-Evaluation-Mechanics.md) |

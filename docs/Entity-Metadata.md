@@ -211,9 +211,9 @@ The Organization hierarchy no longer owns `labelField`/`typeField` as presentati
 
 ## 6. Universal enum/reference field presentation
 
-Canonical enum-item metadata may declare `label`, `icon`, tone and semantic traits. Entity edit forms never render those icons through entity-specific templates: every ordinary enum field is dispatched through `field-components/enum-select.ejs`, which renders a real selected option and every real dropdown option as icon + label when an icon exists. `Choose...` remains iconless. Contextual enum projections may narrow/enrich the catalogue, but canonical labels/icons survive by value.
+Canonical enum-item metadata may declare `label`, `icon`, tone and semantic traits. Entity edit forms never render those icons through entity-specific templates: every ordinary enum field is dispatched through `components/sysbo/entry/fields/enum-select.ejs`, which renders a real selected option and every real dropdown option as icon + label when an icon exists. `Choose...` remains iconless. Contextual enum projections may narrow/enrich the catalogue, but canonical labels/icons survive by value.
 
-Reference fields follow the same ownership rule. `field-components/reference-select.ejs` is the entity-form presenter for related records, including calculated/read-only references. Reference data is projected through the canonical entry-representation resolver (`__entryName`, `__entryIcons`), and the component renders the resolved entry icon composition before the resolved entry name for both the selected value and every dropdown choice. `None` / `Choose...` remain iconless. Callers must not prepend their own entity/reference icons around these components.
+Reference fields follow the same ownership rule. `components/sysbo/entry/fields/reference-select.ejs` is the entity-form presenter for related records, including calculated/read-only references. Reference data is projected through the canonical entry-representation resolver (`__entryName`, `__entryIcons`), and the component renders the resolved entry icon composition before the resolved entry name for both the selected value and every dropdown choice. `None` / `Choose...` remain iconless. Callers must not prepend their own entity/reference icons around these components.
 
 ## 7. Consumers and fallbacks
 

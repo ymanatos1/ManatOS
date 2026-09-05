@@ -16,7 +16,7 @@ describe('generic SysBO form state presentation', () => {
       '/js/forms/entry-save.js',
       '/js/forms/entry-focus.js',
       '/js/forms/configuration.js',
-      '/js/forms/modal-focus.js',
+      '/js/popups/popup-runtime.js',
     ];
 
     for (const runtime of expected) expect(shell).toContain(runtime);
@@ -36,9 +36,9 @@ describe('generic SysBO form state presentation', () => {
 
   it('starts the shared Save button disabled and marks it for generic state management', async () => {
     const metadataSource = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
-    const actionsFooterSource = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/entry-actions-footer.ejs'), 'utf8');
-    const saveActionSource = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/save-split-action.ejs'), 'utf8');
-    expect(metadataSource).toContain("include('../../components/sysbo/entry/entry-actions-footer'");
+    const actionsFooterSource = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/shell/entry-actions-footer.ejs'), 'utf8');
+    const saveActionSource = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/shell/save-split-action.ejs'), 'utf8');
+    expect(metadataSource).toContain("include('../../components/sysbo/entry/shell/entry-actions-footer'");
     expect(actionsFooterSource).toContain("include('save-split-action'");
     expect(saveActionSource).toContain('data-form-save');
     expect(saveActionSource).toContain('data-form-save-menu-toggle');
@@ -108,7 +108,7 @@ describe('generic SysBO form state presentation', () => {
   });
 
   it('marks every tab with no editable fields as an informational read-only pane', async () => {
-    const tabContentSource = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/entry-tab-content.ejs'), 'utf8');
+    const tabContentSource = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/shell/entry-tab-content.ejs'), 'utf8');
     expect(tabContentSource).toContain("const readOnlyTab = tab.layout === 'summary'");
     expect(tabContentSource).toContain("entity-readonly-tab");
     expect(tabContentSource).toContain("data-readonly-tab=\"true\"");
@@ -244,8 +244,8 @@ describe('generic SysBO form state presentation', () => {
   it('keeps rich enum backing selects out of initial focus and separates date-only from datetime browser controls', async () => {
     const forms = await readFile(resolve(testDirectory, '../public/js/forms/entry-focus.js'), 'utf8');
     const entry = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
-    const dateField = await readFile(resolve(testDirectory, '../views/field-components/date-field.ejs'), 'utf8');
-    const datetimeField = await readFile(resolve(testDirectory, '../views/field-components/datetime-field.ejs'), 'utf8');
+    const dateField = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/fields/date-field.ejs'), 'utf8');
+    const datetimeField = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/fields/datetime-field.ejs'), 'utf8');
 
     expect(forms).toContain('select:not([disabled]):not(.visually-hidden):not([aria-hidden="true"])');
     expect(forms).toContain('[data-metadata-enum-toggle]:not([disabled])');
@@ -260,10 +260,10 @@ describe('generic SysBO form state presentation', () => {
 
   it('uses Close for a clean entry and Cancel whenever the shared page transaction is dirty or internally editing', async () => {
     const renderer = await readFile(resolve(testDirectory, '../views/pages/sysbo/entry.ejs'), 'utf8');
-    const actionsFooter = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/entry-actions-footer.ejs'), 'utf8');
+    const actionsFooter = await readFile(resolve(testDirectory, '../views/components/sysbo/entry/shell/entry-actions-footer.ejs'), 'utf8');
     const forms = await readFile(resolve(testDirectory, '../public/js/forms/entry-state.js'), 'utf8');
 
-    expect(renderer).toContain("include('../../components/sysbo/entry/entry-actions-footer'");
+    expect(renderer).toContain("include('../../components/sysbo/entry/shell/entry-actions-footer'");
     expect(actionsFooter).toContain('data-form-close-cancel');
     expect(actionsFooter).toContain("data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %>");
     expect(forms).toContain("closeCancelLabel.textContent = changed || internalEditing ? 'Cancel' : 'Close'");

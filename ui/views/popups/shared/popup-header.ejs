@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: Popup header
+
+  Purpose:
+  - Renders canonical popup title/subtitle, CTX inspection and explicit close chrome.
+
+  Inputs / metadata:
+  - Title/subtitle/icon/close behavior and ctxInspectable presentation inputs.
+
+  CTX contract:
+  - CTX button delegates popup-path selection to the shared popup runtime.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Shared popup runtime binds CTX toggle and Bootstrap close lifecycle.
+%>
+
+<%#
   Shared popup header.
 
   The popup architecture distinguishes the modal-level title/subtitle rendered here from
@@ -13,6 +32,7 @@
   const popupCloseTitle = typeof closeTitle !== 'undefined' && closeTitle ? closeTitle : '';
   const popupCloseHref = typeof closeHref !== 'undefined' && closeHref ? closeHref : null;
   const popupDismissible = typeof dismissible === 'undefined' ? true : Boolean(dismissible);
+  const popupCtxInspectable = typeof ctxInspectable === 'undefined' ? true : Boolean(ctxInspectable);
 %>
 <div class="modal-header <%= popupHeaderClass %>">
   <div>
@@ -28,20 +48,40 @@
     <% } %>
   </div>
 
-  <% if (popupCloseHref) { %>
-    <a
-      class="btn-close"
-      href="<%= popupCloseHref %>"
-      aria-label="<%= popupCloseLabel %>"
-      <% if (popupCloseTitle) { %>title="<%= popupCloseTitle %>"<% } %>
-    ></a>
-  <% } else if (popupDismissible) { %>
-    <button
-      class="btn-close"
-      type="button"
-      data-bs-dismiss="modal"
-      aria-label="<%= popupCloseLabel %>"
-      <% if (popupCloseTitle) { %>title="<%= popupCloseTitle %>"<% } %>
-    ></button>
-  <% } %>
+  <div class="d-flex align-items-center gap-2 ms-auto">
+    <% if (popupCtxInspectable) { %>
+      <%#
+        Popup CTX inspection is part of the shared header contract. The runtime
+        reveals this button only when Developer Tools are available and binds it
+        to the canonical ctx.<leaf-page>.popup node. Keeping it here guarantees
+        the universal placement immediately before the close action.
+      %>
+      <button
+        class="btn btn-sm btn-outline-secondary d-none"
+        type="button"
+        data-popup-ctx-inspect
+        aria-pressed="false"
+        title="Toggle this popup context in Developer Tools"
+      >
+        <i class="bi bi-bug me-1" aria-hidden="true"></i>CTX
+      </button>
+    <% } %>
+
+    <% if (popupCloseHref) { %>
+      <a
+        class="btn-close"
+        href="<%= popupCloseHref %>"
+        aria-label="<%= popupCloseLabel %>"
+        <% if (popupCloseTitle) { %>title="<%= popupCloseTitle %>"<% } %>
+      ></a>
+    <% } else if (popupDismissible) { %>
+      <button
+        class="btn-close"
+        type="button"
+        data-bs-dismiss="modal"
+        aria-label="<%= popupCloseLabel %>"
+        <% if (popupCloseTitle) { %>title="<%= popupCloseTitle %>"<% } %>
+      ></button>
+    <% } %>
+  </div>
 </div>

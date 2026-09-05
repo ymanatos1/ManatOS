@@ -477,9 +477,9 @@
       <input type="hidden" name="_ownerFocusedMemberId" value="<%= recordId || '' %>">
       <input type="hidden" name="_ownerIdentityField" value="<%= ownerContext.identityField || 'id' %>">
     <% } %>
-    <%- include('../../components/sysbo/entry/entry-tabs-nav', { tabs, activeTabId }) %>
+    <%- include('../../components/sysbo/entry/shell/entry-tabs-nav', { tabs, activeTabId }) %>
 
-    <%- include('../../components/sysbo/entry/entry-tab-content', {
+    <%- include('../../components/sysbo/entry/shell/entry-tab-content', {
       tabs,
       activeTabId,
         relatedCollections,
@@ -515,7 +515,7 @@
       valueFor
     }) %>
 
-    <%- include('../../components/sysbo/entry/entry-actions-footer', {
+    <%- include('../../components/sysbo/entry/shell/entry-actions-footer', {
       isNew,
       isViewMode,
       recordId,
@@ -532,7 +532,7 @@
   </form>
 </section>
 
-<%- include('../../components/sysbo/entry/entry-command-forms', { commandActionEntries, isNew, recordId, definition, csrfToken }) %>
+<%- include('../../components/sysbo/entry/shell/entry-command-forms', { commandActionEntries, isNew, recordId, definition, csrfToken }) %>
 
 <%- include('../../popups/messages/bo-edit-confirmations', {
   isNew,

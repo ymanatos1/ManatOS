@@ -11,8 +11,8 @@ const api = (path: string) => readFile(resolve(here, '..', '..', 'api', path), '
 
 describe('canonical field type / value-source architecture', () => {
   it('keeps one field renderer path regardless of calculation source', async () => {
-    const form = await ui('views/field-components/form-field.ejs');
-    const dispatcher = await ui('views/field-components/entity-field.ejs');
+    const form = await ui('views/components/sysbo/entry/fields/form-field.ejs');
+    const dispatcher = await ui('views/components/sysbo/entry/fields/entity-field.ejs');
 
     expect(form).toContain("include('entity-field'");
     expect(form).toContain('const calculation = field.calculation');
@@ -23,7 +23,7 @@ describe('canonical field type / value-source architecture', () => {
     expect(dispatcher).not.toContain('calculation');
     expect(dispatcher).not.toContain('persisted');
 
-    await expect(access(resolve(here, '..', 'views/field-components/calculated-field.ejs'))).rejects.toThrow();
+    await expect(access(resolve(here, '..', 'views/components/sysbo/entry/fields/calculated-field.ejs'))).rejects.toThrow();
   });
 
   it('defines renderable calculations on canonical typed fields rather than a parallel derivedFields catalogue', async () => {
@@ -43,9 +43,9 @@ describe('canonical field type / value-source architecture', () => {
   });
 
   it('keeps summary as a higher-level canonical-field container rather than a calculated-field renderer', async () => {
-    const tabs = await ui('views/components/sysbo/entry/entry-tab-content.ejs');
-    const summary = await ui('views/components/sysbo/entry/summary.ejs');
-    expect(tabs).toContain("include('summary'");
+    const tabs = await ui('views/components/sysbo/entry/shell/entry-tab-content.ejs');
+    const summary = await ui('views/components/sysbo/entry/content/summary.ejs');
+    expect(tabs).toContain("include('../content/summary'");
     expect(summary).toContain('metadata.fieldDefinition[key]');
     expect(summary).toContain('valueFor(key)');
     expect(summary).not.toContain('derived');
@@ -54,7 +54,7 @@ describe('canonical field type / value-source architecture', () => {
 
   it('keeps calculation scheduling generic and delegates type-specific DOM synchronization to field-components', async () => {
     const formRuntime = await ui('public/js/metadata-form-runtime.js');
-    const fieldRuntime = await ui('public/js/field-components/runtime.js');
+    const fieldRuntime = await ui('public/js/sysbo/entry/field-runtime.js');
 
     expect(formRuntime).toContain("form.querySelectorAll('[data-field-calculation-ast]')");
     expect(formRuntime).toContain('ManatOSFieldComponents?.setFieldValue');

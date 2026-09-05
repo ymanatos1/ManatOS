@@ -1,11 +1,57 @@
+<%#
+  COMPONENT: API traffic viewer
+
+  Purpose:
+  - Renders the development-only UI-to-API traffic inspector surface inside Developer Tools.
+
+  Inputs / metadata:
+  - No business metadata; shell boot state and browser-captured sanitized traffic drive the runtime.
+
+  CTX contract:
+  - Does not mutate application CTX; it visualizes UI/API diagnostic state.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - api-traffic debugger runtime owns filtering, route visibility, pause, selection, resizing and detail rendering.
+%>
+
 <!-- Development-only sanitized UI -> API traffic viewer. -->
 <aside class="api-traffic-panel d-none" id="apiTrafficPanel" aria-label="ManatOS API traffic viewer" aria-hidden="true" inert>
   <div class="debug-panel-tools" role="toolbar" aria-label="API traffic controls">
-    <button class="debug-tool-button" id="apiTrafficPause" type="button" title="Pause live updates" aria-label="Pause live updates" aria-pressed="false"><i class="bi bi-pause"></i></button>
+    <button
+      class="debug-tool-button"
+      id="apiTrafficPause"
+      type="button"
+      title="Pause live updates"
+      aria-label="Pause live updates"
+      aria-pressed="false"
+    >
+      <i class="bi bi-pause"></i>
+    </button>
     <button class="debug-tool-button" id="apiTrafficClear" type="button" title="Clear captured traffic" aria-label="Clear captured traffic"><i class="bi bi-trash"></i></button>
-    <button class="debug-tool-button" id="apiTrafficErrors" type="button" title="Show errors only" aria-label="Show errors only" aria-pressed="false"><i class="bi bi-exclamation-octagon"></i></button>
+    <button
+      class="debug-tool-button"
+      id="apiTrafficErrors"
+      type="button"
+      title="Show errors only"
+      aria-label="Show errors only"
+      aria-pressed="false"
+    >
+      <i class="bi bi-exclamation-octagon"></i>
+    </button>
     <div class="api-traffic-route-filter-wrap">
-      <button class="debug-tool-button" id="apiTrafficRoutes" type="button" title="Choose API calls to show" aria-label="Choose API calls to show" aria-expanded="false"><i class="bi bi-filter-square"></i></button>
+      <button
+        class="debug-tool-button"
+        id="apiTrafficRoutes"
+        type="button"
+        title="Choose API calls to show"
+        aria-label="Choose API calls to show"
+        aria-expanded="false"
+      >
+        <i class="bi bi-filter-square"></i>
+      </button>
       <div class="api-traffic-route-menu d-none" id="apiTrafficRouteMenu" role="menu" aria-label="API call visibility">
         <div class="api-traffic-route-menu-actions">
           <button type="button" data-api-routes-all>All</button>
@@ -14,7 +60,16 @@
         <div class="api-traffic-route-menu-list" id="apiTrafficRouteMenuList"></div>
       </div>
     </div>
-    <button class="debug-tool-button" id="apiTrafficIgnoreRoutes" type="button" title="Ignore API call visibility selections (show all calls)" aria-label="Ignore API call visibility selections" aria-pressed="false"><i class="bi bi-eye"></i></button>
+    <button
+      class="debug-tool-button"
+      id="apiTrafficIgnoreRoutes"
+      type="button"
+      title="Ignore API call visibility selections (show all calls)"
+      aria-label="Ignore API call visibility selections"
+      aria-pressed="false"
+    >
+      <i class="bi bi-eye"></i>
+    </button>
     <input class="api-traffic-filter" id="apiTrafficFilter" type="search" autocomplete="off" placeholder="Search traffic" aria-label="Search captured API traffic">
     <span class="api-traffic-stats" id="apiTrafficStats">0 requests</span>
   </div>

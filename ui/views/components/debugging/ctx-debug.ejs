@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: CTX viewer
+
+  Purpose:
+  - Renders the live canonical CTX tree inspector and its navigation/properties controls.
+
+  Inputs / metadata:
+  - Developer-mode shell state; no entity-specific metadata contract.
+
+  CTX contract:
+  - Reads the live ManatOS CTX tree and selection/history state; inspection must never mutate business values.
+
+  Embeds / delegates:
+  - debugging-cli.ejs for the CTX-scoped command line.
+
+  Runtime contract:
+  - ctx-debug runtime owns tree rendering, selection, history, watch, properties, find, resize and CLI integration.
+%>
+
 <!--
   ManatOS development debugger.
 

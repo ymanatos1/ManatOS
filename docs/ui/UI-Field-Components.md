@@ -104,6 +104,29 @@ flowchart LR
 
 The hidden native option catalogue carries the same canonical entry-name/icon metadata used by the visible selector. Runtime updates resolve presentation from that catalogue; they must never fall back to displaying a GUID merely because the value changed after initial rendering. Entity-specific or calculation-specific code must not perform this translation.
 
+### Selecting from the generic record browser
+
+Editable reference fields expose **Select existing entry…** through their field-tools menu when canonical target metadata is available. The field component does not implement its own list popup; it invokes the generic [existing-record selector](UI-Components.md#existing-record-selector).
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant RF as reference-select
+    participant RS as record-selector
+    participant CTX as popup CTX
+    participant FC as field-components runtime
+
+    U->>RF: Select existing entry…
+    RF->>RS: Open with target metadata + candidates + callingParams
+    RS->>CTX: Project popup.callingParams + selector state
+    U->>RS: Search/filter/select
+    RS-->>RF: Canonical selected record
+    RF->>FC: Set canonical reference id
+    FC-->>RF: Refresh icon(s) + canonical name
+```
+
+The popup invocation identifies the source entity/record and target field in `callingParams`. The selected record id still flows through the same reference-component value path as direct dropdown selection or evaluator-driven updates.
+
 ## Enum fields
 
 `enum-select.ejs` owns enum option and selected-value presentation. Labels, icons, tones and traits come from canonical enum metadata. The same option representation is used in the selector and elsewhere generic enum presentation is requested. Entity templates must not render enum icons independently.
@@ -125,7 +148,7 @@ The hidden native option catalogue carries the same canonical entry-name/icon me
 
 ## Runtime binding
 
-CTX/evaluator infrastructure resolves calculations and dependencies. `metadata-form-runtime.js` schedules/propagates generic changes but must not reconstruct field-specific DOM. Programmatic field updates are delegated to `window.ManatOSFieldComponents.setFieldValue(...)` in `field-components/runtime.js`, which synchronizes the canonical control and enhanced type-specific presentation.
+CTX/evaluator infrastructure resolves calculations and dependencies. `metadata-form-runtime.js` schedules/propagates generic changes but must not reconstruct field-specific DOM. Programmatic field updates are delegated to `window.ManatOSFieldComponents.setFieldValue(...)` in `components/sysbo/entry/fields/runtime.js`, which synchronizes the canonical control and enhanced type-specific presentation.
 
 ## Adding a field type
 
@@ -171,3 +194,11 @@ When an embedded canonical field is owned by a local draft/workflow rather than 
 - A UI component must not include `text-field.ejs`, `reference-select.ejs`, `enum-select.ejs`, or another concrete field-component directly.
 - A transient workflow value must not be given fake canonical field metadata merely to obtain a field component or field-tools menu.
 - A locally owned canonical draft field must not silently bind itself to the page entry CTX; use the dispatcher with explicit local ownership.
+
+## Source authoring convention
+
+Every field-component EJS file follows the common ManatOS component source-header and
+layout convention documented in [UI-Component-Authoring.md](UI-Component-Authoring.md).
+The header makes purpose, metadata inputs, CTX binding, embedded components, and browser
+runtime hooks explicit. This is an authoring/documentation contract only; canonical field
+behavior remains metadata/runtime driven.

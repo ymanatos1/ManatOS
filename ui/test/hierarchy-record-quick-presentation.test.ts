@@ -13,11 +13,11 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     const contract = await sharedSource('src/metadata/ui/types.ts');
     const metadata = await sharedSource('src/metadata/ui/business.ts');
     const quick = await uiSource('views/components/sysbo/hierarchy/record-quick.ejs');
-    const workspace = await uiSource('public/js/components/hierarchy-workspace.js');
+    const workspace = await uiSource('public/js/sysbo/hierarchy/hierarchy-workspace.js');
     const hierarchyPage = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
-    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
-    const tree = await uiSource('public/js/components/hierarchy-tree.js');
-    const fieldComponentRuntime = await uiSource('public/js/field-components/runtime.js');
+    const tabContent = await uiSource('views/components/sysbo/entry/shell/entry-tab-content.ejs');
+    const tree = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
+    const fieldComponentRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
     const css = await uiSource('public/css/ui.css');
 
     expect(contract).toContain('fieldOverrides?: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>');
@@ -142,59 +142,72 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
 
 describe('hierarchy draft persistence and relation selection', () => {
   it('persists organization drafts by user/entity rather than UI-server boot and restores compatible drafts', async () => {
-    const hierarchyWorkspaceScript = await uiSource('public/js/components/hierarchy-workspace.js');
+    const hierarchyWorkspaceScript = await uiSource('public/js/sysbo/hierarchy/hierarchy-workspace.js');
     expect(hierarchyWorkspaceScript).toContain("const draftStorageKey = `${draftStoragePrefix}${userId}:${entityKey}:${draftIdentity}`");
     expect(hierarchyWorkspaceScript).not.toContain("`${draftStoragePrefix}${bootId}:${userId}:${entityKey}:${hierarchyRootIdentity}`");
     expect(hierarchyWorkspaceScript).toContain('compatibleDraftPayload');
     expect(hierarchyWorkspaceScript).toContain('storedDraftCandidates');
   });
 
-  it('exposes add/relate menus and an existing-entry selection surface without component fetches', async () => {
-    const hierarchyTreeScript = await uiSource('public/js/components/hierarchy-tree.js');
-    const hierarchyWorkspaceScript = await uiSource('public/js/components/hierarchy-workspace.js');
+  it('reuses the generic record selector for hierarchy existing-entry placement without component fetches', async () => {
+    const hierarchyTreeScript = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
+    const hierarchyWorkspaceScript = await uiSource('public/js/sysbo/hierarchy/hierarchy-workspace.js');
+    const recordSelectorScript = await uiSource('public/js/popups/record-selector.js');
+    const hierarchyPage = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
+    const recordSelector = await uiSource('views/popups/selectors/record-selector.ejs');
+    const listFilters = await uiSource('views/components/sysbo/list/list-filters.ejs');
+    const listPaging = await uiSource('views/components/sysbo/list/list-paging.ejs');
+
     expect(hierarchyTreeScript).toContain('data-hierarchy-add-menu');
     expect(hierarchyTreeScript).toContain('Add existing node');
     expect(hierarchyTreeScript).toContain('Add existing entry…');
     expect(hierarchyTreeScript).toContain('data-hierarchy-add-relation="parent"');
     expect(hierarchyTreeScript).toContain('data-hierarchy-existing-node-menu');
-    const hierarchyPage = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
-    const listFilters = await uiSource('views/components/sysbo/list/list-filters.ejs');
-    const listPaging = await uiSource('views/components/sysbo/list/list-paging.ejs');
-    expect(hierarchyPage).toContain('data-hierarchy-entry-selector-template');
-    expect(hierarchyPage).toContain("include('../list/list-toolbar'");
-    expect(hierarchyPage).toContain("include('../list/list-filters'");
-    expect(hierarchyPage).toContain("include('../list/list-table-header'");
-    expect(hierarchyPage).toContain("include('../list/list-paging'");
+
+    expect(hierarchyPage).toContain("include('../../../popups/selectors/record-selector'");
+    expect(recordSelector).toContain("include('../../components/sysbo/list/list-toolbar'");
+    expect(recordSelector).toContain("include('../../components/sysbo/list/list-filters'");
+    expect(recordSelector).toContain("include('../../components/sysbo/list/list-table-header'");
+    expect(recordSelector).toContain("include('../../components/sysbo/list/list-paging'");
+    expect(recordSelector).toContain("include('../../components/sysbo/list/list-row-cells'");
+    expect(hierarchyPage).toContain('selectorCandidates: Array.isArray');
     expect(listFilters).toContain('data-selector-filter-clear');
     expect(listFilters).toContain('data-selector-filter-apply');
     expect(listPaging).toContain('data-selector-page-size');
     expect(listPaging).toContain('const showPagingControls = isSelectorPaging || paging.totalPages > 1');
+
     expect(hierarchyWorkspaceScript).toContain('relationCandidateEligibility');
     expect(hierarchyWorkspaceScript).toContain('relationListExceptions');
-    expect(hierarchyWorkspaceScript).toContain("candidateRow.classList.toggle('table-primary'");
-    expect(hierarchyWorkspaceScript).toContain('Do not rebuild tbody on a simple selection');
-    expect(hierarchyTreeScript).toContain('item.hidden = !legal');
-    expect(hierarchyTreeScript).toContain('data-legal-parent');
-    expect(hierarchyWorkspaceScript).toContain('listExceptions: relationListExceptions(member, relation, source)');
-    expect(hierarchyPage).toContain('data-selector-select disabled');
-    expect(hierarchyWorkspaceScript).toContain('openExistingEntrySelector');
-    expect(hierarchyWorkspaceScript).toContain("manatos-popup-backdrop metadata-hierarchy-entry-selector-backdrop");
-    expect(hierarchyWorkspaceScript).not.toContain("if (event.target === backdrop) close()");
-    expect(hierarchyPage).toContain('data-selector-ctx');
-    expect(hierarchyWorkspaceScript).toContain('developerToolsWasVisible');
-    expect(hierarchyWorkspaceScript).toContain('dblclick');
-    expect(hierarchyWorkspaceScript).toContain('data-selector-context-note');
+    expect(hierarchyWorkspaceScript).toContain('window.ManatOSRecordSelector');
+    expect(hierarchyWorkspaceScript).toContain("purpose: 'hierarchy-add-existing'");
+    expect(hierarchyWorkspaceScript).toContain('queryPredicate: listExceptions');
+    expect(hierarchyWorkspaceScript).toContain('factsForCandidate: (candidate) =>');
+    expect(hierarchyWorkspaceScript).toContain('alreadyInContext: Boolean');
+    expect(hierarchyWorkspaceScript).toContain('relation,');
     expect(hierarchyWorkspaceScript).toContain('addDatabaseEntryForRelation');
-    expect(hierarchyWorkspaceScript).toContain('entriesOriginal: source.map');
-    expect(hierarchyWorkspaceScript).toContain('ctx-viewer-select');
-    expect(hierarchyWorkspaceScript).toContain('is-popup-inspection');
-    expect(hierarchyWorkspaceScript).toContain('hydrateMissingOriginalSnapshots');
-    expect(hierarchyWorkspaceScript).toContain("relateExistingNode(`use-existing-${relation}`, memberId, selectedId, { confirm: false })");
+    expect(hierarchyWorkspaceScript).toContain("relateExistingNode(`use-existing-${relation}`");
+    expect(hierarchyWorkspaceScript).not.toContain('const displayCellHtml =');
+    expect(hierarchyWorkspaceScript).not.toContain("fetch(`/api/v1/");
+
+    expect(recordSelector).toContain('data-selector-ctx');
+    expect(recordSelector).toContain('data-selector-select disabled');
+    expect(recordSelectorScript).toContain("kind: 'record-selector'");
+    expect(recordSelectorScript).not.toContain('const displayCellHtml =');
+    expect(recordSelectorScript).toContain('callingParams: { ...resolvedCallingParams }');
+    expect(recordSelectorScript).toContain('entriesOriginal: source.map');
+    expect(recordSelectorScript).toContain('popupRuntime?.toggleInspection?.({');
+    expect(recordSelectorScript).toContain('popupRuntime?.clearInspection?.(selectorCtxButton)');
+    expect(recordSelectorScript).toContain('Keep the same row DOM node alive so browser dblclick semantics remain');
+    expect(recordSelectorScript).toContain("panel.addEventListener('dblclick'");
+    expect(recordSelectorScript).toContain('Universal ManatOS popup rule');
+    expect(recordSelectorScript).not.toContain("if (event.target === backdrop) close()");
+
+    expect(hierarchyTreeScript).toContain('item.hidden = !legal');
     expect(hierarchyTreeScript).toContain('data-legal-parent');
     expect(hierarchyTreeScript).toContain('data-legal-sibling');
     expect(hierarchyTreeScript).toContain('data-legal-child');
-    expect(hierarchyWorkspaceScript).not.toContain("fetch(`/api/v1/");
   });
+
   it('seeds ctx.entities from the complete canonical object registry including internal relationship objects', async () => {
     const pageContext = await uiSource('src/middleware/page-context.ts');
     const metadata = await sharedSource('src/metadata/bo/registry.ts');

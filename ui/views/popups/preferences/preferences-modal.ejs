@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: Preferences popup
+
+  Purpose:
+  - Renders the Preferences modal surface.
+
+  Inputs / metadata:
+  - Current UI preference values and form metadata.
+
+  CTX contract:
+  - Shared popup runtime projects active modal state.
+
+  Embeds / delegates:
+  - ../shared/popup-header.ejs and popup-footer.ejs.
+
+  Runtime contract:
+  - Bootstrap popup runtime and preferences runtime own lifecycle/state.
+%>
+
+<%#
   Independent/form popup example outside the auth and generic-message families.
   Preferences uses the common popup header/footer conventions but owns its specialized form
   body. Future unrelated settings/tools can live beside it under popups/preferences without forcing
@@ -8,6 +27,9 @@
   <div
     class="modal fade"
     id="preferencesModal"
+    data-popup-purpose="preferences"
+    data-popup-kind="preferences-modal"
+    data-popup-presentation="standard"
     tabindex="-1"
     aria-labelledby="preferencesModalLabel"
     aria-hidden="true"

@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Metadata debugging panel
+
+  Purpose:
+  - Renders metadata/form debugging information for the current entity entry, including formula/current-value inspection actions.
+
+  Inputs / metadata:
+  - debugging presentation model, canonical field metadata, compiled expressions and CSRF/runtime context.
+
+  CTX contract:
+  - Inspection actions target canonical CTX paths; this component does not recalculate field semantics.
+
+  Embeds / delegates:
+  - debugging-cli.ejs.
+
+  Runtime contract:
+  - data-debug-inspect-ctx and debugger controls communicate with the shared CTX Viewer/runtime.
+%>
+
 <%
   /*
    * The outer Debugging tab reports two different metadata provenances. Keep
@@ -40,7 +59,15 @@
       tabindex="0"
     >
       <% if (section.id === 'cli') { %>
-        <%- include('debugging-cli', { instanceKey: 'page', startPath: (typeof debuggingStartPath !== 'undefined' && debuggingStartPath) ? debuggingStartPath : 'ctx.page.page', csrfToken: debuggingCsrfToken, docked: false }) %>
+        <%- include('debugging-cli', {
+          instanceKey: 'page',
+          startPath:
+            (typeof debuggingStartPath !== 'undefined' && debuggingStartPath)
+              ? debuggingStartPath
+              : 'ctx.page.page',
+          csrfToken: debuggingCsrfToken,
+          docked: false
+        }) %>
       <% } else { %>
       <div class="table-responsive debugging-calculations-wrap">
         <table class="table table-sm align-middle mb-0 debugging-calculations-table">
@@ -120,7 +147,10 @@
                           </ul>
                         </div>
                         <% } %>
-                        <code class="debugging-element-name"><span class="debugging-element-prefix"><%= elementNameParts.prefix %></span><strong class="debugging-element-leaf"><%= elementNameParts.leaf %></strong></code>
+                        <code class="debugging-element-name">
+                          <span class="debugging-element-prefix"><%= elementNameParts.prefix %></span><strong
+                            class="debugging-element-leaf"><%= elementNameParts.leaf %></strong>
+                        </code>
                       </div>
                     </td>
                     <td><code class="debugging-formula" data-debug-expression><%= debugRow.formula %></code></td>

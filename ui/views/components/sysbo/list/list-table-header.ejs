@@ -1,9 +1,33 @@
+<%#
+  COMPONENT: SysBO list table header
+
+  Purpose:
+  - Renders canonical list columns, sortable links in browse mode and static labels in selector mode.
+
+  Inputs / metadata:
+  - metadata/UI list fields, query, rowActions and selectorMode.
+
+  CTX contract:
+  - None.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Browse sort links update query parameters; selector mode is intentionally non-navigating.
+%>
+
 <%
   /* One canonical metadata-driven list header. Browse mode may expose sortable
      links; selection mode intentionally keeps the same columns without turning
      labels into navigation. */
   const headerSelectorMode = typeof selectorMode !== 'undefined' && selectorMode === true;
   const headerRowActions = typeof rowActions !== 'undefined' && Array.isArray(rowActions) ? rowActions : [];
+  const sortHrefFor = (key) => `?${new URLSearchParams({
+    ...query,
+    sort: key,
+    direction: query.sort === key && query.direction !== 'desc' ? 'desc' : 'asc',
+  }).toString()}`;
 %>
 <tr>
   <% for (const key of metadataUI.list.visibleFields) { %>
@@ -11,7 +35,7 @@
     <% if (!field) continue; %>
     <th>
       <% if (!headerSelectorMode && metadataUI.list.sortableFields.includes(key)) { %>
-        <a class="table-sort-link" href="?<%= new URLSearchParams({...query, sort: key, direction: query.sort === key && query.direction !== 'desc' ? 'desc' : 'asc'}).toString() %>">
+        <a class="table-sort-link" href="<%= sortHrefFor(key) %>">
           <%= field.label %>
           <% if (query.sort === key) { %>
             <i class="bi <%= query.direction === 'desc' ? 'bi-sort-down' : 'bi-sort-up' %>"></i>

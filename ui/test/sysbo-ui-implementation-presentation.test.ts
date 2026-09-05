@@ -38,8 +38,8 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     const recordRenderer = await source('src/routes/sysbo/record-renderer.ts');
     const list = await source('views/pages/sysbo/list.ejs');
     const edit = await source('views/pages/sysbo/entry.ejs');
-    const tabContent = await source('views/components/sysbo/entry/entry-tab-content.ejs');
-    const related = await source('views/components/sysbo/collections/related-collections.ejs');
+    const tabContent = await source('views/components/sysbo/entry/shell/entry-tab-content.ejs');
+    const related = await source('views/components/sysbo/entry/content/related-collections.ejs');
 
     expect(listRenderer).toContain('canonicalSysBOMetadata');
     expect(listRenderer).toContain('canonicalSysBOUIMetadata');
@@ -52,7 +52,7 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     expect(list).toContain('resolvedAddAction');
     expect(edit).toContain('metadataUI.record.tabs');
     expect(edit).toContain('metadataUI.record.fieldOverrides');
-    expect(edit).toContain("include('../../components/sysbo/entry/entry-tab-content', {");
+    expect(edit).toContain("include('../../components/sysbo/entry/shell/entry-tab-content', {");
     expect(tabContent).toContain('tab.content');
     expect(tabContent).toContain('metadataComponentPartialFor');
     expect(related).toContain("collection.layout === 'table-list'");
@@ -68,8 +68,8 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     expect(metadata).toContain("component: { key: 'provider-credentials', readOnly: false }");
     expect(metadata).toContain('disableWhenAllEnumValuesExistForField');
     expect(metadata).toContain('One configuration record per provider.');
-    expect(registry).toContain("'contextual-help': '../../common/contextual-help'");
-    expect(registry).toContain("'provider-credentials': 'provider-credentials'");
+    expect(registry).toContain("'contextual-help': '../../../presentation/contextual-help'");
+    expect(registry).toContain("'provider-credentials': '../content/provider-credentials'");
   });
 
   it('keeps framework-neutral UI metadata as the only presentation contract', async () => {

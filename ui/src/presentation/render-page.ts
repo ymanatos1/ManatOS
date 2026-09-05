@@ -26,6 +26,7 @@ import {
   evaluateCompiledExpression,
   expressionCapabilities,
   evaluateExpression,
+  compileExpression,
   type ExpressionDiagnostic,
   type ExpressionEvaluationCaller,
   type ManatOSCalculatedContextField,
@@ -225,6 +226,10 @@ export async function renderPage(
   const relatedCollectionMetadataFor = (ownerEntityKey: string, collectionKey: string) =>
     allSysBOUIMetadata[ownerEntityKey as keyof typeof allSysBOUIMetadata]?.record.relatedCollections?.[collectionKey] ?? null;
 
+  // Compile reusable UI expressions at the rendering boundary. Browser components
+  // receive canonical ASTs and never reparse expression source strings.
+  const compileUIExpression = (expression: string) => compileExpression(expression);
+
   const renderedModel: Record<string, unknown> = {
     ...viewModel,
     ...(ctx ? { ctx } : {}),
@@ -232,6 +237,7 @@ export async function renderPage(
     ctxFieldValue,
     ctxUserFieldValue,
     ctxExpressionValue,
+    compileUIExpression,
     buildMetadataDebuggingModel,
     buildCalculatedContextDebuggingRows,
     formatMetadataValue,
@@ -241,6 +247,7 @@ export async function renderPage(
     relatedCollectionMetadataFor,
     breadcrumbItems: ctx ? pageBreadcrumbItems(ctx) : [],
     relatedEntityMetadata: allManatOSObjectMetadata,
+    relatedEntityUIMetadata: allSysBOUIMetadata,
     ctxDiagnostics,
     uiBootId,
   };

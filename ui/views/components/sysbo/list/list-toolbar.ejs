@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: SysBO list toolbar
+
+  Purpose:
+  - Renders count, filter/search controls and optional Add action for browse and selector surfaces.
+
+  Inputs / metadata:
+  - totalEntries, filterFields, query, searchPlaceholder, resolvedAddAction and selectorMode.
+
+  CTX contract:
+  - None; caller owns list/selector state.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - Browse search submits through the list route; selector hooks are handled by record-selector.js.
+%>
+
 <%
   /*
    * Shared metadata-driven list toolbar.
@@ -47,7 +66,14 @@
           <% if (key === 'search' || key === 'page') continue; %>
           <input type="hidden" name="<%= key %>" value="<%= value %>">
         <% } %>
-        <input class="form-control metadata-list-search" type="search" name="search" value="<%= toolbarSearchValue %>" placeholder="<%= toolbarSearchPlaceholder %>" aria-label="Search entries">
+        <input
+          class="form-control metadata-list-search"
+          type="search"
+          name="search"
+          value="<%= toolbarSearchValue %>"
+          placeholder="<%= toolbarSearchPlaceholder %>"
+          aria-label="Search entries"
+        >
       </form>
     <% } %>
 

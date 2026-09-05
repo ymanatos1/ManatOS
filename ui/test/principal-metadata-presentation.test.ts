@@ -17,7 +17,7 @@ describe('metadata-driven Principal presentation', () => {
   it('uses canonical enum-item icons/traits and evaluator-driven Parent principal editability', async () => {
     const canonical = await sharedSource('src/metadata/bo/business.ts');
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
-    const entry = await uiSource('views/field-components/enum-select.ejs');
+    const entry = await uiSource('views/components/sysbo/entry/fields/enum-select.ejs');
     const runtime = await uiSource('public/js/metadata-form-runtime.js');
     const ctxRuntime = await uiSource('public/js/ctx-runtime.js');
     const routes = await uiSource('src/routes/sysbo-routes.ts');
@@ -38,7 +38,7 @@ describe('metadata-driven Principal presentation', () => {
     expect(entry).toContain('data-enum-items');
     expect(entry).toContain('data-enum-selected-icon');
     expect(entry).toContain('data-enum-item');
-    const fieldRuntime = await uiSource('public/js/field-components/runtime.js');
+    const fieldRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
     expect(runtime).toContain('window.ManatOSFieldComponents?.getFieldOption?.(control)');
     expect(runtime).not.toContain('selectedEnumItem');
     expect(runtime).not.toContain('dataset.enumItems');
@@ -59,13 +59,15 @@ describe('metadata-driven Principal presentation', () => {
   it('places Parent then Root principal before Name while preserving Name as the generic clickable primary field', async () => {
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const list = await uiSource('views/pages/sysbo/list.ejs');
+    const rowCells = await uiSource('views/components/sysbo/list/list-row-cells.ejs');
 
     expect(uiMetadata).toContain("visibleFields: ['parentId', 'rootPrincipalId', 'name', 'principalType', 'enabled']");
     expect(uiMetadata).toContain("filterFields: ['name', 'principalType', 'parentId', 'rootPrincipalId']");
-    expect(list).toContain("key === metadata.primaryField");
-    expect(list).toContain("field.type === 'reference'");
-    expect(list).toContain('referenceLabel(key, item[key])');
-    const referenceSelect = await uiSource('views/field-components/reference-select.ejs');
+    expect(list).toContain("include('../../components/sysbo/list/list-row-cells'");
+    expect(rowCells).toContain("key === metadata.primaryField");
+    expect(rowCells).toContain("field.type === 'reference'");
+    expect(rowCells).toContain('rowReferenceName(reference, item[key])');
+    const referenceSelect = await uiSource('views/components/sysbo/entry/fields/reference-select.ejs');
     const dataAccess = await uiSource('src/routes/sysbo/data-access.ts');
     expect(dataAccess).toContain('__entryIcons: representation.icons');
     expect(referenceSelect).toContain('reference?.__entryIcons');
@@ -75,7 +77,7 @@ describe('metadata-driven Principal presentation', () => {
   it('lays out Contact as a metadata grid so reusable contact collections can share rows', async () => {
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const renderer = await uiSource('views/pages/sysbo/entry.ejs');
-    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
+    const tabContent = await uiSource('views/components/sysbo/entry/shell/entry-tab-content.ejs');
 
     expect(uiMetadata).toContain("tab('contact', 'Contact', 20, [], {");
     expect(uiMetadata).toContain("layout: 'form'");
@@ -92,9 +94,9 @@ describe('metadata-driven Principal presentation', () => {
 
   it('declares the reusable CTX-driven Organization visualization without Principal-specific component code', async () => {
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
-    const component = await uiSource('public/js/components/hierarchy-tree.js');
+    const component = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
     const renderer = await uiSource('views/pages/sysbo/entry.ejs');
-    const tabContent = await uiSource('views/components/sysbo/entry/entry-tab-content.ejs');
+    const tabContent = await uiSource('views/components/sysbo/entry/shell/entry-tab-content.ejs');
 
     expect(uiMetadata).toContain("tab('organization', 'Organization'");
     expect(uiMetadata).toContain("key: 'hierarchy-tree'");
@@ -144,7 +146,7 @@ describe('metadata-driven Principal presentation', () => {
     const routes = await uiSource('src/routes/sysbo-routes.ts');
     const hierarchyRenderer = await uiSource('src/routes/sysbo/hierarchy-renderer.ts');
     const workspace = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
-    const hierarchyRuntime = await uiSource('public/js/components/hierarchy-tree.js');
+    const hierarchyRuntime = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
     const hierarchyModel = await uiSource('src/presentation/metadata-hierarchy-workspace.ts');
 
     expect(uiMetadata).toContain("label: 'Add organization'");

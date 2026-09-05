@@ -23,10 +23,10 @@ describe('external authentication provider metadata-driven editor', () => {
   });
 
   it('keeps canonical provider fields on the dispatcher and transient secrets outside entity field-components', async () => {
-    const credentials = await source('views/components/sysbo/entry/provider-credentials.ejs');
-    expect(credentials).toContain("include('../../../field-components/entity-field'");
-    expect(credentials).toContain("include('../../common/workflow-input'");
-    expect(credentials).not.toContain("include('../../../field-components/text-field'");
+    const credentials = await source('views/components/sysbo/entry/content/provider-credentials.ejs');
+    expect(credentials).toContain("include('../fields/entity-field'");
+    expect(credentials).toContain("include('workflow-input'");
+    expect(credentials).not.toContain("include('../../../components/sysbo/entry/fields/text-field'");
     expect(credentials).toContain("key: 'clientId'");
     expect(credentials).toContain('data-provider-client-secret');
     expect(credentials).toContain('data-provider-test-credentials');
@@ -39,7 +39,7 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(credentials).toContain('data-provider-remove-credentials');
     expect(credentials).not.toContain('removeProviderCredentialsModal');
     expect(credentials).not.toContain("include('contextual-help'");
-    expect(credentials).toContain("include('../../common/information-panel'");
+    expect(credentials).toContain("include('../../../presentation/information-panel'");
     expect(credentials).not.toContain('class="ms-auto d-flex align-items-center gap-2 small"');
     const css = await source('public/css/pages.css');
     expect(css).toContain('.metadata-workflow-input > .password-visibility-field');
@@ -48,7 +48,7 @@ describe('external authentication provider metadata-driven editor', () => {
 
   it('uses one provider runtime and one canonical dirty predicate for Save and Cancel navigation', async () => {
     const entryState = await source('public/js/forms/entry-state.js');
-    const modalFocus = await source('public/js/forms/modal-focus.js');
+    const popupRuntime = await source('public/js/popups/popup-runtime.js');
     const runtime = await source('public/js/components/external-provider.js');
 
     // Provider behavior belongs exclusively to its compound component runtime.
@@ -61,7 +61,7 @@ describe('external authentication provider metadata-driven editor', () => {
     // components can own posted values that are not projected into entry.
     expect(entryState).toContain("const changed = typeof sharedState.isDirty === 'function'");
     expect(entryState).not.toContain('const ctxDirty =');
-    expect(modalFocus).toContain("document.addEventListener('hide.bs.modal'");
+    expect(popupRuntime).toContain("modal.addEventListener('hide.bs.modal'");
   });
 
   it('keeps provider-specific behavior in component/runtime data rather than generic entity renderer branches', async () => {
@@ -119,7 +119,7 @@ describe('external authentication provider metadata-driven editor', () => {
 
   it('keeps callback, verification and secret material server-controlled', async () => {
     const metadata = await source('../shared/src/metadata/ui/identity.ts');
-    const credentials = await source('views/components/sysbo/entry/provider-credentials.ejs');
+    const credentials = await source('views/components/sysbo/entry/content/provider-credentials.ejs');
     expect(metadata).toContain('administrators cannot override it');
     expect(metadata).toContain('clientId: { editable: false }');
     expect(credentials).toContain('Secret stored securely');

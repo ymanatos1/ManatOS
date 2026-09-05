@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: SysBO edit confirmations
+
+  Purpose:
+  - Defines metadata-driven entry delete/confirmation dialogs.
+
+  Inputs / metadata:
+  - Entry definition/item, permissions, delete preflight and CSRF state.
+
+  CTX contract:
+  - Shared popup runtime projects each active confirmation under ctx.<leaf-page>.popup.
+
+  Embeds / delegates:
+  - ../shared/popup-header.ejs and message/action partials.
+
+  Runtime contract:
+  - Bootstrap popup runtime owns modal lifecycle; entry command routes own persistence.
+%>
+
+<%#
   SysBO edit-page confirmation dialogs.
 
   These remain in the message popup family because they ask for confirmation rather than
@@ -15,6 +34,9 @@
   <div
     class="modal fade"
     id="deleteEntryModal"
+    data-popup-purpose="delete-entry"
+    data-popup-kind="confirmation-modal"
+    data-popup-presentation="standard"
     tabindex="-1"
     data-bs-backdrop="static"
     data-bs-keyboard="false"
@@ -84,7 +106,10 @@
                 icon: 'bi-person-check',
                 tone: 'text-warning-emphasis',
                 title: 'related record(s) will be retained',
-                detail: 'The related records remain unchanged. They may temporarily lose functionality that depends on this configuration until an equivalent configuration exists again.',
+                detail: [
+                  'The related records remain unchanged. They may temporarily lose functionality ',
+                  'that depends on this configuration until an equivalent configuration exists again.',
+                ].join(''),
               };
             }
 
@@ -201,6 +226,9 @@
   <div
     class="modal fade"
     id="removeProviderCredentialsModal"
+    data-popup-purpose="remove-provider-credentials"
+    data-popup-kind="confirmation-modal"
+    data-popup-presentation="standard"
     tabindex="-1"
     data-bs-backdrop="static"
     data-bs-keyboard="false"
@@ -227,7 +255,10 @@
           Remove the stored Client ID and Client secret for
           <strong><%= deletePresentation.displayValue %></strong>?
           <p class="text-danger mt-2 mb-1">This command is applied immediately: the stored credential pair will be removed and the provider will also be disabled.</p>
-          <p class="text-danger mb-0">The Secrets tab will reopen ready for a replacement pair. New credentials must be tested successfully before the provider can be enabled again.</p>
+          <p class="text-danger mb-0">
+            The Secrets tab will reopen ready for a replacement pair. New credentials must be tested
+            successfully before the provider can be enabled again.
+          </p>
         </div>
 
         <%- include('../shared/popup-footer', {
@@ -245,6 +276,9 @@
 <div
   class="modal fade"
   id="unsavedChangesModal"
+    data-popup-purpose="unsaved-changes"
+    data-popup-kind="confirmation-modal"
+    data-popup-presentation="standard"
   tabindex="-1"
   aria-labelledby="unsavedChangesModalLabel"
   data-bs-backdrop="static"

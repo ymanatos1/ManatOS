@@ -215,6 +215,35 @@ A calculated field may therefore become visually changed because one of its depe
 
 ---
 
+### Existing-record selection inside administration
+
+The generic record selector is a reusable branch of administration/list behavior rather than a separate entity page.
+
+```mermaid
+sequenceDiagram
+    actor U as Operator
+    participant C as Calling component/workspace
+    participant RS as Record selector
+    participant CTX as popup.callingParams + state
+    participant R as Owning runtime
+
+    U->>C: Select/Add existing entry…
+    C->>RS: Open with entity + purpose + candidates + rules
+    RS->>CTX: Publish resolved callingParams
+    RS->>RS: Evaluate precompiled UI policy against callingParams
+    U->>RS: Search/filter/page/select
+    RS-->>C: Return canonical selected record(s)
+    C->>R: Apply caller-specific operation
+```
+
+Two current examples deliberately share this flow:
+
+- a reference field invokes **Select existing entry…** and applies the returned id through the canonical reference-field runtime;
+- the Principal Organization workspace invokes **Add existing entry…** and applies hierarchy-specific parent/child/sibling rules.
+
+The selector reuses ordinary list toolbar/filter/header/paging components. Selection eligibility and result meaning remain caller-owned. Presentation policy is evaluator-driven from the same `callingParams` visible in CTX: Organization currently requests the subdued workspace treatment, while reference-field invocation requests the entry-oriented treatment.
+
+
 ## 6. Principal reference recalculation flow
 
 Principals provide the strongest current example of direct and calculated references sharing one presentation pipeline.

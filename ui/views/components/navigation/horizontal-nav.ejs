@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Horizontal navigation
+
+  Purpose:
+  - Renders the global horizontal navigation bar, identity controls and utility menus.
+
+  Inputs / metadata:
+  - app.navigation.horizontal, currentUser, language/platform and developer feature state.
+
+  CTX contract:
+  - Consumes already-resolved navigation/visibility state; does not perform authorization or CTX mutation.
+
+  Embeds / delegates:
+  - horizontal-nav-item.ejs.
+
+  Runtime contract:
+  - shell/bootstrap runtimes own menu interaction and Developer Tools toggles.
+%>
+
 <% if (app.navigation.horizontal?.length) { %>
 <nav class="horizontal-nav navbar navbar-expand-lg" aria-label="Main navigation">
   <div class="container-fluid px-3 px-lg-4">

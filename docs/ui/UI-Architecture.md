@@ -87,8 +87,10 @@ flowchart TB
 ordered script loading]
     META[metadata-form-runtime.js
 CTX/evaluator/value-source coordination]
-    FIELD[field-components/runtime.js
+    FIELD[components/sysbo/entry/fields/runtime.js
 canonical field DOM/value presentation]
+    SELECTOR[components/record-selector.js
+shared list-style existing-record selection + popup CTX]
     AUTH[forms/auth.js
 auth/password/recovery UX]
     STATE[forms/entry-state.js
@@ -101,11 +103,12 @@ in-place Save + CTX reconciliation]
 initial editable field/tab focus]
     CONFIG[forms/configuration.js
 configuration Apply]
-    MODAL[forms/modal-focus.js
-modal focus lifecycle]
+    MODAL[components/popup-runtime.js
+shared popup lifecycle + CTX contract]
 
     SHELL --> META
     SHELL --> FIELD
+    SHELL --> SELECTOR
     SHELL --> AUTH
     SHELL --> STATE
     SHELL --> FSTATE
@@ -119,7 +122,8 @@ modal focus lifecycle]
 The boundary is semantic:
 
 - `metadata-form-runtime.js` may know canonical field values, calculation/dependency metadata and CTX paths, but it must not know enum/reference DOM representation.
-- `field-components/runtime.js` may know how a canonical field component synchronizes its DOM and option/reference presentation, but it does not evaluate business expressions or own the page transaction.
+- `components/sysbo/entry/fields/runtime.js` may know how a canonical field component synchronizes its DOM and option/reference presentation, but it does not evaluate business expressions or own the page transaction.
+- `components/record-selector.js` owns generic existing-record browsing/selection and the live `popup.callingParams`/selector state projection; precompiled selector UI-policy expressions consume `callingParams` through the canonical evaluator, while caller-specific relationship or field semantics stay with the caller.
 - the focused `forms/*` modules own page/form lifecycle concerns only. They must not grow type-specific field rendering or evaluator responsibilities.
 
 This decomposition is part of the architecture, not merely file organization. Regression tests intentionally protect the ownership boundaries.

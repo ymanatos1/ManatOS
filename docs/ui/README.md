@@ -96,3 +96,7 @@ flowchart LR
 ## Core implementation principle
 
 When deciding where new UI code belongs, ask **what semantic thing is being rendered** rather than where it happens to appear. If it is one canonical entity field, it belongs in the field-component pipeline. If it combines several fields/content items, it is a composite component. If it is not a field at all, it belongs in reusable UI components or page/system infrastructure.
+
+## Existing-record selection
+
+The generic **Select existing entry** popup is documented in [`UI-Components.md#existing-record-selector`](UI-Components.md#existing-record-selector). Reference-field use is covered in [`UI-Field-Components.md#selecting-from-the-generic-record-browser`](UI-Field-Components.md#selecting-from-the-generic-record-browser), and end-to-end usage appears in [`UI-Flows.md`](UI-Flows.md).

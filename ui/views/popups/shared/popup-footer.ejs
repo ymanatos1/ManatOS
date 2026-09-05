@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: Popup footer
+
+  Purpose:
+  - Renders consistent popup footer alignment and action groups.
+
+  Inputs / metadata:
+  - Back/cancel/primary action metadata.
+
+  CTX contract:
+  - None directly.
+
+  Embeds / delegates:
+  - popup-action.ejs.
+
+  Runtime contract:
+  - Actions delegate to Bootstrap dismissal/navigation/caller handlers.
+%>
+
+<%#
   Shared popup footer implementing the application's action-placement convention:
   navigation/back actions stay leftmost while cancel/primary actions stay rightmost.
   Actions are data objects rendered through popup-action.ejs so button/link behavior remains

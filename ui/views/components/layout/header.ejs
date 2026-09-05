@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Application header
+
+  Purpose:
+  - Renders product branding, platform identity and global shell actions.
+
+  Inputs / metadata:
+  - app/company/platform/currentUser plus navigation and feature visibility values.
+
+  CTX contract:
+  - May expose CTX-driven visibility hooks for shell features; it does not own CTX mutation.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - shell/bootstrap runtimes own menus, navigation and global action behavior.
+%>
+
 <header class="top-header">
   <div class="header-brand-area">
     <a

@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Horizontal navigation item
+
+  Purpose:
+  - Renders one metadata-derived top navigation item, including an optional dropdown subtree.
+
+  Inputs / metadata:
+  - item navigation projection containing text/url/icon/children/current-state information.
+
+  CTX contract:
+  - None; visibility/authorization is resolved before rendering.
+
+  Embeds / delegates:
+  - Recursively delegates to itself for nested menu children when applicable.
+
+  Runtime contract:
+  - Bootstrap dropdown behavior only.
+%>
+
 <%
   const defaultTooltips = {
     Home: 'Go to Home',

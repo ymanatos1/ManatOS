@@ -1,9 +1,37 @@
-<section class="content-card metadata-hierarchy-workspace" data-metadata-hierarchy-workspace data-hierarchy-close-href="/bo/<%= encodeURIComponent(definition.key) %>" data-hierarchy-label="<%= hierarchyDescriptor.label %>" data-hierarchy-empty-name="New <%= hierarchyDescriptor.label.toLowerCase() %>">
+<%#
+  COMPONENT: Hierarchy workspace
+
+  Purpose:
+  - Renders the generic metadata-driven hierarchy workspace, selector/confirmation templates and chart/tree controls.
+
+  Inputs / metadata:
+  - Hierarchy descriptor, entity/UI metadata, working entries, selector candidates/reference data and permissions.
+
+  CTX contract:
+  - The workspace owns its nested page CTX and working entries graph; popup children use the canonical popup CTX envelope.
+
+  Embeds / delegates:
+  - record-quick.ejs plus the shared popup record selector.
+
+  Runtime contract:
+  - hierarchy-workspace.js owns drag/drop, placement, drafts, selector invocation, confirmation popups and transactional commit.
+%>
+
+<section
+  class="content-card metadata-hierarchy-workspace"
+  data-metadata-hierarchy-workspace
+  data-hierarchy-close-href="/bo/<%= encodeURIComponent(definition.key) %>"
+  data-hierarchy-label="<%= hierarchyDescriptor.label %>"
+  data-hierarchy-empty-name="New <%= hierarchyDescriptor.label.toLowerCase() %>"
+>
   <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
     <div>
       <div class="text-secondary small"><%= hierarchyDescriptor.label %></div>
       <% if (focusedMember) { %>
-        <div class="fw-semibold" data-hierarchy-name><%= focusedRepresentation?.name || focusedMember[hierarchyDescriptor.idField] %> <%= hierarchyDescriptor.label.toLowerCase() %></div>
+        <div class="fw-semibold" data-hierarchy-name>
+          <%= focusedRepresentation?.name || focusedMember[hierarchyDescriptor.idField] %>
+          <%= hierarchyDescriptor.label.toLowerCase() %>
+        </div>
       <% } else { %>
         <div class="fw-semibold" data-hierarchy-name>New <%= hierarchyDescriptor.label.toLowerCase() %></div>
       <% } %>
@@ -11,7 +39,12 @@
         <%= hierarchyFinalization.memberCount %>
         <%= hierarchyFinalization.memberCount === 1 ? 'member' : 'members' %>
       </div>
-      <div class="small text-warning-emphasis mt-1" data-hierarchy-incomplete title="<%= hierarchyFinalization.reason || '' %>"<%= hierarchyFinalization.complete ? ' hidden' : '' %>>
+      <div
+        class="small text-warning-emphasis mt-1"
+        data-hierarchy-incomplete
+        title="<%= hierarchyFinalization.reason || '' %>"
+        <%= hierarchyFinalization.complete ? ' hidden' : '' %>
+      >
         <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>Incomplete <%= hierarchyDescriptor.label.toLowerCase() %>
       </div>
     </div>
@@ -55,7 +88,13 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" data-hierarchy-save-draft hidden>
           <i class="bi bi-floppy me-1" aria-hidden="true"></i>Save draft
         </button>
-        <button type="button" class="btn btn-sm btn-outline-danger" data-hierarchy-clear-all disabled title="Clear this working organization and its saved Create Organization draft">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-danger"
+          data-hierarchy-clear-all
+          disabled
+          title="Clear this working organization and its saved Create Organization draft"
+        >
           <i class="bi bi-eraser me-1" aria-hidden="true"></i>Clear all
         </button>
       </div>
@@ -74,84 +113,46 @@
   </div>
 
 
-  <template data-hierarchy-entry-selector-template>
-    <section class="metadata-hierarchy-entry-selector card shadow" role="dialog" aria-modal="true">
-      <div class="card-header d-flex align-items-center justify-content-between gap-2">
-        <strong data-selector-title>Select existing <%= metadata.name %></strong>
-        <div class="d-flex align-items-center gap-2 ms-auto">
-          <button type="button" class="btn btn-sm btn-outline-secondary d-none" data-selector-ctx title="Inspect this popup context in Developer Tools">
-            <i class="bi bi-bug me-1" aria-hidden="true"></i>CTX
-          </button>
-          <button type="button" class="btn-close" data-selector-close aria-label="Close"></button>
-        </div>
-      </div>
-      <div class="card-body d-flex flex-column gap-3">
-        <%- include('../list/list-toolbar', {
-          selectorMode: true,
-          totalEntries: 0,
-          filterFields: metadataUI.list.filterFields,
-          hasActiveFilters: false,
-          activeFilterCount: 0,
-          filterCollapseId: `metadata-selector-filters-${definition.key}`,
-          query: {},
-          definition,
-          searchPlaceholder: `Search ${metadata.pluralName.toLowerCase()}`
-        }) %>
-
-        <%- include('../list/list-filters', {
-          filterFields: metadataUI.list.filterFields,
-          hasActiveFilters: false,
-          filterCollapseId: `metadata-selector-filters-${definition.key}`,
-          metadata,
-          query: {},
-          enumItem: metadataOptionItemForField,
-          listReferenceValues: selectorReferenceData || {},
-          definition,
-          selectorMode: true
-        }) %>
-
-        <div class="table-responsive metadata-hierarchy-entry-selector-list">
-          <table class="table table-hover align-middle mb-0">
-            <thead><%- include('../list/list-table-header', { selectorMode: true, metadata, metadataUI, query: {}, rowActions: [] }) %></thead>
-            <tbody data-selector-rows></tbody>
-          </table>
-        </div>
-
-        <%- include('../list/list-paging', {
-          selectorMode: true,
-          paging: {
-            page: 1,
-            pageSize: metadataUI.list.pageSize || 10,
-            total: Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField]) ? (selectorReferenceData || {})[hierarchyDescriptor.parentField].length : 0,
-            totalPages: Math.max(1, Math.ceil((Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField]) ? (selectorReferenceData || {})[hierarchyDescriptor.parentField].length : 0) / (metadataUI.list.pageSize || 10)))
-          },
-          pageSizeOptions: selectorPageSizeOptions,
-          filterFields: metadataUI.list.filterFields,
-          query: {},
-          definition
-        }) %>
-      </div>
-      <div class="card-footer d-flex align-items-center justify-content-between gap-3">
-        <div class="small text-secondary" data-selector-context-note>Select an entry to see what will happen.</div>
-        <div class="d-flex gap-2 ms-auto">
-          <button type="button" class="btn btn-outline-secondary" data-selector-cancel>Cancel</button>
-          <button type="button" class="btn btn-primary" data-selector-select disabled>Select</button>
-        </div>
-      </div>
-    </section>
-  </template>
+  <%- include('../../../popups/selectors/record-selector', {
+    selectorMetadata: metadata,
+    selectorUIMetadata: metadataUI,
+    selectorReferenceData: selectorReferenceData || {},
+    selectorTemplateKey: `hierarchy-${definition.key}`,
+    selectorEntityKey: definition.key,
+    selectorCandidates: Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField])
+      ? (selectorReferenceData || {})[hierarchyDescriptor.parentField]
+      : [],
+    selectorInitialTotal: Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField])
+      ? (selectorReferenceData || {})[hierarchyDescriptor.parentField].length
+      : 0,
+    selectorPageSizeOptions
+  }) %>
 
   <template data-hierarchy-clear-all-confirm-template>
     <section class="metadata-hierarchy-clear-confirm metadata-hierarchy-commit-confirm card shadow" role="dialog" aria-modal="true" aria-labelledby="hierarchyClearAllConfirmTitle">
       <div class="card-header d-flex align-items-center justify-content-between gap-2">
         <strong id="hierarchyClearAllConfirmTitle"><i class="bi bi-eraser me-2" aria-hidden="true"></i>Clear organization</strong>
         <div class="d-flex align-items-center gap-2 ms-auto">
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-clear-all-confirm-ctx hidden title="Inspect this popup context in Developer Tools"><i class="bi bi-bug me-1" aria-hidden="true"></i>CTX</button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-clear-all-confirm-ctx
+            hidden
+            aria-pressed="false"
+            title="Toggle this popup context in Developer Tools"
+          >
+            <i class="bi bi-bug me-1" aria-hidden="true"></i>
+            CTX
+          </button>
           <button type="button" class="btn-close" data-clear-all-confirm-cancel aria-label="Close"></button>
         </div>
       </div>
       <div class="card-body">
-        <p class="mb-3">Clear all resets this Create Organization workspace to empty and removes its saved browser draft. Persisted Principals are not deleted from application storage/database.</p>
+        <p class="mb-3">
+          Clear all resets this Create Organization workspace to empty and removes
+          its saved browser draft. Persisted Principals are not deleted from
+          application storage/database.
+        </p>
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item" role="presentation"><button type="button" class="nav-link active" data-clear-all-tab="summary" role="tab" aria-selected="true">Summary</button></li>
           <li class="nav-item" role="presentation"><button type="button" class="nav-link" data-clear-all-tab="details" role="tab" aria-selected="false">Details</button></li>
@@ -174,7 +175,17 @@
       <div class="card-header d-flex align-items-center justify-content-between gap-2">
         <strong id="hierarchyCommitConfirmTitle"><i class="bi bi-database-check me-2" aria-hidden="true"></i>Commit organization</strong>
         <div class="d-flex align-items-center gap-2 ms-auto">
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-commit-confirm-ctx hidden title="Inspect this popup context in Developer Tools"><i class="bi bi-bug me-1" aria-hidden="true"></i>CTX</button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-commit-confirm-ctx
+            hidden
+            aria-pressed="false"
+            title="Toggle this popup context in Developer Tools"
+          >
+            <i class="bi bi-bug me-1" aria-hidden="true"></i>
+            CTX
+          </button>
           <button type="button" class="btn-close" data-commit-confirm-cancel aria-label="Close"></button>
         </div>
       </div>

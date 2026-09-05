@@ -1,3 +1,22 @@
+<%#
+  COMPONENT: Developer CLI
+
+  Purpose:
+  - Renders one reusable ManatOS expression CLI instance with caller-specific start path and persistent history key.
+
+  Inputs / metadata:
+  - instanceKey, startPath, csrfToken and docked configure the CLI instance.
+
+  CTX contract:
+  - Expression evaluation starts from the supplied CTX path; the component itself owns no CTX mutation semantics.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - debugging CLI runtime owns input growth, history, path navigation and expression execution.
+%>
+
 <%
   /*
    * Reusable developer CLI component.
@@ -24,7 +43,13 @@
       <small class="text-secondary">Persistent developer console</small>
     </div>
   <% } else { %>
-    <div class="small text-secondary mb-2">Expression context: <code data-cli-context-label><%= cliStartPath %></code>. Enter <code>.</code> for the current node, <code>..</code> for its parent, or <code>cls</code> to clear the transcript.</div>
+    <div class="small text-secondary mb-2">
+      Expression context:
+      <code data-cli-context-label><%= cliStartPath %></code>.
+      Enter <code>.</code> for the current node,
+      <code>..</code> for its parent,
+      or <code>cls</code> to clear the transcript.
+    </div>
   <% } %>
 
   <div class="border rounded p-2 font-monospace small debugging-cli-console" data-cli-console aria-live="polite">

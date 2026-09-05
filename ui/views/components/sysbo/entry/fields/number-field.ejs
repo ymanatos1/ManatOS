@@ -1,0 +1,40 @@
+<%#
+  COMPONENT: Number field
+
+  Purpose:
+  - Renders a canonical numeric field with shared field tools.
+
+  Inputs / metadata:
+  - key, field, value, editable, fieldLabel.
+
+  CTX contract:
+  - Reads/writes the canonical field through data-ctx-field.
+
+  Embeds / delegates:
+  - field-tools-menu.ejs.
+
+  Runtime contract:
+  - Enhanced-field runtime handles Zero/Clear actions.
+%>
+<div class="input-group metadata-field-input" data-enhanced-field-input data-field-component="number">
+  <button
+    class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+    title="Number field tools"
+    aria-label="Number field tools for <%= fieldLabel(field) %>"><i
+    class="bi bi-123"
+    aria-hidden="true"></i></button>
+  <input
+    class="form-control"
+    id="metadata-field-<%= key %>"
+    name="<%= key %>"
+    data-ctx-field="<%= key %>"
+    type="number"
+    value="<%= value %>" <%= field.required ? 'required' : '' %> <%= editable ? '' : 'readonly' %>>
+  <%- include('field-tools-menu', { key, editable, actions: [
+    { action: 'zero', icon: '0-circle', label: 'Set to zero' },
+    { action: 'clear', icon: 'eraser', label: 'Clear value' },
+  ] }) %>
+</div>

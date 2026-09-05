@@ -11,15 +11,15 @@ const sharedSource = (path: string) => readFile(resolve(testDirectory, '..', '..
 
 describe('generic date-duration-range component', () => {
   it('is layout-only while canonical field calculations are CTX/evaluator driven', async () => {
-    const component = await uiSource('views/components/common/date-duration-range.ejs');
-    const fieldRenderer = await uiSource('views/field-components/form-field.ejs');
+    const component = await uiSource('views/components/sysbo/entry/content/date-duration-range.ejs');
+    const fieldRenderer = await uiSource('views/components/sysbo/entry/fields/form-field.ejs');
     const runtime = await uiSource('public/js/metadata-form-runtime.js');
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const canonicalMetadata = await sharedSource('src/metadata/bo/business.ts');
     const uiContract = await sharedSource('src/metadata/ui/types.ts');
     const shell = await uiSource('views/layout/shell.ejs');
 
-    expect(component).toContain("include('../../field-components/form-field'");
+    expect(component).toContain("include('../fields/form-field'");
     expect(component).toContain('metadata-date-duration-range-primary');
     expect(component).toContain('metadata-date-duration-range-end');
     expect(component).toContain('key: startField, span: 6');

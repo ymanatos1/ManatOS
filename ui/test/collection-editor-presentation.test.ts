@@ -5,7 +5,7 @@ const source = async (path: string) => readFile(new URL(`../${path}`, import.met
 describe('generic transactional collection editor', () => {
   it('keeps Principal Contact declarative and the component entity-agnostic', async () => {
     const metadata = await source('../shared/src/metadata/ui/business.ts');
-    const component = await source('views/components/sysbo/collections/collection-editor.ejs');
+    const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     expect(metadata).toContain("tab('contact', 'Contact', 20");
     expect(metadata).toContain("key: 'collection-editor'");
     expect(component).not.toContain('sys-principals');
@@ -18,7 +18,7 @@ describe('generic transactional collection editor', () => {
 
   it('supports scalar and structured collection values through metadata rather than component forks', async () => {
     const metadata = await source('../shared/src/metadata/ui/business.ts');
-    const component = await source('views/components/sysbo/collections/collection-editor.ejs');
+    const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
 
     expect(metadata).toContain("sourceKey: 'emailAddresses'");
     expect(metadata).toContain("sourceKey: 'telephoneNumbers'");
@@ -60,7 +60,7 @@ describe('generic transactional collection editor', () => {
 
 
   it('widens country-code menus and prioritizes the active language flag before other flagged countries', async () => {
-    const editor = await source('views/components/sysbo/collections/collection-editor.ejs');
+    const editor = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     const css = await source('public/css/debugger/ctx-debug.css');
     expect(editor).toContain("document.documentElement.dataset.uiLanguage");
     expect(editor).toContain("preferredFlag");
@@ -70,7 +70,7 @@ describe('generic transactional collection editor', () => {
 
 
   it('uses the universal required-field label convention and shared country catalogue projections', async () => {
-    const editor = await source('views/components/sysbo/collections/collection-editor.ejs');
+    const editor = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     const metadata = await source('../shared/src/metadata/ui/business.ts');
     const countries = await source('../shared/src/system-country-catalog.ts');
     expect(editor).toContain('metadata-field-required-marker');
@@ -83,7 +83,7 @@ describe('generic transactional collection editor', () => {
 
   it('collapses contact collections into wrapped object summaries without disturbing an open editor', async () => {
     const metadata = await source('../shared/src/metadata/ui/business.ts');
-    const component = await source('views/components/sysbo/collections/collection-editor.ejs');
+    const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     const css = await source('public/css/pages.css');
 
     expect(metadata.match(/collapsible: true/g)?.length).toBeGreaterThanOrEqual(3);
@@ -102,7 +102,7 @@ describe('generic transactional collection editor', () => {
   });
 
   it('closes only pristine inline drafts when focus leaves the collection', async () => {
-    const component = await source('views/components/sysbo/collections/collection-editor.ejs');
+    const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     expect(component).toContain("root.addEventListener('focusout'");
     expect(component).toContain('if (active instanceof Node && root.contains(active)) return');
     expect(component).toContain('if (!editorDraftDirty()) clearEditor()');

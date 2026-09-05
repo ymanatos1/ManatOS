@@ -11,13 +11,13 @@ const api = (path: string) => readFile(resolve(here, '..', '..', 'api', path), '
 describe('metadata entry Save lifecycle and Principal addresses', () => {
   it('uses one shared split Save action and keeps Save-in-place distinct from Save-and-Close', async () => {
     const renderer = await ui('views/pages/sysbo/entry.ejs');
-    const actionsFooter = await ui('views/components/sysbo/entry/entry-actions-footer.ejs');
-    const split = await ui('views/components/sysbo/entry/save-split-action.ejs');
+    const actionsFooter = await ui('views/components/sysbo/entry/shell/entry-actions-footer.ejs');
+    const split = await ui('views/components/sysbo/entry/shell/save-split-action.ejs');
     const entryState = await ui('public/js/forms/entry-state.js');
     const entrySave = await ui('public/js/forms/entry-save.js');
     const entryWrite = await ui('src/routes/sysbo/entry-write.ts');
 
-    expect(renderer).toContain("include('../../components/sysbo/entry/entry-actions-footer'");
+    expect(renderer).toContain("include('../../components/sysbo/entry/shell/entry-actions-footer'");
     expect(actionsFooter).toContain("include('save-split-action'");
     expect(split).toContain('value="stay"');
     expect(split).toContain('Save and Close');
@@ -42,7 +42,7 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     const metadata = await shared('src/metadata/bo/contact.ts');
     const uiMetadata = await shared('src/metadata/ui/business.ts');
     const service = await api('src/services/sysbo-principal-service.ts');
-    const collection = await ui('views/components/sysbo/collections/collection-editor.ejs');
+    const collection = await ui('views/components/sysbo/entry/content/collection-editor.ejs');
 
     expect(domain).toContain('export interface SysAddress extends SysBOEntity');
     expect(domain).toContain('export interface SysPrincipalAddress extends SysBOEntity');
@@ -61,7 +61,7 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
 
 
   it('keeps the split Save menu visually aligned with the primary action and sanitizes failed-save CTX re-renders', async () => {
-    const save = await ui('views/components/sysbo/entry/save-split-action.ejs');
+    const save = await ui('views/components/sysbo/entry/shell/save-split-action.ejs');
     const pagesCss = await ui('public/css/pages.css');
     const entryWrite = await ui('src/routes/sysbo/entry-write.ts');
     expect(save).toContain('metadata-save-dropdown-menu');

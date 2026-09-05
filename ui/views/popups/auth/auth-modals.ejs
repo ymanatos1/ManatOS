@@ -1,4 +1,23 @@
 <%#
+  COMPONENT: Authentication popup family
+
+  Purpose:
+  - Defines the shared authentication and registration modal flows.
+
+  Inputs / metadata:
+  - currentUser, popupContent, provider presentation and authentication route state.
+
+  CTX contract:
+  - Shared popup runtime projects the active modal under ctx.<leaf-page>.popup.
+
+  Embeds / delegates:
+  - ../shared popup header/hero/footer/actions and authentication field partials.
+
+  Runtime contract:
+  - Bootstrap popup runtime plus authentication form runtime own lifecycle and actions.
+%>
+
+<%#
   Authentication popup family.
 
   These dialogs intentionally share the popup infrastructure under views/popups/shared:
@@ -12,6 +31,9 @@
   <div
     class="modal fade auth-primary-modal"
     id="signUpMethodModal"
+    data-popup-purpose="auth-sign-up-method"
+    data-popup-kind="auth-modal"
+    data-popup-presentation="rich"
     tabindex="-1"
     aria-labelledby="signUpMethodModalLabel"
     aria-hidden="true"
@@ -89,6 +111,9 @@
   <div
     class="modal fade auth-primary-modal auth-email-registration-modal"
     id="emailRegistrationModal"
+    data-popup-purpose="auth-register-email"
+    data-popup-kind="auth-modal"
+    data-popup-presentation="rich"
     tabindex="-1"
     aria-labelledby="emailRegistrationModalLabel"
     aria-hidden="true"
@@ -211,6 +236,9 @@
   <div
     class="modal fade auth-primary-modal"
     id="signInModal"
+    data-popup-purpose="auth-sign-in"
+    data-popup-kind="auth-modal"
+    data-popup-presentation="rich"
     tabindex="-1"
     aria-labelledby="signInModalLabel"
     aria-hidden="true"
@@ -310,6 +338,9 @@
   <div
     class="modal fade auth-primary-modal auth-password-request-modal"
     id="passwordRequestModal"
+    data-popup-purpose="auth-password-request"
+    data-popup-kind="auth-modal"
+    data-popup-presentation="rich"
     tabindex="-1"
     aria-labelledby="passwordRequestModalLabel"
     aria-hidden="true"

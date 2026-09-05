@@ -1179,6 +1179,13 @@ body.anonymous .workspace {
    * .is-popup-inspection to expose the dock on demand.
    */
   z-index: 1010;
+  /*
+   * The dock is a grid sibling of the workspace, never a source of shell
+   * height. CTX expansion can create thousands of intrinsic tree rows; size
+   * containment prevents that content from enlarging the app-shell grid track.
+   * The dock still stretches to the track chosen by the actual page content.
+   */
+  contain: size;
   display: flex;
   flex-direction: column;
   overflow: hidden;
