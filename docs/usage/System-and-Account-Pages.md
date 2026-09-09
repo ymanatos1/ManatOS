@@ -6,15 +6,24 @@ Not every ManatOS surface is a metadata-driven SysBO CRUD page. Authentication, 
 
 ## Classification
 
-```mermaid
-flowchart TD
-    P[ManatOS UI page] --> Q{Ordinary SysBO entity CRUD surface?}
-    Q -->|yes| E[Generic metadata-driven entity page]
-    Q -->|no| S[System/non-entity page]
-    S --> A[Auth/account]
-    S --> D[Developer/debugging]
-    S --> C[Configuration/preferences]
-    S --> H[Home/company/platform/system navigation]
+```text
+[P] ManatOS UI page
+[Q] Ordinary SysBO entity CRUD surface?
+[E] Generic metadata-driven entity page
+[S] System/non-entity page
+[A] Auth/account
+[D] Developer/debugging
+[C] Configuration/preferences
+[H] Home/company/platform/system navigation
+
+Flow:
+  P --> Q
+  Q --[yes]--> E
+  Q --[no]--> S
+  S --> A
+  S --> D
+  S --> C
+  S --> H
 ```
 
 The distinction prevents forcing every page through the entity-form engine while also preventing system pages from reimplementing canonical entity presentation when they display entity-backed information.
@@ -41,14 +50,22 @@ Sign in, sign up, password reset/change and external-provider flows are security
 
 CTX Viewer, API Traffic and debugging CLI/panels are developer-system surfaces. They own inspection, navigation, persisted-in-session UI state and developer interactions. They do not participate in business entity field semantics.
 
-```mermaid
-flowchart LR
-    CTX[Live CTX] --> V[CTX Viewer]
-    API[UI → API calls] --> T[API Traffic]
-    C[Context path/expression] --> CLI[Debugging CLI]
-    V --> D[Developer tools surface]
-    T --> D
-    CLI --> D
+```text
+[CTX] Live CTX
+[V] CTX Viewer
+[API] UI → API calls
+[T] API Traffic
+[C] Context path/expression
+[CLI] Debugging CLI
+[D] Developer tools surface
+
+Flow:
+  CTX --> V
+  API --> T
+  C --> CLI
+  V --> D
+  T --> D
+  CLI --> D
 ```
 
 ## Preferences/configuration
@@ -68,11 +85,16 @@ System pages may reuse metadata and components without pretending to be entity f
 
 System pages and workflow components frequently contain controls that look like form fields but are not canonical entity fields. Do not classify them by appearance.
 
-```mermaid
-flowchart TD
-    C[Visible input] --> E{Represents a canonical entity field?}
-    E -->|Yes| M[Use canonical metadata + field dispatcher]
-    E -->|No| U[Use system/UI workflow control]
+```text
+[C] Visible input
+[E] Represents a canonical entity field?
+[M] Use canonical metadata + field dispatcher
+[U] Use system/UI workflow control
+
+Flow:
+  C --> E
+  E --[Yes]--> M
+  E --[No]--> U
 ```
 
-Examples of non-entity controls include sign-in credentials, password-reset values, search terms and transient external-provider secrets. They belong to their owning system/workflow component. They do not receive entity field-tools or `ctx.page.page.fields` bindings unless a future canonical metadata model explicitly makes them entity fields.
+Examples of non-entity controls include sign-in credentials, password-reset values, search terms and transient external-provider secrets. They belong to their owning system/workflow component. They do not receive entity field-tools or the owning `ctx.ui...level.fields` branch bindings unless a future canonical metadata model explicitly makes them entity fields.

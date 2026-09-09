@@ -1,9 +1,21 @@
 # Validation
 
-Validation is part of effective entry state, not merely HTML decoration. Field validation produces validity and issues; aggregate entry validity derives from the participating field/component state.
+Validation answers whether current input/state satisfies the rules required to continue an interaction or persist a change. It is separate from authorization: a value can be syntactically valid while the caller is not allowed to perform the operation.
 
-Validation should be deterministic from the relevant value/context. Client validation improves interaction but does not replace API/domain validation for persisted or protected operations.
+## Layers
 
-A field or compound component reports through its owning runtime rather than directly toggling unrelated Save-button DOM state. Save/action policy consumes aggregate state, keeping the causal chain inspectable.
+Field-level validation covers type/shape and canonical field rules. Entry-level validation aggregates field and cross-field state. Compound editors/workspaces can add their own validity requirements and may block the parent Save operation while an unresolved child draft is active.
 
-Validation messages should explain the violated contract in user terms while preserving structured diagnostics where developer inspection needs them.
+Client validation provides immediate feedback but does not replace API/domain validation for persisted or security-sensitive operations.
+
+```text
+field validity ----+
+                   |
+cross-field rules -+--> entry aggregate validity --> Save eligibility
+                   |
+child workspace ---+
+
+API/domain validation --------------------------------> persistence authority
+```
+
+Validation messages should identify the failing semantic rule where possible rather than merely reporting that Save is disabled. Dynamic required/read-only/visibility policy should derive from metadata/expressions and be evaluated consistently with validation inputs.

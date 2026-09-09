@@ -6,14 +6,22 @@ A composite component is a higher-level reusable UI unit that arranges or coordi
 
 ## Core rule
 
-```mermaid
-flowchart TB
-    C[Composite component] --> F1[form-field.ejs\ncanonical field A]
-    C --> F2[form-field.ejs\ncanonical field B]
-    C --> F3[form-field.ejs\ncanonical field C]
-    F1 --> P1[normal type component]
-    F2 --> P2[normal type component]
-    F3 --> P3[normal type component]
+```text
+[C] Composite component
+[F1] form-field.ejs / canonical field A
+[F2] form-field.ejs / canonical field B
+[F3] form-field.ejs / canonical field C
+[P1] normal type component
+[P2] normal type component
+[P3] normal type component
+
+Flow:
+  C --> F1
+  C --> F2
+  C --> F3
+  F1 --> P1
+  F2 --> P2
+  F3 --> P3
 ```
 
 The composite owns **composition**. Each nested field continues to own its ordinary field semantics through the normal `form-field -> entity-field -> concrete component` pipeline.
@@ -61,12 +69,16 @@ fields retain canonical type/value/tool behavior
 
 Prefer component options/bindings when the difference is presentation policy: layout, heading, compactness, column widths, visible supplemental content or similar. Introduce a new component only when the composition/workflow itself is semantically different.
 
-```mermaid
-flowchart TD
-    D{Need a variation?}
-    D -->|same composition, different presentation| O[Add generic option/binding]
-    D -->|different reusable composition/workflow| N[Create new composite component]
-    D -->|new single-field semantics| F[Create/extend canonical field type instead]
+```text
+[D] Need a variation?
+[O] Add generic option/binding
+[N] Create new composite component
+[F] Create/extend canonical field type instead
+
+Flow:
+  D --[same composition, different presentation]--> O
+  D --[different reusable composition/workflow]--> N
+  D --[new single-field semantics]--> F
 ```
 
 ## Canonical fields inside composite components

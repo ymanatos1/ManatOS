@@ -1,5 +1,23 @@
 # Configuration
 
-System configuration is administered through protected configuration surfaces/API operations. Typed configuration values are exposed according to their contract; encrypted secret material is never returned as ordinary configuration data.
+Configuration is divided by ownership and sensitivity. Runtime/deployment settings belong to the server environment; administrable typed settings are exposed through protected configuration contracts; secret material remains behind trusted server-side storage and command boundaries.
 
-Runtime/deployment settings are supplied through environment configuration. Do not put server secrets into browser-visible settings. For exact keys and ownership see [Configuration Reference](../reference/Configuration-Catalog.md).
+## Administrative configuration
+
+Protected configuration surfaces/API operations expose values according to their declared type and authorization. A secret may influence runtime behavior without its plaintext value ever being returned as ordinary configuration data.
+
+## Deployment configuration
+
+Environment settings configure process/runtime concerns such as API/UI endpoints, internal keys and session/security material. Server-only secrets must never be copied into browser-visible JavaScript, HTML, CTX or public bootstrap responses.
+
+```text
+Deployment environment ------> server runtime
+                                  |
+Administrative configuration --->|--> typed/safe runtime facts
+                                  |
+Encrypted secrets -------------->|--> trusted consumers only
+
+Browser <----------------------------- safe/public projections only
+```
+
+For exact keys, defaults and ownership see [Configuration Catalog](../reference/Configuration-Catalog.md).

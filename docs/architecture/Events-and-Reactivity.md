@@ -1,9 +1,30 @@
 # Events and Reactivity
 
-Reactive behavior follows mutation authority. A CTX mutation publishes a semantic change; dependency matching determines which calculations or dynamic UI policies are affected; recalculation proceeds until the relevant derived state reaches a stable result.
+Reactivity connects canonical CTX mutations to dependent calculations and presentation updates. The central invariant is that one logical state change has one authoritative mutation path and one causal event story.
 
-Dependencies are path-aware. Parent/descendant overlap is treated semantically rather than as unrelated string equality. A calculation does not become a writer of arbitrary state: its result is applied through the owning field/runtime boundary.
+## Dependency flow
 
-The browser evaluates UI-owned expressions. Server-owned calculations and resolver-backed operations execute where their required capabilities exist. This prevents the server from fabricating a browser CTX and prevents the browser from becoming a trusted business-policy host.
+A canonical field mutation enters through the CTX mutation boundary. Dependency matching identifies calculations/dynamic policy affected by the changed path, evaluates them, writes derived results through their canonical authority and notifies presentation consumers.
 
-For exact mutation routes, dirty/validation aggregation and event behavior see [State, Mutation and Events](../design/State-Mutation-and-Events.md) and [Event Catalog](../reference/Event-Catalog.md).
+```text
+canonical mutation
+      |
+      v
+CTX change event
+      |
+      v
+dependency matching
+      |
+      v
+calculation / dynamic policy
+      |
+      v
+canonical derived mutation
+      |
+      v
+presentation refresh
+```
+
+Reactive queues prevent duplicate work from becoming competing semantic writers. Path-overlap rules and queue keys are shared policy rather than page-specific string matching. Aggregate form/workspace state can observe the resulting changes while retaining ownership of its own non-scalar transaction semantics.
+
+See [State, Mutation and Events](../design/State-Mutation-and-Events.md) and [Event Catalog](../reference/Event-Catalog.md).

@@ -1,7 +1,20 @@
 # Extension Points
 
-The principal extension points are canonical entity metadata, UI metadata, expression functions, reusable field/content components, platform contributions, API services/commands and storage adapters.
+The system is intended to grow through explicit contracts rather than by accumulating special cases in shared runtime code. An extension should therefore attach at the narrowest semantic layer that actually owns the new behavior.
 
-Choose the narrowest extension point that owns the semantics. A field renderer should not become an authorization service; a platform contribution should not modify generic shell code for product-specific navigation; a storage adapter should not invent UI policy.
+## Main extension points
 
-When no current extension point fits, first determine whether the missing capability is generally reusable. If so, extend the common contract and protect it with architecture tests. If not, keep the behavior in the application/platform domain rather than broadening the foundation artificially.
+- **canonical metadata** for new entity fields, relationships and calculations;
+- **UI metadata** for lists, entries, actions and dynamic presentation;
+- **expression functions** for reusable pure calculations over supported context;
+- **field components** for new single-field interaction semantics;
+- **composite/UI components** for reusable compound interaction or workflows;
+- **platform contributions** for product-specific navigation/assets/applications;
+- **API services/commands** for business operations and side effects;
+- **storage adapters** for alternate persistence implementations.
+
+## Selection rule
+
+Prefer extending an existing generic contract over adding entity-specific branching. A new extension point is justified when the existing abstraction cannot express the required semantics cleanly without becoming misleading or leaking responsibilities across layers.
+
+Each extension should include contract-level tests and documentation identifying ownership, lifecycle and interaction with CTX/security/persistence where applicable.

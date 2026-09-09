@@ -1,6 +1,6 @@
 # Entity Entry Forms — Detailed Behavior
 
-The canonical UI Forms guide is [`docs/ui/UI-Forms.md`](ui/UI-Forms.md).
+The canonical UI Forms guide is [`docs/Entity-Entries-Forms-Detail.md`](Entity-Entries-Forms-Detail.md).
 
 ```text
 UI architecture
@@ -12,4 +12,4 @@ UI architecture
 fields  composite  non-field components
 ```
 
-Use [`docs/ui/README.md`](ui/README.md) as the UI documentation index.
+Use [`docs/README.md`](README.md) as the UI documentation index.

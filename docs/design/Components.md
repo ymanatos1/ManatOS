@@ -52,12 +52,18 @@ It must not own:
 
 ## Metadata component dispatch
 
-```mermaid
-flowchart LR
-    M[UI metadata\ncomponent key/options/bindings] --> T[entry-tab-content.ejs]
-    T --> R[metadata component registry]
-    R --> P[registered reusable partial/runtime]
-    P --> DOM[DOM]
+```text
+[M] UI metadata / component key/options/bindings
+[T] entry-tab-content.ejs
+[R] metadata component registry
+[P] registered reusable partial/runtime
+[DOM] DOM
+
+Flow:
+  M --> T
+  T --> R
+  R --> P
+  P --> DOM
 ```
 
 The registry is intentional. Generic renderers use stable semantic component keys; they do not derive filenames from entity names or arbitrary metadata strings.
@@ -82,17 +88,22 @@ Current examples include User/Account external identities and Principal/Applicat
 
 The selector is not an entity-specific page and not a field component. It is a reusable non-field component that consumes canonical entity/list metadata and candidate records, then adds selection semantics for the caller.
 
-```mermaid
-flowchart LR
-    LM[Canonical entity + list metadata]
-    CAND[Candidate records]
-    CALL[callingParams]
-    LM --> RS[Record selector]
-    CAND --> RS
-    CALL --> RS
-    RS --> LIST[Shared list toolbar / filters / header / paging]
-    RS --> CTX[popup CTX state]
-    RS --> RESULT[Canonical selected record(s)]
+```text
+[LM] Canonical entity + list metadata
+[CAND] Candidate records
+[CALL] callingParams
+[RS] Record selector
+[LIST] Shared list toolbar / filters / header / paging
+[CTX] popup CTX state
+[RESULT] Canonical selected record(s)
+
+Flow:
+  LM --> RS
+  CAND --> RS
+  CALL --> RS
+  RS --> LIST
+  RS --> CTX
+  RS --> RESULT
 ```
 
 The selector deliberately composes the same `list-toolbar`, `list-filters`, `list-table-header` and `list-paging` partials used by ordinary SysBO list pages. That shared structure is an architectural contract: changes to common list presentation must be reviewed for both browse and selection contexts.
@@ -102,7 +113,9 @@ The selector deliberately composes the same `list-toolbar`, `list-filters`, `lis
 The live popup CTX distinguishes **why the selector was opened** from **what the selector is currently doing**:
 
 ```text
-ctx.page....popup
+ctx.ui
+└── ... level                     # caller
+    └── level                     # selector/popup child
 ├── kind = "record-selector"
 ├── callingParams
 │   ├── purpose
@@ -111,7 +124,7 @@ ctx.page....popup
 │   ├── sourceEntityKey / sourceRecordId
 │   ├── targetField or relation context
 │   └── query/eligibility hints when applicable
-├── entriesOriginal / entries
+├── dataList / selector-local working state
 ├── filters / search / paging
 ├── selectedId / selectedIds
 └── state
@@ -147,13 +160,18 @@ CTX Viewer, API Traffic, debugging panels and CLI components are system/develope
 
 ## Choosing UI component vs field component
 
-```mermaid
-flowchart TD
-    Q{Does this represent exactly one canonical field?}
-    Q -->|yes| F[Field component]
-    Q -->|no| R{Does it compose several canonical fields?}
-    R -->|yes| C[Composite component]
-    R -->|no| U[Reusable UI component]
+```text
+[Q] Does this represent exactly one canonical field?
+[F] Field component
+[R] Does it compose several canonical fields?
+[C] Composite component
+[U] Reusable UI component
+
+Flow:
+  Q --[yes]--> F
+  Q --[no]--> R
+  R --[yes]--> C
+  R --[no]--> U
 ```
 
 ## Workflow-input components
@@ -163,16 +181,22 @@ Non-entity UI sometimes needs ordinary input controls: transient secrets, search
 `views/components/sysbo/entry/content/workflow-input.ejs` is the small reusable server-rendered input primitive for such transient/system workflows where an ordinary Bootstrap input is appropriate. It intentionally does not:
 
 - read canonical `fieldDefinition` metadata;
-- bind `data-ctx-field` into `ctx.page.page.fields`;
+- bind `data-ctx-field` into the owning `ctx.ui...level.fields` branch;
 - expose the canonical field-tools menu;
 - claim persistence, calculation or validation semantics belonging to entity fields.
 
-```mermaid
-flowchart LR
-    UI[UI component] --> W[workflow-input]
-    W --> L[component-local/workflow state]
-    L --> A[component runtime/action]
-    A -->|only through owning workflow| P[save/test/command boundary]
+```text
+[UI] UI component
+[W] workflow-input
+[L] component-local/workflow state
+[A] component runtime/action
+[P] save/test/command boundary
+
+Flow:
+  UI --> W
+  W --> L
+  L --> A
+  A --[only through owning workflow]--> P
 ```
 
 The External Authentication Provider credential editor is the model example: `clientId` is a canonical entity field and therefore goes through `entity-field.ejs`; plaintext `clientSecret` is transient workflow state and therefore uses the non-entity workflow input.
@@ -181,14 +205,21 @@ The External Authentication Provider credential editor is the model example: `cl
 
 The reusable collection editor owns a local child draft until Add/Update or Cancel. Focus movement is not a persistence command. To keep the form compact without risking data loss, a pristine open editor closes when interaction focus genuinely leaves that collection, while a dirty editor remains open. Focus transitions inside the collection (including dropdown menus) do not close it.
 
-```mermaid
-flowchart TD
-    O[Inline editor open] --> F{Focus leaves collection?}
-    F -->|No| K[Keep editor]
-    F -->|Yes| D{Draft dirty?}
-    D -->|No| C[Close pristine editor]
-    D -->|Yes| K
-    K --> X[Only Add/Update or Cancel resolves dirty draft]
+```text
+[O] Inline editor open
+[F] Focus leaves collection?
+[K] Keep editor
+[D] Draft dirty?
+[C] Close pristine editor
+[X] Only Add/Update or Cancel resolves dirty draft
+
+Flow:
+  O --> F
+  F --[No]--> K
+  F --[Yes]--> D
+  D --[No]--> C
+  D --[Yes]--> K
+  K --> X
 ```
 
 This behavior is generic to the collection component; Contact entity metadata does not implement its own blur/focus rules.

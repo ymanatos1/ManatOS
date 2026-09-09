@@ -1,9 +1,21 @@
 # Entity Model
 
-A SysBO has a stable metadata key independent of record IDs. Canonical metadata describes fields, relationships, calculations, entry representation and persistence semantics. UI metadata is a separate projection describing how a UI-capable client presents and interacts with it.
+System Business Objects (SysBOs) are canonical entity definitions shared by the API, UI metadata and persistence contracts. An entity model describes business identity and structure independently of a particular list, form or storage implementation.
 
-Supported canonical field categories include identifiers, strings, email/telephone values, booleans, numbers, dates/date-times, durations, versions, enums and references. Reference fields identify another entity; relationship metadata supplies the broader referential semantics.
+## Canonical contents
 
-Canonical entry representation gives generic surfaces a consistent name/type/description/status model. Lists, selectors, related collections and hierarchy views should consume that representation rather than inventing entity-specific labels.
+An entity definition can include fields, types, defaults, calculations, relationships, entry representation and persistence semantics. UI metadata references this canonical model to decide how those facts are presented; it should not redefine their business meaning.
 
-Current entities and value/link objects are catalogued in [Entity Catalog](../reference/Entity-Catalog.md).
+```text
+Entity metadata
+├── identity / entity key
+├── fields and canonical types
+├── calculations
+├── relationships
+├── entry representation
+└── persistence semantics
+```
+
+Relationships are first-class contracts rather than implied foreign-key conventions. Calculated fields can remain transient or be explicitly materialized/persisted according to metadata. Canonical entry representation gives the same record a consistent semantic name/type/description/status across lists, selectors and related views.
+
+See [Metadata Model](Metadata-Model.md), [Relationships](Relationships.md), and [Metadata Catalog](../reference/Metadata-Catalog.md).

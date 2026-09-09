@@ -1,7 +1,28 @@
 # Storage Adapters
 
-Storage implementations conform to the storage adapter/repository contracts and should preserve query semantics rather than force callers to know the datastore.
+Storage adapters translate canonical persistence/query contracts into a concrete datastore implementation. They should not redefine entity metadata, authorization or presentation semantics.
 
-A richer adapter may translate filters, paging, sorting and canonical exception predicates into native datastore operations. Keep predicates structured until that boundary. Relationship integrity and business authorization remain above raw persistence mechanics.
+## Responsibilities
 
-The current repository includes in-memory and JSON-file-oriented persistence support suitable for development/runtime scenarios. A relational adapter should translate supported structured predicates to SQL rather than fetching all rows and filtering in the browser.
+An adapter owns datastore-specific create/read/update/delete mechanics, paging, ordering and supported predicate translation. Structured query and exception predicates should remain structured until this boundary so a future relational adapter can translate them into native `WHERE` conditions rather than receiving rows already filtered by browser code.
+
+## Boundary
+
+```text
+API/service/domain policy
+          |
+          v
+canonical storage/query contract
+          |
+          v
+storage adapter
+  ├── in-memory / file implementation
+  └── future relational implementation
+          |
+          v
+physical datastore
+```
+
+Relationship integrity and business authorization remain above raw storage. An adapter can enforce physical constraints required by its datastore, but it should not become the only place where a business rule is understood.
+
+When adding an adapter, implement the storage contract tests first and document any unsupported predicate/operator capability explicitly.

@@ -1,5 +1,31 @@
 # Business Rules
 
-Representative rules currently expressed by the model include: User↔Person-Principal relationship integrity; Person full-name calculation; parent/root Principal traversal; normalized reusable contact values; platform/application/license relationships; server-authoritative role/capability policy; and metadata-driven eligibility/exception predicates for selectors and lists.
+Business rules are represented at the layer that owns their semantics. The platform intentionally avoids concentrating every rule either in browser code or in one monolithic service.
 
-Rules that are pure functions of observable CTX are candidates for expressions. Rules that require authorization, persistence mutation, secret handling or transactional side effects remain server/domain operations.
+## Representative rules
+
+- User ↔ Person Principal relationship integrity;
+- Person full-name calculation;
+- Parent/Root Principal traversal and organization hierarchy semantics;
+- normalized reusable email, telephone and postal-address values;
+- platform/application/license relationships and restrictions;
+- server-authoritative role and capability policy;
+- metadata-driven eligibility and exception predicates for selectors and lists.
+
+## Placement rule
+
+```text
+Rule depends only on observable CTX and has no side effects?
+        |
+        +-- yes --> evaluate as declarative expression/dynamic metadata
+        |
+        +-- no --> does it enforce security, persistence integrity,
+                   secrets, transactionality or external side effects?
+                         |
+                         +-- yes --> API/domain/service boundary
+                         +-- no  --> reusable runtime/component policy
+```
+
+A rule should not be duplicated across those layers merely for convenience. UI policy may explain or anticipate a server restriction, but the authoritative restriction remains server-side when security or data integrity is involved.
+
+For expression semantics see [Expressions](../../design/Expressions.md); for authorization boundaries see [Authentication and Authorization](../../architecture/Authentication-and-Authorization.md).

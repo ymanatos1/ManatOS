@@ -6,16 +6,24 @@ This guide is the authoritative structural reference for metadata-driven SysBO *
 
 ## End-to-end page model
 
-```mermaid
-flowchart LR
-    M[Canonical BO metadata] --> C[CTX + evaluator]
-    U[UI metadata] --> C
-    C --> L[List page]
-    L -->|open/add| E[Entry page]
-    E -->|reference tools| S[Existing-record selector]
-    S -->|selected canonical entry| E
-    E -->|save/delete| A[API/domain/storage]
-    A --> C
+```text
+[M] Canonical BO metadata
+[C] CTX + evaluator
+[U] UI metadata
+[L] List page
+[E] Entry page
+[S] Existing-record selector
+[A] API/domain/storage
+
+Flow:
+  M --> C
+  U --> C
+  C --> L
+  L --[open/add]--> E
+  E --[reference tools]--> S
+  S --[selected canonical entry]--> E
+  E --[save/delete]--> A
+  A --> C
 ```
 
 ## 1. List page
@@ -39,18 +47,12 @@ Entity list page
 ### Important CTX structure
 
 ```text
-ctx.page
-├── name                 # entity/list route identity
-├── kind = "sysbo-list"
-├── mode = "list"
-├── fields               # list field metadata/runtime projections
-├── filters              # active list filters incl. listExceptions
-├── entriesOriginal[]    # canonical source snapshot
-├── entries[]            # current projected result set
-└── state
-    ├── dirty
-    ├── valid
-    └── page
+ctx.ui
+└── level                         # owning list UI level
+    ├── name / kind / mode        # list surface identity
+    ├── dataList[]                # projected list records
+    ├── filters / search / paging # collection query state
+    └── state                     # list-surface runtime state
 ```
 
 List filtering/search/sorting is a query contract, not a browser-only rendering concern. Structured exception expressions must remain canonical so a future RDBMS adapter can translate them to storage predicates.
@@ -83,28 +85,24 @@ The first visible editable field in the first editable tab receives initial focu
 ### Important CTX structure
 
 ```text
-ctx.page
-├── ...list context when entry was opened from a list
-└── page
-    ├── name = "entry"
-    ├── kind = "sysbo-entry"
-    ├── mode = "create" | "edit" | "view"
-    ├── fields
-    │   └── <fieldKey>
-    │       ├── value
-    │       ├── option                 # enum/reference decoration when applicable
-    │       ├── editable / visible     # evaluated UI state
-    │       └── calculation metadata   # when applicable
-    ├── entryOriginal
-    ├── entry
-    ├── related collections / component sources
-    └── state
-        ├── dirty
-        ├── valid
-        ├── internalEditing
-        ├── internalEditorCount
-        ├── saving
-        └── deleting
+ctx.ui
+└── level                         # list or other parent level
+    └── level                     # entry UI level
+        ├── name / kind / mode
+        ├── fields
+        │   └── <fieldKey>
+        │       ├── value         # sole live scalar authority
+        │       ├── originalValue # sole scalar baseline authority
+        │       └── dirty         # derived from value vs baseline
+        ├── entry
+        │   ├── current           # read-only record mirror of field values
+        │   └── original          # read-only record mirror of baselines
+        ├── component/resource state
+        └── state                 # aggregate form/workspace state
+            ├── dirty
+            ├── valid
+            ├── saving
+            └── deleting
 ```
 
 ### Field and calculation example: Person Principal
@@ -123,7 +121,7 @@ Because `Principal type` is the first control, it receives initial focus and its
 
 ## 3. Existing-record selector page surface
 
-The selector is popup-hosted, but it is documented here because it is an entity browse/select surface that deliberately reuses list-page metadata, canonical entry presentation, filters, search and paging. Popup hosting/lifecycle details are in [`UI-Popups.md`](UI-Popups.md).
+The selector is popup-hosted, but it is documented here because it is an entity browse/select surface that deliberately reuses list-page metadata, canonical entry presentation, filters, search and paging. Popup hosting/lifecycle details are in [`../design/Components.md`](../design/Components.md).
 
 ### Presentation structure
 
@@ -146,7 +144,9 @@ A selector must never have a second answer for "what is this entry called?". Ent
 ### Important CTX structure
 
 ```text
-ctx.page....popup
+ctx.ui
+└── ... level                     # caller
+    └── level                     # selector/popup child
 ├── kind = "record-selector"
 ├── callingParams
 │   ├── purpose
@@ -162,8 +162,8 @@ ctx.page....popup
 │   ├── mode
 │   ├── title
 │   └── contextNote
-├── entriesOriginal[]
-├── entries[]
+├── dataList[]
+├── selector-local working state
 ├── filters
 ├── search
 ├── paging
@@ -306,7 +306,9 @@ Principal viewer.
 While open, the caller page exposes the host under its normal popup slot:
 
 ```text
-ctx.page....popup
+ctx.ui
+└── ... level                     # caller
+    └── level                     # selector/popup child
   kind: "entry-popup"
   callingParams
     purpose

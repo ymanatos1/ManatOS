@@ -207,4 +207,4 @@ Expressions should describe domain/UI relationships, not reproduce renderer logi
 
 ## Execution ownership and capabilities
 
-Expressions are execution-context independent. The current owner supplies the lexical scope and available capabilities. `TraverseCtx()` operates only on materialized context data; `TraverseEntity()` requires the canonical `entityResolver` capability and can be delegated by a browser owner when its lazy branch is actually reached. See [Expression Parsing and Evaluation Mechanics](Expression-Evaluation-Mechanics.md).
+Expressions are execution-context independent. The current owner supplies the lexical scope and available capabilities. `TraverseCtx()` operates only on materialized context data; `TraverseEntity()` requires the canonical `entityResolver` capability and can be delegated by a browser owner when its lazy branch is actually reached. See [Expression Parsing and Evaluation Mechanics](../architecture/Expression-Architecture.md).

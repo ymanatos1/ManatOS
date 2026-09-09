@@ -1,9 +1,24 @@
 # Entity Lists
 
-The generic entity-list surface composes canonical entity metadata with UI list metadata, authorization/capability facts and query state.
+An entity list is the generic collection surface for a canonical SysBO. It combines entity metadata, UI list metadata, query state and projected canonical records without requiring entity-specific page code for ordinary behavior.
 
-A list owns its projected entries, filters, search, paging and list actions. Calculated records are projected before publication into CTX so every consumer sees the same effective record. Reference values use canonical entry representation rather than raw identifiers.
+## Responsibilities
 
-Filtering that belongs to data selection is carried through the API/query contract. Exception predicates remain canonical structured expressions so storage implementations can eventually translate them natively. UI-only post-filtering is not an architectural substitute for selection semantics.
+Lists own collection query state such as filters, search, ordering/paging and list actions. Rows use canonical field/entry representation, so the same record identity used in references and selectors remains visible in ordinary lists.
 
-List row actions are metadata/runtime actions rather than entity-specific EJS branches. Opening an entry creates a child UI level while preserving the list as its parent context.
+List exceptions and eligibility predicates should remain structured through the API/storage boundary where possible. The browser should not fetch an unrestricted dataset merely to apply a rule that could be translated into datastore selection.
+
+```text
+metadata + query state
+        |
+        v
+      API
+        |
+        v
+projected records
+        |
+        v
+list toolbar / filters / table / paging / row actions
+```
+
+Opening or adding a record creates a nested entry level. The list remains the parent collection context and does not become a second live copy of the entry's scalar field state.
