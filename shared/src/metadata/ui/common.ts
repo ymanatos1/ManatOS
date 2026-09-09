@@ -1,5 +1,5 @@
 import type { SysBOUIRecordTabMetadata } from './types.js';
-import { systemCountryCatalog } from '../../system-country-catalog.js';
+import { systemCountryCatalog } from '../../domain/system-country-catalog.js';
 
 /** Shared projections of canonical country reference data for reusable editors. */
 export const telephoneCountryOptions = (() => {
@@ -44,10 +44,76 @@ export const tab = (
   options: Partial<
     Pick<
       SysBOUIRecordTabMetadata,
-      'icon' | 'layout' | 'visible' | 'component' | 'content' | 'readOnly'
+      'icon' | 'layout' | 'visible' | 'component' | 'content' | 'readOnly' | 'navigationTrack'
     >
   > = {},
-): SysBOUIRecordTabMetadata => ({ id, label, order, fields, ...options });
+): SysBOUIRecordTabMetadata => ({
+  id,
+  label,
+  order,
+  fields,
+  navigationTrack: { statePath: 'activeTabId' },
+  ...options,
+});
+
+/**
+ * Developer-only debugging surface contributed to effective entry UI metadata.
+ *
+ * The canonical business/entity metadata stays free of development tooling.
+ * When developer mode is active the UI composition layer appends this ordinary
+ * metadata tab. From that point onward renderers/navigation treat Debugging like
+ * any other metadata-declared tab; no template may synthesize a parallel tab.
+ */
+export const debuggingTab = (): SysBOUIRecordTabMetadata =>
+  tab('debugging', 'Debugging', Number.MAX_SAFE_INTEGER, [], {
+    icon: 'bug',
+    layout: 'debug-calculations',
+    readOnly: true,
+    component: {
+      key: 'debugging-panel',
+      readOnly: true,
+      options: {
+        sections: [
+          {
+            id: 'cli',
+            label: 'CLI',
+            navigationTrack: {
+              statePath: 'activeInternalTabIds.debugging',
+            },
+          },
+          {
+            id: 'entity',
+            label: 'Entity',
+            navigationTrack: {
+              statePath: 'activeInternalTabIds.debugging',
+            },
+          },
+          {
+            id: 'ui',
+            label: 'UI',
+            navigationTrack: {
+              statePath: 'activeInternalTabIds.debugging',
+            },
+          },
+        ],
+      },
+    },
+  });
+
+/**
+ * Build effective record tabs for the current runtime mode.
+ *
+ * This is augmentation, not business metadata mutation: developer-only UI is
+ * injected only into the effective presentation contract consumed by the page
+ * or popup. The returned array is safe for every metadata-driven entry host.
+ */
+export const effectiveRecordTabs = (
+  tabs: readonly SysBOUIRecordTabMetadata[],
+  developerMode: boolean,
+): readonly SysBOUIRecordTabMetadata[] =>
+  developerMode && !tabs.some((candidate) => candidate.id === 'debugging')
+    ? [...tabs, debuggingTab()]
+    : [...tabs];
 
 export const generalTab = (
   fields: readonly string[],
@@ -105,8 +171,17 @@ export const systemFieldOverrides = {
   createdAt: {
     presentation: { mode: 'summary' as const, format: 'datetime-elapsed' as const, emptyText: '—' },
   },
+  createdBy: {
+    // Actor/user names are presentation semantics, not entity-specific logic.
+    // Every metadata-driven System details summary therefore gets the same
+    // compact read-only name treatment through the shared summary renderer.
+    presentation: { mode: 'summary' as const, format: 'name' as const, emptyText: '—' },
+  },
   updatedAt: {
     presentation: { mode: 'summary' as const, format: 'datetime-elapsed' as const, emptyText: '—' },
+  },
+  updatedBy: {
+    presentation: { mode: 'summary' as const, format: 'name' as const, emptyText: '—' },
   },
 } as const;
 

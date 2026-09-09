@@ -5,16 +5,16 @@ import {
   type SysBOConfiguration,
   type SysBOLicense,
   type SysBOPrincipal,
-} from '../../domain.js';
-import { MANATOS_COMPANY } from '../../company-platform.js';
+} from '../../domain/entities.js';
+import { MANATOS_COMPANY } from '../../domain/company-platform.js';
 import type { SysBOMetadata } from './types.js';
 import { commonSysBOFields } from './common.js';
 
 /**
  * Canonical Company/business metadata.
  *
- * These definitions are first-class SysBOs. The public registry remains in
- * bo-metadata.ts; this module owns their domain metadata declarations only.
+ * These definitions are first-class SysBOs. The public registry is exported through
+ * metadata/bo/index.ts; this module owns their domain metadata declarations only.
  */
 
 /**
@@ -162,6 +162,17 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
       nullable: true,
       referenceBOKey: 'sys-principals',
+      referenceSelection: {
+        // Parent candidates and newly-created parents are driven by the same
+        // canonical container trait policy. The API remains authoritative.
+        filterEnumItemTrait: { field: 'principalType', trait: 'isContainer' },
+        excludeCurrent: true,
+        createRelated: {
+          uiOverrides: {
+            principalType: { allowedEnumItemTrait: 'isContainer' },
+          },
+        },
+      },
     },
 
     rootPrincipalId: {
@@ -399,7 +410,8 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       nullable: true,
       durationUnits: ['years', 'months', 'days'],
       calculation: {
-        expression: 'CalendarDurationBetween(validFrom, validUntil)',
+        expression:
+          'validFrom == null || validUntil == null ? null : CalendarDurationBetween(validFrom, validUntil)',
         triggeredBy: ['validUntil'],
       },
     },
@@ -412,7 +424,8 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
       nullable: true,
       calculation: {
-        expression: 'CalendarAddDuration(validFrom, validityDuration)',
+        expression:
+          'validFrom == null || validityDuration == null ? null : CalendarAddDuration(validFrom, validityDuration)',
         triggeredBy: ['validFrom', 'validityDuration'],
       },
     },

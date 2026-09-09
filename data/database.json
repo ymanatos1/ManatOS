@@ -10,7 +10,7 @@
       "enabled": true,
       "createdAt": "2026-08-22T04:54:43.873Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-05T13:34:03.961Z",
+      "updatedAt": "2026-09-08T20:07:22.560Z",
       "updatedBy": "Admin",
       "firstName": "Yiannis",
       "lastName": "Manatos",
@@ -112,13 +112,13 @@
       "name": "Mitsos",
       "enabled": true,
       "principalType": "Person",
-      "parentId": "1645f99b-c04a-49e6-afde-2612e6e0224e",
+      "parentId": "55fe0fdd-f1a7-4819-8d29-37b5d63ca1f0",
       "description": "ff",
       "createdAt": "2026-09-01T04:56:29.334Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-04T01:43:09.745Z",
+      "updatedAt": "2026-09-07T03:51:03.363Z",
       "updatedBy": "Admin",
-      "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad",
       "firstName": "Mitsos",
       "lastName": ""
     },
@@ -198,6 +198,17 @@
       "rootPrincipalId": "7e7632ce-f0c6-4159-af84-402d98dbc650",
       "firstName": "YiannakisBro22",
       "lastName": ""
+    },
+    "55fe0fdd-f1a7-4819-8d29-37b5d63ca1f0": {
+      "name": "Mitsos group",
+      "enabled": true,
+      "principalType": "Group",
+      "parentId": "ce34b655-e494-438f-a091-ab18d2b37bad",
+      "createdAt": "2026-09-07T03:46:36.301Z",
+      "createdBy": "Admin",
+      "updatedAt": "2026-09-07T03:46:36.301Z",
+      "updatedBy": "Admin",
+      "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
     }
   },
   "sysEmailAddresses": {
@@ -849,21 +860,6 @@
       "createdAt": "2026-09-01T08:45:54.828Z",
       "createdBy": "Admin",
       "updatedAt": "2026-09-01T08:45:54.828Z",
-      "updatedBy": "Admin"
-    },
-    "4e7f97ea-744c-457e-919d-979c9c85b98a": {
-      "name": "facebook",
-      "provider": "facebook",
-      "enabled": true,
-      "clientId": "1056989580528954",
-      "clientSecretEncrypted": "v1:v1:Yn3AaixNsdNs4/66:I9emTHqFlGBbiiSEMasrgQ==:WFCctZbfGtCc7owDdDvY8pNK3EcTK1mNtqWYH+nYb8E=",
-      "secretUpdatedAt": "2026-09-01T08:49:30.539Z",
-      "credentialsVerified": false,
-      "credentialsVerifiedAt": null,
-      "callbackPath": "/auth/facebook/callback",
-      "createdAt": "2026-09-01T08:49:30.540Z",
-      "createdBy": "Admin",
-      "updatedAt": "2026-09-01T08:49:30.540Z",
       "updatedBy": "Admin"
     },
     "1dd38d05-d272-4722-b9ea-e4ecb93e222a": {

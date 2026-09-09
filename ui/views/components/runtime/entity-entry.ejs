@@ -1,0 +1,713 @@
+<%#
+  COMPONENT: V2 EntityEntry visual renderer
+
+  Purpose:
+  - Renders the first host-neutral V2 metadata-driven entry surface from EntityEntryRuntime state.
+
+  Inputs / metadata:
+  - Canonical entity/UI metadata, factual entryRenderValues, reference data, record mode/identity and route form context.
+
+  CTX contract:
+  - Initial scalar values are SSR facts only; runtime visibility/editability/tab state is owned by
+    the browser-authored ctx.ui.level entry surface.
+
+  Embeds / delegates:
+  - Reuses the canonical entity-field dispatcher so field-type presentation is shared rather than reimplemented.
+
+  Runtime contract:
+  - This slice establishes V2 visual ownership. Browser-side mutation/event ownership remains an
+    explicit acceptance item for the following entry-runtime slice; no new entity-specific decisions
+    belong here.
+%>
+<%
+  const isViewMode = recordMode === 'view';
+  const isEntryPopupHost = typeof entryPopupHost !== 'undefined' && entryPopupHost;
+  const isNew = recordMode === 'create';
+  const v2EntryActions = Object.entries(metadataUI.record.entryActions || {})
+    .map(([key, action]) => ({ key, ...action }))
+    .sort((left, right) => Number(left?.order || 0) - Number(right?.order || 0));
+  const v2SaveAction = {
+    ...(metadataUI.record.entryActions?.save || {}),
+    label: metadataUI.record.entryActions?.save?.label || 'Save',
+    icon: metadataUI.record.entryActions?.save?.icon || 'check-circle',
+    tone: metadataUI.record.entryActions?.save?.tone || 'primary',
+  };
+  const v2DeleteAction = v2EntryActions.find((action) => action.kind === 'delete') || null;
+  const v2CommandActions = v2EntryActions.filter((action) => action.kind === 'command');
+  const v2ActionClass = (action, fallbackTone = 'primary') =>
+    `btn btn-${action?.tone || fallbackTone}`;
+  const renderValues = typeof entryRenderValues !== 'undefined' && entryRenderValues
+    ? entryRenderValues
+    : {};
+  /*
+   * SSR deliberately renders the declarative tab/field inventory without creating
+   * an effective V2 view-model. Browser policy owns runtime visibility, editability
+   * and requested-tab activation after ctx.ui is constructed.
+   */
+  const visibleTabs = [...(metadataUI.record.tabs || [])]
+    .sort((left, right) => Number(left?.order || 0) - Number(right?.order || 0))
+    .map((tab) => ({
+      id: tab.id,
+      label: tab.label,
+      order: tab.order,
+      readOnly: tab.readOnly === true,
+      metadata: tab,
+    }));
+  const debuggingTabEnabled = Boolean(app?.ui?.debugTools);
+  const activeTabId = visibleTabs[0]?.id || '';
+  const overrides = metadataUI.record.fieldOverrides || {};
+  const compiledEntityContextEntry = typeof ctx !== 'undefined' && ctx?.entities
+    ? Object.entries(ctx.entities).find(([, candidate]) => candidate?.key === definition.key)
+    : null;
+  const compiledEntityContextName = compiledEntityContextEntry?.[0] ?? null;
+  const compiledEntityContext = compiledEntityContextEntry?.[1] ?? null;
+  const compiledEntityMetadata = compiledEntityContext?.metadata || {};
+  const compiledUIRecord = compiledEntityContext?.uiMetadata?.record || {};
+  const references = typeof referenceData !== 'undefined' && referenceData ? referenceData : {};
+  const selectorContexts = typeof referenceSelectorContexts !== 'undefined' && referenceSelectorContexts
+    ? referenceSelectorContexts
+    : {};
+  const fieldLabel = (field) => overrides[field.key]?.label || field.label;
+  const valueFor = (key) => renderValues[key] ?? null;
+  const fieldState = (key) => ({
+    value: valueFor(key),
+    ux: { required: metadata.fieldDefinition?.[key]?.required === true },
+  });
+  const fieldVisible = () => true;
+  const fieldEditable = () => !isViewMode;
+  const effectiveField = () => null;
+  const expressionText = (value) =>
+    value && typeof value === 'object' && typeof value.expression === 'string'
+      ? value.expression
+      : null;
+  const debugElementNameParts = (displayName) => {
+    const value = String(displayName ?? '');
+    const lastDot = value.lastIndexOf('.');
+    return lastDot < 0
+      ? { prefix: '', leaf: value }
+      : { prefix: value.slice(0, lastDot + 1), leaf: value.slice(lastDot + 1) };
+  };
+
+  /*
+   * The V2 renderer uses the framework-neutral debugging-model builder so the
+   * debugger inventory stays complete (field calculations, related calculations,
+   * UI presentation, tabs and actions) instead of maintaining a reduced renderer-
+   * specific list that can drift from the metadata actually driving the surface.
+   */
+  /*
+   * Public ctx.ui is browser-owned and therefore intentionally absent from the
+   * server render context. SSR may consume bootstrap facts, but it must not
+   * reconstruct or inspect a private server UI topology.
+   */
+  const v2Bootstrap = typeof uiBootstrap !== 'undefined' && uiBootstrap ? uiBootstrap : {};
+  const v2BootstrapFacts = v2Bootstrap?.entry?.facts && typeof v2Bootstrap.entry.facts === 'object'
+    ? v2Bootstrap.entry.facts
+    : {};
+  const v2LevelPath = v2Bootstrap?.owner
+    ? 'ctx.ui.level.level.level'
+    : 'ctx.ui.level.level';
+  const v2FieldScope = Object.fromEntries(
+    Object.entries(metadata.fieldDefinition || {})
+      .filter(([, fieldMetadata]) => fieldMetadata?.sensitive !== true)
+      .map(([key, fieldMetadata]) => {
+      if (fieldMetadata?.type === 'reference') {
+        const options = Array.isArray(references[key]) ? references[key] : [];
+        return [key, {
+          value: valueFor(key),
+          option: options.find((item) => item?.id === valueFor(key)) ?? null,
+          options,
+        }];
+      }
+      const richItems = Array.isArray(fieldMetadata?.enumItems) && fieldMetadata.enumItems.length
+        ? fieldMetadata.enumItems
+        : (Array.isArray(fieldMetadata?.optionItems) ? fieldMetadata.optionItems : []);
+      if (fieldMetadata?.type === 'enum' || richItems.length) {
+        /*
+         * Keep debugger/render-time expression scope identical to the V2 runtime
+         * scope. Runtime reference data is authoritative when present because it
+         * already contains caller restrictions and server-filtered option sets.
+         * Canonical metadata enriches those options, but must never silently put
+         * removed options back into scope (or make FirstCtx()/field.option inspect
+         * a different option domain than the live entry runtime).
+         */
+        const runtimeOptions = Array.isArray(references[key]) ? references[key] : [];
+        const options = runtimeOptions.length
+          ? runtimeOptions.map((item) => {
+              const value = item?.value;
+              return {
+                ...(richItems.find((candidate) => candidate?.value === value) || {}),
+                ...item,
+                value,
+              };
+            })
+          : (() => {
+              const optionValues = Array.isArray(fieldMetadata?.enumValues) && fieldMetadata.enumValues.length
+                ? fieldMetadata.enumValues
+                : richItems.map((item) => item?.value);
+              return optionValues.map((value) => ({
+                ...(richItems.find((item) => item?.value === value) || { value, label: String(value) }),
+                value,
+              }));
+            })();
+        return [key, {
+          value: valueFor(key),
+          option: options.find((item) => item?.value === valueFor(key)) ?? null,
+          options,
+        }];
+      }
+      return [key, { value: valueFor(key) }];
+    }),
+  );
+  const v2ExpressionScope = {
+    ...v2FieldScope,
+    ...v2BootstrapFacts,
+    mode: recordMode,
+    permissions: typeof permissions !== 'undefined' ? permissions : {},
+  };
+  /*
+   * V2 SSR never evaluates declarative UI expressions. Dynamic values are
+   * intentionally left unresolved so the browser-owned canonical AST evaluator
+   * is the only runtime interpreter of UI metadata. Static literals remain
+   * available to the markup/debug inventory.
+   */
+  const dynamicUIValue = (candidate) => {
+    if (candidate && typeof candidate === 'object' && typeof candidate.expression === 'string') {
+      return undefined;
+    }
+    return candidate;
+  };
+  const ctxValue = (key) => valueFor(key);
+  const ctxFields = v2ExpressionScope;
+  const referenceLabel = (fieldKey, value) => {
+    if (value === undefined || value === null || value === '') return 'None';
+    const match = (references[fieldKey] || []).find((candidate) => candidate?.id === value);
+    return match?.name ?? String(value);
+  };
+  const relatedCollections = metadataUI.record.relatedCollections || {};
+  const pageRelatedData = typeof relatedData !== 'undefined' && relatedData ? relatedData : {};
+  const pageRelatedReferenceData =
+    typeof relatedReferenceData !== 'undefined' && relatedReferenceData ? relatedReferenceData : {};
+  const relatedMetadataRegistry =
+    typeof relatedEntityMetadata !== 'undefined' && relatedEntityMetadata ? relatedEntityMetadata : {};
+  const relatedExpressionScope = (row, relatedMetadata) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+    const missingKeys = Object.keys(relatedMetadata?.fieldDefinition || {})
+      .filter((key) => row[key] === undefined);
+    if (!missingKeys.length) return row;
+    return {
+      ...Object.fromEntries(missingKeys.map((key) => [key, null])),
+      ...row,
+    };
+  };
+  /*
+   * SSR now projects only the static/raw source value for related rows. Any
+   * declared calculation or dynamic presentation is emitted as expression source
+   * metadata by the related-collection component and evaluated by the browser
+   * against that row's detached lexical scope.
+   */
+  const collectionValue = (row, _collectionKey, collection, fieldKey, field) => {
+    const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
+    const canonicalCalculation = relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation;
+    const expression = field.expression || canonicalCalculation?.expression;
+    const sourceField = field.sourceField ?? fieldKey;
+    const presentation = field.presentation || {};
+    const staticTone =
+      presentation.tone && typeof presentation.tone !== 'object' ? presentation.tone : null;
+    const staticIcon =
+      presentation.icon && typeof presentation.icon !== 'object' ? presentation.icon : null;
+    return {
+      raw: expression ? undefined : row?.[sourceField],
+      tone: staticTone,
+      icon: staticIcon,
+      calculated: Boolean(expression),
+      expression,
+      sourceField,
+    };
+  };
+  const relatedReferenceLabel = (sourceKey, fieldKey, value) => {
+    if (value === undefined || value === null || value === '') return '—';
+    const candidates = pageRelatedReferenceData?.[sourceKey]?.[fieldKey] || [];
+    const match = candidates.find((candidate) => candidate?.id === value);
+    return match?.name ?? String(value);
+  };
+  const relatedRowHref = (collection, row) =>
+    collection.rowHref
+      ? String(collection.rowHref).replaceAll('{id}', encodeURIComponent(String(row?.id ?? '')))
+      : null;
+  const optionItemForField = metadataOptionItemForField;
+  const enumToneClass = metadataOptionToneClass;
+  const formatValue = formatMetadataValue;
+  const { entityDebuggingDisplayRows, uiDebuggingDisplayRows } = buildMetadataDebuggingModel({
+    debuggingTabEnabled,
+    metadata,
+    metadataUI,
+    compiledEntityContext,
+    compiledEntityContextName,
+    compiledUIRecord,
+    ctxFields,
+    ctxValue,
+    dynamicUIValue,
+    overrides,
+    relatedCollections,
+    relatedMetadataRegistry,
+    pageRelatedData,
+    collectionValue,
+    relatedExpressionScope,
+    entryContextPath: v2LevelPath,
+    entryFieldValuePath: (fieldKey) => `${v2LevelPath}.fields.${fieldKey}.value`,
+  });
+  const enumItemsFor = (field) => {
+    const contextual = Array.isArray(references[field.key]) ? references[field.key] : [];
+    const canonical = Array.isArray(field.enumItems) ? field.enumItems : [];
+    const raw = contextual.length ? contextual : (field.enumValues || []).map((value) => ({ value, label: value }));
+    return raw.map((option) => ({
+      ...(canonical.find((candidate) => String(candidate?.value ?? '') === String(option?.value ?? option)) || {}),
+      ...(typeof option === 'object' ? option : { value: option, label: option }),
+    }));
+  };
+  const dateOnlyValue = (value) => value ? String(value).slice(0, 10) : '';
+  const datetimeLocalValue = (value) => value ? String(value).replace('Z', '').slice(0, 16) : '';
+  const durationParts = (value) => {
+    let source = value;
+    if (typeof source === 'string' && source.trim()) { try { source = JSON.parse(source); } catch { source = null; } }
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return { years: '', months: '', days: '' };
+    return { years: source.years ?? '', months: source.months ?? '', days: source.days ?? '' };
+  };
+  const durationSerializedValue = (value) => {
+    const parts = durationParts(value);
+    return parts.years === '' && parts.months === '' && parts.days === '' ? '' : JSON.stringify(parts);
+  };
+
+  /*
+   * Metadata components delegate through one canonical host partial. The entry
+   * renderer supplies effective field/value accessors while component selection,
+   * bindings and browser mount shape remain shared infrastructure.
+   */
+  const providerDefinitions =
+    typeof externalAuthProviderDefinitions !== 'undefined' && Array.isArray(externalAuthProviderDefinitions)
+      ? externalAuthProviderDefinitions
+      : [];
+  const v2FieldComponentContext = {
+    metadata,
+    ctxValue,
+    referenceLabel,
+    overrides,
+    expressionText,
+    compiledEntityMetadata,
+    compiledUIRecord,
+    dynamicUIValue,
+    ctxFields,
+    referenceValues: references,
+    referenceSelectorContexts: selectorContexts,
+    fieldVisible,
+    fieldEditable,
+    valueFor,
+    fieldLabel,
+    isViewMode,
+    effectiveFieldFor: effectiveField,
+    enumItemsFor,
+    dateOnlyValue,
+    datetimeLocalValue,
+    durationParts,
+    durationSerializedValue,
+    formatValue,
+  };
+  const metadataComponentContext = {
+    item,
+    metadata,
+    fieldLabel,
+    isNew,
+    isViewMode,
+    ctxValue,
+    externalAuthProviderDefinitions: providerDefinitions,
+    componentData: {
+      providerDefinitions,
+      relatedData: pageRelatedData,
+      relatedReferenceData: pageRelatedReferenceData,
+      relatedEditingData:
+        typeof relatedEditingData !== 'undefined' && relatedEditingData ? relatedEditingData : {},
+    },
+    credentialTest: typeof credentialTest !== 'undefined' ? credentialTest : null,
+    suggestedProvider: typeof suggestedProvider !== 'undefined' ? suggestedProvider : null,
+    fieldComponentContext: v2FieldComponentContext,
+  };
+  const componentBindingContractFor = (component) => {
+    const bindings = {};
+    const bindingExpressions = {};
+    for (const [bindingKey, bindingValue] of Object.entries(component?.bindings || {})) {
+      if (
+        bindingValue
+        && typeof bindingValue === 'object'
+        && typeof bindingValue.expression === 'string'
+      ) {
+        bindingExpressions[bindingKey] = bindingValue.expression;
+        continue;
+      }
+      bindings[bindingKey] = bindingValue;
+    }
+    return { bindings, bindingExpressions };
+  };
+  const componentOptionsFor = (component) => ({
+    ...(component?.options || {}),
+    entityIcon: component?.options?.entityIcon || String(definition.icon || '').replace(/^bi-/, ''),
+    ...(component?.key === 'hierarchy-tree' && typeof entryRepresentationRuntime !== 'undefined'
+      ? { entryRepresentation: entryRepresentationRuntime }
+      : {}),
+  });
+  const contentSpanContractFor = (content, fallback) => {
+    const staticSpan = Number(content?.span);
+    return {
+      fallback,
+      span: Number.isFinite(staticSpan)
+        ? Math.max(1, Math.min(12, Math.trunc(staticSpan)))
+        : fallback,
+      expression: expressionText(content?.span),
+    };
+  };
+%>
+<section class="content-card" data-ui-engine="v2" data-v2-entity-entry>
+  <form
+    class="metadata-driven-record-form"
+    method="post"
+    action="/bo/<%= definition.key %>/<%= ownerEditing ? 'owned/save' : 'save' %>"
+    data-record-mode="<%= recordMode %>"
+    data-entity-key="<%= definition.key %>"
+    data-v2-entry-form
+    data-ui-engine="v2"
+    <% if (!isViewMode) { %>data-dirty-guard="true"<% } %>
+  >
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (typeof entryPopupHost !== 'undefined' && entryPopupHost) { %>
+      <%#
+        Hosted entries carry the canonical popup invocation token. The shared
+        popup runtime uses it to convert data-form-close-cancel into a parent-
+        window popup lifecycle close rather than iframe navigation.
+      %>
+      <input type="hidden" name="_entryPopup" value="1">
+      <input type="hidden" name="_entryPopupToken" value="<%= entryPopupToken || '' %>">
+      <input type="hidden" name="_entryDefaults" value="<%= JSON.stringify(entryInvocationDefaults || {}) %>">
+      <input type="hidden" name="_entryOverrides" value="<%= JSON.stringify(entryInvocationOverrides || {}) %>">
+    <% } %>
+    <% if (!isNew && recordId) { %><input type="hidden" name="id" value="<%= recordId %>"><% } %>
+
+    <%- include('../sysbo/entry/shell/entry-tabs-nav', {
+      tabs: visibleTabs.map((tab) => ({
+        ...tab.metadata,
+        id: tab.id,
+        label: tab.label,
+        order: tab.order,
+        visibleExpression: expressionText(tab.metadata?.visible),
+        staticVisible: typeof tab.metadata?.visible === 'boolean' ? tab.metadata.visible : null,
+      })),
+      activeTabId,
+    }) %>
+
+    <% if (debuggingTabEnabled) { %>
+      <%#
+        Developer tooling is capability-gated by the UI server, but runtime tab
+        composition is browser-owned. The server supplies an inert template only;
+        entry-policy-runtime.js decides whether/where it participates in ctx.ui
+        navigation and inserts it into the live tab set.
+      %>
+      <template data-v2-developer-debugging-tab-template>
+        <li class="nav-item" role="presentation" data-v2-developer-debugging-nav>
+          <button
+            class="nav-link"
+            id="metadata-debugging-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#metadata-debugging-pane"
+            type="button"
+            role="tab"
+            aria-controls="metadata-debugging-pane"
+            aria-selected="false"
+            data-v2-tab-id="debugging"
+            data-v2-tab-static-visible="true"
+            data-navigation-track-path="activeTabId"
+            data-navigation-track-value="debugging"
+          ><i class="bi bi-bug me-1" aria-hidden="true"></i>Debugging</button>
+        </li>
+        <div
+          class="tab-pane fade entity-readonly-tab"
+          data-v2-developer-debugging-pane
+          data-readonly-tab="true"
+          id="metadata-debugging-pane"
+          role="tabpanel"
+          tabindex="0"
+        >
+          <%- include('../debugging/debugging-panel', {
+            entityDebuggingDisplayRows, uiDebuggingDisplayRows,
+            debugElementNameParts,
+            debuggingActiveScopeId,
+            debuggingEntityKey: definition.key, debuggingCsrfToken: csrfToken,
+            debuggingStartPath: v2LevelPath,
+            debuggingComponent: null
+          }) %>
+        </div>
+      </template>
+    <% } %>
+
+    <div class="tab-content entity-tab-content">
+      <% for (const tabState of visibleTabs) { const tab = tabState.metadata; %>
+        <%
+          const tabContents = Array.isArray(tab.content) && tab.content.length
+            ? tab.content
+            : (tab.fields || []).map((field) => ({ kind: 'field', field }));
+          const tabHasEditableFields = tabContents.some((content) => {
+            if (content?.kind !== 'field') return false;
+            const key = content.field;
+            if (metadataUI.record.relatedCollections?.[key]) return false;
+            const field = metadata.fieldDefinition[key];
+            return Boolean(field && !field.sensitive && fieldVisible(field) && fieldEditable(field));
+          });
+          const tabHasInteractiveComponents = tabContents.some(
+            (content) => content?.kind === 'component' && content.component?.readOnly === false,
+          );
+          const tabComponentInteractive =
+            tab.layout === 'component' && tab.component?.readOnly === false;
+          const readOnlyTab = tab.layout === 'summary'
+            || (!tabHasEditableFields && !tabHasInteractiveComponents && !tabComponentInteractive);
+        %>
+        <div
+          class="tab-pane fade <%= tabState.id === activeTabId ? 'show active' : '' %> <%= readOnlyTab ? 'entity-readonly-tab' : '' %>"
+          <%= readOnlyTab ? 'data-readonly-tab="true"' : '' %>
+          id="metadata-<%= tabState.id %>-pane"
+          role="tabpanel"
+          tabindex="0"
+        >
+          <% if (tab.layout === 'component' && tab.component) { %>
+            <%
+              const component = tab.component;
+              const { bindings: componentBindings, bindingExpressions: componentBindingExpressions } = componentBindingContractFor(component);
+              const componentOptions = componentOptionsFor(component);
+              const componentPartial = typeof metadataComponentPartialFor === 'function'
+                ? metadataComponentPartialFor(String(component.key || ''))
+                : null;
+            %>
+            <div class="row g-3">
+              <%- include('../sysbo/entry/shell/metadata-component', {
+                component,
+                componentBindings,
+                componentBindingExpressions,
+                componentOptions,
+                componentPartial,
+                metadataComponentContext,
+                definition,
+                recordMode,
+                readOnly: isViewMode || component.readOnly === true,
+                ctxScopePath: v2LevelPath,
+                span: 12,
+                spanExpression: null,
+              }) %>
+            </div>
+          <% } else if (tab.layout === 'summary') { %>
+            <%- include('../sysbo/entry/content/summary', {
+              tab,
+              relatedCollections,
+              metadata,
+              fieldVisible,
+              overrides,
+              valueFor,
+              ctxFields,
+              fieldLabel,
+              fieldEditable,
+              referenceValues: references,
+              formatValue,
+              referenceLabel,
+              pageRelatedData,
+              relatedMetadataRegistry,
+              collectionValue,
+              relatedRowHref,
+              relatedReferenceLabel,
+              optionItemForField,
+              enumToneClass,
+              enhancedReadonlyPresentation: true
+            }) %>
+          <% } else { %>
+            <div class="row g-3" data-v2-entry-fields>
+              <% const contents = Array.isArray(tab.content) && tab.content.length
+                ? tab.content
+                : (tab.fields || []).map((field) => ({ kind: 'field', field, span: 6 })); %>
+              <% for (const content of contents) { %>
+                <% if (content.kind === 'break') { %><div class="w-100" aria-hidden="true"></div><% continue; } %>
+                <% if (content.kind === 'spacer') { const spanContract = contentSpanContractFor(content, 12); %>
+                  <div
+                    class="col-md-<%= spanContract.span %>"
+                    data-metadata-layout-spacer
+                    <% if (spanContract.expression) { %>
+                      data-ui-grid-span-expression="<%= spanContract.expression %>"
+                      data-ui-grid-span-fallback="<%= spanContract.fallback %>"
+                    <% } %>
+                    aria-hidden="true"
+                  ></div>
+                  <% continue; %>
+                <% } %>
+                <% if (content.kind === 'component' && content.component?.key) { %>
+                  <%
+                    const component = content.component;
+                    const spanContract = contentSpanContractFor(content, 12);
+                    const { bindings: componentBindings, bindingExpressions: componentBindingExpressions } = componentBindingContractFor(component);
+                    const componentOptions = componentOptionsFor(component);
+                    const componentPartial = typeof metadataComponentPartialFor === 'function'
+                      ? metadataComponentPartialFor(String(component.key))
+                      : null;
+                  %>
+                  <%- include('../sysbo/entry/shell/metadata-component', {
+                    component,
+                    componentBindings,
+                    componentBindingExpressions,
+                    componentOptions,
+                    componentPartial,
+                    metadataComponentContext,
+                    definition,
+                    recordMode,
+                    readOnly: isViewMode || component.readOnly === true,
+                    ctxScopePath: v2LevelPath,
+                    span: spanContract.span,
+                    spanExpression: spanContract.expression,
+                  }) %>
+                  <% continue; %>
+                <% } %>
+                <% if (content.kind !== 'field') continue; %>
+                <% const key = content.field; %>
+                <% const spanContract = contentSpanContractFor(content, 6); %>
+                <% const field = metadata.fieldDefinition[key]; %>
+                <% if (!field || field.sensitive || !fieldVisible(field)) continue; %>
+                <% const editable = fieldEditable(field); %>
+                <div class="col-md-<%= spanContract.span %> <%= editable ? 'effective-field-editable' : 'effective-field-readonly' %>"
+                  data-v2-field-container="<%= key %>" data-ctx-field-container="<%= key %>"
+                  <% if (spanContract.expression) { %>
+                    data-ui-grid-span-expression="<%= spanContract.expression %>"
+                    data-ui-grid-span-fallback="<%= spanContract.fallback %>"
+                  <% } %>
+                  <% const visibleExpression = expressionText(overrides[key]?.visible); %>
+                  <% if (visibleExpression) { %>data-ui-visible-expression="<%= visibleExpression %>"<% } %>
+                  <% const editableExpression = expressionText(overrides[key]?.editable); %>
+                  <% if (editableExpression) { %>
+                    data-ui-editable-expression="<%= editableExpression %>"
+                    data-ui-has-readonly-value="<%= Object.prototype.hasOwnProperty.call(overrides[key] || {}, 'readOnlyValue') ? 'true' : 'false' %>"
+                    data-ui-readonly-value="<%= JSON.stringify(overrides[key]?.readOnlyValue ?? null) %>"
+                  <% } %>
+                  <% if (field.calculation?.expression) { %>
+                    data-field-calculation-expression="<%= field.calculation.expression %>"
+                    data-field-calculation-triggered-by="<%= JSON.stringify(field.calculation.triggeredBy || []) %>"
+                    data-field-calculation-persisted="<%= field.calculation.persisted === true ? 'true' : 'false' %>"
+                  <% } %>>
+                  <label class="form-label" for="metadata-field-<%= key %>">
+                    <%= fieldLabel(field) %>:<% if (fieldState(key)?.ux?.required) { %><span
+                      aria-label="required"> (*)</span><% } %>
+                  </label>
+                  <%- include('../sysbo/entry/fields/entity-field', {
+                    key, field, value: valueFor(key), editable, fieldLabel, enumItemsFor,
+                    referenceValues: references, referenceSelectorContexts: selectorContexts,
+                    effectiveFieldContext: effectiveField(key),
+                    dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue,
+                    definition
+                  }) %>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap" data-v2-entry-actions>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <% for (const action of v2CommandActions.filter((candidate) => candidate.placement === 'footer-leading')) { %>
+          <% if (!isNew && recordId && action.command) { %>
+            <button
+              class="<%= v2ActionClass(action, 'primary') %>"
+              type="submit"
+              form="metadata-command-<%= action.key %>"
+              data-v2-entry-action="<%= action.key %>"
+              hidden
+            ><% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %><%= action.label %></button>
+          <% } %>
+        <% } %>
+        <% if (!isNew && v2DeleteAction?.placement === 'footer-leading') { %>
+          <button
+            class="<%= v2ActionClass(v2DeleteAction, 'danger') %>"
+            type="button"
+            data-v2-entry-action="<%= v2DeleteAction.key %>"
+            data-bs-toggle="modal"
+            data-bs-target="#deleteEntryModal"
+            hidden
+          ><i class="bi bi-<%= v2DeleteAction.icon || 'trash' %> me-1"></i><%= v2DeleteAction.label %></button>
+        <% } %>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <% if (!isViewMode) { %>
+          <span class="form-state-indicator small text-secondary me-1" data-form-state-indicator>
+            <i class="bi bi-check-circle me-1"></i>
+            <span data-form-state-text><%= isNew ? 'New entry · incomplete' : 'No changes' %></span>
+          </span>
+        <% } %>
+        <% if (isEntryPopupHost) { %>
+          <button
+            class="btn btn-secondary"
+            type="button"
+            data-form-close-cancel
+          >
+            <i class="bi bi-x-circle me-1"></i>
+            <span data-form-close-cancel-label>Close</span>
+          </button>
+        <% } else { %>
+          <a
+            class="btn btn-secondary dirty-navigation"
+            href="/bo/<%= definition.key %>"
+            <%= isViewMode ? '' : 'data-form-close-cancel' %>
+          >
+            <i class="bi bi-x-circle me-1"></i>
+            <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
+          </a>
+        <% } %>
+        <% for (const action of v2CommandActions.filter((candidate) => candidate.placement === 'footer-trailing')) { %>
+          <% if (!isNew && recordId && action.command) { %>
+            <button
+              class="<%= v2ActionClass(action, 'primary') %>"
+              type="submit"
+              form="metadata-command-<%= action.key %>"
+              data-v2-entry-action="<%= action.key %>"
+              hidden
+            ><% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %><%= action.label %></button>
+          <% } %>
+        <% } %>
+        <% if (!isNew && v2DeleteAction?.placement === 'footer-trailing') { %>
+          <button
+            class="<%= v2ActionClass(v2DeleteAction, 'danger') %>"
+            type="button"
+            data-v2-entry-action="<%= v2DeleteAction.key %>"
+            data-bs-toggle="modal"
+            data-bs-target="#deleteEntryModal"
+            hidden
+          ><i class="bi bi-<%= v2DeleteAction.icon || 'trash' %> me-1"></i><%= v2DeleteAction.label %></button>
+        <% } %>
+        <% if (!isViewMode) { %>
+          <span data-v2-entry-action="save" hidden>
+            <%- include('../sysbo/entry/shell/save-split-action', {
+              saveAction: v2SaveAction,
+              actionClass: v2ActionClass,
+            }) %>
+          </span>
+        <% } %>
+      </div>
+    </div>
+  </form>
+</section>
+
+<% for (const action of v2CommandActions) { %>
+  <% if (!isNew && recordId && action.command) { %>
+    <form
+      id="metadata-command-<%= action.key %>"
+      method="post"
+      action="/bo/<%= definition.key %>/<%= recordId %>/<%= action.command %>"
+    >
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    </form>
+  <% } %>
+<% } %>
+
+<%- include('../../popups/messages/bo-edit-confirmations', {
+  isNew, permissions, deleteEnabled: true, definition, item: renderValues,
+  csrfToken, deletePresentation, deleteImpact
+}) %>

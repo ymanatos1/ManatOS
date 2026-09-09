@@ -144,6 +144,9 @@ export interface ExpressionExecutionContext {
 export interface ExpressionFunctionEvaluationContext {
   now: () => Date;
   owner: string;
+  /** Lexical root/current scope are exposed to CTX-capable functions only. */
+  root?: unknown;
+  scope?: unknown;
   entityResolver?: EntityResolver;
 }
 
@@ -170,6 +173,7 @@ export type ExpressionEvaluationSource =
   | 'ctx-change'
   | 'ui-metadata'
   | 'reference-selection'
+  | 'entity-list-runtime'
   | 'navigation'
   | 'test'
   | 'other';

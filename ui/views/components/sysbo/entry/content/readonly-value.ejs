@@ -1,0 +1,53 @@
+<%#
+  COMPONENT: Read-only metadata value
+
+  Purpose:
+  - Gives semantically special read-only scalar values one reusable visual
+    representation when the host explicitly opts into the enhanced presentation.
+
+  Inputs / metadata:
+  - field: canonical field metadata.
+  - presentation: resolved UI presentation metadata.
+  - rendered: already formatted display text.
+
+  CTX contract:
+  - Consumes the already-resolved field value/presentation supplied by the host;
+    it does not resolve CTX paths or mutate field state.
+
+  Embeds / delegates:
+  - None. This leaf component renders only the resolved scalar value supplied
+    by its host and deliberately does not dispatch another field component.
+
+  Runtime contract:
+  - Enhanced GUID identity is inferred from the canonical `guid + readOnly` type
+    contract, never from field names such as Id/UID. Hosts opt into presentation
+    behavior through metadata rather than field-name heuristics.
+  - Human/actor name treatment is explicitly requested by presentation.format
+    = `name`, so arbitrary strings are never guessed to be names.
+  - Canonical email values use the same compact-value visual primitive as
+    collapsed contact-collection summaries when enhanced presentation is enabled.
+%>
+<%
+  const enhanced = typeof enhancedReadonlyPresentation !== 'undefined' && enhancedReadonlyPresentation === true;
+  const systemIdentifier = enhanced && field?.type === 'guid' && field?.readOnly === true;
+  const namePresentation = enhanced && presentation?.format === 'name';
+  const emailPresentation = enhanced && field?.type === 'email';
+%>
+<% if (systemIdentifier) { %>
+  <span class="metadata-system-identifier" title="System identifier">
+    <i class="bi bi-fingerprint" aria-hidden="true"></i>
+    <code><%= rendered %></code>
+  </span>
+<% } else if (namePresentation) { %>
+  <span class="metadata-readonly-name" title="Name">
+    <i class="bi bi-person-circle" aria-hidden="true"></i>
+    <span><%= rendered %></span>
+  </span>
+<% } else if (emailPresentation) { %>
+  <span class="metadata-compact-value metadata-readonly-email" title="Email address">
+    <i class="bi bi-envelope" aria-hidden="true"></i>
+    <span><%= rendered %></span>
+  </span>
+<% } else { %>
+  <%= rendered %>
+<% } %>

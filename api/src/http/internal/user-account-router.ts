@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { internalAuditActor } from '../../audit/audit-service.js';
 import type { SysBOUserService } from '../../services/sys-user-service.js';
-import { sendCommand } from '../api-response.js';
+import { sendCommand } from '../response.js';
 import { parseEmailVerificationSource, publicUser } from './shared.js';
 
 /** Trusted SysBOUser account mutations used by recovery/setup flows. */

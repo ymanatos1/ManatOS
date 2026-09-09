@@ -2,7 +2,7 @@ import type { Request } from 'express';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
-import { metadataHierarchyWorkspaceDescriptor } from '../../presentation/metadata-hierarchy-workspace.js';
+import { metadataHierarchyWorkspaceDescriptor } from '../../presentation/metadata/hierarchy-workspace.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
 import { apiPathFor, canonicalSysBOMetadata, canonicalSysBOUIMetadata } from './data-access.js';
 

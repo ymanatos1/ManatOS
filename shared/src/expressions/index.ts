@@ -7,3 +7,5 @@ export * from './evaluator.js';
 export * from './functions/registry.js';
 
 export * from './calculated-field.js';
+
+export * from './record-projection.js';

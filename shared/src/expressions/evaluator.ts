@@ -2,7 +2,7 @@ import {
   contextPathOf,
   type ManatOSCalculatedContextField,
   type ManatOSContextField,
-} from '../context.js';
+} from '../context/manatos-context.js';
 import { ExpressionEvaluationError, emitExpressionDiagnostic } from './diagnostics.js';
 import { expressionFunctions } from './functions/registry.js';
 import { compileExpression } from './parser.js';
@@ -170,12 +170,17 @@ function assertComparableScalars(left: unknown, right: unknown, operator: string
 
 /** JS-compatible abstract equality for the supported scalar runtime domain. */
 function looseEqual(left: unknown, right: unknown): boolean {
+  // Null checks are intentionally valid for every runtime value, including structured
+  // values. This lets metadata guard object-valued fields before invoking functions
+  // without defining general object-to-object equality semantics.
+  if (left == null || right == null) return left == right;
   assertComparableScalars(left, right, '==');
   // Intentional JS/TS-style coercive equality; === remains available explicitly.
   return left == right;
 }
 
 function strictEqual(left: unknown, right: unknown): boolean {
+  if (left == null || right == null) return left === right;
   assertComparableScalars(left, right, '===');
   return left === right;
 }
@@ -348,6 +353,8 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
       return definition.evaluate(args, {
         now: state.options.now ?? (() => new Date()),
         owner: 'sync',
+        root: state.ctxRoot,
+        scope: state.currentCtxNode,
       });
     }
   }
@@ -566,6 +573,8 @@ export async function evaluateCompiledExpressionAsync(
         const context = {
           now: options.now ?? (() => new Date()),
           owner: execution.owner,
+          root: execution.root,
+          scope,
           ...(execution.entityResolver ? { entityResolver: execution.entityResolver } : {}),
         };
         if (

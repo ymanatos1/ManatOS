@@ -4,6 +4,7 @@ import {
   MANATOS_COMPANY,
   allManatOSObjectMetadata,
   resolvePlatform,
+  sysBOUsersMetadata,
   type PlatformAuthorizationCapabilities,
   type SysBOApplication,
   type SysBOUser,
@@ -23,6 +24,13 @@ import { buildRootScope } from '../context/root-scope.js';
 
 import { effectiveSysBODefinitions } from '../sysbo/definitions.js';
 import { createManatOSContext, registerContextEntity } from '../context/manatos-context.js';
+import { materializeCalculatedContextFields } from '../runtime/projection/calculated-record-projector.js';
+
+/**
+ * The browser V2 host owns runtime UI topology. This middleware supplies only
+ * root facts/metadata needed by that client runtime; it deliberately does not
+ * manufacture a server-side ctx.ui tree.
+ */
 
 /**
  * Supplies the complete SysBO definitions and scope tree to every EJS page
@@ -137,6 +145,19 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
      */
     for (const metadata of Object.values(allManatOSObjectMetadata)) {
       registerContextEntity(res.locals.ctx, metadata.key, metadata);
+    }
+
+    if (res.locals.ctx.user) {
+      await materializeCalculatedContextFields(
+        sysBOUsersMetadata,
+        res.locals.ctx,
+        res.locals.ctx.user.fields,
+        {
+          source: 'renderer',
+          sourcePath: 'ctx.user',
+          purpose: 'materialize authenticated-user calculated fields before CTX publication',
+        },
+      );
     }
 
     // Anonymous/auth-entry presentation starts from the safe local default: no providers.

@@ -30,7 +30,7 @@
   // role normally has entity-level delete permission.
   const deleteAuthorized = typeof deleteImpact === 'undefined' || deleteImpact?.authorized !== false;
 %>
-<% if (!isNew && permissions.delete && deleteEnabled && deleteAuthorized) { %>
+<% if (!isNew && deleteEnabled && deleteAuthorized && deleteImpact) { %>
   <div
     class="modal fade"
     id="deleteEntryModal"

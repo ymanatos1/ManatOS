@@ -7,7 +7,7 @@ import { emailService } from '../../email/email-service.js';
 import { securityTokenStore } from '../../security/security-token-store.js';
 import { isRecoveryIdentitySyntaxValid } from '../../auth/recovery-identity.js';
 import { requireCsrf } from '../../middleware/csrf.js';
-import { renderPage } from '../../presentation/render-page.js';
+import { renderPage } from '../../presentation/page/render-page.js';
 import {
   absoluteUrl,
   createTrustedApiSession,

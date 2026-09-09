@@ -1,0 +1,217 @@
+<%#
+  COMPONENT: V2 EntityList visual renderer
+
+  Purpose:
+  - Renders the host-neutral V2 EntityList snapshot using canonical list metadata and shared list presentation primitives.
+
+  Inputs / metadata:
+  - Entity/list metadata, resolved actions, query/paging state, rows and entry representations supplied by the V2 route adapter.
+
+  CTX contract:
+  - Render-only projection; semantic list/query state is owned by EntityListRuntime rather than inferred from DOM state.
+
+  Embeds / delegates:
+  - Reuses the canonical toolbar, filters, table cells/header and paging components shared with selector/list surfaces.
+
+  Runtime contract:
+  - Contains no data acquisition or entity-specific decisions; EntityListRuntime and route adapters resolve those before rendering.
+%>
+<%
+  /*
+   * UI action policy crosses the boundary as canonical expression source.
+   * The browser compiles it locally with the shared parser, caches the AST, and
+   * evaluates it against client-owned list facts after ctx.ui is constructed.
+   */
+  const clientDynamicValue = (value) => {
+    if (value && typeof value === 'object' && !Array.isArray(value) && typeof value.expression === 'string') {
+      return { kind: 'expression', source: value.expression };
+    }
+    return { kind: 'static', value };
+  };
+  const clientAddAction = {
+    key: 'add',
+    label: metadataUI.list.addAction.label,
+    href: '/bo/' + definition.key + '/new',
+    visible: clientDynamicValue(metadataUI.list.addAction.visible),
+    enabled: clientDynamicValue(metadataUI.list.addAction.enabled ?? true),
+    disabledReason: clientDynamicValue(metadataUI.list.addAction.disabledReason ?? null)
+  };
+  const clientPageActions = Object.entries(metadataUI.list.pageActions || {})
+    .map(([key, action]) => {
+      const tone = action.tone || 'secondary';
+      const outline = action.emphasis === 'outline';
+      return {
+        key,
+        ...action,
+        visible: clientDynamicValue(action.visible ?? true),
+        cssClass: `btn ${outline ? `btn-outline-${tone}` : `btn-${tone}`}`
+      };
+    })
+    .sort((left, right) => (left.order || 0) - (right.order || 0));
+  const clientListActionRuntime = { add: clientAddAction, pageActions: clientPageActions };
+%>
+
+<% if (!hasAnyEntries) { %>
+  <section class="empty-entity-state" data-ui-engine="v2" data-v2-entity-list>
+    <i class="bi bi-inbox" aria-hidden="true"></i>
+    <strong>No entries found</strong>
+    <span>This entity does not contain any entries yet.</span>
+
+    <div class="d-flex gap-2 flex-wrap justify-content-center mt-2">
+      <a
+        class="btn btn-success"
+        href="<%= clientAddAction.href %>"
+        data-v2-list-action="add"
+        data-action-href="<%= clientAddAction.href %>"
+        data-action-title="<%= clientAddAction.label %>"
+        title="<%= clientAddAction.label %>"
+        hidden
+      >
+        <i class="bi bi-plus-circle me-1"></i>
+        Add the first entry
+      </a>
+      <% for (const action of clientPageActions) { %>
+        <% if (action.kind !== 'navigate') continue; %>
+        <a
+          class="<%= action.cssClass %>"
+          href="<%= action.href %>"
+          title="<%= action.title || action.label %>"
+          data-v2-list-action="page:<%= action.key %>"
+          data-action-href="<%= action.href %>"
+          data-action-title="<%= action.title || action.label %>"
+          hidden
+        >
+          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= action.label %>
+        </a>
+      <% } %>
+    </div>
+  </section>
+<% } else { %>
+  <%
+    const filterFields = metadataUI.list.filterFields;
+    const activeFilterCount = filterFields.filter((key) => String(query[`filter.${key}`] || '').trim() !== '').length;
+    const hasActiveFilters = activeFilterCount > 0;
+    const filterCollapseId = `metadata-filters-${definition.key}`;
+    const listReferenceValues = typeof referenceData !== 'undefined' && referenceData ? referenceData : {};
+    const referenceEntry = (fieldKey, value) => {
+      if (value === undefined || value === null || value === '') return null;
+      return (listReferenceValues[fieldKey] || []).find((candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value)) || null;
+    };
+    const referenceLabel = (fieldKey, value) => {
+      if (value === undefined || value === null || value === '') return '—';
+      const match = referenceEntry(fieldKey, value);
+      return match?.label ?? match?.name ?? String(value);
+    };
+    const optionItem = metadataOptionItemForField;
+    // Filters still use canonical enum constraints, so retain this narrow alias.
+    const enumItem = (field, value) => optionItem({ enumItems: field.enumItems || [] }, value);
+    const enumToneClass = metadataOptionToneClass;
+    const durationLabel = (value) => formatMetadataValue(value);
+    const rowActions = Object.entries(metadataUI.list.rowActions || {})
+      .map(([key, action]) => ({ key, ...action }))
+      .filter((action) => action.visible !== false)
+      .sort((left, right) => (left.order || 0) - (right.order || 0));
+    const rowActionClass = (action) => {
+      const tone = action.tone || 'secondary';
+      const outline = action.emphasis === 'outline';
+      return `btn btn-sm ${outline ? `btn-outline-${tone}` : `btn-${tone}`}`;
+    };
+    const rowActionHref = (action, item) =>
+      String(action.href || '').replaceAll('{id}', encodeURIComponent(String(item.id || '')));
+  %>
+
+  <section
+    class="content-card sysbo-list-page"
+    data-ui-engine="v2"
+    data-v2-entity-list
+    data-entity-key="<%= definition.key %>"
+    data-default-page-size="<%= paging.pageSize %>"
+    data-allowed-page-sizes="<%= pageSizeOptions.join(',') %>"
+  >
+    <% if (metadataUI.list.notice) { %>
+      <div class="alert alert-<%= metadataUI.list.notice.tone || 'info' %> border d-flex gap-2 align-items-start mb-3" role="note" data-metadata-list-notice>
+        <% if (metadataUI.list.notice.icon) { %><i class="bi bi-<%= metadataUI.list.notice.icon %> mt-1" aria-hidden="true"></i><% } %>
+        <div>
+          <% if (metadataUI.list.notice.title) { %><strong><%= metadataUI.list.notice.title %></strong> <% } %><%= metadataUI.list.notice.text %>
+        </div>
+      </div>
+    <% } %>
+    <%- include('../sysbo/list/list-toolbar', {
+      selectorMode: false,
+      totalEntries: paging.total,
+      filterFields,
+      hasActiveFilters,
+      activeFilterCount,
+      filterCollapseId,
+      query,
+      definition,
+      clientPageActions,
+      clientAddAction,
+      searchPlaceholder: `Search ${metadata.pluralName.toLowerCase()}`
+    }) %>
+
+    <%- include('../sysbo/list/list-filters', { filterFields, hasActiveFilters, filterCollapseId, metadata, query, enumItem, listReferenceValues, definition }) %>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <%- include('../sysbo/list/list-table-header', { selectorMode: false, metadata, metadataUI, query, rowActions }) %>
+        </thead>
+
+        <tbody>
+          <% if (!items.length) { %>
+            <tr>
+              <td class="empty-table-state" colspan="<%= metadataUI.list.visibleFields.length + (rowActions.length ? 1 : 0) %>">
+                <i class="bi bi-search"></i>
+                <strong>No entries found</strong>
+                <span>No existing entries match the current filter. Change or clear the filters.</span>
+              </td>
+            </tr>
+          <% } %>
+
+          <% for (const item of items) { %>
+            <tr>
+              <%- include('../sysbo/list/list-row-cells', {
+                item,
+                metadata,
+                metadataUI,
+                definition,
+                visibleFields: metadataUI.list.visibleFields,
+                listReferenceValues,
+                optionItem,
+                enumToneClass,
+                entryRepresentation: typeof entryRepresentations !== 'undefined' ? entryRepresentations.get(String(item.id || '')) : null,
+                selectorMode: false
+              }) %>
+              <% if (rowActions.length) { %>
+                <td class="text-end">
+                  <div class="d-inline-flex gap-1">
+                    <% for (const action of rowActions) { %>
+                      <% if (action.kind === 'navigate') { %>
+                        <a
+                          class="<%= rowActionClass(action) %>"
+                          href="<%= rowActionHref(action, item) %>"
+                          title="<%= action.title || action.label %>"
+                          aria-label="<%= action.title || action.label %>"
+                        >
+                          <% if (action.icon) { %><i class="bi bi-<%= action.icon %>" aria-hidden="true"></i><% } %>
+                          <span class="<%= action.icon ? 'd-none d-xl-inline ms-1' : '' %>"><%= action.label %></span>
+                        </a>
+                      <% } %>
+                    <% } %>
+                  </div>
+                </td>
+              <% } %>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (paging) { %>
+      <%- include('../sysbo/list/list-paging', { selectorMode: false, paging, pageSizeOptions, filterFields, query, definition }) %>
+    <% } %>
+  </section>
+<% } %>
+
+<script id="manatosListActionMetadata" type="application/json"><%- JSON.stringify(clientListActionRuntime).replace(/</g, '\\u003c') %></script>

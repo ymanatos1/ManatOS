@@ -31,23 +31,35 @@
     <% if (collection || !field || !fieldVisible(field) || field.sensitive) continue; %>
     <% const presentation = overrides[key]?.presentation || {}; %>
     <% const rawValue = valueFor(key); %>
-    <% const tone = dynamicUIValue(presentation.tone, ctxFields, {
-      source: 'ui-metadata',
-      sourcePath: `fieldOverrides.${key}.presentation.tone`,
-      targetPath: `fields.${key}.tone`,
-      purpose: 'resolve summary field presentation tone',
-    }); %>
-    <% const stateIcon = dynamicUIValue(presentation.icon, ctxFields, {
-      source: 'ui-metadata',
-      sourcePath: `fieldOverrides.${key}.presentation.icon`,
-      targetPath: `fields.${key}.icon`,
-      purpose: 'resolve summary field presentation icon',
-    }); %>
+    <%# Dynamic summary presentation is interpreted by the browser against the owning V2 entry CTX. %>
+    <% const toneDeclaration = presentation.tone; %>
+    <% const iconDeclaration = presentation.icon; %>
+    <% const toneExpression = toneDeclaration
+      && typeof toneDeclaration === 'object'
+      && typeof toneDeclaration.expression === 'string'
+        ? toneDeclaration.expression
+        : null; %>
+    <% const iconExpression = iconDeclaration
+      && typeof iconDeclaration === 'object'
+      && typeof iconDeclaration.expression === 'string'
+        ? iconDeclaration.expression
+        : null; %>
+    <% const tone = toneExpression ? null : toneDeclaration; %>
+    <% const stateIcon = iconExpression ? null : iconDeclaration; %>
     <% const rendered = field.type === 'reference'
       ? referenceLabel(key, rawValue)
       : formatValue(rawValue, presentation); %>
     <div class="account-summary-label"><%= fieldLabel(field) %>:</div>
-    <div class="account-summary-value">
+    <div
+      class="account-summary-value"
+      data-v2-summary-presentation
+      <% if (toneExpression) { %>
+        data-v2-summary-tone-expression="<%= toneExpression %>"
+      <% } %>
+      <% if (iconExpression) { %>
+        data-v2-summary-icon-expression="<%= iconExpression %>"
+      <% } %>
+    >
       <% if (field.type === 'reference' && fieldEditable(field)) { %>
         <%- include('../fields/reference-select', {
           key,
@@ -57,6 +69,10 @@
           referenceValues,
           fieldLabel
         }) %>
+      <% } else if (
+        toneExpression || iconExpression
+      ) { %>
+        <span data-v2-summary-dynamic-value><%= rendered %></span>
       <% } else if (stateIcon) { %>
         <span class="status-value <%= tone === 'success' ? 'status-positive' : 'status-neutral' %>">
           <i class="bi bi-<%= stateIcon %>" aria-hidden="true"></i>
@@ -67,7 +83,14 @@
       <% } else if (rendered === (presentation.emptyText || '—')) { %>
         <span class="text-secondary"><%= rendered %></span>
       <% } else { %>
-        <%= rendered %>
+        <%- include('readonly-value', {
+          field,
+          presentation,
+          rendered,
+          enhancedReadonlyPresentation:
+            typeof enhancedReadonlyPresentation !== 'undefined' &&
+            enhancedReadonlyPresentation === true,
+        }) %>
       <% } %>
     </div>
   <% } %>

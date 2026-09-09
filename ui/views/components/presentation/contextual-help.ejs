@@ -5,10 +5,11 @@
   - Selects metadata-supplied contextual help for the current item and delegates information rendering.
 
   Inputs / metadata:
-  - component.options, componentData and componentBindings select the data channel, item key and help payload.
+  - component.options and componentData select the data channel, item key and help payload.
+  - componentBindings may contain a static initial selection; dynamic selection is applied by the browser.
 
   CTX contract:
-  - Reads already-resolved component bindings; does not create or mutate canonical CTX.
+  - Does not evaluate CTX. Dynamic selection arrives through the generic metadata-component binding runtime.
 
   Embeds / delegates:
   - information-panel.ejs.

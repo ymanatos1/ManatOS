@@ -26,7 +26,7 @@
    * local command history; startPath owns only the initial evaluation scope.
    */
   const cliInstanceKey = typeof instanceKey === 'string' && instanceKey ? instanceKey : 'page';
-  const cliStartPath = typeof startPath === 'string' && startPath ? startPath : 'ctx.page.page';
+  const cliStartPath = typeof startPath === 'string' && startPath ? startPath : 'ctx.ui.level';
   const cliDocked = typeof docked !== 'undefined' && docked === true;
 %>
 <section

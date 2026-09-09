@@ -1,4 +1,4 @@
-import { SysBOExtAuthProviderType } from '../../domain.js';
+import { SysBOExtAuthProviderType } from '../../domain/entities.js';
 import type { SysBOFieldMetadata } from './types.js';
 
 /**
@@ -16,10 +16,19 @@ import type { SysBOFieldMetadata } from './types.js';
  * exists because it is declared immediately here.
  */
 export const externalAuthProviderOptionItems = [
-  { value: SysBOExtAuthProviderType.Microsoft, label: 'Microsoft', icon: 'microsoft' },
-  { value: SysBOExtAuthProviderType.Google, label: 'Google', icon: 'google' },
-  { value: SysBOExtAuthProviderType.Facebook, label: 'Facebook', icon: 'facebook' },
-  { value: SysBOExtAuthProviderType.GitHub, label: 'GitHub', icon: 'github' },
+  {
+    value: SysBOExtAuthProviderType.Microsoft,
+    label: 'Microsoft',
+    icon: 'microsoft',
+    tenant: 'common',
+  },
+  // Keep optional provider traits structurally present. The expression language
+  // is intentionally strict about missing object members, so metadata formulas
+  // may safely inspect `provider.option.tenant` for every provider without
+  // weakening object-path semantics globally.
+  { value: SysBOExtAuthProviderType.Google, label: 'Google', icon: 'google', tenant: null },
+  { value: SysBOExtAuthProviderType.Facebook, label: 'Facebook', icon: 'facebook', tenant: null },
+  { value: SysBOExtAuthProviderType.GitHub, label: 'GitHub', icon: 'github', tenant: null },
 ] as const;
 
 export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {

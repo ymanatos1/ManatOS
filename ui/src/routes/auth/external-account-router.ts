@@ -10,7 +10,7 @@ import {
   externalVerificationSource,
 } from '../../auth/providers/runtime-registry.js';
 import { requireCsrf } from '../../middleware/csrf.js';
-import { renderPage } from '../../presentation/render-page.js';
+import { renderPage } from '../../presentation/page/render-page.js';
 import {
   absoluteUrl,
   createTrustedApiSession,

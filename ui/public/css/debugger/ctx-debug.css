@@ -88,8 +88,38 @@
   color: #5f6b7a;
 }
 
+.ctx-debug-node-icon {
+  width: 1rem;
+  flex: 0 0 1rem;
+  text-align: center;
+  color: #5d7187;
+  font-size: 0.78rem;
+}
+
+.ctx-debug-row.is-selected .ctx-debug-node-icon {
+  color: inherit;
+}
+
 .ctx-debug-key {
   font-weight: 600;
+}
+
+.ctx-debug-ui-level-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.45rem;
+  padding: 0.02rem 0.38rem;
+  border: 1px solid rgba(13, 110, 253, 0.28);
+  border-radius: 999px;
+  background: rgba(13, 110, 253, 0.08);
+  color: #315f91;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ctx-debug-row.is-selected .ctx-debug-ui-level-badge {
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .ctx-debug-expand-action {
@@ -1231,8 +1261,24 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
   background: #f8fafc;
 }
 
-.developer-tools-tab {
+.developer-tools-tab-strip {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.developer-tools-tab {
+  /* Let tabs share a narrow strip before horizontal scrolling is necessary.
+   * Every tab owns a clipped box, so partial captions remain useful without
+   * ever painting into a neighbouring caption. */
+  flex: 1 1 8.5rem;
+  min-width: 6.75rem;
+  max-width: 14rem;
+  overflow: hidden;
   border: 0;
   border-right: 1px solid var(--manatos-border);
   border-bottom: 2px solid transparent;
@@ -1246,8 +1292,27 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
 }
 
 .developer-tools-tab-caption {
+  min-width: 0;
+  overflow: hidden;
   color: #172b4d;
   font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.developer-tools-tab:not(.developer-tools-target-tab) {
+  display: flex;
+  align-items: center;
+  min-width: 7.25rem;
+}
+.developer-tools-tab:not(.developer-tools-target-tab) .developer-tools-tab-caption {
+  flex: 0 1 auto;
+}
+.developer-tools-tab:not(.developer-tools-target-tab) .developer-tools-tab-subtitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .developer-tools-tab-subtitle {
   margin-left: 0.2rem;
@@ -1268,11 +1333,77 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
   font-weight: 700;
 }
 
+.developer-tools-detach {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: 0.2rem;
+}
+
 .developer-tools-close {
   flex: 0 0 auto;
   align-self: center;
-  margin: 0 0.5rem 0 auto;
+  margin: 0 0.5rem 0 0.2rem;
   font-size: 0.7rem;
+}
+
+.developer-tools-tab-overflow {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.developer-tools-tab-overflow-toggle {
+  width: 1.55rem;
+  height: 100%;
+  border-left: 1px solid var(--manatos-border);
+  border-radius: 0;
+}
+
+.developer-tools-tab-overflow-menu {
+  position: absolute;
+  z-index: 1065;
+  top: calc(100% + 0.15rem);
+  right: 0;
+  width: max-content;
+  min-width: 12rem;
+  max-width: min(28rem, 78vw);
+  max-height: min(24rem, 70vh);
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.3rem;
+  background: #fff;
+  box-shadow: 0 0.35rem 0.8rem rgba(15, 23, 42, 0.16);
+}
+
+.developer-tools-tab-overflow-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.38rem 0.5rem;
+  border: 0;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: #344054;
+  text-align: left;
+  font-size: 0.7rem;
+}
+
+.developer-tools-tab-overflow-item:hover,
+.developer-tools-tab-overflow-item.is-active {
+  background: #eef5ff;
+  color: #0d6efd;
+}
+
+.developer-tools-tab-overflow-item-caption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .developer-tools-body > .debug-panel,
@@ -1337,4 +1468,151 @@ html[data-manatos-debug-visible='true'][data-manatos-debug-tab='ctx'] #debugPane
 html[data-manatos-debug-visible='true'][data-manatos-debug-tab='apiTraffic']
   #apiTrafficPanel.d-none {
   display: flex !important;
+}
+
+/* =========================================================================
+   Targeted CTX view tabs
+   =========================================================================
+ * A targeted view is another tab in the same Developer Tools dock. It owns no
+ * business state: the tab stores only a canonical CTX root path plus debugger
+ * presentation state and renders that live subtree from ManatOS.ctx.
+ */
+.developer-tools-target-tab-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  flex: 1 1 8rem;
+  width: auto;
+  min-width: 6.25rem;
+  max-width: 13rem;
+  overflow: hidden;
+  border-right: 1px solid var(--manatos-border);
+}
+
+.developer-tools-target-tab {
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  border-right: 0;
+  padding-right: 1.75rem;
+}
+
+.developer-tools-target-tab .developer-tools-tab-caption {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.developer-tools-target-tab-close {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: #7a8796;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.developer-tools-target-tab-close:hover {
+  background: rgba(13, 110, 253, 0.1);
+  color: #0d6efd;
+}
+
+.developer-tools-body > .ctx-target-view-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.ctx-target-view-root {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: #7a8796;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.64rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctx-target-view-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ctx-target-view-missing {
+  margin: 0.55rem;
+  padding: 0.65rem;
+  border: 1px dashed #b8c7d9;
+  border-radius: 0.3rem;
+  color: #6c757d;
+  font-family: var(--bs-body-font-family, sans-serif);
+  font-size: 0.72rem;
+  white-space: normal;
+}
+
+/* Persistent debugger workspace targeted-view affordances. */
+.developer-tools-tab-strip > [data-debug-tab-draggable='true'] {
+  cursor: grab;
+}
+
+.developer-tools-tab-strip > [data-debug-tab-draggable='true'].is-dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.ctx-target-view-path-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 1.85rem;
+  padding: 0.25rem 0.55rem;
+  border-bottom: 1px solid var(--manatos-border);
+  background: #fff;
+}
+
+.ctx-target-view-path-row .ctx-target-view-root {
+  margin-left: 0;
+  flex: 1 1 auto;
+  color: #5f6f82;
+  font-size: 0.68rem;
+}
+
+.ctx-target-view-availability {
+  flex: 0 0 auto;
+  color: #198754;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.ctx-target-view-availability.is-missing {
+  color: #a66a00;
+}
+
+.ctx-target-view-properties-panel {
+  flex: 0 0 auto;
 }

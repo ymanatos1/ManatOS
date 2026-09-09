@@ -8,6 +8,9 @@ REM  Creates src.zip containing the complete root src folder,
 REM  excluding generated/dependency/private files only:
 REM
 REM    root src\node_modules\
+REM    root src\.git\
+REM    data\logs\
+REM    verify-run.log
 REM    api\node_modules\
 REM    api\dist\
 REM    api\.env
@@ -94,15 +97,18 @@ REM the requested dependency/build folders and API/UI .env files.
 REM Path-qualified exclusions deliberately avoid excluding unrelated
 REM folders/files that happen to have the same name elsewhere.
 "%SEVENZIP%" a -tzip "src.zip" ".\*" ^
-    -xr!"node_modules\*" ^
-    -xr!"api\node_modules\*" ^
-    -xr!"api\dist\*" ^
+    -xr!"node_modules" ^
+    -xr!".git" ^
+    -xr!"data\logs" ^
+    -x!"verify-run.log" ^
+    -xr!"api\node_modules" ^
+    -xr!"api\dist" ^
     -xr!"api\.env" ^
-    -xr!"ui\node_modules\*" ^
-    -xr!"ui\dist\*" ^
+    -xr!"ui\node_modules" ^
+    -xr!"ui\dist" ^
     -xr!"ui\.env" ^
-    -xr!"shared\node_modules\*" ^
-    -xr!"shared\dist\*" ^
+    -xr!"shared\node_modules" ^
+    -xr!"shared\dist" ^
     -x!"src.zip"
 
 if errorlevel 1 call :Finish 1 "7-Zip failed while creating src.zip."

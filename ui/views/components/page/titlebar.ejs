@@ -1,0 +1,42 @@
+<%#
+  COMPONENT: Workspace title bar
+
+  Purpose:
+  - Owns the reusable page-title surface shared by shell-framed pages and
+    content-composed page components.
+
+  Inputs / metadata:
+  - title, titleIcon and optional titleSubtitle.
+
+  CTX contract:
+  - Reads no entry-field CTX directly; page identity is supplied by its composing page.
+
+  Embeds / delegates:
+  - Pure title presentation; no runtime-selection controls belong here.
+
+  Runtime contract:
+  - Pure page-title presentation; it owns no navigation, popup lifecycle or entry state.
+
+  Host contract:
+  - This component contains page identity/presentation only.
+  - Breadcrumbs remain shell/navigation chrome and must never be embedded here.
+  - Popup captions remain PopupHost chrome and therefore do not use this component.
+%>
+<div class="workspace-titlebar">
+  <div class="workspace-title-copy">
+    <h1>
+      <% if (typeof titleIcon === 'string' && titleIcon) { %>
+        <i
+          class="bi <%= titleIcon %> workspace-title-icon me-2"
+          aria-hidden="true"
+        ></i>
+      <% } %>
+      <%= title || 'Home' %>
+    </h1>
+
+    <% if (typeof titleSubtitle === 'string' && titleSubtitle) { %>
+      <p class="workspace-title-subtitle"><%= titleSubtitle %></p>
+    <% } %>
+  </div>
+
+</div>

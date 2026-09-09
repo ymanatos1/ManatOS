@@ -23,11 +23,41 @@
    * canonical/entity expressions and UI/presentation expressions visually
    * separate without teaching this generic component any SysBO-specific paths.
    */
-  const debuggingSections = [
-    { id: 'cli', label: 'CLI', rows: [] },
-    { id: 'entity', label: 'Entity', rows: entityDebuggingDisplayRows || [] },
-    { id: 'ui', label: 'UI', rows: uiDebuggingDisplayRows || [] },
-  ];
+  /*
+   * Internal navigation declarations come from the Debugging component metadata
+   * injected into the effective UI contract. This implementation supplies only
+   * runtime row data for each semantic section; it does not declare navigation.
+   */
+  const suppliedDebuggingComponent =
+    typeof debuggingComponent !== 'undefined' ? debuggingComponent : null;
+  const defaultSectionTrack = { statePath: 'activeInternalTabIds.debugging' };
+  const sectionDefinitions = Array.isArray(suppliedDebuggingComponent?.options?.sections)
+    ? suppliedDebuggingComponent.options.sections
+    : [
+        /* System pages that do not supply Debugging component metadata use the
+         * same stable internal-tab state path and default section catalogue. */
+        { id: 'cli', label: 'CLI', navigationTrack: defaultSectionTrack },
+        { id: 'entity', label: 'Entity', navigationTrack: defaultSectionTrack },
+        { id: 'ui', label: 'UI', navigationTrack: defaultSectionTrack },
+      ];
+  const sectionRows = {
+    cli: [],
+    entity: entityDebuggingDisplayRows || [],
+    ui: uiDebuggingDisplayRows || [],
+  };
+  const debuggingSections = sectionDefinitions
+    .filter((section) => section && typeof section.id === 'string')
+    .map((section) => ({
+      ...section,
+      rows: sectionRows[section.id] || [],
+    }));
+  const requestedDebuggingScope =
+    typeof debuggingActiveScopeId !== 'undefined' ? debuggingActiveScopeId : null;
+  const activeDebuggingScopeId = debuggingSections.some(
+    (section) => section.id === requestedDebuggingScope,
+  )
+    ? requestedDebuggingScope
+    : 'cli';
 %>
 
 <ul class="nav nav-tabs debugging-scope-tabs mb-3" role="tablist" data-debugging-scope-tabs>
@@ -35,14 +65,16 @@
     <% const section = debuggingSections[index]; %>
     <li class="nav-item" role="presentation">
       <button
-        class="nav-link <%= index === 0 ? 'active' : '' %>"
+        class="nav-link <%= section.id === activeDebuggingScopeId ? 'active' : '' %>"
         id="debugging-<%= section.id %>-tab"
         data-bs-toggle="tab"
         data-bs-target="#debugging-<%= section.id %>-pane"
         type="button"
         role="tab"
         aria-controls="debugging-<%= section.id %>-pane"
-        aria-selected="<%= index === 0 ? 'true' : 'false' %>"
+        aria-selected="<%= section.id === activeDebuggingScopeId ? 'true' : 'false' %>"
+        data-navigation-track-path="<%= section.navigationTrack.statePath %>"
+        data-navigation-track-value="<%= section.id %>"
       ><%= section.label %></button>
     </li>
   <% } %>
@@ -52,7 +84,7 @@
   <% for (let index = 0; index < debuggingSections.length; index += 1) { %>
     <% const section = debuggingSections[index]; %>
     <div
-      class="tab-pane fade <%= index === 0 ? 'show active' : '' %>"
+      class="tab-pane fade <%= section.id === activeDebuggingScopeId ? 'show active' : '' %>"
       id="debugging-<%= section.id %>-pane"
       role="tabpanel"
       aria-labelledby="debugging-<%= section.id %>-tab"
@@ -64,7 +96,7 @@
           startPath:
             (typeof debuggingStartPath !== 'undefined' && debuggingStartPath)
               ? debuggingStartPath
-              : 'ctx.page.page',
+              : 'ctx.ui.level',
           csrfToken: debuggingCsrfToken,
           docked: false
         }) %>

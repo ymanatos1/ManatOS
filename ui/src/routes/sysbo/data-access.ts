@@ -1,10 +1,9 @@
 import type { Request } from 'express';
 
 import {
-  compileExpression,
   evaluateExpression,
   resolveEntryRepresentation,
-  type CompiledExpression,
+  type ManatOSContext,
   type SysBOFieldMetadata,
   type SysBOMetadata,
   type SysBOUIMetadata,
@@ -15,6 +14,8 @@ import { apiSessionOptions } from '../../auth/api-session.js';
 import { getSysBODefinition } from '../../sysbo/definitions.js';
 import { apiPathFor } from '../../sysbo/api-path.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
+import { entityContextName } from '../../context/manatos-context.js';
+import { createCalculatedRecordProjector } from '../../runtime/projection/calculated-record-projector.js';
 
 export { apiPathFor } from '../../sysbo/api-path.js';
 
@@ -61,7 +62,7 @@ export async function canonicalSysBOUIMetadata(
 
 export interface ReferenceSelectorContext {
   referenceData: Record<string, Readonly<Record<string, unknown>>[]>;
-  queryPredicate: CompiledExpression | null;
+  queryPredicate: string | null;
 }
 
 /** Escape one scalar for the canonical ManatOS expression grammar. */
@@ -73,22 +74,19 @@ function expressionStringLiteral(value: string): string {
  * Build the canonical selector predicate for candidates that are currently
  * unavailable through relationship uniqueness.
  *
- * True means "unavailable". The predicate is compiled once on the server and
- * is safe to expose through CTX/debugger tooling; browser runtimes evaluate the
- * emitted AST and never reparse the source string.
+ * True means "unavailable". Expression source is the portable selector contract;
+ * the browser compiles/caches its runtime-local AST through the shared compiler.
  */
 function unavailablePredicate(
   candidates: readonly Readonly<Record<string, unknown>>[],
-): CompiledExpression | null {
+): string | null {
   const unavailableIds = candidates
     .filter((candidate) => candidate.__referenceUnavailable === true)
     .map((candidate) => candidate.id ?? candidate.value)
     .filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   if (!unavailableIds.length) return null;
-  return compileExpression(
-    `id IN [${unavailableIds.map((value) => expressionStringLiteral(value)).join(', ')}]`,
-  );
+  return `id IN [${unavailableIds.map((value) => expressionStringLiteral(value)).join(', ')}]`;
 }
 
 /**
@@ -101,6 +99,7 @@ export async function selectorContextForReferenceField(
   req: Request,
   field: SysBOFieldMetadata,
   candidates: readonly Readonly<Record<string, unknown>>[],
+  ctx?: ManatOSContext,
 ): Promise<ReferenceSelectorContext> {
   if (!field.referenceBOKey) {
     return { referenceData: {}, queryPredicate: unavailablePredicate(candidates) };
@@ -114,7 +113,7 @@ export async function selectorContextForReferenceField(
   }
 
   return {
-    referenceData: await references(req, targetDefinition),
+    referenceData: await references(req, targetDefinition, { ctx }),
     queryPredicate: unavailablePredicate(candidates),
   };
 }
@@ -129,6 +128,11 @@ export async function selectorContextForReferenceField(
 export async function references(
   req: Request,
   definition: SysBODefinition,
+  options: Readonly<{
+    sourceRecordId?: string | null;
+    sourceRecord?: Readonly<Record<string, unknown>> | null;
+    ctx?: ManatOSContext | undefined;
+  }> = {},
 ): Promise<Record<string, Readonly<Record<string, unknown>>[]>> {
   const output: Record<string, Readonly<Record<string, unknown>>[]> = {};
 
@@ -179,55 +183,116 @@ export async function references(
         // Candidate hints are advisory only; the API remains authoritative.
       }
     }
-    output[field.key] = response.data.items
-      .filter((item) => {
-        if (!selection?.filterExpression) return true;
-        const candidate = item as Record<string, unknown>;
-        return Boolean(
+    const candidateAllowed = (candidate: Record<string, unknown>) => {
+      if (selection?.filterExpression) {
+        const matchesExpression = Boolean(
           evaluateExpression(selection.filterExpression, candidate, candidate, {
             source: 'reference-selection',
             sourcePath: `${definition.key}.${field.key}.referenceSelection`,
             purpose: 'filter reference candidates',
           }),
         );
-      })
-      .map((item) => {
-        const record = item as Record<string, unknown>;
-        const id = record.id;
-        const representation = resolveEntryRepresentation(
-          referencedDefinition.boMetadata,
-          referencedUIMetadata,
-          record,
-          { entityIcon: referencedDefinition.icon },
-        );
+        if (!matchesExpression) return false;
+      }
 
-        const entryName = representation.name || String(id ?? '');
-        return {
-          ...record,
-          value: id,
-          label: entryName,
-          __entryName: entryName,
-          // Keep the complete canonical entry icon representation so every
-          // related-entry control can render the referenced record itself rather
-          // than falling back to the referenced entity's page icon. For composed
-          // representations (for example Principal entity + Principal type), the
-          // order is entity icon first, semantic/type icon second.
-          __entryIcons: representation.icons,
-          // Transitional scalar retained for other existing consumers until they
-          // migrate to the complete icon array. It is the semantic/type icon when
-          // a composed representation exists.
-          __entryIcon: representation.icons.at(-1) ?? null,
-          __entityIcon: referencedDefinition.icon.replace(/^bi-/, ''),
-          __referenceUnavailable:
-            uniqueThrough && uniqueThrough.objectKey === field.referenceBOKey
-              ? Boolean(record[uniqueThrough.field])
-              : typeof id === 'string' && linkedValues.has(id),
-          __referenceUnavailableReason:
-            uniqueThrough || (typeof id === 'string' && linkedValues.has(id))
+      const traitFilter = selection?.filterEnumItemTrait;
+      if (!traitFilter) return true;
+      const targetField = referencedDefinition.boMetadata.fieldDefinition[traitFilter.field];
+      const candidateValue = candidate[traitFilter.field];
+      const enumItem = targetField?.enumItems?.find((item) => item.value === candidateValue);
+      return enumItem?.[traitFilter.trait] === true;
+    };
+
+    const projectReference = (record: Record<string, unknown>) => {
+      const id = record.id;
+      const representation = resolveEntryRepresentation(
+        referencedDefinition.boMetadata,
+        referencedUIMetadata,
+        record,
+        { entityIcon: referencedDefinition.icon },
+      );
+      const entryName = representation.name || String(id ?? '');
+      return {
+        ...record,
+        value: id,
+        label: entryName,
+        __entryName: entryName,
+        __entryIcons: representation.icons,
+        __entryIcon: representation.icons.at(-1) ?? null,
+        __entityIcon: referencedDefinition.icon.replace(/^bi-/, ''),
+        __referenceUnavailable: Boolean(
+          (selection?.excludeCurrent &&
+            definition.key === field.referenceBOKey &&
+            options.sourceRecordId &&
+            String(id ?? '') === String(options.sourceRecordId)) ||
+          (uniqueThrough && uniqueThrough.objectKey === field.referenceBOKey
+            ? Boolean(record[uniqueThrough.field])
+            : typeof id === 'string' && linkedValues.has(id)),
+        ),
+        __referenceUnavailableReason:
+          selection?.excludeCurrent &&
+          definition.key === field.referenceBOKey &&
+          options.sourceRecordId &&
+          String(id ?? '') === String(options.sourceRecordId)
+            ? 'The current entry cannot reference itself.'
+            : uniqueThrough || (typeof id === 'string' && linkedValues.has(id))
               ? 'This entry is already assigned through a unique relationship.'
               : '',
-        };
-      });
+      };
+    };
+
+    const rawCandidates = response.data.items as Record<string, unknown>[];
+    const allCandidates = options.ctx
+      ? await Promise.all(
+          rawCandidates.map(
+            createCalculatedRecordProjector(referencedDefinition.boMetadata, options.ctx, {
+              source: 'renderer',
+              sourcePath: `ctx.entities.${entityContextName(referencedDefinition.key)}`,
+              purpose: 'project calculated reference-selector candidate field',
+            }),
+          ),
+        )
+      : rawCandidates;
+    const projected = allCandidates.filter(candidateAllowed).map(projectReference);
+
+    /*
+     * A persisted reference is presentation data as well as a future-selection
+     * candidate. Always retain the record currently stored on the source entry,
+     * even if today's candidate policy would filter it out. Page and hosted-popup
+     * entries therefore resolve the same id to the same label/icon and policy
+     * changes can never make an existing relationship render as `None`.
+     */
+    const selectedId = options.sourceRecord?.[field.key];
+    if (
+      typeof selectedId === 'string' &&
+      selectedId.length > 0 &&
+      !projected.some((candidate) => String(candidate.value ?? '') === selectedId)
+    ) {
+      let persistedCandidate = allCandidates.find(
+        (candidate) => String(candidate.id ?? '') === selectedId,
+      );
+      if (!persistedCandidate) {
+        try {
+          const persistedResponse = await apiClient.get<Record<string, unknown>>(
+            `/api/v1/${apiPath}/${encodeURIComponent(selectedId)}`,
+            apiSessionOptions(req),
+          );
+          persistedCandidate = options.ctx
+            ? await createCalculatedRecordProjector(referencedDefinition.boMetadata, options.ctx, {
+                source: 'renderer',
+                sourcePath: `ctx.entities.${entityContextName(referencedDefinition.key)}`,
+                purpose: 'project persisted reference-selector candidate field',
+              })(persistedResponse.data)
+            : persistedResponse.data;
+        } catch {
+          // Selection catalogues are advisory, but presentation of an unreadable
+          // referenced record must not fabricate a label. Leave it unresolved.
+        }
+      }
+      if (persistedCandidate) projected.push(projectReference(persistedCandidate));
+    }
+
+    output[field.key] = projected;
   }
 
   return output;

@@ -17,20 +17,20 @@ import {
   sysBOUsersMetadata,
 } from '@manatos/shared';
 
-import { createSysBORouter } from './http/sysbo-router.js';
+import { createSysBORouter } from './http/routes/sysbo-router.js';
 import { GenericSysBOService } from './services/generic-sysbo-service.js';
 
-import { createInternalRouter } from './http/internal-router.js';
+import { createInternalRouter } from './http/internal/index.js';
 
-import { errorHandler } from './http/error-handler.js';
+import { errorHandler } from './http/middleware/error-handler.js';
 
-import { requireInternalApiKey } from './http/internal-api-key.js';
+import { requireInternalApiKey } from './http/middleware/internal-api-key.js';
 
-import { requestContextMiddleware } from './http/request-context.js';
-import { requestLoggingMiddleware } from './http/request-logging.js';
+import { requestContextMiddleware } from './http/middleware/request-context.js';
+import { requestLoggingMiddleware } from './http/middleware/request-logging.js';
 
-import { createServerRouter } from './http/server-router.js';
-import { createSysBOUserCommandRouter } from './http/sys-user-command-router.js';
+import { createServerRouter } from './http/routes/server-router.js';
+import { createSysBOUserCommandRouter } from './http/routes/sys-user-command-router.js';
 
 import { buildOpenApiSpec } from './openapi.js';
 
@@ -47,17 +47,17 @@ import type {
 
 import { requireAuthenticated } from './auth/auth-middleware.js';
 import { AuthorizationService } from './auth/authorization-service.js';
-import { createAuthRouter } from './auth/auth-router.js';
+import { createAuthRouter } from './auth/router.js';
 
-import { sendFailure } from './http/api-response.js';
+import { sendFailure } from './http/response.js';
 import type { IEmailService } from './email/email-service.js';
 import type { SysBOConfigurationService } from './services/sys-configuration-service.js';
 
-import { createPublicRouter } from './http/public-router.js';
-import { createExpressionRouter } from './http/expression-router.js';
-import { createPlatformCapabilityRouter } from './http/platform-capability-router.js';
-import { createConfigurationRouter } from './http/configuration-router.js';
-import { createExtAuthProviderAdminRouter } from './http/ext-auth-provider-admin-router.js';
+import { createPublicRouter } from './http/routes/public-router.js';
+import { createExpressionRouter } from './http/routes/expression-router.js';
+import { createPlatformCapabilityRouter } from './http/routes/platform-capability-router.js';
+import { createConfigurationRouter } from './http/routes/configuration-router.js';
+import { createExtAuthProviderAdminRouter } from './http/routes/ext-auth-provider-admin-router.js';
 
 import type {
   SysBOExtAuthProviderService,

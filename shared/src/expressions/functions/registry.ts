@@ -1,4 +1,4 @@
-import { resolveContextMember } from '../../context.js';
+import { resolveContextMember } from '../../context/manatos-context.js';
 import { ExpressionEvaluationError } from '../diagnostics.js';
 import type {
   ExpressionFunctionArgumentType,
@@ -429,6 +429,65 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
   /* ------------------------------------------------------------------------
    * CTX hierarchy/navigation
    * --------------------------------------------------------------------- */
+
+  /**
+   * Return the deepest V2 UI context level from the canonical ctx.ui.level chain.
+   * This is a CTX query, not stored state: the active level is derived from the
+   * nested public context and is therefore equally usable by metadata formulas
+   * and engine infrastructure.
+   */
+  CurrentUiLevel: checked({
+    name: 'CurrentUiLevel',
+    capability: 'ctx',
+    signature: {
+      text: 'CurrentUiLevel()',
+      minArguments: 0,
+      maxArguments: 0,
+    },
+    evaluate: (_args, context) => {
+      const ui = resolveContextMember(context.root, 'ui');
+      let level = resolveContextMember(ui, 'level');
+      if (!level || typeof level !== 'object') return null;
+      for (let depth = 0; depth < 256; depth += 1) {
+        const child = resolveContextMember(level, 'level');
+        if (!child || typeof child !== 'object') return level;
+        level = child;
+      }
+      throw new ExpressionEvaluationError(
+        'CurrentUiLevel exceeded the maximum UI nesting depth of 256.',
+      );
+    },
+  }),
+
+  /**
+   * Return the ordered V2 UI ancestry from ctx.ui.level to the deepest level.
+   * The public V2 context represents only the currently displayed chain, so no
+   * active-child selector or root registry is required.
+   */
+  TraverseUiLevels: checked({
+    name: 'TraverseUiLevels',
+    capability: 'ctx',
+    signature: {
+      text: 'TraverseUiLevels()',
+      minArguments: 0,
+      maxArguments: 0,
+    },
+    evaluate: (_args, context) => {
+      const ui = resolveContextMember(context.root, 'ui');
+      let level = resolveContextMember(ui, 'level');
+      const levels: unknown[] = [];
+      for (let depth = 0; level && typeof level === 'object' && depth < 256; depth += 1) {
+        levels.push(level);
+        level = resolveContextMember(level, 'level');
+      }
+      if (level && typeof level === 'object') {
+        throw new ExpressionEvaluationError(
+          'TraverseUiLevels exceeded the maximum UI nesting depth of 256.',
+        );
+      }
+      return levels;
+    },
+  }),
 
   /**
    * Follow an id-based parent chain inside a CTX collection until the root row.

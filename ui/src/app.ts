@@ -14,10 +14,10 @@ import { passport } from './auth/passport.js';
 import { requestContextMiddleware } from './middleware/request-context.js';
 import { csrfTokenMiddleware } from './middleware/csrf.js';
 import { pageContextMiddleware } from './middleware/page-context.js';
-import { createAuthRouter } from './routes/auth-routes.js';
-import { createPageRoutes } from './routes/page-routes.js';
-import { createSysBORoutes } from './routes/sysbo-routes.js';
-import { createDebugRoutes } from './routes/debug-routes.js';
+import { createAuthRouter } from './routes/auth/index.js';
+import { createPageRoutes } from './routes/pages/index.js';
+import { createSysBORoutes } from './routes/sysbo/index.js';
+import { createDebugRoutes } from './routes/debug/index.js';
 import { createPlatformRoutes } from './platforms/routes.js';
 import { uiErrorHandler } from './middleware/error-handler.js';
 import {
@@ -29,6 +29,16 @@ import {
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const uiRoot = resolve(moduleDirectory, '..');
 const require = createRequire(import.meta.url);
+/*
+ * `@manatos/shared` is ESM-only (`exports.import`) and therefore must be
+ * resolved through the ESM resolver. `createRequire().resolve()` asks Node for
+ * a CommonJS export condition and fails at dev startup with
+ * ERR_PACKAGE_PATH_NOT_EXPORTED even though the package imports normally.
+ *
+ * The resolved URL points at shared/dist/index.js; serving its directory keeps
+ * all relative ES-module imports (for example expressions/parser.js) intact.
+ */
+const sharedRuntimeRoot = dirname(fileURLToPath(import.meta.resolve('@manatos/shared')));
 
 function packageDirectory(packageName: string): string {
   return dirname(require.resolve(`${packageName}/package.json`));
@@ -57,7 +67,21 @@ export function createUiApp() {
 
   app.use('/assets', express.static(resolve(uiRoot, 'public/assets')));
   app.use('/css', express.static(resolve(uiRoot, 'public/css')));
-  app.use('/js', express.static(resolve(uiRoot, 'public/js')));
+  // Expose the built shared package as ES modules so the browser compiles the
+  // same canonical expression language locally instead of receiving serialized ASTs.
+  app.use('/shared-runtime', express.static(sharedRuntimeRoot));
+  app.use(
+    '/js',
+    express.static(resolve(uiRoot, 'public/js'), {
+      // During development the UI runtime changes frequently while the browser
+      // remains open. Do not let a stale shell.js survive a server restart and
+      // mask navigation/runtime fixes behind browser cache behaviour. Production
+      // keeps normal static caching semantics.
+      setHeaders(response) {
+        if (config.NODE_ENV !== 'production') response.setHeader('Cache-Control', 'no-store');
+      },
+    }),
+  );
 
   // Resolve package assets from the package itself rather than process.cwd().
   // This keeps CSS/JS working whether the UI is launched from the workspace
@@ -150,6 +174,17 @@ export function createUiApp() {
   app.use('/bo/debug', createDebugRoutes());
 
   app.use(pageContextMiddleware);
+
+  /** Session-specific authenticated-user CTX projection.
+   *
+   * This deliberately does not live in the process-wide public UI bootstrap
+   * state: authenticated user data is per browser session. The browser bootstrap
+   * runtime uses this endpoint after a successful save of the current SysUser.
+   */
+  app.get('/runtime/current-user-context', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ user: res.locals.ctx?.user ?? null });
+  });
 
   app.use('/auth', createAuthRouter());
   app.use('/', createPlatformRoutes());

@@ -1,4 +1,4 @@
-import { resolveContextMember } from '../context.js';
+import { resolveContextMember } from '../context/manatos-context.js';
 import type { ExpressionPathMember, ExpressionVariableNode } from './types.js';
 
 export interface ResolvedExpressionVariable {

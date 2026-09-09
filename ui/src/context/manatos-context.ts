@@ -5,18 +5,12 @@ import {
   type ManatOSContextField,
   type ManatOSContextFields,
   type ManatOSEntityContext,
-  type ManatOSPageContextNode,
-  type ManatOSPageRuntimeContext,
-  type ManatOSPageEntryRuntimeContext,
-  type ManatOSPageCollectionRuntimeContext,
-  type ManatOSPageListRuntimeContext,
   type ManatOSUserContext,
   type SysBOUser,
   type SysBOFieldMetadata,
   sysBOUsersMetadata,
   calculatedContextField,
   contextPointer,
-  compileExpression,
   type SysPlatform,
   type PlatformAuthorizationCapabilities,
 } from '@manatos/shared';
@@ -250,46 +244,27 @@ export function createManatOSContext(
     entities: {},
     company: companyContext,
     user: userContext(user, currentPlatform, scope, platformCapabilities),
-    page: null,
   };
 }
 
 /**
- * Copy metadata into the runtime CTX registry and precompile every declared
- * expression, regardless of where the metadata contract uses it (canonical
- * calculated field, UI-only calculated field, related-row calculation, future dynamic
- * visibility/read-only rule, and so on).
+ * Copy canonical metadata into ctx.entities without adding runtime-local
+ * compiler artefacts. Expression source is the portable contract; each
+ * execution host compiles and caches its own AST when it actually evaluates or
+ * inspects the expression.
  *
- * Parsing remains context-agnostic. Variable/path resolution is deliberately
- * deferred until the expression value is requested. Keeping the AST beside
- * the declaration gives DEBUG immediate parser visibility without evaluation.
+ * The outer ctx.entities key already owns entity identity, so the copied root
+ * metadata object omits its duplicate `key` property.
  */
-function withCompiledExpressions(value: unknown, omitOwnKey = false): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => withCompiledExpressions(item));
-  }
+function contextMetadata(value: unknown, omitOwnKey = false): unknown {
+  if (Array.isArray(value)) return value.map((item) => contextMetadata(item));
   if (!value || typeof value !== 'object') return value;
 
-  const source = value as Record<string, unknown>;
-  const copy: Record<string, unknown> = Object.fromEntries(
-    Object.entries(source)
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
       .filter(([key]) => key !== 'ast' && !(omitOwnKey && key === 'key'))
-      .map(([key, child]) => [key, withCompiledExpressions(child)]),
+      .map(([key, child]) => [key, contextMetadata(child)]),
   );
-
-  if (typeof source.expression === 'string') {
-    try {
-      const compiled = compileExpression(source.expression, {
-        diagnosticSink: (diagnostic) => console.error('[ManatOS expression parse]', diagnostic),
-      });
-      copy.ast = compiled.ast;
-    } catch {
-      // The compiler already emitted the diagnostic. Preserve the expression
-      // text so DEBUG can expose the faulty declaration for diagnosis.
-    }
-  }
-
-  return copy;
 }
 
 /**
@@ -308,193 +283,9 @@ export function registerContextEntity(
   const entity: ManatOSEntityContext = {
     key: sysBOKey,
     ...(existing ?? {}),
-    ...(metadata !== undefined ? { metadata: withCompiledExpressions(metadata, true) } : {}),
-    ...(uiMetadata !== undefined ? { uiMetadata: withCompiledExpressions(uiMetadata, true) } : {}),
+    ...(metadata !== undefined ? { metadata: contextMetadata(metadata, true) } : {}),
+    ...(uiMetadata !== undefined ? { uiMetadata: contextMetadata(uiMetadata, true) } : {}),
   };
   ctx.entities[name] = entity;
   return entity;
-}
-
-export function setPageContext(ctx: ManatOSContext, page: ManatOSPageContextNode): ManatOSContext {
-  return { ...ctx, page };
-}
-
-export function currentPageContext(ctx: ManatOSContext): ManatOSPageContextNode | null {
-  let node = ctx.page;
-  while (node?.page) node = node.page;
-  return node;
-}
-
-/**
- * Derived page path. No path state is stored on a page node.
- * The debugger presents this as path() to make the calculated nature explicit.
- */
-export function pagePath(ctx: ManatOSContext, target?: ManatOSPageContextNode): string {
-  const segments: string[] = [];
-  let node = ctx.page;
-
-  while (node) {
-    segments.push(node.name);
-    if (target && node === target) break;
-    node = node.page ?? null;
-  }
-
-  return `/${segments.filter(Boolean).join('/')}`;
-}
-
-export function currentPagePath(ctx: ManatOSContext): string {
-  const leaf = currentPageContext(ctx);
-  return leaf ? pagePath(ctx, leaf) : '/';
-}
-
-export interface ManatOSBreadcrumbItem {
-  label: string;
-  href: string | null;
-}
-
-/**
- * Derive workspace breadcrumbs from the logical CTX page chain.
- *
- * SysBO entry pages therefore naturally appear beneath their owning list page
- * (ManatOS > Principals > Edit Principal - Guest Maria) instead of flattening
- * navigation into an unrelated route-local title. The function is entity
- * agnostic: labels/links come from the canonical entity registry and the page
- * runtime context already present in CTX.
- */
-export function pageBreadcrumbItems(ctx: ManatOSContext): ManatOSBreadcrumbItem[] {
-  const items: ManatOSBreadcrumbItem[] = [{ label: 'ManatOS', href: '/' }];
-  let node = ctx.page;
-  let activeEntity: ManatOSEntityContext | null = null;
-
-  while (node) {
-    if (node.kind === 'sysbo-list') {
-      const entityName = String(node.fields?.entity?.value ?? node.name ?? '');
-      activeEntity = ctx.entities[entityName] ?? null;
-      const metadata = activeEntity?.metadata as Record<string, unknown> | undefined;
-      const label =
-        typeof metadata?.pluralName === 'string' && metadata.pluralName
-          ? metadata.pluralName
-          : typeof metadata?.name === 'string' && metadata.name
-            ? metadata.name
-            : node.name;
-      items.push({
-        label,
-        href: activeEntity?.key ? `/bo/${encodeURIComponent(activeEntity.key)}` : null,
-      });
-    } else if (node.kind === 'sysbo-entry' && activeEntity) {
-      const metadata = activeEntity.metadata as Record<string, unknown> | undefined;
-      const entityLabel =
-        typeof metadata?.name === 'string' && metadata.name ? metadata.name : activeEntity.key;
-      const primaryField =
-        typeof metadata?.primaryField === 'string' ? metadata.primaryField : null;
-      const current = node.entry ?? node.entryOriginal ?? {};
-      const primaryValue = primaryField ? current[primaryField] : null;
-      const modeLabel = node.mode === 'create' ? 'Add' : node.mode === 'view' ? 'View' : 'Edit';
-      const suffix =
-        primaryValue != null && String(primaryValue).trim() ? ` - ${String(primaryValue)}` : '';
-      items.push({ label: `${modeLabel} ${entityLabel}${suffix}`, href: null });
-    } else {
-      const title = node.fields?.title?.value;
-      if (typeof title === 'string' && title.trim()) {
-        items.push({ label: title, href: null });
-      }
-    }
-    node = node.page ?? null;
-  }
-
-  return items;
-}
-
-export function pageContextNode(
-  name: string,
-  kind: string,
-  mode: string,
-  fields: ManatOSContextFields = {},
-  page: ManatOSPageContextNode | null = null,
-  runtime: ManatOSPageRuntimeContext = {},
-  scope = 'sys',
-): ManatOSPageContextNode {
-  return {
-    scope,
-    name: assertContextIdentifier(name, 'page'),
-    kind,
-    mode,
-    fields,
-    ...runtime,
-    state: {
-      dirty: false,
-      valid: true,
-      internalEditing: false,
-      internalEditorCount: 0,
-      saving: false,
-      deleting: false,
-    },
-    page,
-  };
-}
-
-/**
- * Build the flattened runtime values of a list-page CTX from the exact API rows
- * and the list's declared filter inputs. The row values are shallow snapshots: the UI
- * receives the same values from CTX, while later rendering code cannot
- * accidentally mutate the API response object behind the context.
- */
-export function pageListRuntimeContext(
-  items: readonly Readonly<Record<string, unknown>>[],
-  filterFields: readonly string[],
-  query: Readonly<Record<string, unknown>>,
-): ManatOSPageListRuntimeContext {
-  const filters = {
-    ...Object.fromEntries(
-      filterFields.map((field) => [
-        assertContextIdentifier(field, 'filter field'),
-        query[`filter.${field}`] ?? null,
-      ]),
-    ),
-    // Every list-like CTX exposes the same exclusion-predicate slot. Normal
-    // browse pages usually carry null; selectors/search callers may supply the
-    // same canonical formula through the API/storage query contract.
-    listExceptions:
-      typeof query.listExceptions === 'string' && query.listExceptions.trim()
-        ? query.listExceptions.trim()
-        : null,
-  };
-
-  const entriesOriginal = Object.freeze(items.map((item) => Object.freeze({ ...item })));
-  return {
-    filters: Object.freeze(filters),
-    entriesOriginal,
-    entries: Object.freeze(entriesOriginal.map((item) => Object.freeze({ ...item }))),
-  };
-}
-
-/**
- * Build the flattened runtime values owned by a SysBO entry page. `entryOriginal`
- * is the immutable baseline and `entry` is the working record. Both intentionally
- * have the same record shape so dirtiness is a direct structural comparison.
- */
-export function pageEntryRuntimeContext(
-  entry: Readonly<Record<string, unknown>>,
-): ManatOSPageEntryRuntimeContext {
-  const entryOriginal = Object.freeze({ ...entry });
-  return {
-    entryOriginal,
-    // The working record always starts strictly from the finalized baseline,
-    // for both create defaults and existing persisted data.
-    entry: Object.freeze({ ...entryOriginal }),
-  };
-}
-
-/**
- * Build an ID-keyed transactional workspace snapshot. Unlike entries, the
- * collection has no ordering semantics: each member is addressed by stable
- * entity identity (or later by a draft identity) and the whole graph can be
- * compared/committed as one logical unit.
- */
-export function pageCollectionRuntimeContext(
-  items: readonly Readonly<Record<string, unknown>>[],
-): ManatOSPageCollectionRuntimeContext {
-  const entriesOriginal = Object.freeze(items.map((item) => Object.freeze({ ...item })));
-  const entries = Object.freeze(entriesOriginal.map((item) => Object.freeze({ ...item })));
-  return { entriesOriginal, entries, selections: Object.freeze({}) };
 }

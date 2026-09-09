@@ -6,7 +6,13 @@ export interface EntryInvocation {
   token: string | null;
   mode: 'create' | 'edit' | 'view' | null;
   defaults: Record<string, unknown>;
-  uiOverrides: Record<string, SysBOUIFieldOverrideMetadata & { allowedValues?: readonly string[] }>;
+  uiOverrides: Record<
+    string,
+    SysBOUIFieldOverrideMetadata & {
+      allowedValues?: readonly string[];
+      allowedEnumItemTrait?: string;
+    }
+  >;
 }
 
 function parsedObject(value: unknown): Record<string, unknown> {
@@ -51,6 +57,7 @@ export function effectiveEntryUIMetadata(
           Object.entries(invocation.uiOverrides).map(([key, override]) => {
             const uiOverride = { ...override };
             delete uiOverride.allowedValues;
+            delete uiOverride.allowedEnumItemTrait;
             return [key, { ...(metadataUI.record.fieldOverrides[key] ?? {}), ...uiOverride }];
           }),
         ),

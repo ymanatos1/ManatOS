@@ -42,37 +42,31 @@
   <% const hasReadOnlyValue = Object.prototype.hasOwnProperty.call(overrides[key] || {}, 'readOnlyValue'); %>
   <% const readOnlyValue = hasReadOnlyValue ? overrides[key].readOnlyValue : undefined; %>
   <% const value = !editable && hasReadOnlyValue ? readOnlyValue : valueFor(key); %>
+  <% const effectiveFieldContext = typeof effectiveFieldFor === 'function' ? effectiveFieldFor(key) : null; %>
   <% const visibleExpression = expressionText(overrides[key]?.visible); %>
   <% const editableExpression = expressionText(overrides[key]?.editable); %>
-  <% const compiledOverride = compiledUIRecord?.fieldOverrides?.[key] || {}; %>
   <% const calculation = field.calculation; %>
   <% const normalization = field.normalize; %>
-  <% const compiledNormalization = compiledEntityMetadata?.fieldDefinition?.[key]?.normalize; %>
-  <% const compiledCalculation = compiledEntityMetadata?.fieldDefinition?.[key]?.calculation; %>
   <div
     class="col-md-<%= span || 6 %>"
     data-ctx-field-container="<%= key %>"
-    <% if (typeof spanExpression !== 'undefined' && spanExpression && typeof spanAst !== 'undefined' && spanAst) { %>
-      data-ui-grid-span-ast="<%= JSON.stringify(spanAst) %>"
+    <% if (typeof spanExpression !== 'undefined' && spanExpression) { %>
+      data-ui-grid-span-expression="<%= spanExpression %>"
       data-ui-grid-span-fallback="<%= span || 6 %>"
     <% } %>
     <% if (normalization?.expression) { %>
       data-field-normalize-expression="<%= normalization.expression %>"
-      data-field-normalize-ast="<%= JSON.stringify(compiledNormalization?.ast ?? null) %>"
     <% } %>
     <% if (calculation?.expression) { %>
       data-field-calculation-expression="<%= calculation.expression %>"
-      data-field-calculation-ast="<%= JSON.stringify(compiledCalculation?.ast ?? null) %>"
       data-field-calculation-triggered-by="<%= JSON.stringify(calculation.triggeredBy || []) %>"
       data-field-calculation-persisted="<%= calculation.persisted === true ? 'true' : 'false' %>"
     <% } %>
     <% if (visibleExpression) { %>
       data-ui-visible-expression="<%= visibleExpression %>"
-      data-ui-visible-ast="<%= JSON.stringify(compiledOverride.visible?.ast ?? null) %>"
     <% } %>
     <% if (editableExpression) { %>
       data-ui-editable-expression="<%= editableExpression %>"
-      data-ui-editable-ast="<%= JSON.stringify(compiledOverride.editable?.ast ?? null) %>"
     <% } %>
     <% if (hasReadOnlyValue) { %>
       data-ui-has-readonly-value="true"
@@ -94,6 +88,7 @@
       enumItemsFor,
       referenceValues,
       referenceSelectorContexts: safeReferenceSelectorContexts,
+      effectiveFieldContext,
       dateOnlyValue,
       datetimeLocalValue,
       durationParts,

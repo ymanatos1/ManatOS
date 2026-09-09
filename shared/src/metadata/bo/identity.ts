@@ -5,7 +5,7 @@ import {
   type SysBOExternalIdentity,
   type SysBOUser,
   type SysBOUserInvitation,
-} from '../../domain.js';
+} from '../../domain/entities.js';
 import type { ManatOSValueObjectMetadata, SysBOMetadata } from './types.js';
 import { commonSysBOFields, externalAuthProviderOptionItems } from './common.js';
 

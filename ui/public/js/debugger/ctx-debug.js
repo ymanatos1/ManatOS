@@ -4,6 +4,7 @@
   const runtime = window.ManatOS?.ctx;
   const treeElement = document.getElementById('ctxDebugTree');
   if (!runtime?.value || !treeElement) return;
+  const panelElement = treeElement.closest('#debugPanel');
 
   const CHANGE_EVENT = 'manatos:ctx-change';
   const bootId =
@@ -12,17 +13,17 @@
   const ctx = runtime.value;
 
   /*
-   * DEBUG state is browser-session state, not application/business state.
-   * sessionStorage intentionally preserves it across ordinary full-page
-   * navigation/reloads in the same browser tab, while avoiding SysState/DB
-   * persistence. Missing paths are recovered to their nearest surviving
-   * parent after the new page CTX has been loaded.
+   * DEBUG state is developer-workspace state, not application/business state.
+   * localStorage intentionally preserves layout/selection/expansion across
+   * navigation and UI-server restarts without persisting any CTX values.
+   * Missing paths recover to their nearest surviving parent after the new page
+   * CTX has loaded.
    */
-  const DEBUG_STATE_KEY = `manatos.debug.ctx.state.v1.${bootId}`;
+  const DEBUG_STATE_KEY = 'manatos.debug.ctx.state.v2';
 
   const readPersistedState = () => {
     try {
-      const saved = JSON.parse(sessionStorage.getItem(DEBUG_STATE_KEY) || 'null');
+      const saved = JSON.parse(localStorage.getItem(DEBUG_STATE_KEY) || 'null');
       if (!saved || typeof saved !== 'object') return null;
       return saved;
     } catch {
@@ -39,6 +40,11 @@
     ),
     selected: typeof persisted?.selected === 'string' ? persisted.selected : 'ctx',
     scrollTop: Number.isFinite(persisted?.scrollTop) ? persisted.scrollTop : 0,
+    scrollAnchorPath:
+      typeof persisted?.scrollAnchorPath === 'string' ? persisted.scrollAnchorPath : null,
+    scrollAnchorOffset: Number.isFinite(persisted?.scrollAnchorOffset)
+      ? persisted.scrollAnchorOffset
+      : 0,
     propertiesOpen: persisted?.propertiesOpen === true,
     propertiesHeight: Number.isFinite(persisted?.propertiesHeight)
       ? persisted.propertiesHeight
@@ -48,12 +54,14 @@
 
   const persistState = () => {
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         DEBUG_STATE_KEY,
         JSON.stringify({
           expanded: [...state.expanded],
           selected: state.selected,
           scrollTop: state.scrollTop,
+          scrollAnchorPath: state.scrollAnchorPath,
+          scrollAnchorOffset: state.scrollAnchorOffset,
           propertiesOpen: state.propertiesOpen,
           propertiesHeight: state.propertiesHeight,
           debuggerWidth: state.debuggerWidth,
@@ -67,8 +75,34 @@
     }
   };
 
-  const saveState = () => {
+  const captureScrollState = () => {
+    const treeRect = treeElement.getBoundingClientRect();
+    const rows = [...treeElement.querySelectorAll('.ctx-debug-row[data-ctx-path]')];
+    if (!rows.length) return;
+    const anchor = rows.find((row) => row.getBoundingClientRect().bottom > treeRect.top);
     state.scrollTop = treeElement.scrollTop;
+    state.scrollAnchorPath = anchor?.dataset.ctxPath || null;
+    state.scrollAnchorOffset = anchor ? anchor.getBoundingClientRect().top - treeRect.top : 0;
+  };
+
+  const restoreScrollState = () => {
+    const anchor = state.scrollAnchorPath
+      ? [...treeElement.querySelectorAll('.ctx-debug-row[data-ctx-path]')].find(
+          (row) => row.dataset.ctxPath === state.scrollAnchorPath,
+        )
+      : null;
+    if (anchor) {
+      const treeRect = treeElement.getBoundingClientRect();
+      const currentOffset = anchor.getBoundingClientRect().top - treeRect.top;
+      treeElement.scrollTop += currentOffset - state.scrollAnchorOffset;
+      return;
+    }
+    const maxScroll = Math.max(0, treeElement.scrollHeight - treeElement.clientHeight);
+    treeElement.scrollTop = Math.min(Math.max(0, state.scrollTop), maxScroll);
+  };
+
+  const saveState = () => {
+    captureScrollState();
     persistState();
   };
 
@@ -101,6 +135,26 @@
     if (!isObject(container)) return undefined;
     return container[member];
   };
+
+  const UI_SURFACE_HOSTS = new Set(['page', 'popup']);
+  const UI_SURFACE_KINDS = new Set(['static', 'list', 'entry', 'selector', 'hierarchy', 'custom']);
+  const UI_SURFACE_MODES = new Set(['browse', 'create', 'edit', 'view', 'select', 'manage']);
+
+  /** Recognize a canonical V2 UI level by contract, never by its debugger path. */
+  const isUiSurfaceLevel = (value) =>
+    isObject(value) &&
+    typeof value.id === 'string' &&
+    UI_SURFACE_HOSTS.has(value.host) &&
+    UI_SURFACE_KINDS.has(value.kind) &&
+    UI_SURFACE_MODES.has(value.mode) &&
+    typeof value.name === 'string' &&
+    typeof value.path === 'string' &&
+    typeof value.scope === 'string' &&
+    isObject(value.state) &&
+    typeof value.state.lifecycle === 'string';
+
+  const uiSurfaceBadgeText = (value) =>
+    `${String(value.host).toUpperCase()} · ${String(value.kind).toUpperCase()} · ${value.name}`;
 
   const displayValue = (value) => {
     if (value === null) return 'null';
@@ -166,36 +220,6 @@
     return `~${(bytes / 1024 / 1024).toFixed(2)} MB`;
   };
 
-  const childPagePath = (pagePath) => `${pagePath}.page`;
-
-  /** Return the derived slash path for one ctx.page node. */
-  const derivedPagePath = (targetPath) => {
-    const segments = [];
-    let node = ctx.page;
-    let path = 'ctx.page';
-
-    while (node) {
-      segments.push(node.name);
-      if (path === targetPath) return `/${segments.filter(Boolean).join('/')}`;
-      node = node.page;
-      path = childPagePath(path);
-    }
-    return null;
-  };
-
-  const pageEntityName = (pagePath) => {
-    const pageSegments = pagePath.split('.');
-    while (pageSegments.length >= 2) {
-      const candidatePath = pageSegments.join('.');
-      const candidate = getExact(candidatePath);
-      const entity = candidate?.fields?.entity?.value;
-      if (typeof entity === 'string') return entity;
-      if (pageSegments.at(-1) !== 'page') break;
-      pageSegments.pop();
-    }
-    return null;
-  };
-
   const metadataForField = (path) => {
     const marker = '.fields.';
     const index = path.lastIndexOf(marker);
@@ -214,8 +238,20 @@
 
     if (ownerPath === 'ctx.user') {
       entityName = ctx.user?.entityName ?? null;
-    } else if (ownerPath.startsWith('ctx.page')) {
-      entityName = pageEntityName(ownerPath);
+    } else if (ownerPath.startsWith('ctx.ui.level')) {
+      let candidatePath = ownerPath;
+      while (candidatePath.startsWith('ctx.ui.level')) {
+        const entityKey = getExact(candidatePath)?.entityKey;
+        if (typeof entityKey === 'string' && entityKey) {
+          entityName =
+            Object.keys(ctx.entities || {}).find(
+              (key) => ctx.entities?.[key]?.key === entityKey || key === entityKey,
+            ) ?? null;
+          break;
+        }
+        if (!candidatePath.endsWith('.level')) break;
+        candidatePath = candidatePath.slice(0, -6);
+      }
     }
 
     if (!entityName) return undefined;
@@ -223,17 +259,8 @@
     return metadata?.fieldDefinition?.[fieldName];
   };
 
-  const virtualChildren = (path, value) => {
+  const virtualChildren = (path) => {
     const children = [];
-
-    if (path.startsWith('ctx.page') && value && value.name && value.fields) {
-      children.push({
-        key: 'path()',
-        path: `${path}.path()`,
-        value: derivedPagePath(path),
-        derived: true,
-      });
-    }
 
     const fieldMetadata = metadataForField(path);
     if (fieldMetadata !== undefined) {
@@ -249,7 +276,7 @@
   };
 
   const isCalculatedContextField = (value) =>
-    isObject(value) && typeof value.expression === 'string' && isObject(value.ast);
+    isObject(value) && typeof value.expression === 'string';
 
   /** Canonical parser output embedded in ordinary CTX values such as query predicates. */
   const isCompiledExpression = (value) =>
@@ -312,7 +339,7 @@
     const presentedEntries =
       path === 'ctx'
         ? [...entries].sort(([leftKey], [rightKey]) => {
-            const preferred = ['company', 'system', 'entities', 'user', 'page'];
+            const preferred = ['company', 'system', 'entities', 'user', 'ui'];
             const leftIndex = preferred.indexOf(leftKey);
             const rightIndex = preferred.indexOf(rightKey);
             if (leftIndex < 0 && rightIndex < 0) return 0;
@@ -330,10 +357,7 @@
     }));
   };
 
-  const childrenFor = (path, value) => [
-    ...virtualChildren(path, value),
-    ...objectChildren(path, value),
-  ];
+  const childrenFor = (path, value) => [...virtualChildren(path), ...objectChildren(path, value)];
 
   function getExact(path) {
     if (path === 'ctx') return ctx;
@@ -347,8 +371,9 @@
   }
 
   /**
-   * Canonical array syntax is `array[1]`; `array.[1]` remains accepted only
-   * as a temporary compatibility form while existing CTX code is migrated.
+   * Canonical array syntax is `array[1]`. The parser also accepts `array.[1]`
+   * because historical/persisted CTX paths may still use that spelling; this is
+   * input compatibility only and does not create a second CTX topology.
    * It intentionally rejects '-' and other expression-significant punctuation
    * in dotted identifiers. Brackets accept either non-negative numeric indexes
    * or quoted semantic collection keys such as UUID record ids.
@@ -406,8 +431,8 @@
    * `id`/`key`: identifier keys use dotted syntax (`platforms.protocrm`), while
    * arbitrary ids use quoted brackets (`entries['<uuid>']`).
    *
-   * `metadata()` is a virtual field operation backed by ctx.entities.
-   * `path()` is a virtual page operation. Both are calculated, never stored.
+   * `metadata()` is a virtual field operation backed by ctx.entities and is
+   * calculated rather than stored in CTX.
    */
   const sourceForDerived = (path) => {
     if (path.endsWith('.metadata()')) {
@@ -420,15 +445,24 @@
       const fieldName = fieldPath.slice(index + marker.length).split('.')[0];
       let entityName = null;
       if (ownerPath === 'ctx.user') entityName = ctx.user?.entityName ?? null;
-      else if (ownerPath.startsWith('ctx.page')) entityName = pageEntityName(ownerPath);
+      else if (ownerPath.startsWith('ctx.ui.level')) {
+        let candidatePath = ownerPath;
+        while (candidatePath.startsWith('ctx.ui.level')) {
+          const entityKey = getExact(candidatePath)?.entityKey;
+          if (typeof entityKey === 'string' && entityKey) {
+            entityName =
+              Object.keys(ctx.entities || {}).find(
+                (key) => ctx.entities?.[key]?.key === entityKey || key === entityKey,
+              ) ?? null;
+            break;
+          }
+          if (!candidatePath.endsWith('.level')) break;
+          candidatePath = candidatePath.slice(0, -6);
+        }
+      }
       if (!entityName) return null;
 
       return `ctx.entities.${entityName}.metadata.fieldDefinition.${fieldName}`;
-    }
-
-    if (path.endsWith('.path()')) {
-      const pagePath = path.slice(0, -7);
-      return `${pagePath}.name`;
     }
 
     return null;
@@ -455,6 +489,7 @@
   const forwardButton = document.getElementById('ctxDebugForward');
   const watchButton = document.getElementById('ctxDebugWatch');
   const cliButton = document.getElementById('ctxDebugCli');
+  const openViewButton = document.getElementById('ctxDebugOpenView');
   const selectionElement = document.getElementById('ctxDebugSelection');
   const statsElement = document.getElementById('ctxDebugStats');
 
@@ -493,7 +528,6 @@
 
   const pathExists = (path) => {
     if (path === 'ctx') return true;
-    if (path.endsWith('.path()')) return derivedPagePath(path.slice(0, -7)) !== null;
     if (path.endsWith('.metadata()')) return metadataForField(path.slice(0, -11)) !== undefined;
     if (path.endsWith('.__source')) return sourceForDerived(path.slice(0, -9)) !== null;
     try {
@@ -633,6 +667,14 @@
     );
   });
 
+  openViewButton?.addEventListener('click', () => {
+    window.dispatchEvent(
+      new CustomEvent('manatos:ctx-target-view-open', {
+        detail: { path: state.selected, sourceTab: 'ctx' },
+      }),
+    );
+  });
+
   window.addEventListener('manatos:debug-cli-state', (event) => {
     if (!(event instanceof CustomEvent) || event.detail?.instanceKey !== 'ctx-viewer' || !cliButton)
       return;
@@ -733,6 +775,49 @@
     if (match) selectPath(match);
   };
 
+  const semanticDescriptor = (path, value, derived = false, source = false) => {
+    if (source) return { kind: 'reference', type: 'string', attributes: ['derived', 'readonly'] };
+    if (derived)
+      return { kind: 'derived', type: typeof value, attributes: ['derived', 'readonly'] };
+    return (
+      runtime.describe?.(path) || {
+        kind: nodeKind(path, value),
+        type: typeof value,
+        attributes: [],
+      }
+    );
+  };
+
+  const CTX_KIND_ICONS = Object.freeze({
+    'context-root': 'bi-diagram-3',
+    'company-context': 'bi-building',
+    'system-context': 'bi-gear',
+    'entities-context': 'bi-database',
+    'user-context': 'bi-person-circle',
+    'ui-context': 'bi-window-stack',
+    'ui-level': 'bi-window',
+    invocation: 'bi-box-arrow-in-right',
+    presentation: 'bi-layout-text-window',
+    state: 'bi-activity',
+    entry: 'bi-card-text',
+    'entry-current': 'bi-eye',
+    'entry-original': 'bi-archive',
+    list: 'bi-list-ul',
+    fields: 'bi-ui-checks-grid',
+    field: 'bi-input-cursor-text',
+    'field-value': 'bi-pencil-square',
+    'field-original-value': 'bi-eye',
+    'field-ux': 'bi-sliders',
+    facts: 'bi-info-circle',
+    resources: 'bi-boxes',
+    collection: 'bi-collection',
+    container: 'bi-braces',
+    reference: 'bi-link-45deg',
+    derived: 'bi-calculator',
+  });
+
+  const iconForCtxNode = (descriptor) => CTX_KIND_ICONS[descriptor.kind] || 'bi-dot';
+
   const nodeKind = (path, value, derived = false, source = false) => {
     if (source) return 'reference';
     if (derived) return 'derived';
@@ -753,15 +838,6 @@
       return {
         path,
         value: metadataForField(path.slice(0, -11)),
-        derived: true,
-        source: false,
-        sourcePath: sourceForDerived(path),
-      };
-    }
-    if (path.endsWith('.path()')) {
-      return {
-        path,
-        value: derivedPagePath(path.slice(0, -7)),
         derived: true,
         source: false,
         sourcePath: sourceForDerived(path),
@@ -894,7 +970,8 @@
   const renderProperties = () => {
     if (!propertiesPanel || !propertiesBody || propertiesPanel.classList.contains('d-none')) return;
     const info = selectedNodeInfo();
-    const kind = nodeKind(info.path, info.value, info.derived, info.source);
+    const descriptor = semanticDescriptor(info.path, info.value, info.derived, info.source);
+    const kind = descriptor.kind;
     const children = info.derived ? [] : objectChildren(info.path, info.value);
     const calculated = isCalculatedContextField(info.value);
     const compiledExpression = isCompiledExpression(info.value);
@@ -910,14 +987,23 @@
     }
     const rows = [
       ['Path', info.path],
+      ...(isUiSurfaceLevel(info.value) ? [['UI level', uiSurfaceBadgeText(info.value)]] : []),
       ['Kind', calculated ? 'calculated' : compiledExpression ? 'compiled-expression' : kind],
+      ['Type', descriptor.type],
+      ['Attributes', descriptor.attributes.length ? descriptor.attributes.join(', ') : '—'],
+      ['Watchable', descriptor.watchable === false || info.derived || info.source ? 'no' : 'yes'],
+      [
+        'Subscribers',
+        descriptor.subscribers
+          ? `${descriptor.subscribers.total} (direct ${descriptor.subscribers.direct}, dependent ${descriptor.subscribers.dependent}, global ${descriptor.subscribers.global})`
+          : '0',
+      ],
       [
         'JavaScript type',
         info.value === null ? 'null' : Array.isArray(info.value) ? 'array' : typeof info.value,
       ],
       ['Value', displayValue(info.value)],
       ['Children', String(children.length)],
-      ['Watchable', info.derived || info.source ? 'no' : 'yes'],
     ];
     if (info.sourcePath) rows.splice(4, 0, ['Derived from', info.sourcePath]);
     if (expressionSource) rows.splice(4, 0, ['Expression', expressionSource]);
@@ -950,7 +1036,7 @@
       }
       row.append(labelElement, valueElement);
       propertiesBody.appendChild(row);
-      if (expressionSource && label === 'Expression') {
+      if (expressionSource && label === 'Expression' && isObject(info.value?.ast)) {
         propertiesBody.appendChild(renderAst(info.value.ast));
       }
     }
@@ -996,10 +1082,25 @@
     }
     row.appendChild(toggle);
 
+    const descriptor = semanticDescriptor(path, value, derived, source);
+    const semanticIcon = document.createElement('i');
+    semanticIcon.className = `bi ${iconForCtxNode(descriptor)} ctx-debug-node-icon`;
+    semanticIcon.setAttribute('aria-hidden', 'true');
+    semanticIcon.title = descriptor.kind;
+    row.appendChild(semanticIcon);
+
     const keyElement = document.createElement('span');
     keyElement.className = `ctx-debug-key${derived ? ' ctx-debug-derived' : ''}`;
     keyElement.textContent = key;
     row.appendChild(keyElement);
+
+    if (!derived && !source && isUiSurfaceLevel(value)) {
+      const badge = document.createElement('span');
+      badge.className = 'ctx-debug-ui-level-badge';
+      badge.textContent = uiSurfaceBadgeText(value);
+      badge.title = `V2 UI level: ${value.host}/${value.kind}/${value.mode}`;
+      row.appendChild(badge);
+    }
 
     if (!source) {
       const valueElement = document.createElement('span');
@@ -1054,7 +1155,7 @@
   };
 
   const render = ({ revealSelection = false, revealExpandedRange = false } = {}) => {
-    const scrollTop = treeElement.scrollTop;
+    captureScrollState();
     const recovered = nearestExistingPath(state.selected);
     if (recovered !== state.selected) {
       state.selected = recovered;
@@ -1063,7 +1164,7 @@
 
     state.expanded = new Set([...state.expanded].filter((path) => pathExists(path)));
     treeElement.replaceChildren(renderNode({ key: 'ctx', path: 'ctx', value: ctx }));
-    treeElement.scrollTop = Math.min(scrollTop || state.scrollTop, treeElement.scrollHeight);
+    restoreScrollState();
 
     if (statsElement) {
       const measured = measureContext(ctx);
@@ -1146,7 +1247,10 @@
   const DEFAULT_PROPERTIES_HEIGHT = 256;
   const applyPropertiesHeight = (requested = state.propertiesHeight) => {
     if (!propertiesPanel) return;
-    const panelHeight = document.getElementById('debugPanel')?.clientHeight || window.innerHeight;
+    const panelHeight =
+      panelElement?.clientHeight ||
+      treeElement.ownerDocument.defaultView?.innerHeight ||
+      window.innerHeight;
     const minHeight = 136;
     const maxHeight = Math.max(minHeight, Math.floor((panelHeight * 2) / 3));
     state.propertiesHeight = Math.max(
@@ -1204,7 +1308,8 @@
     requestAnimationFrame(ensureSelectedVisible);
   });
 
-  // CTX mutation/event infrastructure is provided by /js/ctx-runtime.js.
+  // CTX mutation/event infrastructure is provided by /js/runtime/context-runtime.js.
+  runtime.trackSubscriber?.('*', { kind: 'debugger', label: 'CTX Viewer' });
   window.addEventListener(CHANGE_EVENT, (event) => {
     const path = event.detail?.path;
     if (

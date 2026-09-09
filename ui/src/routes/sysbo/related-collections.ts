@@ -1,10 +1,12 @@
 import type { Request } from 'express';
 
-import type { SysBOUIMetadata } from '@manatos/shared';
+import type { ManatOSContext, SysBOUIMetadata } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { getSysBODefinition } from '../../sysbo/definitions.js';
+import { entityContextName } from '../../context/manatos-context.js';
+import { createCalculatedRecordProjector } from '../../runtime/projection/calculated-record-projector.js';
 import { apiPathFor, references, type SysBOListData } from './data-access.js';
 
 export interface RelatedCollectionData {
@@ -26,6 +28,7 @@ export async function loadRelatedCollections(
   isNew: boolean,
   effectiveUIMetadata?: SysBOUIMetadata,
   initialRelatedData: Readonly<Record<string, unknown[]>> = {},
+  ctx?: ManatOSContext,
 ): Promise<RelatedCollectionData> {
   const relatedData: Record<string, unknown[]> = { ...initialRelatedData };
   const relatedReferenceData: Record<string, Record<string, unknown[]>> = {};
@@ -61,14 +64,25 @@ export async function loadRelatedCollections(
       `/api/v1/${apiPathFor(relatedDefinition.key)}?${params.toString()}`,
       apiSessionOptions(req),
     );
-    relatedData[sourceKey] = response.data.items;
+    const relatedRows = ctx
+      ? await Promise.all(
+          response.data.items.map(
+            createCalculatedRecordProjector(relatedDefinition.boMetadata, ctx, {
+              source: 'entity-list-runtime',
+              sourcePath: `ctx.entities.${entityContextName(relatedDefinition.key)}`,
+              purpose: 'project calculated related-collection record field',
+            }),
+          ),
+        )
+      : response.data.items;
+    relatedData[sourceKey] = relatedRows;
 
     const needsReferenceData = Object.keys(collection.fields || {}).some(
       (fieldKey) => relatedDefinition.boMetadata.fieldDefinition[fieldKey]?.type === 'reference',
     );
     if (!needsReferenceData) continue;
 
-    relatedReferenceData[sourceKey] = await references(req, relatedDefinition);
+    relatedReferenceData[sourceKey] = await references(req, relatedDefinition, { ctx });
 
     /*
      * Relationship rows carry persistence ids while the collection editor
@@ -83,7 +97,7 @@ export async function loadRelatedCollections(
     if (!referenceField) continue;
 
     const refs = (referenceFields?.[referenceField] ?? []) as Record<string, unknown>[];
-    relatedEditingData[sourceKey] = response.data.items
+    relatedEditingData[sourceKey] = relatedRows
       .map((link) => {
         const targetId = link[referenceField];
         const referenced = refs.find(

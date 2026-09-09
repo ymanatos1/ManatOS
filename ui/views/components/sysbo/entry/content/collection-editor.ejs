@@ -34,7 +34,10 @@
    * keep their simple value contract; structured editors project only the
    * metadata-declared item fields from the referenced canonical record.
    */
-  const ctxCollection = Array.isArray(ctxPage?.entry?.[o.sourceKey]) ? ctxPage.entry[o.sourceKey] : null;
+  const v2Collection = componentData?.relatedEditingData?.[o.sourceKey];
+  // Production V2 collection editors consume the component-owned resource/read-model
+  // projection only. Retired page-context entry state must never be consulted.
+  const ctxCollection = Array.isArray(v2Collection) ? v2Collection : null;
   const initialValues = ctxCollection || rows.map((row) => {
     const id = row[o.targetField];
     const reference = referenceFor(id);
@@ -377,11 +380,15 @@
       : values.map((value) => scalarValue(value));
     payload.value = JSON.stringify({ current: payloadValues });
     const runtime = window.ManatOS?.ctx;
-    if (runtime?.value?.page && runtime?.replace) {
-      let node = runtime.value.page;
-      let path = 'ctx.page';
-      while (node?.page) { node = node.page; path += '.page'; }
-      runtime.replace(`${path}.entry.<%= o.sourceKey %>`, values.map((value) => value && typeof value === 'object' ? { ...value } : value), { source: 'collection-editor' });
+    if (runtime?.replace) {
+      const projectedValues = values.map((value) => value && typeof value === 'object' ? { ...value } : value);
+      const host = root.closest('[data-metadata-component]');
+      const v2ScopePath = host?.dataset?.ctxScopePath || '';
+      if (v2ScopePath) {
+        runtime.replace(`${v2ScopePath}.resources.collections.<%= o.sourceKey %>.current`, projectedValues, {
+          source: 'collection-editor',
+        });
+      }
     }
     payload.dispatchEvent(new Event('change', { bubbles: true }));
   };

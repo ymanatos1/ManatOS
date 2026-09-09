@@ -1,37 +1,32 @@
-import { compileExpression, type SysBOMetadata, type SysBOUIMetadata } from '@manatos/shared';
+import type { SysBOMetadata, SysBOUIMetadata } from '@manatos/shared';
 
 /**
- * Compile reusable entry-representation formulas once for browser consumers.
- * The returned object is pure JSON metadata + AST + owner-supplied reference
- * data; components never reparse formulas or perform hidden I/O.
+ * Project portable entry-representation metadata for browser consumers.
+ * Expression source remains the contract; the browser compiles/caches its own
+ * AST through the shared expression compiler when the representation is used.
  */
-export function compiledEntryRepresentationRuntime(
+export function entryRepresentationRuntime(
   metadata: SysBOMetadata<Record<string, unknown>>,
   metadataUI: SysBOUIMetadata,
   referenceData: Readonly<Record<string, unknown>> = {},
 ): Readonly<Record<string, unknown>> {
-  const compileSource = (source: NonNullable<typeof metadata.entry>['name'] | undefined) =>
-    source
-      ? {
-          ...source,
-          ast: compileExpression('expression' in source ? source.expression : source.field).ast,
-        }
-      : null;
+  const sourceFor = (source: NonNullable<typeof metadata.entry>['name'] | undefined) =>
+    source ? { ...source } : null;
 
   return {
-    name: compileSource(
+    name: sourceFor(
       metadata.entry?.name ??
         (metadata.fieldDefinition.name ? { field: 'name' } : { field: metadata.primaryField }),
     ),
-    type: compileSource(
+    type: sourceFor(
       metadata.entry?.type ?? (metadata.fieldDefinition.type ? { field: 'type' } : undefined),
     ),
-    description: compileSource(metadata.entry?.description),
-    status: compileSource(metadata.entry?.status),
+    description: sourceFor(metadata.entry?.description),
+    status: sourceFor(metadata.entry?.status),
     calculations: Object.fromEntries(
       Object.entries(metadata.fieldDefinition)
         .filter(([, field]) => Boolean(field.calculation?.expression))
-        .map(([key, field]) => [key, compileExpression(field.calculation!.expression).ast]),
+        .map(([key, field]) => [key, field.calculation!.expression]),
     ),
     relationships: Object.fromEntries(
       Object.entries(metadata.relationships ?? {})

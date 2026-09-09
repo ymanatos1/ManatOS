@@ -2223,6 +2223,13 @@ body.anonymous .workspace {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Bootstrap's .d-flex utility is !important and can otherwise override the
+   browser's [hidden] presentation. Relationship filtering is metadata-driven
+   in hierarchy-tree.js, so illegal parent/sibling/child candidates must stay
+   physically absent from the fly-out regardless of utility classes. */
+.metadata-hierarchy-existing-node-menu .dropdown-item[hidden] {
+  display: none !important;
+}
 
 /* Generic existing-record selectors intentionally look and behave like compact
    list pages because they reuse the same metadata-driven list components.
@@ -2353,4 +2360,49 @@ body.anonymous .workspace {
   margin-left: 0;
   font-size: 0.52rem;
   opacity: 0.58;
+}
+
+/*
+ * Read-only canonical GUIDs are system identities rather than ordinary text.
+ * Give every metadata-driven summary the same compact, copy-friendly
+ * visual treatment without special-casing Id/UID field names in a renderer.
+ */
+.metadata-system-identifier {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 999px;
+  background: var(--manatos-readonly-field-bg);
+  color: var(--bs-secondary-color);
+  vertical-align: middle;
+}
+
+.metadata-system-identifier code {
+  overflow-wrap: anywhere;
+  color: inherit;
+  font-size: 0.86em;
+}
+
+/*
+ * Read-only human/actor names are explicitly requested by UI metadata
+ * (`presentation.format = name`). Keep this distinct from ordinary strings and
+ * from GUID identity, while reusing the same compact summary-value vocabulary.
+ */
+.metadata-readonly-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.08rem 0.35rem;
+  border-radius: 0.4rem;
+  background: var(--manatos-readonly-field-bg);
+  color: var(--bs-body-color);
+  vertical-align: middle;
+}
+
+.metadata-readonly-name .bi {
+  color: var(--bs-secondary-color);
 }

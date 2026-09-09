@@ -204,14 +204,11 @@
 
   <% if (typeof entryPopupHost !== 'undefined' && entryPopupHost) { %>
     <style>
-      body.entry-popup-host .site-frame > header,
-      body.entry-popup-host .site-frame > nav,
-      body.entry-popup-host .site-frame > footer,
-      body.entry-popup-host .left-navigation,
-      body.entry-popup-host .details-panel,
-      body.entry-popup-host .workspace-toolbar,
-      body.entry-popup-host .workspace-titlebar,
-      body.entry-popup-host [data-developer-tools] { display: none !important; }
+      /*
+       * Hosted entry popups do not render page-navigation chrome at all.
+       * These rules now only normalize the remaining content workspace inside
+       * the iframe; they are not responsible for hiding shell components.
+       */
       body.entry-popup-host .app-shell { display: block !important; min-height: 100vh; }
       body.entry-popup-host .workspace { width: 100% !important; max-width: none !important; }
       body.entry-popup-host .workspace-content { padding: 1rem !important; }
@@ -224,12 +221,24 @@
   class="<%= currentUser ? 'authenticated' : 'anonymous' %> <%= typeof entryPopupHost !== 'undefined' && entryPopupHost ? 'entry-popup-host' : '' %>"
   data-user-id="<%= currentUser?.id || 'anonymous' %>"
 >
+  <%
+    /*
+     * Host composition is a presentation concern, not an entity concern.
+     * Normal pages render application chrome and shell-owned workspace framing.
+     * Hosted entry popups render only their hosted content inside the workspace;
+     * popup caption/lifecycle belong to the outer PopupHost.
+     */
+    const isEntryPopupHost = typeof entryPopupHost !== 'undefined' && entryPopupHost;
+    const contentOwnsWorkspaceFrame =
+      typeof workspaceFrameOwner === 'string' && workspaceFrameOwner === 'content';
+  %>
 
   <div class="site-frame">
 
-    <%- include('../components/layout/header') %>
-
-    <%- include('../components/navigation/horizontal-nav') %>
+    <% if (!isEntryPopupHost) { %>
+      <%- include('../components/layout/header') %>
+      <%- include('../components/navigation/horizontal-nav') %>
+    <% } %>
 
 
     <!-- =========================================================
@@ -260,7 +269,7 @@
       data-navigation-state-persistence="<%= app.ui.navigationStatePersistence %>"
     >
 
-      <% if (currentUser) { %>
+      <% if (currentUser && !isEntryPopupHost) { %>
 
         <!-- =====================================================
              Left application navigation
@@ -349,6 +358,7 @@
           outside the caption panel and remains aligned to the workspace's
           far-right edge.
         -->
+        <% if (!isEntryPopupHost) { %>
         <div class="workspace-heading-row">
 
           <nav
@@ -415,33 +425,21 @@
           <% } %>
 
         </div>
+        <% } %>
 
 
-
-        <div class="workspace-titlebar">
-
-          <div class="workspace-title-copy">
-            <h1>
-              <% if (typeof titleIcon === 'string' && titleIcon) { %>
-                <i class="bi <%= titleIcon %> workspace-title-icon me-2" aria-hidden="true"></i>
-              <% } %>
-              <%= title || 'Home' %>
-            </h1>
-            <% if (typeof titleSubtitle === 'string' && titleSubtitle) { %>
-              <p class="workspace-title-subtitle"><%= titleSubtitle %></p>
-            <% } %>
-          </div>
-
-        </div>
-
-
-        <div class="workspace-content">
-
+        <% if (contentOwnsWorkspaceFrame) { %>
           <%- body %>
+        <% } else { %>
+          <%- include('../components/page/titlebar') %>
 
-        </div>
 
-        <% if (app.ui?.debugTools) { %>
+          <div class="workspace-content">
+            <%- body %>
+          </div>
+        <% } %>
+
+        <% if (app.ui?.debugTools && !isEntryPopupHost) { %>
           <%- include('../components/debugging/debugging-cli', {
             instanceKey: 'ctx-viewer',
             startPath: 'ctx',
@@ -453,7 +451,7 @@
       </section>
 
 
-      <% if (currentUser) { %>
+      <% if (currentUser && !isEntryPopupHost) { %>
 
         <!-- =====================================================
              Optional contextual Details panel
@@ -518,14 +516,16 @@
       <% } %>
 
 
-      <% if (app.ui?.debugTools) { %>
+      <% if (app.ui?.debugTools && !isEntryPopupHost) { %>
         <%- include('../components/debugging/developer-tools') %>
       <% } %>
 
     </main>
 
 
-    <%- include('../components/layout/footer') %>
+    <% if (!isEntryPopupHost) { %>
+      <%- include('../components/layout/footer') %>
+    <% } %>
 
   </div>
 
@@ -543,8 +543,8 @@
     src="/vendor/bootstrap/js/bootstrap.bundle.min.js"
   ></script>
 
-  <script src="/js/prefs.js"></script>
-  <script src="/js/shell.js"></script>
+  <script src="/js/shell/preferences.js"></script>
+  <script src="/js/shell/shell.js"></script>
   <script src="/js/popups/entry-popup.js"></script>
   <% if (app.ui?.debugTools && Array.isArray(ctxDiagnostics) && ctxDiagnostics.length) { %>
     <script>
@@ -556,16 +556,20 @@
       })();
     </script>
   <% } %>
-  <script id="manatosCtxSnapshot" type="application/json"><%- JSON.stringify(ctx ?? null).replace(/</g, '\\u003c') %></script>
-  <script src="/js/ctx-runtime.js"></script>
-  <script src="/js/system-connectivity.js"></script>
-  <script src="/js/ui-bootstrap-runtime.js"></script>
+  <script id="manatosCtxSnapshot" type="application/json"><%- JSON.stringify(typeof browserCtx !== 'undefined' ? browserCtx : null).replace(/</g, '\\u003c') %></script>
+  <script id="manatosUiBootstrap" type="application/json"><%- JSON.stringify(typeof uiBootstrap !== 'undefined' ? uiBootstrap : null).replace(/</g, '\\u003c') %></script>
+  <script src="/js/runtime/ui-host-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/runtime/context-runtime.js"></script>
+  <script src="/js/shell/system-connectivity.js"></script>
+  <script src="/js/runtime/bootstrap-runtime.js"></script>
   <% if (app.ui?.debugTools) { %>
     <script src="/js/debugger/expression-format.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
     <script src="/js/debugger/ctx-debug.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+    <script src="/js/debugger/ctx-target-views.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
     <script src="/js/debugger/api-traffic.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+    <script src="/js/debugger/detached-tools.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <% } %>
-  <script src="/js/lists.js"></script>
+  <script src="/js/sysbo/list/list-runtime.js"></script>
   <!--
     Popup lifecycle must be installed before any script can auto-show a modal.
     busy.js owns data-auto-show bootstrapping, so loading popup-runtime first
@@ -573,22 +577,25 @@
     CTX inspection action, explicit-dismissal policy and workspace centering.
   -->
   <script src="/js/popups/popup-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/busy.js"></script>
-  <script src="/js/metadata-form-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/forms/auth.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/forms/entry-state.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/forms/entry-field-state.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/forms/entry-save.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/forms/entry-focus.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/forms/configuration.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/entry-representation.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/shell/busy.js"></script>
+  <script src="/js/runtime/expression-compiler-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/form-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/runtime/entry-policy-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/runtime/list-action-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/auth/auth-form.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/state.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/field-state.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/save.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/focus.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/configuration/form.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/entry-representation.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/popups/record-selector.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/debugger/cli.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/field-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/components/external-provider.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/auth/external-provider.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/hierarchy/hierarchy-tree.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/hierarchy/hierarchy-workspace.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/auth-providers.js"></script>
+  <script src="/js/auth/providers.js"></script>
 
 </body>
 

@@ -1,5 +1,7 @@
-(() => {
+(async () => {
   'use strict';
+
+  await window.ManatOS?.expressionCompilerReady;
 
   const runtime = window.ManatOS?.ctx;
   if (!runtime?.resolve) return;
@@ -70,25 +72,48 @@
   };
 
   const leafPagePath = () => {
-    if (!runtime?.value?.page) return null;
-    let node = runtime.value.page;
-    let path = 'ctx.page';
-    while (node?.page) {
-      node = node.page;
-      path += '.page';
+    let node = runtime?.value?.ui?.level;
+    if (!node) return null;
+    let path = 'ctx.ui.level';
+    while (node?.level) {
+      node = node.level;
+      path += '.level';
     }
     return path;
   };
 
+  const componentScopePath = (component) =>
+    component.dataset.ctxScopePath || leafPagePath() || undefined;
+
+  /** Resolve one metadata-declared source from the owning V2 UI level. */
+  const sourceCandidates = (path) => [path];
+
+  const resolveSource = (component, path) => {
+    const scopePath = componentScopePath(component);
+    for (const candidate of sourceCandidates(path, scopePath)) {
+      const resolved = runtime.resolve(candidate, scopePath);
+      if (resolved !== undefined) return resolved;
+    }
+    return undefined;
+  };
+
+  const resolveSourcePath = (component, path) => {
+    const scopePath = componentScopePath(component);
+    for (const candidate of sourceCandidates(path, scopePath)) {
+      const resolved = runtime.resolvePath?.(candidate, scopePath);
+      if (typeof resolved === 'string' && resolved) return resolved;
+    }
+    return undefined;
+  };
+
   const resolvedDependencyPaths = (component) => {
     const options = optionsFor(component);
-    const scopePath = leafPagePath() ?? undefined;
-    const dataSource = String(options.dataSource || 'entries');
-    const currentSource = String(options.currentSource || 'entry');
+    const dataSource = String(options.dataSource || 'list.entries');
+    const currentSource = String(options.currentSource || 'entry.current');
     const focusSource = String(options.focusSource || '');
     return [dataSource, currentSource, focusSource]
       .filter(Boolean)
-      .map((path) => runtime.resolvePath?.(path, scopePath))
+      .map((path) => resolveSourcePath(component, path))
       .filter((path) => typeof path === 'string' && path);
   };
 
@@ -157,8 +182,8 @@
   const buildTree = (component) => {
     const options = optionsFor(component);
     const state = stateFor(component, options);
-    const dataSource = String(options.dataSource || 'entries');
-    const currentSource = String(options.currentSource || 'entry');
+    const dataSource = String(options.dataSource || 'list.entries');
+    const currentSource = String(options.currentSource || 'entry.current');
     const focusSource = String(options.focusSource || '');
     const idField = String(options.idField || '');
     const parentField = String(options.parentField || '');
@@ -173,8 +198,8 @@
 
     if (!idField || !parentField) return;
 
-    const list = runtime.resolve(dataSource);
-    const current = runtime.resolve(currentSource);
+    const list = resolveSource(component, dataSource);
+    const current = resolveSource(component, currentSource);
     const editingId = workspaceMode ? String(component.dataset.hierarchyEditingId || '') : '';
     const rows = projectedRows(list, current, idField).filter(
       (row) => !editingId || String(row?.[idField] ?? '') !== editingId,
@@ -184,7 +209,7 @@
       typeof current === 'object' &&
       !Array.isArray(current) &&
       Object.prototype.hasOwnProperty.call(current, idField);
-    const focusedValue = focusSource ? runtime.resolve(focusSource) : null;
+    const focusedValue = focusSource ? resolveSource(component, focusSource) : null;
     const currentId = focusedValue ?? (currentIsRecord ? current[idField] : null);
     const byIdForFocus = new Map(rows.map((row) => [String(row[idField]), row]));
     const focusedRow = currentId == null ? null : byIdForFocus.get(String(currentId));
@@ -644,10 +669,12 @@
           const memberId = node?.dataset?.hierarchyNodeId || '';
           const entityKey = component.dataset.entityKey || '';
           const popup = window.ManatOSEntryPopup;
-          // A hosted entry is already a child interaction. Do not recursively
-          // host another full entry document inside it; the current popup stack
-          // intentionally supports one hosted-entry level only.
-          if (document.body.classList.contains('entry-popup-host')) return;
+          /*
+           * Hosted entry documents delegate ManatOSEntryPopup.open() to their
+           * owning window. Therefore the same generic node action works for a
+           * page or any nested popup level; no entity or nesting-depth branch is
+           * needed here.
+           */
           if (!memberId || memberId.startsWith('draft:') || !entityKey || !popup?.open) return;
           const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
           const params = new URLSearchParams({
@@ -810,6 +837,7 @@
 
   // CTX is the sole live data source. Subscribe each component to the resolved
   // CTX resources declared by metadata; unrelated page events do not redraw it.
+  runtime.trackSubscriber?.('*', { kind: 'hierarchy', label: 'Hierarchy tree' });
   window.addEventListener(runtime.eventName || 'manatos:ctx-change', (event) => {
     const changedPaths = [
       event?.detail?.path,

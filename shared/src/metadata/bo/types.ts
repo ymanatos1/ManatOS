@@ -129,6 +129,23 @@ export interface SysBOFieldMetadata {
    */
   referenceSelection?: Readonly<{
     filterExpression?: string;
+
+    /**
+     * Generic metadata-trait constraint on a target enum field. A candidate is
+     * retained only when its enum item exposes the requested trait as true.
+     * This keeps relationship policy attached to canonical enum metadata rather
+     * than duplicating concrete enum values in UI code.
+     */
+    filterEnumItemTrait?: Readonly<{ field: string; trait: string }>;
+
+    /**
+     * When true, the current source record is projected as unavailable when the
+     * reference targets the same entity type. This is a generic relationship
+     * constraint used by every reference presenter; callers must not reimplement
+     * self-reference checks in browser code.
+     */
+    excludeCurrent?: boolean;
+
     uniqueThrough?: Readonly<{ objectKey: string; field: string }>;
 
     /**
@@ -148,6 +165,7 @@ export interface SysBOFieldMetadata {
             visible?: boolean;
             label?: string;
             allowedValues?: readonly string[];
+            allowedEnumItemTrait?: string;
           }>
         >
       >;

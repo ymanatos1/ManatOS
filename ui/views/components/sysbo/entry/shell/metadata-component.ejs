@@ -1,0 +1,58 @@
+<%#
+  COMPONENT: Metadata component host
+
+  Purpose:
+  - Provides the canonical renderer boundary for metadata-declared reusable entry components.
+
+  Inputs / metadata:
+  - component, componentBindings, componentBindingExpressions, componentOptions, componentPartial,
+    metadataComponentContext, definition, recordMode, readOnly, span, optional ctxScopePath and
+    grid-span expression metadata.
+
+  CTX contract:
+  - Receives static component bindings plus dynamic binding declarations and (for V2) the owning
+    lexical CTX scope path. Browser policy evaluates dynamic bindings; this host never evaluates UI logic.
+
+  Embeds / delegates:
+  - Server-rendered component partials from the canonical metadata component registry, or a browser mount marker.
+
+  Runtime contract:
+  - Emits the same data-metadata-component contract for every entry engine so browser components have one mount shape.
+%>
+<%
+  const resolvedSpan = Number.isFinite(Number(span))
+    ? Math.max(1, Math.min(12, Math.trunc(Number(span))))
+    : 12;
+  const resolvedComponentKey = String(component?.key || '');
+  const resolvedBindingExpressions =
+    typeof componentBindingExpressions !== 'undefined' && componentBindingExpressions
+      ? componentBindingExpressions
+      : {};
+%>
+<div
+  class="col-md-<%= resolvedSpan %>"
+  data-metadata-content-component="<%= resolvedComponentKey %>"
+  data-metadata-component="<%= resolvedComponentKey %>"
+  data-metadata-component-options="<%= JSON.stringify(componentOptions || {}) %>"
+  data-metadata-component-bindings="<%= JSON.stringify(componentBindings || {}) %>"
+  data-metadata-component-binding-expressions="<%= JSON.stringify(resolvedBindingExpressions) %>"
+  data-entity-key="<%= definition.key %>"
+  data-record-mode="<%= recordMode %>"
+  <% if (typeof ctxScopePath === 'string' && ctxScopePath) { %>
+    data-ctx-scope-path="<%= ctxScopePath %>"
+  <% } %>
+  <% if (spanExpression) { %>
+    data-ui-grid-span-expression="<%= spanExpression %>"
+    data-ui-grid-span-fallback="<%= resolvedSpan %>"
+  <% } %>
+>
+  <% if (componentPartial) { %>
+    <%- include(componentPartial, {
+      ...metadataComponentContext,
+      component,
+      componentBindings,
+      readOnly,
+      ctxScopePath: typeof ctxScopePath === 'string' ? ctxScopePath : null,
+    }) %>
+  <% } %>
+</div>

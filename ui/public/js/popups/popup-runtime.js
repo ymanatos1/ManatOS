@@ -4,9 +4,9 @@
  * Bootstrap modal families and custom popup components should expose the same
  * conceptual runtime shape:
  *
- *   ctx.<leaf-page>.popup
+ *   ctx.ui.level...level   // host='popup' child surface
  *     kind
- *     callingParams   // why/how this popup was invoked
+ *     invocation      // why/how this popup was invoked
  *     presentation    // resolved visible chrome
  *     state           // popup-owned mutable lifecycle state
  *
@@ -33,36 +33,241 @@
     }
   };
 
-  const leafPagePath = () => {
+  /** Return the deepest canonical V2 UI level currently projected in CTX. */
+  const uiLeaf = () => {
     const runtime = ctxRuntime();
-    let node = runtime?.value?.page;
-    if (!node) return null;
-    let path = 'ctx.page';
-    while (node?.page) {
-      node = node.page;
-      path += '.page';
+    let level = runtime?.value?.ui?.level;
+    if (!level) return null;
+    let path = 'ctx.ui.level';
+    while (level?.level) {
+      level = level.level;
+      path += '.level';
     }
-    return path;
+    return { level, path };
   };
 
-  const popupPath = () => `${leafPagePath() || 'ctx.page'}.popup`;
+  // Bootstrap modals are ordinary V2 popup surfaces as well. Keep their
+  // browser-created surface handles separate from modal DOM state so generic
+  // popup chrome never recreates the retired ctx.page...popup branch.
+  const surfaceByModal = new WeakMap();
+  const activePopupPath = () => {
+    const handle = activeModal instanceof HTMLElement ? surfaceByModal.get(activeModal) : null;
+    if (handle?.path) return handle.path;
+    return uiLeaf()?.path || 'ctx.ui.level';
+  };
+  const popupPath = () => activePopupPath();
+
+  const surfaceState = (phase = 'active') => ({
+    lifecycle: phase,
+    active: phase === 'active',
+    dirty: false,
+    valid: true,
+    loading: false,
+    saving: false,
+    deleting: false,
+    blocked: false,
+    navigation: { activeTabId: null, activeInternalTabIds: {} },
+  });
+
+  const ENTRY_POPUP_WIDTH = 1120;
+  const ENTRY_POPUP_HEIGHT = 820;
+  const POPUP_VIEWPORT_GUTTER = 24;
+  const POPUP_CASCADE_DELTA_X = 56;
+  const POPUP_CASCADE_DELTA_Y = 24;
+
+  const clampCoordinate = (value, minimum, maximum) =>
+    Math.max(minimum, Math.min(maximum, Math.round(Number(value) || minimum)));
+
+  /**
+   * Compute the canonical opening geometry for a popup surface.
+   *
+   * A page-owned popup starts at the same centered location used historically.
+   * A popup-owned popup alternates around its parent using the parent's CTX
+   * counter, so arbitrary nesting remains visible without entity-specific code.
+   */
+  const preparePopupPlacement = ({
+    width = ENTRY_POPUP_WIDTH,
+    height = ENTRY_POPUP_HEIGHT,
+  } = {}) => {
+    const parent = uiLeaf();
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const actualWidth = Math.min(Number(width) || ENTRY_POPUP_WIDTH, viewportWidth - 48);
+    const actualHeight = Math.min(Number(height) || ENTRY_POPUP_HEIGHT, viewportHeight - 48);
+    const centeredX = Math.round((viewportWidth - actualWidth) / 2);
+    const centeredY = Math.round((viewportHeight - actualHeight) / 2);
+
+    const parentPopup =
+      parent?.level?.host === 'popup' &&
+      parent.level.state?.popup &&
+      typeof parent.level.state.popup === 'object'
+        ? parent.level.state.popup
+        : null;
+
+    const parentCounter = Number(parentPopup?.openedPopupsCounter);
+    const normalizedParentCounter = Number.isFinite(parentCounter) ? parentCounter : 0;
+    const openedPopupsCounter = parentPopup ? normalizedParentCounter + 1 : 0;
+
+    /*
+     * Nested placement is derived from the normal centered geometry, not from
+     * the previous popup's coordinates. This makes position a pure function of
+     * nesting depth and avoids accumulated drift when a parent was resized or
+     * clamped by a smaller viewport. X fans out by depth; Y alternates above and
+     * below the normal position. The first page-owned popup remains unshifted.
+     */
+    const rawX = parentPopup ? centeredX + POPUP_CASCADE_DELTA_X * openedPopupsCounter : centeredX;
+    const rawY = parentPopup
+      ? centeredY + POPUP_CASCADE_DELTA_Y * (openedPopupsCounter % 2 === 0 ? 1 : -1)
+      : centeredY;
+
+    return Object.freeze({
+      x: clampCoordinate(rawX, 8, Math.max(8, viewportWidth - actualWidth - POPUP_VIEWPORT_GUTTER)),
+      y: clampCoordinate(
+        rawY,
+        8,
+        Math.max(8, viewportHeight - actualHeight - POPUP_VIEWPORT_GUTTER),
+      ),
+      openedPopupsCounter,
+    });
+  };
+
+  /**
+   * Client-opened popups append one canonical child UI level to the browser-owned
+   * page/list/entry chain. This keeps ctx.ui authoritative without introducing a
+   * parallel popup-specific context model.
+   */
+  const openUiLevel = ({
+    kind = 'custom',
+    mode = 'view',
+    name = 'popup',
+    entityKey = null,
+    invocation = {},
+    presentation = {},
+    state = {},
+  } = {}) => {
+    const runtime = ctxRuntime();
+    const parent = uiLeaf();
+    if (!runtime?.replace || !parent?.level || !parent?.path) return null;
+
+    const normalizedName = String(name || 'popup').replace(/[^A-Za-z0-9_$-]/g, '-');
+    const childPath = `${parent.path}.level`;
+    const child = {
+      id: `popup-${kind}-${normalizedName}-${Date.now()}`,
+      host: 'popup',
+      kind: String(kind || 'custom'),
+      mode: String(mode || 'view'),
+      name: normalizedName,
+      path: `${parent.level.path}/popup:${normalizedName}`,
+      scope: String(parent.level.scope || 'sys'),
+      ...(entityKey ? { entityKey: String(entityKey) } : {}),
+      invocation: { ...invocation },
+      presentation: { kind: String(kind || 'custom'), ...presentation },
+      state: { ...surfaceState('active'), ...state },
+    };
+
+    if (parent.level.state && typeof parent.level.state === 'object') {
+      runtime.replace(
+        `${parent.path}.state`,
+        { ...parent.level.state, lifecycle: 'deactivating', active: false },
+        {
+          source: 'v2-popup-surface',
+          action: 'deactivate-parent-surface',
+          triggerPath: childPath,
+        },
+      );
+    }
+    runtime.replace(childPath, child, {
+      source: 'v2-popup-surface',
+      action: 'open-popup-surface',
+      triggerPath: childPath,
+    });
+    return { path: childPath, parentPath: parent.path, id: child.id };
+  };
+
+  const updateUiLevel = (handle, patch, options = {}) => {
+    const runtime = ctxRuntime();
+    if (!runtime?.replace || !handle?.path) return;
+    const current = runtime.get?.(handle.path);
+    if (!current || typeof current !== 'object') return;
+    runtime.replace(
+      handle.path,
+      { ...current, ...patch },
+      {
+        source: options.source || 'v2-popup-surface',
+        action: options.action || 'update-popup-surface',
+        triggerPath: handle.path,
+      },
+    );
+  };
+
+  /**
+   * Build the browser-side form of the canonical V2 SurfaceResult contract.
+   * Browser popup hosts cannot import the TypeScript runtime directly,
+   * but callers still receive the exact semantic envelope used by V2 hosts.
+   */
+  const surfaceResult = (handle, outcome = 'closed', detail = {}) =>
+    Object.freeze({
+      outcome: String(outcome || 'closed'),
+      surfaceId: String(handle?.id || ''),
+      ...(detail.value !== undefined ? { value: detail.value } : {}),
+      ...(detail.record && typeof detail.record === 'object' ? { record: detail.record } : {}),
+      ...(detail.metadata && typeof detail.metadata === 'object'
+        ? { metadata: detail.metadata }
+        : {}),
+    });
+
+  const closeUiLevel = (handle) => {
+    const runtime = ctxRuntime();
+    if (!runtime?.delete || !handle?.path) return;
+    if (runtime.get?.(handle.path) !== undefined) {
+      runtime.delete(handle.path, {
+        source: 'v2-popup-surface',
+        action: 'close-popup-surface',
+        triggerPath: handle.path,
+      });
+    }
+    if (handle.parentPath && runtime.get?.(`${handle.parentPath}.state`) !== undefined) {
+      const parentState = runtime.get(`${handle.parentPath}.state`);
+      runtime.replace(
+        `${handle.parentPath}.state`,
+        { ...parentState, lifecycle: 'active', active: true },
+        {
+          source: 'v2-popup-surface',
+          action: 'reactivate-parent-surface',
+          triggerPath: handle.parentPath,
+        },
+      );
+    }
+  };
 
   const replaceContext = (payload, options = {}) => {
-    const runtime = ctxRuntime();
-    if (!runtime?.replace) return;
-    const path = popupPath();
-    runtime.replace(path, payload, {
-      source: options.source || 'popup-runtime',
-      action: options.action || 'popup-state',
-      triggerPath: path,
-    });
+    if (!(activeModal instanceof HTMLElement)) return;
+    const handle = surfaceByModal.get(activeModal);
+    if (!handle) return;
+    const current = ctxRuntime()?.get?.(handle.path);
+    if (!current || typeof current !== 'object') return;
+    updateUiLevel(
+      handle,
+      {
+        resources: {
+          ...(current.resources && typeof current.resources === 'object' ? current.resources : {}),
+          popup: payload,
+        },
+      },
+      {
+        source: options.source || 'popup-runtime',
+        action: options.action || 'popup-state',
+      },
+    );
   };
 
   const clearContext = (options = {}) => {
-    replaceContext(null, {
-      source: options.source || 'popup-runtime',
-      action: options.action || 'close-popup',
-    });
+    if (!(activeModal instanceof HTMLElement)) return;
+    const handle = surfaceByModal.get(activeModal);
+    if (!handle) return;
+    closeUiLevel(handle);
+    surfaceByModal.delete(activeModal);
+    void options;
   };
 
   const centerModalInWorkspace = (modal) => {
@@ -128,28 +333,42 @@
     state: { ...state },
   });
 
-  const popupPayload = (modal, callingParams, phase) =>
-    createPayload({
-      kind: String(modal.dataset.popupKind || 'modal'),
-      callingParams,
-      presentation: {
-        mode: String(
-          callingParams.presentationMode || modal.dataset.popupPresentation || 'standard',
-        ),
-        title: String(callingParams.title || popupTitle(modal)),
-      },
-      state: {
-        phase,
-        open: phase === 'opening' || phase === 'open',
-      },
-    });
-
   const syncModalContext = (modal, phase) => {
     const callingParams = invocationByModal.get(modal) || resolveCallingParams(modal, null);
-    replaceContext(popupPayload(modal, callingParams, phase), {
-      source: 'bootstrap-popup',
-      action: `popup-${phase}`,
-    });
+    let handle = surfaceByModal.get(modal);
+
+    if (phase === 'opening' && !handle) {
+      handle = openUiLevel({
+        kind: String(modal.dataset.popupKind || 'modal'),
+        mode: 'view',
+        name: String(modal.id || callingParams.purpose || 'modal'),
+        invocation: callingParams,
+        presentation: {
+          title: String(callingParams.title || popupTitle(modal)),
+          layout: String(
+            callingParams.presentationMode || modal.dataset.popupPresentation || 'standard',
+          ),
+        },
+      });
+      if (handle) surfaceByModal.set(modal, handle);
+      return;
+    }
+
+    if (!handle) return;
+    const current = ctxRuntime()?.get?.(handle.path);
+    if (!current || typeof current !== 'object') return;
+    const active = phase === 'open';
+    updateUiLevel(
+      handle,
+      {
+        state: {
+          ...(current.state && typeof current.state === 'object' ? current.state : {}),
+          lifecycle: phase === 'closing' ? 'closing' : active ? 'active' : phase,
+          active,
+        },
+      },
+      { source: 'bootstrap-popup', action: `popup-${phase}` },
+    );
   };
 
   /**
@@ -300,8 +519,12 @@
       // During modal-to-modal transitions, the next popup may already own the
       // canonical popup CTX node. Never let the previous popup clear it.
       if (activeModal === modal) {
+        const handle = surfaceByModal.get(modal);
+        if (handle) {
+          closeUiLevel(handle);
+          surfaceByModal.delete(modal);
+        }
         activeModal = null;
-        clearContext({ source: 'bootstrap-popup', action: 'close-popup' });
       }
     });
   });
@@ -309,7 +532,6 @@
   window.addEventListener('resize', refreshVisibleModalCenters);
 
   window.ManatOSPopupRuntime = Object.freeze({
-    leafPagePath,
     popupPath,
     replaceContext,
     clearContext,
@@ -318,5 +540,11 @@
     setInspectionVisible,
     toggleInspection,
     clearInspection,
+    uiLeaf,
+    preparePopupPlacement,
+    openUiLevel,
+    updateUiLevel,
+    surfaceResult,
+    closeUiLevel,
   });
 })();

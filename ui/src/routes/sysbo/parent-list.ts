@@ -1,12 +1,19 @@
 import type { Request } from 'express';
 
-import { entryTypeSource, type SysBOMetadata, type SysBOUIMetadata } from '@manatos/shared';
+import {
+  entryTypeSource,
+  type ManatOSContext,
+  type SysBOMetadata,
+  type SysBOUIMetadata,
+} from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import type { SysBODefinition } from '../../sysbo/types.js';
 import { apiPathFor, references, type SysBOListData } from './data-access.js';
 import { metadataDrivenListQuery, metadataEntrySearchField } from './list-query.js';
+import { entityContextName } from '../../context/manatos-context.js';
+import { createCalculatedRecordProjector } from '../../runtime/projection/calculated-record-projector.js';
 
 export interface ParentListPermissions {
   read: boolean;
@@ -47,6 +54,7 @@ export async function parentListContextForEntry(
   metadata: SysBOMetadata<Record<string, unknown>>,
   metadataUI: SysBOUIMetadata,
   permissions: ParentListPermissions,
+  ctx: ManatOSContext,
 ): Promise<Readonly<Record<string, unknown>>> {
   const sourceQuery = parentListQueryForEntry(req, definition);
   const listQuery = metadataDrivenListQuery(
@@ -59,6 +67,13 @@ export async function parentListContextForEntry(
     `/api/v1/${apiPathFor(definition.key)}?${listQuery.params.toString()}`,
     apiSessionOptions(req),
   );
+
+  const projectRecord = createCalculatedRecordProjector(metadata, ctx, {
+    source: 'entity-list-runtime',
+    sourcePath: `ctx.entities.${entityContextName(metadata.key)}`,
+    purpose: 'project calculated parent-list record field',
+  });
+  const items = await Promise.all(response.data.items.map((item) => projectRecord(item)));
 
   const entryType = entryTypeSource<Record<string, unknown>>(metadata);
   const entryTypeField =
@@ -82,11 +97,11 @@ export async function parentListContextForEntry(
   const referenceData =
     referenceFields.some((fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference') ||
     entryUsesRelations
-      ? await references(req, definition)
+      ? await references(req, definition, { ctx })
       : {};
 
   return {
-    items: response.data.items,
+    items,
     paging: response.data.paging,
     query: { ...listQuery.query, pageSize: String(response.data.paging.pageSize) },
     permissions,

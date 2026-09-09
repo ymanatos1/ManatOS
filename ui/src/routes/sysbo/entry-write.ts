@@ -4,11 +4,14 @@ import {
   AppError,
   operationContext,
   resolveEntryRepresentation,
+  type ManatOSContext,
   type SysBOUser,
 } from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
+import { entityContextName } from '../../context/manatos-context.js';
+import { createCalculatedRecordProjector } from '../../runtime/projection/calculated-record-projector.js';
 
 import type { SysBODefinition } from '../../sysbo/types.js';
 import { apiPathFor, canonicalSysBOUIMetadata } from './data-access.js';
@@ -137,6 +140,19 @@ export async function persistMetadataDrivenEntry(
   );
 }
 
+async function projectSavedRecordForCtx(
+  res: Response,
+  definition: SysBODefinition,
+  record: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const ctx = res.locals.ctx as ManatOSContext;
+  return createCalculatedRecordProjector(definition.boMetadata, ctx, {
+    source: 'renderer',
+    sourcePath: `ctx.entities.${entityContextName(definition.key)}`,
+    purpose: 'project calculated fields on saved record before UI publication',
+  })(record);
+}
+
 export async function completeMetadataDrivenSave(
   req: Request,
   res: Response,
@@ -150,8 +166,8 @@ export async function completeMetadataDrivenSave(
   const entryUrl = savedId ? `${listUrl}/${encodeURIComponent(savedId)}` : listUrl;
   const invocation = entryInvocation(req);
 
-  if (invocation.popup && invocation.token && savedId) {
-    const record =
+  if (invocation.popup && invocation.token && savedId && !inPlaceSave) {
+    const rawRecord =
       savedRecord ??
       (
         await apiClient.get<Record<string, unknown>>(
@@ -159,10 +175,12 @@ export async function completeMetadataDrivenSave(
           apiSessionOptions(req),
         )
       ).data;
+    const record = await projectSavedRecordForCtx(res, definition, rawRecord);
     const uiMetadata = await canonicalSysBOUIMetadata(req, definition);
     const representation = resolveEntryRepresentation(definition.boMetadata, uiMetadata, record, {
       entityIcon: definition.icon,
     });
+    const close = saveMode === 'close';
     const payload = JSON.stringify({
       type: 'manatos:entry-popup-saved',
       token: invocation.token,
@@ -170,11 +188,22 @@ export async function completeMetadataDrivenSave(
       id: savedId,
       record,
       representation,
+      close,
     }).replaceAll('<', '\\u003c');
+    const continueUrl = `${entryUrl}?${new URLSearchParams({
+      _entryPopup: '1',
+      _entryPopupToken: invocation.token,
+      _entryMode: 'edit',
+      _entryDefaults: JSON.stringify(invocation.defaults),
+      _entryOverrides: JSON.stringify(invocation.uiOverrides),
+    }).toString()}`;
+    const continuation = close
+      ? ''
+      : `window.location.replace(${JSON.stringify(continueUrl).replaceAll('<', '\\u003c')});`;
     res
       .type('html')
       .send(
-        `<!doctype html><html><body><script>parent.postMessage(${payload}, window.location.origin);</script></body></html>`,
+        `<!doctype html><html><body><script>parent.postMessage(${payload}, window.location.origin);${continuation}</script></body></html>`,
       );
     return;
   }
@@ -185,7 +214,7 @@ export async function completeMetadataDrivenSave(
   }
 
   const apiPath = apiPathFor(definition.key);
-  const record =
+  const rawRecord =
     savedRecord ??
     (
       await apiClient.get<Record<string, unknown>>(
@@ -193,6 +222,7 @@ export async function completeMetadataDrivenSave(
         apiSessionOptions(req),
       )
     ).data;
+  const record = await projectSavedRecordForCtx(res, definition, rawRecord);
 
   res.set('Cache-Control', 'no-store');
   res.json({ success: true, data: { id: savedId, record, entryUrl } });

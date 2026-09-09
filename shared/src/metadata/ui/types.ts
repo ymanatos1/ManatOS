@@ -1,4 +1,4 @@
-import type { ManatOSDynamicValue } from '../../dynamic-value.js';
+import type { ManatOSDynamicValue } from '../dynamic-value.js';
 
 /**
  * Framework-neutral UI metadata contracts for SysBO presentation.
@@ -96,7 +96,7 @@ export type SysBOUIIconKey = string;
 
 export type SysBOUIStatusTone = 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info';
 
-export type SysBOUIValueFormat = 'text' | 'datetime' | 'datetime-elapsed';
+export type SysBOUIValueFormat = 'text' | 'name' | 'datetime' | 'datetime-elapsed';
 
 /**
  * A UI scalar may be static or evaluated dynamically against the caller's
@@ -150,6 +150,17 @@ export type SysBOUITabContentMetadata =
       span?: SysBOUIDynamicValue<number>;
     }>;
 
+export type SysBOUINavigationTrackPath = 'activeTabId' | `activeInternalTabIds.${string}`;
+
+export interface SysBOUINavigationTrackMetadata {
+  /**
+   * Relative path below the active page/popup `state.navigation` branch.
+   * Tracking is observational only: selecting the UI control updates CTX;
+   * changing CTX never commands the UI to navigate.
+   */
+  statePath: SysBOUINavigationTrackPath;
+}
+
 export interface SysBOUIRecordTabMetadata {
   id: string;
   label: string;
@@ -174,6 +185,13 @@ export interface SysBOUIRecordTabMetadata {
   readOnly?: boolean;
 
   /**
+   * Optional navigation-observer declaration. Renderers expose it to the shared
+   * navigation tracker; the tracker records the selected tab under the active
+   * surface/page state.navigation branch.
+   */
+  navigationTrack?: Readonly<SysBOUINavigationTrackMetadata>;
+
+  /**
    * Static or evaluator-backed visibility. The expression is evaluated against
    * the active entry page CTX, so it can depend on page mode, authenticated
    * user, record fields, client features, or any other reachable CTX value.
@@ -181,7 +199,7 @@ export interface SysBOUIRecordTabMetadata {
   visible?: SysBOUIDynamicValue<boolean>;
 
   /** Normal editable form, compact summary, or reusable CTX-driven component. */
-  layout?: 'form' | 'summary' | 'component';
+  layout?: 'form' | 'summary' | 'component' | 'debug-calculations';
 
   /**
    * Reusable metadata-driven component declaration. Concrete renderers map the

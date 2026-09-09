@@ -1,6 +1,11 @@
 import type { Request } from 'express';
 
-import { type SysBOUIMetadata, type SysBOUser, resolveEntryRepresentation } from '@manatos/shared';
+import {
+  resolveEntryRepresentation,
+  type ManatOSContext,
+  type SysBOUIMetadata,
+  type SysBOUser,
+} from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 import type { ExternalAuthProviderDefinition } from '../../auth/providers/types.js';
@@ -28,6 +33,7 @@ export async function editPageSupplementalData(
   isNew: boolean,
   effectiveUIMetadata?: SysBOUIMetadata,
   permissions?: UIEntityPermissions,
+  ctx?: ManatOSContext,
 ) {
   const itemId = typeof item.id === 'string' ? item.id : '';
 
@@ -42,6 +48,7 @@ export async function editPageSupplementalData(
     isNew,
     effectiveUIMetadata,
     { externalIdentities: authenticationIdentities },
+    ctx,
   );
 
   const deleteImpact =
@@ -100,7 +107,11 @@ export async function editPageSupplementalData(
     ...(primaryField?.enumItems || []),
   ].find((candidate) => candidate?.value === rawPrimaryValue);
 
-  const pageReferenceData = await references(req, definition);
+  const pageReferenceData = await references(req, definition, {
+    sourceRecordId: itemId,
+    sourceRecord: item,
+    ctx,
+  });
 
   /*
    * Each reference field receives one canonical selector context derived from
@@ -114,7 +125,12 @@ export async function editPageSupplementalData(
         .filter((field) => field.type === 'reference' && field.referenceBOKey)
         .map(async (field) => [
           field.key,
-          await selectorContextForReferenceField(req, field, pageReferenceData[field.key] || []),
+          await selectorContextForReferenceField(
+            req,
+            field,
+            pageReferenceData[field.key] || [],
+            ctx,
+          ),
         ]),
     ),
   );

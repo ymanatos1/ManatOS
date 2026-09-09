@@ -145,6 +145,18 @@
               );
             return payload.value;
           }
+          if (
+            candidate.functionName === 'CurrentUiLevel' ||
+            candidate.functionName === 'TraverseUiLevels'
+          ) {
+            const levels = [];
+            let level = window.ManatOS?.ctx?.value?.ui?.level ?? null;
+            while (level) {
+              levels.push(level);
+              level = level.level ?? null;
+            }
+            return candidate.functionName === 'CurrentUiLevel' ? (levels.at(-1) ?? null) : levels;
+          }
           if (candidate.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
           if (candidate.functionName === 'GetTime') return Date.now();
           if (candidate.functionName === 'StrFormat')
@@ -193,7 +205,7 @@
     const historyMenu = root.querySelector('[data-cli-history]');
     const contextLabel = root.querySelector('[data-cli-context-label]');
 
-    let currentPath = nearestExistingPath(root.dataset.cliStartPath || 'ctx.page.page');
+    let currentPath = nearestExistingPath(root.dataset.cliStartPath || 'ctx.ui.level');
     let restoredOpen = false;
     if (persistentOpen) {
       try {

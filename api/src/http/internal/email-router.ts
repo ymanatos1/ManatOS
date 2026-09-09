@@ -3,7 +3,7 @@ import { NotFoundError } from '@manatos/shared';
 
 import type { IEmailService } from '../../email/email-service.js';
 import type { SysBOUserService } from '../../services/sys-user-service.js';
-import { sendCommand } from '../api-response.js';
+import { sendCommand } from '../response.js';
 
 /** Trusted UI -> API mail commands. */
 export function createInternalEmailRouter(users: SysBOUserService, email: IEmailService) {

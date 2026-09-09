@@ -313,6 +313,7 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
        */
       clientId: { editable: false },
       callbackPath: {
+        createDefaultValue: { expression: 'provider.option.callbackPath' },
         helpText:
           'Provider-defined callback path. ManatOS combines it with PUBLIC_BASE_URL; administrators cannot override it.',
       },

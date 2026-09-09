@@ -1,4 +1,4 @@
-import type { ManatOSCalculatedContextField } from '../context.js';
+import type { ManatOSCalculatedContextField } from '../context/manatos-context.js';
 import { compileExpression } from './parser.js';
 import type { ExpressionDiagnosticSink } from './types.js';
 

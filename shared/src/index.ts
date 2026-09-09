@@ -1,25 +1,30 @@
-export * from './domain.js';
+export * from './domain/entities.js';
 
-export * from './bo-metadata.js';
+export * from './metadata/bo/index.js';
 
-export * from './bo-ui-metadata.js';
+export * from './metadata/ui/index.js';
 
-export * from './errors.js';
+export * from './errors/app-error.js';
 
-export * from './operation-context.js';
+export * from './context/operation-context.js';
 
-export * from './password-rules.js';
+export * from './policies/password-rules.js';
 
-export * from './company-platform.js';
+export * from './domain/company-platform.js';
 
-export * from './context.js';
+export * from './context/manatos-context.js';
 
-export * from './dynamic-value.js';
+export * from './metadata/dynamic-value.js';
 
 export * from './expressions/index.js';
 
-export * from './system-country-catalog.js';
+export * from './domain/system-country-catalog.js';
 
-export * from './entry-representation.js';
+export * from './presentation/entry-representation.js';
 
-export * from './authorization.js';
+export * from './policies/authorization.js';
+
+export * from './policies/entry-field-policy.js';
+
+export * from './policies/reactive-runtime-policy.js';
+export * from './policies/entry-aggregate-policy.js';

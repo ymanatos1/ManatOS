@@ -30,6 +30,7 @@
   aria-label="ManatOS CTX viewer"
   aria-hidden="true"
   inert
+  data-developer-tool-panel="ctx"
 >
   <div class="debug-panel-tools" role="toolbar" aria-label="CTX viewer navigation">
     <button class="debug-tool-button" id="ctxDebugBack" type="button" title="Previous CTX selection" aria-label="Previous CTX selection" disabled>
@@ -49,6 +50,15 @@
     </button>
     <button class="debug-tool-button" id="ctxDebugCli" type="button" title="Open CLI at selected CTX node" aria-label="Open CLI at selected CTX node" aria-pressed="false">
       <i class="bi bi-terminal"></i>
+    </button>
+    <button
+      class="debug-tool-button"
+      id="ctxDebugOpenView"
+      type="button"
+      title="Open selected CTX node in a dedicated view tab"
+      aria-label="Open selected CTX node in a dedicated view tab"
+    >
+      <i class="bi bi-window-plus"></i>
     </button>
     <div class="ctx-debug-find d-none" id="ctxDebugFindBox">
       <input id="ctxDebugFindInput" type="text" autocomplete="off" placeholder="variable name" aria-label="CTX variable name">

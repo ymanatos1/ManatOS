@@ -7,7 +7,7 @@ import type {
   SaveVerifiedSysBOExtAuthProviderInput,
   SysBOExtAuthProviderService,
 } from '../../services/sys-ext-auth-provider-service.js';
-import { sendCommand } from '../api-response.js';
+import { sendCommand } from '../response.js';
 
 /**
  * Trusted external-provider credential operations.

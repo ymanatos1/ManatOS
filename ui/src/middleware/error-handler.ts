@@ -8,7 +8,7 @@ import { clearApiSession, isApiSessionExpiredError } from '../auth/api-session.j
 
 import { addSessionError } from '../errors/session-error-log.js';
 
-import { renderPage } from '../presentation/render-page.js';
+import { renderPage } from '../presentation/page/render-page.js';
 
 /**
  * UI error policy:

@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { internalAuditActor } from '../../audit/audit-service.js';
 import type { ExternalIdentityService } from '../../services/index.js';
-import { sendCommand, sendQuery } from '../api-response.js';
+import { sendCommand, sendQuery } from '../response.js';
 
 /** Trusted external-identity resolution and SysBOUser linkage operations. */
 export function createInternalExternalIdentityRouter(ext: ExternalIdentityService) {

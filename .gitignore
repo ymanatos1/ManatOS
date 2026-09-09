@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 *.log
+data/logs/
 api/.env
 ui/.env
 data/database.json.tmp

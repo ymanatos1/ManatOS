@@ -78,21 +78,30 @@
     <% } %>
 
     <% if (!toolbarSelectorMode) { %>
-      <% for (const action of (typeof resolvedPageActions !== 'undefined' ? resolvedPageActions : [])) { %>
-        <% if (!action.resolvedVisible || action.kind !== 'navigate') continue; %>
-        <a class="<%= action.cssClass %>" href="<%= action.href %>" title="<%= action.title || action.label %>">
+      <% for (const action of (typeof clientPageActions !== 'undefined' ? clientPageActions : [])) { %>
+        <% if (action.kind !== 'navigate') continue; %>
+        <a
+          class="<%= action.cssClass %>"
+          href="<%= action.href %>"
+          title="<%= action.title || action.label %>"
+          data-v2-list-action="page:<%= action.key %>"
+          data-action-href="<%= action.href %>"
+          data-action-title="<%= action.title || action.label %>"
+          hidden
+        >
           <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= action.label %>
         </a>
       <% } %>
 
-      <% if (resolvedAddAction.resolvedVisible) { %>
+      <% if (typeof clientAddAction !== 'undefined' && clientAddAction) { %>
         <a
-          class="btn btn-success <%= resolvedAddAction.resolvedEnabled ? '' : 'disabled' %>"
-          href="<%= resolvedAddAction.resolvedEnabled ? '/bo/' + definition.key + '/new' : '#' %>"
-          <%= resolvedAddAction.resolvedEnabled ? '' : 'aria-disabled="true" tabindex="-1"' %>
-          title="<%= resolvedAddAction.resolvedEnabled ? resolvedAddAction.label : (resolvedAddAction.resolvedDisabledReason || 'Creation is currently unavailable.') %>"
+          class="btn btn-success"
+          href="<%= clientAddAction.href %>"
+          data-v2-list-action="add"
+          data-action-href="<%= clientAddAction.href %>"
+          hidden
         >
-          <i class="bi bi-plus-circle me-1"></i><%= resolvedAddAction.label %>
+          <i class="bi bi-plus-circle me-1"></i><%= clientAddAction.label %>
         </a>
       <% } %>
     <% } %>

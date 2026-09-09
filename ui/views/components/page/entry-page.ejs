@@ -1,0 +1,40 @@
+<%#
+  COMPONENT: Entry page
+
+  Purpose:
+  - Composes the reusable page TitleBar with one host-neutral entry-content
+    component. The shell owns navigation/breadcrumbs; this component owns the
+    actual entry-page presentation.
+
+  Inputs / metadata:
+  - entryContentPartial: EJS partial path relative to this component.
+  - Standard page title model used by titlebar.ejs.
+
+  CTX contract:
+  - Does not create or resolve CTX state. The delegated entry-content component
+    owns its entry-level CTX binding.
+
+  Embeds / delegates:
+  - Delegates title presentation to titlebar.ejs and entry rendering to the
+    supplied entryContentPartial.
+  - Entry-page composition contains no engine-selection chrome; the current UI contract is canonical.
+
+  Runtime contract:
+  - Used for normal PAGE · ENTRY surfaces.
+  - POPUP · ENTRY hosts render the same entry-content component directly because
+    popup caption/lifecycle are owned by PopupHost.
+%>
+<section
+  class="entry-page-component"
+  data-entry-page-component
+>
+  <%- include('./titlebar') %>
+
+
+  <div
+    class="workspace-content entry-page-content"
+    data-entry-page-content
+  >
+    <%- include(entryContentPartial) %>
+  </div>
+</section>

@@ -74,7 +74,10 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
       principalType: { createDefaultValue: 'Person' },
       firstName: { visible: { expression: "principalType === 'Person'" } },
       lastName: { visible: { expression: "principalType === 'Person'" } },
-      name: { editable: { expression: "principalType !== 'Person'" } },
+      name: {
+        visible: { expression: 'principalType.option != null' },
+        editable: { expression: "principalType.option != null && principalType !== 'Person'" },
+      },
     },
   },
   record: {
@@ -344,8 +347,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         component: {
           key: 'hierarchy-tree',
           options: {
-            dataSource: 'entries',
-            currentSource: 'entry',
+            dataSource: 'resources.organization.entries',
+            currentSource: 'entry.current',
             idField: 'id',
             parentField: 'parentId',
             rootField: 'rootPrincipalId',
@@ -377,7 +380,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         visible: { expression: "principalType === 'Person'" },
       },
       name: {
-        editable: { expression: "principalType !== 'Person'" },
+        visible: { expression: 'principalType.option != null' },
+        editable: { expression: "principalType.option != null && principalType !== 'Person'" },
       },
       userId: {
         visible: { expression: "principalType === 'Person'" },
@@ -501,6 +505,7 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
     fieldOverrides: {
       ...systemFieldOverrides,
       enabled: { createDefaultValue: true },
+      version: { createDefaultValue: '0.0.1' },
     },
     entryActions: standardEntryActions,
     relatedCollections: {

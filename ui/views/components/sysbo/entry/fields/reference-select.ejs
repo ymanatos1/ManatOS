@@ -24,8 +24,17 @@
    * icon(s) followed by its canonical entry name. `None` / `Choose...` remain
    * intentionally iconless.
    */
-  const references = referenceValues[key] || [];
-  const selectedReference = references.find((reference) => String(reference?.id ?? reference?.value ?? '') === String(value ?? '')) || null;
+  /* Normal entity-entry rendering supplies one already-resolved effective field
+   * contract. Embedded canonical field hosts may provide only the reference
+   * catalogue, so the local fallback is an input-shape fallback rather than a
+   * second reference-resolution policy. */
+  const effectiveReference = typeof effectiveFieldContext !== 'undefined'
+    ? effectiveFieldContext?.reference
+    : null;
+  const references = effectiveReference?.candidates || referenceValues[key] || [];
+  const selectedReference = effectiveReference
+    ? effectiveReference.selected
+    : (references.find((reference) => String(reference?.id ?? reference?.value ?? '') === String(value ?? '')) || null);
   const referenceName = (reference) => reference?.__entryName || reference?.label || reference?.name || reference?.id || '';
   const referenceIcons = (reference) => {
     if (Array.isArray(reference?.__entryIcons) && reference.__entryIcons.length) return reference.__entryIcons;
@@ -72,6 +81,7 @@
   const referenceSourceEntityKey = typeof definition !== 'undefined' && definition?.key ? definition.key : '';
   const referenceCreateRelated = field.referenceSelection?.createRelated || null;
   const referenceToolActions = [
+    ...(referenceTargetMetadata ? [{ action: 'view-entry', icon: 'eye', label: 'View selected entry', mutates: false, requiresValue: true }] : []),
     ...(referenceTargetMetadata ? [{ action: 'add-entry', icon: 'plus-circle', label: 'Add entry…' }] : []),
     ...(referenceTargetMetadata ? [{ action: 'select-existing', icon: 'database-check', label: 'Select existing entry…' }] : []),
     ...(field.required ? [] : [{ action: 'clear', icon: 'x-circle', label: 'Clear selection' }]),
@@ -101,7 +111,7 @@
       <i class="bi bi-link-45deg" aria-hidden="true"></i>
     </button>
 
-    <%- include('field-tools-menu', { key, editable, actions: referenceToolActions }) %>
+    <%- include('field-tools-menu', { key, editable, actions: referenceToolActions, currentValue: value }) %>
   </div>
 
   <%# The native select remains the canonical form/CTX value behind the rich presenter. %>
@@ -127,67 +137,79 @@
     <% } %>
   </select>
 
-  <button
-    type="button"
-    class="form-select metadata-reference-select-toggle text-start"
-    data-bs-toggle="dropdown"
-    data-reference-toggle
-    aria-expanded="false"
-    <%= editable ? '' : 'disabled' %>
-  >
-    <span data-reference-selected>
-      <% if (selectedReference) { %>
-        <% const selectedIcons = referenceIcons(selectedReference); %>
-        <% if (selectedIcons.length) { %>
-          <span class="metadata-entry-icons me-1" aria-hidden="true">
-            <% for (const [iconIndex, icon] of selectedIcons.entries()) { %>
-              <i
-                class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"
-              ></i>
-            <% } %>
-          </span>
-        <% } %>
-        <%= referenceName(selectedReference) %>
-      <% } else { %>
-        <%= field.required ? 'Choose...' : 'None' %>
-      <% } %>
-    </span>
-  </button>
-
-  <% if (editable) { %>
-    <ul class="dropdown-menu metadata-reference-select-menu w-100" role="listbox">
-      <li>
-        <button type="button" class="dropdown-item" data-reference-choice="" role="option">
+  <%# Keep value selection and field tools as two independent dropdown hosts. %>
+  <div class="dropdown flex-grow-1 metadata-reference-value-dropdown">
+    <% if (editable) { %>
+      <button
+        type="button"
+        class="form-select metadata-reference-select-toggle text-start"
+        data-bs-toggle="dropdown"
+        data-reference-toggle
+        aria-expanded="false"
+      >
+    <% } else { %>
+      <div
+        class="form-select metadata-reference-select-toggle text-start is-readonly"
+        data-reference-toggle
+        aria-readonly="true"
+      >
+    <% } %>
+      <span data-reference-selected>
+        <% if (selectedReference) { %>
+          <% const selectedIcons = referenceIcons(selectedReference); %>
+          <% if (selectedIcons.length) { %>
+            <span class="metadata-entry-icons me-1" aria-hidden="true">
+              <% for (const [iconIndex, icon] of selectedIcons.entries()) { %>
+                <i
+                  class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"
+                ></i>
+              <% } %>
+            </span>
+          <% } %>
+          <%= referenceName(selectedReference) %>
+        <% } else { %>
           <%= field.required ? 'Choose...' : 'None' %>
-        </button>
-      </li>
+        <% } %>
+      </span>
+    <% if (editable) { %>
+      </button>
 
-      <% for (const reference of references) { %>
-        <% const icons = referenceIcons(reference); %>
+      <ul class="dropdown-menu metadata-reference-select-menu w-100" role="listbox">
         <li>
-          <button
-            type="button"
-            class="dropdown-item <%= String(value ?? '') === String(reference.id ?? '') ? 'active' : '' %>"
-            data-reference-choice="<%= reference.id %>"
-            role="option"
-            <%= reference.__referenceUnavailable && String(value ?? '') !== String(reference.id ?? '') ? 'disabled aria-disabled="true"' : '' %>
-            aria-selected="<%= String(value ?? '') === String(reference.id ?? '') ? 'true' : 'false' %>"
-          >
-            <% if (icons.length) { %>
-              <span class="metadata-entry-icons me-1" aria-hidden="true">
-                <% for (const [iconIndex, icon] of icons.entries()) { %>
-                  <i
-                    class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"
-                  ></i>
-                <% } %>
-              </span>
-            <% } %>
-            <%= referenceName(reference) %>
+          <button type="button" class="dropdown-item" data-reference-choice="" role="option">
+            <%= field.required ? 'Choose...' : 'None' %>
           </button>
         </li>
-      <% } %>
-    </ul>
-  <% } %>
+
+        <% for (const reference of references) { %>
+          <% const icons = referenceIcons(reference); %>
+          <li>
+            <button
+              type="button"
+              class="dropdown-item <%= String(value ?? '') === String(reference.id ?? '') ? 'active' : '' %>"
+              data-reference-choice="<%= reference.id %>"
+              role="option"
+              <%= reference.__referenceUnavailable && String(value ?? '') !== String(reference.id ?? '') ? 'disabled aria-disabled="true"' : '' %>
+              aria-selected="<%= String(value ?? '') === String(reference.id ?? '') ? 'true' : 'false' %>"
+            >
+              <% if (icons.length) { %>
+                <span class="metadata-entry-icons me-1" aria-hidden="true">
+                  <% for (const [iconIndex, icon] of icons.entries()) { %>
+                    <i
+                      class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"
+                    ></i>
+                  <% } %>
+                </span>
+              <% } %>
+              <%= referenceName(reference) %>
+            </button>
+          </li>
+        <% } %>
+      </ul>
+    <% } else { %>
+      </div>
+    <% } %>
+  </div>
   <% if (editable && referenceTargetMetadata && referenceTargetListUI) { %>
     <%- include('../../../../popups/selectors/record-selector', {
       selectorMetadata: referenceTargetMetadata,

@@ -226,6 +226,11 @@
     if (toggle instanceof HTMLButtonElement) toggle.disabled = control.disabled;
     const selected = root.querySelector('[data-reference-selected]');
     if (selected) renderReferenceSelection(selected, control);
+    root.querySelectorAll('[data-field-action-requires-value="true"]').forEach((action) => {
+      if (!(action instanceof HTMLButtonElement)) return;
+      action.disabled = !control.value;
+      action.setAttribute('aria-disabled', String(!control.value));
+    });
   };
 
   const enumToneClasses = (item) => {
@@ -367,9 +372,53 @@
         window.dispatchEvent(new Event('manatos:ctx-viewer-show'));
         window.dispatchEvent(
           new CustomEvent('manatos:ctx-viewer-select', {
-            detail: { path: `ctx.page.page.fields.${fieldKey}`, expand: true },
+            detail: {
+              path: `${window.ManatOSRecordSelector?.leafPagePath?.() || 'ctx.ui.level'}.fields.${fieldKey}`,
+              expand: true,
+            },
           }),
         );
+        return;
+      }
+      case 'view-entry': {
+        if (!(control instanceof HTMLSelectElement) || !control.value) return;
+        const popup = window.ManatOSEntryPopup;
+        const ctxRuntime = window.ManatOS?.ctx;
+        if (!popup?.open || !ctxRuntime) return;
+
+        const targetEntityKey = root?.dataset.referenceEntityKey || '';
+        const fieldKey = root?.dataset.referenceFieldKey || control.dataset.ctxField;
+        if (!targetEntityKey || !fieldKey) return;
+
+        const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
+        const params = new URLSearchParams({
+          _entryPopup: '1',
+          _entryPopupToken: token,
+          _entryMode: 'view',
+        });
+        const targetEntityLabel =
+          root?.dataset.referenceEntityLabel || root?.dataset.referenceFieldLabel || 'Entry';
+        const selectedOption = control.selectedOptions?.[0];
+        const selectedEntryName = String(
+          selectedOption?.dataset.entryName || selectedOption?.textContent || '',
+        ).trim();
+        popup.open({
+          token,
+          title: selectedEntryName
+            ? `View ${targetEntityLabel} - ${selectedEntryName}`
+            : `View ${targetEntityLabel}`,
+          url: `/bo/${encodeURIComponent(targetEntityKey)}/${encodeURIComponent(control.value)}?${params.toString()}`,
+          callingParams: {
+            purpose: 'reference-field-view-entry',
+            presentationMode: 'entry',
+            entityKey: targetEntityKey,
+            selectionMode: 'single',
+            sourceEntityKey: root?.dataset.referenceSourceEntityKey || null,
+            targetField: fieldKey,
+            targetFieldLabel: root?.dataset.referenceFieldLabel || fieldKey,
+            mode: 'view',
+          },
+        });
         return;
       }
       case 'add-entry': {
@@ -394,8 +443,16 @@
 
         const selector = window.ManatOSRecordSelector;
         const pagePath = selector?.leafPagePath?.();
-        const currentEntry = pagePath ? ctxRuntime.resolve?.(`${pagePath}.entry`) : null;
-        if (!currentEntry || typeof currentEntry !== 'object') return;
+        const resolvedEntry = pagePath ? ctxRuntime.resolve?.(`${pagePath}.entry.current`) : null;
+        /*
+         * Creating a referenced entry is valid even when no source-entry values
+         * are required. Some relationships (for example Principal -> Parent) only
+         * constrain the target UI. Do not make the popup depend on resolving an
+         * otherwise-unneeded source entry; use it only when metadata mappings ask
+         * for sourceField values.
+         */
+        const currentEntry =
+          resolvedEntry && typeof resolvedEntry === 'object' ? resolvedEntry : {};
 
         const defaults = {};
         for (const [targetField, mapping] of Object.entries(createRelated.defaults || {})) {
@@ -417,14 +474,11 @@
             readOnlyValue: defaults[targetField] ?? null,
           };
         }
-        for (const [targetField, override] of Object.entries(overrides)) {
-          if (
-            Array.isArray(override?.allowedValues) &&
-            override.allowedValues.length === 1 &&
-            defaults[targetField] == null
-          )
-            defaults[targetField] = override.allowedValues[0];
-        }
+        /*
+         * allowedValues / allowedEnumItemTrait are option-domain restrictions,
+         * not route-owned defaulting rules. The browser entry-policy runtime
+         * reconciles them after canonical metadata defaults are available.
+         */
 
         const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
         const params = new URLSearchParams({
@@ -433,9 +487,11 @@
           _entryDefaults: JSON.stringify(defaults),
           _entryOverrides: JSON.stringify(overrides),
         });
+        const targetEntityLabel =
+          root?.dataset.referenceEntityLabel || root?.dataset.referenceFieldLabel || 'Entry';
         popup.open({
           token,
-          title: `Add ${root?.dataset.referenceFieldLabel || 'entry'}`,
+          title: `Add ${targetEntityLabel}`,
           url: `/bo/${encodeURIComponent(targetEntityKey)}/new?${params.toString()}`,
           callingParams: {
             purpose: 'reference-field-add-entry',
@@ -505,10 +561,15 @@
         if (!pagePath || !fieldKey || !targetEntityKey) return;
 
         const fieldContext = ctxRuntime.resolve?.(`${pagePath}.fields.${fieldKey}`);
-        const source = Array.isArray(fieldContext?.options) ? fieldContext.options : [];
+        const referenceData = ctxRuntime.resolve?.(`${pagePath}.resources.referenceData`) ?? {};
+        const source = Array.isArray(fieldContext?.options)
+          ? fieldContext.options
+          : Array.isArray(referenceData?.[fieldKey])
+            ? referenceData[fieldKey]
+            : [];
         if (!source.length) return;
 
-        const currentEntry = ctxRuntime.resolve?.(`${pagePath}.entry`);
+        const currentEntry = ctxRuntime.resolve?.(`${pagePath}.entry.current`);
         const sourceRecordId =
           currentEntry && typeof currentEntry === 'object' ? String(currentEntry.id ?? '') : '';
         const entities = ctxRuntime.value?.entities;
@@ -552,21 +613,6 @@
             sourceRecordName: sourceRecordName || null,
             queryPredicate,
             allowClear: !control.required,
-          },
-          eligibility: (candidate) => {
-            const candidateId = String(candidate?.id ?? candidate?.value ?? '');
-            if (
-              sourceRecordId &&
-              sourceEntityKey === targetEntityKey &&
-              candidateId === sourceRecordId
-            ) {
-              return {
-                eligible: false,
-                visible: true,
-                reason: 'The current entry cannot reference itself.',
-              };
-            }
-            return { eligible: true, visible: true, reason: '' };
           },
           onSelect: (candidate) => {
             const selectedId = candidate?.id ?? candidate?.value;

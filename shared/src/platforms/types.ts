@@ -1,4 +1,4 @@
-import type { ManatOSDynamicValue } from '../dynamic-value.js';
+import type { ManatOSDynamicValue } from '../metadata/dynamic-value.js';
 
 /** Public asset reference used by shared Company/Platform presentation metadata. */
 export interface ImageRef {

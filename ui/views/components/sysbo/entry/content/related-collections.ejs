@@ -59,12 +59,35 @@
             <% for (const row of rows) { %>
               <% const rowHref = relatedRowHref(collection, row); %>
               <% let relatedFieldIndex = 0; %>
-              <tr>
+              <tr
+                data-v2-related-row="<%= JSON.stringify(row) %>"
+                data-v2-related-scope-keys="<%= JSON.stringify(Object.keys(rowMetadata?.fieldDefinition || {})) %>"
+              >
                 <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
                   <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
                   <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
+                  <% const valueExpression = renderedValue.expression || null; %>
+                  <% const toneExpression = collectionField.presentation?.tone?.expression || null; %>
+                  <% const iconExpression = collectionField.presentation?.icon?.expression || null; %>
+                  <% const dynamicRelatedValue = Boolean(
+                    valueExpression || toneExpression || iconExpression
+                  ); %>
                   <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
-                  <td>
+                  <td
+                    <% if (dynamicRelatedValue) { %>
+                      data-v2-related-value
+                      data-v2-related-entity-key="<%= collection.entityKey %>"
+                      data-v2-related-source-key="<%= collectionSourceKey %>"
+                      data-v2-related-field-key="<%= collectionFieldKey %>"
+                      data-v2-related-source-field="<%= renderedValue.sourceField %>"
+                      data-v2-related-field-type="<%= canonicalField?.type || 'string' %>"
+                      data-v2-related-option-items="<%= JSON.stringify([...(canonicalField?.optionItems || []), ...(canonicalField?.enumItems || [])]) %>"
+                      data-v2-related-empty-text="<%= collectionField.presentation?.emptyText || '—' %>"
+                      <% if (valueExpression) { %>data-v2-related-value-expression="<%= valueExpression %>"<% } %>
+                      <% if (toneExpression) { %>data-v2-related-tone-expression="<%= toneExpression %>"<% } %>
+                      <% if (iconExpression) { %>data-v2-related-icon-expression="<%= iconExpression %>"<% } %>
+                    <% } %>
+                  >
                     <% if (relatedFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
                     <% if (relatedFieldIndex === 0) { %>
                       <% const entryIcons = relatedEntryIcons(row); %>
@@ -73,8 +96,17 @@
                         iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
                       }) %>
                     <% } %>
-                    <% if (rowHref && relatedFieldIndex === 0) { %>
-                      <a class="fw-semibold" href="<%= rowHref %>"><%= renderedValue.raw ?? '—' %></a>
+                    <% if (dynamicRelatedValue) { %>
+                      <span data-v2-related-dynamic-value><%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %></span>
+                    <% } else if (rowHref && relatedFieldIndex === 0) { %>
+                      <% const viewOnlyHref = `${rowHref}${String(rowHref).includes('?') ? '&' : '?'}_entryMode=view`; %>
+                      <a
+                        class="fw-semibold"
+                        href="<%= viewOnlyHref %>"
+                        data-related-entry-view-popup
+                        data-related-entry-entity-key="<%= collection.entityKey %>"
+                        data-related-entry-title="<%= renderedValue.raw ?? collection.label ?? 'View entry' %>"
+                      ><%= renderedValue.raw ?? '—' %></a>
                     <% } else if (canonicalField?.type === 'reference') { %>
                       <%= relatedReferenceLabel(collectionSourceKey, collectionFieldKey, renderedValue.raw) %>
                     <% } else if (selectedOptionItem) { %>
@@ -113,13 +145,38 @@
     <% } else if (rows.length > 0) { %>
       <div class="authentication-identity-list">
         <% for (const row of rows) { %>
-          <div class="authentication-identity-row">
+          <div
+            class="authentication-identity-row"
+            data-v2-related-row="<%= JSON.stringify(row) %>"
+            data-v2-related-scope-keys="<%= JSON.stringify(Object.keys(rowMetadata?.fieldDefinition || {})) %>"
+          >
             <% let relatedPanelFieldIndex = 0; %>
             <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
               <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
               <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
+              <% const valueExpression = renderedValue.expression || null; %>
+              <% const toneExpression = collectionField.presentation?.tone?.expression || null; %>
+              <% const iconExpression = collectionField.presentation?.icon?.expression || null; %>
+              <% const dynamicRelatedValue = Boolean(
+                valueExpression || toneExpression || iconExpression
+              ); %>
               <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
-              <div class="<%= relatedPanelFieldIndex === 0 ? 'metadata-related-primary-cell' : '' %>">
+              <div
+                class="<%= relatedPanelFieldIndex === 0 ? 'metadata-related-primary-cell' : '' %>"
+                <% if (dynamicRelatedValue) { %>
+                  data-v2-related-value
+                  data-v2-related-entity-key="<%= collection.entityKey %>"
+                  data-v2-related-source-key="<%= collectionSourceKey %>"
+                  data-v2-related-field-key="<%= collectionFieldKey %>"
+                  data-v2-related-source-field="<%= renderedValue.sourceField %>"
+                  data-v2-related-field-type="<%= canonicalField?.type || 'string' %>"
+                  data-v2-related-option-items="<%= JSON.stringify([...(canonicalField?.optionItems || []), ...(canonicalField?.enumItems || [])]) %>"
+                  data-v2-related-empty-text="<%= collectionField.presentation?.emptyText || '—' %>"
+                  <% if (valueExpression) { %>data-v2-related-value-expression="<%= valueExpression %>"<% } %>
+                  <% if (toneExpression) { %>data-v2-related-tone-expression="<%= toneExpression %>"<% } %>
+                  <% if (iconExpression) { %>data-v2-related-icon-expression="<%= iconExpression %>"<% } %>
+                <% } %>
+              >
                 <% if (relatedPanelFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
                 <% if (relatedPanelFieldIndex === 0) { %>
                   <% const entryIcons = relatedEntryIcons(row); %>
@@ -128,7 +185,9 @@
                     iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
                   }) %>
                 <% } %>
-                <% if (renderedValue.calculated && (renderedValue.tone || renderedValue.icon)) { %>
+                <% if (dynamicRelatedValue) { %>
+                  <span data-v2-related-dynamic-value><%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %></span>
+                <% } else if (renderedValue.calculated && (renderedValue.tone || renderedValue.icon)) { %>
                   <span class="badge text-bg-<%= renderedValue.tone || 'secondary' %>">
                     <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
                     <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>

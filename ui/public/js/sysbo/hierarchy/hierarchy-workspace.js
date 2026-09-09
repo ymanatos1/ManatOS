@@ -1,5 +1,7 @@
-(() => {
+(async () => {
   'use strict';
+
+  await window.ManatOS?.expressionCompilerReady;
 
   const runtime = window.ManatOS?.ctx;
   const workspace = document.querySelector('[data-metadata-hierarchy-workspace]');
@@ -18,22 +20,29 @@
   const quickSave = quick.querySelector('[data-record-quick-commit]');
   const quickState = quick.querySelector('[data-record-quick-state]');
 
-  const leafPagePath = () => {
-    let node = runtime.value?.page;
+  const activeUiLevelPath = () => {
+    let node = runtime.value?.ui?.level;
     if (!node) return null;
-    let path = 'ctx.page';
-    while (node?.page) {
-      node = node.page;
-      path += '.page';
+    let path = 'ctx.ui.level';
+    while (node?.level) {
+      node = node.level;
+      path += '.level';
     }
     return path;
   };
-  const pagePath = leafPagePath();
+  const pagePath = activeUiLevelPath();
   if (!pagePath) return;
-
   const page = runtime.resolve(pagePath);
-  const idField = String(page?.fields?.identityField?.value ?? page?.identityField ?? 'id');
-  const parentField = String(page?.fields?.parentField?.value ?? page?.parentField ?? '');
+  const workspaceValue = (key, fallback = null) => {
+    const facts = runtime.resolve(`${pagePath}.resources.workspace`);
+    return facts?.[key] ?? fallback;
+  };
+  const workspaceValuePath = (key) => `${pagePath}.resources.workspace.${key}`;
+  const entriesPath = `${pagePath}.list.entries`;
+  const originalEntriesPath = `${pagePath}.list.originalEntries`;
+
+  const idField = String(workspaceValue('identityField', 'id'));
+  const parentField = String(workspaceValue('parentField', ''));
   const componentOptions = (() => {
     try {
       const parsed = JSON.parse(component.dataset.metadataComponentOptions || '{}');
@@ -57,9 +66,7 @@
   );
   const labelField = entryNameField;
   const entityLabel = String(componentOptions.entityLabel || 'entry');
-  const rootField = String(
-    page?.fields?.rootField?.value ?? page?.rootField ?? componentOptions.rootField ?? '',
-  );
+  const rootField = String(workspaceValue('rootField', componentOptions.rootField ?? ''));
   const entityKey = String(component.dataset.entityKey || '');
   const entityContext = (() => {
     const registry = runtime.value?.entities;
@@ -101,36 +108,22 @@
   const hierarchyDraftStatus = workspace.querySelector('[data-hierarchy-draft-status]');
   const hierarchySaveDraft = workspace.querySelector('[data-hierarchy-save-draft]');
   const hierarchyClearAll = workspace.querySelector('[data-hierarchy-clear-all]');
-  const typeField = String(
-    page?.fields?.typeField?.value ?? page?.typeField ?? componentOptions.typeField ?? '',
-  );
+  const typeField = String(workspaceValue('typeField', componentOptions.typeField ?? ''));
   const containerTrait = String(
-    page?.fields?.containerTrait?.value ??
-      page?.containerTrait ??
-      componentOptions.containerTrait ??
-      '',
+    workspaceValue('containerTrait', componentOptions.containerTrait ?? ''),
   );
   const canHaveParentTrait = String(
-    page?.fields?.canHaveParentTrait?.value ??
-      page?.canHaveParentTrait ??
-      componentOptions.canHaveParentTrait ??
-      '',
+    workspaceValue('canHaveParentTrait', componentOptions.canHaveParentTrait ?? ''),
   );
   const rootEligibleTrait = String(
-    page?.fields?.rootEligibleTrait?.value ??
-      page?.rootEligibleTrait ??
-      componentOptions.rootEligibleTrait ??
-      '',
+    workspaceValue('rootEligibleTrait', componentOptions.rootEligibleTrait ?? ''),
   );
   const standAloneEligibleTrait = String(
-    page?.fields?.standAloneEligibleTrait?.value ??
-      page?.standAloneEligibleTrait ??
-      componentOptions.standAloneEligibleTrait ??
-      '',
+    workspaceValue('standAloneEligibleTrait', componentOptions.standAloneEligibleTrait ?? ''),
   );
 
   const entries = () => {
-    const value = runtime.resolve(`${pagePath}.entries`);
+    const value = runtime.resolve(entriesPath);
     return Array.isArray(value) ? value : [];
   };
 
@@ -167,10 +160,10 @@
   };
 
   const replaceEntries = (next, action) =>
-    runtime.replace(`${pagePath}.entries`, withCalculatedHierarchy(next), {
+    runtime.replace(entriesPath, withCalculatedHierarchy(next), {
       source: 'hierarchy-workspace',
       action,
-      triggerPath: `${pagePath}.entries`,
+      triggerPath: entriesPath,
     });
 
   const fieldEmptyValue = (field) => {
@@ -246,18 +239,18 @@
   };
 
   const originalEntries = () => {
-    const value = runtime.resolve(`${pagePath}.entriesOriginal`);
+    const value = runtime.resolve(originalEntriesPath);
     return Array.isArray(value) ? value : [];
   };
 
   const replaceOriginalEntries = (next, action) => {
     runtime.replace(
-      `${pagePath}.entriesOriginal`,
+      originalEntriesPath,
       next.map((entry) => ({ ...entry })),
       {
         source: 'hierarchy-workspace',
         action,
-        triggerPath: `${pagePath}.entriesOriginal`,
+        triggerPath: originalEntriesPath,
       },
     );
   };
@@ -331,7 +324,7 @@
       hierarchySaveDraft.disabled = Boolean(draft);
     }
     setRuntimeValue(
-      `${pagePath}.fields.draftStatus.value`,
+      workspaceValuePath('draftStatus'),
       changedSinceDraft ? 'modified-after-draft' : 'saved',
       'hierarchy-draft-status',
     );
@@ -400,15 +393,11 @@
 
     refreshDraftStatus(rows);
     setRuntimeValue(
-      `${pagePath}.fields.hierarchyStatus.value`,
+      workspaceValuePath('hierarchyStatus'),
       state.complete ? 'complete' : 'incomplete',
       'hierarchy-status',
     );
-    setRuntimeValue(
-      `${pagePath}.fields.finalizable.value`,
-      state.complete,
-      'hierarchy-finalizable',
-    );
+    setRuntimeValue(workspaceValuePath('finalizable'), state.complete, 'hierarchy-finalizable');
     setRuntimeValue(`${pagePath}.state.valid`, state.complete, 'hierarchy-valid');
     setRuntimeValue(`${pagePath}.state.dirty`, dirty, 'hierarchy-dirty');
     setRuntimeValue(
@@ -739,8 +728,7 @@
   };
 
   const allReferenceEntries = () => {
-    const listPage = runtime.resolve('ctx.page');
-    const referenceData = listPage?.fields?.referenceData?.value ?? listPage?.referenceData ?? {};
+    const referenceData = runtime.resolve(`${pagePath}.resources.referenceData`) ?? {};
     const candidates = referenceData?.[parentField];
     if (!Array.isArray(candidates)) return [];
 
@@ -1132,10 +1120,8 @@
   const userId = metaValue('manatos-user-id', 'anonymous');
   const hierarchyMode = String(page?.mode ?? 'create');
   const draftSupported = hierarchyMode === 'create';
-  const focusedMemberId =
-    String(page?.fields?.focusedMemberId?.value ?? page?.focusedMemberId ?? '') || '';
-  const hierarchyRootIdentity =
-    String(page?.fields?.hierarchyRootId?.value ?? page?.hierarchyRootId ?? '') || focusedMemberId;
+  const focusedMemberId = String(workspaceValue('focusedMemberId', '')) || '';
+  const hierarchyRootIdentity = String(workspaceValue('hierarchyRootId', '')) || focusedMemberId;
   const draftStoragePrefix = 'manatos:hierarchy-draft:';
   /*
    * Drafts belong only to the aggregate Create Organization workflow. They are
@@ -1634,13 +1620,11 @@
       event.preventDefault?.();
       const row = find(memberId);
       if (!row) return;
-      setRuntimeValue(`${pagePath}.fields.focusedMemberId.value`, memberId, 'focus-member');
+      setRuntimeValue(workspaceValuePath('focusedMemberId'), memberId, 'focus-member');
 
-      const fieldValues = {};
-      const ownerFields = runtime.resolve(`${pagePath}.fields`);
-      if (ownerFields && typeof ownerFields === 'object') {
-        for (const [key, field] of Object.entries(ownerFields)) fieldValues[key] = field?.value;
-      }
+      const fieldValues = {
+        ...(runtime.resolve(`${pagePath}.resources.workspace`) || {}),
+      };
       const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
       const form = document.createElement('form');
       form.method = 'post';
@@ -1682,6 +1666,7 @@
       cancelQuick();
     }
   });
+  runtime.trackSubscriber?.('*', { kind: 'hierarchy', label: 'Hierarchy workspace' });
   window.addEventListener(runtime.eventName || 'manatos:ctx-change', () => {
     refreshWorkspaceSummary();
     if (draft) requestAnimationFrame(positionQuick);

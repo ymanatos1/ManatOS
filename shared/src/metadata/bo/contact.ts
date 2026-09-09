@@ -5,7 +5,7 @@ import type {
   SysPrincipalEmailAddress,
   SysPrincipalTelephoneNumber,
   SysTelephoneNumber,
-} from '../../domain.js';
+} from '../../domain/entities.js';
 import type { SysBOMetadata } from './types.js';
 import { commonSysBOFields } from './common.js';
 

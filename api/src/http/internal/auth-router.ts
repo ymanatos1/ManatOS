@@ -5,7 +5,7 @@ import { internalAuditActor } from '../../audit/audit-service.js';
 import { accessTokenStore, type SessionClientInfo } from '../../auth/access-token-store.js';
 import { config } from '../../config.js';
 import type { SysBOUserService } from '../../services/sys-user-service.js';
-import { sendCommand, sendQuery } from '../api-response.js';
+import { sendCommand, sendQuery } from '../response.js';
 import { parseEmailVerificationSource, publicUser } from './shared.js';
 
 /** Trusted authentication/session bridge used before a normal Bearer session exists. */

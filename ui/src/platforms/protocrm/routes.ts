@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { apiClient } from '../../api/client.js';
 import { apiSessionOptions } from '../../auth/api-session.js';
 import { requireSignedIn } from '../../middleware/auth.js';
-import { renderPage } from '../../presentation/render-page.js';
+import { renderPage } from '../../presentation/page/render-page.js';
 import { getSysBODefinition } from '../../sysbo/definitions.js';
 import { requirePermission, resolveUIEntityPermissions } from '../../sysbo/permissions.js';
 import { requireCurrentPlatformEntitlement } from '../access.js';

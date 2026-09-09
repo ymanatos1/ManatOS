@@ -24,12 +24,12 @@
   };
 
   const leafPagePath = () => {
-    if (!runtime?.value?.page) return null;
-    let node = runtime.value.page;
-    let path = 'ctx.page';
-    while (node?.page) {
-      node = node.page;
-      path += '.page';
+    let node = runtime?.value?.ui?.level;
+    if (!node) return null;
+    let path = 'ctx.ui.level';
+    while (node?.level) {
+      node = node.level;
+      path += '.level';
     }
     return path;
   };
@@ -136,13 +136,18 @@
       autofocusSearch: callingParams.autofocusSearch ?? null,
     });
 
-    // UI rules are canonical precompiled expressions emitted by the server.
-    // Evaluate them against the same invocation object that is projected into
-    // popup.callingParams; never reparse expression strings in the browser.
+    // UI rules transport canonical expression source only. The browser compiles
+    // through the shared execution-host cache and evaluates against the same
+    // invocation object projected into popup.callingParams.
     const expressionRuntime = window.ManatOS?.expression;
     const evaluateUIRule = (key, fallback, scope = {}) => {
-      const compiled = uiRules?.[key];
-      const ast = compiled?.ast;
+      const source = typeof uiRules?.[key] === 'string' ? uiRules[key].trim() : '';
+      let ast = null;
+      try {
+        ast = source ? (window.ManatOS?.expressionCompiler?.ast(source) ?? null) : null;
+      } catch {
+        ast = null;
+      }
       if (!ast || !expressionRuntime?.evaluateAstWithScope) return fallback;
 
       // UI policy expressions are scalar expressions. Give every structured
@@ -219,7 +224,25 @@
         .filter(Boolean),
     );
 
-    const popupPath = popupRuntime?.popupPath?.() || `${leafPagePath() || 'ctx.page'}.popup`;
+    // A selector is a CHILD UI surface. Never reuse popupRuntime.popupPath() here:
+    // before the selector opens that function resolves to the current owner/leaf
+    // surface, so writing selector state there would overwrite the owning entry.
+    const fallbackPopupPath = `${leafPagePath() || 'ctx.ui.level'}.level`;
+    const v2Surface = popupRuntime?.openUiLevel?.({
+      kind: 'selector',
+      mode: 'select',
+      name: `${resolvedCallingParams.targetField || entityKey}-selector`,
+      entityKey,
+      invocation: {
+        ...resolvedCallingParams,
+        purpose: String(resolvedCallingParams.purpose || 'select-existing-entry'),
+      },
+      presentation: {
+        title: selectorTitleText,
+        mode: presentationMode,
+      },
+    });
+    const popupPath = v2Surface?.path || fallbackPopupPath;
     const developerToolsDock = document.getElementById('developerToolsDock');
     const developerToolsWasVisible = Boolean(
       developerToolsDock && !developerToolsDock.classList.contains('d-none'),
@@ -260,17 +283,26 @@
       const id = candidateId(candidate, idField);
 
       /*
-       * A caller may supply one canonical, precompiled predicate describing
+       * A caller may supply one canonical predicate source describing
        * candidates that are unavailable for this selection. The popup evaluates
-       * only the emitted AST against the candidate row; it never reparses source
-       * text and it never knows relationship/entity-specific rules.
+       * the locally compiled AST against the candidate row; the shared compiler cache
+       * prevents repeated parsing and it never knows relationship/entity-specific rules.
        *
        * The initial selection is intentionally exempt so an existing valid link
        * remains visible/selectable while editing.
        */
-      const queryPredicate = resolvedCallingParams.queryPredicate;
-      const predicateAst =
-        queryPredicate && typeof queryPredicate === 'object' ? queryPredicate.ast : null;
+      const queryPredicate =
+        typeof resolvedCallingParams.queryPredicate === 'string'
+          ? resolvedCallingParams.queryPredicate.trim()
+          : '';
+      let predicateAst = null;
+      if (queryPredicate) {
+        try {
+          predicateAst = window.ManatOS?.expressionCompiler?.ast(queryPredicate) ?? null;
+        } catch {
+          predicateAst = null;
+        }
+      }
       if (predicateAst && !initialSelectedIds.has(id) && expressionRuntime?.evaluateAstWithScope) {
         try {
           const unavailable = expressionRuntime.evaluateAstWithScope(predicateAst, candidate);
@@ -401,22 +433,63 @@
           valid: selectedIds.size > 0,
         },
       };
-      runtime.replace(popupPath, payload, {
-        source: 'record-selector',
-        action: 'selector-state',
-        triggerPath: popupPath,
-      });
+      // PopupRuntime is the normal CTX owner. A host without PopupRuntime may
+      // project the same selector payload directly to the canonical child path;
+      // that resilience path never replaces the owning entry or creates another topology.
+      if (!v2Surface) {
+        runtime.replace(fallbackPopupPath, payload, {
+          source: 'record-selector',
+          action: 'selector-state',
+          triggerPath: fallbackPopupPath,
+        });
+      }
+      if (v2Surface) {
+        popupRuntime?.updateUiLevel?.(
+          v2Surface,
+          {
+            invocation: { ...resolvedCallingParams },
+            presentation: {
+              kind: 'selector',
+              mode: presentationMode,
+              title: selectorTitleText,
+              contextNote: currentContextNote,
+              showContextNote,
+              autofocusSearch,
+            },
+            state: {
+              lifecycle: phase === 'closing' ? 'closing' : 'active',
+              active: phase !== 'closing',
+              dirty: false,
+              valid: selectedIds.size > 0,
+              loading: false,
+              saving: false,
+              deleting: false,
+              blocked: false,
+              navigation: { activeTabId: null, activeInternalTabIds: {} },
+            },
+            facts: {
+              search: String(search?.value || ''),
+              filters: { ...fieldFilterValues() },
+              paging: { page: currentPage, pageSize, total: filtered.length, totalPages },
+              selectedId: selectionMode === 'single' ? ([...selectedIds][0] ?? null) : null,
+              selectedIds: [...selectedIds],
+            },
+          },
+          { source: 'record-selector', action: 'selector-v2-state' },
+        );
+      }
     };
 
     const clearCtx = () => {
       popupRuntime?.clearInspection?.(selectorCtxButton);
-      if (runtime?.replace) {
-        runtime.replace(popupPath, null, {
+      if (!v2Surface && runtime?.delete && runtime.get?.(fallbackPopupPath) !== undefined) {
+        runtime.delete(fallbackPopupPath, {
           source: 'record-selector',
           action: 'close-record-selector',
-          triggerPath: popupPath,
+          triggerPath: fallbackPopupPath,
         });
       }
+      if (v2Surface) popupRuntime?.closeUiLevel?.(v2Surface);
     };
 
     const close = () => {

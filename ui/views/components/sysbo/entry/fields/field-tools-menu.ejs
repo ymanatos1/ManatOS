@@ -24,6 +24,10 @@
   const mutationActions = Array.isArray(actions) ? actions : [];
   const showDeveloperTools = typeof developerToolsEnabled === 'boolean' ? developerToolsEnabled : false;
   const inspectCtx = typeof ctxBound === 'boolean' ? ctxBound : true;
+  const fieldCurrentValue = typeof currentValue !== 'undefined' ? currentValue : null;
+  const actionEnabled = (action) =>
+    (editable || action.mutates === false) &&
+    (!action.requiresValue || (fieldCurrentValue != null && String(fieldCurrentValue) !== ''));
 %>
 <ul class="dropdown-menu metadata-field-input-menu <%= editable ? 'is-enabled' : 'is-readonly' %>">
   <li>
@@ -46,7 +50,8 @@
           class="dropdown-item"
           type="button"
           data-field-input-action="<%= action.action %>"
-          <%= editable ? '' : 'disabled aria-disabled="true"' %>
+          <%= action.requiresValue ? 'data-field-action-requires-value="true"' : '' %>
+          <%= actionEnabled(action) ? '' : 'disabled aria-disabled="true"' %>
         >
           <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-2" aria-hidden="true"></i><% } %><%= action.label %>
         </button>

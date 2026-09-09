@@ -90,14 +90,12 @@
   ].join(' ');
 
   const recordSelectorUIRules = {
-    presentationMode: compileUIExpression(
-      "callingParams.presentationMode ? callingParams.presentationMode : 'subtle'",
-    ),
-    title: compileUIExpression(selectorTitleExpression),
-    contextNote: compileUIExpression(selectorContextNoteExpression),
-    rowClass: compileUIExpression("candidateFacts.alreadyInContext ? 'is-in-context' : ''"),
-    showContextNote: compileUIExpression("callingParams.showContextNote == false ? false : true"),
-    autofocusSearch: compileUIExpression("callingParams.autofocusSearch == false ? false : true"),
+    presentationMode: "callingParams.presentationMode ? callingParams.presentationMode : 'subtle'",
+    title: selectorTitleExpression,
+    contextNote: selectorContextNoteExpression,
+    rowClass: "candidateFacts.alreadyInContext ? 'is-in-context' : ''",
+    showContextNote: "callingParams.showContextNote == false ? false : true",
+    autofocusSearch: "callingParams.autofocusSearch == false ? false : true",
   };
   const recordSelectorEnumItem = metadataOptionItemForField;
   const recordSelectorFilterModes = Object.fromEntries(recordSelectorFilterFields.map((fieldKey) => {
@@ -196,7 +194,7 @@
 
     <!--
       Candidate rows are pre-rendered through the exact same canonical list-cell
-      partial used by pages/sysbo/list.ejs. The browser runtime only chooses,
+      partial used by the V2 entity-list component. The browser runtime only chooses,
       decorates and pages these rows; it does not own a second field presenter.
     -->
     <template data-selector-candidate-rows>
