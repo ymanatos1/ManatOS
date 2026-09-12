@@ -9,7 +9,7 @@ export interface ExpressionToken {
   value?: string | number;
 }
 
-const identifierStart = /[A-Za-z_$]/;
+const identifierStart = /[A-Za-z_$#]/;
 const identifierPart = /[A-Za-z0-9_$]/;
 
 export function tokenizeExpression(source: string): readonly ExpressionToken[] {
@@ -90,7 +90,14 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
     if (identifierStart.test(char)) {
       const start = index;
       index += 1;
-      while (index < source.length && identifierPart.test(source[index] ?? '')) index += 1;
+      if (char === '#') {
+        while (index < source.length && /[A-Za-z0-9_]/.test(source[index] ?? '')) index += 1;
+      } else if (char === '$' && /[A-Za-z_]/.test(source[index] ?? '')) {
+        // CTX aliases are explicit $-prefixed identifiers and may use hyphens.
+        while (index < source.length && /[A-Za-z0-9_$-]/.test(source[index] ?? '')) index += 1;
+      } else {
+        while (index < source.length && identifierPart.test(source[index] ?? '')) index += 1;
+      }
       const text = source.slice(start, index);
       if (text.toUpperCase() === 'IN') {
         tokens.push({ kind: 'operator', text: 'IN', position: start });

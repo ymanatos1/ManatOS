@@ -12,7 +12,7 @@ ui     -> EJS + sessions + external auth + generic CRUD
 
 The UI uses the API over HTTP. It never reads `data/database.json` directly.
 
-The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions; server-side context construction compiles them to ASTs and the browser consumes the compiled representation with dependency-aware refresh. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one SysBO must be checked against all registered metadata-driven SysBOs. Live entry state belongs in CTX: `fields.<key>.value` is the scalar value authority, `fields.<key>.originalValue` is its baseline, and `entry.current`/`entry.original` are read-only record mirrors; list data is published through the owning UI level's `dataList`; calculated mutations use the same canonical CTX mutation/events as user changes. Canonical field calculations may opt into generic persistence with `calculation.persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
+The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions. Authored expression source is the portable contract: the API process and UI process each compile lazily into their own process-local AST cache, while the browser never parses grammar itself and requests AST execution data through the UI compile boundary when needed. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one SysBO must be checked against all registered metadata-driven SysBOs. Live entry state belongs in CTX: `fields.<key>.value` is the scalar value authority, `fields.<key>.originalValue` is its baseline, and `entry.current`/`entry.original` are read-only record mirrors; list data is published through the owning UI level's canonical `list.entries` projection (with `list.originalEntries` when a baseline is meaningful); calculated mutations use the same canonical CTX mutation/events as user changes. Canonical field calculations may opt into generic persistence with `calculation.persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
 
 ## Commands
 
@@ -167,7 +167,7 @@ See `docs/Testing.md` for the coverage policy and detailed test responsibilities
 
 ## API presentation and access groups
 
-Swagger and Postman use the same responsibility order: **Server**, **Authentication**, **System Business Objects**, **System Business Objects (Aux)**, **System Configuration**, **Public UI**, **External Authentication**, **External Authentication Credentials**, then **Internal External Authentication Workflow**. The former untagged/default SysConfiguration operations are explicitly presented as **System Configuration**. Within the Aux Postman folder, reusable contacts are grouped by domain (email, telephone, postal address) and then split into canonical-value requests versus Principal-link requests; this mirrors the domain ownership boundary rather than flattening six supporting SysBOs into one long list.
+Swagger and Postman use the same responsibility-oriented API model. Swagger gives each registered SysBO its own tag (for example **SysBO / Users**, **SysBO / Principals**, **SysBO / Applications** and the supporting contact SysBOs) instead of flattening every business object into one generic section. Server/authentication, System Configuration, Public UI, External Authentication, protected credential operations and trusted internal workflow operations remain separate endpoint families. Postman mirrors those boundaries while grouping reusable contact objects by domain (email, telephone and postal address) and separating canonical-value requests from Principal-link requests.
 
 Access remains operation-specific: public endpoints explicitly say so; Admin-only operations require an Admin Bearer token; trusted external-provider credential commands require both Admin Bearer authentication and `x-internal-api-key`; credential-test workflow endpoints are internal UI/BFF mechanics rather than routine client operations.
 
@@ -179,7 +179,7 @@ The protoCRM Apps Playground has two related surfaces: `app-playground.ejs` is t
 
 ## Expression/debugging regression expectations
 
-Changes to the expression grammar, precedence, registered functions, CTX path resolution, field normalization, dynamic-value resolution, navigation/action policy, or Debugging CLI must include regression coverage. Numeric and semantic indexing of CTX collections are both contracts. The browser reactive evaluator must consume server-compiled ASTs and remain behaviorally aligned with the canonical evaluator; UI components must not hardcode registered normalization function names. Tests should protect the ownership split: CTX provides facts, metadata provides policy, the evaluator resolves it, and renderers must not add duplicate permission/entitlement gates.
+Changes to the expression grammar, precedence, registered functions, CTX path resolution, field normalization, dynamic-value resolution, navigation/action policy, or Debugging CLI must include regression coverage. Numeric and semantic indexing of CTX collections are both contracts. The browser reactive evaluator must obtain AST execution data through the UI compile boundary, never by parsing source locally or consuming API-owned AST state, and must remain behaviorally aligned with the canonical evaluator; UI components must not hardcode registered normalization function names. Tests should protect the ownership split: CTX provides facts, metadata provides policy, the evaluator resolves it, and renderers must not add duplicate permission/entitlement gates.
 
 ### In-place metadata entry Save
 
@@ -187,11 +187,19 @@ For an existing metadata-driven record, the primary **Save** action uses the nor
 
 ### Child-editor lifecycle contract
 
-Reusable inline/collection editors must register through the generic child-editor DOM/event contract (`data-entry-child-editor` plus `manatos:child-editor-state`). Opening an editor sets the page's internal-editing state; Add/Update or child Cancel clears it. Parent Save controls must consume that state in addition to ordinary dirty/valid state. Do not add entity-specific Save guards for collections.
+Reusable inline/collection editors participate through the owning entry form's private aggregate-contributor contract. A collection contributor reports committed-value `dirty` state and active-draft `blocksPersistence` state without publishing the draft or contributor bookkeeping into CTX. Parent Save/navigation consume the aggregate policy, while CTX exposes only `control.state.dirty`, `control.state.valid`, and `control.state.blocked`. Do not add entity-specific Save guards or parallel child-editor DOM/event state.
 
 ## Adding expression functions
 
 Every registered expression function must document and declare the narrowest capability it requires (`pure`, `clock`, `ctx`, or `entityResolver`). Functions must remain entity-agnostic and must never import storage adapters directly. Persistence-backed behavior belongs behind `EntityResolver`; browser-owned formulas delegate only reached unavailable-capability calls and then resume locally. See [Expression Parsing and Evaluation Mechanics](../architecture/Expression-Architecture.md).
+
+## Browser runtime service namespace
+
+Shared browser runtime services live under the single `window.ManatOS` namespace rather than exporting unrelated top-level globals. Shell services use `ManatOS.connectivity` and `ManatOS.busy`; reusable entity-field behavior uses `ManatOS.fieldComponents`; debugger-only services live under `ManatOS.debug.*`. Cross-window Developer Tools adoption follows the same `ManatOS.debug` contract. Keep mutable lifecycle/cache/registry state private behind those service APIs; do not use the namespace as a semantic state bag or mirror CTX into it.
+
+Private runtime state is retained only when it owns lifecycle, cache, registry, presentation, or in-flight coordination that is not itself a semantic application fact. Examples include contributor registries, popup presentation maps, initialization owner sets, debugger UI state, and the browser document-lifetime expression execution mirror. Such state must remain private behind its owning runtime; moving it into CTX merely to make it visible would create a second semantic authority. Conversely, a private map that starts carrying business/UI meaning observable by expressions must be re-evaluated for CTX ownership instead of silently becoming shadow state.
+
+Storage-key suffixes such as `.v1` or `.v2` are storage-schema/version labels, not evidence of V1/V2 CTX architecture by themselves. Compatibility readers may exist only for an active migration with a concrete consumer. Once migration has served its purpose, remove the fallback rather than preserving a permanent second read contract.
 
 ## API traffic diagnostics
 

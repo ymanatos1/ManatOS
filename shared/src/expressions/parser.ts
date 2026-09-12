@@ -181,11 +181,95 @@ class Parser {
     if (identifier === 'false') return { kind: 'literal', value: false };
     if (identifier === 'null') return { kind: 'literal', value: null };
 
-    const members: ExpressionPathMember[] = [identifier];
+    const aliasMembers = (() => {
+      if (identifier === '$entity' || identifier === '$entity-fields') {
+        const entityMembers = [
+          '$',
+          'entities',
+          {
+            kind: 'dynamic-path' as const,
+            expression: {
+              kind: 'variable' as const,
+              path: 'entityName',
+              members: ['entityName'],
+              absolute: false,
+            },
+            source: 'entityName',
+          },
+        ] satisfies ExpressionPathMember[];
+        return identifier === '$entity-fields'
+          ? ([...entityMembers, 'metadata', 'fieldDefinition'] satisfies ExpressionPathMember[])
+          : entityMembers;
+      }
+      if (identifier === '$entry-current') {
+        return ['entry', 'current'] satisfies ExpressionPathMember[];
+      }
+      if (identifier === '$level-entity') {
+        return [
+          '$',
+          'entities',
+          {
+            kind: 'dynamic-path' as const,
+            expression: {
+              kind: 'variable' as const,
+              path: '#level.control.entityName',
+              members: ['#level', 'control', 'entityName'],
+              absolute: false,
+            },
+            source: '#level.control.entityName',
+          },
+        ] satisfies ExpressionPathMember[];
+      }
+      if (identifier === '$level-entity-fields') {
+        return [
+          '$',
+          'entities',
+          {
+            kind: 'dynamic-path' as const,
+            expression: {
+              kind: 'variable' as const,
+              path: '#level.control.entityName',
+              members: ['#level', 'control', 'entityName'],
+              absolute: false,
+            },
+            source: '#level.control.entityName',
+          },
+          'metadata',
+          'fieldDefinition',
+        ] satisfies ExpressionPathMember[];
+      }
+      return null;
+    })();
+
+    if (identifier.startsWith('$') && identifier !== '$' && !aliasMembers) {
+      throw new ExpressionParseError(
+        `Unknown CTX alias ${identifier}`,
+        first.position,
+        this.source,
+      );
+    }
+    if (identifier.startsWith('#') && identifier !== '#' && identifier !== '#level') {
+      throw new ExpressionParseError(
+        `Unknown CTX relative selector ${identifier}`,
+        first.position,
+        this.source,
+      );
+    }
+
+    const members: ExpressionPathMember[] = aliasMembers ? [...aliasMembers] : [identifier];
     let path = identifier;
 
     for (;;) {
       if (this.match('.')) {
+        if (this.match('(')) {
+          const start = this.current().position;
+          const expression = this.parseConditional();
+          const closing = this.expect('punctuation', ')');
+          const source = this.source.slice(start, closing.position);
+          members.push({ kind: 'dynamic-path', expression, source });
+          path += `.(${source})`;
+          continue;
+        }
         const member = this.expect('identifier');
         members.push(member.text);
         path += `.${member.text}`;
@@ -226,7 +310,7 @@ class Parser {
       kind: 'variable',
       path,
       members,
-      absolute: members[0] === 'ctx',
+      absolute: members[0] === '$',
     };
   }
 
@@ -284,6 +368,16 @@ class Parser {
 export function expressionCapabilities(ast: ExpressionNode): readonly ExpressionCapability[] {
   const capabilities = new Set<ExpressionCapability>();
   const visit = (node: ExpressionNode): void => {
+    if (node.kind === 'variable') {
+      node.members.forEach((member) => {
+        if (typeof member === 'object' && member?.kind === 'dynamic-path') visit(member.expression);
+      });
+      return;
+    }
+    if (node.kind === 'array') {
+      node.items.forEach(visit);
+      return;
+    }
     if (node.kind === 'function') {
       capabilities.add(node.capability);
       node.arguments.forEach(visit);
@@ -312,6 +406,35 @@ export function expressionCapabilities(ast: ExpressionNode): readonly Expression
   return [...capabilities];
 }
 
+const defaultCompiledExpressionCache = new Map<string, CompiledExpression>();
+const customCompiledExpressionCaches = new WeakMap<
+  ExpressionFunctionRegistry,
+  Map<string, CompiledExpression>
+>();
+
+function compiledExpressionCacheFor(
+  functions: ExpressionFunctionRegistry | undefined,
+): Map<string, CompiledExpression> {
+  if (!functions || functions === expressionFunctions) return defaultCompiledExpressionCache;
+
+  let cache = customCompiledExpressionCaches.get(functions);
+  if (!cache) {
+    cache = new Map<string, CompiledExpression>();
+    customCompiledExpressionCaches.set(functions, cache);
+  }
+  return cache;
+}
+
+/**
+ * Parse one expression lazily and intern its compiled representation for the
+ * lifetime of this process. UI and API run in separate processes, so each owns
+ * an independent cache which starts empty at process startup. Exact expression
+ * source is the cache identity; repeated consumers therefore share one AST.
+ *
+ * Custom function registries receive their own process-global cache because a
+ * registry participates in parse-time function validation. Normal ManatOS
+ * formulas use the default registry and therefore one global source -> AST map.
+ */
 export function compileExpression(
   source: string,
   options: {
@@ -319,11 +442,17 @@ export function compileExpression(
     diagnosticSink?: ExpressionDiagnosticSink;
   } = {},
 ): CompiledExpression {
+  const cache = compiledExpressionCacheFor(options.functions);
+  const cached = cache.get(source);
+  if (cached) return cached;
+
   try {
     const tokens = tokenizeExpression(source);
     const parser = new Parser(source, tokens, options.functions ?? expressionFunctions);
     const ast = parser.parse();
-    return { source, ast, requiredCapabilities: expressionCapabilities(ast) };
+    const compiled = { source, ast, requiredCapabilities: expressionCapabilities(ast) };
+    cache.set(source, compiled);
+    return compiled;
   } catch (error) {
     if (error instanceof ExpressionParseError) {
       emitExpressionDiagnostic(options.diagnosticSink, {

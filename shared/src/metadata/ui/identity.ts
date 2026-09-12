@@ -26,6 +26,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         [
           'name',
           'enabled',
+          'photo',
           'email',
           'telephoneNumber',
           'description',
@@ -42,7 +43,8 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           // generic: ordering and row breaks are presentation metadata only.
           content: [
             { kind: 'field', field: 'name', span: 6 },
-            { kind: 'field', field: 'enabled', span: 6 },
+            { kind: 'field', field: 'enabled', span: 2 },
+            { kind: 'field', field: 'photo', span: 4 },
             { kind: 'field', field: 'email', span: 6 },
             { kind: 'field', field: 'telephoneNumber', span: 6 },
             { kind: 'break' },
@@ -71,7 +73,8 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           layout: 'summary',
           visible: {
             expression:
-              "mode !== 'create' && (user.permissions.userRole === 'Admin' || id === user.fields.id.value)",
+              "mode !== 'create' && " +
+              "(user.permissions.userRole === 'Admin' || #level.entry.current.id === $.user.fields.id.value)",
           },
         },
       ),
@@ -87,6 +90,18 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
        * These two calculated fields are canonical calculated fields; the UI
        * only decorates their already-evaluated textual values.
        */
+      photo: {
+        presentation: {
+          pictureEditor: {
+            maxSourceBytes: 20_000_000,
+            cropAspectRatio: 1,
+            cropModes: ['proportional', 'free'],
+            outputSize: 768,
+            outputContentType: 'image/jpeg',
+            outputQuality: 0.9,
+          },
+        },
+      },
       principalId: {
         editable: { expression: "user.permissions.userRole === 'Admin'" },
       },
@@ -94,7 +109,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
         presentation: {
           // The canonical calculated field owns the text ("Verified"/"Not verified").
           // UI metadata owns only visual decoration; its decision is evaluator-backed.
-          tone: { expression: "emailVerified ? 'success' : 'secondary'" },
+          tone: { expression: "#level.entry.current.emailVerified ? 'success' : 'secondary'" },
         },
       },
       localPasswordStatus: {
@@ -122,7 +137,6 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
 
       // Create-form behavior is UI-specific; persisted/entity semantics stay
       // in SysBO metadata and the API.
-      enabled: { createDefaultValue: true },
 
       // Role assignment is an authorization capability. Keep the decision in
       // evaluator-driven UI metadata instead of renderer-specific role checks.
@@ -161,7 +175,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           providerEmailVerificationStatus: {
             // Value comes from canonical external-identities field calculation.
             presentation: {
-              tone: { expression: "emailVerified ? 'success' : 'secondary'" },
+              tone: { expression: "#level.entry.current.emailVerified ? 'success' : 'secondary'" },
             },
           },
         },
@@ -177,7 +191,8 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           expression:
             'system.client.features.allowAdminEmailVerification && ' +
             "user.permissions.userRole === 'Admin' && " +
-            'id !== user.fields.id.value && emailVerified !== true',
+            '#level.entry.current.id !== $.user.fields.id.value && ' +
+            '#level.entry.current.emailVerified !== true',
         },
         label: 'Verify email',
         icon: 'envelope-check',
@@ -187,10 +202,11 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       ...standardEntryActions,
       delete: {
         ...standardEntryActions.delete,
-        enabled: { expression: 'id !== user.fields.id.value' },
+        enabled: { expression: '#level.entry.current.id !== $.user.fields.id.value' },
         disabledReason: {
           expression:
-            "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
+            '#level.entry.current.id === $.user.fields.id.value ' +
+            "? 'You cannot delete your own user account.' : null",
         },
       },
     },
@@ -208,7 +224,7 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
     sortableFields: ['provider', 'enabled', 'callbackPath', 'credentialsVerified'],
     addAction: {
       ...standardAddAction('Add provider'),
-      enabled: { expression: 'addConstraintReached !== true' },
+      enabled: { expression: '#level.control.facts.addConstraintReached !== true' },
       disableWhenAllEnumValuesExistForField: 'provider',
       disabledReason: 'All supported external authentication providers are already configured.',
     },
@@ -227,15 +243,10 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
         content: [
           { kind: 'field', field: 'provider' },
           { kind: 'field', field: 'enabled' },
-          // Callback path shares its row with provider-specific Tenant when that
-          // field exists; otherwise it consumes the full row. Grid-span remains
-          // evaluator-backed metadata so the generic renderer/component has no
-          // provider-specific layout branch.
-          {
-            kind: 'field',
-            field: 'callbackPath',
-            span: { expression: 'provider.option.tenant != null ? 6 : 12' },
-          },
+          // Callback path always owns a full row. Provider-specific Tenant, when
+          // visible, begins on the following row; visibility remains declarative
+          // while layout does not transiently resize after CTX policy evaluation.
+          { kind: 'field', field: 'callbackPath', span: 12 },
           { kind: 'field', field: 'tenant', span: 6 },
           {
             kind: 'component',
@@ -243,7 +254,7 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
             component: {
               key: 'contextual-help',
               readOnly: true,
-              bindings: { selectedKey: { expression: 'provider.value' } },
+              bindings: { selectedKey: { expression: '#level.entry.current.provider' } },
               options: {
                 itemsDataKey: 'providerDefinitions',
                 itemKey: 'provider',
@@ -270,7 +281,7 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
             component: {
               key: 'contextual-help',
               readOnly: true,
-              bindings: { selectedKey: { expression: 'provider.value' } },
+              bindings: { selectedKey: { expression: '#level.entry.current.provider' } },
               options: {
                 itemsDataKey: 'providerDefinitions',
                 itemKey: 'provider',
@@ -294,14 +305,15 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
        */
       provider: {
         editable: { expression: "mode === 'create'" },
-        createDefaultValue: { expression: "FirstCtx(provider.options, 'value')" },
         helpText: 'Exactly one configuration record is allowed for each supported provider.',
       },
 
       // Callback path is provider/application managed canonically; Tenant is
       // currently fixed by provider definitions and is presentation-readonly.
       tenant: {
-        visible: { expression: 'provider.option.tenant != null' },
+        visible: {
+          expression: "#level.fields.provider.value === 'microsoft'",
+        },
         editable: false,
         helpText:
           'Provider-defined tenant value. Hidden when the selected provider does not define a tenant.',
@@ -313,24 +325,27 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
        */
       clientId: { editable: false },
       callbackPath: {
-        createDefaultValue: { expression: 'provider.option.callbackPath' },
         helpText:
           'Provider-defined callback path. ManatOS combines it with PUBLIC_BASE_URL; administrators cannot override it.',
       },
-      enabled: { createDefaultValue: true },
       hasClientSecret: {
         label: 'Client secret',
         presentation: {
           mode: 'summary',
-          icon: { expression: "hasClientSecret ? 'lock-fill' : 'lock'" },
-          tone: { expression: "hasClientSecret ? 'success' : 'secondary'" },
+          icon: { expression: "#level.entry.current.hasClientSecret ? 'lock-fill' : 'lock'" },
+          tone: { expression: "#level.entry.current.hasClientSecret ? 'success' : 'secondary'" },
         },
       },
       credentialsVerified: {
         presentation: {
           mode: 'summary',
-          icon: { expression: "credentialsVerified ? 'check-circle-fill' : 'x-circle'" },
-          tone: { expression: "credentialsVerified ? 'success' : 'secondary'" },
+          icon: {
+            expression:
+              "#level.entry.current.credentialsVerified ? 'check-circle-fill' : 'x-circle'",
+          },
+          tone: {
+            expression: "#level.entry.current.credentialsVerified ? 'success' : 'secondary'",
+          },
         },
       },
 

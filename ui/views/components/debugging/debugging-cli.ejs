@@ -28,12 +28,21 @@
   const cliInstanceKey = typeof instanceKey === 'string' && instanceKey ? instanceKey : 'page';
   const cliStartPath = typeof startPath === 'string' && startPath ? startPath : 'ctx.ui.level';
   const cliDocked = typeof docked !== 'undefined' && docked === true;
+  const cliDisplayPath = typeof displayPath === 'string' && displayPath ? displayPath : null;
+  const cliStartDisplay =
+    cliDisplayPath ||
+    (cliStartPath === 'ctx'
+      ? '$'
+      : cliStartPath.startsWith('ctx.')
+        ? `$.${cliStartPath.slice(4)}`
+        : cliStartPath);
 %>
 <section
   class="debugging-cli<%= cliDocked ? ' debugging-cli-dock d-none' : '' %>"
   data-debugging-cli
   data-cli-instance-key="<%= cliInstanceKey %>"
   data-cli-start-path="<%= cliStartPath %>"
+  <% if (cliDisplayPath) { %>data-cli-display-path="<%= cliDisplayPath %>"<% } %>
   data-cli-csrf="<%= csrfToken %>"
   <% if (cliDocked) { %>data-cli-persistent-open="true" aria-hidden="true"<% } %>
 >
@@ -45,10 +54,9 @@
   <% } else { %>
     <div class="small text-secondary mb-2">
       Expression context:
-      <code data-cli-context-label><%= cliStartPath %></code>.
-      Enter <code>.</code> for the current node,
-      <code>..</code> for its parent,
-      or <code>cls</code> to clear the transcript.
+      <code data-cli-context-label title="Execution context: <%= cliStartDisplay %>. Expressions are evaluated relative to this CTX node."><%= cliStartDisplay %></code>.
+      Enter <code>help</code> for CTX path/alias quick reference,
+      <code>.</code> for the current node, or <code>..</code> to move to its parent.
     </div>
   <% } %>
 
@@ -60,11 +68,11 @@
           class="debugging-cli-prompt"
           type="button"
           data-cli-prompt
-          title="Command history"
-          aria-label="Current CTX path; show command history"
+          title="Execution context: <%= cliStartDisplay %>. Expressions are evaluated relative to this CTX node. Click to open command history."
+          aria-label="Execution context <%= cliStartDisplay %>; show command history"
           aria-haspopup="listbox"
           aria-expanded="false"
-        ><%= cliStartPath %> &gt;</button>
+        ><%= cliStartDisplay %> &gt;</button>
         <div class="debugging-cli-history d-none" data-cli-history role="listbox" aria-label="CLI command history"></div>
       </div>
       <textarea

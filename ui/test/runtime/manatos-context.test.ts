@@ -149,14 +149,19 @@ describe('ManatOS ctx tree', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
 
-    registerContextEntity(ctx, 'sys-users', { name: 'User' }, { key: 'sys-users' });
+    registerContextEntity(
+      ctx,
+      'sys-users',
+      { name: 'sysUsers', label: 'User' },
+      { key: 'sys-users' },
+    );
 
     expect(entityContextName('sys-users')).toBe('sysUsers');
     expect(ctx.entities.sysUsers?.key).toBe('sys-users');
-    expect(ctx.entities.sysUsers?.metadata).toEqual({ name: 'User' });
+    expect(ctx.entities.sysUsers?.metadata).toEqual({ name: 'sysUsers', label: 'User' });
   });
 
-  it('keeps canonical entity derived-field expressions source-only in CTX', () => {
+  it('keeps canonical entity expression source and executable AST together in CTX', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
 
@@ -167,7 +172,7 @@ describe('ManatOS ctx tree', () => {
     expect(fullName?.expression).toBe(
       "firstName !== '' && lastName !== '' ? firstName + ' ' + lastName : firstName !== '' ? firstName : lastName",
     );
-    expect(fullName?.ast).toBeUndefined();
+    expect(fullName).not.toHaveProperty('ast');
   });
 
   it('rejects ctx identifiers that the future expression grammar cannot address', () => {
@@ -254,7 +259,7 @@ describe('ManatOS ctx tree', () => {
     expect(ctx.system.server).toBeDefined();
   });
 
-  it('keeps nested UI metadata expressions source-only without evaluating their variables', () => {
+  it('keeps nested UI metadata expression source and AST without evaluating variables', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const ctx = createManatOSContext(MANATOS_COMPANY, platform, 'http://localhost:3000', '0.1.0');
 
@@ -278,7 +283,7 @@ describe('ManatOS ctx tree', () => {
     const field =
       entity?.uiMetadata?.record?.relatedCollections?.externalIdentities?.fields?.status;
     expect(field?.expression).toContain('emailVerified');
-    expect(field?.ast).toBeUndefined();
+    expect(field).not.toHaveProperty('ast');
 
     // Canonical objects remain self-identifying outside CTX, but the outer
     // ctx.entities key already owns identity so nested metadata does not repeat it.

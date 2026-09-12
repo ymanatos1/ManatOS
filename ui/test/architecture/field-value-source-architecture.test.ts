@@ -36,7 +36,7 @@ describe('canonical field type / value-source architecture', () => {
 
     expect(types).toContain('calculation?: Readonly<SysBOFieldCalculationMetadata>');
     expect(types).toContain('persisted?: boolean');
-    expect(types).toContain('triggeredBy?: readonly string[]');
+    expect(types).not.toContain('triggeredBy?: readonly string[]');
     for (const source of [types, identity, business, contact])
       expect(source).not.toContain('derivedFields');
     expect(identity).toContain("key: 'fullName'");
@@ -51,6 +51,7 @@ describe('canonical field type / value-source architecture', () => {
     expect(tabs).toContain("include('../content/summary'");
     expect(summary).toContain('metadata.fieldDefinition[key]');
     expect(summary).toContain('valueFor(key)');
+    expect(summary).toContain('data-v2-summary-field-key="<%= key %>"');
     expect(summary).not.toContain('derived');
     expect(summary).not.toContain('field.calculation');
   });
@@ -59,8 +60,14 @@ describe('canonical field type / value-source architecture', () => {
     const formRuntime = await ui('public/js/sysbo/entry/form-runtime.js');
     const fieldRuntime = await ui('public/js/sysbo/entry/field-runtime.js');
 
-    expect(formRuntime).toContain("form.querySelectorAll('[data-field-calculation-expression]')");
-    expect(formRuntime).toContain('ManatOSFieldComponents?.setFieldValue');
+    expect(formRuntime).toContain(
+      'const canonicalFieldDefinitions = entryEntity?.metadata?.fieldDefinition || {}',
+    );
+    expect(formRuntime).toContain('ManatOS?.fieldComponents?.setFieldValue');
+    expect(formRuntime).toContain('definition?.calculation?.expression');
+    expect(formRuntime).not.toContain(
+      "form.querySelectorAll('[data-field-calculation-expression]')",
+    );
     expect(formRuntime).toContain('const entryPagePath = leafPagePath();');
     expect(formRuntime).toContain('const entryPageFieldsPath = entryPagePath');
     expect(formRuntime).toContain('const pagePath = entryPagePath;');
@@ -71,9 +78,45 @@ describe('canonical field type / value-source architecture', () => {
   });
 
   it('materializes persisted calculations from canonical field metadata at the API boundary', async () => {
-    const service = await api('src/services/generic-sysbo-service.ts');
+    const service = await api('src/services/sysbo/generic-service.ts');
     expect(service).toContain('field.calculation?.persisted === true');
     expect(service).toContain('fieldDefinition.${key}.calculation');
     expect(service).not.toContain('metadata.derivedFields');
+  });
+  it('enforces metadata string lengths in the UI component and canonical CTX field mutation path', async () => {
+    const text = await ui('views/components/sysbo/entry/fields/text-field.ejs');
+    const fieldRuntime = await ui('public/js/sysbo/entry/field-runtime.js');
+    const ctxRuntime = await ui('public/js/runtime/context-runtime.js');
+
+    expect(text).toContain('field.minLength');
+    expect(text).toContain('field.maxLength');
+    expect(text).toContain('minlength=');
+    expect(text).toContain('maxlength=');
+    expect(fieldRuntime).toContain('applyStringLengthValidity');
+    expect(fieldRuntime).toContain("control.getAttribute('minlength')");
+    expect(fieldRuntime).toContain("control.getAttribute('maxlength')");
+    expect(ctxRuntime).toContain('const stringLengthIssues =');
+    expect(ctxRuntime).toContain("source: 'metadata-length'");
+    expect(ctxRuntime).toContain('field.validationIssues =');
+    expect(ctxRuntime).toContain('field.valid =');
+  });
+  it('resolves ordinary field variables through real CTX during explicit initialization scopes', async () => {
+    const expressionRuntime = await ui('public/js/sysbo/entry/expression-runtime.js');
+
+    expect(expressionRuntime).toContain('evaluationScopePath && runtime?.resolveVariableWithPath');
+    expect(expressionRuntime).toContain(
+      'runtime.resolveVariableWithPath(node, evaluationScopePath',
+    );
+    expect(expressionRuntime).not.toContain('explicitEvaluationScopePath');
+  });
+
+  it('keeps create-page representation tolerant of incomplete records and clears Person principal names', async () => {
+    const supplemental = await ui('src/routes/sysbo/entry/supplemental-data.ts');
+    const business = await shared('src/metadata/bo/business.ts');
+
+    expect(supplemental).toContain('const entryRepresentation = isNew');
+    expect(supplemental).toContain('? null');
+    expect(supplemental).toContain('rawPrimaryValue ?? definition.boMetadata.label');
+    expect(business).toContain("lastName != null && lastName !== '' ? lastName : '') : name");
   });
 });

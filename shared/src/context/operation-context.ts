@@ -176,6 +176,62 @@ export class OperationContext {
   }
 
   /**
+   * Start the request-wide semantic root.
+   *
+   * This root is established once by HTTP request middleware before body
+   * parsing and routing. Route/service operations then become children of it,
+   * so even parser, middleware and otherwise-unwrapped failures retain a
+   * complete API-request trace.
+   */
+  beginRequestOperation(description: string, userDescription?: string): void {
+    const store = this.store();
+    if (store.root) return;
+
+    const node = this.createNode(description, userDescription);
+    store.root = node;
+    store.active = [node];
+  }
+
+  /** Mark a successful request-wide root complete and release live state. */
+  completeRequestOperation(): void {
+    const store = this.als.getStore();
+    const root = store?.root;
+    if (!store || !root) return;
+
+    if (root.status === 'running') {
+      root.status = 'completed';
+      root.completedAt = new Date();
+      root.children = [];
+    }
+
+    store.active = [];
+    delete store.root;
+  }
+
+  /**
+   * Attach the current request-wide semantic tree to an AppError.
+   *
+   * The central transport error boundary calls this exactly once after it has
+   * normalized the originating exception. Existing richer traces are never
+   * overwritten.
+   */
+  attachCurrentTrace(appError: AppError): AppError {
+    if (appError.operationTrace) return appError;
+
+    const store = this.als.getStore();
+    const root = store?.root;
+    if (!store || !root) return appError;
+
+    root.status = 'failed';
+    root.completedAt = new Date();
+    root.errorCode = appError.code;
+    root.errorMessage = appError.message;
+    appError.operationTrace = [this.snapshot(root)];
+
+    return appError;
+  }
+
+  /**
    * Run a root semantic operation.
    *
    * A root operation represents the main action that could be retried from
@@ -210,6 +266,16 @@ export class OperationContext {
     }
 
     const store = this.store();
+
+    /*
+     * HTTP middleware may already own the request-wide root. In that case a
+     * route's historical runRoot() call is semantically a child operation, not
+     * a second competing root. This preserves existing call sites while making
+     * the request root the single authority.
+     */
+    if (store.root) {
+      return this.run(description, fn, userDescription);
+    }
 
     const node = this.createNode(description, userDescription);
 

@@ -14,7 +14,7 @@ describe('#16 metadata-driven SysBO UI closure', () => {
     const shell = await source('views/layout/shell.ejs');
     const definitions = await source('src/sysbo/definitions.ts');
     const types = await source('src/sysbo/types.ts');
-    const configuration = await source('../api/src/services/sys-configuration-service.ts');
+    const configuration = await source('../api/src/services/sysbo/configuration-service.ts');
 
     expect(routes).toContain('renderMetadataDrivenList');
     expect(routes).toContain('renderMetadataDrivenRecord');
@@ -33,9 +33,9 @@ describe('#16 metadata-driven SysBO UI closure', () => {
   });
 
   it('loads canonical BO and UI metadata for every generic list/record page', async () => {
-    const dataAccess = await source('src/routes/sysbo/data-access.ts');
-    const listRenderer = await source('src/routes/sysbo/list-renderer.ts');
-    const recordRenderer = await source('src/routes/sysbo/record-renderer.ts');
+    const dataAccess = await source('src/routes/sysbo/shared/data-access.ts');
+    const listRenderer = await source('src/routes/sysbo/list/renderer.ts');
+    const recordRenderer = await source('src/routes/sysbo/entry/renderer.ts');
     const list = await source('views/components/runtime/entity-list.ejs');
     const edit = await source('views/components/runtime/entity-entry.ejs');
     const tabContent = await source('views/components/sysbo/entry/shell/entry-tab-content.ejs');
@@ -88,7 +88,7 @@ describe('#16 metadata-driven SysBO UI closure', () => {
   });
 
   it('uses global runtime paging configuration while metadata selects query fields', async () => {
-    const listQuery = await source('src/routes/sysbo/list-query.ts');
+    const listQuery = await source('src/routes/sysbo/list/query.ts');
     const list = await source('views/components/runtime/entity-list.ejs');
     const tableHeader = await source('views/components/sysbo/list/list-table-header.ejs');
 

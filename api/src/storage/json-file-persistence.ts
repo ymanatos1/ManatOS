@@ -1,10 +1,11 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import {
   PROTOCRM_PLATFORM_ID,
   StorageAppError,
+  operationContext,
   type SysBOExtAuthProvider,
   type SysBOLicense,
 } from '@manatos/shared';
@@ -21,6 +22,11 @@ export class JsonFilePersistence {
     this.filePath = resolve(process.cwd(), filePath);
   }
 
+  /** Binary assets belonging to the JSON-backed adapter live beside the JSON file. */
+  pictureRootDirectory(): string {
+    return join(dirname(this.filePath), 'images');
+  }
+
   /**
    * Load the persisted database from disk.
    *
@@ -28,46 +34,53 @@ export class JsonFilePersistence {
    * database state rather than treating that as an error.
    */
   async load(): Promise<DatabaseState> {
-    try {
-      const raw = JSON.parse(await readFile(this.filePath, 'utf8')) as PersistedDatabaseState;
+    return operationContext.run('Load datastore snapshot', async (scope) => {
+      scope.comment('filePath', this.filePath);
 
-      return {
-        sysUsers: fromPersistedRecords(raw.sysUsers),
+      try {
+        const serialized = await operationContext.run('Read datastore file', async () =>
+          readFile(this.filePath, 'utf8'),
+        );
+        const raw = JSON.parse(serialized) as PersistedDatabaseState;
 
-        sysPrincipals: fromPersistedRecords(raw.sysPrincipals),
+        return {
+          sysUsers: fromPersistedRecords(raw.sysUsers),
 
-        sysEmailAddresses: fromPersistedRecords(raw.sysEmailAddresses),
-        sysPrincipalEmailAddresses: fromPersistedRecords(raw.sysPrincipalEmailAddresses),
-        sysTelephoneNumbers: fromPersistedRecords(raw.sysTelephoneNumbers),
-        sysPrincipalTelephoneNumbers: fromPersistedRecords(raw.sysPrincipalTelephoneNumbers),
-        sysAddresses: fromPersistedRecords(raw.sysAddresses),
-        sysPrincipalAddresses: fromPersistedRecords(raw.sysPrincipalAddresses),
+          sysPrincipals: fromPersistedRecords(raw.sysPrincipals),
 
-        sysApplications: fromPersistedRecords(raw.sysApplications),
+          sysEmailAddresses: fromPersistedRecords(raw.sysEmailAddresses),
+          sysPrincipalEmailAddresses: fromPersistedRecords(raw.sysPrincipalEmailAddresses),
+          sysTelephoneNumbers: fromPersistedRecords(raw.sysTelephoneNumbers),
+          sysPrincipalTelephoneNumbers: fromPersistedRecords(raw.sysPrincipalTelephoneNumbers),
+          sysAddresses: fromPersistedRecords(raw.sysAddresses),
+          sysPrincipalAddresses: fromPersistedRecords(raw.sysPrincipalAddresses),
 
-        sysConfigurations: fromPersistedRecords(raw.sysConfigurations),
+          sysApplications: fromPersistedRecords(raw.sysApplications),
 
-        sysLicenses: normalizeLegacyLicenses(fromPersistedRecords(raw.sysLicenses)),
+          sysConfigurations: fromPersistedRecords(raw.sysConfigurations),
 
-        sysExtAuthProviders: normalizeLegacyExternalAuthProviders(
-          fromPersistedRecords(raw.sysExtAuthProviders),
-        ),
+          sysLicenses: normalizeLegacyLicenses(fromPersistedRecords(raw.sysLicenses)),
 
-        sysExternalIdentities: fromPersistedRecords(raw.sysExternalIdentities),
+          sysExtAuthProviders: normalizeLegacyExternalAuthProviders(
+            fromPersistedRecords(raw.sysExtAuthProviders),
+          ),
 
-        sysUserInvitations: fromPersistedRecords(raw.sysUserInvitations),
-      };
-    } catch (error) {
-      /*
-       * A missing database file simply means that this is the first
-       * execution of the in-memory store.
-       */
-      if (isNodeError(error) && error.code === 'ENOENT') {
-        return emptyDatabaseState();
+          sysExternalIdentities: fromPersistedRecords(raw.sysExternalIdentities),
+
+          sysUserInvitations: fromPersistedRecords(raw.sysUserInvitations),
+        };
+      } catch (error) {
+        /*
+         * A missing database file simply means that this is the first
+         * execution of the in-memory store.
+         */
+        if (isNodeError(error) && error.code === 'ENOENT') {
+          return emptyDatabaseState();
+        }
+
+        throw new StorageAppError(`Failed to load '${this.filePath}'.`, error);
       }
-
-      throw new StorageAppError(`Failed to load '${this.filePath}'.`, error);
-    }
+    });
   }
 
   /**
@@ -78,50 +91,52 @@ export class JsonFilePersistence {
    * partially written JSON database behind.
    */
   async save(state: DatabaseState): Promise<void> {
-    const persisted: PersistedDatabaseState = {
-      sysUsers: toPersistedRecords(state.sysUsers),
+    await operationContext.run('Persist datastore snapshot', async (scope) => {
+      scope.comment('filePath', this.filePath);
 
-      sysPrincipals: toPersistedRecords(state.sysPrincipals),
+      const persisted: PersistedDatabaseState = {
+        sysUsers: toPersistedRecords(state.sysUsers),
 
-      sysEmailAddresses: toPersistedRecords(state.sysEmailAddresses),
-      sysPrincipalEmailAddresses: toPersistedRecords(state.sysPrincipalEmailAddresses),
-      sysTelephoneNumbers: toPersistedRecords(state.sysTelephoneNumbers),
-      sysPrincipalTelephoneNumbers: toPersistedRecords(state.sysPrincipalTelephoneNumbers),
-      sysAddresses: toPersistedRecords(state.sysAddresses),
-      sysPrincipalAddresses: toPersistedRecords(state.sysPrincipalAddresses),
+        sysPrincipals: toPersistedRecords(state.sysPrincipals),
 
-      sysApplications: toPersistedRecords(state.sysApplications),
+        sysEmailAddresses: toPersistedRecords(state.sysEmailAddresses),
+        sysPrincipalEmailAddresses: toPersistedRecords(state.sysPrincipalEmailAddresses),
+        sysTelephoneNumbers: toPersistedRecords(state.sysTelephoneNumbers),
+        sysPrincipalTelephoneNumbers: toPersistedRecords(state.sysPrincipalTelephoneNumbers),
+        sysAddresses: toPersistedRecords(state.sysAddresses),
+        sysPrincipalAddresses: toPersistedRecords(state.sysPrincipalAddresses),
 
-      sysConfigurations: toPersistedRecords(state.sysConfigurations),
+        sysApplications: toPersistedRecords(state.sysApplications),
 
-      sysLicenses: toPersistedRecords(state.sysLicenses),
+        sysConfigurations: toPersistedRecords(state.sysConfigurations),
 
-      sysExtAuthProviders: toPersistedRecords(state.sysExtAuthProviders),
+        sysLicenses: toPersistedRecords(state.sysLicenses),
 
-      sysExternalIdentities: toPersistedRecords(state.sysExternalIdentities),
+        sysExtAuthProviders: toPersistedRecords(state.sysExtAuthProviders),
 
-      sysUserInvitations: toPersistedRecords(state.sysUserInvitations),
-    };
+        sysExternalIdentities: toPersistedRecords(state.sysExternalIdentities),
 
-    const temporaryFilePath = `${this.filePath}.tmp`;
+        sysUserInvitations: toPersistedRecords(state.sysUserInvitations),
+      };
 
-    try {
-      await mkdir(dirname(this.filePath), {
-        recursive: true,
-      });
+      const temporaryFilePath = `${this.filePath}.tmp`;
 
-      await writeFile(
-        temporaryFilePath,
+      try {
+        await mkdir(dirname(this.filePath), {
+          recursive: true,
+        });
 
-        JSON.stringify(persisted, null, 2) + '\n',
+        await operationContext.run('Write temporary datastore file', async () =>
+          writeFile(temporaryFilePath, JSON.stringify(persisted, null, 2) + '\n', 'utf8'),
+        );
 
-        'utf8',
-      );
-
-      await rename(temporaryFilePath, this.filePath);
-    } catch (error) {
-      throw new StorageAppError(`Failed to persist '${this.filePath}'.`, error);
-    }
+        await operationContext.run('Replace datastore file', async () =>
+          rename(temporaryFilePath, this.filePath),
+        );
+      } catch (error) {
+        throw new StorageAppError(`Failed to persist '${this.filePath}'.`, error);
+      }
+    });
   }
 }
 

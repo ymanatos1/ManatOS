@@ -69,6 +69,14 @@ export async function resolveUIEntityPermissions(
   };
 }
 
+/** Return one projected UI capability without teaching presentation code authorization policy. */
+export function hasUIEntityPermission(
+  permissions: UIEntityPermissions | undefined,
+  capability: keyof UIEntityPermissions,
+): boolean {
+  return permissions?.[capability] === true;
+}
+
 /** Throw the standard UI 403 used by both generic and platform feature routes. */
 export function requirePermission(allowed: boolean, message: string): void {
   if (!allowed) throw createError(403, message);

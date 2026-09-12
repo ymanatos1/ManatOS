@@ -21,10 +21,20 @@
    * Shared field-component functionality menu. Read-only fields remain fully
    * inspectable; only actions that mutate the canonical field value are disabled.
    */
-  const mutationActions = Array.isArray(actions) ? actions : [];
   const showDeveloperTools = typeof developerToolsEnabled === 'boolean' ? developerToolsEnabled : false;
   const inspectCtx = typeof ctxBound === 'boolean' ? ctxBound : true;
   const fieldCurrentValue = typeof currentValue !== 'undefined' ? currentValue : null;
+  const projectedEntityPermissions =
+    typeof entityPermissions !== 'undefined' && entityPermissions ? entityPermissions : {};
+  const actionAuthorized = (action) => {
+    const authorization = action?.authorization;
+    if (!authorization) return true;
+    const permissions = projectedEntityPermissions?.[authorization.entityKey];
+    return typeof hasUIEntityPermission === 'function'
+      ? hasUIEntityPermission(permissions, authorization.capability)
+      : false;
+  };
+  const mutationActions = (Array.isArray(actions) ? actions : []).filter(actionAuthorized);
   const actionEnabled = (action) =>
     (editable || action.mutates === false) &&
     (!action.requiresValue || (fieldCurrentValue != null && String(fieldCurrentValue) !== ''));

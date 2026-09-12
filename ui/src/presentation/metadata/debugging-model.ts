@@ -74,27 +74,13 @@ export interface MetadataDebuggingModelInput {
   debuggingTabEnabled: boolean;
   metadata: DebugCanonicalMetadata;
   metadataUI: DebugUIMetadata;
-  compiledEntityContext: unknown;
   compiledEntityContextName: string | null;
-  compiledUIRecord: unknown;
   ctxFields: unknown;
   ctxValue: (key: string) => unknown;
   dynamicUIValue: (value: unknown, scope: unknown, caller: UnknownRecord) => unknown;
   overrides: Readonly<Record<string, UnknownRecord>>;
   relatedCollections: Readonly<Record<string, DebugRelatedCollectionMetadata>>;
   relatedMetadataRegistry: Readonly<Record<string, DebugCanonicalMetadata>>;
-  pageRelatedData: Readonly<Record<string, unknown>>;
-  collectionValue: (
-    row: unknown,
-    collectionKey: string,
-    collection: DebugRelatedCollectionMetadata,
-    fieldKey: string,
-    field: DebugRelatedFieldMetadata,
-  ) => Readonly<{ raw?: unknown }>;
-  relatedExpressionScope: (
-    row: unknown,
-    relatedMetadata: DebugCanonicalMetadata | undefined,
-  ) => unknown;
   entryContextPath?: string;
   entryFieldValuePath?: (fieldKey: string) => string;
 }
@@ -106,7 +92,6 @@ export interface MetadataDebuggingRow {
   name: string;
   formula: string;
   value: string;
-  ast: unknown;
   definitionPath: string | null;
   valuePath: string | null;
 }
@@ -125,24 +110,6 @@ const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as UnknownRecord)
     : null;
-
-const recordChild = (value: unknown, key: string): unknown => asRecord(value)?.[key];
-
-const valueAtPath = (value: unknown, path: readonly (string | number)[]): unknown => {
-  let current = value;
-  for (const segment of path) {
-    if (typeof segment === 'number') {
-      if (!Array.isArray(current)) return undefined;
-      current = current[segment];
-      continue;
-    }
-    current = recordChild(current, segment);
-  }
-  return current;
-};
-
-const compiledAstAt = (value: unknown, path: readonly (string | number)[]): unknown =>
-  recordChild(valueAtPath(value, path), 'ast') ?? null;
 
 const debugValueText = (value: unknown): string => {
   // Debugging displays raw evaluator values rather than presentation labels.
@@ -203,7 +170,6 @@ export function buildCalculatedContextDebuggingRows(
         name,
         formula: String(asRecord(field)?.expression ?? ''),
         value: debugValueText(valueForField(name)),
-        ast: asRecord(field)?.ast ?? null,
         definitionPath: `${contextPath}.${name}`,
         valuePath: `${contextPath}.${name}`,
       },
@@ -217,18 +183,13 @@ export function buildMetadataDebuggingModel(
     debuggingTabEnabled,
     metadata,
     metadataUI,
-    compiledEntityContext,
     compiledEntityContextName,
-    compiledUIRecord,
     ctxFields,
     ctxValue,
     dynamicUIValue,
     overrides,
     relatedCollections,
     relatedMetadataRegistry,
-    pageRelatedData,
-    collectionValue,
-    relatedExpressionScope,
     entryContextPath = 'ctx.ui.level',
     entryFieldValuePath,
   } = input;
@@ -247,7 +208,6 @@ export function buildMetadataDebuggingModel(
     name: string,
     formula: unknown,
     value: unknown,
-    ast: unknown = null,
     detailGroup: string | null = null,
     definitionPath: string | null = null,
     valuePath: string | null = null,
@@ -260,7 +220,6 @@ export function buildMetadataDebuggingModel(
       name,
       formula,
       value: debugValueText(value),
-      ast,
       definitionPath,
       valuePath,
     });
@@ -271,7 +230,6 @@ export function buildMetadataDebuggingModel(
     subgroup: string | null,
     prefix: string,
     source: unknown,
-    compiled: unknown,
     scope: unknown = ctxFields,
     detailGroup: string | null = null,
   ) => {
@@ -292,28 +250,12 @@ export function buildMetadataDebuggingModel(
           ? scope.map((currentScope) => dynamicUIValue(child, currentScope, caller))
           : dynamicUIValue(child, scope, caller);
 
-        addDebugRow(
-          group,
-          subgroup,
-          name,
-          childExpression,
-          debugValue,
-          Array.isArray(scope) ? null : compiledAstAt(compiled, [key]),
-          detailGroup,
-        );
+        addDebugRow(group, subgroup, name, childExpression, debugValue, detailGroup);
         continue;
       }
 
       if (asRecord(child)) {
-        collectDynamicExpressions(
-          group,
-          subgroup,
-          name,
-          child,
-          recordChild(compiled, key),
-          scope,
-          detailGroup,
-        );
+        collectDynamicExpressions(group, subgroup, name, child, scope, detailGroup);
       }
     }
   };
@@ -327,14 +269,7 @@ export function buildMetadataDebuggingModel(
     const entityMetadataForDebug = Object.fromEntries(
       Object.entries(metadata).filter(([key]) => key !== 'fieldDefinition'),
     );
-    collectDynamicExpressions(
-      'ENTITY',
-      null,
-      '',
-      entityMetadataForDebug,
-      recordChild(compiledEntityContext, 'metadata'),
-      ctxFields,
-    );
+    collectDynamicExpressions('ENTITY', null, '', entityMetadataForDebug, ctxFields);
 
     /*
      * Renderable calculated values are canonical fieldDefinition entries. The
@@ -361,12 +296,6 @@ export function buildMetadataDebuggingModel(
         `${fieldKey}.calculation`,
         calculationExpression,
         ctxValue(fieldKey),
-        compiledAstAt(compiledEntityContext, [
-          'metadata',
-          'fieldDefinition',
-          fieldKey,
-          'calculation',
-        ]),
         fieldMetadata.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
         compiledEntityContextName
           ? `ctx.entities.${compiledEntityContextName}.metadata.fieldDefinition.${fieldKey}.calculation.expression`
@@ -406,12 +335,6 @@ export function buildMetadataDebuggingModel(
             targetPath: `fields.${fieldKey}.${propertyName}`,
             purpose: 'inspect calculated field property',
           }),
-          compiledAstAt(compiledEntityContext, [
-            'metadata',
-            'fieldDefinition',
-            fieldKey,
-            propertyName,
-          ]),
           fieldMetadata.inheritedFrom ? 'INHERITED FIELDS' : 'DECLARED FIELDS',
         );
       }
@@ -433,7 +356,6 @@ export function buildMetadataDebuggingModel(
             targetPath: `fields.${fieldKey}.${propertyName}`,
             purpose: 'inspect calculated field property',
           }),
-          compiledAstAt(compiledUIRecord, ['fieldOverrides', fieldKey, propertyName]),
           'UI OVERRIDES',
         );
       }
@@ -443,17 +365,14 @@ export function buildMetadataDebuggingModel(
       const entityKey = stringProperty(collection, 'entityKey');
       if (!entityKey) continue;
       const relatedMetadata = relatedMetadataRegistry[entityKey];
-      const sourceKey = stringProperty(collection, 'sourceKey') ?? collectionKey;
-      const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
       for (const [fieldKey, field] of Object.entries(collection.fields ?? {})) {
         const formula =
           expressionOf(field) ??
           expressionOf(relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation);
         if (!formula) continue;
-        const values = rows.map(
-          (row) => collectionValue(row, collectionKey, collection, fieldKey, field).raw,
-        );
-        addDebugRow('RELATED ENTITY', null, `${collectionKey}.${fieldKey}`, formula, values, null);
+        // Related-row values are browser CTX-owned. Server debugging metadata inventories
+        // the canonical formula only; it must not manufacture a detached row scope.
+        addDebugRow('RELATED ENTITY', null, `${collectionKey}.${fieldKey}`, formula, null, null);
       }
     }
 
@@ -479,7 +398,6 @@ export function buildMetadataDebuggingModel(
           targetPath: `tabs.${tabId}.visible`,
           purpose: 'inspect tab visibility calculation',
         }),
-        compiledAstAt(compiledUIRecord, ['tabs', index, 'visible']),
       );
     }
 
@@ -492,35 +410,18 @@ export function buildMetadataDebuggingModel(
         ),
       );
     }
-    collectDynamicExpressions(
-      'UI',
-      'FIELDS',
-      'fieldOverrides',
-      uiFieldOverrides,
-      recordChild(compiledUIRecord, 'fieldOverrides'),
-    );
+    collectDynamicExpressions('UI', 'FIELDS', 'fieldOverrides', uiFieldOverrides);
 
     for (const [collectionKey, collection] of Object.entries(relatedCollections)) {
       const entityKey = stringProperty(collection, 'entityKey');
       if (!entityKey) continue;
-      const sourceKey = stringProperty(collection, 'sourceKey') ?? collectionKey;
-      const rows = Array.isArray(pageRelatedData[sourceKey]) ? pageRelatedData[sourceKey] : [];
-      const relatedMetadata = relatedMetadataRegistry[entityKey];
-      const expressionScopes = rows.map((row) => relatedExpressionScope(row, relatedMetadata));
       for (const [fieldKey, field] of Object.entries(collection.fields ?? {})) {
         collectDynamicExpressions(
           'UI',
           'RELATED',
           `relatedCollections.${collectionKey}.fields.${fieldKey}.presentation`,
           field.presentation,
-          valueAtPath(compiledUIRecord, [
-            'relatedCollections',
-            collectionKey,
-            'fields',
-            fieldKey,
-            'presentation',
-          ]),
-          expressionScopes,
+          undefined,
         );
       }
     }
@@ -542,7 +443,6 @@ export function buildMetadataDebuggingModel(
             targetPath: `entryActions.${actionKey}.${propertyKey}`,
             purpose: `inspect action ${propertyKey} calculation`,
           }),
-          compiledAstAt(compiledUIRecord, ['entryActions', actionKey, propertyKey]),
         );
       }
     }

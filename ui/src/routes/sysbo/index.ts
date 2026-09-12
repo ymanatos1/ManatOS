@@ -14,28 +14,28 @@ import { requireSignedIn } from '../../middleware/auth.js';
 
 import { requireCsrf } from '../../middleware/csrf.js';
 
-import { canonicalSysBOMetadata } from './data-access.js';
+import { apiPathFor, canonicalSysBOMetadata } from './shared/data-access.js';
 import { resolveUIEntityPermissions, requirePermission } from '../../sysbo/permissions.js';
-import { renderMetadataDrivenList } from './list-renderer.js';
-import { renderMetadataDrivenRecord } from './record-renderer.js';
-import { renderMetadataDrivenHierarchyWorkspace } from './hierarchy-renderer.js';
-import { commitMetadataDrivenHierarchy } from './hierarchy-write.js';
+import { renderMetadataDrivenList } from './list/renderer.js';
+import { renderMetadataDrivenRecord } from './entry/renderer.js';
+import { renderMetadataDrivenHierarchyWorkspace } from './hierarchy/renderer.js';
+import { commitMetadataDrivenHierarchy } from './hierarchy/write.js';
 import {
   ownerManagedEntryFromRequest,
   mergeOwnerManagedEntryFromRequest,
-} from './owner-managed-entry.js';
+} from './entry/owner-managed-entry.js';
 import {
   startExternalProviderCredentialTest,
   externalProviderCredentialTestStatus,
   cancelExternalProviderCredentialTest,
   handleExternalProviderCredentialSave,
-} from './external-provider-write.js';
+} from './entry/external-provider-write.js';
 import {
   persistMetadataDrivenEntry,
   completeMetadataDrivenSave,
   failedSaveItemOverride,
   deleteMetadataDrivenEntry,
-} from './entry-write.js';
+} from './entry/write.js';
 
 import { clearApiTrafficEntries, listApiTrafficEntries } from '../../debug/api-traffic-store.js';
 
@@ -56,6 +56,28 @@ export function createSysBORoutes() {
   router.use(requireSignedIn);
 
   /**
+   * Resolve one canonical expression source through the UI-process global AST cache.
+   * The browser may keep a non-semantic execution mirror, but CTX and hosted-surface
+   * invocation never carry AST objects. Exact authored source is the cache identity.
+   */
+  router.post('/expression/compile', requireCsrf, (req, res) => {
+    try {
+      const expression = typeof req.body?.expression === 'string' ? req.body.expression : '';
+      if (!expression) {
+        res.status(400).json({ error: 'Expression is required.' });
+        return;
+      }
+      const compiled = compileExpression(expression);
+      res.set('Cache-Control', 'no-store');
+      res.json({ expression: compiled.source, ast: compiled.ast });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'Expression could not be parsed.',
+      });
+    }
+  });
+
+  /**
    * Browser-owned hybrid evaluation delegates only the reached resolver-backed
    * function call. The UI server preserves the authenticated session boundary
    * and forwards the request to the API capability provider.
@@ -64,6 +86,7 @@ export function createSysBORoutes() {
     try {
       const functionName = String(req.body?.functionName ?? '');
       const args = Array.isArray(req.body?.args) ? req.body.args : [];
+
       const response = await apiClient.post<{ value: unknown }>(
         '/api/v1/expressions/evaluate-function',
         { functionName, args },
@@ -100,27 +123,11 @@ export function createSysBORoutes() {
     res.json({ success: true });
   });
 
-  /** Developer CLI compiles ad-hoc expressions with the canonical parser. */
-  router.post('/debug/compile-expression', requireCsrf, (req, res) => {
-    if (config.NODE_ENV === 'production') {
-      res.sendStatus(404);
-      return;
-    }
-    try {
-      const expression = String(req.body?.expression ?? '').trim();
-      if (!expression) {
-        res.status(400).json({ error: 'Expression is required.' });
-        return;
-      }
-      const compiled = compileExpression(expression);
-      res.set('Cache-Control', 'no-store');
-      res.json({ expression: compiled.source, ast: compiled.ast });
-    } catch (error) {
-      res.status(400).json({
-        error: error instanceof Error ? error.message : 'Expression could not be parsed.',
-      });
-    }
-  });
+  /*
+   * Developer tooling uses the same /expression/compile boundary as ordinary browser
+   * expression execution. One UI-process cache and one HTTP compile contract therefore
+   * serve every browser consumer; debug surfaces do not own a parallel AST transport.
+   */
 
   /**
    * All generic SysBO administration pages now use the canonical metadata-driven
@@ -243,6 +250,47 @@ export function createSysBORoutes() {
         ownerUpdate.focusedMemberId,
         ownerUpdate,
       );
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/:key/:id/picture/:field', async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const id = routeParam(req.params.id);
+      const field = routeParam(req.params.field);
+      const permissions = await resolveUIEntityPermissions(req, definition, id);
+      requirePermission(permissions.read, 'Read access is required for this entity.');
+      const response = await apiClient.getRaw(
+        `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(id)}/$picture/${encodeURIComponent(field)}`,
+        apiSessionOptions(req),
+      );
+      const contentType = response.headers.get('content-type');
+      if (contentType) res.type(contentType);
+      res.set('Cache-Control', 'private, max-age=300');
+      res.send(Buffer.from(await response.arrayBuffer()));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/:key/:id/pictures/:field/:pictureId', async (req, res, next) => {
+    try {
+      const definition = getSysBODefinition(routeParam(req.params.key));
+      const id = routeParam(req.params.id);
+      const field = routeParam(req.params.field);
+      const pictureId = routeParam(req.params.pictureId);
+      const permissions = await resolveUIEntityPermissions(req, definition, id);
+      requirePermission(permissions.read, 'Read access is required for this entity.');
+      const response = await apiClient.getRaw(
+        `/api/v1/${apiPathFor(definition.key)}/${encodeURIComponent(id)}/$pictures/${encodeURIComponent(field)}/${encodeURIComponent(pictureId)}`,
+        apiSessionOptions(req),
+      );
+      const contentType = response.headers.get('content-type');
+      if (contentType) res.type(contentType);
+      res.set('Cache-Control', 'private, max-age=300');
+      res.send(Buffer.from(await response.arrayBuffer()));
     } catch (error) {
       next(error);
     }
@@ -427,6 +475,14 @@ export function createSysBORoutes() {
         error instanceof AppError
           ? error
           : new AppError('UNEXPECTED_ERROR', String(error), 'The entry could not be saved.', true);
+
+      if (
+        req.get('X-ManatOS-Application-Command') === '1' ||
+        req.get('X-Requested-With') === 'ManatOS-InPlace-Save'
+      ) {
+        next(appError);
+        return;
+      }
 
       addSessionError(req, appError);
       await renderMetadataDrivenRecord(req, res, definition, permissions, {

@@ -32,4 +32,21 @@ describe('canonical calculated-record projection', () => {
 
     expect(result.calculated).toBe('persisted');
   });
+
+  it('uses deterministic calculated-field ordering independent of metadata insertion order', async () => {
+    const visited: string[] = [];
+    await projectCalculatedRecord(
+      { a: null, z: null },
+      [
+        { key: 'z', calculation: { expression: 'z' } },
+        { key: 'a', calculation: { expression: 'a' } },
+      ],
+      (_expression, { field, record }) => {
+        visited.push(field.key);
+        return record[field.key];
+      },
+    );
+
+    expect(visited).toEqual(['a', 'z']);
+  });
 });

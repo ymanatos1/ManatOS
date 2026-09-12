@@ -16,7 +16,7 @@ import { authenticatedAuditActor, type AuditActor } from '../../audit/audit-serv
 
 import type { AuthorizationService } from '../../auth/authorization-service.js';
 
-import type { GenericSysBOService } from '../../services/generic-sysbo-service.js';
+import type { GenericSysBOService } from '../../services/sysbo/generic-service.js';
 
 import { getEffectiveSysBOUIMetadata } from '../../metadata/sysbo-ui-registry.js';
 
@@ -103,7 +103,7 @@ export function createSysBORouter<T extends SysBOEntity>(
    */
   router.get('/', async (req, res) => {
     await operationContext.runRoot(
-      `List ${metadata.pluralName}`,
+      `List ${metadata.pluralLabel}`,
 
       async () => {
         const subject = securityContext(req);
@@ -170,7 +170,7 @@ export function createSysBORouter<T extends SysBOEntity>(
     const item = await service.get(id);
 
     if (!item) {
-      throw new NotFoundError(metadata.name, id);
+      throw new NotFoundError(metadata.label, id);
     }
 
     const subject = securityContext(req);
@@ -182,6 +182,139 @@ export function createSysBORouter<T extends SysBOEntity>(
       recordId: id,
       capabilities: await authorization.capabilities(subject, metadata.key, item),
     });
+  });
+
+  /** Storage-neutral binary picture-field endpoint. */
+  router.get('/:id/$picture/:field', async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const fieldKey = String(req.params.field ?? '');
+    const item = await service.get(id);
+    if (!item) throw new NotFoundError(metadata.label, id);
+    const subject = securityContext(req);
+    await authorization.assertCan('read', subject, metadata.key, item);
+    const stored = await service.readPicture(id, fieldKey);
+    if (!stored) {
+      res.sendStatus(404);
+      return;
+    }
+    res.set('Cache-Control', 'private, max-age=300');
+    res.type(stored.picture.contentType);
+    res.send(stored.bytes);
+  });
+
+  router.put('/:id/$picture/:field', async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const fieldKey = String(req.params.field ?? '');
+    const item = await service.get(id);
+    if (!item) throw new NotFoundError(metadata.label, id);
+    const subject = securityContext(req);
+    await authorization.assertCan('update', subject, metadata.key, item);
+    const contentType = String(req.body?.contentType ?? '');
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(contentType)) {
+      throw new ValidationAppError(
+        'Unsupported picture content type.',
+        'Choose a JPEG, PNG, WebP or GIF image.',
+      );
+    }
+    let bytes: Buffer;
+    try {
+      bytes = Buffer.from(String(req.body?.dataBase64 ?? ''), 'base64');
+    } catch {
+      throw new ValidationAppError(
+        'Invalid picture payload.',
+        'The selected picture could not be read.',
+      );
+    }
+    if (!bytes.length || bytes.byteLength > 3_000_000) {
+      throw new ValidationAppError(
+        `Picture payload size ${bytes.byteLength} is outside the supported range.`,
+        'The prepared picture is too large to store.',
+      );
+    }
+    const actor = authenticatedAuditActor(subject.userId, subject.userName);
+    const updated = await service.writePicture(
+      id,
+      fieldKey,
+      contentType as import('@manatos/shared').SysBOPictureValue['contentType'],
+      bytes,
+      actor,
+    );
+    sendCommand(res, 'Picture saved successfully.', sanitize(updated, metadata));
+  });
+
+  router.delete('/:id/$picture/:field', async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const fieldKey = String(req.params.field ?? '');
+    const item = await service.get(id);
+    if (!item) throw new NotFoundError(metadata.label, id);
+    const subject = securityContext(req);
+    await authorization.assertCan('update', subject, metadata.key, item);
+    const actor = authenticatedAuditActor(subject.userId, subject.userName);
+    const updated = await service.clearPicture(id, fieldKey, actor);
+    sendCommand(res, 'Picture cleared successfully.', sanitize(updated, metadata));
+  });
+
+  /** Ordered picture-collection resource endpoints. */
+  router.get('/:id/$pictures/:field/:pictureId', async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const fieldKey = String(req.params.field ?? '');
+    const pictureId = String(req.params.pictureId ?? '');
+    const item = await service.get(id);
+    if (!item) throw new NotFoundError(metadata.label, id);
+    const subject = securityContext(req);
+    await authorization.assertCan('read', subject, metadata.key, item);
+    const stored = await service.readPictureItem(id, fieldKey, pictureId);
+    if (!stored) {
+      res.sendStatus(404);
+      return;
+    }
+    res.set('Cache-Control', 'private, max-age=300');
+    res.type(stored.picture.contentType);
+    res.send(stored.bytes);
+  });
+
+  router.put('/:id/$pictures/:field', async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const fieldKey = String(req.params.field ?? '');
+    const item = await service.get(id);
+    if (!item) throw new NotFoundError(metadata.label, id);
+    const subject = securityContext(req);
+    await authorization.assertCan('update', subject, metadata.key, item);
+
+    if (req.body?.changed !== true) {
+      sendCommand(res, 'Pictures unchanged.', sanitize(item, metadata));
+      return;
+    }
+
+    const rawPictures = Array.isArray(req.body?.pictures) ? req.body.pictures : [];
+    const pictures = rawPictures.map((value: unknown, index: number) => {
+      const entry = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+      const existingId = String(entry.id ?? '').trim();
+      if (existingId) return { id: existingId };
+
+      const contentType = String(entry.contentType ?? '');
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(contentType)) {
+        throw new ValidationAppError(
+          `Unsupported picture content type at position ${index}.`,
+          'Choose JPEG, PNG, WebP or GIF pictures.',
+        );
+      }
+      const bytes = Buffer.from(String(entry.dataBase64 ?? ''), 'base64');
+      if (!bytes.length || bytes.byteLength > 3_000_000) {
+        throw new ValidationAppError(
+          `Picture payload at position ${index} is ${bytes.byteLength} bytes.`,
+          'One of the prepared pictures is too large or empty.',
+        );
+      }
+      return {
+        contentType: contentType as import('@manatos/shared').SysBOPictureValue['contentType'],
+        bytes,
+      };
+    });
+
+    const actor = authenticatedAuditActor(subject.userId, subject.userName);
+    const updated = await service.replacePictureItems(id, fieldKey, pictures, actor);
+    sendCommand(res, 'Pictures replaced successfully.', sanitize(updated, metadata));
   });
 
   /**
@@ -198,7 +331,7 @@ export function createSysBORouter<T extends SysBOEntity>(
     const id = String(req.params.id ?? '');
 
     await operationContext.runRoot(
-      `Read ${metadata.name}`,
+      `Read ${metadata.label}`,
 
       async (scope) => {
         scope.comment('id', id);
@@ -206,7 +339,7 @@ export function createSysBORouter<T extends SysBOEntity>(
         const item = await service.get(id);
 
         if (!item) {
-          throw new NotFoundError(metadata.name, id);
+          throw new NotFoundError(metadata.label, id);
         }
 
         const subject = securityContext(req);
@@ -222,7 +355,7 @@ export function createSysBORouter<T extends SysBOEntity>(
    */
   const createHandler: RequestHandler = async (req, res) => {
     await operationContext.runRoot(
-      `Create ${metadata.name}`,
+      `Create ${metadata.label}`,
 
       async (scope) => {
         const subject = securityContext(req);
@@ -244,7 +377,7 @@ export function createSysBORouter<T extends SysBOEntity>(
 
         sendCommand(
           res,
-          `${metadata.name} '${item.name}' created successfully.`,
+          `${metadata.label} '${item.name}' created successfully.`,
           sanitize(item, metadata),
           201,
         );
@@ -261,7 +394,7 @@ export function createSysBORouter<T extends SysBOEntity>(
   router.post('/$aggregate-commit', async (req, res) => {
     if (customCreate || customUpdate) {
       throw new ValidationAppError(
-        `${metadata.name} requires specialized persistence and cannot use the generic aggregate commit endpoint.`,
+        `${metadata.label} requires specialized persistence and cannot use the generic aggregate commit endpoint.`,
         'This entity does not support generic aggregate Commit.',
       );
     }
@@ -302,13 +435,13 @@ export function createSysBORouter<T extends SysBOEntity>(
       const id = String(row[identityField] ?? '');
       if (!id || id.startsWith('draft:') || !originalIds.has(id)) continue;
       const existing = await service.get(id);
-      if (!existing) throw new NotFoundError(metadata.name, id);
+      if (!existing) throw new NotFoundError(metadata.label, id);
       await authorization.assertCan('update', subject, metadata.key, existing);
     }
     for (const id of originalIds) {
       if (currentIds.has(id)) continue;
       const existing = await service.get(id);
-      if (!existing) throw new NotFoundError(metadata.name, id);
+      if (!existing) throw new NotFoundError(metadata.label, id);
       await authorization.assertCan('delete', subject, metadata.key, existing);
     }
 
@@ -317,7 +450,7 @@ export function createSysBORouter<T extends SysBOEntity>(
       { entries, entriesOriginal, identityField },
       actor,
     );
-    sendCommand(res, `${metadata.name} aggregate committed successfully.`, {
+    sendCommand(res, `${metadata.label} aggregate committed successfully.`, {
       items: result.items.map((item) => sanitize(item, metadata)),
       idMap: result.idMap,
     });
@@ -333,7 +466,7 @@ export function createSysBORouter<T extends SysBOEntity>(
     const id = String(req.params.id ?? '');
 
     await operationContext.runRoot(
-      `Update ${metadata.name}`,
+      `Update ${metadata.label}`,
 
       async (scope) => {
         const subject = securityContext(req);
@@ -341,7 +474,7 @@ export function createSysBORouter<T extends SysBOEntity>(
         const existing = await service.get(id);
 
         if (!existing) {
-          throw new NotFoundError(metadata.name, id);
+          throw new NotFoundError(metadata.label, id);
         }
 
         await authorization.assertCan('update', subject, metadata.key, existing);
@@ -374,7 +507,7 @@ export function createSysBORouter<T extends SysBOEntity>(
 
         sendCommand(
           res,
-          `${metadata.name} '${item.name}' updated successfully.`,
+          `${metadata.label} '${item.name}' updated successfully.`,
           sanitize(item, metadata),
         );
       },
@@ -393,7 +526,7 @@ export function createSysBORouter<T extends SysBOEntity>(
   router.get('/:id/$delete-impact', async (req, res) => {
     const id = String(req.params.id ?? '');
     const existing = await service.get(id);
-    if (!existing) throw new NotFoundError(metadata.name, id);
+    if (!existing) throw new NotFoundError(metadata.label, id);
 
     const subject = securityContext(req);
 
@@ -438,7 +571,7 @@ export function createSysBORouter<T extends SysBOEntity>(
       const id = String(req.params.id ?? '');
 
       await operationContext.runRoot(
-        `Delete ${metadata.name}`,
+        `Delete ${metadata.label}`,
 
         async (scope) => {
           const subject = securityContext(req);
@@ -446,7 +579,7 @@ export function createSysBORouter<T extends SysBOEntity>(
           const existing = await service.get(id);
 
           if (!existing) {
-            throw new NotFoundError(metadata.name, id);
+            throw new NotFoundError(metadata.label, id);
           }
 
           await authorization.assertCan('delete', subject, metadata.key, existing);
@@ -460,7 +593,7 @@ export function createSysBORouter<T extends SysBOEntity>(
 
           await service.delete(id, actor);
 
-          sendCommand(res, `${metadata.name} '${existing.name}' deleted successfully.`, { id });
+          sendCommand(res, `${metadata.label} '${existing.name}' deleted successfully.`, { id });
         },
       );
     },

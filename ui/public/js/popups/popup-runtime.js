@@ -4,11 +4,13 @@
  * Bootstrap modal families and custom popup components should expose the same
  * conceptual runtime shape:
  *
- *   ctx.ui.level...level   // host='popup' child surface
- *     kind
- *     invocation      // why/how this popup was invoked
- *     presentation    // resolved visible chrome
- *     state           // popup-owned mutable lifecycle state
+ *   ctx.ui.level...level   // popup child surface
+ *     control
+ *       host/kind/mode/...
+ *       invocation      // why/how this popup was invoked
+ *       presentation    // resolved visible chrome
+ *       state           // popup-owned mutable lifecycle state
+ *       facts           // universal surface-facts folder
  *
  * This module owns Bootstrap-modal concerns only: explicit dismissal policy,
  * workspace centering, focus return, Developer-Tools CTX inspection, and the
@@ -19,6 +21,9 @@
   const developerToolsDock = document.getElementById('developerToolsDock');
   const returnFocus = new WeakMap();
   const invocationByModal = new WeakMap();
+  const recoveryOrderByModal = new WeakMap();
+  const retryByModal = new WeakMap();
+  let recoverySequence = 0;
   let activeModal = null;
 
   const ctxRuntime = () => window.ManatOS?.ctx;
@@ -30,6 +35,44 @@
       return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
     } catch {
       return {};
+    }
+  };
+
+  const nextRecoveryOrder = () => ++recoverySequence;
+
+  const serializeModalControls = (modal) =>
+    [...modal.querySelectorAll('input[name], textarea[name], select[name]')]
+      .filter((control) => !(control instanceof HTMLInputElement && control.type === 'file'))
+      .map((control) => ({
+        name: control.name,
+        value: control.value,
+        ...(control instanceof HTMLInputElement && ['checkbox', 'radio'].includes(control.type)
+          ? { checked: control.checked }
+          : {}),
+      }));
+
+  const applyModalControls = (modal, controls = []) => {
+    const occurrence = new Map();
+    for (const saved of controls) {
+      if (!saved?.name) continue;
+      const index = occurrence.get(saved.name) || 0;
+      occurrence.set(saved.name, index + 1);
+      const candidates = [...modal.querySelectorAll('[name]')].filter(
+        (control) => control.name === saved.name,
+      );
+      const control = candidates[index];
+      if (!control) continue;
+      if (control instanceof HTMLInputElement && ['checkbox', 'radio'].includes(control.type)) {
+        control.checked = saved.checked === true;
+      } else if (
+        control instanceof HTMLInputElement ||
+        control instanceof HTMLTextAreaElement ||
+        control instanceof HTMLSelectElement
+      ) {
+        control.value = typeof saved.value === 'string' ? saved.value : '';
+      }
+      control.dispatchEvent(new Event('input', { bubbles: true }));
+      control.dispatchEvent(new Event('change', { bubbles: true }));
     }
   };
 
@@ -98,10 +141,10 @@
     const centeredY = Math.round((viewportHeight - actualHeight) / 2);
 
     const parentPopup =
-      parent?.level?.host === 'popup' &&
-      parent.level.state?.popup &&
-      typeof parent.level.state.popup === 'object'
-        ? parent.level.state.popup
+      parent?.level?.control?.host === 'popup' &&
+      parent.level.control.state?.popup &&
+      typeof parent.level.control.state.popup === 'object'
+        ? parent.level.control.state.popup
         : null;
 
     const parentCounter = Number(parentPopup?.openedPopupsCounter);
@@ -144,6 +187,7 @@
     invocation = {},
     presentation = {},
     state = {},
+    supportsUserChanges = false,
   } = {}) => {
     const runtime = ctxRuntime();
     const parent = uiLeaf();
@@ -152,23 +196,27 @@
     const normalizedName = String(name || 'popup').replace(/[^A-Za-z0-9_$-]/g, '-');
     const childPath = `${parent.path}.level`;
     const child = {
-      id: `popup-${kind}-${normalizedName}-${Date.now()}`,
-      host: 'popup',
-      kind: String(kind || 'custom'),
-      mode: String(mode || 'view'),
-      name: normalizedName,
-      path: `${parent.level.path}/popup:${normalizedName}`,
-      scope: String(parent.level.scope || 'sys'),
-      ...(entityKey ? { entityKey: String(entityKey) } : {}),
-      invocation: { ...invocation },
-      presentation: { kind: String(kind || 'custom'), ...presentation },
-      state: { ...surfaceState('active'), ...state },
+      control: {
+        id: `popup-${kind}-${normalizedName}-${Date.now()}`,
+        host: 'popup',
+        kind: String(kind || 'custom'),
+        mode: String(mode || 'view'),
+        name: normalizedName,
+        path: `${parent.level.control.path}/popup:${normalizedName}`,
+        scope: String(parent.level.control.scope || 'sys'),
+        invocation: { ...invocation },
+        presentation: { kind: String(kind || 'custom'), ...presentation },
+        state: { ...surfaceState('active'), ...state },
+        facts: {},
+        supportsUserChanges: supportsUserChanges === true,
+        ...(entityKey ? { entityKey: String(entityKey) } : {}),
+      },
     };
 
-    if (parent.level.state && typeof parent.level.state === 'object') {
+    if (parent.level.control?.state && typeof parent.level.control.state === 'object') {
       runtime.replace(
-        `${parent.path}.state`,
-        { ...parent.level.state, lifecycle: 'deactivating', active: false },
+        `${parent.path}.control.state`,
+        { ...parent.level.control.state, lifecycle: 'deactivating', active: false },
         {
           source: 'v2-popup-surface',
           action: 'deactivate-parent-surface',
@@ -181,7 +229,7 @@
       action: 'open-popup-surface',
       triggerPath: childPath,
     });
-    return { path: childPath, parentPath: parent.path, id: child.id };
+    return { path: childPath, parentPath: parent.path, id: child.control.id };
   };
 
   const updateUiLevel = (handle, patch, options = {}) => {
@@ -226,10 +274,10 @@
         triggerPath: handle.path,
       });
     }
-    if (handle.parentPath && runtime.get?.(`${handle.parentPath}.state`) !== undefined) {
-      const parentState = runtime.get(`${handle.parentPath}.state`);
+    if (handle.parentPath && runtime.get?.(`${handle.parentPath}.control.state`) !== undefined) {
+      const parentState = runtime.get(`${handle.parentPath}.control.state`);
       runtime.replace(
-        `${handle.parentPath}.state`,
+        `${handle.parentPath}.control.state`,
         { ...parentState, lifecycle: 'active', active: true },
         {
           source: 'v2-popup-surface',
@@ -300,7 +348,7 @@
       .replace(/\s+/g, ' ')
       .trim();
 
-  const resolveCallingParams = (modal, event) => {
+  const resolveInvocation = (modal, event) => {
     const trigger = event?.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
     return Object.freeze({
       purpose: String(
@@ -308,45 +356,28 @@
       ),
       popupId: modal.id || null,
       triggerId: trigger?.id || null,
-      ...parseJsonObject(modal.dataset.popupCallingParams),
-      ...parseJsonObject(trigger?.dataset.popupCallingParams),
+      ...parseJsonObject(modal.dataset.popupInvocation),
+      ...parseJsonObject(trigger?.dataset.popupInvocation),
     });
   };
 
-  /**
-   * Build the canonical live popup payload. Custom popups (for example the
-   * Record Selector) use this same builder so CTX consumers never need to
-   * learn a different top-level popup contract for each implementation.
-   * Domain-specific state may be added without changing the common envelope.
-   */
-  const createPayload = ({
-    kind = 'popup',
-    callingParams = {},
-    presentation = {},
-    state = {},
-    ...domainState
-  } = {}) => ({
-    kind: String(kind || 'popup'),
-    callingParams: { ...callingParams },
-    presentation: { ...presentation },
-    ...domainState,
-    state: { ...state },
-  });
-
   const syncModalContext = (modal, phase) => {
-    const callingParams = invocationByModal.get(modal) || resolveCallingParams(modal, null);
+    const invocation = invocationByModal.get(modal) || resolveInvocation(modal, null);
     let handle = surfaceByModal.get(modal);
 
     if (phase === 'opening' && !handle) {
       handle = openUiLevel({
         kind: String(modal.dataset.popupKind || 'modal'),
         mode: 'view',
-        name: String(modal.id || callingParams.purpose || 'modal'),
-        invocation: callingParams,
+        name: String(modal.id || invocation.purpose || 'modal'),
+        invocation,
         presentation: {
-          title: String(callingParams.title || popupTitle(modal)),
+          title: String(invocation.presentation?.title || invocation.title || popupTitle(modal)),
           layout: String(
-            callingParams.presentationMode || modal.dataset.popupPresentation || 'standard',
+            invocation.presentation?.layout ||
+              invocation.presentationMode ||
+              modal.dataset.popupPresentation ||
+              'standard',
           ),
         },
       });
@@ -361,10 +392,15 @@
     updateUiLevel(
       handle,
       {
-        state: {
-          ...(current.state && typeof current.state === 'object' ? current.state : {}),
-          lifecycle: phase === 'closing' ? 'closing' : active ? 'active' : phase,
-          active,
+        control: {
+          ...(current.control && typeof current.control === 'object' ? current.control : {}),
+          state: {
+            ...(current.control?.state && typeof current.control.state === 'object'
+              ? current.control.state
+              : {}),
+            lifecycle: phase === 'closing' ? 'closing' : active ? 'active' : phase,
+            active,
+          },
         },
       },
       { source: 'bootstrap-popup', action: `popup-${phase}` },
@@ -427,12 +463,14 @@
     if (!(button instanceof HTMLButtonElement)) {
       button = document.createElement('button');
       button.type = 'button';
-      button.className = 'btn btn-sm btn-outline-secondary d-none';
+      button.className = 'btn btn-sm btn-outline-secondary d-none ms-auto me-2';
       button.dataset.popupCtxInspect = '';
       button.innerHTML = '<i class="bi bi-bug me-1" aria-hidden="true"></i>CTX';
       const close = header.querySelector('.btn-close');
-      if (close) header.insertBefore(button, close);
-      else header.append(button);
+      if (close instanceof HTMLElement) {
+        close.classList.add('ms-0');
+        header.insertBefore(button, close);
+      } else header.append(button);
     }
 
     button.setAttribute('aria-pressed', 'false');
@@ -449,6 +487,107 @@
     button.classList.remove('d-none');
     return button;
   };
+
+  const normalizeApplicationError = (error) => {
+    const source =
+      error && typeof error === 'object' && error.error && typeof error.error === 'object'
+        ? error.error
+        : error && typeof error === 'object'
+          ? error
+          : {};
+    const message =
+      source.userMessage ||
+      source.message ||
+      (error instanceof Error ? error.message : null) ||
+      'The operation could not be completed.';
+    return Object.freeze({
+      name: source.name || (error instanceof Error ? error.name : 'AppError'),
+      code: source.code || null,
+      message: source.message || message,
+      userMessage: message,
+      retryable: source.retryable === true,
+      operationTrace: Array.isArray(source.operationTrace) ? source.operationTrace : [],
+    });
+  };
+
+  const presentApplicationError = (error, options = {}) => {
+    const modal = document.getElementById('applicationErrorModal');
+    if (!(modal instanceof HTMLElement)) return false;
+
+    const normalized = normalizeApplicationError(error);
+    const message = modal.querySelector('[data-message-popup-message]');
+    const details = modal.querySelector('[data-message-popup-details]');
+    const trace = modal.querySelector('[data-message-popup-trace]');
+    const retry = modal.querySelector('[data-popup-action="retry"]');
+
+    if (message instanceof HTMLElement) {
+      message.textContent = normalized.userMessage;
+      message.classList.toggle('mb-0', normalized.operationTrace.length === 0);
+    }
+    if (details instanceof HTMLDetailsElement) {
+      details.hidden = normalized.operationTrace.length === 0;
+      details.open = false;
+    }
+    if (trace instanceof HTMLElement) {
+      trace.textContent = JSON.stringify(normalized.operationTrace, null, 2);
+    }
+    if (retry instanceof HTMLElement) {
+      const canRetry = normalized.retryable && typeof options.retry === 'function';
+      retry.classList.toggle('d-none', !canRetry);
+    }
+
+    const invocation = Object.freeze({ error: normalized });
+    invocationByModal.set(modal, invocation);
+    modal.dataset.popupInvocation = JSON.stringify(invocation);
+    if (typeof options.retry === 'function') retryByModal.set(modal, options.retry);
+    else retryByModal.delete(modal);
+
+    window.bootstrap?.Modal?.getOrCreateInstance(modal)?.show();
+    return true;
+  };
+
+  window.ManatOS ||= {};
+  window.ManatOS.errors = Object.freeze({
+    present: presentApplicationError,
+    fromResponse(response, payload, options = {}) {
+      const source =
+        payload?.error && typeof payload.error === 'object'
+          ? payload.error
+          : {
+              code: response?.status ? `HTTP_${response.status}` : 'APPLICATION_OPERATION_FAILED',
+              message:
+                payload?.message ||
+                (response?.statusText ? `${response.status} ${response.statusText}` : null) ||
+                'The operation could not be completed.',
+              userMessage:
+                payload?.userMessage || payload?.message || 'The operation could not be completed.',
+              retryable: Boolean(response && response.status >= 500),
+              operationTrace: Array.isArray(payload?.operationTrace) ? payload.operationTrace : [],
+            };
+      return presentApplicationError(source, options);
+    },
+  });
+
+  document.addEventListener('click', (event) => {
+    const action =
+      event.target instanceof Element ? event.target.closest('[data-popup-action]') : null;
+    if (!(action instanceof HTMLElement) || action.dataset.popupAction !== 'retry') return;
+
+    const modal = action.closest('.modal');
+    const retry = modal instanceof HTMLElement ? retryByModal.get(modal) : null;
+    if (typeof retry === 'function') {
+      window.bootstrap?.Modal?.getInstance(modal)?.hide();
+      void Promise.resolve().then(() => retry());
+      return;
+    }
+
+    const retryRequest = new CustomEvent('manatos:retry-request', {
+      bubbles: true,
+      cancelable: true,
+      detail: Object.freeze({ source: action }),
+    });
+    if (action.dispatchEvent(retryRequest)) history.go(0);
+  });
 
   document.querySelectorAll('.modal').forEach((modal) => {
     if (!(modal instanceof HTMLElement)) return;
@@ -471,7 +610,8 @@
       if (trigger && !modal.contains(trigger)) returnFocus.set(modal, trigger);
       else returnFocus.delete(modal);
 
-      invocationByModal.set(modal, resolveCallingParams(modal, event));
+      invocationByModal.set(modal, invocationByModal.get(modal) || resolveInvocation(modal, event));
+      if (!recoveryOrderByModal.has(modal)) recoveryOrderByModal.set(modal, nextRecoveryOrder());
       activeModal = modal;
       ensurePopupCtxButton(modal);
       centerModalInWorkspace(modal);
@@ -515,6 +655,8 @@
       }
       returnFocus.delete(modal);
       invocationByModal.delete(modal);
+      recoveryOrderByModal.delete(modal);
+      retryByModal.delete(modal);
 
       // During modal-to-modal transitions, the next popup may already own the
       // canonical popup CTX node. Never let the previous popup clear it.
@@ -529,13 +671,62 @@
     });
   });
 
+  const snapshotDescriptors = () =>
+    [...document.querySelectorAll('.modal.show')]
+      .filter((modal) => modal instanceof HTMLElement && modal.id)
+      .map((modal) => ({
+        type: 'modal',
+        order: recoveryOrderByModal.get(modal) || 0,
+        popupId: modal.id,
+        invocation: invocationByModal.get(modal) || resolveInvocation(modal, null),
+        controls: serializeModalControls(modal),
+      }));
+
+  const gentleCloseAllRecoverableModals = async () => {
+    for (const modal of [...document.querySelectorAll('.modal.show')].reverse()) {
+      if (!(modal instanceof HTMLElement)) continue;
+      const hidden = new Promise((resolve) => {
+        const timeout = window.setTimeout(() => resolve(false), 1000);
+        modal.addEventListener(
+          'hidden.bs.modal',
+          () => {
+            window.clearTimeout(timeout);
+            resolve(true);
+          },
+          { once: true },
+        );
+      });
+      const dismiss = modal.querySelector('[data-bs-dismiss="modal"]');
+      if (dismiss instanceof HTMLElement) dismiss.click();
+      else window.bootstrap?.Modal?.getInstance(modal)?.hide();
+      await hidden;
+    }
+  };
+
+  const restoreDescriptor = async (descriptor) => {
+    if (!descriptor || descriptor.type !== 'modal' || !descriptor.popupId) return true;
+    const modal = document.getElementById(descriptor.popupId);
+    if (!(modal instanceof HTMLElement)) throw new Error(`Popup not found: ${descriptor.popupId}`);
+    invocationByModal.set(modal, Object.freeze({ ...(descriptor.invocation || {}) }));
+    recoveryOrderByModal.set(modal, Number(descriptor.order) || nextRecoveryOrder());
+    const shown = new Promise((resolve) => {
+      modal.addEventListener('shown.bs.modal', () => resolve(true), { once: true });
+      window.setTimeout(() => resolve(false), 10_000);
+    });
+    window.bootstrap?.Modal?.getOrCreateInstance(modal)?.show();
+    if ((await shown) !== true) throw new Error(`Popup did not open: ${descriptor.popupId}`);
+    applyModalControls(modal, descriptor.controls || []);
+    return true;
+  };
+
   window.addEventListener('resize', refreshVisibleModalCenters);
 
-  window.ManatOSPopupRuntime = Object.freeze({
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.popup = window.ManatOS.popup || {};
+  window.ManatOS.popup.runtime = Object.freeze({
     popupPath,
     replaceContext,
     clearContext,
-    createPayload,
     refreshVisibleModalCenters,
     setInspectionVisible,
     toggleInspection,
@@ -546,5 +737,9 @@
     updateUiLevel,
     surfaceResult,
     closeUiLevel,
+    nextRecoveryOrder,
+    snapshotDescriptors,
+    gentleCloseAllRecoverableModals,
+    restoreDescriptor,
   });
 })();

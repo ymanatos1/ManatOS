@@ -14,7 +14,7 @@ describe('page and popup composition boundaries', () => {
     const titlebar = await source('views/components/page/titlebar.ejs');
     const entryPage = await source('views/components/page/entry-page.ejs');
     const entryV2 = await source('views/pages/sysbo/entry.ejs');
-    const renderer = await source('src/routes/sysbo/record-renderer.ts');
+    const renderer = await source('src/routes/sysbo/entry/renderer.ts');
 
     expect(shell).toContain('class="page-breadcrumb workspace-breadcrumb"');
     expect(titlebar).not.toContain('workspace-breadcrumb');

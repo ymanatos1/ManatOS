@@ -3,7 +3,7 @@ import type {
   ManatOSObjectMetadata,
 } from '../metadata/bo/types.js';
 import type { SysBOUIEntryIconMetadata, SysBOUIMetadata } from '../metadata/ui/types.js';
-import { calculatedContextField, evaluateExpression } from '../expressions/index.js';
+import { evaluateExpression } from '../expressions/index.js';
 
 /** Reference rows are supplied by the owner; representation resolution never performs I/O. */
 export interface EntryRepresentationResolutionOptions {
@@ -42,23 +42,17 @@ export function entryTypeSource<T>(
   return metadata.entry?.type ?? (metadata.fieldDefinition.type ? { field: 'type' } : null);
 }
 
-function buildEntryScope<T>(
-  metadata: ManatOSObjectMetadata<T>,
+function buildEntryScope(
   entry: Readonly<Record<string, unknown>>,
   relations: Readonly<Record<string, unknown>> = {},
 ): Record<string, unknown> {
-  const scope: Record<string, unknown> = { ...entry, relations };
-
-  // Calculated fields stay evaluator-owned. Referencing one from an entry formula
-  // lazily evaluates it (and any calculated dependency it references) first.
-  for (const [key, field] of Object.entries(metadata.fieldDefinition)) {
-    const calculation = field.calculation;
-    if (!calculation?.expression || calculation.triggeredBy?.length) continue;
-    scope[key] = calculatedContextField(calculation.expression, {
-      ...(Object.prototype.hasOwnProperty.call(entry, key) ? { value: entry[key] } : {}),
-    });
-  }
-  return scope;
+  /*
+   * Calculated fields must already have crossed the canonical record-projection
+   * boundary before entry representation is resolved. Representation owns only
+   * name/type/description/status interpretation; it must never run a second
+   * calculated-field projection algorithm.
+   */
+  return { ...entry, relations };
 }
 
 function resolveSource<T>(
@@ -70,40 +64,22 @@ function resolveSource<T>(
 ): unknown {
   if (!source) return null;
 
-  // A direct canonical field normally reads directly from the entry. If that
-  // field has an authoritative calculation, however, resolve the field through
-  // the evaluator-owned scope so representation sees the same current value as
-  // every field-component.
-  if ('field' in source) {
-    const calculation = metadata.fieldDefinition[source.field]?.calculation;
-    if (
-      !calculation?.expression ||
-      calculation.triggeredBy?.length ||
-      Object.prototype.hasOwnProperty.call(entry, source.field)
-    ) {
-      return entry[source.field];
-    }
-    const scope = buildEntryScope(metadata, entry, relations);
-    return evaluateExpression(source.field, scope, scope, {
-      source: 'renderer',
-      sourcePath: `entry.${purpose}`,
-      targetPath: `entry.${purpose}`,
-      purpose: `resolve calculated entry ${purpose}`,
-    });
-  }
+  // Direct fields are factual reads from the canonical projected record.
+  // Calculated-field materialization is deliberately owned by the projection
+  // boundary, not by representation resolution.
+  if ('field' in source) return entry[source.field];
 
   // A simple expression naming one canonical non-calculated field has the same
   // dependency as `{ field: ... }` and can be resolved without evaluator work.
   const directExpressionField = directSourceField(metadata, source);
   if (
     directExpressionField &&
-    (!metadata.fieldDefinition[directExpressionField]?.calculation?.expression ||
-      metadata.fieldDefinition[directExpressionField]?.calculation?.triggeredBy?.length)
+    !metadata.fieldDefinition[directExpressionField]?.calculation?.expression
   ) {
     return entry[directExpressionField];
   }
 
-  const scope = buildEntryScope(metadata, entry, relations);
+  const scope = buildEntryScope(entry, relations);
   return evaluateExpression(source.expression, scope, scope, {
     source: 'renderer',
     sourcePath: `entry.${purpose}`,

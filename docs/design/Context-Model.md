@@ -130,6 +130,7 @@ Selector invocation
 ```
 
 Code should **read invocation to understand the request**, then write changing runtime state to the appropriate state/field/resource contract. Do not mutate invocation to represent what subsequently happened.
+For hosted create entries, browser policy/default handling reads `invocation.defaults` from the owning CTX level. A hidden `_entryDefaults` form value may still exist as server form/popup continuation transport, but browser logic must not reread it as an alternative semantic source.
 
 ## Presentation — what the surface looks like
 
@@ -239,6 +240,8 @@ fields.<fieldName>
 
 `fields.<k>.originalValue` is the sole per-field baseline authority. `entry.original.<k>` is a read-only getter mirror, symmetric with `fields.<k>.value` / `entry.current.<k>`. Baseline promotion after successful persistence updates the field baseline through the canonical CTX mutation path, so both record-shaped mirrors follow without synchronization races.
 
+For enum/reference fields, `fields.<k>.options` is the canonical **effective option domain** after metadata and caller/server restrictions have been applied. `fields.<k>.option` is the decoration for the selected value. Entry selectors and policy logic consume these CTX nodes; they do not reconstruct semantic option metadata from rendered controls.
+
 ## Facts — observations, not persisted fields
 
 `facts` contains API-safe runtime observations required by expressions/components but which are **not canonical persisted entity fields**. Examples include `hasPassword` or effective entity permissions supplied to an entry surface.
@@ -270,6 +273,7 @@ level.resources
 ```
 
 Resources let a reusable component publish/consume supporting data without inventing entity-specific top-level CTX branches. A resource should have a clear owner and lifecycle matching its surface. It is not a substitute for canonical entity fields or general-purpose dumping ground.
+`referenceData` may therefore coexist with an entry field's `options` when it represents factual supporting records for other consumers; it must not be treated as a fallback/parallel selector catalogue for that field.
 
 ## Semantic node metadata and observability
 
@@ -327,6 +331,31 @@ The guiding rule is one semantic owner and one mutable authority. Convenience vi
 
 ## Debugging and developer usage
 
-Use the CTX Viewer to inspect the active chain and select a node. The Properties panel exposes its canonical path, semantic kind/type, attributes, watchability and live subscriber counts. For expressions, prefer canonical paths and the provided traversal functions rather than DOM state or assumptions about nesting depth.
+Use the CTX Viewer to inspect the active chain and select a node. The Properties panel exposes its preferred symbolic path, semantic kind/type, attributes, watchability and live subscriber counts. For expressions, prefer CTX paths and the provided traversal functions rather than DOM state or assumptions about nesting depth.
+
+Canonical absolute `ctx...` paths remain the stable internal identity used for mutation routing, dependency keys and subscriptions. **Path representation is separate from path identity:** whenever the runtime can describe a path relative to the active execution context, it prefers a `#`-anchored notation first (`#level...`, then `#...`), and falls back to `$...` only when no `#` form can express the target. Resolver results carry this preferred notation alongside the canonical path so the same rule applies to internal diagnostics/tooling as well as visible captions and CLI prompts.
 
 When diagnosing unexpected behavior, first identify the **authority path**, then inspect its subscribers/dependents. If two paths appear to expose the same value, check their attributes: one should be the authority and the other explicitly `derived`/`readonly`/`mirror`, never two independently mutable copies.
+
+### CTX path quick reference
+
+Expression paths use a small set of explicit navigation primitives over the real CTX tree:
+
+| Form            | Meaning                                                                                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `$`             | CTX root.                                                                                                                                                                                              |
+| `#`             | Immediate parent of the current evaluation context.                                                                                                                                                    |
+| `#level`        | Nearest ancestor that is a UI-level context.                                                                                                                                                           |
+| `.(expression)` | Dynamic path member. Evaluate the parenthesized expression and use its result as the next key/index. The result must be a non-empty string or a non-negative integer; invalid results fail explicitly. |
+
+Aliases are convenience names for real CTX paths; they do not create values or evaluator-only scopes. Current built-ins are:
+
+| Alias                  | Canonical path / meaning                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| `$entity`              | Canonical entity for the current initialization context.          |
+| `$entity-fields`       | Canonical `fieldDefinition` for that initialization scope.        |
+| `$entry-current`       | Scalar record currently being initialized.                        |
+| `$level-entity`        | `$.entities.(#level.control.entityName)`                          |
+| `$level-entity-fields` | `$.entities.(#level.control.entityName).metadata.fieldDefinition` |
+
+For example, canonical create defaults use `$entity-fields` / `$entry-current` so they are portable outside UI execution, while UI-only expressions may still use the `$level-*` aliases. Aliases always resolve to real CTX state; they never manufacture hidden evaluator scopes.

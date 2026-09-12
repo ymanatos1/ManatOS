@@ -50,6 +50,12 @@
       control.focus();
   };
 
+  const pictureRuntime = window.ManatOS?.pictureFieldRuntime?.install?.({ publish });
+  const owningEntryPath =
+    pictureRuntime?.owningEntryPath ||
+    ((element) =>
+      element?.closest?.('[data-ctx-page-path]')?.getAttribute?.('data-ctx-page-path') || null);
+
   const isReadOnly = (control) =>
     control.disabled || (control instanceof HTMLInputElement && control.readOnly);
 
@@ -285,18 +291,31 @@
    * concrete field type exposes such semantics. Evaluator/CTX runtimes may use
    * this without knowing how enum controls store or present their options.
    */
-  const getFieldOption = (control) => {
-    if (!(control instanceof HTMLSelectElement)) return undefined;
-    const root = control.closest('[data-enhanced-field-input]');
-    if (root?.dataset.fieldComponent !== 'enum') return undefined;
-    const selectedOption = control.selectedOptions?.[0];
-    const raw = selectedOption?.dataset?.enumItem;
-    if (!raw) return undefined;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return undefined;
+  const applyStringLengthValidity = (control) => {
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement)) return;
+    const value = String(control.value ?? '');
+    const minLengthAttribute = control.getAttribute('minlength');
+    const maxLengthAttribute = control.getAttribute('maxlength');
+    const minLength = minLengthAttribute === null ? null : Number(minLengthAttribute);
+    const maxLength = maxLengthAttribute === null ? null : Number(maxLengthAttribute);
+    let message = '';
+    if (
+      value.length > 0 &&
+      minLength !== null &&
+      Number.isFinite(minLength) &&
+      minLength >= 0 &&
+      value.length < minLength
+    ) {
+      message = `Enter at least ${minLength} characters.`;
+    } else if (
+      maxLength !== null &&
+      Number.isFinite(maxLength) &&
+      maxLength >= 0 &&
+      value.length > maxLength
+    ) {
+      message = `Enter no more than ${maxLength} characters.`;
     }
+    control.setCustomValidity(message);
   };
 
   const setFieldValue = (control, value, { emit = false, cause = {} } = {}) => {
@@ -316,9 +335,25 @@
     else if (component === 'enum') setEnumValue(control, value);
     else if (control instanceof HTMLInputElement && control.type === 'checkbox')
       control.checked = Boolean(value);
+    else if (control instanceof HTMLInputElement && control.dataset.ctxValueType === 'json')
+      control.value = value == null ? '' : JSON.stringify(value);
     else control.value = value == null ? '' : String(value);
+    applyStringLengthValidity(control);
     if (emit) publish(control, false, cause);
   };
+
+  document.addEventListener('input', (event) => {
+    const control =
+      event.target instanceof Element ? event.target.closest('[data-field-control]') : null;
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement)) return;
+    queueMicrotask(() => applyStringLengthValidity(control));
+  });
+
+  document.querySelectorAll('[data-field-control]').forEach((control) => {
+    if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) {
+      applyStringLengthValidity(control);
+    }
+  });
 
   document.addEventListener('click', async (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -373,7 +408,7 @@
         window.dispatchEvent(
           new CustomEvent('manatos:ctx-viewer-select', {
             detail: {
-              path: `${window.ManatOSRecordSelector?.leafPagePath?.() || 'ctx.ui.level'}.fields.${fieldKey}`,
+              path: `${window.ManatOS?.popup?.recordSelector?.leafPagePath?.() || 'ctx.ui.level'}.fields.${fieldKey}`,
               expand: true,
             },
           }),
@@ -382,7 +417,7 @@
       }
       case 'view-entry': {
         if (!(control instanceof HTMLSelectElement) || !control.value) return;
-        const popup = window.ManatOSEntryPopup;
+        const popup = window.ManatOS?.popup?.entry;
         const ctxRuntime = window.ManatOS?.ctx;
         if (!popup?.open || !ctxRuntime) return;
 
@@ -408,22 +443,18 @@
             ? `View ${targetEntityLabel} - ${selectedEntryName}`
             : `View ${targetEntityLabel}`,
           url: `/bo/${encodeURIComponent(targetEntityKey)}/${encodeURIComponent(control.value)}?${params.toString()}`,
-          callingParams: {
-            purpose: 'reference-field-view-entry',
-            presentationMode: 'entry',
-            entityKey: targetEntityKey,
-            selectionMode: 'single',
-            sourceEntityKey: root?.dataset.referenceSourceEntityKey || null,
-            targetField: fieldKey,
-            targetFieldLabel: root?.dataset.referenceFieldLabel || fieldKey,
-            mode: 'view',
+          entityKey: targetEntityKey,
+          mode: 'view',
+          invocation: {
+            purpose: 'view',
+            presentation: { layout: 'entry' },
           },
         });
         return;
       }
       case 'add-entry': {
         if (!(control instanceof HTMLSelectElement) || control.disabled) return;
-        const popup = window.ManatOSEntryPopup;
+        const popup = window.ManatOS?.popup?.entry;
         const ctxRuntime = window.ManatOS?.ctx;
         if (!popup?.open || !ctxRuntime) return;
 
@@ -441,9 +472,9 @@
         // optional and only enriches the hosted entry with defaults/constraints.
         createRelated = createRelated || {};
 
-        const selector = window.ManatOSRecordSelector;
+        const selector = window.ManatOS?.popup?.recordSelector;
         const pagePath = selector?.leafPagePath?.();
-        const resolvedEntry = pagePath ? ctxRuntime.resolve?.(`${pagePath}.entry.current`) : null;
+        const resolvedEntry = pagePath ? ctxRuntime.get?.(`${pagePath}.entry.current`) : null;
         /*
          * Creating a referenced entry is valid even when no source-entry values
          * are required. Some relationships (for example Principal -> Parent) only
@@ -493,23 +524,16 @@
           token,
           title: `Add ${targetEntityLabel}`,
           url: `/bo/${encodeURIComponent(targetEntityKey)}/new?${params.toString()}`,
-          callingParams: {
-            purpose: 'reference-field-add-entry',
-            presentationMode: 'entry',
-            entityKey: targetEntityKey,
-            selectionMode: 'single',
-            sourceEntityKey: root?.dataset.referenceSourceEntityKey || null,
-            sourceRecordId: String(currentEntry.id ?? '') || null,
-            targetField: fieldKey,
-            targetFieldLabel: root?.dataset.referenceFieldLabel || fieldKey,
-            mode: 'create',
-            defaults,
-            uiOverrides: overrides,
+          entityKey: targetEntityKey,
+          mode: 'create',
+          invocation: {
+            purpose: 'create',
+            presentation: { layout: 'entry' },
           },
           onSaved: (result) => {
-            const id = String(result?.id || '');
+            const id = String(result?.value || '');
             if (!id) return;
-            const representation = result?.representation || {};
+            const representation = result?.metadata?.representation || {};
             const name = String(representation.name || result?.record?.name || id);
             const icons = Array.isArray(representation.icons) ? representation.icons : [];
 
@@ -548,28 +572,30 @@
       }
       case 'select-existing': {
         if (!(control instanceof HTMLSelectElement) || control.disabled) return;
-        const selector = window.ManatOSRecordSelector;
+        const selector = window.ManatOS?.popup?.recordSelector;
         const template = root?.querySelector('[data-record-selector-template]');
         const ctxRuntime = window.ManatOS?.ctx;
         if (!selector?.open || !(template instanceof HTMLTemplateElement) || !ctxRuntime) return;
 
-        const pagePath = selector.leafPagePath?.();
+        // The caller resolves its own CTX identity before opening the child.
+        // The selector never discovers or dereferences its invoking field/entry.
+        const pagePath = owningEntryPath(root) || owningEntryPath(control);
         const fieldKey = root?.dataset.referenceFieldKey || control.dataset.ctxField;
         const targetEntityKey = root?.dataset.referenceEntityKey || '';
         const sourceEntityKey = root?.dataset.referenceSourceEntityKey || '';
         const fieldLabelText = root?.dataset.referenceFieldLabel || fieldKey || 'related entry';
         if (!pagePath || !fieldKey || !targetEntityKey) return;
 
-        const fieldContext = ctxRuntime.resolve?.(`${pagePath}.fields.${fieldKey}`);
-        const referenceData = ctxRuntime.resolve?.(`${pagePath}.resources.referenceData`) ?? {};
-        const source = Array.isArray(fieldContext?.options)
-          ? fieldContext.options
-          : Array.isArray(referenceData?.[fieldKey])
-            ? referenceData[fieldKey]
-            : [];
+        const fieldContext = ctxRuntime.get?.(`${pagePath}.fields.${fieldKey}`);
+        const source = Array.isArray(fieldContext?.options) ? fieldContext.options : [];
+        // fields.<field>.options is the canonical effective option domain for an
+        // entry field. It already reflects metadata plus caller/server restrictions.
+        // resources.referenceData remains factual resource data for consumers such
+        // as hierarchy/representation, but selectors must not choose between two
+        // parallel catalogues for the same field.
         if (!source.length) return;
 
-        const currentEntry = ctxRuntime.resolve?.(`${pagePath}.entry.current`);
+        const currentEntry = ctxRuntime.get?.(`${pagePath}.entry.current`);
         const sourceRecordId =
           currentEntry && typeof currentEntry === 'object' ? String(currentEntry.id ?? '') : '';
         const entities = ctxRuntime.value?.entities;
@@ -577,42 +603,45 @@
           entities && typeof entities === 'object'
             ? Object.values(entities).find((entity) => entity?.key === targetEntityKey)
             : null;
-        const targetName = targetContext?.metadata?.name || 'entry';
         const sourceContext =
           entities && typeof entities === 'object'
             ? Object.values(entities).find((entity) => entity?.key === sourceEntityKey)
             : null;
-        const sourceEntityLabel = sourceContext?.metadata?.name || sourceEntityKey || 'entry';
+        const targetEntityName = targetContext?.name || targetContext?.metadata?.name || null;
+        const sourceEntityName = sourceContext?.name || sourceContext?.metadata?.name || null;
         const sourcePrimaryField = sourceContext?.metadata?.primaryField || 'name';
         const sourceRecordName =
           currentEntry && typeof currentEntry === 'object'
             ? String(currentEntry[sourcePrimaryField] ?? currentEntry.name ?? '').trim()
             : '';
-        let queryPredicate = null;
+        const targetLabel = targetContext?.metadata?.label || fieldLabelText;
+        const sourceLabel = sourceContext?.metadata?.label || sourceEntityName || 'entry';
+        const title = sourceRecordName
+          ? `Select ${targetLabel} for ${sourceLabel} '${sourceRecordName}'`
+          : `Select ${targetLabel}`;
+        let queryExclude = [];
         try {
-          queryPredicate = JSON.parse(root?.dataset.referenceQueryPredicate || 'null');
+          const parsed = JSON.parse(root?.dataset.referenceQueryExclude || '[]');
+          queryExclude = Array.isArray(parsed) ? parsed : [];
         } catch {
-          queryPredicate = null;
+          queryExclude = [];
         }
 
         selector.open({
           template,
           source,
           initialSelection: control.value || null,
-          callingParams: {
-            purpose: 'reference-field',
-            presentationMode: 'entry',
-            entityKey: targetEntityKey,
-            selectionMode: 'single',
-            sourceEntityKey,
-            sourceRecordId: sourceRecordId || null,
-            targetField: fieldKey,
-            targetFieldLabel: fieldLabelText,
-            targetEntityLabel: targetName,
-            sourceEntityLabel,
-            sourceRecordName: sourceRecordName || null,
-            queryPredicate,
-            allowClear: !control.required,
+          invocation: {
+            entityName: targetEntityName || undefined,
+            purpose: 'select',
+            caller: {
+              surfaceRef: pagePath,
+              ...(sourceEntityName ? { entityName: sourceEntityName } : {}),
+              ...(sourceRecordId ? { recordId: sourceRecordId } : {}),
+            },
+            presentation: { title, layout: 'entry' },
+            ...(queryExclude.length ? { rules: { query: { exclude: queryExclude } } } : {}),
+            behavior: { selection: 'single', allowClear: !control.required },
           },
           onSelect: (candidate) => {
             const selectedId = candidate?.id ?? candidate?.value;
@@ -620,7 +649,7 @@
             setReferenceValue(control, selectedId);
             publish(control, false, {
               source: 'record-selector',
-              purpose: 'reference-field',
+              purpose: 'select',
               targetField: fieldKey,
             });
             return true;
@@ -728,12 +757,12 @@
     if (control instanceof HTMLSelectElement) setReferenceValue(control, control.value);
   });
 
-  window.ManatOSFieldComponents = Object.freeze({
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.fieldComponents = Object.freeze({
     publish,
     durationValue,
     setDurationValue,
     setFieldValue,
-    getFieldOption,
     formatDuration,
   });
 })();

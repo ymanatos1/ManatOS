@@ -6,8 +6,9 @@ import { SurfaceRuntime } from '../../src/runtime/surface/surface-runtime.js';
 
 const metadata = {
   key: 'test-items',
-  name: 'Item',
-  pluralName: 'Items',
+  name: 'items',
+  label: 'Item',
+  pluralLabel: 'Items',
   fieldDefinition: {
     id: { key: 'id', label: 'Id', type: 'string', order: 1 },
   },

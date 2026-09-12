@@ -60,10 +60,54 @@ describe('UI Runtime V2 root CTX runtime/adapters', () => {
     const root = new RootCtxRuntime(seed(), surfaces, events, fieldsBySurface);
     const snapshot = root.snapshot();
 
-    expect(snapshot.ui.level?.id).toBe(surface.id);
-    expect(snapshot.ui.level?.mode).toBe('edit');
+    expect(snapshot.ui.level?.control.id).toBe(surface.id);
+    expect(snapshot.ui.level?.control.mode).toBe('edit');
+    expect(snapshot.ui.level?.control.invocation).toEqual({});
+    expect(snapshot.ui.level?.control.presentation.kind).toBe('entry');
+    expect(snapshot.ui.level?.control.state.valid).toBe(true);
+    expect(snapshot.ui.level?.control.facts).toEqual({});
     expect(snapshot.ui.level?.fields?.firstName?.value).toBe('Yiannis');
     expect(snapshot.ui.level?.level).toBeUndefined();
+    expect(snapshot.ui.level).not.toHaveProperty('id');
+    expect(snapshot.ui.level).not.toHaveProperty('state');
+    expect(snapshot.ui.level).not.toHaveProperty('invocation');
+    expect(snapshot.ui.level).not.toHaveProperty('presentation');
+    expect(snapshot.ui.level).not.toHaveProperty('facts');
+  });
+
+  it('projects the displayed navigation chain rather than semantic ownership ancestry', () => {
+    const events = new SurfaceEventRuntime();
+    const surfaces = new SurfaceRuntime(events);
+    const semanticOwner = surfaces.open({
+      host: 'page',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'semantic-owner',
+    });
+    const navigationParent = surfaces.open({
+      host: 'page',
+      kind: 'list',
+      mode: 'browse',
+      name: 'navigation-parent',
+    });
+    const child = surfaces.open({
+      parentId: semanticOwner.id,
+      navigationParentId: navigationParent.id,
+      host: 'popup',
+      kind: 'selector',
+      mode: 'select',
+      name: 'selector',
+    });
+
+    const root = new RootCtxRuntime(seed(), surfaces, events);
+    const snapshot = root.snapshot();
+
+    expect(snapshot.ui.level?.control.id).toBe(navigationParent.id);
+    expect(snapshot.ui.level?.level?.control.id).toBe(child.id);
+    expect(snapshot.ui.level?.level?.control.path).toBe(
+      '/ui/page:navigation-parent/popup:selector',
+    );
+    expect(snapshot.ui.level?.control.id).not.toBe(semanticOwner.id);
   });
 
   it('projects canonical entry/list data branches for lexical V2 component sources', () => {
@@ -133,13 +177,16 @@ describe('UI Runtime V2 root CTX runtime/adapters', () => {
         {
           field: 'firstName',
           override: {
-            visible: { expression: "ctx.user.permissions.userRole === 'Admin'" },
+            visible: { expression: "$.user.permissions.userRole === 'Admin'" },
           },
         },
       ],
       () => root.snapshot(),
     );
 
+    // Root CTX mutations may arrive while an entry is still being assembled.
+    // Reactive metadata begins only at the canonical entry initialization boundary.
+    entry.initialize({});
     expect(entry.fields.require('firstName').ux.visible).toBe(true);
     permissionAdapter.set(permissions('User'));
     expect(entry.fields.require('firstName').ux.visible).toBe(false);

@@ -56,14 +56,14 @@ describe('generic existing-record selector', () => {
 
   it('projects invocation parameters separately from mutable selector state in CTX', async () => {
     const runtime = await uiSource('public/js/popups/record-selector.js');
-    const dataAccess = await uiSource('src/routes/sysbo/data-access.ts');
+    const dataAccess = await uiSource('src/routes/sysbo/shared/data-access.ts');
 
-    expect(runtime).toContain("kind: 'record-selector'");
-    expect(runtime).toContain('callingParams: { ...resolvedCallingParams }');
-    expect(runtime).toContain('entriesOriginal: source.map');
-    expect(runtime).toContain('entries: source.map');
+    expect(runtime).toContain("kind: 'selector'");
+    expect(runtime).toContain('invocation: { ...resolvedInvocation }');
+    expect(runtime).toContain('originalEntries: source.map');
+    expect(runtime).toContain('entries: filtered.map');
     expect(runtime).toContain('filters: {');
-    expect(runtime).toContain('selectedIds: [...selectedIds]');
+    expect(runtime).toContain('selected: selectedCandidates().map');
     expect(runtime).toContain("phase = 'open'");
     expect(runtime).toContain("syncCtx(matchingRows(), 'closing')");
     expect(runtime).toContain("source: 'record-selector'");
@@ -72,20 +72,17 @@ describe('generic existing-record selector', () => {
     expect(runtime).toContain('popupRuntime?.openUiLevel?.({');
     expect(runtime).toContain("kind: 'selector'");
     expect(runtime).toContain("mode: 'select'");
-    expect(runtime).toMatch(/popupRuntime\?\.updateUiLevel\?\.\(\s*v2Surface/);
-    expect(runtime).toContain('popupRuntime?.closeUiLevel?.(v2Surface)');
-    expect(runtime).toContain(
-      "const fallbackPopupPath = `${leafPagePath() || 'ctx.ui.level'}.level`",
-    );
+    expect(runtime).toContain('popupRuntime.updateUiLevel?.(');
+    expect(runtime).toContain('v2Surface');
+    expect(runtime).toContain('popupRuntime.closeUiLevel?.(v2Surface)');
+    expect(runtime).not.toContain('fallbackPopupPath');
     expect(runtime).toContain('if (!v2Surface) {');
-    expect(runtime).toContain('runtime.replace(fallbackPopupPath, payload');
-    expect(runtime).toContain('runtime.delete(fallbackPopupPath');
     expect(runtime).not.toContain('popupRuntime?.popupPath?.() ||');
     expect(runtime).not.toContain('legacyPopupPath');
     expect(runtime).toContain('manatos:record-selector-selection');
     expect(runtime).toMatch(/evaluateUIRule\(\s*'title'/);
-    expect(runtime).toContain('resolvedCallingParams.queryPredicate');
-    expect(runtime).toContain('idField,');
+    expect(runtime).toContain('resolvedInvocation.rules?.query?.exclude');
+    expect(runtime).toContain("const idField = 'id'");
     expect(runtime).not.toContain('...callingParams,');
     expect(dataAccess).toContain("referencedDefinition.boMetadata.exposure === 'internal'");
     expect(dataAccess).toContain('? undefined');
@@ -103,31 +100,48 @@ describe('generic existing-record selector', () => {
     expect(reference).toContain("include('../../../../popups/selectors/record-selector'");
     expect(reference).toContain('data-reference-entity-key');
     expect(fieldRuntime).toContain("case 'select-existing'");
-    expect(fieldRuntime).toContain('window.ManatOSRecordSelector');
+    expect(fieldRuntime).toContain('surfaceRef: pagePath');
+    expect(fieldRuntime).toMatch(
+      /case 'select-existing':[\s\S]*?invocation: \{[\s\S]*?purpose: 'select'[\s\S]*?caller: \{[\s\S]*?surfaceRef: pagePath/,
+    );
+    expect(fieldRuntime).toContain('rules: { query: { exclude: queryExclude } }');
+    expect(fieldRuntime).toContain(
+      "behavior: { selection: 'single', allowClear: !control.required }",
+    );
+    expect(fieldRuntime).toContain('window.ManatOS?.popup?.recordSelector');
     expect(selectorRuntime).toContain("let path = 'ctx.ui.level'");
     expect(selectorRuntime).not.toContain("let path = 'ctx.page'");
-    expect(fieldRuntime).toContain('`${pagePath}.entry.current`');
-    expect(fieldRuntime).toContain('`${pagePath}.resources.referenceData`');
-    expect(fieldRuntime).toContain("purpose: 'reference-field'");
-    expect(fieldRuntime).toContain('targetField: fieldKey');
-    expect(fieldRuntime).toContain('targetFieldLabel: fieldLabelText');
-    expect(fieldRuntime).toContain('sourceEntityLabel');
-    expect(fieldRuntime).toContain('sourceRecordName: sourceRecordName || null');
+    expect(fieldRuntime).toContain('ctxRuntime.get?.(`${pagePath}.entry.current`)');
+    expect(fieldRuntime).toContain('ctxRuntime.get?.(`${pagePath}.fields.${fieldKey}`)');
+    expect(fieldRuntime).not.toContain('ctxRuntime.resolve?.(`${pagePath}.entry.current`)');
+    expect(fieldRuntime).not.toContain('ctxRuntime.resolve?.(`${pagePath}.fields.${fieldKey}`)');
+    expect(fieldRuntime).toContain('const source = Array.isArray(fieldContext?.options)');
+    expect(fieldRuntime).not.toContain('`${pagePath}.resources.referenceData`');
+    expect(fieldRuntime).not.toContain('const renderedSource = [...control.options]');
+    expect(fieldRuntime).not.toContain('ctxSource.length ? ctxSource : renderedSource');
+    expect(fieldRuntime).toContain("purpose: 'select'");
+    expect(fieldRuntime).toContain('sourceEntityName');
+    expect(fieldRuntime).toContain('surfaceRef: pagePath');
     expect(fieldRuntime).not.toContain('title: `Select ${targetName} for ${fieldLabelText}`');
     expect(fieldRuntime).toContain('setReferenceValue(control, selectedId)');
     expect(fieldRuntime).not.toContain('The current entry cannot reference itself.');
     expect(fieldRuntime).not.toContain('data-selector-row');
-    const dataAccess = await uiSource('src/routes/sysbo/data-access.ts');
+    const dataAccess = await uiSource('src/routes/sysbo/shared/data-access.ts');
     expect(selectorRuntime).not.toContain('parentId');
     expect(selectorRuntime).not.toContain('Principal');
     expect(selectorRuntime).not.toContain('candidate?.__referenceUnavailable === true');
-    expect(selectorRuntime).toContain('resolvedCallingParams.queryPredicate');
-    expect(selectorRuntime).toContain('expressionCompiler?.ast(queryPredicate)');
-    expect(selectorRuntime).not.toContain('queryPredicate.ast');
-    expect(selectorRuntime).toContain('evaluateAstWithScope(predicateAst, candidate)');
+    expect(selectorRuntime).toContain('resolvedInvocation.rules?.query?.exclude');
+    expect(selectorRuntime).not.toContain('panel.dataset.selectorQueryPredicateAst');
+    expect(selectorRuntime).not.toContain('expressionCompiler');
+    expect(selectorRuntime).toContain('publishEvaluationState({');
+    expect(selectorRuntime).toContain(
+      'row: { current: { ...candidate }, facts: { ...candidateFacts } }',
+    );
+    expect(selectorRuntime).not.toContain('evaluateAstWithScope(predicateAst, candidate)');
+    expect(selectorRuntime).toContain('excludedIds.has(id)');
     expect(selectorRuntime).toContain('initialSelectedIds.has(id)');
-    expect(fieldRuntime).toContain('dataset.referenceQueryPredicate');
-    expect(fieldRuntime).toContain('queryPredicate,');
+    expect(fieldRuntime).toContain('dataset.referenceQueryExclude');
+    expect(fieldRuntime).not.toContain('queryPredicateAst,');
     expect(reference).toContain('referenceSelectorContexts?.[key]');
     expect(reference).toContain('referenceSelectorContext.referenceData');
     expect(reference).not.toContain('targetField.referenceBOKey === referenceTargetKey');
@@ -137,20 +151,20 @@ describe('generic existing-record selector', () => {
     expect(dataAccess).toContain(
       'if (persistedCandidate) projected.push(projectReference(persistedCandidate))',
     );
-    expect(dataAccess).not.toContain('compileExpression(');
-    expect(dataAccess).toContain('queryPredicate: string | null;');
-    expect(dataAccess).toContain('id IN [');
+    expect(dataAccess).toContain('excludedCandidateIds: readonly string[]');
+    expect(dataAccess).toContain('candidate.__referenceUnavailable === true');
+    expect(dataAccess).not.toContain('preparedExpressionAst(queryPredicate)');
     expect(dataAccess).toContain('canonicalSysBOUIMetadata(req, referencedDefinition)');
     expect(renderPage).toContain('relatedEntityUIMetadata: allSysBOUIMetadata');
   });
 
   it('keeps hierarchy-specific relationship policy in the hierarchy caller', async () => {
-    const hierarchy = await uiSource('public/js/sysbo/hierarchy/hierarchy-workspace.js');
+    const hierarchy = await uiSource('public/js/sysbo/hierarchy/hierarchy-relationship-runtime.js');
     const selector = await uiSource('public/js/popups/record-selector.js');
 
-    expect(hierarchy).toContain("purpose: 'hierarchy-add-existing'");
+    expect(hierarchy).toContain("purpose: 'select'");
     expect(hierarchy).toContain('relationCandidateEligibility');
-    expect(hierarchy).toContain('queryPredicate: listExceptions');
+    expect(hierarchy).not.toContain('queryPredicate: listExceptions');
     expect(hierarchy).not.toContain(
       'title: `Select ${entityLabel} to place as ${memberName} ${relationLabel}`',
     );
@@ -165,22 +179,21 @@ describe('generic existing-record selector', () => {
     expect(selector).not.toContain('relationCandidateEligibility');
     expect(selector).not.toContain('relationCandidateEligibility');
   });
-  it('keeps nested optional values inside an explicit browser expression scope instead of falling through to page CTX', async () => {
+  it('keeps selector expression evaluation CTX-owned instead of restoring detached browser scopes', async () => {
     const formRuntime = await uiSource('public/js/sysbo/entry/form-runtime.js');
+    const selectorRuntime = await uiSource('public/js/popups/record-selector.js');
 
-    expect(formRuntime).toContain('return { owned: false, value: undefined }');
-    expect(formRuntime).toContain(
-      'Object.prototype.hasOwnProperty.call(explicitEvaluationScopeValue, first)',
-    );
-    expect(formRuntime).toContain('return { owned: true, value: undefined }');
-    expect(formRuntime).toContain('if (scoped.owned) return scoped.value');
-    expect(formRuntime).toContain('nested member lookup is strictly downward');
+    expect(formRuntime).not.toContain('explicitEvaluationScopeValue');
+    expect(formRuntime).not.toContain('evaluateAstWithScope');
+    expect(formRuntime).not.toContain('evaluateAstOwnedWithScope');
+    expect(selectorRuntime).toContain('evaluateAstAt');
+    expect(selectorRuntime).not.toContain('evaluateAstWithScope');
   });
 
-  it('drives selector presentation from evaluator-visible callingParams rather than caller-specific DOM logic', async () => {
+  it('drives selector presentation from evaluator-visible invocation rather than caller-specific DOM logic', async () => {
     const selectorView = await uiSource('views/popups/selectors/record-selector.ejs');
     const selectorRuntime = await uiSource('public/js/popups/record-selector.js');
-    const hierarchy = await uiSource('public/js/sysbo/hierarchy/hierarchy-workspace.js');
+    const hierarchy = await uiSource('public/js/sysbo/hierarchy/hierarchy-relationship-runtime.js');
     const fieldRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
     const renderPage = await uiSource('src/presentation/page/render-page.ts');
     const css = await uiSource('public/css/ui.css');
@@ -188,30 +201,37 @@ describe('generic existing-record selector', () => {
     expect(selectorView).toContain('data-selector-ui-rules');
     expect(selectorView).not.toContain('compileUIExpression');
     expect(selectorView).toContain('title: selectorTitleExpression');
-    expect(selectorView).toContain('callingParams.presentationMode');
-    expect(selectorView).toContain('callingParams.targetFieldLabel');
-    expect(selectorView).toContain('callingParams.relation');
-    expect(selectorView).toContain(
-      "'Select ' + callingParams.targetFieldLabel + ' for ' + callingParams.sourceEntityLabel",
-    );
+    expect(selectorView).toContain('#level.control.invocation.presentation.layout');
+    expect(selectorView).toContain('#level.control.invocation.presentation.title');
+    expect(selectorView).toContain('#level.control.invocation.behavior.selection');
+    expect(selectorView).not.toContain('callingParams.sourceRecordName');
     expect(selectorRuntime).toMatch(/evaluateUIRule\(\s*'title'/);
     expect(renderPage).not.toContain('compileExpression(expression)');
-    expect(selectorRuntime).toContain('expressionCompiler?.ast(source)');
-    expect(selectorRuntime).toContain('callingParams: resolvedCallingParams');
-    expect(selectorRuntime).toContain('const popupRuntime = window.ManatOSPopupRuntime');
-    expect(selectorRuntime).toContain('title: callingParams.title ?? null');
-    expect(selectorRuntime).toContain('autofocusSearch: callingParams.autofocusSearch ?? null');
-    expect(selectorRuntime).toContain('{ alreadyInContext: false, ...scope.candidateFacts }');
-    expect(selectorView).toContain('selectedEntry.__entryName ?');
+    expect(selectorRuntime).toContain('expressionRuntime?.astForSource?.(source)');
+    expect(selectorRuntime).toContain('expressionRuntime.loadAstForSource(source)');
+    expect(selectorView).not.toContain('preparedExpression');
+    expect(selectorRuntime).toContain('invocation: { ...resolvedInvocation }');
+    expect(selectorRuntime).toContain('const popupRuntime = window.ManatOS?.popup?.runtime');
+    expect(selectorRuntime).toContain('window.ManatOS.popup.recordSelector = Object.freeze');
+    expect(selectorRuntime).not.toContain('window.ManatOSRecordSelector =');
+    expect(selectorRuntime).not.toContain('callingParams');
+    expect(selectorRuntime).toContain('canonicalInvocation?.behavior?.autofocus');
+    expect(selectorRuntime).not.toContain('...scope.candidateFacts');
+    expect(selectorRuntime).toContain('publishEvaluationState');
+    expect(selectorRuntime).toContain('evaluateAstAt(ast, popupPath)');
+    expect(selectorRuntime).toContain(
+      'row: { current: { ...candidate }, facts: { ...candidateFacts } }',
+    );
+    expect(selectorView).toContain('#level.selection.current.__entryName ?');
     expect(selectorView).not.toContain('selectedEntry ? (callingParams.targetFieldLabel');
     expect(selectorRuntime).toMatch(/evaluateUIRule\(\s*'contextNote'/);
     expect(selectorRuntime).toMatch(/evaluateUIRule\(\s*'rowClass'/);
     expect(selectorRuntime).not.toContain('compileExpression(');
     expect(selectorRuntime).toContain('contextNote: currentContextNote');
-    expect(hierarchy).toContain("presentationMode: 'subtle'");
+    expect(hierarchy).toContain("layout: 'subtle'");
     expect(selectorView).not.toContain("purpose == 'reference-field'");
     expect(selectorView).not.toContain("purpose == 'hierarchy-add-existing'");
-    expect(fieldRuntime).toContain("presentationMode: 'entry'");
+    expect(fieldRuntime).toContain("presentation: { title, layout: 'entry' }");
     expect(css).toContain('.metadata-record-selector.is-entry-presentation');
     expect(css).toContain('.metadata-record-selector.is-subtle-presentation');
   });

@@ -17,9 +17,10 @@ import { commonSysBOFields } from './common.js';
  */
 export const sysBOEmailAddressesMetadata: SysBOMetadata<SysEmailAddress> = {
   key: 'sys-email-addresses',
+  name: 'sysEmailAddresses',
   exposure: 'internal',
-  name: 'Email address',
-  pluralName: 'Email addresses',
+  label: 'Email address',
+  pluralLabel: 'Email addresses',
   primaryField: 'address',
   fieldDefinition: {
     ...commonSysBOFields,
@@ -39,9 +40,10 @@ export const sysBOEmailAddressesMetadata: SysBOMetadata<SysEmailAddress> = {
 
 export const sysBOPrincipalEmailAddressesMetadata: SysBOMetadata<SysPrincipalEmailAddress> = {
   key: 'sys-principal-email-addresses',
+  name: 'sysPrincipalEmailAddresses',
   exposure: 'internal',
-  name: 'Principal email address',
-  pluralName: 'Principal email addresses',
+  label: 'Principal email address',
+  pluralLabel: 'Principal email addresses',
   primaryField: 'name',
   relationships: {
     principal: {
@@ -87,9 +89,10 @@ export const sysBOPrincipalEmailAddressesMetadata: SysBOMetadata<SysPrincipalEma
  */
 export const sysBOTelephoneNumbersMetadata: SysBOMetadata<SysTelephoneNumber> = {
   key: 'sys-telephone-numbers',
+  name: 'sysTelephoneNumbers',
   exposure: 'internal',
-  name: 'Telephone number',
-  pluralName: 'Telephone numbers',
+  label: 'Telephone number',
+  pluralLabel: 'Telephone numbers',
   primaryField: 'fullNumber',
   fieldDefinition: {
     ...commonSysBOFields,
@@ -126,9 +129,10 @@ export const sysBOTelephoneNumbersMetadata: SysBOMetadata<SysTelephoneNumber> = 
 
 export const sysBOPrincipalTelephoneNumbersMetadata: SysBOMetadata<SysPrincipalTelephoneNumber> = {
   key: 'sys-principal-telephone-numbers',
+  name: 'sysPrincipalTelephoneNumbers',
   exposure: 'internal',
-  name: 'Principal telephone number',
-  pluralName: 'Principal telephone numbers',
+  label: 'Principal telephone number',
+  pluralLabel: 'Principal telephone numbers',
   primaryField: 'name',
   relationships: {
     principal: {
@@ -173,9 +177,10 @@ export const sysBOPrincipalTelephoneNumbersMetadata: SysBOMetadata<SysPrincipalT
  */
 export const sysBOAddressesMetadata: SysBOMetadata<SysAddress> = {
   key: 'sys-addresses',
+  name: 'sysAddresses',
   exposure: 'internal',
-  name: 'Address',
-  pluralName: 'Addresses',
+  label: 'Address',
+  pluralLabel: 'Addresses',
   primaryField: 'formattedAddress',
   fieldDefinition: {
     ...commonSysBOFields,
@@ -266,9 +271,10 @@ export const sysBOAddressesMetadata: SysBOMetadata<SysAddress> = {
 
 export const sysBOPrincipalAddressesMetadata: SysBOMetadata<SysPrincipalAddress> = {
   key: 'sys-principal-addresses',
+  name: 'sysPrincipalAddresses',
   exposure: 'internal',
-  name: 'Principal address',
-  pluralName: 'Principal addresses',
+  label: 'Principal address',
+  pluralLabel: 'Principal addresses',
   primaryField: 'name',
   relationships: {
     principal: {

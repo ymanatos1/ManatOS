@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { requireAdmin, requireAuthenticated } from '../../auth/auth-middleware.js';
 import { authenticatedAuditActor } from '../../audit/audit-service.js';
-import type { SysBOConfigurationService } from '../../services/sys-configuration-service.js';
+import type { SysBOConfigurationService } from '../../services/sysbo/configuration-service.js';
 import { sendCommand, sendQuery } from '../response.js';
 
 /** Admin-only application configuration HTTP surface. */

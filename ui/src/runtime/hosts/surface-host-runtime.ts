@@ -48,9 +48,10 @@ export class SurfaceHostRuntime {
     if (event.type === 'surface:created') {
       const surface = this.surfaces.find(event.surfaceId);
       if (!surface) return;
-      if (surface.parentId) {
-        const parentMount = this.#mounts.get(surface.parentId);
-        // A popup overlays its parent; a nested page replaces its parent page.
+      if (surface.navigationParentId) {
+        const parentMount = this.#mounts.get(surface.navigationParentId);
+        // Host presentation follows the navigation hierarchy, not semantic ownership.
+        // A popup overlays its navigation parent; a nested page replaces it.
         parentMount?.deactivate(surface.host === 'popup');
       }
       this.mount(event.surfaceId);

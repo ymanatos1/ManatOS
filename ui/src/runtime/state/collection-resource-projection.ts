@@ -1,6 +1,12 @@
+export interface CollectionResourceInput<T = unknown> {
+  readonly rows: readonly T[];
+  readonly references: Readonly<Record<string, readonly unknown[]>>;
+}
+
 export interface CollectionResourceSnapshot<T = unknown> {
   readonly original: readonly T[];
   readonly current: readonly T[];
+  readonly references: Readonly<Record<string, readonly unknown[]>>;
 }
 
 const cloneValue = <T>(value: T): T =>
@@ -9,34 +15,34 @@ const cloneValue = <T>(value: T): T =>
 const cloneValues = <T>(values: readonly T[]): T[] => values.map((value) => cloneValue(value));
 
 /**
- * Project metadata-declared related collections into the canonical V2 resource
- * channel used by both read-only collections and editable collection drafts.
+ * Snapshot the one authoritative row projection selected for each metadata-
+ * declared collection resource.
  *
- * `relatedData` is the rendered/query result. When an editor exposes a richer
- * canonical working representation through `editingData`, that representation
- * wins for the same source key. This keeps one V2 CTX location for collection
- * state without leaking relationship/component values into `entry.current`.
+ * Read/query rows versus editable working rows are resolved by the collection
+ * loader, where the component metadata is known. The CTX projection boundary
+ * deliberately receives only one row shape per source key; it must never infer
+ * ownership by comparing or prioritizing competing presentation buffers.
  */
 export function projectCollectionResources(
-  relatedData: Readonly<Record<string, readonly unknown[]>>,
-  editingData: Readonly<Record<string, readonly unknown[]>>,
+  collectionData: Readonly<Record<string, CollectionResourceInput>>,
 ): Readonly<Record<string, CollectionResourceSnapshot>> {
-  const keys = new Set([...Object.keys(relatedData), ...Object.keys(editingData)]);
-
   return Object.freeze(
     Object.fromEntries(
-      [...keys].map((key) => {
-        const source = Object.prototype.hasOwnProperty.call(editingData, key)
-          ? (editingData[key] ?? [])
-          : (relatedData[key] ?? []);
-        return [
-          key,
-          Object.freeze({
-            original: Object.freeze(cloneValues(source)),
-            current: Object.freeze(cloneValues(source)),
-          }),
-        ];
-      }),
+      Object.entries(collectionData).map(([key, source]) => [
+        key,
+        Object.freeze({
+          original: Object.freeze(cloneValues(source.rows ?? [])),
+          current: Object.freeze(cloneValues(source.rows ?? [])),
+          references: Object.freeze(
+            Object.fromEntries(
+              Object.entries(source.references ?? {}).map(([fieldKey, values]) => [
+                fieldKey,
+                Object.freeze(cloneValues(values ?? [])),
+              ]),
+            ),
+          ),
+        }),
+      ]),
     ),
   );
 }

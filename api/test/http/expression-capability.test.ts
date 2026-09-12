@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateExpressionAsync, type EntityResolver } from '@manatos/shared';
 
-import { DataStoreEntityResolver } from '../../src/services/entity-resolver.js';
+import { DataStoreEntityResolver } from '../../src/services/relationships/entity-resolver.js';
 import { createTestApi, seedAdmin } from '../support/test-helpers.js';
 
 const caller = { source: 'test' as const, purpose: 'owner/capability execution contract' };

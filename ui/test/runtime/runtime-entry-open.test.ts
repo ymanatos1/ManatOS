@@ -6,8 +6,9 @@ import { SurfaceRuntime } from '../../src/runtime/surface/surface-runtime.js';
 
 const metadata: ManatOSObjectMetadata<Record<string, unknown>> = {
   key: 'people',
-  name: 'Person',
-  pluralName: 'People',
+  name: 'people',
+  label: 'Person',
+  pluralLabel: 'People',
   primaryField: 'fullName',
   fieldDefinition: {
     firstName: { key: 'firstName', label: 'First name', type: 'string', order: 1, required: true },
@@ -18,7 +19,9 @@ const metadata: ManatOSObjectMetadata<Record<string, unknown>> = {
       type: 'string',
       order: 3,
       readOnly: true,
-      calculation: { expression: "firstName + ' ' + lastName" },
+      calculation: {
+        expression: "#level.entry.current.firstName + ' ' + #level.entry.current.lastName",
+      },
     },
   },
 };
@@ -47,9 +50,13 @@ function openPopup(
     name: 'person',
     entityKey: 'people',
     invocation: {
-      purpose: 'reference-field-add-entry',
-      defaults: { firstName: 'Yiannis' },
-      overrides: { lastName: 'Manatos' },
+      purpose: 'create',
+      rules: {
+        values: {
+          firstName: { default: 'Yiannis' },
+          lastName: { fixed: 'Manatos' },
+        },
+      },
     },
   });
   const commands = new CommandRuntime(surfaces, surfaces.events);

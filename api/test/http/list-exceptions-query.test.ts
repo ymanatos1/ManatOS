@@ -5,8 +5,9 @@ import { compileExpression } from '@manatos/shared';
 
 const metadata = {
   key: 'test-items',
-  name: 'Test item',
-  pluralName: 'Test items',
+  name: 'testItems',
+  label: 'Test item',
+  pluralLabel: 'Test items',
   primaryField: 'name',
   fieldDefinition: {
     id: { key: 'id', label: 'Id', type: 'guid', order: 0, required: true },

@@ -88,6 +88,45 @@ describe('UI Runtime V2 policy + command layer', () => {
     expect(surfaces.activeSurface()?.id).toBe(page.id);
   });
 
+  it('returns the navigation parent on back when lifecycle ownership differs', async () => {
+    const surfaces = new SurfaceRuntime();
+    const owner = surfaces.open({
+      id: 'owner-page',
+      host: 'page',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'owner',
+    });
+    const navigationParent = surfaces.open({
+      id: 'navigation-page',
+      host: 'page',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'navigationParent',
+    });
+    const child = surfaces.open({
+      id: 'child-popup',
+      parentId: owner.id,
+      navigationParentId: navigationParent.id,
+      host: 'popup',
+      kind: 'entry',
+      mode: 'view',
+      name: 'child',
+    });
+    const commands = new CommandRuntime(surfaces, surfaces.events);
+
+    const backed = await commands.execute({
+      name: 'surface.back',
+      surfaceId: child.id,
+      payload: {},
+    });
+
+    expect((backed.value as { id: string } | null)?.id).toBe(navigationParent.id);
+    expect(surfaces.find(child.id)).toBeNull();
+    expect(surfaces.activeSurface()?.id).toBe(navigationParent.id);
+    expect(surfaces.find(owner.id)).not.toBeNull();
+  });
+
   it('keeps relationship decisions in policy rather than relationship components', () => {
     const surfaces = new SurfaceRuntime();
     const source = openEntryPage(surfaces);

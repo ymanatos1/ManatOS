@@ -10,7 +10,7 @@ const source = (relativePath: string) =>
 
 describe('evaluator-backed action presentation', () => {
   it('evaluates list Add/page-action policy in the browser against client-owned list facts', async () => {
-    const listRenderer = await source('src/routes/sysbo/list-renderer.ts');
+    const listRenderer = await source('src/routes/sysbo/list/renderer.ts');
     const list = await source('views/components/runtime/entity-list.ejs');
     const actionRuntime = await source('public/js/runtime/list-action-runtime.js');
 
@@ -20,18 +20,32 @@ describe('evaluator-backed action presentation', () => {
     expect(list).toContain("return { kind: 'expression', source: value.expression };");
     expect(list).not.toContain('compileUIExpression(value.expression)');
     expect(list).toContain('data-v2-list-action="add"');
-    expect(actionRuntime).toContain('expressionCompilerReady');
-    expect(actionRuntime).toContain('compiler.ast(declaration.source)');
-    expect(actionRuntime).toContain('evaluateAstWithScope');
-    expect(actionRuntime).toContain('surface.resources?.listFacts');
-    expect(actionRuntime).toContain('addConstraintReached');
+    expect(actionRuntime).not.toContain('expressionCompilerReady');
+    expect(actionRuntime).toContain('expressionRuntimeReady');
+    expect(actionRuntime).toContain('await expressionRuntimeReady');
+    expect(actionRuntime).toContain('await expressions.loadAstForSource?.(declaration.source)');
+    expect(actionRuntime).toContain('evaluateAstOwnedAt');
+    expect(actionRuntime).not.toContain('surface.resources?.listFacts');
+    expect(actionRuntime).not.toContain('const scope = { ...listFacts');
+    expect(listRenderer).toContain('facts: listFacts');
+    expect(listRenderer).toContain('permissions,');
+    expect(listRenderer).toContain('addConstraintReached');
+    expect(actionRuntime).toContain('await expressions.evaluateAstOwnedAt(ast, ctxPath)');
+    const evaluatorRuntime = await source('public/js/sysbo/entry/form-runtime.js');
+    expect(evaluatorRuntime).toContain('if (!form) return;');
+    const evaluatorPublishedAt = evaluatorRuntime.indexOf(
+      'resolveExpressionRuntimeReady?.(window.ManatOS.expression)',
+    );
+    const entryFormGuardAt = evaluatorRuntime.indexOf('if (!form) return;', evaluatorPublishedAt);
+    expect(evaluatorPublishedAt).toBeGreaterThanOrEqual(0);
+    expect(entryFormGuardAt).toBeGreaterThan(evaluatorPublishedAt);
   });
 
   it('lets entry action metadata own visibility/enabled policy without renderer permission gates', async () => {
     const entry = await source('views/components/runtime/entity-entry.ejs');
     const entryPolicy = await source('public/js/runtime/entry-policy-runtime.js');
     const evaluatorRuntime = await source('public/js/sysbo/entry/form-runtime.js');
-    const recordRenderer = await source('src/routes/sysbo/record-renderer.ts');
+    const recordRenderer = await source('src/routes/sysbo/entry/renderer.ts');
 
     expect(entry).toContain('data-v2-entry-action="<%= v2DeleteAction.key %>"');
     expect(entry).not.toContain('permissions.delete && deleteAction');

@@ -21,8 +21,9 @@ describe('metadata-driven Principal presentation', () => {
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const entry = await uiSource('views/components/sysbo/entry/fields/enum-select.ejs');
     const runtime = await uiSource('public/js/sysbo/entry/form-runtime.js');
+    const expressionRuntime = await uiSource('public/js/sysbo/entry/expression-runtime.js');
     const ctxRuntime = await uiSource('public/js/runtime/context-runtime.js');
-    const entryInitialization = await uiSource('src/routes/sysbo/entry-initialization.ts');
+    const entryInitialization = await uiSource('src/routes/sysbo/entry/initialization.ts');
     const definitions = await uiSource('src/sysbo/definitions.ts');
 
     expect(definitions).toContain("icon: 'bi-diagram-3-fill'");
@@ -38,10 +39,15 @@ describe('metadata-driven Principal presentation', () => {
     expect(canonical).toMatch(
       /value: SysBOPrincipalType\.System,[\s\S]*?isContainer: false,[\s\S]*?canHaveParent: true,[\s\S]*?canBeOrganizationRoot: false,[\s\S]*?canStandAloneOrganization: true/,
     );
-    expect(uiMetadata).toContain("createDefaultValue: 'Person'");
-    expect(uiMetadata).toContain("visible: { expression: 'principalType.option != null' }");
-    expect(uiMetadata).toContain("principalType.option != null && principalType !== 'Person'");
-    expect(uiMetadata).toContain('principalType.option.canHaveParent === true');
+    const boMetadata = await sharedSource('src/metadata/bo/business.ts');
+    expect(boMetadata).toContain("createDefaultValue: 'Person'");
+    expect(uiMetadata).toContain(
+      "visible: { expression: '#level.fields.principalType.option != null' }",
+    );
+    expect(uiMetadata).toContain(
+      "#level.fields.principalType.option != null && #level.entry.current.principalType !== 'Person'",
+    );
+    expect(uiMetadata).toContain('#level.fields.principalType.option.canHaveParent === true');
     expect(uiMetadata).toContain('readOnlyValue: null');
     expect(canonical).toContain(
       "filterEnumItemTrait: { field: 'principalType', trait: 'isContainer' }",
@@ -57,20 +63,37 @@ describe('metadata-driven Principal presentation', () => {
     expect(entry).toContain('data-enum-selected-icon');
     expect(entry).toContain('data-enum-item');
     const fieldRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
-    expect(runtime).toContain('window.ManatOSFieldComponents?.getFieldOption?.(control)');
+    expect(runtime).toContain('const fieldOptionFromCtx = (key, value) =>');
+    expect(runtime).not.toContain('window.ManatOS?.fieldComponents?.getFieldOption?.(control)');
     expect(runtime).not.toContain('selectedEnumItem');
     expect(runtime).not.toContain('dataset.enumItems');
-    expect(fieldRuntime).toContain('const getFieldOption = (control) =>');
-    expect(fieldRuntime).toContain('selectedOption?.dataset?.enumItem');
-    expect(runtime).toContain('resolveLocalFieldVariable');
-    expect(runtime).toContain('let value = { value: fieldValue, option };');
+    expect(fieldRuntime).not.toContain('const getFieldOption = (control) =>');
+    expect(fieldRuntime).not.toContain('const getFieldOptions = (control) =>');
+    expect(fieldRuntime).not.toContain('const raw = option.dataset?.enumItem;');
+    expect(fieldRuntime).toContain('selectedOption?.dataset.enumItem');
+    expect(expressionRuntime).not.toContain('resolveLocalFieldVariable');
+    expect(expressionRuntime).toContain('Normal entry expressions resolve against the real CTX');
+    expect(expressionRuntime).toContain("firstMember === 'value'");
     expect(ctxRuntime).toContain('const updateField =');
     expect(ctxRuntime).toContain('entry');
     expect(entryInitialization).toContain('Object.entries(runtimeValues).filter');
     expect(runtime).toContain('expressionDependencyPaths');
-    expect(runtime).toContain('runtime?.resolvePath?.(node.path, scopePath)');
-    expect(ctxRuntime).toContain('const resolvePath =');
+    expect(expressionRuntime).toContain('runtime.resolveVariableWithPath(node');
+    expect(ctxRuntime).toContain('const resolveVariableWithPath =');
     expect(ctxRuntime).toContain('relatedPaths');
+  });
+
+  it('uses the reusable scalar picture contract for an independent Principal photo', async () => {
+    const canonical = await sharedSource('src/metadata/bo/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+
+    expect(canonical).toMatch(
+      /photo:\s*\{[\s\S]*?type: 'picture',[\s\S]*?applicationManaged: true/,
+    );
+    expect(uiMetadata).toContain("cropModes: ['proportional', 'free']");
+    expect(uiMetadata).toContain("{ kind: 'field', field: 'photo', span: 4 }");
+    expect(uiMetadata).not.toContain('syncPrincipalPhoto');
+    expect(uiMetadata).not.toContain('syncUserPhoto');
   });
 
   it('places Parent then Root principal before Name while preserving Name as the generic clickable primary field', async () => {
@@ -91,7 +114,7 @@ describe('metadata-driven Principal presentation', () => {
     const referenceSelect = await uiSource(
       'views/components/sysbo/entry/fields/reference-select.ejs',
     );
-    const dataAccess = await uiSource('src/routes/sysbo/data-access.ts');
+    const dataAccess = await uiSource('src/routes/sysbo/shared/data-access.ts');
     expect(dataAccess).toContain('__entryIcons: representation.icons');
     expect(referenceSelect).toContain('reference?.__entryIcons');
     expect(referenceSelect).toContain('metadata-entry-icon-<%= iconIndex %>');
@@ -128,8 +151,8 @@ describe('metadata-driven Principal presentation', () => {
   it('declares the reusable CTX-driven Organization visualization without Principal-specific component code', async () => {
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const component = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
-    const recordRenderer = await uiSource('src/routes/sysbo/record-renderer.ts');
-    const hierarchyData = await uiSource('src/routes/sysbo/hierarchy-data.ts');
+    const recordRenderer = await uiSource('src/routes/sysbo/entry/renderer.ts');
+    const hierarchyData = await uiSource('src/routes/sysbo/hierarchy/data.ts');
     const renderer = await uiSource('views/components/runtime/entity-entry.ejs');
     const tabContent = await uiSource('views/components/sysbo/entry/shell/entry-tab-content.ejs');
 
@@ -187,7 +210,7 @@ describe('metadata-driven Principal presentation', () => {
   it('keeps Principals on the single metadata-driven SysBO engine after #16 cleanup', async () => {
     const definitions = await uiSource('src/sysbo/definitions.ts');
     const routes = await uiSource('src/routes/sysbo/index.ts');
-    const configuration = await apiSource('src/services/sys-configuration-service.ts');
+    const configuration = await apiSource('src/services/sysbo/configuration-service.ts');
 
     expect(definitions).toContain('boMetadata: sysBOPrincipalsMetadata');
     expect(definitions).not.toContain('DISPOSABLE LEGACY PRINCIPAL EJS');
@@ -201,7 +224,7 @@ describe('metadata-driven Principal presentation', () => {
   it('declares Principal Organization as the first consumer of the generic hierarchy workspace', async () => {
     const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
     const routes = await uiSource('src/routes/sysbo/index.ts');
-    const hierarchyRenderer = await uiSource('src/routes/sysbo/hierarchy-renderer.ts');
+    const hierarchyRenderer = await uiSource('src/routes/sysbo/hierarchy/renderer.ts');
     const uiHostRuntime = await uiSource('public/js/runtime/ui-host-runtime.js');
     const workspace = await uiSource('views/components/sysbo/hierarchy/hierarchy-workspace.ejs');
     const hierarchyRuntime = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
@@ -224,7 +247,7 @@ describe('metadata-driven Principal presentation', () => {
     expect(routes).toContain("router.get('/:key/hierarchy/new'");
     expect(routes).toContain("router.get('/:key/:id/hierarchy'");
     expect(routes).toContain('renderMetadataDrivenHierarchyWorkspace');
-    expect(routes).toContain("from './hierarchy-renderer.js'");
+    expect(routes).toContain("from './hierarchy/renderer.js'");
     expect(hierarchyRenderer).toContain("purpose: 'manage-entity-hierarchy'");
     expect(hierarchyRenderer).toContain('originalEntries: hierarchyRuntime.entriesOriginal');
     expect(uiHostRuntime).toContain("case 'manage-entity-hierarchy'");
@@ -256,14 +279,14 @@ describe('metadata-driven Principal presentation', () => {
     expect(canonical).toContain("label: 'Full name'");
     expect(canonical).toContain("key: 'firstName'");
     expect(canonical).toContain("key: 'lastName'");
-    expect(canonical).toContain("triggeredBy: ['principalType', 'firstName', 'lastName']");
+    expect(canonical).not.toContain('triggeredBy');
     expect(canonical).toContain('persisted: true');
     expect(canonical).toContain("description: { field: 'name' }");
     expect(canonical).toContain("key: 'userId'");
     expect(canonical).toContain("referenceBOKey: 'sys-users'");
 
     expect(uiMetadata).toMatch(
-      /field: 'principalType', span: 6[\s\S]*?field: 'enabled', span: 6[\s\S]*?field: 'firstName', span: 6[\s\S]*?field: 'lastName', span: 6[\s\S]*?field: 'name', span: 6[\s\S]*?field: 'userId', span: 6[\s\S]*?field: 'description', span: 12[\s\S]*?field: 'parentId', span: 6[\s\S]*?field: 'rootPrincipalId', span: 6/,
+      /field: 'principalType', span: 5[\s\S]*?field: 'enabled', span: 3[\s\S]*?field: 'photo', span: 4[\s\S]*?field: 'firstName', span: 6[\s\S]*?field: 'lastName', span: 6[\s\S]*?field: 'name', span: 6[\s\S]*?field: 'userId', span: 6[\s\S]*?field: 'description', span: 12[\s\S]*?field: 'parentId', span: 6[\s\S]*?field: 'rootPrincipalId', span: 6/,
     );
     expect(uiMetadata).toMatch(/firstName:[\s\S]*?principalType === 'Person'/);
     expect(uiMetadata).toMatch(/lastName:[\s\S]*?principalType === 'Person'/);

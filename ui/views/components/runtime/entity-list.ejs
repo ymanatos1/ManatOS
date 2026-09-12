@@ -17,11 +17,7 @@
   - Contains no data acquisition or entity-specific decisions; EntityListRuntime and route adapters resolve those before rendering.
 %>
 <%
-  /*
-   * UI action policy crosses the boundary as canonical expression source.
-   * The browser compiles it locally with the shared parser, caches the AST, and
-   * evaluates it against client-owned list facts after ctx.ui is constructed.
-   */
+  /* UI action policy crosses the browser boundary as authored source only. */
   const clientDynamicValue = (value) => {
     if (value && typeof value === 'object' && !Array.isArray(value) && typeof value.expression === 'string') {
       return { kind: 'expression', source: value.expression };
@@ -147,7 +143,7 @@
       definition,
       clientPageActions,
       clientAddAction,
-      searchPlaceholder: `Search ${metadata.pluralName.toLowerCase()}`
+      searchPlaceholder: `Search ${metadata.pluralLabel.toLowerCase()}`
     }) %>
 
     <%- include('../sysbo/list/list-filters', { filterFields, hasActiveFilters, filterCollapseId, metadata, query, enumItem, listReferenceValues, definition }) %>

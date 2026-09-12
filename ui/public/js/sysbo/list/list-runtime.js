@@ -30,11 +30,24 @@
         headers: {
           Accept: 'text/html',
           'X-Requested-With': 'XMLHttpRequest',
+          'X-ManatOS-Application-Command': '1',
         },
         credentials: 'same-origin',
       });
 
-      if (!response.ok) return false;
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const payload = await response.json().catch(() => null);
+          if (payload?.error) {
+            window.ManatOS?.errors?.fromResponse?.(response, payload, {
+              retry: () => navigateOrFallback(url, { pushHistory }),
+            });
+            return true;
+          }
+        }
+        return false;
+      }
 
       const html = await response.text();
       const documentCopy = new DOMParser().parseFromString(html, 'text/html');

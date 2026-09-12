@@ -1152,6 +1152,29 @@ body.anonymous .workspace {
   background: rgba(0, 0, 0, 0.28);
 }
 
+/* While a hosted entry initializes, keep the already-visible owning surface in
+ * place and locked under the backdrop. The popup is laid out normally (so its
+ * geometry remains measurable) but is not revealed until the hosted entry
+ * reports canonical initialization settlement. */
+.manatos-popup-backdrop.manatos-popup-preparing .metadata-entry-popup {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.manatos-popup-backdrop.manatos-popup-preparing::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -1.125rem 0 0 -1.125rem;
+  border: 0.24rem solid rgba(255, 255, 255, 0.55);
+  border-top-color: var(--bs-primary);
+  border-radius: 50%;
+  animation: manatos-busy-spin 0.9s linear infinite;
+}
+
 /* =========================================================================
    Shell-owned Developer Tools dock
    =========================================================================

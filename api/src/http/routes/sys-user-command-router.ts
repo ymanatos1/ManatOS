@@ -5,7 +5,7 @@ import { AppError, NotFoundError, operationContext, type SysBOUser } from '@mana
 import { authenticatedAuditActor } from '../../audit/audit-service.js';
 import { requireAdmin } from '../../auth/auth-middleware.js';
 import { config } from '../../config.js';
-import type { SysBOUserService } from '../../services/sys-user-service.js';
+import type { SysBOUserService } from '../../services/sysbo/user-service.js';
 
 import { sendCommand } from '../response.js';
 

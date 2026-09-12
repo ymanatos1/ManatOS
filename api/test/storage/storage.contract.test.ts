@@ -13,7 +13,7 @@ import {
 
 import { SYSTEM_AUDIT_ACTOR } from '../../src/audit/audit-service.js';
 
-import { GenericSysBOService } from '../../src/services/generic-sysbo-service.js';
+import { GenericSysBOService } from '../../src/services/sysbo/generic-service.js';
 
 import { InMemoryDataStore } from '../../src/storage/in-memory-data-store.js';
 import { JsonFilePersistence } from '../../src/storage/json-file-persistence.js';
@@ -111,7 +111,7 @@ describe('storage contract', () => {
           },
           {
             id: 'draft:child',
-            name: 'Alice',
+            firstName: 'Alice',
             principalType: SysBOPrincipalType.Person,
             enabled: true,
             parentId: 'draft:root',

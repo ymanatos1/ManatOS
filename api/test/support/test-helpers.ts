@@ -8,7 +8,7 @@ import { createApp } from '../../src/app.js';
 import { JsonFilePersistence } from '../../src/storage/json-file-persistence.js';
 import { InMemoryDataStore } from '../../src/storage/in-memory-data-store.js';
 
-import { SysBOUserService } from '../../src/services/sys-user-service.js';
+import { SysBOUserService } from '../../src/services/sysbo/user-service.js';
 
 import {
   ExternalIdentityService,
@@ -17,8 +17,8 @@ import {
   SysBOPrincipalService,
 } from '../../src/services/index.js';
 import { SecretsEncryptionService } from '../../src/security/secrets-encryption-service.js';
-import { SysBOExtAuthProviderService } from '../../src/services/sys-ext-auth-provider-service.js';
-import { SysBOConfigurationService } from '../../src/services/sys-configuration-service.js';
+import { SysBOExtAuthProviderService } from '../../src/services/sysbo/external-auth-provider-service.js';
+import { SysBOConfigurationService } from '../../src/services/sysbo/configuration-service.js';
 
 /**
  * Standard credentials used by integration tests.

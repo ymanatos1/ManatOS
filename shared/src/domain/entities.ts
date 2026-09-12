@@ -149,6 +149,15 @@ export enum SysBOLicenseStatus {
   Cancelled = 'Cancelled',
 }
 
+/** Storage-neutral public descriptor for a binary picture field. */
+export interface SysBOPictureValue {
+  /** Stable resource identity when the field is collection-valued. */
+  id?: string;
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+  size: number;
+  revision: string;
+}
+
 /**
  * Website/security identity.
  *
@@ -163,6 +172,8 @@ export interface SysBOUser extends SysBOEntity {
   email: string;
   /** Optional single canonical international telephone number (for example +306944386714). */
   telephoneNumber?: string;
+  /** Optional profile picture. Binary bytes are owned by the active storage adapter. */
+  photo?: SysBOPictureValue | null;
   emailVerified: boolean;
 
   /** When and how the current email address became verified. */
@@ -201,6 +212,9 @@ export interface SysBOUser extends SysBOEntity {
  */
 export interface SysBOPrincipal extends SysBOEntity {
   principalType: SysBOPrincipalType;
+
+  /** Optional independently managed Principal picture. */
+  photo?: SysBOPictureValue | null;
 
   /** Optional personal-name components used when principalType is Person. */
   firstName?: string;
@@ -281,6 +295,12 @@ export interface SysPrincipalAddress extends SysBOEntity {
  */
 export interface SysBOApplication extends SysBOEntity {
   fullName: string;
+
+  /** Ordered application imagery; binary bytes remain storage-adapter owned. */
+  pictures?: SysBOPictureValue[];
+
+  /** Long-form canonical Markdown details. */
+  details?: string;
 
   description?: string;
   version?: string;

@@ -47,6 +47,7 @@
     <% if (popupAction.target) { %>data-bs-target="<%= popupAction.target %>"<% } %>
     <% if (popupAction.disabled) { %>disabled<% } %>
     <% if (popupAction.onclick) { %>onclick="<%= popupAction.onclick %>"<% } %>
+    <% if (popupAction.action) { %>data-popup-action="<%= popupAction.action %>"<% } %>
     <% if (popupAction.data) { for (const [dataName, dataValue] of Object.entries(popupAction.data)) { %>
       data-<%= dataName %>="<%= dataValue %>"
     <% }} %>

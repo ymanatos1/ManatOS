@@ -32,7 +32,7 @@ describe('V2 EntrySelectorRuntime', () => {
       kind: 'selector',
       mode: 'select-existing',
       name: 'parent-selector',
-      invocation: { selectionMode: 'single' },
+      invocation: { behavior: { selection: 'single' } },
     });
     const runtime = new EntrySelectorRuntime(
       selector,
@@ -67,7 +67,7 @@ describe('V2 EntrySelectorRuntime', () => {
       kind: 'selector',
       mode: 'select-existing',
       name: 'second',
-      invocation: { selectionMode: 'single' },
+      invocation: { behavior: { selection: 'single' } },
     });
     const third = surfaces.open({
       parentId: second.id,

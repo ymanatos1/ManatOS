@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { renderFile } from 'ejs';
+import { compile, renderFile } from 'ejs';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
@@ -11,6 +11,14 @@ const tabContentPath = resolve(
 );
 
 describe('metadata-driven entry EJS runtime composition', () => {
+  it('compiles the canonical V2 entity-entry template', async () => {
+    const source = await import('node:fs/promises').then(({ readFile }) =>
+      readFile(resolve(testDirectory, '../../views/components/runtime/entity-entry.ejs'), 'utf8'),
+    );
+
+    expect(() => compile(source)).not.toThrow();
+  });
+
   it('renders a representative metadata field through extracted tab content', async () => {
     const metadata = {
       fieldDefinition: {
@@ -79,7 +87,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
       uiDebuggingDisplayRows: [],
       debugElementNameParts: () => ({ prefix: '', leaf: '' }),
       csrfToken: 'test-csrf',
-      pageRelatedData: {},
+      pageCollectionResourceData: {},
       relatedMetadataRegistry: {},
       collectionValue: () => ({ raw: null, tone: null, icon: null, calculated: false }),
       relatedRowHref: () => null,
@@ -156,7 +164,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
       uiDebuggingDisplayRows: [],
       debugElementNameParts: () => ({ prefix: '', leaf: '' }),
       csrfToken: 'test-csrf',
-      pageRelatedData: {},
+      pageCollectionResourceData: {},
       relatedMetadataRegistry: {},
       collectionValue: () => ({ raw: null, tone: null, icon: null, calculated: false }),
       relatedRowHref: () => null,

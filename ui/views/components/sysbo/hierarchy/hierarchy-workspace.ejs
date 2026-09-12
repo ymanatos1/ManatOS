@@ -14,7 +14,8 @@
   - record-quick.ejs plus the shared popup record selector.
 
   Runtime contract:
-  - hierarchy-workspace.js owns drag/drop, placement, drafts, selector invocation, confirmation popups and transactional commit.
+  - hierarchy-workspace.js owns workspace orchestration, drag/drop, placement, selector invocation, confirmation popups and transactional commit.
+  - hierarchy-workspace-model.js owns pure graph semantics; hierarchy-draft-store.js owns browser draft persistence/migration.
 %>
 
 <section
@@ -65,10 +66,10 @@
       dataSource: 'entries',
       currentSource: 'entries',
       focusSource: 'focusedMemberId',
-      emptyAddLabel: `Add ${metadata.name}`,
-      emptyAddTitle: `Create ${metadata.name}`,
+      emptyAddLabel: `Add ${metadata.label}`,
+      emptyAddTitle: `Create ${metadata.label}`,
       interactionMode: 'workspace',
-      entityLabel: metadata.name,
+      entityLabel: metadata.label,
       entityIcon: String(definition.icon || '').replace(/^bi-/, ''),
       entryRepresentation: entryRepresentationRuntime
     }) %>"

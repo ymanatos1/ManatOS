@@ -2,8 +2,8 @@ import { Router } from 'express';
 
 import { API_IMPLEMENTATION_VERSION, API_VERSION } from '../../version.js';
 import { sendQuery } from '../response.js';
-import type { SysBOConfigurationService } from '../../services/sys-configuration-service.js';
-import type { SysBOExtAuthProviderService } from '../../services/sys-ext-auth-provider-service.js';
+import type { SysBOConfigurationService } from '../../services/sysbo/configuration-service.js';
+import type { SysBOExtAuthProviderService } from '../../services/sysbo/external-auth-provider-service.js';
 
 /**
  * Anonymous-safe discovery endpoints consumed by the UI before/around sign-in.

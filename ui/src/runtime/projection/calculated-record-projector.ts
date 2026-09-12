@@ -9,6 +9,31 @@ import {
   type ManatOSObjectMetadata,
 } from '@manatos/shared';
 
+/**
+ * Close a metadata-backed record shape for publication into CTX/presentation.
+ * Metadata-declared fields are always observable; absent/undefined values become null.
+ * Extra transport fields are preserved unchanged.
+ */
+export function closeMetadataRecordShape<T extends Record<string, unknown>>(
+  metadata: ManatOSObjectMetadata<T>,
+  entry: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  return {
+    ...Object.fromEntries(
+      Object.keys(metadata.fieldDefinition).map((fieldKey) => [
+        fieldKey,
+        entry[fieldKey] === undefined ? null : entry[fieldKey],
+      ]),
+    ),
+    ...entry,
+    ...Object.fromEntries(
+      Object.keys(metadata.fieldDefinition)
+        .filter((fieldKey) => entry[fieldKey] === undefined)
+        .map((fieldKey) => [fieldKey, null]),
+    ),
+  };
+}
+
 export interface CalculatedRecordProjectorOptions {
   readonly source: ExpressionEvaluationSource;
   readonly sourcePath: string;
@@ -35,19 +60,29 @@ export function createCalculatedRecordProjector<T extends Record<string, unknown
       .map((field) => [field.key, compileExpression(field.calculation!.expression)] as const),
   );
 
-  return async (entry) =>
-    projectCalculatedRecord(entry, fields, (_expression, { field, record }) => {
-      const compiled = compiledByKey.get(field.key);
-      if (!compiled || expressionCapabilities(compiled.ast).includes('entityResolver')) {
-        return record[field.key];
-      }
-      return evaluateCompiledExpression(compiled, ctx, record, {
-        source: options.source,
-        sourcePath: options.sourcePath,
-        targetPath: field.key,
-        purpose: options.purpose,
-      });
-    });
+  return async (entry) => {
+    // Every published metadata-backed record crosses the same boundary: close its
+    // declared shape before evaluation so dependencies are observable, then close
+    // again after projection so an unresolved calculation cannot serialize away.
+    const source = closeMetadataRecordShape(metadata, entry);
+    const projected = await projectCalculatedRecord(
+      source,
+      fields,
+      (_expression, { field, record }) => {
+        const compiled = compiledByKey.get(field.key);
+        if (!compiled || expressionCapabilities(compiled.ast).includes('entityResolver')) {
+          return record[field.key];
+        }
+        return evaluateCompiledExpression(compiled, ctx, record, {
+          source: options.source,
+          sourcePath: options.sourcePath,
+          targetPath: field.key,
+          purpose: options.purpose,
+        });
+      },
+    );
+    return closeMetadataRecordShape(metadata, projected);
+  };
 }
 
 /**
@@ -93,6 +128,9 @@ export async function materializeCalculatedContextFields<T>(
     if (typeof field.calculation?.expression !== 'string') continue;
     const target = fields[field.key];
     if (!target || !Object.prototype.hasOwnProperty.call(projected, field.key)) continue;
-    target.value = projected[field.key];
+    // CTX field values are an observable publication boundary as well. Keep an
+    // unresolved calculated value explicit rather than allowing `undefined` to
+    // disappear from serialization or create a different browser-side shape.
+    target.value = projected[field.key] === undefined ? null : projected[field.key];
   }
 }

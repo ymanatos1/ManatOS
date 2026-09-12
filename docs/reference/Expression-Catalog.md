@@ -27,3 +27,7 @@ Function names are metadata-language contracts. Resolver-backed functions consum
 Pure/UI decisions can execute in the browser against CTX. Server calculations execute where server facts/capabilities exist. Entity traversal requires an entity resolver. Normal browser expression transport uses expression source and runtime-local compiled AST caching; tooling may expose AST for inspection.
 
 See [Expressions](../design/Expressions.md) for operators and examples.
+
+## Runtime semantics
+
+For AST cache ownership/lifetime, browser compilation, lexical scope, dependency identities, initialization gates, event deduplication and debugger rules, see [CTX and Expression Runtime Guide](CTX-and-Expression-Runtime-Guide.md). Expression source is the portable contract; compiled ASTs remain private execution infrastructure.

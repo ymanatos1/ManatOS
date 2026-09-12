@@ -2,6 +2,9 @@
   'use strict';
 
   const runtime = window.ManatOS?.ctx;
+  const pathPresentation = window.ManatOS?.debug?.ctxPath;
+  const displayCtxPath = (path) => pathPresentation?.display?.(path) || path;
+
   const dock = document.getElementById('developerToolsDock');
   const body = dock?.querySelector('.developer-tools-body');
   const strip = dock?.querySelector('.developer-tools-tab-strip');
@@ -22,13 +25,17 @@
   const UI_SURFACE_HOSTS = new Set(['page', 'popup']);
   const UI_SURFACE_KINDS = new Set(['static', 'list', 'entry', 'selector', 'hierarchy', 'custom']);
   const UI_SURFACE_MODES = new Set(['browse', 'create', 'edit', 'view', 'select', 'manage']);
-  const isUiSurfaceLevel = (value) =>
-    isObject(value) &&
-    typeof value.id === 'string' &&
-    UI_SURFACE_HOSTS.has(value.host) &&
-    UI_SURFACE_KINDS.has(value.kind) &&
-    UI_SURFACE_MODES.has(value.mode) &&
-    typeof value.name === 'string';
+  const isUiSurfaceLevel = (value) => {
+    const control = isObject(value?.control) ? value.control : null;
+    return (
+      Boolean(control) &&
+      typeof control.id === 'string' &&
+      UI_SURFACE_HOSTS.has(control.host) &&
+      UI_SURFACE_KINDS.has(control.kind) &&
+      UI_SURFACE_MODES.has(control.mode) &&
+      typeof control.name === 'string'
+    );
+  };
 
   const nodeNameFromPath = (path) => {
     const semantic = path.match(/\[(?:"([^"]+)"|'([^']+)')\]$/);
@@ -73,7 +80,7 @@
     } else if (ownerPath.startsWith('ctx.ui.level')) {
       let candidatePath = ownerPath;
       while (candidatePath.startsWith('ctx.ui.level')) {
-        const entityKey = getRealValue(candidatePath)?.entityKey;
+        const entityKey = getRealValue(`${candidatePath}.control`)?.entityKey;
         if (typeof entityKey === 'string' && entityKey) {
           entityName =
             Object.keys(runtime.value.entities || {}).find(
@@ -117,9 +124,11 @@
       return [...virtual, ...members];
     }
 
-    const members = Object.entries(value)
-      .filter(([key]) => !(typeof value.expression === 'string' && key === 'ast'))
-      .map(([key, child]) => ({ key, path: appendPath(path, key), value: child }));
+    const members = Object.entries(value).map(([key, child]) => ({
+      key,
+      path: appendPath(path, key),
+      value: child,
+    }));
     return [...virtual, ...members];
   };
 
@@ -344,44 +353,49 @@
     if (!view.propertiesOpen) return;
     const value = valueAt(view.selected);
     const description = runtime.describe?.(view.selected) || {};
-    view.propertiesTitle.textContent = view.selected;
+    pathPresentation?.render?.(view.propertiesTitle, view.selected);
+
     const rows = [
-      ['Path', view.selected],
-      ['Kind', description.kind || (isObject(value) ? 'container' : 'value')],
-      [
-        'Type',
-        description.type ||
+      { label: 'Kind', value: description.kind || (isObject(value) ? 'container' : 'value') },
+      {
+        label: 'Type',
+        value:
+          description.type ||
           (value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value),
-      ],
-      [
-        'Attributes',
-        Array.isArray(description.attributes) ? description.attributes.join(', ') : '',
-      ],
-      ['Watchable', description.watchable === false ? 'no' : 'yes'],
-      ['Subscribers', description.subscribers ? `${description.subscribers.total ?? 0} total` : ''],
-      ['Value', displayValue(value)],
-      ['Children', isObject(value) ? String(childEntries(view.selected, value).length) : '0'],
+      },
+      {
+        label: 'Attributes',
+        value: Array.isArray(description.attributes) ? description.attributes.join(', ') : '',
+      },
+      { label: 'Watchable', value: description.watchable === false ? 'no' : 'yes' },
+      {
+        label: 'Value',
+        value: displayValue(value),
+        formula: typeof value === 'string' && view.selected.endsWith('.expression'),
+      },
+      {
+        label: 'Children',
+        value: isObject(value) ? String(childEntries(view.selected, value).length) : '0',
+      },
     ];
-    view.propertiesBody.replaceChildren();
-    for (const [label, text] of rows) {
-      const row = document.createElement('div');
-      row.className = 'ctx-debug-property-row';
-      const key = document.createElement('span');
-      key.className = 'ctx-debug-property-label';
-      key.textContent = label;
-      const val = document.createElement('span');
-      val.className = 'ctx-debug-property-value';
-      val.textContent = text;
-      row.append(key, val);
-      view.propertiesBody.appendChild(row);
+    if (isObject(value) && typeof value.expression === 'string') {
+      rows.splice(4, 0, { label: 'Expression', value: value.expression, formula: true });
     }
+
+    window.ManatOS?.debug?.ctxProperties?.render({
+      panel: view.propertiesPanel,
+      body: view.propertiesBody,
+      activeTab: view.propertiesTab,
+      rows,
+      subscribers: description.subscribers,
+    });
   };
 
   const renderView = (view) => {
     const rootValue = valueAt(view.path);
     const selection = view.selection;
-    view.rootPath.textContent = view.path;
-    view.rootPath.title = view.path;
+    const shownCaptionPath = displayCtxPath(view.path);
+    pathPresentation?.render?.(view.rootPath, view.path);
     view.availability.textContent = rootValue === undefined ? 'NOT PRESENT' : 'LIVE';
     view.availability.classList.toggle('is-missing', rootValue === undefined);
     updateHistoryButtons(view);
@@ -392,8 +406,9 @@
       missing.className = 'ctx-target-view-missing';
       missing.textContent = `Variable not found in CTX: ${view.path}`;
       view.tree.appendChild(missing);
-      selection.textContent = nodeNameFromPath(view.path);
-      selection.title = view.path;
+      selection.textContent = '';
+      selection.classList.add('d-none');
+      selection.title = shownCaptionPath;
       renderProperties(view);
       return;
     }
@@ -440,7 +455,8 @@
       if (isUiSurfaceLevel(value)) {
         const badge = document.createElement('span');
         badge.className = 'ctx-debug-ui-level-badge';
-        badge.textContent = `${String(value.host).toUpperCase()} · ${String(value.kind).toUpperCase()} · ${value.name}`;
+        const control = value.control;
+        badge.textContent = `${String(control.host).toUpperCase()} · ${String(control.kind).toUpperCase()} · ${control.name}`;
         row.appendChild(badge);
       }
       if (!isObject(value)) {
@@ -471,11 +487,16 @@
     const scrollState = captureScrollState(view);
     Object.assign(view, scrollState);
     view.tree.replaceChildren(
-      renderNode({ key: nodeNameFromPath(view.path), path: view.path, value: rootValue }),
+      renderNode({
+        key: view.path === 'ctx' ? '$ (ctx)' : nodeNameFromPath(view.path),
+        path: view.path,
+        value: rootValue,
+      }),
     );
     restoreScrollState(view);
-    selection.textContent = nodeNameFromPath(view.selected);
-    selection.title = view.selected;
+    selection.textContent = '';
+    selection.classList.add('d-none');
+    selection.title = displayCtxPath(view.selected);
     renderProperties(view);
   };
 
@@ -571,6 +592,10 @@
       </div>
       <section class="ctx-debug-properties d-none ctx-target-view-properties-panel" aria-hidden="true" aria-label="Selected CTX node properties">
         <div class="ctx-debug-properties-heading"><span class="ctx-target-view-properties-title"></span><button class="btn-close btn-close-sm ctx-target-view-properties-close" type="button" aria-label="Close node properties"></button></div>
+        <div class="ctx-debug-properties-tabs" role="tablist" aria-label="CTX node property sections">
+          <button type="button" class="ctx-debug-properties-tab is-active" data-properties-tab="main" role="tab" aria-selected="true">Main</button>
+          <button type="button" class="ctx-debug-properties-tab" data-properties-tab="subscribers" role="tab" aria-selected="false">Subscribers</button>
+        </div>
         <div class="ctx-debug-properties-body ctx-target-view-properties-body"></div>
         <div class="ctx-debug-properties-resize ctx-target-view-properties-resize" title="Drag to resize; double-click to reset" aria-hidden="true"></div>
       </section>
@@ -589,6 +614,7 @@
           : [selected || path],
       historyIndex: Number.isInteger(historyIndex) ? historyIndex : 0,
       propertiesOpen: propertiesOpen === true,
+      propertiesTab: 'main',
       propertiesHeight: Number.isFinite(propertiesHeight) ? propertiesHeight : 256,
       scrollTop: Number(scrollTop) || 0,
       scrollAnchorPath: typeof scrollAnchorPath === 'string' ? scrollAnchorPath : null,
@@ -608,6 +634,15 @@
     };
     view.historyIndex = Math.max(0, Math.min(view.historyIndex, view.history.length - 1));
     views.set(viewId, view);
+
+    view.propertiesPanel.addEventListener('click', (event) => {
+      const tab =
+        event.target instanceof Element ? event.target.closest('[data-properties-tab]') : null;
+      if (!(tab instanceof HTMLButtonElement)) return;
+      view.propertiesTab =
+        tab.getAttribute('data-properties-tab') === 'subscribers' ? 'subscribers' : 'main';
+      renderProperties(view);
+    });
 
     const setPropertiesOpen = (open) => {
       view.propertiesOpen = open;
@@ -635,7 +670,10 @@
     });
     panel
       .querySelector('.ctx-target-view-copy-path')
-      .addEventListener('click', () => void navigator.clipboard?.writeText?.(view.selected));
+      .addEventListener(
+        'click',
+        () => void navigator.clipboard?.writeText?.(displayCtxPath(view.selected)),
+      );
     panel.querySelector('.ctx-target-view-copy-value').addEventListener('click', () => {
       const value = valueAt(view.selected);
       const text =
@@ -759,7 +797,9 @@
     else localStorage.setItem(ACTIVE_TAB_KEY, 'ctx');
   }
 
-  window.ManatOSCtxTargetViews = Object.freeze({
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.debug = window.ManatOS.debug || {};
+  window.ManatOS.debug.ctxTargetViews = Object.freeze({
     open: (path) => createView({ path }),
     close: closeView,
   });

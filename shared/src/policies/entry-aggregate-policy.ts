@@ -1,3 +1,31 @@
+export interface EntryAggregateContributorState {
+  readonly dirty?: boolean;
+  readonly valid?: boolean;
+  readonly blocksPersistence?: boolean;
+}
+
+export interface EntryContributorAggregateState {
+  readonly dirty: boolean;
+  readonly valid: boolean;
+  readonly blocked: boolean;
+  readonly blockingCount: number;
+}
+
+/** Canonical pure reduction of private entry contributor facts. */
+export function calculateEntryContributorAggregate(
+  contributors: readonly EntryAggregateContributorState[],
+): EntryContributorAggregateState {
+  const blockingCount = contributors.filter(
+    (contributor) => contributor.blocksPersistence === true,
+  ).length;
+  return {
+    dirty: contributors.some((contributor) => contributor.dirty === true),
+    valid: contributors.every((contributor) => contributor.valid !== false),
+    blocked: blockingCount > 0,
+    blockingCount,
+  };
+}
+
 export interface EntryAggregatePolicyInput {
   readonly mode: string;
   readonly fieldDirty: boolean;

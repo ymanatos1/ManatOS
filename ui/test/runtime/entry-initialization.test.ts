@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import type { SysBOMetadata, SysBOUIMetadata } from '@manatos/shared';
-import { buildEntryInitializationSeed } from '../../src/routes/sysbo/entry-initialization.js';
+import { buildEntryInitializationSeed } from '../../src/routes/sysbo/entry/initialization.js';
 
 const metadata: SysBOMetadata<Record<string, unknown>> = {
   key: 'sample',
-  name: 'Sample',
-  pluralName: 'Samples',
+  name: 'samples',
+  label: 'Sample',
+  pluralLabel: 'Samples',
   primaryField: 'name',
   fieldDefinition: {
     id: { key: 'id', label: 'Id', type: 'guid', order: 0, readOnly: true },
     name: { key: 'name', label: 'Name', type: 'string', order: 1 },
-    enabled: { key: 'enabled', label: 'Enabled', type: 'boolean', order: 2 },
+    enabled: {
+      key: 'enabled',
+      label: 'Enabled',
+      type: 'boolean',
+      order: 2,
+      createDefaultValue: true,
+    },
     verified: { key: 'verified', label: 'Verified', type: 'boolean', order: 3, readOnly: true },
     parentId: {
       key: 'parentId',
@@ -33,7 +40,7 @@ const uiMetadata: SysBOUIMetadata = {
   },
   record: {
     tabs: [],
-    fieldOverrides: { enabled: { createDefaultValue: true } },
+    fieldOverrides: {},
   },
 };
 

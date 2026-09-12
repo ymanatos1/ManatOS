@@ -395,74 +395,14 @@
   min-height: 0;
 }
 
-/* Parsed expression AST is displayed only in selected calculated-node properties. */
-.ctx-debug-ast-section {
-  padding: 0.45rem 0 0.1rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-  font-size: 0.7rem;
-}
-
-.ctx-debug-ast-title {
-  margin-bottom: 0.3rem;
-  color: #52606d;
-  font-family: inherit;
-  font-weight: 700;
-}
-
-.ctx-debug-ast-tree,
-.ctx-debug-ast-children {
-  margin: 0;
-  padding-left: 1rem;
-  list-style: none;
-}
-
-.ctx-debug-ast-tree {
-  padding-left: 0;
-}
-
-.ctx-debug-ast-node {
-  position: relative;
-  margin: 0.14rem 0;
-}
-
-.ctx-debug-ast-children {
-  margin-left: 0.35rem;
-  border-left: 1px dotted #b8c7d9;
-}
-
-.ctx-debug-ast-line {
-  display: flex;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.ctx-debug-ast-role {
-  color: #7a8796;
-  font-style: italic;
-}
-
-.ctx-debug-ast-label {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.ctx-debug-ast-variable,
-.ctx-debug-ast-function {
-  color: #0d6efd;
-}
-
-.ctx-debug-ast-binary,
-.ctx-debug-ast-unary {
-  font-weight: 700;
-}
-
 /* Compact in-toolbar CTX variable finder. */
 .ctx-debug-find {
-  min-width: 7rem;
-  max-width: 11rem;
+  min-width: 20rem;
+  max-width: 28rem;
 }
-.ctx-debug-find input {
-  width: 100%;
+
+.ctx-debug-find > select,
+.ctx-debug-find > input[type='text'] {
   min-width: 0;
   border: 1px solid var(--bs-border-color);
   border-radius: 0.2rem;
@@ -505,6 +445,23 @@
 
 .ctx-debug-find {
   position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 1fr) auto;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ctx-debug-find-regex {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ctx-debug-find-regex input {
+  margin: 0;
 }
 
 .ctx-debug-find-history {
@@ -540,49 +497,6 @@
   background: #eef5ff;
   color: #0d6efd;
   outline: 0;
-}
-
-/* AST rows read left-to-right as: value/operator (role) - node type. */
-.ctx-debug-ast-line {
-  align-items: baseline;
-  gap: 0.28rem;
-}
-
-.ctx-debug-ast-icon {
-  width: 0.9rem;
-  flex: 0 0 0.9rem;
-  color: #64748b;
-  font-size: 0.72rem;
-  text-align: center;
-}
-
-.ctx-debug-ast-value {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.ctx-debug-ast-role {
-  color: #7a8796;
-  font-style: italic;
-}
-
-.ctx-debug-ast-separator,
-.ctx-debug-ast-type {
-  color: #52606d;
-}
-
-.ctx-debug-ast-type {
-  font-style: italic;
-}
-
-.ctx-debug-ast-variable,
-.ctx-debug-ast-function {
-  color: #0d6efd;
-}
-
-.ctx-debug-ast-binary,
-.ctx-debug-ast-unary {
-  font-weight: 700;
 }
 
 /* Only the selected variable name is bold; the descriptor is deliberately lighter. */
@@ -1615,4 +1529,133 @@ html[data-manatos-debug-visible='true'][data-manatos-debug-tab='apiTraffic']
 
 .ctx-target-view-properties-panel {
   flex: 0 0 auto;
+}
+
+/* Two-row CTX finder: toolbar toggles a dedicated search strip below it. */
+.ctx-debug-find-row {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) 1.15rem 1.15rem 4.35rem 4.85rem;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.55rem;
+  border-bottom: 1px solid var(--manatos-border);
+  background: var(--bs-body-bg);
+}
+
+.ctx-debug-find-input-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.ctx-debug-find-row input[type='text'],
+.ctx-debug-find-row select {
+  width: 100%;
+  min-width: 0;
+  height: 1.75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.4rem;
+  font: inherit;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+.ctx-debug-find-row select {
+  width: 100%;
+  min-width: 0;
+  padding-right: 1.15rem;
+}
+
+.ctx-debug-find-row > .debug-tool-button {
+  width: 1.15rem;
+  min-width: 1.15rem;
+  padding-inline: 0;
+}
+
+.ctx-debug-find-row .ctx-debug-find-history {
+  top: calc(100% + 0.15rem);
+}
+
+.ctx-debug-properties-heading #ctxDebugPropertiesTitle {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.ctx-debug-properties-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.08rem;
+  padding: 0.12rem 0.45rem 0;
+  border-bottom: 1px solid #d5dde7;
+}
+
+.ctx-debug-properties-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0.12rem 0.4rem;
+  background: transparent;
+  color: #52606d;
+  font: inherit;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.ctx-debug-properties-tab.is-active {
+  border-bottom-color: #0d6efd;
+  color: #0d6efd;
+}
+
+.ctx-debug-subscriber-heading {
+  margin: 0.28rem 0.45rem 0.08rem;
+  font-size: 0.69rem;
+  font-weight: 700;
+}
+
+.ctx-debug-subscriber-list {
+  margin: 0.08rem 0.55rem 0.3rem 1.45rem;
+  padding: 0;
+  font-size: 0.69rem;
+  line-height: 1.22;
+}
+
+.ctx-debug-subscriber-list li {
+  margin-bottom: 0.16rem;
+}
+
+.ctx-debug-subscriber-kind {
+  color: #6c757d;
+  font-size: 0.66rem;
+}
+
+.ctx-debug-subscriber-paths {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+  color: #52606d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.66rem;
+  line-height: 1.18;
+}
+
+.ctx-debug-properties-empty {
+  padding: 0.6rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.ctx-debug-selection-path {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--manatos-border);
+  background: #fff;
+  color: #4f5f70;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }

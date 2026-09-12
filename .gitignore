@@ -10,3 +10,6 @@ data/database.json.tmp
 Thumbs.db
 
 *.zip
+
+# Generated browser vendor bundles/assets.
+ui/public/vendor/

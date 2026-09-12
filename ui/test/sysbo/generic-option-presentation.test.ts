@@ -20,7 +20,7 @@ describe('generic discrete-value option presentation', () => {
     const rowCells = source('../../views/components/sysbo/list/list-row-cells.ejs');
     const related = source('../../views/components/sysbo/entry/content/related-collections.ejs');
     const entry = source('../../views/components/runtime/entity-entry.ejs');
-    const supplemental = source('../../src/routes/sysbo/entry-supplemental-data.ts');
+    const supplemental = source('../../src/routes/sysbo/entry/supplemental-data.ts');
 
     expect(list).toContain('const optionItem = metadataOptionItemForField;');
     expect(list).toContain("include('../sysbo/list/list-row-cells'");
@@ -50,14 +50,12 @@ describe('generic discrete-value option presentation', () => {
 
   it('keeps optional provider option traits structurally present for strict expression paths', async () => {
     const commonMetadata = source('../../../shared/src/metadata/bo/common.ts');
-    expect(commonMetadata).toContain(
-      "SysBOExtAuthProviderType.Google, label: 'Google', icon: 'google', tenant: null",
-    );
-    expect(commonMetadata).toContain(
-      "SysBOExtAuthProviderType.Facebook, label: 'Facebook', icon: 'facebook', tenant: null",
-    );
-    expect(commonMetadata).toContain(
-      "SysBOExtAuthProviderType.GitHub, label: 'GitHub', icon: 'github', tenant: null",
-    );
+    for (const provider of ['Google', 'Facebook', 'GitHub']) {
+      expect(commonMetadata).toMatch(
+        new RegExp(
+          `value:\\s*SysBOExtAuthProviderType\\.${provider},[\\s\\S]*?tenant:\\s*null,[\\s\\S]*?callbackPath:`,
+        ),
+      );
+    }
   });
 });

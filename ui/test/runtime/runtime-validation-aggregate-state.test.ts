@@ -137,7 +137,7 @@ describe('UI Runtime V2 validation + aggregate entry state', () => {
     expect(field?.dirty).toBe(false);
     expect(field?.validationIssues[0]?.code).toBe('required');
     expect(field?.ux.required).toBe(true);
-    expect(projection.level?.state.valid).toBe(false);
+    expect(projection.level?.control.state.valid).toBe(false);
 
     validation.dispose();
     aggregate.dispose();
@@ -189,5 +189,92 @@ describe('UI Runtime V2 validation + aggregate entry state', () => {
     );
     edit.validation.dispose();
     edit.aggregate.dispose();
+  });
+
+  it('reacts to owner-qualified CTX dependencies from an ancestor surface', () => {
+    const events = new SurfaceRuntime();
+    const parent = events.open({ host: 'page', kind: 'list', mode: 'browse', name: 'parents' });
+    const surface = events.open({
+      parentId: parent.id,
+      host: 'popup',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'child',
+      entityKey: 'sys-principals',
+    });
+    const entry = new EntryStateRuntime(surface.id, events.events);
+    entry.defineField('name');
+    const validation = new ValidationRuntime(surface.id, entry.fields, events.events);
+    let allowed = false;
+    validation.register({
+      id: 'ancestor-policy',
+      target: 'name',
+      dependsOn: [`surface:${parent.id}:policy.allowed`],
+      validate: () =>
+        allowed
+          ? null
+          : { code: 'policy', message: 'Blocked by parent policy.', severity: 'error' },
+    });
+    entry.initialize({ server: { name: 'Yiannis' } });
+    expect(entry.fields.require('name').valid).toBe(false);
+
+    allowed = true;
+    events.events.emit({
+      type: 'ctx:changed',
+      surfaceId: parent.id,
+      source: 'engine',
+      payload: { path: 'policy.allowed', oldValue: false, newValue: true },
+    });
+    expect(entry.fields.require('name').valid).toBe(true);
+    validation.dispose();
+    entry.dispose();
+  });
+
+  it('does not validate reactive dependencies against a partially initialized entry', () => {
+    const { surfaces, surface, entry, validation, aggregate } = createEntry();
+    let evaluations = 0;
+    validation.register({
+      id: 'deferred-validation',
+      target: 'lastName',
+      dependsOn: ['state.valid'],
+      validate: () => {
+        evaluations += 1;
+        return null;
+      },
+    });
+
+    surfaces.setState(surface.id, 'valid', false, 'engine');
+    expect(evaluations).toBe(0);
+
+    entry.initialize({});
+    expect(evaluations).toBe(1);
+
+    surfaces.setState(surface.id, 'valid', true, 'engine');
+    expect(evaluations).toBe(2);
+
+    validation.dispose();
+    aggregate.dispose();
+  });
+
+  it('validates a local field dependency once per canonical event', () => {
+    const { entry, validation, aggregate } = createEntry();
+    let evaluations = 0;
+    validation.register({
+      id: 'single-event-validation',
+      target: 'lastName',
+      dependsOn: ['fields.firstName.value'],
+      validate: () => {
+        evaluations += 1;
+        return null;
+      },
+    });
+    entry.initialize({});
+    expect(evaluations).toBe(1);
+
+    entry.fields.setValue({ field: 'firstName', value: 'Yiannis', source: 'user' });
+    expect(evaluations).toBe(2);
+
+    validation.dispose();
+    aggregate.dispose();
   });
 });

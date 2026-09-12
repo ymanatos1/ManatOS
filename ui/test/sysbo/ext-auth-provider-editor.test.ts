@@ -4,8 +4,6 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { sourceWithoutWhitespace } from '../support/source-contract.js';
-
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const source = (path: string) => readFile(resolve(testDirectory, '..', '..', path), 'utf8');
 
@@ -18,12 +16,12 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(metadata).toContain("contentKey: 'secretsHelp'");
     expect(metadata).toContain('collapsible: true');
     expect(metadata.match(/initiallyCollapsed: true/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(metadata).toMatch(
-      /span:\s*\{\s*expression:\s*['"]provider\.option\.tenant != null \? 6 : 12['"]\s*\}/,
-    );
+    expect(metadata).toContain("{ kind: 'field', field: 'callbackPath', span: 12 }");
+    expect(metadata).not.toContain("#level.fields.provider.value === 'microsoft' ? 6 : 12");
     expect(metadata).toContain('editable: { expression: "mode === \'create\'" }');
-    expect(metadata).toContain('provider.option.tenant != null');
-    expect(metadata).not.toContain("provider.value === 'microsoft'");
+    expect(metadata).toContain("#level.fields.provider.value === 'microsoft'");
+    expect(metadata).not.toContain('expression: "provider.value');
+    expect(metadata).not.toContain("expression: 'provider.value");
   });
 
   it('keeps canonical provider fields on the dispatcher and transient secrets outside entity field-components', async () => {
@@ -41,6 +39,7 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(credentials).toContain('data-provider-change-credentials');
     expect(credentials).toContain('data-provider-credential-action');
     expect(credentials).toContain('data-provider-verification-proof');
+    expect(credentials).not.toContain('data-form-state-contributor');
     expect(credentials).not.toContain("|| 'microsoft'");
     expect(credentials).toContain(
       'const hasStoredPair = Boolean(item.clientId) && hasStoredSecret;',
@@ -56,7 +55,7 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(css).toContain('.metadata-workflow-input {');
   });
 
-  it('uses one provider runtime and one canonical dirty predicate for Save and Cancel navigation', async () => {
+  it('uses one provider runtime and explicit private contributors for Save and Cancel navigation', async () => {
     const entryState = await source('public/js/sysbo/entry/state.js');
     const popupRuntime = await source('public/js/popups/popup-runtime.js');
     const runtime = await source('public/js/auth/external-provider.js');
@@ -69,11 +68,19 @@ describe('external authentication provider metadata-driven editor', () => {
     );
     expect(runtime).toContain('External-auth provider compound UI component.');
 
-    // Save enablement and the unsaved-navigation modal must agree. Compound
-    // components can own posted values that are not projected into entry.
-    expect(sourceWithoutWhitespace(entryState)).toContain(
-      sourceWithoutWhitespace("const changed = typeof sharedState.isDirty === 'function'"),
-    );
+    // Save enablement and the unsaved-navigation modal must agree. Canonical
+    // entity fields use CTX dirty projections; provider credentials own their
+    // private reversible contributor without exposing values to the shell.
+    expect(entryState).toContain('isFieldDirty: fieldDirty');
+    expect(entryState).toContain('isContributorDirty: () =>');
+    expect(entryState).toContain('fieldDirty,');
+    expect(entryState).toContain('contributorDirty,');
+    expect(runtime).toContain("new CustomEvent('manatos:form-contributor-register'");
+    expect(runtime).toContain("id: 'provider-credentials'");
+    expect(runtime).not.toContain("Symbol.for('ManatOS.SysBO.EntryFormState')");
+    expect(runtime).not.toContain('window.manatosSysBOFormState');
+    expect(runtime).toContain('credentialTransactionSnapshot');
+    expect(runtime).toContain('credentialTransactionValid');
     expect(entryState).not.toContain('const ctxDirty =');
     expect(popupRuntime).toContain("modal.addEventListener('hide.bs.modal'");
   });
@@ -99,10 +106,30 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(renderer).not.toContain("definition.key === 'sys-ext-auth-providers'");
   });
 
+  it('loads canonical field-component services before expression and entry-policy runtimes', async () => {
+    const shell = await source('views/layout/shell.ejs');
+    const fieldRuntime = shell.indexOf('/js/sysbo/entry/field-runtime.js');
+    const initializationRuntime = shell.indexOf('/js/runtime/entry-initialization-runtime.js');
+    const stateRuntime = shell.indexOf('/js/sysbo/entry/state.js');
+    const expressionRuntime = shell.indexOf('/js/sysbo/entry/expression-runtime.js');
+    const formRuntime = shell.indexOf('/js/sysbo/entry/form-runtime.js');
+    const policyRuntime = shell.indexOf('/js/runtime/entry-policy-runtime.js');
+
+    expect(fieldRuntime).toBeGreaterThanOrEqual(0);
+    expect(initializationRuntime).toBeGreaterThan(fieldRuntime);
+    expect(stateRuntime).toBeGreaterThan(initializationRuntime);
+    expect(expressionRuntime).toBeGreaterThan(stateRuntime);
+    expect(formRuntime).toBeGreaterThan(expressionRuntime);
+    expect(policyRuntime).toBeGreaterThan(formRuntime);
+  });
+
   it('creates only from unconfigured provider options and applies provider defaults live', async () => {
-    const supplemental = await source('src/routes/sysbo/entry-supplemental-data.ts');
+    const supplemental = await source('src/routes/sysbo/entry/supplemental-data.ts');
     const renderer = await source('views/components/runtime/entity-entry.ejs');
     const runtime = await source('public/js/auth/external-provider.js');
+    const fieldRuntime = await source('public/js/sysbo/entry/field-runtime.js');
+    const formRuntime = await source('public/js/sysbo/entry/form-runtime.js');
+    const expressionRuntime = await source('public/js/sysbo/entry/expression-runtime.js');
 
     expect(supplemental).toContain('const configuredKeys = new Set');
     expect(supplemental).toContain('externalAuthProviderDefinitions.filter');
@@ -114,13 +141,51 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(runtime).toContain('optionMetadata(option).callbackPath');
     expect(runtime).toContain('providerIcon.className = `bi bi-${icon}`');
     expect(runtime).toContain("replace(/^bi-/, '')");
-    expect(runtime).toContain('find((option) => option.value && !option.disabled)');
+    expect(runtime).not.toContain('find((option) => option.value && !option.disabled)');
     expect(runtime).toContain("callback.dispatchEvent(new Event('change', { bubbles: true }))");
+    expect(fieldRuntime).not.toContain('const getFieldOptions =');
+    expect(fieldRuntime).not.toContain('const getFieldOption =');
+    expect(formRuntime).toContain('const fieldOptionFromCtx = (key, value) =>');
+    expect(formRuntime).toContain('runtime?.get?.(`${entryPageFieldsPath}.${key}.options`)');
+    expect(formRuntime).not.toContain('getFieldOption?.(control)');
+    expect(formRuntime).not.toContain('getFieldOptions?.(control)');
+    expect(formRuntime).not.toContain('let value = { value: fieldValue, option, options };');
+
+    const metadata = await source('../shared/src/metadata/bo/identity.ts');
+    expect(metadata).toContain("FirstCtx($entity-fields.provider.enumItems, 'value')");
+    expect(metadata).toContain(
+      "FindCtx($entity-fields.provider.enumItems, 'value', $entry-current.provider, 'callbackPath')",
+    );
+    expect(expressionRuntime).toContain("if (node.functionName === 'FirstCtx')");
+    expect(expressionRuntime).toContain("if (node.functionName === 'FindCtx')");
+    expect(expressionRuntime).toContain('runtime.resolveVariableWithPath(node');
+    expect(expressionRuntime).not.toContain('runtime?.resolvePath?.(node.path, scopePath)');
+    expect(renderer).toContain("debuggingStartDisplayPath: '#level.entry.current'");
+    expect(runtime).not.toContain('if (createMode && !provider.value)');
+
+    const entryPolicy = await source('public/js/runtime/entry-policy-runtime.js');
+    expect(entryPolicy).toContain('setFieldValue?.(control, value, { emit: false })');
+    expect(entryPolicy).toContain('ctx.updateField(path, key, value, option, cause)');
+    expect(entryPolicy).toContain('const applyCanonicalCreateDefaults = async () =>');
+    expect(entryPolicy).toContain("field, 'createDefaultValue'");
+    expect(entryPolicy).toContain("setField(key, value, 'canonical-create-default')");
+    expect(entryPolicy).toContain('ctx.get(`${path}.fields.${key}.options`)');
+    expect(await source('public/js/runtime/ui-host-runtime.js')).toContain(
+      'const contextualOptions = Array.isArray(referenceData?.[key]) ? referenceData[key] : null;',
+    );
+    expect(entryPolicy).not.toContain('getFieldOptions?.(control)');
+    expect(entryPolicy).not.toContain('getFieldOption?.(control)');
+    expect(entryPolicy).toContain('reconcileRestrictedOptionValue(value, allowed)');
+    expect(entryPolicy).toContain('await applyCanonicalCreateDefaults();');
+    expect(entryPolicy).toContain('expressions.evaluateAstOwnedAt(ast, path)');
+    expect(entryPolicy).not.toContain('entryInitialization?.path ?? path');
+    expect(entryPolicy).not.toContain('syncCurrentField');
+    expect(entryPolicy).not.toContain('setFieldValue?.(control, value, { emit: true })');
   });
 
   it('resolves immutable provider identity server-side when saving an existing record', async () => {
-    const providerWrite = await source('src/routes/sysbo/external-provider-write.ts');
-    const formPayload = await source('src/routes/sysbo/form-payload.ts');
+    const providerWrite = await source('src/routes/sysbo/entry/external-provider-write.ts');
+    const formPayload = await source('src/routes/sysbo/entry/form-payload.ts');
 
     // Read-only enum/select controls are disabled in the browser and therefore
     // are not part of FormData. Existing provider saves must resolve the immutable
@@ -153,7 +218,7 @@ describe('external authentication provider metadata-driven editor', () => {
 
   it('keeps credential tools screen-local and Save as the only persistence boundary', async () => {
     const runtime = await source('public/js/auth/external-provider.js');
-    const providerWrite = await source('src/routes/sysbo/external-provider-write.ts');
+    const providerWrite = await source('src/routes/sysbo/entry/external-provider-write.ts');
     expect(runtime).toContain("credentialAction.value = 'remove'");
     expect(runtime).toContain("credentialAction.value = 'replace'");
     expect(runtime).not.toContain('window.location.replace(url.toString())');

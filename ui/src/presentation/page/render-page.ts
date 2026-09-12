@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
+import { hasUIEntityPermission } from '../../sysbo/permissions.js';
 import { popupContent } from '../popup/popup-content.js';
 import {
   buildCalculatedContextDebuggingRows,
@@ -80,8 +81,9 @@ export async function renderPage(res: Response, view: string, model: Record<stri
     allSysBOUIMetadata[ownerEntityKey as keyof typeof allSysBOUIMetadata]?.record
       .relatedCollections?.[collectionKey] ?? null;
 
-  // Portable UI-expression contracts carry source only. Each execution host
-  // compiles/caches its own runtime-local AST when evaluation is actually needed.
+  // Authored expression source is the durable presentation/debugging contract. Browser
+  // execution resolves that source through the UI process's canonical compile/cache boundary;
+  // rendered page models never carry executable AST objects.
 
   /*
    * Host boundary: EJS may use the server's render-time UI projection to compose
@@ -111,6 +113,7 @@ export async function renderPage(res: Response, view: string, model: Record<stri
     metadataOptionToneClass,
     entryRepresentationFor,
     relatedCollectionMetadataFor,
+    hasUIEntityPermission,
     breadcrumbItems: Array.isArray(viewModel.breadcrumbItems) ? viewModel.breadcrumbItems : [],
     relatedEntityMetadata: allManatOSObjectMetadata,
     relatedEntityUIMetadata: allSysBOUIMetadata,

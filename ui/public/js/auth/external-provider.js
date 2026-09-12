@@ -34,6 +34,43 @@
 
   if (!(provider instanceof HTMLSelectElement) || !(callback instanceof HTMLInputElement)) return;
 
+  const credentialTransactionSnapshot = () =>
+    JSON.stringify({
+      action: credentialAction instanceof HTMLInputElement ? credentialAction.value : '',
+      proof: verificationProof instanceof HTMLInputElement ? verificationProof.value : '',
+      clientId: clientId instanceof HTMLInputElement ? clientId.value : '',
+      clientSecret: clientSecret instanceof HTMLInputElement ? clientSecret.value : '',
+    });
+  let credentialTransactionBaseline = null;
+  const credentialTransactionValid = () =>
+    [clientId, clientSecret].every(
+      (control) => !(control instanceof HTMLInputElement) || control.checkValidity(),
+    );
+  const registerCredentialContributor = () => {
+    form.dispatchEvent(
+      new CustomEvent('manatos:form-contributor-register', {
+        bubbles: true,
+        detail: {
+          id: 'provider-credentials',
+          contributor: () => ({
+            dirty:
+              credentialTransactionBaseline !== null &&
+              credentialTransactionSnapshot() !== credentialTransactionBaseline,
+            valid: credentialTransactionValid(),
+            blocksPersistence: false,
+          }),
+        },
+      }),
+    );
+  };
+  registerCredentialContributor();
+  form.addEventListener('manatos:form-state-ready', registerCredentialContributor);
+  const commitCredentialBaseline = () => {
+    credentialTransactionBaseline = credentialTransactionSnapshot();
+  };
+  form.addEventListener('manatos:form-baseline-captured', commitCredentialBaseline);
+  form.addEventListener('manatos:form-saved', commitCredentialBaseline);
+
   const definitionSource = form.querySelector('[data-external-provider-definitions]');
   let metadataDefinitions = [];
   try {
@@ -316,7 +353,7 @@
       completed = true;
       if (pollTimer) window.clearTimeout(pollTimer);
       if (providerReturnHandler) window.removeEventListener('message', providerReturnHandler);
-      window.manatosBusy?.hide();
+      window.ManatOS?.busy?.hide();
     };
 
     const closeTestWindow = () => {
@@ -359,7 +396,7 @@
         return;
       }
 
-      window.manatosBusy?.show({
+      window.ManatOS?.busy?.show({
         title: 'Testing ' + providerLabel() + ' credentials…',
         message:
           'Complete authentication in the provider window. We will continue automatically when verification finishes.',
@@ -379,6 +416,7 @@
                 Accept: 'application/json',
               },
               body: cancelBody.toString(),
+              manatosBusy: false,
             });
 
             cancellationConfirmed = cancelResponse.ok;
@@ -409,6 +447,7 @@
           const statusResponse = await fetch(payload.statusUrl, {
             headers: { Accept: 'application/json' },
             cache: 'no-store',
+            manatosBusy: false,
           });
           const statusPayload = await statusResponse.json().catch(() => null);
 
@@ -575,18 +614,10 @@
     notifyFormState();
   });
 
-  if (createMode && !provider.value) {
-    const firstAvailable =
-      metadataDefinitions[0]?.provider ||
-      [...provider.options].find((option) => option.value && !option.disabled)?.value ||
-      '';
-    if (firstAvailable) {
-      provider.value = String(firstAvailable);
-      provider.dispatchEvent(new Event('change', { bubbles: true }));
-    } else {
-      apply();
-    }
-  } else {
-    apply();
-  }
+  /*
+   * Canonical create defaults are owned by the generic metadata policy runtime.
+   * This component reacts to the resulting provider value; it must not establish
+   * a competing provider default of its own.
+   */
+  apply();
 })();

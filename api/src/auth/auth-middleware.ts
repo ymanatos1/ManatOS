@@ -7,12 +7,14 @@ import {
   SysBOUserRole,
 } from '@manatos/shared';
 
+import { operationMiddleware } from '../http/middleware/operation-middleware.js';
+
 import { accessTokenStore } from './access-token-store.js';
 
 /**
  * Require a valid API Bearer session.
  */
-export const requireAuthenticated: RequestHandler = (req, _res, next) => {
+const requireAuthenticatedCore: RequestHandler = (req, _res, next) => {
   const authorization = req.header('authorization');
 
   /*
@@ -58,11 +60,17 @@ export const requireAuthenticated: RequestHandler = (req, _res, next) => {
   next();
 };
 
+export const requireAuthenticated = operationMiddleware(
+  'Authenticate API session',
+  requireAuthenticatedCore,
+  'Authenticating request',
+);
+
 /**
  * Restrict an authenticated endpoint to specified roles.
  */
 export function requireRole(...roles: SysBOUserRole[]): RequestHandler {
-  return (req, _res, next) => {
+  const middleware: RequestHandler = (req, _res, next) => {
     if (!req.auth || !roles.includes(req.auth.role)) {
       next(new ForbiddenAppError());
 
@@ -71,6 +79,8 @@ export function requireRole(...roles: SysBOUserRole[]): RequestHandler {
 
     next();
   };
+
+  return operationMiddleware('Authorize API role', middleware, 'Authorizing request');
 }
 
 /**

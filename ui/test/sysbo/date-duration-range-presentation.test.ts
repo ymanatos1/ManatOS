@@ -43,12 +43,11 @@ describe('generic date-duration-range component', () => {
     expect(canonicalMetadata).toContain(
       'validFrom == null || validUntil == null ? null : CalendarDurationBetween(validFrom, validUntil)',
     );
-    expect(canonicalMetadata).toContain("triggeredBy: ['validFrom', 'validityDuration']");
-    expect(canonicalMetadata).toContain("triggeredBy: ['validUntil']");
+    expect(canonicalMetadata).not.toContain('triggeredBy');
     expect(fieldRenderer).toContain('data-field-calculation-expression');
-    expect(fieldRenderer).toContain('data-field-calculation-triggered-by');
+    expect(fieldRenderer).not.toContain('data-field-calculation-triggered-by');
     expect(runtime).toContain("kind: 'field-calculation'");
-    expect(runtime).toContain('change?.cause?.triggerPath');
+    expect(runtime).toContain('expressionDependencyPaths(ast)');
     expect(runtime).toContain('rootEventId');
     expect(runtime).not.toContain('WeakSet');
 

@@ -4,7 +4,7 @@
   // A debugger script can be re-initialized by development navigation/hot reload.
   // Dispose the prior poll timer first so one visible viewer can never create
   // multiple concurrent /bo/debug/api-traffic polling loops.
-  window.__manatosApiTrafficRuntime?.dispose?.();
+  window.ManatOS?.debug?.apiTraffic?.dispose?.();
 
   const panel = document.getElementById('apiTrafficPanel');
   const list = document.getElementById('apiTrafficList');
@@ -34,7 +34,6 @@
   // they intentionally survive browser/UI restarts.
   const ROUTE_STATE_KEY = 'manatos.debug.apiTraffic.routes.v2';
   const ROUTE_CATALOG_KEY = 'manatos.debug.apiTraffic.routeCatalog.v1';
-  const LEGACY_ROUTE_STATE_KEY = `manatos.debug.apiTraffic.routes.v1.${bootId}`;
   const COLUMN_STATE_KEY = `manatos.debug.apiTraffic.columns.v1.${bootId}`;
   // Counts survive full-page navigation but remain tied to the UI boot id.
   // A server/system restart therefore gets a fresh key automatically.
@@ -83,12 +82,7 @@
     lastId: null,
     selectedId: typeof saved.selectedId === 'string' ? saved.selectedId : null,
     detailTab: saved.detailTab === 'response' ? 'response' : 'request',
-    hiddenRoutes: new Set(
-      (() => {
-        const current = readLocalArray(ROUTE_STATE_KEY);
-        return current.length ? current : readLocalArray(LEGACY_ROUTE_STATE_KEY);
-      })(),
-    ),
+    hiddenRoutes: new Set(readLocalArray(ROUTE_STATE_KEY)),
     knownRoutes: new Set(readLocalArray(ROUTE_CATALOG_KEY)),
     // Boot-scoped counters live in sessionStorage, never durable localStorage.
     // Persisting seen request ids prevents a full page navigation from counting
@@ -389,7 +383,7 @@
       state.paused ||
       state.pollingSuspended ||
       state.pollInFlight ||
-      window.ManatOSConnectivity?.unavailable === true ||
+      window.ManatOS?.connectivity?.unavailable === true ||
       panel.classList.contains('d-none')
     )
       return;
@@ -408,13 +402,14 @@
         response = await fetch(`/bo/debug/api-traffic${query}`, {
           headers: { Accept: 'application/json' },
           cache: 'no-store',
+          manatosBusy: false,
         });
       } catch (error) {
-        window.ManatOSConnectivity?.reportFailure?.('api-traffic');
+        window.ManatOS?.connectivity?.reportFailure?.('api-traffic');
         throw error;
       }
       // HTTP errors are server responses, not transport outages.
-      window.ManatOSConnectivity?.reportSuccess?.('api-traffic');
+      window.ManatOS?.connectivity?.reportSuccess?.('api-traffic');
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
       const incoming = Array.isArray(payload.entries) ? payload.entries : [];
@@ -433,7 +428,7 @@
       render();
     } catch {
       state.consecutiveFailures += 1;
-      if (state.consecutiveFailures >= 3 || window.ManatOSConnectivity?.unavailable === true) {
+      if (state.consecutiveFailures >= 3 || window.ManatOS?.connectivity?.unavailable === true) {
         state.pollingSuspended = true;
       }
     } finally {
@@ -566,6 +561,7 @@
         method: 'POST',
         headers: { Accept: 'application/json', 'content-type': 'application/json' },
         body: JSON.stringify({ _csrf: csrf }),
+        manatosBusy: false,
       });
     } catch {
       /* local reset still proceeds */
@@ -676,10 +672,12 @@
   pollTimer = window.setInterval(() => {
     void poll();
   }, 1000);
-  window.__manatosApiTrafficRuntime = {
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.debug = window.ManatOS.debug || {};
+  window.ManatOS.debug.apiTraffic = Object.freeze({
     dispose: () => {
       if (pollTimer !== null) window.clearInterval(pollTimer);
       pollTimer = null;
     },
-  };
+  });
 })();

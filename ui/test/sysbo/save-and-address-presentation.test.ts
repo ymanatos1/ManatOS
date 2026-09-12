@@ -10,13 +10,25 @@ const ui = (path: string) => readFile(resolve(here, '..', '..', path), 'utf8');
 const shared = (path: string) => readFile(resolve(here, '..', '..', '..', 'shared', path), 'utf8');
 const api = (path: string) => readFile(resolve(here, '..', '..', '..', 'api', path), 'utf8');
 
+describe('pictures replacement persistence contract', () => {
+  it('replaces a dirty pictures field as one complete ordered value', async () => {
+    const entryWrite = await ui('src/routes/sysbo/entry/write.ts');
+    expect(entryWrite).toContain('change.changed !== true');
+    expect(entryWrite).toContain('{ changed: true, pictures }');
+    expect(entryWrite).not.toContain('tempToPersisted');
+    expect(entryWrite).not.toContain('/$order');
+  });
+});
+
 describe('metadata entry Save lifecycle and Principal addresses', () => {
   it('uses one shared split Save action and keeps Save-in-place distinct from Save-and-Close', async () => {
     const renderer = await ui('views/components/runtime/entity-entry.ejs');
     const split = await ui('views/components/sysbo/entry/shell/save-split-action.ejs');
     const entryState = await ui('public/js/sysbo/entry/state.js');
     const entrySave = await ui('public/js/sysbo/entry/save.js');
-    const entryWrite = await ui('src/routes/sysbo/entry-write.ts');
+    const reauth = await ui('public/js/auth/reauth.js');
+    const shell = await ui('views/layout/shell.ejs');
+    const entryWrite = await ui('src/routes/sysbo/entry/write.ts');
 
     expect(renderer).toContain("include('../sysbo/entry/shell/save-split-action'");
     expect(split).toContain('value="stay"');
@@ -39,13 +51,26 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
       sourceWithoutWhitespace("form.dispatchEvent(new CustomEvent('manatos:form-saved'"),
     );
     expect(entrySave).toContain("'X-Requested-With': 'ManatOS-InPlace-Save'");
+    expect(entrySave).toContain("payload?.error?.code === 'UI_API_SESSION_EXPIRED'");
+    expect(entrySave).toContain('window.ManatOS?.reauthenticate?.()');
+    expect(entrySave).not.toContain('manatos:entry-draft:');
+    expect(entrySave).not.toContain('restoreDraft');
+    expect(entrySave).not.toContain('saveDraft');
+    expect(entryState).not.toContain('Local draft restored');
+    expect(reauth).toContain('window.ManatOS.reauthenticate = reauthenticate');
+    expect(reauth).toContain("'X-ManatOS-Reauthenticate': '1'");
+    expect(shell).toContain('/js/auth/reauth.js');
     expect(entrySave).toContain('const body = new URLSearchParams();');
     expect(entrySave).toContain('new FormData(form).entries()');
     expect(entrySave).not.toContain('const body = new FormData(form);');
-    expect(entrySave).toContain("form.dataset.recordMode === 'create'");
+    expect(entrySave).toContain("!['stay', 'close'].includes(saveMode)");
+    expect(entryWrite).toContain(
+      "const browserSave = req.get('X-Requested-With') === 'ManatOS-InPlace-Save';",
+    );
+    expect(entryWrite).toContain("created: !String(req.body.id ?? '')");
     expect(entrySave).toContain("document.body.classList.contains('entry-popup-host')");
     expect(entrySave).toContain("type: 'manatos:entry-popup-saved'");
-    expect(entrySave).toContain('close: false');
+    expect(entrySave).toContain('close: payload.data?.close === true');
     expect(entrySave).toContain("let path = 'ctx.ui.level'");
     expect(entrySave).not.toContain('runtime.replace(currentPath');
     expect(entrySave).toContain('runtime.replace(fieldPath, value');
@@ -53,13 +78,19 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     expect(entrySave).toContain('runtime.replace(baselinePath, value');
     expect(entrySave).toContain('const persistedValues = Object.fromEntries(');
     expect(entrySave).not.toContain('isV2Surface');
+    expect(entryState).toContain("form.dataset.saveContinuation = destination || '';");
+    expect(entryState).toContain("form.addEventListener('manatos:form-saved', () => {");
+    expect(entryState).toContain('queueMicrotask(() => location.replace(destination))');
+    expect(entryState).toContain('form.requestSubmit(save);');
+    expect(entryState).toContain("'manatos:form-save-failed'");
+    expect(entrySave).toContain("new CustomEvent('manatos:form-save-failed'");
   });
 
   it('models addresses as canonical internal SysBOs and exposes them through the reusable Contact collection editor', async () => {
     const domain = await shared('src/domain/entities.ts');
     const metadata = await shared('src/metadata/bo/contact.ts');
     const uiMetadata = await shared('src/metadata/ui/business.ts');
-    const service = await api('src/services/sysbo-principal-service.ts');
+    const service = await api('src/services/sysbo/principal-service.ts');
     const collection = await ui('views/components/sysbo/entry/content/collection-editor.ejs');
 
     expect(domain).toContain('export interface SysAddress extends SysBOEntity');
@@ -80,7 +111,7 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
   it('keeps the split Save menu visually aligned with the primary action and sanitizes failed-save CTX re-renders', async () => {
     const save = await ui('views/components/sysbo/entry/shell/save-split-action.ejs');
     const pagesCss = await ui('public/css/pages.css');
-    const entryWrite = await ui('src/routes/sysbo/entry-write.ts');
+    const entryWrite = await ui('src/routes/sysbo/entry/write.ts');
     expect(save).toContain('metadata-save-dropdown-menu');
     expect(pagesCss).toContain('.metadata-save-dropdown-menu');
     expect(entryWrite).toContain('Object.keys(definition.boMetadata.fieldDefinition)');

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateEntryAggregatePolicy,
+  calculateEntryContributorAggregate,
   reactiveChangeQueueKey,
   reactiveDependencyMatchesChange,
   reactivePathsOverlap,
@@ -8,7 +9,9 @@ import {
 
 describe('shared V2 reactive and aggregate policy', () => {
   it('uses one canonical parent/child dependency relation', () => {
-    expect(reactivePathsOverlap('ctx.ui.level.state', 'ctx.ui.level.state.dirty')).toBe(true);
+    expect(
+      reactivePathsOverlap('ctx.ui.level.control.state', 'ctx.ui.level.control.state.dirty'),
+    ).toBe(true);
     expect(reactiveDependencyMatchesChange('fields.name.value', 'fields.name.value')).toBe(true);
     expect(reactiveDependencyMatchesChange('fields.name.value', 'fields.other.value')).toBe(false);
   });
@@ -19,7 +22,22 @@ describe('shared V2 reactive and aggregate policy', () => {
     ).toBe('root-1|fields.name.value');
   });
 
-  it('owns the aggregate Save-readiness predicate for scalar and compound state', () => {
+  it('owns contributor reduction and aggregate Save-readiness for scalar and compound state', () => {
+    expect(
+      calculateEntryContributorAggregate([
+        { dirty: true, valid: true },
+        { valid: false, blocksPersistence: true },
+        { blocksPersistence: true },
+      ]),
+    ).toEqual({ dirty: true, valid: false, blocked: true, blockingCount: 2 });
+
+    expect(calculateEntryContributorAggregate([])).toEqual({
+      dirty: false,
+      valid: true,
+      blocked: false,
+      blockingCount: 0,
+    });
+
     expect(
       calculateEntryAggregatePolicy({
         mode: 'edit',

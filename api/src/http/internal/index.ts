@@ -2,8 +2,8 @@ import { Router } from 'express';
 
 import type { IEmailService } from '../../email/email-service.js';
 import type { ExternalIdentityService } from '../../services/index.js';
-import type { SysBOExtAuthProviderService } from '../../services/sys-ext-auth-provider-service.js';
-import type { SysBOUserService } from '../../services/sys-user-service.js';
+import type { SysBOExtAuthProviderService } from '../../services/sysbo/external-auth-provider-service.js';
+import type { SysBOUserService } from '../../services/sysbo/user-service.js';
 import { createInternalAuthRouter } from './auth-router.js';
 import { createInternalEmailRouter } from './email-router.js';
 import { createInternalExternalAuthProviderRouter } from './external-auth-provider-router.js';

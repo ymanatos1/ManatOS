@@ -59,7 +59,6 @@
     <% } %>
     <% if (calculation?.expression) { %>
       data-field-calculation-expression="<%= calculation.expression %>"
-      data-field-calculation-triggered-by="<%= JSON.stringify(calculation.triggeredBy || []) %>"
       data-field-calculation-persisted="<%= calculation.persisted === true ? 'true' : 'false' %>"
     <% } %>
     <% if (visibleExpression) { %>

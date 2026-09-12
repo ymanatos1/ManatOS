@@ -4,7 +4,7 @@ import request from 'supertest';
 
 import { SysBOUserRole } from '@manatos/shared';
 
-import { RelationshipIntegrityService } from '../../src/services/relationship-integrity-service.js';
+import { RelationshipIntegrityService } from '../../src/services/relationships/integrity-service.js';
 
 import {
   bearer,

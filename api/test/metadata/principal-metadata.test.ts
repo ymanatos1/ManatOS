@@ -69,9 +69,11 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       required: true,
     });
     expect(sysBOPrincipalsMetadata.fieldDefinition.name?.calculation).toMatchObject({
-      triggeredBy: ['principalType', 'firstName', 'lastName'],
       persisted: true,
     });
+    expect(sysBOPrincipalsMetadata.fieldDefinition.name?.calculation).not.toHaveProperty(
+      'triggeredBy',
+    );
     expect(sysBOPrincipalsMetadata.entry?.description).toEqual({ field: 'name' });
 
     const context = await createTestApi();

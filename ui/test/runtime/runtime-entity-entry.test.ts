@@ -5,8 +5,9 @@ import { SurfaceRuntime } from '../../src/runtime/surface/surface-runtime.js';
 
 const metadata: ManatOSObjectMetadata<Record<string, unknown>> = {
   key: 'people',
-  name: 'Person',
-  pluralName: 'People',
+  name: 'people',
+  label: 'Person',
+  pluralLabel: 'People',
   primaryField: 'fullName',
   fieldDefinition: {
     firstName: { key: 'firstName', label: 'First name', type: 'string', order: 1, required: true },
@@ -17,7 +18,9 @@ const metadata: ManatOSObjectMetadata<Record<string, unknown>> = {
       type: 'string',
       order: 3,
       readOnly: true,
-      calculation: { expression: "firstName + ' ' + lastName" },
+      calculation: {
+        expression: "#level.entry.current.firstName + ' ' + #level.entry.current.lastName",
+      },
     },
     runtimeStatus: {
       key: 'runtimeStatus',
@@ -47,7 +50,7 @@ const uiMetadata: SysBOUIMetadata = {
         label: 'Details',
         order: 2,
         fields: [],
-        visible: { expression: "firstName === 'Yiannis'" },
+        visible: { expression: "#level.entry.current.firstName === 'Yiannis'" },
       },
     ],
   },
@@ -134,14 +137,129 @@ describe('V2 EntityEntryRuntime', () => {
       entityKey: 'people',
       entry: { facts: { hasRuntimeFact: false } },
       invocation: {
-        defaults: { firstName: 'Yiannis', lastName: 'Manatos' },
-        uiOverrides: { firstName: { editable: false } },
+        rules: {
+          values: {
+            firstName: { default: 'Yiannis' },
+            lastName: { fixed: 'Manatos' },
+          },
+          fields: { firstName: { readOnly: true } },
+        },
       },
     });
     const runtime = new EntityEntryRuntime({ surface, surfaces, metadata, uiMetadata });
     runtime.initialize();
     expect(runtime.values().fullName).toBe('Yiannis Manatos');
     expect(runtime.entry.fields.require('firstName').ux.readonly).toBe(true);
+    expect(runtime.entry.fields.require('lastName').ux.readonly).toBe(true);
+    runtime.dispose();
+  });
+
+  it('reacts to owner-qualified ancestor CTX changes for declarative tab visibility', () => {
+    const surfaces = new SurfaceRuntime();
+    const parent = surfaces.open({ host: 'page', kind: 'list', mode: 'browse', name: 'parents' });
+    const surface = surfaces.open({
+      parentId: parent.id,
+      host: 'popup',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'person',
+      entityKey: 'people',
+      entry: { facts: { hasRuntimeFact: false } },
+    });
+    let root: Readonly<Record<string, unknown>> = {
+      ui: {
+        level: {
+          control: { id: parent.id, host: parent.host, kind: parent.kind },
+          allowOrganization: false,
+          level: { control: { id: surface.id, host: surface.host, kind: surface.kind } },
+        },
+      },
+    };
+    const dynamicUiMetadata: SysBOUIMetadata = {
+      ...uiMetadata,
+      record: {
+        ...uiMetadata.record,
+        tabs: [
+          ...uiMetadata.record.tabs,
+          {
+            id: 'organization',
+            label: 'Organization',
+            order: 3,
+            fields: [],
+            visible: { expression: 'allowOrganization' },
+          },
+        ],
+      },
+    };
+    const runtime = new EntityEntryRuntime({
+      surface,
+      surfaces,
+      metadata,
+      uiMetadata: dynamicUiMetadata,
+      rootSource: () => root,
+    });
+    runtime.initialize({ callerDefaults: { firstName: 'Yiannis', lastName: 'Manatos' } });
+    expect(runtime.visibleTabs().map((tab) => tab.id)).not.toContain('organization');
+
+    root = {
+      ui: {
+        level: {
+          control: { id: parent.id, host: parent.host, kind: parent.kind },
+          allowOrganization: true,
+          level: { control: { id: surface.id, host: surface.host, kind: surface.kind } },
+        },
+      },
+    };
+    surfaces.events.emit({
+      type: 'ctx:changed',
+      surfaceId: parent.id,
+      source: 'engine',
+      payload: { path: 'allowOrganization', oldValue: false, newValue: true },
+    });
+    expect(runtime.visibleTabs().map((tab) => tab.id)).toContain('organization');
+    runtime.dispose();
+  });
+
+  it('does not evaluate declarative tab visibility against partially initialized entry state', () => {
+    const surfaces = new SurfaceRuntime();
+    const surface = surfaces.open({
+      host: 'page',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'person',
+      entityKey: 'people',
+      entry: { facts: { hasRuntimeFact: false } },
+    });
+    const dynamicUiMetadata: SysBOUIMetadata = {
+      ...uiMetadata,
+      record: {
+        ...uiMetadata.record,
+        tabs: [
+          ...uiMetadata.record.tabs,
+          {
+            id: 'organization',
+            label: 'Organization',
+            order: 3,
+            fields: [],
+            visible: { expression: "firstName === 'Show'" },
+          },
+        ],
+      },
+    };
+    const runtime = new EntityEntryRuntime({
+      surface,
+      surfaces,
+      metadata,
+      uiMetadata: dynamicUiMetadata,
+    });
+
+    // Dynamic tabs start optimistically visible, but initialization mutations
+    // must not resolve policy against an incomplete entry snapshot.
+    runtime.entry.fields.setValue({ field: 'firstName', value: 'Hide', source: 'engine' });
+    expect(runtime.visibleTabs().map((tab) => tab.id)).toContain('organization');
+
+    runtime.initialize();
+    expect(runtime.visibleTabs().map((tab) => tab.id)).not.toContain('organization');
     runtime.dispose();
   });
 
@@ -197,6 +315,7 @@ describe('V2 EntityEntryRuntime', () => {
           label: 'Principal type',
           type: 'enum',
           order: 7,
+          createDefaultValue: 'Person',
           enumValues: ['Person', 'Company', 'Group'],
           enumItems: [
             { value: 'Person', label: 'Person', isContainer: false },
@@ -210,10 +329,7 @@ describe('V2 EntityEntryRuntime', () => {
       ...uiMetadata,
       record: {
         ...uiMetadata.record,
-        fieldOverrides: {
-          ...uiMetadata.record.fieldOverrides,
-          principalType: { createDefaultValue: 'Person' },
-        },
+        fieldOverrides: { ...uiMetadata.record.fieldOverrides },
       },
     };
 
@@ -227,7 +343,7 @@ describe('V2 EntityEntryRuntime', () => {
         entityKey: 'people',
         entry: { facts: { hasRuntimeFact: false } },
         invocation: {
-          uiOverrides: { principalType: { allowedEnumItemTrait: 'isContainer' } },
+          rules: { fields: { principalType: { allowedEnumItemTrait: 'isContainer' } } },
         },
       });
       const runtime = new EntityEntryRuntime({
@@ -248,12 +364,19 @@ describe('V2 EntityEntryRuntime', () => {
       ...metadata,
       fieldDefinition: {
         ...metadata.fieldDefinition,
-        category: { key: 'category', label: 'Category', type: 'string', order: 7 },
+        category: {
+          key: 'category',
+          label: 'Category',
+          type: 'string',
+          order: 7,
+          createDefaultValue: 'Base',
+        },
         derivedCategory: {
           key: 'derivedCategory',
           label: 'Derived category',
           type: 'string',
           order: 8,
+          createDefaultValue: { expression: "$entry-current.category + '-derived'" },
         },
       },
     };
@@ -261,11 +384,7 @@ describe('V2 EntityEntryRuntime', () => {
       ...uiMetadata,
       record: {
         ...uiMetadata.record,
-        fieldOverrides: {
-          ...uiMetadata.record.fieldOverrides,
-          category: { createDefaultValue: 'Base' },
-          derivedCategory: { createDefaultValue: { expression: "category + '-derived'" } },
-        },
+        fieldOverrides: { ...uiMetadata.record.fieldOverrides },
       },
     };
 
@@ -293,11 +412,12 @@ describe('V2 EntityEntryRuntime', () => {
     }
   });
 
-  it('uses runtime enum option domains for create defaults and keeps initialization clean', () => {
+  it('uses canonical enum metadata for create defaults and keeps initialization clean', () => {
     const providerMetadata: ManatOSObjectMetadata<Record<string, unknown>> = {
       key: 'providers',
-      name: 'Provider',
-      pluralName: 'Providers',
+      name: 'providers',
+      label: 'Provider',
+      pluralLabel: 'Providers',
       primaryField: 'provider',
       fieldDefinition: {
         provider: {
@@ -307,6 +427,9 @@ describe('V2 EntityEntryRuntime', () => {
           order: 1,
           required: true,
           enumValues: ['microsoft', 'facebook'],
+          createDefaultValue: {
+            expression: "FirstCtx($entity-fields.provider.enumItems, 'value')",
+          },
           enumItems: [
             { value: 'microsoft', label: 'Microsoft', callbackPath: '/auth/microsoft/callback' },
             { value: 'facebook', label: 'Facebook', callbackPath: '/auth/facebook/callback' },
@@ -318,6 +441,10 @@ describe('V2 EntityEntryRuntime', () => {
           type: 'string',
           order: 2,
           required: true,
+          createDefaultValue: {
+            expression:
+              "FindCtx($entity-fields.provider.enumItems, 'value', $entry-current.provider, 'callbackPath')",
+          },
         },
         secret: {
           key: 'secret',
@@ -333,10 +460,7 @@ describe('V2 EntityEntryRuntime', () => {
       list: { columns: [], addAction: { label: 'Add' } },
       record: {
         tabs: [{ id: 'general', label: 'General', order: 1, fields: ['provider', 'callbackPath'] }],
-        fieldOverrides: {
-          provider: { createDefaultValue: { expression: "FirstCtx(provider.options, 'value')" } },
-          callbackPath: { createDefaultValue: { expression: 'provider.option.callbackPath' } },
-        },
+        fieldOverrides: {},
       },
     };
 
@@ -348,12 +472,17 @@ describe('V2 EntityEntryRuntime', () => {
         mode: 'create',
         name: 'provider',
         entityKey: 'providers',
+        entityName: 'providers',
       });
       const runtime = new EntityEntryRuntime({
         surface,
         surfaces,
         metadata: providerMetadata,
         uiMetadata: providerUiMetadata,
+        rootSource: () => ({
+          entities: { providers: { metadata: providerMetadata } },
+          ui: { level: surface },
+        }),
         referenceData: {
           provider: [
             { value: 'facebook', label: 'Facebook', callbackPath: '/auth/facebook/callback' },
@@ -430,11 +559,11 @@ describe('V2 EntityEntryRuntime', () => {
         ...uiMetadata.record,
         fieldOverrides: {
           ...uiMetadata.record.fieldOverrides,
-          principalType: { createDefaultValue: 'Person' },
+
           parentId: {
             editable: {
               expression:
-                'principalType.option != null && principalType.option.canHaveParent === true',
+                "FindCtx($entity-fields.principalType.enumItems, 'value', #level.entry.current.principalType, 'canHaveParent') === true",
             },
           },
         },
@@ -447,6 +576,7 @@ describe('V2 EntityEntryRuntime', () => {
       mode: 'create',
       name: 'person',
       entityKey: 'people',
+      entityName: 'people',
       entry: { facts: { hasRuntimeFact: false } },
     });
     const runtime = new EntityEntryRuntime({
@@ -454,9 +584,15 @@ describe('V2 EntityEntryRuntime', () => {
       surfaces,
       metadata: enumMetadata,
       uiMetadata: enumUiMetadata,
+      rootSource: () => ({
+        entities: { people: { metadata: enumMetadata } },
+        ui: { level: surface },
+      }),
     });
 
     runtime.initialize();
+    expect(runtime.entry.fields.require('parentId').ux.readonly).toBe(true);
+    runtime.entry.fields.setValue({ field: 'principalType', value: 'Person', source: 'user' });
     expect(runtime.entry.fields.require('parentId').ux.readonly).toBe(false);
     runtime.entry.fields.setValue({ field: 'principalType', value: 'Company', source: 'user' });
     expect(runtime.entry.fields.require('parentId').ux.readonly).toBe(true);
@@ -484,7 +620,7 @@ describe('V2 EntityEntryRuntime', () => {
           type: 'boolean',
           order: 8,
           readOnly: true,
-          calculation: { expression: 'provider.option.tenant != null' },
+          calculation: { expression: '#level.fields.provider.option.tenant != null' },
         },
       },
     };

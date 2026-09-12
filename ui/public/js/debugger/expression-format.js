@@ -5,8 +5,8 @@
    * Shared developer-only expression presentation helper.
    *
    * This is deliberately a lexical colourizer only. It never parses or
-   * evaluates an expression, so execution continues to use the canonical AST
-   * ManatOS already compiled from metadata.
+   * evaluates an expression, so execution continues to use AST data resolved through
+   * the normal UI compile boundary rather than a debugger-specific parser/cache.
    */
   const systemRoots = new Set([
     'mode',
@@ -17,6 +17,14 @@
     'page',
     'ctx',
     'app',
+    '$',
+    '#',
+    '#level',
+    '$entity',
+    '$entity-fields',
+    '$entry-current',
+    '$level-entity',
+    '$level-entity-fields',
   ]);
   const literalKeywords = new Set(['true', 'false', 'null', 'undefined']);
 
@@ -82,9 +90,13 @@
         }
       }
 
-      if (/[A-Za-z_$]/.test(char)) {
-        const match = source.slice(index).match(/^[A-Za-z_$][A-Za-z0-9_$]*/);
-        const identifier = match?.[0] || char;
+      if (/[A-Za-z_$#]/.test(char)) {
+        const identifier =
+          char === '#'
+            ? source.slice(index).match(/^#[A-Za-z0-9_]*/)?.[0] || '#'
+            : char === '$'
+              ? source.slice(index).match(/^\$[A-Za-z0-9_$-]*/)?.[0] || '$'
+              : source.slice(index).match(/^[A-Za-z_$][A-Za-z0-9_$]*/)?.[0] || char;
         const previousNonSpace = source.slice(0, index).match(/\S(?=\s*$)/)?.[0] || '';
 
         if (literalKeywords.has(identifier)) {
@@ -140,7 +152,9 @@
     });
   };
 
-  window.ManatOSDebugExpression = Object.freeze({
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.debug = window.ManatOS.debug || {};
+  window.ManatOS.debug.expression = Object.freeze({
     highlight,
     highlightElement,
     highlightAll,

@@ -99,7 +99,7 @@
             return;
           }
 
-          window.opener.ManatOSDeveloperToolsHost?.adoptDetachedWindow?.(window);
+          window.opener.ManatOS?.debug?.developerToolsHost?.adoptDetachedWindow?.(window);
         } catch {
           // The opener navigated away from the ManatOS origin; do not leave an
           // orphaned developer window displaying stale application state.
@@ -312,7 +312,9 @@
     window.setTimeout(() => detachDock(), 0);
   }
 
-  window.ManatOSDeveloperToolsHost = Object.freeze({
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.debug = window.ManatOS.debug || {};
+  window.ManatOS.debug.developerToolsHost = Object.freeze({
     isDetached: () => Boolean(detachedWindow && !detachedWindow.closed),
     detach: detachDock,
     attach: () => restoreDock({ focusMain: true }),

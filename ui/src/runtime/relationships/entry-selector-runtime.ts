@@ -43,7 +43,7 @@ export class EntrySelectorRuntime<T extends Readonly<Record<string, unknown>>> {
     const records = this.list.selectedEntries();
     if (!records.length) throw new Error('Entry selector cannot complete without a selection.');
 
-    const multiple = this.surface.invocation.selectionMode === 'multiple';
+    const multiple = this.surface.invocation.behavior?.selection === 'multiple';
     const value = multiple
       ? records.map((record) => record[this.#idField])
       : records[0]?.[this.#idField];

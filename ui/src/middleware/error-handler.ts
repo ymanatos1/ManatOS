@@ -10,6 +10,22 @@ import { addSessionError } from '../errors/session-error-log.js';
 
 import { renderPage } from '../presentation/page/render-page.js';
 
+const isApplicationCommandRequest = (req: Parameters<ErrorRequestHandler>[1]) =>
+  req.get('X-ManatOS-Application-Command') === '1' ||
+  req.get('X-Requested-With') === 'ManatOS-InPlace-Save';
+
+const applicationErrorEnvelope = (error: AppError) => ({
+  success: false,
+  error: {
+    name: error.name,
+    code: error.code,
+    message: error.message,
+    userMessage: error.userMessage,
+    retryable: error.retryable === true,
+    operationTrace: Array.isArray(error.operationTrace) ? error.operationTrace : [],
+  },
+});
+
 /**
  * UI error policy:
  *
@@ -42,6 +58,17 @@ export const uiErrorHandler: ErrorRequestHandler = async (error, req, res, next)
   if (isApiSessionExpiredError(error)) {
     clearApiSession(req);
 
+    if (isApplicationCommandRequest(req)) {
+      res.status(401).json({
+        success: false,
+        error: {
+          code: 'UI_API_SESSION_EXPIRED',
+          message: 'Your session has expired. Please sign in again.',
+        },
+      });
+      return;
+    }
+
     res.redirect('/?auth=signin&message=session-expired');
 
     return;
@@ -52,6 +79,11 @@ export const uiErrorHandler: ErrorRequestHandler = async (error, req, res, next)
    */
   if (error instanceof AppError) {
     const entry = addSessionError(req, error);
+
+    if (isApplicationCommandRequest(req)) {
+      res.status(400).json(applicationErrorEnvelope(error));
+      return;
+    }
 
     await renderPage(
       res,
@@ -114,6 +146,11 @@ export const uiErrorHandler: ErrorRequestHandler = async (error, req, res, next)
   );
 
   addSessionError(req, unexpected);
+
+  if (isApplicationCommandRequest(req)) {
+    res.status(500).json(applicationErrorEnvelope(unexpected));
+    return;
+  }
 
   res.status(500);
 

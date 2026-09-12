@@ -6,13 +6,12 @@
  * popup-local concerns: candidate eligibility, selection, paging, CTX state and
  * returning the chosen record(s) to the caller.
  *
- * Callers describe WHY the selector is open through callingParams. Those
- * resolved parameters are projected under the live popup CTX node so both
- * expressions and CTX Viewer diagnostics can inspect the exact invocation.
+ * Callers open the selector through the canonical SurfaceInvocation contract.
+ * The child never receives return-routing state such as a target field.
  */
 (() => {
   const runtime = window.ManatOS?.ctx;
-  const popupRuntime = window.ManatOSPopupRuntime;
+  const popupRuntime = window.ManatOS?.popup?.runtime;
 
   const parseJson = (value, fallback) => {
     try {
@@ -68,7 +67,7 @@
   const open = ({
     template,
     source = [],
-    callingParams = {},
+    invocation = null,
     initialSelection = null,
     eligibility = null,
     factsForCandidate = null,
@@ -85,7 +84,7 @@
     const panel = fragment.querySelector('.metadata-record-selector');
     if (!(panel instanceof HTMLElement)) return null;
 
-    const entityKey = String(callingParams.entityKey || panel.dataset.selectorEntityKey || '');
+    const entityKey = String(panel.dataset.selectorEntityKey || '');
     const entityContext = entityContextFor(entityKey);
     const metadata = entityContext?.metadata;
     if (!entityKey || !metadata?.fieldDefinition) return null;
@@ -105,97 +104,144 @@
             ].map((row) => [String(row.dataset.candidateId || ''), row]),
           )
         : new Map();
-    const selectionMode = callingParams.selectionMode === 'multiple' ? 'multiple' : 'single';
-    const idField = String(callingParams.idField || 'id');
-    /*
-     * Every Record Selector invocation projects exactly the same callingParams
-     * schema into CTX. Callers supply semantic values; this runtime owns the
-     * canonical shape. Explicit nulls prevent evaluator fall-through into the
-     * surrounding page context and make CTX diagnostics directly comparable
-     * across reference-field and hierarchy callers.
-     */
-    const resolvedCallingParams = Object.freeze({
-      purpose: String(callingParams.purpose || 'select-existing-entry'),
-      presentationMode: callingParams.presentationMode ?? null,
-      title: callingParams.title ?? null,
-      entityKey,
-      idField,
-      selectionMode,
-      targetField: callingParams.targetField ?? null,
-      targetFieldLabel: callingParams.targetFieldLabel ?? null,
-      targetEntityLabel: callingParams.targetEntityLabel ?? metadata.name ?? 'entry',
-      sourceEntityKey: callingParams.sourceEntityKey ?? null,
-      sourceEntityLabel: callingParams.sourceEntityLabel ?? null,
-      sourceRecordId: callingParams.sourceRecordId ?? null,
-      sourceRecordName: callingParams.sourceRecordName ?? null,
-      relation: callingParams.relation ?? null,
-      anchorRecordId: callingParams.anchorRecordId ?? null,
-      queryPredicate: callingParams.queryPredicate ?? null,
-      allowClear: callingParams.allowClear === true,
-      showContextNote: callingParams.showContextNote ?? null,
-      autofocusSearch: callingParams.autofocusSearch ?? null,
+    const canonicalInvocation =
+      invocation && typeof invocation === 'object' && !Array.isArray(invocation)
+        ? invocation
+        : null;
+    const selectionMode =
+      canonicalInvocation?.behavior?.selection === 'multiple' ? 'multiple' : 'single';
+    const idField = 'id';
+    const resolvedInvocation = Object.freeze({
+      entityName: canonicalInvocation?.entityName ?? entityContext?.name ?? metadata.name ?? null,
+      purpose: canonicalInvocation?.purpose ?? 'select',
+      caller: canonicalInvocation?.caller ?? null,
+      presentation: canonicalInvocation?.presentation ?? null,
+      rules: canonicalInvocation?.rules ?? null,
+      behavior: {
+        selection: selectionMode,
+        allowClear: canonicalInvocation?.behavior?.allowClear === true,
+        autofocus: canonicalInvocation?.behavior?.autofocus !== false,
+      },
     });
 
-    // UI rules transport canonical expression source only. The browser compiles
-    // through the shared execution-host cache and evaluates against the same
-    // invocation object projected into popup.callingParams.
+    /*
+     * Selector policy runs against the selector's real CTX surface. Invocation,
+     * selection and the currently evaluated row are observable state; the
+     * evaluator receives only a CTX owner path, never a manufactured JS scope.
+     */
     const expressionRuntime = window.ManatOS?.expression;
-    const evaluateUIRule = (key, fallback, scope = {}) => {
-      const source = typeof uiRules?.[key] === 'string' ? uiRules[key].trim() : '';
-      let ast = null;
-      try {
-        ast = source ? (window.ManatOS?.expressionCompiler?.ast(source) ?? null) : null;
-      } catch {
-        ast = null;
-      }
-      if (!ast || !expressionRuntime?.evaluateAstWithScope) return fallback;
 
-      // UI policy expressions are scalar expressions. Give every structured
-      // selector object a stable scalar-facing shape so a missing property is
-      // represented by null/false rather than accidentally escaping the
-      // explicit scope and resolving against the surrounding page CTX.
-      const selectedEntry =
-        scope.selectedEntry && typeof scope.selectedEntry === 'object'
-          ? { __entryName: '', ...scope.selectedEntry }
-          : { __entryName: '' };
-      const candidate =
-        scope.candidate && typeof scope.candidate === 'object' ? scope.candidate : {};
-      const selectionFacts =
-        scope.selectionFacts && typeof scope.selectionFacts === 'object'
-          ? { alreadyInContext: false, ...scope.selectionFacts }
-          : { alreadyInContext: false };
-      const candidateFacts =
-        scope.candidateFacts && typeof scope.candidateFacts === 'object'
-          ? { alreadyInContext: false, ...scope.candidateFacts }
-          : { alreadyInContext: false };
+    // A selector is a CHILD UI surface owned by PopupRuntime. Do not manufacture
+    // a second CTX topology here: every popup family must use the same browser
+    // surface-opening boundary so nesting, paths and lifecycle stay canonical.
+    const v2Surface = popupRuntime?.openUiLevel?.({
+      kind: 'selector',
+      mode: 'select',
+      name: `${entityKey}-selector`,
+      entityKey,
+      invocation: resolvedInvocation,
+      presentation: { title: '', mode: 'subtle' },
+      state: { valid: false },
+    });
+    if (!v2Surface) {
+      console.warn('[ManatOS record selector] PopupRuntime could not open selector surface');
+      return null;
+    }
+    const popupPath = v2Surface.path;
 
+    popupRuntime.updateUiLevel?.(
+      v2Surface,
+      {
+        selection: {
+          current: { __entryName: '' },
+          selected: [],
+          facts: { alreadyInContext: false },
+        },
+        row: { current: {}, facts: { alreadyInContext: false } },
+      },
+      { source: 'record-selector', action: 'initialize-selector-state' },
+    );
+
+    const publishEvaluationState = ({ selection = null, row = null } = {}) => {
+      const current = runtime?.get?.(popupPath);
+      if (!current || typeof current !== 'object') return;
+      const patch = {};
+      if (selection) patch.selection = selection;
+      if (row) patch.row = row;
+      if (!Object.keys(patch).length) return;
+      popupRuntime.updateUiLevel?.(v2Surface, patch, {
+        source: 'record-selector',
+        action: 'update-selector-evaluation-context',
+      });
+    };
+
+    const sourceForUIRule = (key) => {
+      const declaration = uiRules?.[key];
+      if (typeof declaration === 'string') return declaration;
+      return declaration &&
+        typeof declaration === 'object' &&
+        typeof declaration.source === 'string'
+        ? declaration.source
+        : null;
+    };
+
+    const evaluateUIRule = (key, fallback) => {
+      const source = sourceForUIRule(key);
+      const ast = source ? expressionRuntime?.astForSource?.(source) : null;
+      if (!ast || !expressionRuntime?.evaluateAstAt) return fallback;
       try {
-        const value = expressionRuntime.evaluateAstWithScope(ast, {
-          callingParams: resolvedCallingParams,
-          selectedEntry,
-          selectedEntries: Array.isArray(scope.selectedEntries) ? scope.selectedEntries : [],
-          selectionFacts,
-          candidate,
-          candidateFacts,
-        });
+        const value = expressionRuntime.evaluateAstAt(ast, popupPath);
         return value == null ? fallback : value;
       } catch (error) {
         console.warn(`[ManatOS record selector] UI rule ${key} failed`, error);
         return fallback;
       }
     };
-    const presentationMode = String(evaluateUIRule('presentationMode', 'subtle'));
-    const selectorTitleText = String(
-      evaluateUIRule(
-        'title',
-        resolvedCallingParams.title || `Select existing ${metadata.name || 'entry'}`,
-      ),
-    );
-    const showContextNote = Boolean(evaluateUIRule('showContextNote', true));
-    const autofocusSearch = Boolean(evaluateUIRule('autofocusSearch', true));
-    panel.dataset.selectorPresentation = presentationMode;
-    panel.classList.toggle('is-entry-presentation', presentationMode === 'entry');
-    panel.classList.toggle('is-subtle-presentation', presentationMode !== 'entry');
+
+    const primeUIRuleAsts = async () => {
+      if (!expressionRuntime?.loadAstForSource) return;
+      const sources = [
+        ...new Set(
+          Object.keys(uiRules || {})
+            .map(sourceForUIRule)
+            .filter(Boolean),
+        ),
+      ];
+      await Promise.all(
+        sources.map((source) =>
+          expressionRuntime.loadAstForSource(source).catch((error) => {
+            console.warn('[ManatOS record selector] UI rule could not be prepared', error);
+            return null;
+          }),
+        ),
+      );
+    };
+
+    let presentationMode = 'subtle';
+    let selectorTitleText =
+      resolvedInvocation.presentation?.title || `Select existing ${metadata.label || 'entry'}`;
+    let showContextNote = true;
+    let autofocusSearch = true;
+    const applySelectorPresentationRules = () => {
+      presentationMode = String(evaluateUIRule('presentationMode', 'subtle'));
+      selectorTitleText = String(
+        evaluateUIRule(
+          'title',
+          resolvedInvocation.presentation?.title || `Select existing ${metadata.label || 'entry'}`,
+        ),
+      );
+      showContextNote = Boolean(evaluateUIRule('showContextNote', true));
+      autofocusSearch = Boolean(evaluateUIRule('autofocusSearch', true));
+      panel.dataset.selectorPresentation = presentationMode;
+      panel.classList.toggle('is-entry-presentation', presentationMode === 'entry');
+      panel.classList.toggle('is-subtle-presentation', presentationMode !== 'entry');
+      const selectorTitle = panel.querySelector('[data-selector-title]');
+      if (selectorTitle instanceof HTMLElement) selectorTitle.textContent = selectorTitleText;
+      const note = panel.querySelector('[data-selector-context-note]');
+      if (note instanceof HTMLElement) note.hidden = !showContextNote;
+    };
+
+    applySelectorPresentationRules();
 
     const backdrop = document.createElement('div');
     backdrop.className = 'manatos-popup-backdrop metadata-record-selector-backdrop';
@@ -203,14 +249,10 @@
     backdrop.append(fragment);
     document.body.append(backdrop);
 
-    const selectorTitle = panel.querySelector('[data-selector-title]');
-    if (selectorTitle instanceof HTMLElement) selectorTitle.textContent = selectorTitleText;
-
     const search = panel.querySelector('[data-selector-filter]');
     const rowsHost = panel.querySelector('[data-selector-rows]');
     const selectButton = panel.querySelector('[data-selector-select]');
     const note = panel.querySelector('[data-selector-context-note]');
-    if (note instanceof HTMLElement) note.hidden = !showContextNote;
     let pageSize = Number(panel.querySelector('[data-selector-page-size]')?.value) || 10;
     let currentPage = 1;
     const selectedIds = new Set(
@@ -224,25 +266,6 @@
         .filter(Boolean),
     );
 
-    // A selector is a CHILD UI surface. Never reuse popupRuntime.popupPath() here:
-    // before the selector opens that function resolves to the current owner/leaf
-    // surface, so writing selector state there would overwrite the owning entry.
-    const fallbackPopupPath = `${leafPagePath() || 'ctx.ui.level'}.level`;
-    const v2Surface = popupRuntime?.openUiLevel?.({
-      kind: 'selector',
-      mode: 'select',
-      name: `${resolvedCallingParams.targetField || entityKey}-selector`,
-      entityKey,
-      invocation: {
-        ...resolvedCallingParams,
-        purpose: String(resolvedCallingParams.purpose || 'select-existing-entry'),
-      },
-      presentation: {
-        title: selectorTitleText,
-        mode: presentationMode,
-      },
-    });
-    const popupPath = v2Surface?.path || fallbackPopupPath;
     const developerToolsDock = document.getElementById('developerToolsDock');
     const developerToolsWasVisible = Boolean(
       developerToolsDock && !developerToolsDock.classList.contains('d-none'),
@@ -283,44 +306,25 @@
       const id = candidateId(candidate, idField);
 
       /*
-       * A caller may supply one canonical predicate source describing
-       * candidates that are unavailable for this selection. The popup evaluates
-       * the locally compiled AST against the candidate row; the shared compiler cache
-       * prevents repeated parsing and it never knows relationship/entity-specific rules.
-       *
-       * The initial selection is intentionally exempt so an existing valid link
-       * remains visible/selectable while editing.
+       * Generic query exclusions are invocation data, not executable child state.
+       * The initial selection remains exempt so an existing valid link stays
+       * visible/selectable while editing.
        */
-      const queryPredicate =
-        typeof resolvedCallingParams.queryPredicate === 'string'
-          ? resolvedCallingParams.queryPredicate.trim()
-          : '';
-      let predicateAst = null;
-      if (queryPredicate) {
-        try {
-          predicateAst = window.ManatOS?.expressionCompiler?.ast(queryPredicate) ?? null;
-        } catch {
-          predicateAst = null;
-        }
-      }
-      if (predicateAst && !initialSelectedIds.has(id) && expressionRuntime?.evaluateAstWithScope) {
-        try {
-          const unavailable = expressionRuntime.evaluateAstWithScope(predicateAst, candidate);
-          if (unavailable === true) {
-            return {
-              eligible: false,
-              visible: true,
-              reason: 'This entry is unavailable for the current selection.',
-            };
-          }
-        } catch {
-          // The API remains authoritative; malformed/advisory UI predicates do
-          // not turn the selector into a second authorization boundary.
-        }
+      const excludedIds = new Set(
+        Array.isArray(resolvedInvocation.rules?.query?.exclude)
+          ? resolvedInvocation.rules.query.exclude.map((value) => String(value))
+          : [],
+      );
+      if (excludedIds.has(id) && !initialSelectedIds.has(id)) {
+        return {
+          eligible: false,
+          visible: true,
+          reason: 'This entry is unavailable for the current selection.',
+        };
       }
 
       return normalizeEligibility(
-        typeof eligibility === 'function' ? eligibility(candidate, resolvedCallingParams) : true,
+        typeof eligibility === 'function' ? eligibility(candidate, resolvedInvocation) : true,
       );
     };
 
@@ -329,7 +333,7 @@
     // relationship state, etc. out of popup DOM/string-building callbacks.
     const candidateFactsFor = (candidate) => {
       if (typeof factsForCandidate !== 'function') return { alreadyInContext: false };
-      const facts = factsForCandidate(candidate, resolvedCallingParams);
+      const facts = factsForCandidate(candidate, resolvedInvocation);
       return facts && typeof facts === 'object' && !Array.isArray(facts)
         ? { alreadyInContext: false, ...facts }
         : { alreadyInContext: false };
@@ -386,110 +390,57 @@
     const syncCtx = (filtered = matchingRows(), phase = 'open') => {
       if (!runtime?.replace) return;
       const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-      const payload = popupRuntime?.createPayload?.({
-        kind: 'record-selector',
-        callingParams: resolvedCallingParams,
-        presentation: {
-          mode: presentationMode,
-          title: selectorTitleText,
-          contextNote: currentContextNote,
-          showContextNote,
-          autofocusSearch,
-        },
-        entriesOriginal: source.map((candidate) => ({ ...candidate })),
-        entries: source.map((candidate) => ({ ...candidate })),
-        filters: {
-          ...fieldFilterValues(),
-          ...(resolvedCallingParams.queryPredicate != null
-            ? { queryPredicate: resolvedCallingParams.queryPredicate }
-            : {}),
-        },
-        search: String(search?.value || ''),
-        paging: {
-          page: currentPage,
-          pageSize,
-          total: filtered.length,
-          totalPages,
-        },
-        selectedId: selectionMode === 'single' ? ([...selectedIds][0] ?? null) : null,
-        selectedIds: [...selectedIds],
-        state: {
-          phase,
-          open: phase === 'opening' || phase === 'open',
-          dirty: false,
-          valid: selectedIds.size > 0,
-          internalEditing: false,
-          internalEditorCount: 0,
-          saving: false,
-          deleting: false,
-        },
-      }) || {
-        kind: 'record-selector',
-        callingParams: { ...resolvedCallingParams },
-        presentation: { mode: presentationMode, title: selectorTitleText },
-        state: {
-          phase,
-          open: phase === 'opening' || phase === 'open',
-          valid: selectedIds.size > 0,
-        },
-      };
-      // PopupRuntime is the normal CTX owner. A host without PopupRuntime may
-      // project the same selector payload directly to the canonical child path;
-      // that resilience path never replaces the owning entry or creates another topology.
-      if (!v2Surface) {
-        runtime.replace(fallbackPopupPath, payload, {
-          source: 'record-selector',
-          action: 'selector-state',
-          triggerPath: fallbackPopupPath,
-        });
-      }
-      if (v2Surface) {
-        popupRuntime?.updateUiLevel?.(
-          v2Surface,
-          {
-            invocation: { ...resolvedCallingParams },
-            presentation: {
-              kind: 'selector',
-              mode: presentationMode,
-              title: selectorTitleText,
-              contextNote: currentContextNote,
-              showContextNote,
-              autofocusSearch,
-            },
-            state: {
-              lifecycle: phase === 'closing' ? 'closing' : 'active',
-              active: phase !== 'closing',
-              dirty: false,
-              valid: selectedIds.size > 0,
-              loading: false,
-              saving: false,
-              deleting: false,
-              blocked: false,
-              navigation: { activeTabId: null, activeInternalTabIds: {} },
-            },
-            facts: {
-              search: String(search?.value || ''),
-              filters: { ...fieldFilterValues() },
-              paging: { page: currentPage, pageSize, total: filtered.length, totalPages },
-              selectedId: selectionMode === 'single' ? ([...selectedIds][0] ?? null) : null,
-              selectedIds: [...selectedIds],
-            },
+      popupRuntime.updateUiLevel?.(
+        v2Surface,
+        {
+          invocation: { ...resolvedInvocation },
+          presentation: {
+            kind: 'selector',
+            mode: presentationMode,
+            title: selectorTitleText,
+            contextNote: currentContextNote,
+            showContextNote,
+            autofocusSearch,
           },
-          { source: 'record-selector', action: 'selector-v2-state' },
-        );
-      }
+          state: {
+            lifecycle: phase === 'closing' ? 'closing' : 'active',
+            active: phase !== 'closing',
+            dirty: false,
+            valid: selectedIds.size > 0,
+            loading: false,
+            saving: false,
+            deleting: false,
+            blocked: false,
+            navigation: { activeTabId: null, activeInternalTabIds: {} },
+          },
+          facts: {
+            search: String(search?.value || ''),
+            filters: { ...fieldFilterValues() },
+            paging: { page: currentPage, pageSize, total: filtered.length, totalPages },
+          },
+          list: {
+            originalEntries: source.map((candidate) => ({ ...candidate })),
+            entries: filtered.map((candidate) => ({ ...candidate })),
+          },
+          selection: {
+            current:
+              selectedCandidates()[0] != null
+                ? { __entryName: '', ...selectedCandidates()[0] }
+                : { __entryName: '' },
+            selected: selectedCandidates().map((candidate) => ({ ...candidate })),
+            facts:
+              selectedCandidates()[0] != null
+                ? { alreadyInContext: false, ...candidateFactsFor(selectedCandidates()[0]) }
+                : { alreadyInContext: false },
+          },
+        },
+        { source: 'record-selector', action: 'selector-v2-state' },
+      );
     };
 
     const clearCtx = () => {
-      popupRuntime?.clearInspection?.(selectorCtxButton);
-      if (!v2Surface && runtime?.delete && runtime.get?.(fallbackPopupPath) !== undefined) {
-        runtime.delete(fallbackPopupPath, {
-          source: 'record-selector',
-          action: 'close-record-selector',
-          triggerPath: fallbackPopupPath,
-        });
-      }
-      if (v2Surface) popupRuntime?.closeUiLevel?.(v2Surface);
+      popupRuntime.clearInspection?.(selectorCtxButton);
+      popupRuntime.closeUiLevel?.(v2Surface);
     };
 
     const close = () => {
@@ -543,13 +494,16 @@
         : selectionMode === 'multiple'
           ? 'Select one or more entries to continue.'
           : 'Select an entry to continue.';
-      currentContextNote = String(
-        evaluateUIRule('contextNote', fallback, {
-          selectedEntry,
-          selectedEntries: selected,
-          selectionFacts: selectedEntry ? candidateFactsFor(selectedEntry) : {},
-        }),
-      );
+      publishEvaluationState({
+        selection: {
+          current: selectedEntry ? { __entryName: '', ...selectedEntry } : { __entryName: '' },
+          selected: selected.map((candidate) => ({ ...candidate })),
+          facts: selectedEntry
+            ? { alreadyInContext: false, ...candidateFactsFor(selectedEntry) }
+            : { alreadyInContext: false },
+        },
+      });
+      currentContextNote = String(evaluateUIRule('contextNote', fallback));
       note.textContent = currentContextNote;
     };
 
@@ -586,9 +540,10 @@
             const eligibilityResult = candidateEligibility(candidate);
             const selected = selectedIds.has(id);
             const candidateFacts = candidateFactsFor(candidate);
-            const policyRowClass = String(
-              evaluateUIRule('rowClass', '', { candidate, candidateFacts }) || '',
-            );
+            publishEvaluationState({
+              row: { current: { ...candidate }, facts: { ...candidateFacts } },
+            });
+            const policyRowClass = String(evaluateUIRule('rowClass', '') || '');
 
             row.removeAttribute('data-selector-candidate-row');
             row.dataset.selectorRow = '';
@@ -654,14 +609,12 @@
       const selected = selectedCandidates();
       if (!selected.length) return;
       const result = selectionMode === 'single' ? selected[0] : selected;
-      if (typeof onSelect === 'function' && onSelect(result, resolvedCallingParams) === false)
-        return;
+      if (typeof onSelect === 'function' && onSelect(result, resolvedInvocation) === false) return;
       window.dispatchEvent(
         new CustomEvent('manatos:record-selector-selection', {
           detail: {
-            entityKey,
-            purpose: resolvedCallingParams.purpose,
-            callingParams: { ...resolvedCallingParams },
+            outcome: 'selected',
+            entityName: resolvedInvocation.entityName ?? null,
             selected: result,
           },
         }),
@@ -745,15 +698,22 @@
 
     render();
     if (autofocusSearch) search?.focus();
+    void primeUIRuleAsts().then(() => {
+      applySelectorPresentationRules();
+      render();
+      if (autofocusSearch && document.activeElement === document.body) search?.focus();
+    });
 
     return Object.freeze({
       close,
       popupPath,
-      callingParams: resolvedCallingParams,
+      invocation: resolvedInvocation,
     });
   };
 
-  window.ManatOSRecordSelector = Object.freeze({
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.popup = window.ManatOS.popup || {};
+  window.ManatOS.popup.recordSelector = Object.freeze({
     open,
     leafPagePath,
   });

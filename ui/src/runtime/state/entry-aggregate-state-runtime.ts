@@ -1,4 +1,4 @@
-import { calculateEntryAggregatePolicy } from '@manatos/shared';
+import { calculateEntryAggregatePolicy, calculateEntryContributorAggregate } from '@manatos/shared';
 import type { SurfaceEvent, SurfaceEventRuntime } from '../events/surface-event-runtime.js';
 import type { SurfaceEventSource } from '../surface/contracts.js';
 import type { SurfaceRuntime } from '../surface/surface-runtime.js';
@@ -153,15 +153,15 @@ export class EntryAggregateStateRuntime {
   #calculate(): EntryAggregateSnapshot {
     const surface = this.#surfaces.find(this.#surfaceId);
     if (!surface) throw new Error(`V2 surface not found: ${this.#surfaceId}`);
-    const contributors = [...this.#contributors.values()];
+    const contributors = calculateEntryContributorAggregate([...this.#contributors.values()]);
     const { saving, deleting, loading } = surface.state;
     const policy = calculateEntryAggregatePolicy({
       mode: surface.mode,
       fieldDirty: this.#fields.all().some((field) => field.dirty),
       fieldValid: this.#fields.all().every((field) => field.valid),
-      contributorDirty: contributors.some((contributor) => contributor.dirty === true),
-      contributorValid: contributors.every((contributor) => contributor.valid !== false),
-      blocked: contributors.some((contributor) => contributor.blocksPersistence === true),
+      contributorDirty: contributors.dirty,
+      contributorValid: contributors.valid,
+      blocked: contributors.blocked,
       loading,
       saving,
       deleting,

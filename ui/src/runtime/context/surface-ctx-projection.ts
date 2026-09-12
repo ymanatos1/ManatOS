@@ -6,7 +6,7 @@ import type {
 import type { SurfaceContext } from '../surface/contracts.js';
 import type { SurfaceRuntime } from '../surface/surface-runtime.js';
 
-export interface SurfaceCtxNode {
+export interface SurfaceCtxControlNode {
   readonly id: string;
   readonly host: SurfaceContext['host'];
   readonly kind: SurfaceContext['kind'];
@@ -14,12 +14,21 @@ export interface SurfaceCtxNode {
   readonly name: string;
   readonly path: string;
   readonly scope: string;
-  readonly entityKey?: string;
-  readonly recordId?: string;
   readonly invocation: SurfaceContext['invocation'];
   readonly presentation: SurfaceContext['presentation'];
   readonly state: SurfaceContext['state'];
-  readonly facts?: Readonly<Record<string, unknown>>;
+  /** Universal surface-facts folder. Empty when the level currently publishes no facts. */
+  readonly facts: Readonly<Record<string, unknown>>;
+  readonly entityKey?: string;
+  /** Canonical symbolic entity name used by ctx.entities (for example sysExtAuthProviders). */
+  readonly entityName?: string;
+  readonly recordId?: string;
+}
+
+export interface SurfaceCtxNode {
+  readonly control: SurfaceCtxControlNode;
+  readonly selection?: SurfaceContext['selection'];
+  readonly row?: SurfaceContext['row'];
   /** Component-owned host-neutral read models published by the surface. */
   readonly resources?: Readonly<Record<string, unknown>>;
   /** Canonical entry runtime projection for entry surfaces. */
@@ -68,13 +77,14 @@ export function projectUiCtx(
   const active = runtime.activeSurface();
   if (!active) return { level: null };
 
-  // SurfaceRuntime may retain registries/indexes internally, but public CTX is
-  // intentionally one recursive chain representing only what is displayed.
+  // SurfaceRuntime may retain semantic ownership registries internally, but public CTX is
+  // intentionally the currently displayed navigation chain. Navigation ancestry is therefore
+  // authoritative here; semantic parentId/children must not leak into presentation topology.
   const chain: SurfaceContext[] = [];
   let cursor: SurfaceContext | null = active;
   while (cursor) {
     chain.unshift(cursor);
-    cursor = cursor.parentId ? runtime.find(cursor.parentId) : null;
+    cursor = cursor.navigationParentId ? runtime.find(cursor.navigationParentId) : null;
   }
 
   const project = (surface: SurfaceContext, child?: SurfaceCtxNode): SurfaceCtxNode => {
@@ -112,21 +122,24 @@ export function projectUiCtx(
       : undefined;
 
     return {
-      id: surface.id,
-      host: surface.host,
-      kind: surface.kind,
-      mode: surface.mode,
-      name: surface.name,
-      path: surface.path,
-      scope: surface.scope,
-      ...(surface.entityKey ? { entityKey: surface.entityKey } : {}),
-      ...(surface.recordId ? { recordId: surface.recordId } : {}),
-      invocation: surface.invocation,
-      presentation: surface.presentation,
-      state: surface.state,
-      ...(surface.entry && Object.keys(surface.entry.facts).length
-        ? { facts: surface.entry.facts }
-        : {}),
+      control: {
+        id: surface.id,
+        host: surface.host,
+        kind: surface.kind,
+        mode: surface.mode,
+        name: surface.name,
+        path: surface.path,
+        scope: surface.scope,
+        invocation: surface.invocation,
+        presentation: surface.presentation,
+        state: surface.state,
+        facts: surface.facts ?? {},
+        ...(surface.entityKey ? { entityKey: surface.entityKey } : {}),
+        ...(surface.entityName ? { entityName: surface.entityName } : {}),
+        ...(surface.recordId ? { recordId: surface.recordId } : {}),
+      },
+      ...(surface.selection ? { selection: surface.selection } : {}),
+      ...(surface.row ? { row: surface.row } : {}),
       ...(surface.resources ? { resources: surface.resources } : {}),
       ...(entry ? { entry } : {}),
       ...(list ? { list } : {}),

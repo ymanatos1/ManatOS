@@ -62,7 +62,6 @@
   const compiledEntityContextName = compiledEntityContextEntry?.[0] ?? null;
   const compiledEntityContext = compiledEntityContextEntry?.[1] ?? null;
   const compiledEntityMetadata = compiledEntityContext?.metadata || {};
-  const compiledUIRecord = compiledEntityContext?.uiMetadata?.record || {};
   const references = typeof referenceData !== 'undefined' && referenceData ? referenceData : {};
   const selectorContexts = typeof referenceSelectorContexts !== 'undefined' && referenceSelectorContexts
     ? referenceSelectorContexts
@@ -184,26 +183,17 @@
     return match?.name ?? String(value);
   };
   const relatedCollections = metadataUI.record.relatedCollections || {};
-  const pageRelatedData = typeof relatedData !== 'undefined' && relatedData ? relatedData : {};
-  const pageRelatedReferenceData =
-    typeof relatedReferenceData !== 'undefined' && relatedReferenceData ? relatedReferenceData : {};
+  const pageCollectionResourceData =
+    typeof collectionResourceData !== 'undefined' && collectionResourceData
+      ? collectionResourceData
+      : {};
   const relatedMetadataRegistry =
     typeof relatedEntityMetadata !== 'undefined' && relatedEntityMetadata ? relatedEntityMetadata : {};
-  const relatedExpressionScope = (row, relatedMetadata) => {
-    if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
-    const missingKeys = Object.keys(relatedMetadata?.fieldDefinition || {})
-      .filter((key) => row[key] === undefined);
-    if (!missingKeys.length) return row;
-    return {
-      ...Object.fromEntries(missingKeys.map((key) => [key, null])),
-      ...row,
-    };
-  };
   /*
    * SSR now projects only the static/raw source value for related rows. Any
    * declared calculation or dynamic presentation is emitted as expression source
    * metadata by the related-collection component and evaluated by the browser
-   * against that row's detached lexical scope.
+   * against that row's canonical V2 collection-resource CTX path.
    */
   const collectionValue = (row, _collectionKey, collection, fieldKey, field) => {
     const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
@@ -226,7 +216,7 @@
   };
   const relatedReferenceLabel = (sourceKey, fieldKey, value) => {
     if (value === undefined || value === null || value === '') return '—';
-    const candidates = pageRelatedReferenceData?.[sourceKey]?.[fieldKey] || [];
+    const candidates = pageCollectionResourceData?.[sourceKey]?.references?.[fieldKey] || [];
     const match = candidates.find((candidate) => candidate?.id === value);
     return match?.name ?? String(value);
   };
@@ -241,18 +231,13 @@
     debuggingTabEnabled,
     metadata,
     metadataUI,
-    compiledEntityContext,
     compiledEntityContextName,
-    compiledUIRecord,
     ctxFields,
     ctxValue,
     dynamicUIValue,
     overrides,
     relatedCollections,
     relatedMetadataRegistry,
-    pageRelatedData,
-    collectionValue,
-    relatedExpressionScope,
     entryContextPath: v2LevelPath,
     entryFieldValuePath: (fieldKey) => `${v2LevelPath}.fields.${fieldKey}.value`,
   });
@@ -269,7 +254,7 @@
   const datetimeLocalValue = (value) => value ? String(value).replace('Z', '').slice(0, 16) : '';
   const durationParts = (value) => {
     let source = value;
-    if (typeof source === 'string' && source.trim()) { try { source = JSON.parse(source); } catch { source = null; } }
+    if (typeof source === 'string' && source.trim()) source = JSON.parse(source);
     if (!source || typeof source !== 'object' || Array.isArray(source)) return { years: '', months: '', days: '' };
     return { years: source.years ?? '', months: source.months ?? '', days: source.days ?? '' };
   };
@@ -288,13 +273,14 @@
       ? externalAuthProviderDefinitions
       : [];
   const v2FieldComponentContext = {
+    definition,
+    item,
     metadata,
     ctxValue,
     referenceLabel,
     overrides,
     expressionText,
     compiledEntityMetadata,
-    compiledUIRecord,
     dynamicUIValue,
     ctxFields,
     referenceValues: references,
@@ -322,10 +308,7 @@
     externalAuthProviderDefinitions: providerDefinitions,
     componentData: {
       providerDefinitions,
-      relatedData: pageRelatedData,
-      relatedReferenceData: pageRelatedReferenceData,
-      relatedEditingData:
-        typeof relatedEditingData !== 'undefined' && relatedEditingData ? relatedEditingData : {},
+      collectionResourceData: pageCollectionResourceData,
     },
     credentialTest: typeof credentialTest !== 'undefined' ? credentialTest : null,
     suggestedProvider: typeof suggestedProvider !== 'undefined' ? suggestedProvider : null,
@@ -367,15 +350,22 @@
 %>
 <section class="content-card" data-ui-engine="v2" data-v2-entity-entry>
   <form
-    class="metadata-driven-record-form"
+    class="metadata-driven-record-form manatos-entry-initializing"
     method="post"
     action="/bo/<%= definition.key %>/<%= ownerEditing ? 'owned/save' : 'save' %>"
     data-record-mode="<%= recordMode %>"
     data-entity-key="<%= definition.key %>"
     data-v2-entry-form
+    aria-busy="true"
+    data-initialization-visibility="pending"
+    data-ctx-scope-path="<%= v2LevelPath %>"
     data-ui-engine="v2"
     <% if (!isViewMode) { %>data-dirty-guard="true"<% } %>
   >
+    <div class="manatos-entry-opening-status" role="status" aria-live="polite" aria-atomic="true">
+      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      <span>Opening page…</span>
+    </div>
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <% if (typeof entryPopupHost !== 'undefined' && entryPopupHost) { %>
       <%#
@@ -439,7 +429,8 @@
             debugElementNameParts,
             debuggingActiveScopeId,
             debuggingEntityKey: definition.key, debuggingCsrfToken: csrfToken,
-            debuggingStartPath: v2LevelPath,
+            debuggingStartPath: `${v2LevelPath}.entry.current`,
+            debuggingStartDisplayPath: '#level.entry.current',
             debuggingComponent: null
           }) %>
         </div>
@@ -513,7 +504,7 @@
               referenceValues: references,
               formatValue,
               referenceLabel,
-              pageRelatedData,
+              pageCollectionResourceData,
               relatedMetadataRegistry,
               collectionValue,
               relatedRowHref,
@@ -589,7 +580,6 @@
                   <% } %>
                   <% if (field.calculation?.expression) { %>
                     data-field-calculation-expression="<%= field.calculation.expression %>"
-                    data-field-calculation-triggered-by="<%= JSON.stringify(field.calculation.triggeredBy || []) %>"
                     data-field-calculation-persisted="<%= field.calculation.persisted === true ? 'true' : 'false' %>"
                   <% } %>>
                   <label class="form-label" for="metadata-field-<%= key %>">
@@ -601,7 +591,7 @@
                     referenceValues: references, referenceSelectorContexts: selectorContexts,
                     effectiveFieldContext: effectiveField(key),
                     dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue,
-                    definition
+                    definition, fieldOverride: overrides[key] || null
                   }) %>
                 </div>
               <% } %>
@@ -638,7 +628,7 @@
       <div class="d-flex gap-2 align-items-center">
         <% if (!isViewMode) { %>
           <span class="form-state-indicator small text-secondary me-1" data-form-state-indicator>
-            <i class="bi bi-check-circle me-1"></i>
+            <i class="bi bi-check-circle me-1" data-form-state-icon></i>
             <span data-form-state-text><%= isNew ? 'New entry · incomplete' : 'No changes' %></span>
           </span>
         <% } %>

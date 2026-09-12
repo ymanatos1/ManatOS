@@ -18,7 +18,7 @@ import {
 } from '@manatos/shared';
 
 import { createSysBORouter } from './http/routes/sysbo-router.js';
-import { GenericSysBOService } from './services/generic-sysbo-service.js';
+import { GenericSysBOService } from './services/sysbo/generic-service.js';
 
 import { createInternalRouter } from './http/internal/index.js';
 
@@ -27,6 +27,7 @@ import { errorHandler } from './http/middleware/error-handler.js';
 import { requireInternalApiKey } from './http/middleware/internal-api-key.js';
 
 import { requestContextMiddleware } from './http/middleware/request-context.js';
+import { operationMiddleware } from './http/middleware/operation-middleware.js';
 import { requestLoggingMiddleware } from './http/middleware/request-logging.js';
 
 import { createServerRouter } from './http/routes/server-router.js';
@@ -36,7 +37,7 @@ import { buildOpenApiSpec } from './openapi.js';
 
 import type { InMemoryDataStore } from './storage/in-memory-data-store.js';
 
-import type { SysBOUserService } from './services/sys-user-service.js';
+import type { SysBOUserService } from './services/sysbo/user-service.js';
 
 import type {
   ExternalIdentityService,
@@ -51,7 +52,7 @@ import { createAuthRouter } from './auth/router.js';
 
 import { sendFailure } from './http/response.js';
 import type { IEmailService } from './email/email-service.js';
-import type { SysBOConfigurationService } from './services/sys-configuration-service.js';
+import type { SysBOConfigurationService } from './services/sysbo/configuration-service.js';
 
 import { createPublicRouter } from './http/routes/public-router.js';
 import { createExpressionRouter } from './http/routes/expression-router.js';
@@ -62,7 +63,7 @@ import { createExtAuthProviderAdminRouter } from './http/routes/ext-auth-provide
 import type {
   SysBOExtAuthProviderService,
   SaveSysBOExtAuthProviderInput,
-} from './services/sys-ext-auth-provider-service.js';
+} from './services/sysbo/external-auth-provider-service.js';
 
 /**
  * Application services required by the HTTP/API layer.
@@ -101,29 +102,39 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    */
   app.disable('x-powered-by');
 
-  app.use(helmet());
-
   /**
-   * Establish request/correlation context before parsing or routing so even
-   * malformed request bodies receive a traceable x-request-id.
+   * Establish request/correlation context before every other middleware so
+   * security/parser/gateway failures participate in the same semantic tree.
    */
   app.use(requestContextMiddleware);
+
+  app.use(operationMiddleware('Apply HTTP security policy', helmet(), 'Applying request security'));
 
   /**
    * Log the full request/response lifecycle after correlation context exists so
    * both entries carry the same x-request-id returned to the caller.
    */
-  app.use(requestLoggingMiddleware);
+  app.use(
+    operationMiddleware(
+      'Initialize request logging',
+      requestLoggingMiddleware,
+      'Starting request diagnostics',
+    ),
+  );
 
   /**
    * JSON request parsing.
    *
-   * The 1 MB limit protects against unexpectedly large API payloads.
+   * The 2 MB limit protects against unexpectedly large API payloads.
    */
   app.use(
-    express.json({
-      limit: '1mb',
-    }),
+    operationMiddleware(
+      'Parse JSON request body',
+      express.json({
+        limit: '2mb',
+      }),
+      'Reading request data',
+    ),
   );
 
   /**

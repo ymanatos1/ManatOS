@@ -32,45 +32,48 @@ describe('SysBO route responsibility boundaries', () => {
       source('../../src/sysbo/types.ts'),
       source('../../src/navigation.ts'),
       source('../../src/sysbo/api-path.ts'),
-      source('../../src/routes/sysbo/form-payload.ts'),
-      source('../../src/routes/sysbo/entry-representation-runtime.ts'),
-      source('../../src/routes/sysbo/list-renderer.ts'),
-      source('../../src/routes/sysbo/hierarchy-renderer.ts'),
-      source('../../src/routes/sysbo/record-renderer.ts'),
-      source('../../src/routes/sysbo/hierarchy-write.ts'),
-      source('../../src/routes/sysbo/owner-managed-entry.ts'),
-      source('../../src/routes/sysbo/entry-write.ts'),
-      source('../../src/routes/sysbo/external-provider-write.ts'),
+      source('../../src/routes/sysbo/entry/form-payload.ts'),
+      source('../../src/routes/sysbo/entry/representation-runtime.ts'),
+      source('../../src/routes/sysbo/list/renderer.ts'),
+      source('../../src/routes/sysbo/hierarchy/renderer.ts'),
+      source('../../src/routes/sysbo/entry/renderer.ts'),
+      source('../../src/routes/sysbo/hierarchy/write.ts'),
+      source('../../src/routes/sysbo/entry/owner-managed-entry.ts'),
+      source('../../src/routes/sysbo/entry/write.ts'),
+      source('../../src/routes/sysbo/entry/external-provider-write.ts'),
     ]);
 
     expect(routes).toContain("from '../../sysbo/permissions.js'");
     expect(entryWrite).toContain("from './form-payload.js'");
     expect(routes).not.toContain("from './sysbo/form-payload.js'");
-    expect(recordRenderer).toContain("from './entry-representation-runtime.js'");
+    expect(recordRenderer).toContain("from './representation-runtime.js'");
     expect(recordRenderer).not.toContain('resolveUIEntityPermissions(');
     expect(routes).not.toContain('function uiPermissions(');
     expect(routes).not.toContain('function formPayload(');
-    expect(routes).toContain("from './list-renderer.js'");
+    expect(routes).toContain("from './list/renderer.js'");
     expect(listRenderer).toContain('export async function renderMetadataDrivenList(');
-    expect(routes).toContain("from './hierarchy-renderer.js'");
+    expect(routes).toContain("from './hierarchy/renderer.js'");
     expect(hierarchyRenderer).toContain(
       'export async function renderMetadataDrivenHierarchyWorkspace(',
     );
     expect(routes).not.toContain('async function renderMetadataDrivenHierarchyWorkspace(');
-    expect(routes).toContain("from './record-renderer.js'");
+    expect(routes).toContain("from './entry/renderer.js'");
     expect(recordRenderer).toContain('export async function renderMetadataDrivenRecord(');
+    expect(
+      recordRenderer.indexOf('registerContextEntity(ctx, definition.key, metadata, metadataUI);'),
+    ).toBeLessThan(recordRenderer.indexOf('editPageSupplementalData('));
     expect(routes).not.toContain('async function renderMetadataDrivenRecord(');
     expect(routes).not.toContain('function entryRepresentationRuntime(');
-    expect(routes).toContain("from './hierarchy-write.js'");
+    expect(routes).toContain("from './hierarchy/write.js'");
     expect(hierarchyWrite).toContain('export async function commitMetadataDrivenHierarchy(');
-    expect(routes).toContain("from './owner-managed-entry.js'");
+    expect(routes).toContain("from './entry/owner-managed-entry.js'");
     expect(ownerManagedEntry).toContain('export function ownerManagedEntryFromRequest(');
     expect(ownerManagedEntry).toContain('export function mergeOwnerManagedEntryFromRequest(');
     expect(routes).not.toContain('const parseRows = (value: unknown)');
-    expect(routes).toContain("from './entry-write.js'");
+    expect(routes).toContain("from './entry/write.js'");
     expect(entryWrite).toContain('export async function persistMetadataDrivenEntry(');
     expect(entryWrite).toContain('export async function completeMetadataDrivenSave(');
-    expect(routes).toContain("from './external-provider-write.js'");
+    expect(routes).toContain("from './entry/external-provider-write.js'");
     expect(providerWrite).toContain('export async function handleExternalProviderCredentialSave(');
     expect(routes).not.toContain('const action = String(req.body.providerCredentialAction');
 
@@ -93,7 +96,7 @@ describe('SysBO route responsibility boundaries', () => {
     expect(navigation).not.toContain('role === SysBOUserRole.Admin');
     expect(navigation).toContain('const fallbackPlatformAccess = false;');
     expect(routes).toContain('await resolveUIEntityPermissions(req, definition');
-    expect(payload).toContain('field.generated || field.readOnly || field.sensitive');
+    expect(payload).toMatch(/field\.generated\s*\|\|\s*field\.readOnly\s*\|\|\s*field\.sensitive/);
     expect(representation).toContain('field.calculation!.expression');
     expect(representation).not.toContain('compileExpression(');
     expect(representation).not.toContain('.ast');

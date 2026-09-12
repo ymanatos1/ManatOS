@@ -13,10 +13,10 @@ import {
   contextPointer,
   type SysPlatform,
   type PlatformAuthorizationCapabilities,
+  allManatOSObjectMetadata,
 } from '@manatos/shared';
 
 const CONTEXT_IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
-
 function assertContextIdentifier(value: string, purpose: string): string {
   if (!CONTEXT_IDENTIFIER.test(value)) {
     throw new Error(`Invalid ManatOS ctx ${purpose} identifier: ${value}`);
@@ -25,21 +25,17 @@ function assertContextIdentifier(value: string, purpose: string): string {
 }
 
 /**
- * Convert canonical kebab-case SysBO keys to expression-safe ctx identifiers.
- * Example: sys-users -> sysUsers. Invalid punctuation is rejected rather than
- * silently creating a name that the expression grammar cannot address.
+ * Resolve the canonical symbolic entity name declared by metadata.
+ *
+ * CTX never derives or invents an entity identity from the secondary `key`.
+ * The metadata `name` is the single authoritative ctx.entities property name.
  */
-export function entityContextName(sysBOKey: string): string {
-  const parts = sysBOKey.split('-');
-  if (!parts.length || parts.some((part) => !part)) {
-    throw new Error(`Invalid SysBO key for ctx.entities: ${sysBOKey}`);
+export function entityContextName(objectKey: string): string {
+  const metadata = allManatOSObjectMetadata[objectKey as keyof typeof allManatOSObjectMetadata];
+  if (!metadata) {
+    throw new Error(`Unknown ManatOS object key for ctx.entities: ${objectKey}`);
   }
-
-  const name = parts
-    .map((part, index) => (index === 0 ? part : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`))
-    .join('');
-
-  return assertContextIdentifier(name, 'entity');
+  return assertContextIdentifier(metadata.name, 'entity');
 }
 
 function sysBOContext(entries: CompanyInfo['entities'] | SysPlatform['entities']) {
@@ -47,7 +43,11 @@ function sysBOContext(entries: CompanyInfo['entities'] | SysPlatform['entities']
     Object.fromEntries(
       entries.map((contribution) => [
         entityContextName(contribution.sysBOKey),
-        Object.freeze({ key: contribution.sysBOKey, contribution }),
+        Object.freeze({
+          key: contribution.sysBOKey,
+          name: entityContextName(contribution.sysBOKey),
+          contribution,
+        }),
       ]),
     ),
   );
@@ -147,10 +147,8 @@ function userContext(
   const fields = contextFields(safeUser);
   for (const [fieldName, field] of Object.entries(sysBOUsersMetadata.fieldDefinition)) {
     const calculation = field.calculation;
-    if (!calculation?.expression || calculation.triggeredBy?.length) continue;
-    fields[fieldName] = calculatedContextField(calculation.expression, {
-      diagnosticSink: (diagnostic) => console.error('[ManatOS expression parse]', diagnostic),
-    });
+    if (!calculation?.expression) continue;
+    fields[fieldName] = calculatedContextField(calculation.expression);
   }
 
   return {
@@ -248,10 +246,9 @@ export function createManatOSContext(
 }
 
 /**
- * Copy canonical metadata into ctx.entities without adding runtime-local
- * compiler artefacts. Expression source is the portable contract; each
- * execution host compiles and caches its own AST when it actually evaluates or
- * inspects the expression.
+ * Project canonical metadata into ctx.entities as semantic metadata only. Authored
+ * expression source remains observable, while executable ASTs stay outside CTX in
+ * the process-local expression registry.
  *
  * The outer ctx.entities key already owns entity identity, so the copied root
  * metadata object omits its duplicate `key` property.
@@ -260,11 +257,14 @@ function contextMetadata(value: unknown, omitOwnKey = false): unknown {
   if (Array.isArray(value)) return value.map((item) => contextMetadata(item));
   if (!value || typeof value !== 'object') return value;
 
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
+  const source = value as Record<string, unknown>;
+  const projected = Object.fromEntries(
+    Object.entries(source)
       .filter(([key]) => key !== 'ast' && !(omitOwnKey && key === 'key'))
       .map(([key, child]) => [key, contextMetadata(child)]),
   );
+
+  return projected;
 }
 
 /**
@@ -282,6 +282,7 @@ export function registerContextEntity(
   const existing = ctx.entities[name];
   const entity: ManatOSEntityContext = {
     key: sysBOKey,
+    name,
     ...(existing ?? {}),
     ...(metadata !== undefined ? { metadata: contextMetadata(metadata, true) } : {}),
     ...(uiMetadata !== undefined ? { uiMetadata: contextMetadata(uiMetadata, true) } : {}),

@@ -303,6 +303,29 @@ body[data-ui-theme='lighter'] {
  */
 .theme-brand-logo {
   flex: 0 0 auto;
+  /* Visual-only scaling keeps the top-bar geometry and sibling layout unchanged. */
+  transform-origin: left center;
+}
+
+/* The transformed logos are visually wider than their layout boxes. Reserve
+ * each theme's actual visual overflow so the logo -> version gap matches the
+ * normal header-brand gap (and therefore the version -> platform gap) without
+ * changing top-bar height or logo scale. */
+.top-header .brand-link {
+  margin-right: 4rem;
+}
+
+.top-header .theme-brand-logo.brand-logo1 {
+  transform: scale(1.46);
+}
+
+.top-header .theme-brand-logo.brand-logo2 {
+  transform: scale(1.26);
+}
+
+html[data-ui-theme='lighter'] .top-header .brand-link,
+body[data-ui-theme='lighter'] .top-header .brand-link {
+  margin-right: 2.65rem;
 }
 
 .theme-brand-logo-lighter {

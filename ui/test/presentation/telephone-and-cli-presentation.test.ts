@@ -24,7 +24,8 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(formField).toContain('data-field-normalize-expression');
     expect(telephone).not.toContain('TelephoneNbr');
     expect(runtime).toContain('container?.dataset.fieldNormalizeExpression');
-    expect(runtime).toContain('expressionCompiler.ast(container.dataset.fieldNormalizeExpression');
+    expect(runtime).toContain('await loadAstForSource(container.dataset.fieldNormalizeExpression)');
+    expect(runtime).not.toContain('fieldNormalizeAst');
     expect(sourceWithoutWhitespace(runtime)).toContain(
       sourceWithoutWhitespace("syncSourceField(control, { source: 'field-normalization'"),
     );
@@ -46,6 +47,9 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(cliView).toContain('data-cli-instance-key');
     expect(cliView).toContain('data-cli-start-path');
     expect(cli).toContain('manatos.debug.cli.history.${instanceKey}');
+    expect(cli).toContain('const initializeCli = (root) =>');
+    expect(cli).toContain('new MutationObserver');
+    expect(cli).toContain("root.dataset.cliInitialized = 'true'");
     expect(cli).toContain('localStorage.setItem(historyStorageKey');
     expect(debuggerView).toContain('id="ctxDebugCli"');
     // The shared runtime must discover the instance key from component markup;
@@ -55,10 +59,17 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(cli).toContain("'manatos:debug-cli-toggle'");
     expect(cli).toContain('owner-page');
     expect(cli).toContain('ownerPage !== currentPageKey');
-    expect(routes).toContain("router.post('/debug/compile-expression'");
+    expect(routes).toContain("router.post('/expression/compile'");
+    expect(routes).not.toContain("router.post('/debug/compile-expression'");
+    expect(cli).toContain("fetch('/bo/expression/compile'");
+    expect(cli).not.toContain('/bo/debug/compile-expression');
     expect(routes).toContain("router.post('/expression/evaluate-function'");
     expect(cli).toContain("candidate.capability === 'entityResolver'");
     expect(routes).toContain('compileExpression(expression)');
+    expect(cli).toContain('document.querySelector(\'meta[name="csrf-token"]\')');
+    expect(cli).toContain('server returned non-JSON');
+    expect(cli).toContain("candidate.functionName === 'FirstCtx'");
+    expect(cli).toContain('setOpen(!isOpen)');
   });
 
   it('behaves like a compact wrapping console with keyboard execution and prompt history', async () => {
@@ -71,10 +82,30 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(cliView).toContain('data-cli-history');
     expect(cli).toContain("event.key === 'Enter' && !event.shiftKey");
     expect(cli).toContain("input.style.height = 'auto'");
-    expect(cli).toContain("command === '.'");
-    expect(cli).toContain("command === '..'");
-    expect(cli).toContain("command === '. ls'");
+    expect(cli).toContain('const ctxCommand = /^(\\.\\.?)');
+    expect(cli).toContain("family === '..'");
+    expect(cli).toContain("command === '?' || command === 'help'");
+    expect(cli).toContain(
+      "'$entity-fields       canonical fieldDefinition for an initialization context'",
+      "'$entry-current       scalar record currently being initialized'",
+      "'$level-entity-fields $.entities.(#level.control.entityName).metadata.fieldDefinition'",
+    );
+    expect(cli).toContain("'. [ls] [full]");
+    expect(cli).toContain("'.. [ls] [full]");
+    expect(cli).toContain("'cd <path>");
+    expect(cli).toContain("command === 'cd' || command.startsWith('cd ')");
+    expect(cli).toContain('resolveRelativeCtxPath');
+    expect(cli).toContain('resolveVariableWithPath');
+    expect(cli).toContain('runtime?.CtxPath');
+    expect(cli).toContain('navigator.clipboard.writeText');
+    expect(cli).toContain('CTX path not found');
+    expect(cliView).toContain('Expressions are evaluated relative to this CTX node.');
+    expect(cli).toContain('Click to open command history.');
+    expect(cli).toContain("modifier === 'ls' || modifier === 'full'");
+    expect(cli).toContain("modifiers.includes('full')");
     expect(cli).toContain('printCtxShallow');
+    expect(cli).toContain("document.addEventListener('shown.bs.tab'");
+    expect(cli).toContain('target.matches(\'[data-v2-tab-id="debugging"]\')');
     expect(cli).toContain("command === 'cls'");
     expect(cli).toContain("command === 'clear'");
     expect(css).toContain('min-height: 12rem');

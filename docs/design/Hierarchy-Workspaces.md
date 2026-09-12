@@ -40,3 +40,13 @@ Temporary client identities are resolved at the aggregate boundary. A successful
 ## Resources
 
 Hierarchy visualizations expose component-owned read models through the surface `resources` channel rather than introducing hierarchy-specific global CTX topology.
+## Runtime responsibility split
+
+The browser hierarchy implementation keeps one semantic working graph in CTX while separating implementation responsibilities:
+
+- the workspace orchestrator owns CTX mutation, quick editing, aggregate dirty/valid state, draft/clear/commit flow and event wiring;
+- the hierarchy model owns presentation-neutral root/completion/comparison calculations;
+- the draft store owns browser-local draft-key persistence and compatible-key recovery;
+- the relationship runtime owns generic relationship eligibility, cycle-safe placement/removal, persisted-candidate overlay and original-row snapshot maintenance.
+
+These services do not create independent graph authorities. Relationship and model operations consume the workspace-owned entries and write through the workspace CTX mutation boundary. Browser draft persistence is recovery/workspace infrastructure rather than application persistence.

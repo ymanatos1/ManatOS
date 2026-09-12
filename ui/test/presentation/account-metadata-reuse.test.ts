@@ -88,4 +88,31 @@ describe('Account SysUser metadata reuse', () => {
     expect(readonly).toContain('metadata-compact-value metadata-readonly-email');
     expect(readonly).toContain('bi bi-envelope');
   });
+  it('reuses enhanced canonical system-value presentation on Account', async () => {
+    const account = await source('views/pages/account.ejs');
+
+    expect(account).toContain("field: { type: 'guid', readOnly: true }");
+    expect(account).toContain("presentation: { format: 'name' }");
+    expect(account.match(/enhancedReadonlyPresentation: true/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+  it('shows the canonical User photo beside the Account identity summary', async () => {
+    const account = await source('views/pages/account.ejs');
+
+    expect(account).toContain('currentUser.photo');
+    expect(account).toContain('/bo/sys-users/');
+    expect(account).toContain('/picture/photo?revision=');
+    expect(account).toContain('account-summary-photo');
+  });
+  it('keeps Account fields vertically grouped beside the photo and links menu identity to the User entry', async () => {
+    const account = await source('views/pages/account.ejs');
+    const header = await source('views/components/layout/header.ejs');
+    const css = await source('public/css/ui.css');
+
+    expect(account).toContain('class="account-general-layout"');
+    expect(account).toContain('class="account-summary-grid account-general-summary"');
+    expect(css).toContain('.account-general-layout');
+    expect(css).toContain('grid-template-columns: minmax(150px, 210px) minmax(16rem, 1fr)');
+    expect(header).toContain('class="account-menu-user-link"');
+    expect(header).toContain('href="/bo/sys-users/<%= encodeURIComponent(currentUser.id) %>"');
+  });
 });

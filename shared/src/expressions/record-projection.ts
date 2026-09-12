@@ -41,9 +41,11 @@ export async function projectCalculatedRecord<T extends Readonly<Record<string, 
   evaluate: CalculatedRecordProjectionEvaluator,
   options: CalculatedRecordProjectionOptions = {},
 ): Promise<T> {
-  const calculated = fields.filter(
-    (field) => typeof field.key === 'string' && typeof field.calculation?.expression === 'string',
-  );
+  const calculated = fields
+    .filter(
+      (field) => typeof field.key === 'string' && typeof field.calculation?.expression === 'string',
+    )
+    .sort((left, right) => left.key.localeCompare(right.key));
   if (!calculated.length) return source;
 
   const record: Record<string, unknown> = { ...source };

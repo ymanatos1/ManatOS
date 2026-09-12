@@ -216,6 +216,9 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(pages).toContain('max-width: 21rem');
     expect(pages).toContain('.metadata-version-editor {');
     expect(pages).toContain('padding: 0');
+    expect(pages).toContain(
+      'grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr)',
+    );
     expect(pages).toContain('.metadata-field-input > .password-visibility-field');
     expect(pages).toContain('flex: 1 1 auto');
     expect(pages).not.toContain("data-field-component='text'] {\n  width: min(");
@@ -358,7 +361,15 @@ describe('metadata-driven field/content component infrastructure', () => {
     );
     expect(forms).toContain('Metadata-driven per-field change highlighting');
     expect(forms).toContain("window.addEventListener('manatos:ctx-change', schedule)");
-    expect(forms).toContain("container.classList.toggle('metadata-field-changed', changed)");
+    expect(forms).toContain('runtime?.get?.(`${pagePath}.fields.${key}.dirty`) === true');
+    expect(forms).not.toContain('const baselines = new Map()');
+    expect(forms).not.toContain('cloneValue');
+    expect(forms).not.toContain('sameValue');
+    expect(forms).not.toContain('domFieldValue');
+    expect(forms).not.toContain("container.querySelector('[data-ctx-field]')");
+    expect(forms).toContain(
+      "container.classList.toggle('metadata-field-changed', fieldDirty(key))",
+    );
     expect(css).toContain('.metadata-field-changed');
     expect(css).toContain('font-weight: 700');
     expect(informationPanel).toContain('data-information-panel');
@@ -371,14 +382,15 @@ describe('metadata-driven field/content component infrastructure', () => {
     const runtime = await uiSource('public/js/sysbo/entry/form-runtime.js');
     const fieldRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
 
-    expect(runtime).toContain('window.ManatOSFieldComponents?.getFieldOption?.(control)');
+    expect(runtime).toContain('const fieldOptionFromCtx = (key, value) =>');
+    expect(runtime).not.toContain('window.ManatOS?.fieldComponents?.getFieldOption?.(control)');
     expect(runtime).not.toContain('selectedEnumItem');
     expect(runtime).not.toContain('dataset.enumItems');
     expect(runtime).not.toContain('dataset.enumItem');
-    expect(fieldRuntime).toContain('const getFieldOption = (control) =>');
-    expect(fieldRuntime).toContain("root?.dataset.fieldComponent !== 'enum'");
-    expect(fieldRuntime).toContain('selectedOption?.dataset?.enumItem');
-    expect(fieldRuntime).toContain('getFieldOption,');
+    expect(fieldRuntime).not.toContain('const getFieldOption = (control) =>');
+    expect(fieldRuntime).not.toContain('const getFieldOptions = (control) =>');
+    expect(fieldRuntime).not.toContain('getFieldOption,');
+    expect(fieldRuntime).not.toContain('getFieldOptions,');
   });
 
   it('renders null calculated references as None on initial and live updates', async () => {
@@ -398,7 +410,7 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(entry).toContain(
       "if (value === undefined || value === null || value === '') return 'None'",
     );
-    expect(runtime).toContain('window.ManatOSFieldComponents?.setFieldValue');
+    expect(runtime).toContain('window.ManatOS?.fieldComponents?.setFieldValue');
     expect(fieldRuntime).toContain("control.required ? 'Choose...' : 'None'");
     expect(fieldRuntime).toContain(
       "if (component === 'reference') setReferenceValue(control, value)",
@@ -412,7 +424,7 @@ describe('metadata-driven field/content component infrastructure', () => {
 
   it('keeps create option restrictions out of browser and route-local defaulting logic', async () => {
     const fieldRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
-    const renderer = await uiSource('src/routes/sysbo/record-renderer.ts');
+    const renderer = await uiSource('src/routes/sysbo/entry/renderer.ts');
     const entryRuntime = await uiSource('src/runtime/state/entity-entry-runtime.ts');
 
     expect(fieldRuntime).not.toContain('defaults[targetField] = override.allowedValues[0]');

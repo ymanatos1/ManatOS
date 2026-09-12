@@ -30,9 +30,10 @@
   const messageTrace = typeof operationTrace !== 'undefined' && Array.isArray(operationTrace)
     ? operationTrace
     : [];
-  const messageCallingParams =
-    typeof popupCallingParams !== 'undefined' && popupCallingParams && typeof popupCallingParams === 'object'
-      ? popupCallingParams
+  const messageAutoShow = typeof autoShow !== 'undefined' ? autoShow === true : true;
+  const messageInvocation =
+    typeof popupInvocation !== 'undefined' && popupInvocation && typeof popupInvocation === 'object'
+      ? popupInvocation
       : {};
 %>
 <div
@@ -41,9 +42,9 @@
   data-popup-purpose="<%= typeof popupPurpose !== 'undefined' && popupPurpose ? popupPurpose : 'message' %>"
   data-popup-kind="message-modal"
   data-popup-presentation="compact"
-  data-popup-calling-params="<%= JSON.stringify(messageCallingParams) %>"
+  data-popup-invocation="<%= JSON.stringify(messageInvocation) %>"
   tabindex="-1"
-  data-auto-show="true"
+  <% if (messageAutoShow) { %>data-auto-show="true"<% } %>
   aria-labelledby="<%= labelId %>"
   aria-hidden="true"
 >
@@ -59,14 +60,12 @@
       }) %>
 
       <div class="modal-body">
-        <p class="<%= messageTrace.length ? '' : 'mb-0' %>"><%= message %></p>
+        <p class="<%= messageTrace.length ? '' : 'mb-0' %>" data-message-popup-message><%= message %></p>
 
-        <% if (messageTrace.length) { %>
-          <details>
-            <summary><%= typeof detailsLabel !== 'undefined' && detailsLabel ? detailsLabel : 'Show operation details' %></summary>
-            <pre class="operation-trace mt-2"><%= JSON.stringify(messageTrace, null, 2) %></pre>
-          </details>
-        <% } %>
+        <details data-message-popup-details <%= messageTrace.length ? '' : 'hidden' %>>
+          <summary><%= typeof detailsLabel !== 'undefined' && detailsLabel ? detailsLabel : 'Show operation details' %></summary>
+          <pre class="operation-trace mt-2" data-message-popup-trace><%= JSON.stringify(messageTrace, null, 2) %></pre>
+        </details>
       </div>
 
       <%- include('popup-footer', {

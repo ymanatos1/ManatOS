@@ -4,7 +4,7 @@ import { ForbiddenAppError, NotFoundError, SysBOUserRole, operationContext } fro
 import { internalAuditActor } from '../../audit/audit-service.js';
 import { accessTokenStore, type SessionClientInfo } from '../../auth/access-token-store.js';
 import { config } from '../../config.js';
-import type { SysBOUserService } from '../../services/sys-user-service.js';
+import type { SysBOUserService } from '../../services/sysbo/user-service.js';
 import { sendCommand, sendQuery } from '../response.js';
 import { parseEmailVerificationSource, publicUser } from './shared.js';
 

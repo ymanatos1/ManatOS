@@ -6,7 +6,7 @@ import {
 } from '@manatos/shared';
 
 import { AuthorizationService } from '../../auth/authorization-service.js';
-import { DataStoreEntityResolver } from '../../services/entity-resolver.js';
+import { DataStoreEntityResolver } from '../../services/relationships/entity-resolver.js';
 import type { InMemoryDataStore } from '../../storage/in-memory-data-store.js';
 import { requireAuthenticated } from '../../auth/auth-middleware.js';
 import { sendQuery } from '../response.js';

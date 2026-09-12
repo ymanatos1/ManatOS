@@ -11,6 +11,7 @@ import {
   sysBOLicensesMetadata,
   sysBOPrincipalsMetadata,
   sysBOUsersMetadata,
+  operationContext,
   type SysBOApplication,
   type SysBOConfiguration,
   type SysBOExternalIdentity,
@@ -25,11 +26,13 @@ import {
   type SysBOPrincipal,
   type SysBOUser,
   type SysBOUserInvitation,
+  type SysBOPictureValue,
 } from '@manatos/shared';
 
 import { InMemoryRepository } from './in-memory-repository.js';
 
 import { JsonFilePersistence } from './json-file-persistence.js';
+import { PictureFileStorage } from './picture-file-storage.js';
 
 import type { DatabaseState } from './types.js';
 
@@ -46,6 +49,7 @@ import type { StorageAdapter, StorageFlushResult } from './storage-adapter.js';
  */
 export class InMemoryDataStore implements StorageAdapter {
   private state!: DatabaseState;
+  private readonly pictureStorage: PictureFileStorage;
 
   public sysUsers!: InMemoryRepository<SysBOUser>;
 
@@ -66,7 +70,76 @@ export class InMemoryDataStore implements StorageAdapter {
 
   public sysExtAuthProviders!: InMemoryRepository<SysBOExtAuthProvider>;
 
-  constructor(private readonly persistence: JsonFilePersistence) {}
+  constructor(private readonly persistence: JsonFilePersistence) {
+    this.pictureStorage = new PictureFileStorage(persistence.pictureRootDirectory());
+  }
+
+  async writePicture(
+    entityKey: string,
+    recordId: string,
+    fieldKey: string,
+    contentType: SysBOPictureValue['contentType'],
+    bytes: Buffer,
+    revision: string,
+  ): Promise<void> {
+    await this.pictureStorage.write(entityKey, recordId, fieldKey, contentType, bytes, revision);
+  }
+
+  readPicture(
+    entityKey: string,
+    recordId: string,
+    fieldKey: string,
+    picture: SysBOPictureValue,
+  ): Promise<Buffer | null> {
+    return this.pictureStorage.read(entityKey, recordId, fieldKey, picture);
+  }
+
+  deletePicture(
+    entityKey: string,
+    recordId: string,
+    fieldKey: string,
+    picture: SysBOPictureValue | null | undefined,
+  ): Promise<void> {
+    return this.pictureStorage.delete(entityKey, recordId, fieldKey, picture);
+  }
+
+  async writePictureItem(
+    entityKey: string,
+    recordId: string,
+    fieldKey: string,
+    pictureId: string,
+    contentType: SysBOPictureValue['contentType'],
+    bytes: Buffer,
+    revision: string,
+  ): Promise<void> {
+    await this.pictureStorage.writeItem(
+      entityKey,
+      recordId,
+      fieldKey,
+      pictureId,
+      contentType,
+      bytes,
+      revision,
+    );
+  }
+
+  readPictureItem(
+    entityKey: string,
+    recordId: string,
+    fieldKey: string,
+    picture: SysBOPictureValue,
+  ): Promise<Buffer | null> {
+    return this.pictureStorage.readItem(entityKey, recordId, fieldKey, picture);
+  }
+
+  deletePictureItem(
+    entityKey: string,
+    recordId: string,
+    fieldKey: string,
+    picture: SysBOPictureValue,
+  ): Promise<void> {
+    return this.pictureStorage.deleteItem(entityKey, recordId, fieldKey, picture);
+  }
 
   /**
    * Load persisted data and build repositories over the resulting
@@ -160,45 +233,47 @@ export class InMemoryDataStore implements StorageAdapter {
    * a replacement for real database transactions.
    */
   async executeTransaction<T>(operation: () => Promise<T>): Promise<T> {
-    const snapshot = structuredClone(this.state);
+    return operationContext.run('Execute datastore transaction', async () => {
+      const snapshot = structuredClone(this.state);
 
-    try {
-      const result = await operation();
+      try {
+        const result = await operation();
 
-      await this.persistence.save(this.state);
+        await this.persistence.save(this.state);
 
-      return result;
-    } catch (error) {
-      /**
-       * IMPORTANT:
-       *
-       * Do not replace `this.state` or rebuild repository wrapper objects here.
-       * Long-lived domain services keep references to the repositories created
-       * during application startup. Replacing those wrappers after a rollback
-       * leaves the services pointing at detached Maps and can make an existing
-       * SysBOUser appear to disappear in a later request.
-       *
-       * Restore every collection IN PLACE instead. This preserves the identity
-       * of both the DatabaseState Maps and the repository wrappers while still
-       * returning the datastore to its pre-transaction contents.
-       */
-      restoreMap(this.state.sysUsers, snapshot.sysUsers);
-      restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
-      restoreMap(this.state.sysEmailAddresses, snapshot.sysEmailAddresses);
-      restoreMap(this.state.sysPrincipalEmailAddresses, snapshot.sysPrincipalEmailAddresses);
-      restoreMap(this.state.sysTelephoneNumbers, snapshot.sysTelephoneNumbers);
-      restoreMap(this.state.sysPrincipalTelephoneNumbers, snapshot.sysPrincipalTelephoneNumbers);
-      restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
-      restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
-      restoreMap(this.state.sysApplications, snapshot.sysApplications);
-      restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
-      restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
-      restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
-      restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
-      restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
+        return result;
+      } catch (error) {
+        /**
+         * IMPORTANT:
+         *
+         * Do not replace `this.state` or rebuild repository wrapper objects here.
+         * Long-lived domain services keep references to the repositories created
+         * during application startup. Replacing those wrappers after a rollback
+         * leaves the services pointing at detached Maps and can make an existing
+         * SysBOUser appear to disappear in a later request.
+         *
+         * Restore every collection IN PLACE instead. This preserves the identity
+         * of both the DatabaseState Maps and the repository wrappers while still
+         * returning the datastore to its pre-transaction contents.
+         */
+        restoreMap(this.state.sysUsers, snapshot.sysUsers);
+        restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
+        restoreMap(this.state.sysEmailAddresses, snapshot.sysEmailAddresses);
+        restoreMap(this.state.sysPrincipalEmailAddresses, snapshot.sysPrincipalEmailAddresses);
+        restoreMap(this.state.sysTelephoneNumbers, snapshot.sysTelephoneNumbers);
+        restoreMap(this.state.sysPrincipalTelephoneNumbers, snapshot.sysPrincipalTelephoneNumbers);
+        restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
+        restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
+        restoreMap(this.state.sysApplications, snapshot.sysApplications);
+        restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
+        restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
+        restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
+        restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
+        restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
 
-      throw error;
-    }
+        throw error;
+      }
+    });
   }
 
   /**

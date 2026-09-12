@@ -39,6 +39,7 @@ function setup() {
     mode: 'edit',
     name: 'user',
     entityKey: 'sys-users',
+    entityName: 'sysUsers',
     recordId: 'user-1',
   });
   const entry = new EntryStateRuntime(source.id, surfaces.events);
@@ -53,7 +54,7 @@ function setup() {
 }
 
 describe('V2 relationship composition', () => {
-  it('opens Add entry as a nested popup with canonical caller defaults/overrides', async () => {
+  it('opens Add entry as a nested popup with canonical caller rules', async () => {
     const { surfaces, source, commands, relationships } = setup();
     const result = await commands.execute({
       name: 'relationship.add',
@@ -64,10 +65,18 @@ describe('V2 relationship composition', () => {
     const child = surfaces.find(childId);
     expect(child?.host).toBe('popup');
     expect(child?.mode).toBe('create');
-    expect(child?.invocation.defaults).toEqual({ firstName: 'Yiannis', lastName: 'Manatos' });
-    expect(child?.invocation.overrides).toEqual({ userId: 'user-1' });
-    expect(child?.invocation.uiOverrides).toEqual({ userId: { editable: false } });
-    expect(child?.invocation.sourceSurfaceId).toBe(source.id);
+    expect(child?.invocation.caller).toEqual({
+      surfaceRef: source.path,
+      entityName: 'sysUsers',
+      recordId: 'user-1',
+    });
+    expect(child?.invocation.rules?.values).toEqual({
+      firstName: { default: 'Yiannis' },
+      lastName: { default: 'Manatos' },
+      userId: { fixed: 'user-1' },
+    });
+    expect(child?.invocation.rules?.fields).toEqual({ userId: { readOnly: true } });
+    expect(child?.invocation.rules?.query).toBeUndefined();
     relationships.applyChildResult(source.id, 'principalId', {
       outcome: 'saved',
       surfaceId: childId,
@@ -83,6 +92,10 @@ describe('V2 relationship composition', () => {
       payload: { targetEntityKey: 'sys-principals', targetField: 'principalId' },
     });
     const childId = (opened.value as { childSurfaceId: string }).childSurfaceId;
+    const child = surfaces.find(childId);
+    expect(child?.invocation.purpose).toBe('select');
+    expect(child?.invocation.behavior).toEqual({ selection: 'single' });
+    expect(child?.invocation.rules?.query).toEqual({ predicate: "principalType === 'Person'" });
     await commands.execute({
       name: 'surface.close',
       surfaceId: childId,

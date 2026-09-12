@@ -199,7 +199,8 @@ describe('API integration - server and generic SysBO behavior', () => {
 
       expect(metadata.body.data.metadata).toMatchObject({
         key: 'sys-applications',
-        name: 'Application',
+        name: 'sysApplications',
+        label: 'Application',
       });
 
       const metadataUI = await request(context.app)
@@ -230,7 +231,6 @@ describe('API integration - server and generic SysBO behavior', () => {
         .send({
           name: 'Accounts',
           fullName: 'Accounts Application',
-          enabled: true,
         });
 
       expect(create.status).toBe(201);
@@ -240,6 +240,8 @@ describe('API integration - server and generic SysBO behavior', () => {
 
       expect(create.body.data).toMatchObject({
         name: 'Accounts',
+        version: '0.0.1',
+        enabled: true,
         createdBy: 'Admin',
         updatedBy: 'Admin',
       });
@@ -363,6 +365,18 @@ describe('API integration - server and generic SysBO behavior', () => {
 
       expect(response.body.paths).toHaveProperty('/api/v1/SysApplications');
 
+      expect(response.body.paths).toHaveProperty('/api/v1/SysApplications/{id}');
+
+      expect(response.body.paths).toHaveProperty('/api/v1/SysUsers/{id}/$picture/{field}');
+
+      expect(response.body.paths).toHaveProperty('/api/v1/SysApplications/{id}/$pictures/{field}');
+
+      expect(response.body.paths).toHaveProperty('/api/v1/internal/auth/verify-local');
+
+      expect(response.body.paths).toHaveProperty(
+        '/api/v1/internal/external-auth-providers/runtime',
+      );
+
       expect(response.body.paths).toHaveProperty('/api/v1/SysUsers/{id}/verify-email');
 
       expect(response.body.components.securitySchemes).toHaveProperty('internalApiKey');
@@ -371,46 +385,52 @@ describe('API integration - server and generic SysBO behavior', () => {
         'Server',
         'Authentication',
         'System Business Objects',
-        'System Business Objects (Aux)',
+        'SysBO / Users',
+        'SysBO / Principals',
+        'SysBO / Applications',
+        'SysBO / Licenses',
+        'SysBO Aux / Email Addresses',
+        'SysBO Aux / Principal Email Addresses',
+        'SysBO Aux / Telephone Numbers',
+        'SysBO Aux / Principal Telephone Numbers',
+        'SysBO Aux / Addresses',
+        'SysBO Aux / Principal Addresses',
         'Expression Runtime',
         'System Configuration',
         'Public UI',
         'External Authentication',
         'External Authentication Credentials',
+        'Internal API',
         'Internal External Authentication Workflow',
       ]);
 
-      expect(response.body.paths['/api/v1/SysUsers'].get.tags).toEqual(['System Business Objects']);
+      expect(response.body.paths['/api/v1/SysUsers'].get.tags).toEqual(['SysBO / Users']);
       expect(response.body.paths['/api/v1/SysUsers/{id}/verify-email'].post.tags).toEqual([
-        'System Business Objects',
+        'SysBO / Users',
       ]);
-      expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual([
-        'System Business Objects',
-      ]);
+      expect(response.body.paths['/api/v1/SysPrincipals'].get.tags).toEqual(['SysBO / Principals']);
       expect(response.body.paths['/api/v1/SysApplications'].get.tags).toEqual([
-        'System Business Objects',
+        'SysBO / Applications',
       ]);
-      expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual([
-        'System Business Objects',
-      ]);
+      expect(response.body.paths['/api/v1/SysLicenses'].get.tags).toEqual(['SysBO / Licenses']);
 
       expect(response.body.paths['/api/v1/SysEmailAddresses'].get.tags).toEqual([
-        'System Business Objects (Aux)',
+        'SysBO Aux / Email Addresses',
       ]);
       expect(response.body.paths['/api/v1/SysPrincipalEmailAddresses'].get.tags).toEqual([
-        'System Business Objects (Aux)',
+        'SysBO Aux / Principal Email Addresses',
       ]);
       expect(response.body.paths['/api/v1/SysTelephoneNumbers'].get.tags).toEqual([
-        'System Business Objects (Aux)',
+        'SysBO Aux / Telephone Numbers',
       ]);
       expect(response.body.paths['/api/v1/SysPrincipalTelephoneNumbers'].get.tags).toEqual([
-        'System Business Objects (Aux)',
+        'SysBO Aux / Principal Telephone Numbers',
       ]);
       expect(response.body.paths['/api/v1/SysAddresses'].get.tags).toEqual([
-        'System Business Objects (Aux)',
+        'SysBO Aux / Addresses',
       ]);
       expect(response.body.paths['/api/v1/SysPrincipalAddresses'].get.tags).toEqual([
-        'System Business Objects (Aux)',
+        'SysBO Aux / Principal Addresses',
       ]);
 
       expect(response.body.paths['/api/v1/SysConfigurations'].get).toMatchObject({

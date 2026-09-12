@@ -43,11 +43,12 @@ describe('canonical entry representation metadata', () => {
     expect(result.typeValue).toBeUndefined();
   });
 
-  it('prefers evaluator formulas and resolves calculated field dependencies lazily', () => {
+  it('consumes calculated fields from the canonical projected record without recomputing them', () => {
     const metadata: SysBOMetadata<Record<string, unknown>> = {
       key: 'people',
-      name: 'Person',
-      pluralName: 'People',
+      name: 'people',
+      label: 'Person',
+      pluralLabel: 'People',
       primaryField: 'id',
       fieldDefinition: {
         id: { key: 'id', label: 'Id', type: 'guid', order: 1 },
@@ -76,16 +77,21 @@ describe('canonical entry representation metadata', () => {
     };
 
     expect(
-      resolveEntryRepresentation(metadata, ui, { id: '1', firstName: 'Ada', lastName: 'Lovelace' })
-        .name,
+      resolveEntryRepresentation(metadata, ui, {
+        id: '1',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        fullName: 'Ada Lovelace',
+      }).name,
     ).toBe('Ada Lovelace');
   });
 
   it('supports relationship expressions using owner-supplied relation/reference data without I/O', () => {
     const metadata: SysBOMetadata<Record<string, unknown>> = {
       key: 'orders',
-      name: 'Order',
-      pluralName: 'Orders',
+      name: 'orders',
+      label: 'Order',
+      pluralLabel: 'Orders',
       primaryField: 'id',
       fieldDefinition: {
         id: { key: 'id', label: 'Id', type: 'guid', order: 1 },
@@ -130,5 +136,39 @@ describe('canonical entry representation metadata', () => {
     expect(result.typeName).toBe('Retail');
     expect(result.typeIcon).toBe('shop');
     expect(result.icons).toEqual(['shop']);
+  });
+
+  it('does not create a second calculated-field projection inside entry representation', () => {
+    const metadata: SysBOMetadata<Record<string, unknown>> = {
+      key: 'people',
+      name: 'people',
+      label: 'Person',
+      pluralLabel: 'People',
+      primaryField: 'id',
+      fieldDefinition: {
+        id: { key: 'id', label: 'Id', type: 'guid', order: 1 },
+        firstName: { key: 'firstName', label: 'First', type: 'string', order: 2 },
+        fullName: {
+          key: 'fullName',
+          label: 'Full name',
+          type: 'string',
+          order: 3,
+          calculation: { expression: "firstName + ' Smith'" },
+        },
+      },
+      entry: { name: { field: 'fullName' } },
+    };
+    const ui: SysBOUIMetadata = {
+      key: 'people',
+      list: {
+        visibleFields: ['id'],
+        filterFields: [],
+        sortableFields: [],
+        addAction: { visible: true, label: 'Add' },
+      },
+      record: { tabs: [], fieldOverrides: {} },
+    };
+
+    expect(resolveEntryRepresentation(metadata, ui, { id: '1', firstName: 'Ada' }).name).toBe('');
   });
 });

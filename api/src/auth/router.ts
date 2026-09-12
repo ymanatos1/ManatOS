@@ -6,7 +6,7 @@ import { config } from '../config.js';
 
 import { authenticatedAuditActor } from '../audit/audit-service.js';
 
-import type { SysBOUserService } from '../services/sys-user-service.js';
+import type { SysBOUserService } from '../services/sysbo/user-service.js';
 
 import { accessTokenStore, type SessionClientInfo } from './access-token-store.js';
 

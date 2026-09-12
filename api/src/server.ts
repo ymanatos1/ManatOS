@@ -4,7 +4,7 @@ import { JsonFilePersistence } from './storage/json-file-persistence.js';
 
 import { InMemoryDataStore } from './storage/in-memory-data-store.js';
 
-import { SysBOUserService } from './services/sys-user-service.js';
+import { SysBOUserService } from './services/sysbo/user-service.js';
 
 import {
   ExternalIdentityService,
@@ -17,9 +17,9 @@ import { createApp } from './app.js';
 import { createEmailService } from './email/email-service.js';
 import { logger } from './logging/logger.js';
 import { SecretsEncryptionService } from './security/secrets-encryption-service.js';
-import { SysBOExtAuthProviderService } from './services/sys-ext-auth-provider-service.js';
-import { SysBOConfigurationService } from './services/sys-configuration-service.js';
-import { RelationshipIntegrityService } from './services/relationship-integrity-service.js';
+import { SysBOExtAuthProviderService } from './services/sysbo/external-auth-provider-service.js';
+import { SysBOConfigurationService } from './services/sysbo/configuration-service.js';
+import { RelationshipIntegrityService } from './services/relationships/integrity-service.js';
 
 /**
  * Application composition root.

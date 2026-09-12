@@ -1,8 +1,6 @@
 (async () => {
   'use strict';
 
-  await window.ManatOS?.expressionCompilerReady;
-
   const runtime = window.ManatOS?.ctx;
   const workspace = document.querySelector('[data-metadata-hierarchy-workspace]');
   if (!runtime || !(workspace instanceof HTMLElement)) return;
@@ -77,13 +75,49 @@
     entityContext?.metadata && typeof entityContext.metadata === 'object'
       ? entityContext.metadata
       : null;
-  const entityUiMetadata =
-    entityContext?.uiMetadata && typeof entityContext.uiMetadata === 'object'
-      ? entityContext.uiMetadata
-      : null;
   if (!parentField) return;
 
+  const typeField = String(workspaceValue('typeField', componentOptions.typeField ?? ''));
+  const containerTrait = String(
+    workspaceValue('containerTrait', componentOptions.containerTrait ?? ''),
+  );
+  const canHaveParentTrait = String(
+    workspaceValue('canHaveParentTrait', componentOptions.canHaveParentTrait ?? ''),
+  );
+  const rootEligibleTrait = String(
+    workspaceValue('rootEligibleTrait', componentOptions.rootEligibleTrait ?? ''),
+  );
+  const standAloneEligibleTrait = String(
+    workspaceValue('standAloneEligibleTrait', componentOptions.standAloneEligibleTrait ?? ''),
+  );
+  const createHierarchyWorkspaceModel = window.ManatOS?.createHierarchyWorkspaceModel;
+  if (typeof createHierarchyWorkspaceModel !== 'function')
+    throw new Error('Hierarchy workspace model service is unavailable.');
+  const hierarchyModel = createHierarchyWorkspaceModel({
+    idField,
+    parentField,
+    rootField,
+    typeField,
+    rootEligibleTrait,
+    standAloneEligibleTrait,
+    entityMetadata,
+  });
+
   const entryResolver = window.ManatOS?.entryRepresentation;
+  await entryResolver?.prepare?.(entryRepresentation);
+  const entryOwnerPath = (row) => {
+    if (!row || typeof row !== 'object') return null;
+    const values = runtime.resolve(entriesPath);
+    if (!Array.isArray(values)) return null;
+    const rowId = row?.[idField];
+    const index = values.findIndex(
+      (candidate) =>
+        candidate &&
+        typeof candidate === 'object' &&
+        (candidate === row || String(candidate?.[idField] ?? '') === String(rowId ?? '')),
+    );
+    return index >= 0 ? `${entriesPath}[${index}]` : null;
+  };
   const resolveEntryName = (row) => {
     if (!row) return '';
     if (entryResolver?.resolve) {
@@ -91,6 +125,7 @@
         metadata: entityMetadata,
         entityIcon: componentOptions.entityIcon,
         fallbackName: row?.[labelField] ?? '',
+        ownerPath: entryOwnerPath(row),
       }).name;
     }
     return String(row?.[labelField] ?? '');
@@ -108,19 +143,6 @@
   const hierarchyDraftStatus = workspace.querySelector('[data-hierarchy-draft-status]');
   const hierarchySaveDraft = workspace.querySelector('[data-hierarchy-save-draft]');
   const hierarchyClearAll = workspace.querySelector('[data-hierarchy-clear-all]');
-  const typeField = String(workspaceValue('typeField', componentOptions.typeField ?? ''));
-  const containerTrait = String(
-    workspaceValue('containerTrait', componentOptions.containerTrait ?? ''),
-  );
-  const canHaveParentTrait = String(
-    workspaceValue('canHaveParentTrait', componentOptions.canHaveParentTrait ?? ''),
-  );
-  const rootEligibleTrait = String(
-    workspaceValue('rootEligibleTrait', componentOptions.rootEligibleTrait ?? ''),
-  );
-  const standAloneEligibleTrait = String(
-    workspaceValue('standAloneEligibleTrait', componentOptions.standAloneEligibleTrait ?? ''),
-  );
 
   const entries = () => {
     const value = runtime.resolve(entriesPath);
@@ -128,36 +150,10 @@
   };
 
   /*
-   * The hierarchy owns the parent relationship. A declared root field is a
-   * calculated projection of that relationship, never a second user-authored
-   * relationship. Recalculate it over the in-memory graph after every graph
-   * mutation so draft members expose the same complete record shape that a
-   * nested owner-aware record editor will later consume.
+   * The hierarchy owns the parent relationship. The sibling model service keeps
+   * graph calculations presentation-neutral while this shell owns CTX mutation.
    */
-  const withCalculatedHierarchy = (rows) => {
-    const cloned = rows.map((row) => ({ ...row }));
-    if (!rootField) return cloned;
-    const byId = new Map(cloned.map((row) => [String(row?.[idField] ?? ''), row]));
-
-    const rootFor = (row) => {
-      const directParent = row?.[parentField];
-      if (directParent == null || String(directParent) === '') return null;
-      let cursorId = String(directParent);
-      const visited = new Set([String(row?.[idField] ?? '')]);
-      while (cursorId) {
-        if (visited.has(cursorId)) return null;
-        visited.add(cursorId);
-        const cursor = byId.get(cursorId);
-        if (!cursor) return cursorId;
-        const parent = cursor[parentField];
-        if (parent == null || String(parent) === '') return String(cursor[idField] ?? cursorId);
-        cursorId = String(parent);
-      }
-      return null;
-    };
-
-    return cloned.map((row) => ({ ...row, [rootField]: rootFor(row) }));
-  };
+  const withCalculatedHierarchy = (rows) => hierarchyModel.withCalculatedHierarchy(rows);
 
   const replaceEntries = (next, action) =>
     runtime.replace(entriesPath, withCalculatedHierarchy(next), {
@@ -173,14 +169,8 @@
     return null;
   };
 
-  const staticDefault = (key, field) => {
-    const quickOverride = entityUiMetadata?.recordQuick?.fieldOverrides?.[key];
-    const recordOverride = entityUiMetadata?.record?.fieldOverrides?.[key];
-    const hasQuickDefault =
-      quickOverride && Object.prototype.hasOwnProperty.call(quickOverride, 'createDefaultValue');
-    const candidate = hasQuickDefault
-      ? quickOverride.createDefaultValue
-      : recordOverride?.createDefaultValue;
+  const staticDefault = (_key, field) => {
+    const candidate = field?.createDefaultValue;
     if (candidate === null || ['string', 'number', 'boolean'].includes(typeof candidate))
       return candidate;
     return fieldEmptyValue(field);
@@ -203,40 +193,7 @@
     `draft:${crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
   const find = (id) => entries().find((row) => String(row?.[idField]) === String(id));
 
-  const hierarchyCompletion = (rows) => {
-    if (!rows.length) return { complete: false, reason: 'The hierarchy has no members yet.' };
-    const byId = new Map(rows.map((row) => [String(row?.[idField] ?? ''), row]));
-    const roots = rows.filter((row) => {
-      const parent = row?.[parentField];
-      return parent == null || String(parent) === '' || !byId.has(String(parent));
-    });
-    if (roots.length !== 1) {
-      return {
-        complete: false,
-        reason: roots.length
-          ? 'The hierarchy has more than one root candidate.'
-          : 'The hierarchy has no root candidate.',
-      };
-    }
-    if (!typeField || !rootEligibleTrait || !standAloneEligibleTrait)
-      return { complete: true, reason: null };
-    const type = roots[0]?.[typeField];
-    const field = entityMetadata?.fieldDefinition?.[typeField];
-    const option = Array.isArray(field?.enumItems)
-      ? field.enumItems.find((candidate) => candidate?.value === type)
-      : null;
-    const complete =
-      option?.[rootEligibleTrait] === true ||
-      (rows.length === 1 && option?.[standAloneEligibleTrait] === true);
-    return {
-      complete,
-      reason: complete
-        ? null
-        : rows.length === 1
-          ? 'This member type is not eligible to finalize a standalone hierarchy.'
-          : 'This hierarchy needs an eligible root member type before it is finalized.',
-    };
-  };
+  const hierarchyCompletion = (rows) => hierarchyModel.completion(rows);
 
   const originalEntries = () => {
     const value = runtime.resolve(originalEntriesPath);
@@ -255,39 +212,37 @@
     );
   };
 
-  const ensureOriginalSnapshot = (candidate) => {
-    const candidateId = candidate?.[idField] ?? candidate?.id ?? candidate?.value;
-    if (
-      candidateId == null ||
-      String(candidateId) === '' ||
-      String(candidateId).startsWith('draft:')
-    )
-      return;
-    if (originalEntries().some((entry) => String(entry?.[idField] ?? '') === String(candidateId)))
-      return;
-    replaceOriginalEntries(
-      [...originalEntries(), { ...candidate, [idField]: candidateId }],
-      'add-existing-original',
-    );
-  };
+  const workspaceDirty = (rows = entries()) => !hierarchyModel.sameRows(rows, originalEntries());
 
-  const removeOriginalSnapshot = (memberId) => {
-    if (!memberId || String(memberId).startsWith('draft:')) return;
-    replaceOriginalEntries(
-      originalEntries().filter((entry) => String(entry?.[idField] ?? '') !== String(memberId)),
-      'remove-existing-original',
-    );
-  };
-
-  const normalizedRows = (rows) =>
-    rows
-      .map((row) => ({ ...row }))
-      .sort((left, right) =>
-        String(left?.[idField] ?? '').localeCompare(String(right?.[idField] ?? '')),
-      );
-
-  const workspaceDirty = (rows = entries()) =>
-    JSON.stringify(normalizedRows(rows)) !== JSON.stringify(normalizedRows(originalEntries()));
+  /*
+   * Relationship placement is isolated from workspace UI orchestration. This
+   * service owns graph mutations/eligibility while CTX storage remains here.
+   */
+  const createHierarchyRelationshipRuntime = window.ManatOS?.createHierarchyRelationshipRuntime;
+  if (typeof createHierarchyRelationshipRuntime !== 'function')
+    throw new Error('Hierarchy relationship runtime service is unavailable.');
+  const hierarchyRelationships = createHierarchyRelationshipRuntime({
+    runtime,
+    pagePath,
+    workspace,
+    entityContext,
+    entityMetadata,
+    entityLabel,
+    idField,
+    parentField,
+    typeField,
+    containerTrait,
+    canHaveParentTrait,
+    rootEligibleTrait,
+    standAloneEligibleTrait,
+    entries,
+    originalEntries,
+    replaceEntries,
+    replaceOriginalEntries,
+    find,
+    resolveEntryName,
+    isEditing: () => Boolean(draft),
+  });
 
   const setRuntimeValue = (path, value, action) => {
     if (runtime.resolve(path) === value) return;
@@ -328,7 +283,11 @@
       changedSinceDraft ? 'modified-after-draft' : 'saved',
       'hierarchy-draft-status',
     );
-    setRuntimeValue(`${pagePath}.state.draftDirty`, changedSinceDraft, 'hierarchy-draft-dirty');
+    setRuntimeValue(
+      `${pagePath}.control.state.draftDirty`,
+      changedSinceDraft,
+      'hierarchy-draft-dirty',
+    );
   };
 
   const refreshWorkspaceSummary = () => {
@@ -398,18 +357,9 @@
       'hierarchy-status',
     );
     setRuntimeValue(workspaceValuePath('finalizable'), state.complete, 'hierarchy-finalizable');
-    setRuntimeValue(`${pagePath}.state.valid`, state.complete, 'hierarchy-valid');
-    setRuntimeValue(`${pagePath}.state.dirty`, dirty, 'hierarchy-dirty');
-    setRuntimeValue(
-      `${pagePath}.state.internalEditing`,
-      Boolean(draft),
-      'hierarchy-internal-editing',
-    );
-    setRuntimeValue(
-      `${pagePath}.state.internalEditorCount`,
-      draft ? 1 : 0,
-      'hierarchy-internal-editor-count',
-    );
+    setRuntimeValue(`${pagePath}.control.state.valid`, state.complete, 'hierarchy-valid');
+    setRuntimeValue(`${pagePath}.control.state.dirty`, dirty, 'hierarchy-dirty');
+    setRuntimeValue(`${pagePath}.control.state.blocked`, Boolean(draft), 'hierarchy-blocked');
   };
 
   const clearQuick = () => {
@@ -555,7 +505,7 @@
     if (draft) return;
     const current = memberId ? find(memberId) : null;
     if (command === 'add-child' && current && containerTrait) {
-      const option = enumOptionFor(current);
+      const option = hierarchyRelationships.enumOptionFor(current);
       if (option?.[containerTrait] !== true) return;
     }
     const id = makeDraftId();
@@ -637,604 +587,52 @@
     replaceEntries(next, 'save-quick');
   };
 
-  const removeNode = (memberId) => {
-    if (draft || !memberId) return;
-    const row = find(memberId);
-    if (!row) return;
-    if (
-      entries().some((candidate) => String(candidate?.[parentField] ?? '') === String(memberId))
-    ) {
-      window.alert('Move or remove this member’s children before removing the member.');
-      return;
-    }
-    replaceEntries(
-      entries()
-        .filter((entry) => String(entry[idField]) !== String(memberId))
-        .map((entry) => ({ ...entry })),
-      'remove-member',
-    );
-    removeOriginalSnapshot(memberId);
-  };
-
-  const enumOptionFor = (row) => {
-    if (!typeField || !row) return null;
-    const field = entityMetadata?.fieldDefinition?.[typeField];
-    return Array.isArray(field?.enumItems)
-      ? (field.enumItems.find((candidate) => candidate?.value === row?.[typeField]) ?? null)
-      : null;
-  };
-
-  /**
-   * Detach one member from its current parent without deleting either record.
-   * The organization may become temporarily incomplete (multiple roots); the
-   * workspace validity calculation then keeps aggregate Save disabled until the
-   * structure is finalizable again.
-   */
-  const clearParent = (memberId) => {
-    if (draft || !memberId) return;
-    const row = find(memberId);
-    if (!row || row?.[parentField] == null || String(row[parentField]) === '') return;
-    replaceEntries(
-      entries().map((entry) =>
-        String(entry?.[idField] ?? '') === String(memberId)
-          ? { ...entry, [parentField]: null }
-          : { ...entry },
-      ),
-      'clear-parent',
-    );
-  };
-
-  /**
-   * Reparent one working member by dropping it on another hierarchy member.
-   * The operation is entirely owner-context based: it changes parentField in
-   * entries[], lets calculated hierarchy fields refresh, and never persists.
-   */
-  const moveNode = (memberId, targetId) => {
-    if (draft || !memberId || !targetId || String(memberId) === String(targetId)) return;
-    const moving = find(memberId);
-    const target = find(targetId);
-    if (!moving || !target) return;
-    // A direct-parent drop is a no-op and must be rejected by the mutation path
-    // as well as by the visual drag target validator.
-    if (String(moving?.[parentField] ?? '') === String(targetId)) return;
-
-    const movingOption = enumOptionFor(moving);
-    if (canHaveParentTrait && movingOption?.[canHaveParentTrait] !== true) return;
-
-    const targetOption = enumOptionFor(target);
-    if (containerTrait && targetOption?.[containerTrait] !== true) return;
-
-    // Reject cycles: a member cannot be dropped onto one of its descendants.
-    let cursor = target;
-    const visited = new Set();
-    while (cursor) {
-      const cursorId = String(cursor?.[idField] ?? '');
-      if (!cursorId || visited.has(cursorId)) break;
-      if (cursorId === String(memberId)) return;
-      visited.add(cursorId);
-      const parentId = cursor?.[parentField];
-      if (parentId == null || String(parentId) === '') break;
-      cursor = find(String(parentId));
-    }
-
-    replaceEntries(
-      entries().map((entry) =>
-        String(entry?.[idField] ?? '') === String(memberId)
-          ? { ...entry, [parentField]: target[idField] }
-          : { ...entry },
-      ),
-      'move-member',
-    );
-  };
-
-  const allReferenceEntries = () => {
-    const referenceData = runtime.resolve(`${pagePath}.resources.referenceData`) ?? {};
-    const candidates = referenceData?.[parentField];
-    if (!Array.isArray(candidates)) return [];
-
-    /*
-     * Relationship eligibility must always see the live workspace graph first.
-     * Reference data is the persisted candidate catalogue, but a node already in
-     * entries[] may have been re-parented during this still-uncommitted session.
-     * Overlay its working value so submenu, selector and defensive mutation checks
-     * all answer the same question against the same graph.
-     */
-    const workingById = new Map(entries().map((row) => [String(row?.[idField] ?? ''), row]));
-    return candidates
-      .filter((row) => row && typeof row === 'object')
-      .map((row) => {
-        const candidateId = String(row?.[idField] ?? row?.id ?? row?.value ?? '');
-        const working = workingById.get(candidateId);
-        return working ? { ...row, ...working } : row;
-      });
-  };
-
-  /**
-   * Older browser drafts may predate entriesOriginal[]. Recover persisted
-   * baselines from the canonical reference rows already supplied by the owner
-   * page. Unknown historical properties are ignored; user draft work wins over
-   * strict version gating.
-   */
-  const hydrateMissingOriginalSnapshots = () => {
-    const sourceById = new Map(
-      allReferenceEntries().map((row) => [
-        String(row?.[idField] ?? row?.id ?? row?.value ?? ''),
-        row,
-      ]),
-    );
-    const originalsById = new Map(
-      originalEntries().map((row) => [String(row?.[idField] ?? ''), row]),
-    );
-    let changed = false;
-    for (const row of entries()) {
-      const id = String(row?.[idField] ?? '');
-      if (!id || id.startsWith('draft:') || originalsById.has(id)) continue;
-      const source = sourceById.get(id);
-      if (!source) continue;
-      originalsById.set(id, { ...source, [idField]: id });
-      changed = true;
-    }
-    if (changed) replaceOriginalEntries([...originalsById.values()], 'hydrate-existing-originals');
-  };
-
-  /**
-   * One relationship-eligibility contract for every hierarchy selection path.
-   * Menu candidate lists, the existing-entry selector and commit/relation paths
-   * all consume these canonical enum traits. UI filtering is convenience only;
-   * mutation paths call the same rule again defensively.
-   */
-  const relationCandidateEligibility = (member, candidate, relation) => {
-    if (!member || !candidate) return { eligible: false, reason: 'Missing hierarchy member.' };
-    const memberId = String(member?.[idField] ?? '');
-    const candidateId = String(candidate?.[idField] ?? candidate?.id ?? candidate?.value ?? '');
-    if (!memberId || !candidateId || memberId === candidateId)
-      return { eligible: false, reason: 'An entry cannot relate to itself.' };
-
-    const optionFor = (row) => {
-      if (!typeField || !row) return null;
-      const field = entityMetadata?.fieldDefinition?.[typeField];
-      return Array.isArray(field?.enumItems)
-        ? (field.enumItems.find(
-            (item) => String(item?.value ?? '') === String(row?.[typeField] ?? ''),
-          ) ?? null)
-        : null;
-    };
-    const memberOption = optionFor(member);
-    const candidateOption = optionFor(candidate);
-    const memberCanHaveParent = !canHaveParentTrait || memberOption?.[canHaveParentTrait] === true;
-    const candidateCanHaveParent =
-      !canHaveParentTrait || candidateOption?.[canHaveParentTrait] === true;
-    const memberCanContain = !containerTrait || memberOption?.[containerTrait] === true;
-    const candidateCanContain = !containerTrait || candidateOption?.[containerTrait] === true;
-
-    if (relation === 'parent') {
-      if (String(member?.[parentField] ?? '') === candidateId) {
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(candidate) || 'The selected entry'} is already the parent of ${resolveEntryName(member) || 'this entry'}.`,
-        };
-      }
-      if (!memberCanHaveParent)
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(member) || 'This entry'} cannot have a parent.`,
-        };
-      if (!candidateCanContain)
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(candidate) || 'The selected entry'} cannot contain children.`,
-        };
-    } else if (relation === 'child') {
-      if (String(candidate?.[parentField] ?? '') === memberId) {
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(candidate) || 'The selected entry'} is already a child of ${resolveEntryName(member) || 'this entry'}.`,
-        };
-      }
-      if (!memberCanContain)
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(member) || 'This entry'} cannot contain children.`,
-        };
-      if (!candidateCanHaveParent)
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(candidate) || 'The selected entry'} cannot have a parent.`,
-        };
-    } else {
-      const nextParentId = member?.[parentField];
-      if (String(candidate?.[parentField] ?? '') === String(nextParentId ?? '')) {
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(candidate) || 'The selected entry'} is already a sibling of ${resolveEntryName(member) || 'this entry'}.`,
-        };
-      }
-      if (nextParentId != null && String(nextParentId) !== '' && !candidateCanHaveParent) {
-        return {
-          eligible: false,
-          reason: `${resolveEntryName(candidate) || 'The selected entry'} cannot have a parent.`,
-        };
-      }
-      if ((nextParentId == null || String(nextParentId) === '') && rootEligibleTrait) {
-        const rootEligible =
-          candidateOption?.[rootEligibleTrait] === true ||
-          candidateOption?.[standAloneEligibleTrait] === true;
-        if (!rootEligible)
-          return {
-            eligible: false,
-            reason: `${resolveEntryName(candidate) || 'The selected entry'} is not root-eligible.`,
-          };
-      }
-    }
-
-    // Existing working nodes also require cycle protection. Database candidates
-    // not yet in the graph cannot form a working-graph cycle at selection time.
-    const candidateWorking = find(candidateId);
-    if (candidateWorking) {
-      const movingId = relation === 'parent' ? memberId : candidateId;
-      const nextParentId =
-        relation === 'parent'
-          ? candidateId
-          : relation === 'child'
-            ? memberId
-            : (member?.[parentField] ?? null);
-      if (nextParentId != null && String(nextParentId) !== '') {
-        let cursor = find(String(nextParentId));
-        const visited = new Set();
-        while (cursor) {
-          const cursorId = String(cursor?.[idField] ?? '');
-          if (!cursorId || visited.has(cursorId)) break;
-          if (cursorId === movingId)
-            return { eligible: false, reason: 'That relationship would create a hierarchy cycle.' };
-          visited.add(cursorId);
-          const parentId = cursor?.[parentField];
-          if (parentId == null || String(parentId) === '') break;
-          cursor = find(String(parentId));
-        }
-      }
-    }
-    return { eligible: true, reason: null };
-  };
-
-  const expressionLiteral = (value) => JSON.stringify(String(value ?? ''));
-
-  /**
-   * Build the canonical exclude-when-true predicate passed by this hierarchy
-   * caller to every list-like candidate surface. Type-wide exclusions remain
-   * translatable by a future RDBMS adapter, while graph-specific exclusions
-   * (self/cycle/current-placement) are emitted as explicit ids.
-   */
-  const relationListExceptions = (member, relation, candidates = allReferenceEntries()) => {
-    const field = entityMetadata?.fieldDefinition?.[typeField];
-    const enumItems = Array.isArray(field?.enumItems) ? field.enumItems : [];
-    const memberParent = member?.[parentField];
-    const disallowedTypes = enumItems
-      .filter((item) => {
-        if (relation === 'parent') return containerTrait && item?.[containerTrait] !== true;
-        if (relation === 'child') return canHaveParentTrait && item?.[canHaveParentTrait] !== true;
-        if (memberParent != null && String(memberParent) !== '')
-          return canHaveParentTrait && item?.[canHaveParentTrait] !== true;
-        if (rootEligibleTrait)
-          return item?.[rootEligibleTrait] !== true && item?.[standAloneEligibleTrait] !== true;
-        return false;
-      })
-      .map((item) => String(item?.value ?? ''))
-      .filter(Boolean);
-
-    const disallowedIds = candidates
-      .filter((candidate) => {
-        const type = String(candidate?.[typeField] ?? '');
-        // Type-wide failures are represented separately, so explicit ids capture
-        // only per-row graph/state exceptions such as self/cycle/same placement.
-        if (disallowedTypes.includes(type)) return false;
-        return !relationCandidateEligibility(member, candidate, relation).eligible;
-      })
-      .map((candidate) => String(candidate?.[idField] ?? candidate?.id ?? candidate?.value ?? ''))
-      .filter(Boolean);
-
-    const clauses = [];
-    if (disallowedIds.length)
-      clauses.push(`${idField} IN [${disallowedIds.map(expressionLiteral).join(', ')}]`);
-    if (typeField && disallowedTypes.length)
-      clauses.push(`${typeField} IN [${disallowedTypes.map(expressionLiteral).join(', ')}]`);
-    return clauses.join(' || ') || 'false';
-  };
-
-  const addDatabaseEntryForRelation = (candidate, memberId, relation) => {
-    const member = find(memberId);
-    const candidateId = candidate?.[idField] ?? candidate?.id ?? candidate?.value;
-    if (!member || candidateId == null || String(candidateId) === '') return false;
-    if (find(String(candidateId))) return false;
-    const eligibility = relationCandidateEligibility(member, candidate, relation);
-    if (!eligibility.eligible) {
-      window.alert(eligibility.reason || 'That relationship is not allowed.');
-      return false;
-    }
-
-    const row = { ...candidate, [idField]: candidateId };
-    ensureOriginalSnapshot(row);
-    const currentParent = member[parentField] ?? null;
-    const current = entries().map((entry) => ({ ...entry }));
-
-    if (relation === 'parent') {
-      row[parentField] = currentParent;
-      replaceEntries(
-        [
-          ...current.map((entry) =>
-            String(entry?.[idField] ?? '') === String(memberId)
-              ? { ...entry, [parentField]: candidateId }
-              : entry,
-          ),
-          row,
-        ],
-        'add-existing-entry-parent',
-      );
-    } else if (relation === 'child') {
-      row[parentField] = memberId;
-      replaceEntries([...current, row], 'add-existing-entry-child');
-    } else {
-      row[parentField] = currentParent;
-      replaceEntries([...current, row], 'add-existing-entry-sibling');
-    }
-    return true;
-  };
-
-  const openExistingEntrySelector = (memberId, relation = 'sibling') => {
-    const member = find(memberId);
-    if (!member) return;
-
-    const source = allReferenceEntries();
-    if (!source.length) {
-      window.alert('No existing entries are available for selection.');
-      return;
-    }
-
-    const selector = window.ManatOSRecordSelector;
-    const template = workspace.querySelector('[data-record-selector-template]');
-    if (!selector?.open || !(template instanceof HTMLTemplateElement)) return;
-
-    const memberName = resolveEntryName(member) || String(memberId);
-    const listExceptions = relationListExceptions(member, relation, source);
-
-    selector.open({
-      template,
-      source,
-      callingParams: {
-        purpose: 'hierarchy-add-existing',
-        presentationMode: 'subtle',
-        entityKey,
-        targetEntityLabel: entityLabel,
-        selectionMode: 'single',
-        sourceEntityKey: entityKey,
-        sourceRecordId: String(memberId),
-        sourceRecordName: memberName,
-        relation,
-        anchorRecordId: String(memberId),
-        queryPredicate: listExceptions,
-      },
-      eligibility: (candidate) => {
-        const candidateId = String(candidate?.[idField] ?? candidate?.id ?? candidate?.value ?? '');
-        if (!candidateId || candidateId === String(memberId)) {
-          return {
-            eligible: false,
-            visible: false,
-            reason: 'The source entry cannot be selected for this relationship.',
-          };
-        }
-
-        const result = relationCandidateEligibility(member, candidate, relation);
-        // Preserve the existing Organization selector behavior: candidates that
-        // cannot satisfy this relationship are excluded rather than shown as
-        // disabled. Other selector callers may choose to keep ineligible rows
-        // visible by returning visible:true.
-        return {
-          eligible: result.eligible,
-          visible: result.eligible,
-          reason: result.reason || '',
-        };
-      },
-      initialSelection: null,
-      factsForCandidate: (candidate) => {
-        const candidateId = String(candidate?.[idField] ?? candidate?.id ?? candidate?.value ?? '');
-        return { alreadyInContext: Boolean(candidateId && find(candidateId)) };
-      },
-      onSelect: (candidate) => {
-        const candidateId = String(candidate?.[idField] ?? candidate?.id ?? candidate?.value ?? '');
-        if (!candidateId) return false;
-
-        if (find(candidateId)) {
-          relateExistingNode(`use-existing-${relation}`, memberId, candidateId, { confirm: false });
-        } else {
-          addDatabaseEntryForRelation(candidate, memberId, relation);
-        }
-        return true;
-      },
-    });
-  };
-
-  const relateExistingNode = (command, memberId, candidateId, options = {}) => {
-    if (draft || !memberId || !candidateId || String(memberId) === String(candidateId)) return;
-    const member = find(memberId);
-    const candidate = find(candidateId);
-    if (!member || !candidate) return;
-
-    const memberName = resolveEntryName(member) || String(memberId);
-    const candidateName = resolveEntryName(candidate) || String(candidateId);
-    let movingId = candidateId;
-    let nextParent = null;
-    let message = '';
-    if (command === 'use-existing-parent') {
-      movingId = memberId;
-      nextParent = candidateId;
-      message = `Make ${candidateName} parent of ${memberName}?`;
-    } else if (command === 'use-existing-child') {
-      movingId = candidateId;
-      nextParent = memberId;
-      message = `Make ${candidateName} child of ${memberName}?`;
-    } else if (command === 'use-existing-sibling') {
-      movingId = candidateId;
-      nextParent = member[parentField] ?? null;
-      message = `Move ${candidateName} beside ${memberName} as its sibling?`;
-    } else return;
-
-    const eligibility = relationCandidateEligibility(
-      member,
-      candidate,
-      command.replace('use-existing-', ''),
-    );
-    if (!eligibility.eligible) {
-      window.alert(eligibility.reason || 'That relationship is not allowed.');
-      return;
-    }
-
-    // Reuse the same graph safety semantics as drag/drop before asking the user.
-    if (nextParent != null && String(nextParent) !== '') {
-      let cursor = find(nextParent);
-      const visited = new Set();
-      while (cursor) {
-        const cursorId = String(cursor?.[idField] ?? '');
-        if (!cursorId || visited.has(cursorId)) break;
-        if (cursorId === String(movingId)) {
-          window.alert('That relationship would create a hierarchy cycle.');
-          return;
-        }
-        visited.add(cursorId);
-        const parentId = cursor?.[parentField];
-        if (parentId == null || String(parentId) === '') break;
-        cursor = find(parentId);
-      }
-    }
-    if (options.confirm !== false && !window.confirm(message)) return;
-    replaceEntries(
-      entries().map((entry) =>
-        String(entry?.[idField] ?? '') === String(movingId)
-          ? { ...entry, [parentField]: nextParent }
-          : { ...entry },
-      ),
-      'relate-existing-member',
-    );
-  };
-
   const metaValue = (name, fallback) =>
     document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || fallback;
   const userId = metaValue('manatos-user-id', 'anonymous');
-  const hierarchyMode = String(page?.mode ?? 'create');
-  const draftSupported = hierarchyMode === 'create';
+  const hierarchyMode = String(page?.control?.mode ?? 'create');
   const focusedMemberId = String(workspaceValue('focusedMemberId', '')) || '';
   const hierarchyRootIdentity = String(workspaceValue('hierarchyRootId', '')) || focusedMemberId;
-  const draftStoragePrefix = 'manatos:hierarchy-draft:';
   /*
-   * Drafts belong only to the aggregate Create Organization workflow. They are
-   * browser/user scoped and deliberately survive navigation and ManatOS restarts.
-   * Entry-specific Edit Organization workspaces operate directly on their loaded
-   * baseline and never restore or persist a browser draft.
+   * Draft storage is isolated from workspace DOM/state orchestration. The store
+   * owns browser key compatibility/migration; this shell owns semantic CTX data.
    */
-  const draftIdentity =
-    hierarchyMode === 'create' ? 'create' : `edit:${hierarchyRootIdentity || 'unknown'}`;
-  const draftStorageKey = `${draftStoragePrefix}${userId}:${entityKey}:${draftIdentity}`;
+  const createHierarchyDraftStore = window.ManatOS?.createHierarchyDraftStore;
+  if (typeof createHierarchyDraftStore !== 'function')
+    throw new Error('Hierarchy draft store service is unavailable.');
+  const hierarchyDraftStore = createHierarchyDraftStore({
+    userId,
+    entityKey,
+    hierarchyMode,
+    hierarchyRootIdentity,
+  });
+  const draftSupported = hierarchyDraftStore.supported;
 
-  const compatibleDraftPayload = (candidate) => {
-    if (!candidate || typeof candidate !== 'object' || !Array.isArray(candidate.entries))
-      return null;
-    // Be additive/tolerant: retain every recognizable record and ignore unknown
-    // envelope properties. Do not reject useful user work merely because an
-    // older implementation wrote another version marker.
-    const recognizable = candidate.entries.filter(
-      (row) => row && typeof row === 'object' && !Array.isArray(row),
-    );
-    if (!recognizable.length && candidate.entries.length) return null;
-    return {
-      savedAt: typeof candidate.savedAt === 'string' ? candidate.savedAt : null,
-      entries: recognizable,
-      entriesOriginal: Array.isArray(candidate.entriesOriginal)
-        ? candidate.entriesOriginal.filter(
-            (row) => row && typeof row === 'object' && !Array.isArray(row),
-          )
-        : null,
-    };
-  };
-
-  const storedDraftCandidates = () => {
-    if (!draftSupported) return [];
-    const candidates = [];
-    try {
-      const exact = localStorage.getItem(draftStorageKey);
-      if (exact) candidates.push({ key: draftStorageKey, raw: exact });
-      // Migration path for the previous boot-scoped key:
-      // manatos:hierarchy-draft:<boot>:<user>:<entity>:<root/new>
-      for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index);
-        if (!key || key === draftStorageKey || !key.startsWith(draftStoragePrefix)) continue;
-        const suffix = key.slice(draftStoragePrefix.length);
-        // Only migrate historical *create* drafts here. An old edit-workspace
-        // checkpoint must never become the next Create Organization workspace.
-        const legacyCreateSuffix = `:${userId}:${entityKey}:new`;
-        const stableCreateSuffix = `${userId}:${entityKey}:create`;
-        if (!suffix.endsWith(legacyCreateSuffix) && suffix !== stableCreateSuffix) continue;
-        candidates.push({ key, raw: localStorage.getItem(key) });
-      }
-    } catch {
-      return [];
-    }
-    return candidates;
-  };
+  const compatibleDraftPayload = (candidate) => hierarchyDraftStore.compatiblePayload(candidate);
+  const storedDraftCandidates = () => hierarchyDraftStore.candidates();
 
   const saveWorkspaceDraft = () => {
     if (!draftSupported || draft) return false;
-    if (!entries().length) {
-      if (draftSupported) {
-        try {
-          localStorage.removeItem(draftStorageKey);
-        } catch {
-          /* ignore */
-        }
-      }
-      savedDraftSignature = null;
-      refreshWorkspaceSummary();
-      return true;
-    }
     const payload = {
       version: 1,
       savedAt: new Date().toISOString(),
       entries: entries().map((row) => ({ ...row })),
       entriesOriginal: originalEntries().map((row) => ({ ...row })),
     };
-    try {
-      localStorage.setItem(draftStorageKey, JSON.stringify(payload));
-    } catch {
+    const saved = hierarchyDraftStore.save(payload);
+    if (!saved) {
       if (hierarchyDraftStatus instanceof HTMLElement) {
         hierarchyDraftStatus.textContent = 'Draft could not be saved in this browser';
         hierarchyDraftStatus.hidden = false;
       }
       return false;
     }
-    savedDraftSignature = workspaceDraftSignature(payload.entries);
+    savedDraftSignature = payload.entries.length ? workspaceDraftSignature(payload.entries) : null;
     refreshWorkspaceSummary();
     return true;
   };
 
-  const clearCreateWorkspaceDrafts = () => {
-    if (!draftSupported) return;
-    try {
-      const legacyCreateSuffix = `:${userId}:${entityKey}:new`;
-      const stableCreateSuffix = `${userId}:${entityKey}:create`;
-      const keys = [];
-      for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index);
-        if (!key || !key.startsWith(draftStoragePrefix)) continue;
-        const suffix = key.slice(draftStoragePrefix.length);
-        if (
-          key === draftStorageKey ||
-          suffix.endsWith(legacyCreateSuffix) ||
-          suffix === stableCreateSuffix
-        )
-          keys.push(key);
-      }
-      keys.forEach((key) => localStorage.removeItem(key));
-    } catch {
-      /* Commit already succeeded; draft cleanup must never block navigation. */
-    }
-  };
+  const clearCreateWorkspaceDrafts = () => hierarchyDraftStore.clearCreateDrafts();
 
   const clearAllOperationSummary = () => {
     const current = entries();
@@ -1314,7 +712,7 @@
     );
 
     const developerToolsDock = document.getElementById('developerToolsDock');
-    const popupRuntime = window.ManatOSPopupRuntime;
+    const popupRuntime = window.ManatOS?.popup?.runtime;
     const developerToolsWasVisible = Boolean(
       developerToolsDock && !developerToolsDock.classList.contains('d-none'),
     );
@@ -1374,25 +772,18 @@
         'restore-workspace-draft-original',
       );
     }
-    hydrateMissingOriginalSnapshots();
+    hierarchyRelationships.hydrateMissingOriginalSnapshots();
     savedDraftSignature = workspaceDraftSignature(payload.entries);
 
     // Migrate a recognized legacy draft to the stable key, but leave the old
     // copy untouched until a successful Commit clears the working draft.
-    if (best.key !== draftStorageKey) {
-      try {
-        localStorage.setItem(
-          draftStorageKey,
-          JSON.stringify({
-            version: 1,
-            savedAt: payload.savedAt || new Date().toISOString(),
-            entries: payload.entries,
-            entriesOriginal: payload.entriesOriginal || originalEntries(),
-          }),
-        );
-      } catch {
-        /* Restoration itself already succeeded. */
-      }
+    if (best.key !== hierarchyDraftStore.storageKey) {
+      hierarchyDraftStore.save({
+        version: 1,
+        savedAt: payload.savedAt || new Date().toISOString(),
+        entries: payload.entries,
+        entriesOriginal: payload.entriesOriginal || originalEntries(),
+      });
     }
     return true;
   };
@@ -1522,7 +913,7 @@
     );
 
     const developerToolsDock = document.getElementById('developerToolsDock');
-    const popupRuntime = window.ManatOSPopupRuntime;
+    const popupRuntime = window.ManatOS?.popup?.runtime;
     const developerToolsWasVisible = Boolean(
       developerToolsDock && !developerToolsDock.classList.contains('d-none'),
     );
@@ -1564,7 +955,11 @@
     try {
       const response = await fetch(`/bo/${encodeURIComponent(entityKey)}/hierarchy/commit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-ManatOS-Application-Command': '1',
+        },
         body: JSON.stringify({
           _csrf: csrf,
           identityField: idField,
@@ -1573,8 +968,16 @@
         }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok || payload?.success !== true)
-        throw new Error(payload?.message || 'Organization commit failed.');
+      if (!response.ok || payload?.success !== true) {
+        window.ManatOS?.errors?.fromResponse?.(response, payload, {
+          retry: () => commitWorkspace(),
+        });
+        const failure = new Error(
+          payload?.error?.message || payload?.message || 'Organization commit failed.',
+        );
+        failure.manatosPresented = true;
+        throw failure;
+      }
       // Persistence succeeded: clear every compatible Create Organization draft
       // before leaving so the next create workflow starts genuinely empty.
       clearCreateWorkspaceDrafts();
@@ -1586,11 +989,65 @@
       );
     } catch (error) {
       hierarchyCommit.disabled = false;
-      window.alert(error instanceof Error ? error.message : 'Organization commit failed.');
+      if (error?.manatosPresented !== true) {
+        window.ManatOS?.errors?.present?.(
+          {
+            code: 'HIERARCHY_COMMIT_FAILED',
+            message: error instanceof Error ? error.message : String(error),
+            userMessage: error instanceof Error ? error.message : 'Organization commit failed.',
+            retryable: true,
+          },
+          { retry: () => commitWorkspace() },
+        );
+      }
     } finally {
       delete hierarchyCommit.dataset.busy;
     }
   };
+
+  if (pagePath && window.ManatOS?.uiHost?.registerRecoveryAdapter) {
+    window.ManatOS.uiHost.registerRecoveryAdapter(pagePath, {
+      getUserChanges() {
+        if (!workspaceDirty()) return null;
+        return {
+          format: 'hierarchy-commit-v1',
+          identityField: idField,
+          entries: entries().map((row) => ({ ...row })),
+          entriesOriginal: originalEntries().map((row) => ({ ...row })),
+        };
+      },
+      applyUserChanges(changes) {
+        if (!changes || changes.format !== 'hierarchy-commit-v1' || !Array.isArray(changes.entries))
+          return false;
+        replaceEntries(
+          changes.entries.map((row) => ({ ...row })),
+          'workspace-recovery',
+        );
+        if (Array.isArray(changes.entriesOriginal)) {
+          replaceOriginalEntries(
+            changes.entriesOriginal.map((row) => ({ ...row })),
+            'workspace-recovery-original',
+          );
+        }
+        refreshWorkspaceSummary();
+        return true;
+      },
+      async prepareGentleClose() {
+        replaceOriginalEntries(
+          entries().map((row) => ({ ...row })),
+          'workspace-recovery-gentle-close',
+        );
+        setRuntimeValue(
+          `${pagePath}.control.state.dirty`,
+          false,
+          'workspace-recovery-gentle-close',
+        );
+        refreshWorkspaceSummary();
+        await Promise.resolve();
+        return true;
+      },
+    });
+  }
 
   hierarchyClose?.addEventListener('click', closeWorkspace);
   hierarchyEditExit?.addEventListener('click', exitEditWorkspace);
@@ -1600,17 +1057,17 @@
 
   component.addEventListener('manatos:hierarchy-command', (event) => {
     const { command, memberId, relation } = event.detail || {};
-    if (command === 'delete') removeNode(memberId);
-    else if (command === 'clear-parent') clearParent(memberId);
-    else if (command === 'move') moveNode(memberId, event.detail?.targetId);
+    if (command === 'delete') hierarchyRelationships.removeNode(memberId);
+    else if (command === 'clear-parent') hierarchyRelationships.clearParent(memberId);
+    else if (command === 'move') hierarchyRelationships.moveNode(memberId, event.detail?.targetId);
     else if (['add-first', 'add-child', 'add-sibling', 'add-parent'].includes(command))
       beginQuick(command, memberId);
     else if (
       ['use-existing-parent', 'use-existing-sibling', 'use-existing-child'].includes(command)
     )
-      relateExistingNode(command, memberId, event.detail?.candidateId);
+      hierarchyRelationships.relateExistingNode(command, memberId, event.detail?.candidateId);
     else if (command === 'choose-existing-entry')
-      openExistingEntrySelector(memberId, relation || 'sibling');
+      hierarchyRelationships.openExistingEntrySelector(memberId, relation || 'sibling');
     else if (command === 'open' && typeof memberId === 'string') {
       /*
        * Owner-aware full record editing. The selected record and the complete
@@ -1641,9 +1098,9 @@
       append('_ownerEntries', JSON.stringify(entries()));
       append('_ownerEntriesOriginal', JSON.stringify(originalEntries()));
       append('_ownerFields', JSON.stringify(fieldValues));
-      append('_ownerName', String(page?.name || 'organization'));
-      append('_ownerKind', String(page?.kind || 'sysbo-hierarchy'));
-      append('_ownerMode', String(page?.mode || 'edit'));
+      append('_ownerName', String(page?.control?.name || 'organization'));
+      append('_ownerKind', String(page?.control?.kind || 'sysbo-hierarchy'));
+      append('_ownerMode', String(page?.control?.mode || 'edit'));
       append('_ownerIdentityField', idField);
       document.body.append(form);
       form.submit();

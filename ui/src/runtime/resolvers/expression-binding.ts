@@ -3,6 +3,7 @@ import {
   evaluateCompiledExpression,
   type CompiledExpression,
   type ExpressionNode,
+  type ExpressionPathMember,
   type ExpressionVariableNode,
 } from '@manatos/shared';
 import type { SysBOFieldMetadata } from '@manatos/shared';
@@ -24,10 +25,6 @@ function resolveRootSource(source: V2ExpressionRootSource): Readonly<Record<stri
 export interface ExpressionBinding<T = unknown> {
   readonly expression: string;
   readonly compiled: CompiledExpression;
-  readonly variablePaths: readonly string[];
-  readonly fieldDependencies: readonly string[];
-  /** Static dependency projection retained for diagnostics/backward-compatible callers. */
-  readonly dependencyPaths: readonly string[];
   /**
    * Resolve dependencies against the same lexical owner chain used by evaluation.
    * Surface-owned dependencies are qualified with the owning surface id so a
@@ -69,11 +66,13 @@ function visitVariables(node: ExpressionNode, output: ExpressionVariableNode[]):
   }
 }
 
-function pathMembersText(members: readonly (string | number)[]): string {
+function pathMembersText(members: readonly ExpressionPathMember[]): string {
   return members
-    .map((member, index) =>
-      typeof member === 'number' ? `[${member}]` : index === 0 ? member : `.${member}`,
-    )
+    .map((member, index) => {
+      if (typeof member === 'number') return `[${member}]`;
+      if (typeof member === 'string') return index === 0 ? member : `.${member}`;
+      return `.(${member.source})`;
+    })
     .join('');
 }
 
@@ -133,7 +132,7 @@ function expressionDependencyPath(
   if (!members.length) return null;
 
   if (variable.absolute) {
-    members.shift(); // ctx
+    members.shift(); // $
     if (!members.length) return null;
     return `ctx.${pathMembersText(members)}`;
   }
@@ -159,12 +158,49 @@ function lexicalDependencyPath(
   if (!members.length) return null;
 
   if (variable.absolute) {
-    members.shift(); // ctx
+    members.shift(); // $
     return members.length ? `ctx.${pathMembersText(members)}` : null;
   }
 
   const first = members[0];
   if (typeof first !== 'string') return null;
+
+  /*
+   * `#level` is an explicit path-language anchor, not an ordinary lexical key.
+   * Dependency tracking must therefore mirror evaluator resolution instead of
+   * waiting for an object literally named "#level" to exist in CTX.
+   *
+   * Entry scalar values are publicly projected at `#level.entry.current.<field>`
+   * but their canonical mutation identity remains `fields.<field>.value`.
+   */
+  if (first === '#level') {
+    const currentSurfaceId = surfaceIdOf(scope.current);
+    if (!currentSurfaceId) return expressionDependencyPath(variable, knownFields);
+
+    const relative = members.slice(1);
+    if (
+      relative.length === 3 &&
+      relative[0] === 'entry' &&
+      relative[1] === 'current' &&
+      typeof relative[2] === 'string' &&
+      knownFields.has(relative[2])
+    ) {
+      return surfaceDependencyPath(currentSurfaceId, `fields.${relative[2]}.value`);
+    }
+
+    if (
+      relative.length >= 2 &&
+      relative[0] === 'fields' &&
+      typeof relative[1] === 'string' &&
+      knownFields.has(relative[1])
+    ) {
+      return surfaceDependencyPath(currentSurfaceId, pathMembersText(relative));
+    }
+
+    return relative.length
+      ? surfaceDependencyPath(currentSurfaceId, pathMembersText(relative))
+      : null;
+  }
 
   const ancestry = findAncestry(scope.root, scope.current) ?? [scope.root, scope.current];
   for (let index = ancestry.length - 1; index >= 0; index -= 1) {
@@ -206,31 +242,10 @@ export function bindExpression<T = unknown>(
   const compiled = compileExpression(expression);
   const variables: ExpressionVariableNode[] = [];
   visitVariables(compiled.ast, variables);
-  const variablePaths = [...new Set(variables.map((variable) => variable.path))];
-  const fieldDependencies = [
-    ...new Set(
-      variables
-        .filter((variable) => !variable.absolute)
-        .map((variable) => variable.members[0])
-        .filter(
-          (member): member is string => typeof member === 'string' && knownFields.has(member),
-        ),
-    ),
-  ];
-  const dependencyPaths = [
-    ...new Set(
-      variables
-        .map((variable) => expressionDependencyPath(variable, knownFields))
-        .filter((path): path is string => Boolean(path)),
-    ),
-  ];
 
   return {
     expression,
     compiled,
-    variablePaths,
-    fieldDependencies,
-    dependencyPaths,
     resolveDependencyPaths(scope) {
       return [
         ...new Set(
@@ -251,9 +266,12 @@ export function bindExpression<T = unknown>(
 }
 
 function enrichProjectedLevel(level: Record<string, unknown>): Record<string, unknown> {
-  const fields = objectLike(level.fields) ? (level.fields as Record<string, unknown>) : {};
-  const facts = objectLike(level.facts) ? (level.facts as Record<string, unknown>) : {};
-  return { ...level, ...facts, ...fields };
+  const control = objectLike(level.control) ? (level.control as Record<string, unknown>) : {};
+  const facts = objectLike(control.facts) ? (control.facts as Record<string, unknown>) : {};
+  // Lexical convenience aliases intentionally do not alter the public CTX tree.
+  // Bare expressions such as `mode` and record facts remain concise while
+  // explicit #level paths reflect the real `control` container contract.
+  return { ...level, ...control, ...facts };
 }
 
 /**
@@ -274,19 +292,25 @@ function lexicalizeUiChain(
     ...level,
     ...(child.level && objectLike(child.level) ? { level: child.level } : {}),
   });
-  if (level.id === targetSurfaceId) projected = { ...projected, ...targetOverlay };
+  if ((level.control as Record<string, unknown> | undefined)?.id === targetSurfaceId)
+    projected = { ...projected, ...targetOverlay };
 
   return {
     level: projected,
-    current: level.id === targetSurfaceId ? projected : child.current,
+    current:
+      (level.control as Record<string, unknown> | undefined)?.id === targetSurfaceId
+        ? projected
+        : child.current,
   };
 }
 
 /**
- * Build the canonical lexical scope used by V2 entry expressions. Field names
- * remain directly addressable (`firstName`) while surface facts (`mode`, state,
- * invocation) are also CTX-observable. `{ value }` field nodes preserve the
- * canonical ManatOS CTX transparency semantics.
+ * Build the canonical lexical scope used by V2 entry expressions. Bare field
+ * identifiers remain scalar aliases of the real `#level.entry.current.<field>`
+ * record for canonical BO-calculation compatibility. Rich runtime field state
+ * is never flattened into lexical scope: metadata that needs option/UX state
+ * must address `#level.fields.<field>` explicitly. Surface facts (`mode`, state,
+ * invocation) remain CTX-observable and may participate in lexical lookup.
  *
  * Model 1 lexical shadowing is deliberate: only the first identifier climbs.
  * Once `state` is found on the current level, `state.poop.var1` must resolve
@@ -355,7 +379,8 @@ export function createEntryExpressionScope(
     }),
   );
   const facts = surface.entry?.facts ?? {};
-  const currentOverlay = {
+  const currentValues = fields.values();
+  const control = {
     id: surface.id,
     host: surface.host,
     kind: surface.kind,
@@ -363,18 +388,32 @@ export function createEntryExpressionScope(
     name: surface.name,
     path: surface.path,
     scope: surface.scope,
-    ...(surface.entityKey ? { entityKey: surface.entityKey } : {}),
-    ...(surface.recordId ? { recordId: surface.recordId } : {}),
-    state: surface.state,
     invocation: surface.invocation,
     presentation: surface.presentation,
+    state: surface.state,
+    facts,
+  };
+  const currentOverlay = {
+    control,
+    // Lexical-only convenience aliases preserve the concise bare-variable
+    // expression contract without duplicating these values in public CTX.
+    ...control,
+    ...(surface.entityKey ? { entityKey: surface.entityKey } : {}),
+    ...(surface.entityName ? { entityName: surface.entityName } : {}),
+    ...(surface.recordId ? { recordId: surface.recordId } : {}),
+    // Mirror the public V2 CTX entry projection: persistence-shaped scalar values
+    // live under #level.entry.current, while rich field runtime state remains under
+    // #level.fields. Expressions must never need a hidden evaluator-only location.
+    entry: {
+      original: surface.entry?.original,
+      current: currentValues,
+    },
     // Runtime projection facts keep metadata expressions such as `hasPassword`
     // lexical and entity-agnostic while their canonical V2 CTX location remains
-    // CurrentUiLevel().facts.hasPassword.
-    facts,
+    // CurrentUiLevel().control.facts.hasPassword.
     fields: fieldNodes,
     ...facts,
-    ...fieldNodes,
+    ...currentValues,
   };
 
   const sourceRoot = resolveRootSource(rootSource);
@@ -387,8 +426,36 @@ export function createEntryExpressionScope(
     }
   }
 
-  // Standalone/unit-test/detached scopes still use the canonical shared fallback:
-  // current first, then root. Parent traversal becomes available automatically
-  // whenever the root exposes the authoritative nested ctx.ui.level chain.
-  return { root: sourceRoot, current: currentOverlay };
+  /*
+   * A host-neutral/detached runtime may not receive the browser root CTX tree,
+   * but `#level` must still mean the current entry surface. Project that real
+   * surface as the sole lexical UI level so the shared resolver can discover it
+   * through normal ancestry; do not special-case `#level` in the evaluator.
+   * Absolute `$...` lookup still starts at this same root projection.
+   */
+  const detachedUi = sourceUi ? { ...sourceUi, level: currentOverlay } : { level: currentOverlay };
+  return { root: { ...sourceRoot, ui: detachedUi }, current: currentOverlay };
+}
+
+/**
+ * Canonical entity-create evaluation scope.
+ *
+ * Business defaults run against this UI-neutral context rather than a UI level:
+ * `entityName` selects canonical metadata through `$entity`/`$entity-fields`,
+ * while `$entry-current` resolves the scalar record being initialized. Browser,
+ * API and host-neutral V2 runtimes can therefore share the same expressions.
+ */
+export function createEntityInitializationExpressionScope(
+  surface: SurfaceContext,
+  fields: FieldStateRuntime,
+  rootSource: V2ExpressionRootSource = {},
+): V2ExpressionScope {
+  const root = resolveRootSource(rootSource);
+  return {
+    root,
+    current: {
+      entityName: surface.entityName,
+      entry: { current: fields.values() },
+    },
+  };
 }

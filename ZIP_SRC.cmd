@@ -16,6 +16,7 @@ REM    api\dist\
 REM    api\.env
 REM    ui\node_modules\
 REM    ui\dist\
+REM    ui\public\vendor\
 REM    ui\.env
 REM    shared\node_modules\
 REM    shared\dist\
@@ -106,6 +107,7 @@ REM folders/files that happen to have the same name elsewhere.
     -xr!"api\.env" ^
     -xr!"ui\node_modules" ^
     -xr!"ui\dist" ^
+    -xr!"ui\public\vendor" ^
     -xr!"ui\.env" ^
     -xr!"shared\node_modules" ^
     -xr!"shared\dist" ^

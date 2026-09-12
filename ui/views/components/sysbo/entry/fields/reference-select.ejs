@@ -75,14 +75,21 @@
   const referenceSelectorContext =
     typeof referenceSelectorContexts !== 'undefined' && referenceSelectorContexts?.[key]
       ? referenceSelectorContexts[key]
-      : { referenceData: {}, queryPredicate: null };
+      : { referenceData: {}, excludedCandidateIds: [] };
   const referenceSelectorReferenceData = referenceSelectorContext.referenceData || {};
-  const referenceSelectorQueryPredicate = referenceSelectorContext.queryPredicate || null;
+  const referenceSelectorExcludedCandidateIds = Array.isArray(referenceSelectorContext.excludedCandidateIds)
+    ? referenceSelectorContext.excludedCandidateIds
+    : [];
   const referenceSourceEntityKey = typeof definition !== 'undefined' && definition?.key ? definition.key : '';
   const referenceCreateRelated = field.referenceSelection?.createRelated || null;
   const referenceToolActions = [
     ...(referenceTargetMetadata ? [{ action: 'view-entry', icon: 'eye', label: 'View selected entry', mutates: false, requiresValue: true }] : []),
-    ...(referenceTargetMetadata ? [{ action: 'add-entry', icon: 'plus-circle', label: 'Add entry…' }] : []),
+    ...(referenceTargetMetadata ? [{
+      action: 'add-entry',
+      icon: 'plus-circle',
+      label: 'Add entry…',
+      authorization: { entityKey: referenceTargetKey, capability: 'create' },
+    }] : []),
     ...(referenceTargetMetadata ? [{ action: 'select-existing', icon: 'database-check', label: 'Select existing entry…' }] : []),
     ...(field.required ? [] : [{ action: 'clear', icon: 'x-circle', label: 'Clear selection' }]),
   ];
@@ -96,7 +103,7 @@
   data-reference-source-entity-key="<%= referenceSourceEntityKey %>"
   data-reference-field-key="<%= key %>"
   data-reference-field-label="<%= fieldLabel(field) %>"
-  data-reference-query-predicate="<%= JSON.stringify(referenceSelectorQueryPredicate) %>"
+  data-reference-query-exclude="<%= JSON.stringify(referenceSelectorExcludedCandidateIds) %>"
   data-reference-create-related="<%= JSON.stringify(referenceCreateRelated) %>"
 >
   <div class="dropdown">
@@ -111,7 +118,13 @@
       <i class="bi bi-link-45deg" aria-hidden="true"></i>
     </button>
 
-    <%- include('field-tools-menu', { key, editable, actions: referenceToolActions, currentValue: value }) %>
+    <%- include('field-tools-menu', {
+      key,
+      editable,
+      actions: referenceToolActions,
+      currentValue: value,
+      entityPermissions: typeof relatedEntityPermissions !== 'undefined' ? relatedEntityPermissions : {}
+    }) %>
   </div>
 
   <%# The native select remains the canonical form/CTX value behind the rich presenter. %>
@@ -219,6 +232,7 @@
       selectorEntityKey: referenceTargetKey,
       selectorCandidates: references,
       selectorInitialTotal: references.length,
+      selectorQueryExclude: referenceSelectorExcludedCandidateIds,
       selectorPageSizeOptions: Array.isArray(app?.ui?.bootstrap?.ui?.pageSizeOptions)
         ? app.ui.bootstrap.ui.pageSizeOptions
         : [10, 25, 50]

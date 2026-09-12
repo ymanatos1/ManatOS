@@ -1,0 +1,97 @@
+<%#
+  COMPONENT: Scalar picture field
+
+  Purpose:
+  - Renders one metadata-driven scalar picture field with preview, overlaid delete action and shared editor.
+
+  Inputs / metadata:
+  - Uses the canonical field definition/value plus fieldOverride.pictureEditor presentation policy.
+
+  CTX contract:
+  - CTX owns only the current storage-neutral picture descriptor.
+  - Pending image bytes/editor bookkeeping stay private; the hidden canonical control publishes descriptor changes through the ordinary field mutation pipeline.
+
+  Embeds / delegates:
+  - Delegates cropping/editing to picture-editor.ejs and field behavior to the shared picture field runtime.
+
+  Runtime contract:
+  - data-picture-* hooks are owned by field-runtime.js; binary source/crop payloads never become semantic CTX state.
+%>
+<%
+  const picture = value && typeof value === 'object' ? value : null;
+  const pictureId = item?.id ? String(item.id) : '';
+  const pictureRevision = encodeURIComponent(String(picture?.revision || ''));
+  const pictureSrc = picture && pictureId
+    ? `/bo/${definition.key}/${encodeURIComponent(pictureId)}/picture/${encodeURIComponent(key)}`
+      + `?revision=${pictureRevision}`
+    : '';
+  const pictureEditor = fieldOverride?.presentation?.pictureEditor || {};
+  const maxSourceBytes = Number(pictureEditor.maxSourceBytes || 20_000_000);
+  const cropAspectRatio = Number(pictureEditor.cropAspectRatio || 1);
+  const cropModes = Array.isArray(pictureEditor.cropModes) && pictureEditor.cropModes.length
+    ? pictureEditor.cropModes
+    : ['proportional', 'free'];
+  const outputSize = Number(pictureEditor.outputSize || 768);
+  const outputContentType = String(pictureEditor.outputContentType || 'image/jpeg');
+  const outputQuality = Number(pictureEditor.outputQuality || 0.9);
+  const editorId = `metadata-picture-editor-${key}`;
+%>
+<div
+  class="metadata-picture-field"
+  data-picture-field
+  data-picture-current-src="<%= pictureSrc %>"
+  data-picture-max-source-bytes="<%= maxSourceBytes %>"
+  data-picture-crop-aspect-ratio="<%= cropAspectRatio %>"
+  data-picture-crop-modes="<%= cropModes.join(',') %>"
+  data-picture-output-size="<%= outputSize %>"
+  data-picture-output-content-type="<%= outputContentType %>"
+  data-picture-output-quality="<%= outputQuality %>"
+  data-picture-editor-id="<%= editorId %>"
+>
+  <button
+    class="metadata-picture-preview"
+    type="button"
+    data-picture-change
+    title="<%= editable ? `Choose or change ${fieldLabel(field)}` : fieldLabel(field) %>"
+    aria-label="<%= editable ? `Choose or change ${fieldLabel(field)}` : fieldLabel(field) %>"
+    <%= editable ? '' : 'disabled' %>
+  >
+    <% if (pictureSrc) { %>
+      <img src="<%= pictureSrc %>" alt="<%= fieldLabel(field) %> thumbnail" data-picture-image>
+      <span class="metadata-picture-placeholder d-none" data-picture-placeholder><i class="bi bi-person-bounding-box"></i></span>
+    <% } else { %>
+      <img class="d-none" alt="<%= fieldLabel(field) %> thumbnail" data-picture-image>
+      <span class="metadata-picture-placeholder" data-picture-placeholder><i class="bi bi-person-bounding-box"></i></span>
+    <% } %>
+  </button>
+  <% if (editable) { %>
+    <button
+      class="btn btn-sm btn-danger metadata-picture-delete <%= picture ? '' : 'd-none' %>"
+      type="button"
+      data-picture-clear
+      title="Delete picture"
+      aria-label="Delete picture"
+    ><i class="bi bi-trash"></i></button>
+  <% } %>
+  <input type="file" class="d-none" accept="image/jpeg,image/png,image/webp,image/gif" data-picture-file>
+  <input
+    type="hidden"
+    name="pictureChange.<%= key %>"
+    value=""
+    data-picture-change-payload
+    data-picture-field-key="<%= key %>"
+  >
+  <input
+    type="hidden"
+    name="<%= key %>"
+    value="<%= picture ? JSON.stringify(picture) : '' %>"
+    data-ctx-field="<%= key %>"
+    data-ctx-value-type="json"
+    data-picture-canonical-value
+  >
+  <div class="form-text metadata-picture-help">
+    Choose JPEG, PNG, WebP or GIF up to <%= Math.round(maxSourceBytes / 1_000_000) %> MB;
+    the selected crop is saved at <%= outputSize %> px.
+  </div>
+  <%- include('picture-editor', { editorId, editorTitle: `Choose ${fieldLabel(field).toLowerCase()}`, applyLabel: 'Use photo' }) %>
+</div>

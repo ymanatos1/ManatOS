@@ -86,21 +86,21 @@ Current examples include User/Account external identities and Principal/Applicat
 
 `views/popups/selectors/record-selector.ejs` plus `public/js/popups/record-selector.js` implement the generic **Select existing entry** surface.
 
-The selector is not an entity-specific page and not a field component. It is a reusable non-field component that consumes canonical entity/list metadata and candidate records, then adds selection semantics for the caller.
+The selector is not an entity-specific page and not a field component. It is a reusable hosted surface that consumes canonical entity/list metadata and candidate records, then adds selection semantics under a canonical `SurfaceInvocation`. The same invocation model applies to first-level pages, nested pages and popups: presentation/container hierarchy does not define semantic ownership.
 
 ```text
 [LM] Canonical entity + list metadata
 [CAND] Candidate records
-[CALL] callingParams
+[INV] SurfaceInvocation
 [RS] Record selector
 [LIST] Shared list toolbar / filters / header / paging
-[CTX] popup CTX state
+[CTX] selector surface CTX state
 [RESULT] Canonical selected record(s)
 
 Flow:
   LM --> RS
   CAND --> RS
-  CALL --> RS
+  INV --> RS
   RS --> LIST
   RS --> CTX
   RS --> RESULT
@@ -108,47 +108,50 @@ Flow:
 
 The selector deliberately composes the same `list-toolbar`, `list-filters`, `list-table-header` and `list-paging` partials used by ordinary SysBO list pages. That shared structure is an architectural contract: changes to common list presentation must be reviewed for both browse and selection contexts.
 
-### Calling context vs selector state
+### Surface invocation vs selector state
 
-The live popup CTX distinguishes **why the selector was opened** from **what the selector is currently doing**:
+The selector owns its own canonical CTX level. Its invocation describes why/how the surface was opened; mutable selector state remains local to that surface.
 
 ```text
 ctx.ui
-└── ... level                     # caller
-    └── level                     # selector/popup child
-├── kind = "record-selector"
-├── callingParams
-│   ├── purpose
-│   ├── entityKey
-│   ├── selectionMode
-│   ├── sourceEntityKey / sourceRecordId
-│   ├── targetField or relation context
-│   └── query/eligibility hints when applicable
-├── dataList / selector-local working state
-├── filters / search / paging
-├── selectedId / selectedIds
-└── state
+└── ... level                     # caller surface
+    └── level                     # selector surface
+        ├── kind = "record-selector"
+        ├── invocation
+        │   ├── entityName
+        │   ├── purpose = "select"
+        │   ├── caller?
+        │   │   ├── surfaceRef
+        │   │   ├── entityName?
+        │   │   └── recordId?
+        │   ├── presentation?
+        │   ├── rules?
+        │   │   ├── values
+        │   │   ├── fields
+        │   │   ├── query
+        │   │   └── actions
+        │   └── behavior?
+        ├── list
+        │   ├── originalEntries
+        │   └── entries
+        ├── selector-local working state
+        ├── filters / search / paging
+        ├── selectedId / selectedIds
+        └── state
 ```
 
-`callingParams` is intentionally debugger/expression friendly. It describes the resolved invocation contract and remains separate from mutable search/filter/paging/selection state. It is also an **active evaluator input**: selector UI-policy expressions are compiled on the server and evaluated in the browser against `{ callingParams }`. The browser never reparses those expression strings.
+`SurfaceInvocation` is host-neutral and contains only facts/rules the child surface needs to enforce its own behavior. It does **not** contain `targetField`, parent mutation instructions or arbitrary caller state. Those belong to the caller-side continuation registry.
 
-The current presentation policy supports two invocation orientations:
+Expression-bearing rules remain authored as canonical expression source. ASTs are resolved lazily through the process-local expression cache/runtime boundary and are never stored in `SurfaceInvocation` or semantic CTX.
 
-- `subtle` — quiet/list-like treatment used by the Organization workspace;
-- `entry` — stronger entry-form-oriented treatment used when a reference field opens the selector.
-
-Callers provide intent (for example `presentationMode`); the selector metadata/evaluator resolves that intent into UI behavior. The resolved presentation is exposed separately under `popup.presentation`, while `callingParams` remains the immutable invocation contract.
-
-Caption policy follows the same rule. Reference-field callers provide semantic facts such as `targetFieldLabel`, `sourceEntityLabel` and `sourceRecordName`; a precompiled selector UI expression derives captions such as **Select Application for License 'First sample license'**. Callers do not assemble reference-field captions in JavaScript. Specialized contexts may provide an explicit title when the generic field-oriented caption does not describe the operation, as the Organization hierarchy does for relationship placement. The resolved caption is published under `popup.presentation.title` for CTX inspection.
+Presentation policy still supports generic orientations such as subdued list-like treatment versus entry-oriented treatment, but those are represented as declarative presentation/behavior rules rather than caller-specific selector parameters. Captions and other presentation may be derived from canonical invocation facts or explicit generic presentation values; the selector does not dereference caller internals to construct them.
 
 Current consumers include:
 
-- Principal Organization workspace — **Add existing entry…** with hierarchy relationship eligibility;
-- canonical reference fields — **Select existing entry…** from the field tools menu.
+- Principal Organization workspace — **Add existing entry…** with hierarchy eligibility translated into generic query rules;
+- canonical reference fields — **Select existing entry…** with field-domain restrictions translated into generic selector rules.
 
-The selector returns canonical selected record(s). The caller remains responsible for the meaning of that result: a reference field updates its canonical reference value through the field-component runtime; the Organization workspace creates/repositions a hierarchy relation through its own relationship rules.
-
-The generic selector must not contain Principal-specific hierarchy policy, field-component DOM logic or direct persistence behavior.
+The selector returns canonical selected record(s). The caller remains responsible for the meaning of that result: a reference field updates its canonical reference value through the field-component runtime; the Organization workspace creates/repositions a hierarchy relation through its own relationship rules. The generic selector must not contain Principal-specific hierarchy policy, field-component DOM logic or direct persistence behavior.
 
 ## Hierarchy/workspace components
 

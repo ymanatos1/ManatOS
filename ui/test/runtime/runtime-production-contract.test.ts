@@ -9,9 +9,9 @@ const ui = (path: string) => readFile(resolve(here, '..', '..', path), 'utf8');
 describe('UI Engine V2 production cutover', () => {
   it('removes request-time engine selection and renders canonical V2 list/entry pages only', async () => {
     const app = await ui('src/app.ts');
-    const list = await ui('src/routes/sysbo/list-renderer.ts');
-    const entry = await ui('src/routes/sysbo/record-renderer.ts');
-    const hierarchy = await ui('src/routes/sysbo/hierarchy-renderer.ts');
+    const list = await ui('src/routes/sysbo/list/renderer.ts');
+    const entry = await ui('src/routes/sysbo/entry/renderer.ts');
+    const hierarchy = await ui('src/routes/sysbo/hierarchy/renderer.ts');
 
     expect(app).not.toContain('uiEngineMigrationMiddleware');
     expect(list).not.toContain('enableV2Scenario');
@@ -53,7 +53,7 @@ describe('UI Engine V2 production cutover', () => {
   });
   it('moves generic-page and hierarchy topology authorship fully to the browser host', async () => {
     const pageContext = await ui('src/middleware/page-context.ts');
-    const hierarchy = await ui('src/routes/sysbo/hierarchy-renderer.ts');
+    const hierarchy = await ui('src/routes/sysbo/hierarchy/renderer.ts');
     const hierarchyBrowser = await ui('public/js/sysbo/hierarchy/hierarchy-workspace.js');
 
     expect(pageContext).not.toContain('new SurfaceRuntime()');
@@ -66,9 +66,9 @@ describe('UI Engine V2 production cutover', () => {
   });
 
   it('stops production SysBO renderers from constructing or consuming legacy page CTX', async () => {
-    const list = await ui('src/routes/sysbo/list-renderer.ts');
-    const entry = await ui('src/routes/sysbo/record-renderer.ts');
-    const hierarchy = await ui('src/routes/sysbo/hierarchy-renderer.ts');
+    const list = await ui('src/routes/sysbo/list/renderer.ts');
+    const entry = await ui('src/routes/sysbo/entry/renderer.ts');
+    const hierarchy = await ui('src/routes/sysbo/hierarchy/renderer.ts');
     const renderer = await ui('src/presentation/page/render-page.ts');
 
     for (const source of [list, entry, hierarchy]) {

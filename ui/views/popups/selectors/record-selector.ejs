@@ -5,10 +5,10 @@
   - Defines the generic existing-record selector popup surface from the same canonical list components used by browse pages.
 
   Inputs / metadata:
-  - selector metadata/UI metadata, candidate rows/reference data, compiled UI expressions and selector invocation parameters.
+  - selector metadata/UI metadata, candidate rows/reference data, authored UI expressions and selector invocation parameters.
 
   CTX contract:
-  - Runtime projects ctx.<leaf-page>.popup with callingParams, presentation, entries/filters/selection and state.
+  - Runtime projects ctx.<leaf-page>.popup with invocation, presentation, entries/filters/selection and state.
 
   Embeds / delegates:
   - ../../components/sysbo/list/* shared list partials.
@@ -48,6 +48,7 @@
     ? selectorPageSizeOptions
     : (Array.isArray(app?.ui?.bootstrap?.ui?.pageSizeOptions) ? app.ui.bootstrap.ui.pageSizeOptions : [10, 25, 50]);
   const candidateInput = typeof selectorCandidates !== 'undefined' ? selectorCandidates : null;
+  const recordSelectorQueryExclude = Array.isArray(selectorQueryExclude) ? selectorQueryExclude : [];
   const recordSelectorCandidates = Array.isArray(candidateInput) ? candidateInput : [];
   const recordSelectorInitialTotal = Number(selectorInitialTotal || recordSelectorCandidates.length || 0);
   const recordSelectorReferenceData = selectorReferenceData || {};
@@ -58,44 +59,29 @@
 
   /*
    * Selector UI policy is metadata, not caller-specific JavaScript. Expressions
-   * are compiled once on the server and evaluated in the browser against the
-   * live invocation scope { callingParams }. This keeps callingParams useful to
-   * both CTX Viewer users and the selector's own presentation decisions.
+   * cross this presentation boundary as authored source only. The browser asks
+   * the UI-server expression registry for the cached AST lazily and evaluates it
+   * against the live selector CTX surface. Invocation stays canonical and contains
+   * only child-relevant semantics.
    */
-  const selectorTitleExpression = [
-    "callingParams.title ? callingParams.title :",
-    "(callingParams.targetFieldLabel ?",
-    "('Select ' + callingParams.targetFieldLabel + ' for ' + callingParams.sourceEntityLabel",
-    "+ (callingParams.sourceRecordName ? (\" '\" + callingParams.sourceRecordName + \"'\") : '')) :",
-    "(callingParams.relation ?",
-    "('Select ' + callingParams.targetEntityLabel + ' to place as '",
-    "+ callingParams.sourceRecordName + ' ' + callingParams.relation) :",
-    "('Select existing ' + callingParams.targetEntityLabel)))",
-  ].join(' ');
+  const selectorTitleExpression =
+    "#level.control.invocation.presentation.title ? #level.control.invocation.presentation.title : 'Select existing entry'";
 
   const selectorContextNoteExpression = [
-    "selectedEntry.__entryName ?",
-    "(callingParams.targetFieldLabel ?",
-    "('Select ' + selectedEntry.__entryName + ' as ' + callingParams.targetFieldLabel + '.') :",
-    "(callingParams.relation ?",
-    "(selectionFacts.alreadyInContext ?",
-    "(selectedEntry.__entryName + ' is already in this context. Select will reposition its existing entry as '",
-    "+ callingParams.sourceRecordName + ' ' + callingParams.relation + '.') :",
-    "('Select will add the existing ' + callingParams.targetEntityLabel + ' '",
-    "+ selectedEntry.__entryName + ' as ' + callingParams.sourceRecordName + ' '",
-    "+ callingParams.relation + '.')) :",
-    "('Selected ' + selectedEntry.__entryName + '.'))) :",
-    "(callingParams.selectionMode == 'multiple'",
+    "#level.selection.current.__entryName ?",
+    "('Selected ' + #level.selection.current.__entryName + '.') :",
+    "(#level.control.invocation.behavior.selection == 'multiple'",
     "? 'Select one or more entries to continue.' : 'Select an entry to continue.')",
   ].join(' ');
 
   const recordSelectorUIRules = {
-    presentationMode: "callingParams.presentationMode ? callingParams.presentationMode : 'subtle'",
+    presentationMode:
+      "#level.control.invocation.presentation.layout ? #level.control.invocation.presentation.layout : 'subtle'",
     title: selectorTitleExpression,
     contextNote: selectorContextNoteExpression,
-    rowClass: "candidateFacts.alreadyInContext ? 'is-in-context' : ''",
-    showContextNote: "callingParams.showContextNote == false ? false : true",
-    autofocusSearch: "callingParams.autofocusSearch == false ? false : true",
+    rowClass: "#level.row.facts.alreadyInContext ? 'is-in-context' : ''",
+    showContextNote: 'true',
+    autofocusSearch: "#level.control.invocation.behavior.autofocus == false ? false : true",
   };
   const recordSelectorEnumItem = metadataOptionItemForField;
   const recordSelectorFilterModes = Object.fromEntries(recordSelectorFilterFields.map((fieldKey) => {
@@ -114,6 +100,7 @@
     data-selector-filter-fields="<%= JSON.stringify(recordSelectorFilterFields) %>"
     data-selector-filter-modes="<%= JSON.stringify(recordSelectorFilterModes) %>"
     data-selector-ui-rules="<%= JSON.stringify(recordSelectorUIRules) %>"
+    data-selector-query-exclude="<%= JSON.stringify(recordSelectorQueryExclude) %>"
   >
     <div class="card-header d-flex align-items-center justify-content-between gap-2">
       <strong data-selector-title>Select existing <%= recordSelectorMetadata.name %></strong>
@@ -141,7 +128,7 @@
         filterCollapseId: recordSelectorFilterId,
         query: {},
         definition: recordSelectorDefinition,
-        searchPlaceholder: `Search ${recordSelectorMetadata.pluralName.toLowerCase()}`
+        searchPlaceholder: `Search ${recordSelectorMetadata.pluralLabel.toLowerCase()}`
       }) %>
 
       <%- include('../../components/sysbo/list/list-filters', {

@@ -2,15 +2,44 @@
   'use strict';
 
   const MAX_HISTORY = 9999;
-  const roots = [...document.querySelectorAll('[data-debugging-cli]')];
-  if (!roots.length) return;
-
   const bootId =
     document.querySelector('meta[name="manatos-ui-boot-id"]')?.getAttribute('content') || 'unknown';
   const ctxRuntime = () => window.ManatOS?.ctx;
   const pageExpressionRuntime = () => window.ManatOS?.expression;
   const pretty = (value) =>
     typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? String(value));
+
+  const displayPath = (path, scopePath = null) => {
+    const runtime = ctxRuntime();
+    if (runtime?.CtxPath) return runtime.CtxPath(path, scopePath || undefined);
+    if (runtime?.describePath) return runtime.describePath(path, scopePath || undefined);
+    const raw = String(path || 'ctx');
+    return raw === 'ctx' ? '$' : raw.startsWith('ctx.') ? `$.${raw.slice(4)}` : raw;
+  };
+
+  const csrfToken = (root) =>
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+    root?.dataset?.cliCsrf ||
+    '';
+
+  const jsonResponse = async (response, fallbackMessage) => {
+    const text = await response.text();
+    let payload = null;
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch {
+      const summary = text.trim().replace(/\s+/g, ' ').slice(0, 140);
+      throw new Error(
+        `${fallbackMessage} (HTTP ${response.status}; server returned non-JSON${summary ? `: ${summary}` : ''}).`,
+      );
+    }
+    if (!response.ok) {
+      throw new Error(
+        payload.error || payload.errorMessage || `${fallbackMessage} (HTTP ${response.status}).`,
+      );
+    }
+    return payload;
+  };
 
   /** Parent-path handling is intentionally useful for both dotted and indexed CTX paths. */
   const parentPath = (path) => {
@@ -26,6 +55,31 @@
     if (!runtime?.get) return path;
     while (path !== 'ctx' && runtime.get(path) === undefined) path = parentPath(path);
     return runtime.get(path) !== undefined || path === 'ctx' ? path : 'ctx';
+  };
+
+  const exactExistingPath = (requestedPath) => {
+    const runtime = ctxRuntime();
+    if (!requestedPath || !runtime?.get) return null;
+    return runtime.get(requestedPath) !== undefined ? requestedPath : null;
+  };
+
+  const resolveRelativeCtxPath = (requested, basePath) => {
+    let raw = String(requested || '').trim();
+    if (!raw || raw === '.') return basePath;
+    if (raw === '$' || raw === 'ctx') return 'ctx';
+    if (raw.startsWith('$.')) return `ctx.${raw.slice(2)}`;
+    if (raw.startsWith('ctx.')) return raw;
+
+    let cursor = basePath || 'ctx';
+    while (raw === '..' || raw.startsWith('../')) {
+      cursor = parentPath(cursor);
+      raw = raw === '..' ? '' : raw.slice(3);
+    }
+    if (raw.startsWith('./')) raw = raw.slice(2);
+    if (!raw) return cursor;
+
+    const child = raw.replaceAll('/', '.').replace(/^\.+|\.+$/g, '');
+    return child ? `${cursor}.${child}` : cursor;
   };
 
   /**
@@ -50,9 +104,39 @@
         case 'literal':
           return candidate.value;
         case 'variable': {
-          const resolved = runtime?.resolve?.(candidate.path, scopePath);
+          let variable = candidate;
+          if (
+            Array.isArray(candidate.members) &&
+            candidate.members.some(
+              (member) => member && typeof member === 'object' && member.kind === 'dynamic-path',
+            )
+          ) {
+            const members = [];
+            for (const member of candidate.members) {
+              if (member && typeof member === 'object' && member.kind === 'dynamic-path') {
+                const value = await evaluate(member.expression);
+                const valid =
+                  (typeof value === 'string' && value.length > 0) ||
+                  (typeof value === 'number' && Number.isInteger(value) && value >= 0);
+                if (!valid) {
+                  const type =
+                    value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+                  throw new Error(
+                    `Dynamic CTX path segment (${member.source || 'expression'}) must resolve to a non-empty string or non-negative integer; received ${type}.`,
+                  );
+                }
+                members.push(value);
+              } else members.push(member);
+            }
+            variable = { ...candidate, members };
+          }
+          const resolved = runtime?.resolveVariable
+            ? runtime.resolveVariable(variable, scopePath)
+            : runtime?.resolve?.(candidate.path, scopePath);
           if (resolved !== undefined) return resolved;
-          throw new Error(`Expression variable not available from ${scopePath}: ${candidate.path}`);
+          throw new Error(
+            `Expression variable not available from ${displayPath(scopePath)}: ${candidate.path}`,
+          );
         }
         case 'group':
           return evaluate(candidate.expression);
@@ -137,12 +221,9 @@
                 functionName: candidate.functionName,
                 args,
               }),
+              manatosBusy: false,
             });
-            const payload = await response.json();
-            if (!response.ok)
-              throw new Error(
-                payload.error || payload.errorMessage || 'Remote expression capability failed.',
-              );
+            const payload = await jsonResponse(response, 'Remote expression capability failed');
             return payload.value;
           }
           if (
@@ -156,6 +237,31 @@
               level = level.level ?? null;
             }
             return candidate.functionName === 'CurrentUiLevel' ? (levels.at(-1) ?? null) : levels;
+          }
+          if (candidate.functionName === 'FirstCtx') {
+            const collection = args[0];
+            const resultField = args[1];
+            if (collection == null || typeof collection !== 'object') return null;
+            const first = Array.isArray(collection) ? collection[0] : Object.values(collection)[0];
+            if (first === undefined) return null;
+            if (!resultField) return first;
+            if (first == null || typeof first !== 'object') return null;
+            return first[resultField] ?? null;
+          }
+          if (candidate.functionName === 'FindCtx') {
+            const collection = args[0];
+            const matchField = args[1];
+            const matchValue = args[2];
+            const resultField = args[3];
+            if (collection == null || typeof collection !== 'object') return null;
+            const members = Array.isArray(collection) ? collection : Object.values(collection);
+            const found = members.find(
+              (member) =>
+                member != null && typeof member === 'object' && member[matchField] === matchValue,
+            );
+            if (found === undefined) return null;
+            if (!resultField) return found;
+            return found[resultField] ?? null;
           }
           if (candidate.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
           if (candidate.functionName === 'GetTime') return Date.now();
@@ -179,7 +285,9 @@
     return evaluate(node);
   };
 
-  roots.forEach((root) => {
+  const initializeCli = (root) => {
+    if (!(root instanceof HTMLElement) || root.dataset.cliInitialized === 'true') return;
+    root.dataset.cliInitialized = 'true';
     const instanceKey = root.dataset.cliInstanceKey || 'page';
     const historyStorageKey = `manatos.debug.cli.history.${instanceKey}`;
     const openStorageKey = `manatos.debug.cli.open.${instanceKey}.${bootId}`;
@@ -187,6 +295,8 @@
     const ownerPageStorageKey = `manatos.debug.cli.owner-page.${instanceKey}.${bootId}`;
     const currentPageKey = `${location.pathname}${location.search}`;
     const persistentOpen = root.dataset.cliPersistentOpen === 'true';
+    const initialStartPath = nearestExistingPath(root.dataset.cliStartPath || 'ctx.ui.level');
+    const initialDisplayPath = root.dataset.cliDisplayPath || '';
 
     let history = [];
     try {
@@ -205,7 +315,7 @@
     const historyMenu = root.querySelector('[data-cli-history]');
     const contextLabel = root.querySelector('[data-cli-context-label]');
 
-    let currentPath = nearestExistingPath(root.dataset.cliStartPath || 'ctx.ui.level');
+    let currentPath = initialStartPath;
     let restoredOpen = false;
     if (persistentOpen) {
       try {
@@ -214,8 +324,6 @@
       } catch {
         /* developer state only */
       }
-    } else if (instanceKey === 'page' && pageExpressionRuntime()?.currentCtxPath) {
-      currentPath = nearestExistingPath(pageExpressionRuntime().currentCtxPath());
     }
 
     const savePersistentState = () => {
@@ -245,10 +353,24 @@
       if (open) queueMicrotask(() => input?.focus());
     };
 
+    const currentDisplayPath = () =>
+      initialDisplayPath && currentPath === initialStartPath
+        ? initialDisplayPath
+        : displayPath(currentPath);
+
     const refreshPath = ({ persist = true } = {}) => {
       currentPath = nearestExistingPath(currentPath);
-      if (contextLabel) contextLabel.textContent = currentPath;
-      if (prompt) prompt.textContent = `${currentPath} >`;
+      const shownPath = currentDisplayPath();
+      const contextHelp = `Execution context: ${shownPath}. Expressions are evaluated relative to this CTX node.`;
+      if (contextLabel) {
+        contextLabel.textContent = shownPath;
+        contextLabel.title = contextHelp;
+      }
+      if (prompt) {
+        prompt.textContent = `${shownPath} >`;
+        prompt.title = `${contextHelp} Click to open command history.`;
+        prompt.setAttribute('aria-label', `${contextHelp} Show command history.`);
+      }
       if (persistentOpen && persist) savePersistentState();
       return currentPath;
     };
@@ -259,13 +381,47 @@
       input.style.height = `${Math.max(input.scrollHeight, 22)}px`;
     };
 
+    const selectedTranscriptText = () => {
+      const selection = window.getSelection?.();
+      if (!selection || selection.isCollapsed || !selection.rangeCount) return '';
+      const text = selection.toString();
+      if (!text.trim()) return '';
+      const range = selection.getRangeAt(0);
+      const common =
+        range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+          ? range.commonAncestorContainer
+          : range.commonAncestorContainer.parentElement;
+      return common && transcript?.contains(common) ? text : '';
+    };
+
+    const copySelectedTranscript = async () => {
+      const text = selectedTranscriptText();
+      if (!text) return false;
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    consoleBox?.addEventListener('mouseup', () => {
+      void copySelectedTranscript();
+    });
+
+    consoleBox?.addEventListener('click', (event) => {
+      if (event.target instanceof HTMLAnchorElement) return;
+      if (selectedTranscriptText()) return;
+      input?.focus();
+    });
+
     const append = (kind, text, expression = null) => {
       const pre = document.createElement('pre');
       pre.className = `mb-1 debugging-cli-${kind}`;
-      if (expression && window.ManatOSDebugExpression?.highlight) {
+      if (expression && window.ManatOS?.debug?.expression?.highlight) {
         pre.append(document.createTextNode(expression.prefix));
         const code = document.createElement('code');
-        code.innerHTML = window.ManatOSDebugExpression.highlight(expression.formula);
+        code.innerHTML = window.ManatOS?.debug?.expression.highlight(expression.formula);
         pre.append(code);
       } else {
         pre.textContent = text;
@@ -349,39 +505,105 @@
         return;
       }
 
-      append('command', '', { prefix: `${path} > `, formula: command });
+      append('command', '', { prefix: `${currentDisplayPath()} > `, formula: command });
       remember(command);
       if (input) input.value = '';
       resizeInput();
 
       try {
-        if (command === '.') {
-          printCtx(path);
+        if (command === '?' || command === 'help') {
+          append(
+            'result',
+            [
+              '$            CTX root',
+              '#            immediate parent context',
+              '#level       nearest UI-level context',
+              '.(expr)      dynamic path segment (string/non-negative integer only)',
+              '$entity              canonical entity for an initialization context',
+              '$entity-fields       canonical fieldDefinition for an initialization context',
+              '$entry-current       scalar record currently being initialized',
+              '$level-entity        $.entities.(#level.control.entityName)',
+              '$level-entity-fields $.entities.(#level.control.entityName).metadata.fieldDefinition',
+              '. [ls] [full]   show current context (shallow by default; full = recursive)',
+              '.. [ls] [full]  move to parent and show it (shallow by default; full = recursive)',
+              'cd <path>       change execution context ($/ctx absolute, child/../ relative)',
+              'cls          clear transcript',
+            ].join('\n'),
+          );
           return;
         }
-        if (command === '. ls' || command === '. dir') {
-          printCtxShallow(path);
-          return;
-        }
-        if (command === '..') {
-          printCtx(parentPath(path));
+        if (command === 'cd' || command.startsWith('cd ')) {
+          const requested = command.slice(2).trim();
+          if (!requested) {
+            append('result', currentDisplayPath());
+            return;
+          }
+
+          let targetPath = exactExistingPath(resolveRelativeCtxPath(requested, path));
+
+          // Canonical CTX selectors/aliases (#level, $entity, etc.) are resolved from
+          // the canonical UI expression-compile boundary so the CLI does not invent a
+          // second parser or AST channel.
+          if (!targetPath && (requested.startsWith('$') || requested.startsWith('#'))) {
+            const response = await fetch('/bo/expression/compile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ _csrf: csrfToken(root), expression: requested }),
+              manatosBusy: false,
+            });
+            const payload = await jsonResponse(response, 'CTX path could not be compiled');
+            if (payload.ast?.kind !== 'variable') {
+              throw new Error('cd requires a CTX path or path alias.');
+            }
+            const pageRuntime = pageExpressionRuntime();
+            const resolved = ctxRuntime()?.resolveVariableWithPath?.(
+              payload.ast,
+              path,
+              (dynamicExpression) => pageRuntime?.evaluateAstAt?.(dynamicExpression, path),
+            );
+            targetPath = resolved?.path && exactExistingPath(resolved.path);
+          }
+
+          if (!targetPath) throw new Error(`CTX path not found: ${requested}`);
+          currentPath = targetPath;
+          refreshPath();
+          append('result', currentDisplayPath());
           return;
         }
 
-        const response = await fetch('/bo/debug/compile-expression', {
+        const ctxCommand = /^(\.\.?)(?:\s+(ls|full))*?(?:\s+(ls|full))?$/.exec(command);
+        if (ctxCommand) {
+          const family = ctxCommand[1];
+          const modifiers = command.slice(family.length).trim().split(/\s+/).filter(Boolean);
+          const supported = modifiers.every((modifier) => modifier === 'ls' || modifier === 'full');
+          if (!supported)
+            throw new Error(`Unsupported CTX command modifier: ${modifiers.join(' ')}`);
+          const recursive = modifiers.includes('full');
+          const targetPath =
+            family === '..' ? nearestExistingPath(parentPath(path)) : nearestExistingPath(path);
+          if (family === '..') {
+            currentPath = targetPath;
+            refreshPath();
+          }
+          if (recursive) printCtx(targetPath);
+          else printCtxShallow(targetPath);
+          return;
+        }
+
+        const response = await fetch('/bo/expression/compile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ _csrf: root.dataset.cliCsrf, expression: command }),
+          body: JSON.stringify({ _csrf: csrfToken(root), expression: command }),
+          manatosBusy: false,
         });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Expression could not be compiled.');
+        const payload = await jsonResponse(response, 'Expression could not be compiled');
 
         const pageRuntime = pageExpressionRuntime();
         const value = pageRuntime?.evaluateAstOwnedAt
           ? await pageRuntime.evaluateAstOwnedAt(payload.ast, path)
           : instanceKey === 'page' && pageRuntime?.evaluateAstOwned
             ? await pageRuntime.evaluateAstOwned(payload.ast)
-            : await evaluateDebugAst(payload.ast, path, root.dataset.cliCsrf);
+            : await evaluateDebugAst(payload.ast, path, csrfToken(root));
         append('result', pretty(value));
       } catch (error) {
         append('error', `Error: ${error instanceof Error ? error.message : String(error)}`);
@@ -487,5 +709,44 @@
     refreshPath({ persist: false });
     resizeInput();
     if (persistentOpen) setOpen(restoredOpen);
+  };
+
+  const initializeWithin = (container) => {
+    if (!(container instanceof Element || container instanceof Document)) return;
+    if (container instanceof Element && container.matches('[data-debugging-cli]')) {
+      initializeCli(container);
+    }
+    container.querySelectorAll?.('[data-debugging-cli]').forEach(initializeCli);
+  };
+
+  initializeWithin(document);
+
+  // Selecting either the outer Debugging tab or its CLI sub-tab should put the
+  // caret directly in the visible entry CLI, matching click-to-focus behavior.
+  document.addEventListener('shown.bs.tab', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const opensDebugging =
+      target.matches('[data-v2-tab-id="debugging"]') ||
+      target.matches('[data-navigation-track-value="cli"]');
+    if (!opensDebugging) return;
+    queueMicrotask(() => {
+      const pane = document.querySelector('#metadata-debugging-pane');
+      const cliPane = pane?.querySelector('#debugging-cli-pane');
+      if (!(pane instanceof HTMLElement) || pane.hidden) return;
+      if (cliPane instanceof HTMLElement && !cliPane.classList.contains('active')) return;
+      pane.querySelector('[data-debugging-cli] [data-cli-input]')?.focus();
+    });
   });
+
+  // The metadata Debugging tab is composed after shell startup. Observe only
+  // additions and initialize each shared CLI instance exactly once.
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof Element) initializeWithin(node);
+      }
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 })();

@@ -158,8 +158,6 @@ export interface NavigationAccessContext {
   ctx?: ManatOSContext;
 }
 
-const navigationExpressionCache = new Map<string, ReturnType<typeof compileExpression>>();
-
 function dynamicNavigationVisible(
   value: ManatOSDynamicValue<boolean> | undefined,
   ctx: unknown,
@@ -169,11 +167,7 @@ function dynamicNavigationVisible(
   if (typeof value === 'boolean') return value;
 
   try {
-    let compiled = navigationExpressionCache.get(value.expression);
-    if (!compiled) {
-      compiled = compileExpression(value.expression);
-      navigationExpressionCache.set(value.expression, compiled);
-    }
+    const compiled = compileExpression(value.expression);
     return (
       evaluateCompiledExpression(compiled, ctx, ctx, {
         source: 'navigation',

@@ -518,6 +518,34 @@
   font-size: 0.92rem;
 }
 
+.account-general-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: min(100%, 50rem);
+}
+
+.account-general-summary {
+  flex: 0 1 38rem;
+  grid-template-columns: minmax(150px, 210px) minmax(16rem, 1fr);
+}
+
+.account-summary-photo {
+  flex: 0 0 auto;
+  align-self: start;
+  margin-left: 0;
+}
+
+.account-summary-photo img {
+  display: block;
+  width: 5.25rem;
+  height: 5.25rem;
+  object-fit: cover;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.6rem;
+  background: var(--bs-tertiary-bg);
+}
+
 .form-section-header {
   max-width: 720px;
 }
@@ -2258,7 +2286,7 @@ body.anonymous .workspace {
 }
 
 /* Record-selector visual orientation is invocation metadata resolved through
-   callingParams + evaluator rules. Workspace/hierarchy selectors stay quiet;
+   invocation + evaluator rules. Workspace/hierarchy selectors stay quiet;
    entry/reference selectors deliberately echo metadata-driven entry forms. */
 .metadata-record-selector.is-subtle-presentation {
   border-color: var(--bs-border-color);
@@ -2405,4 +2433,50 @@ body.anonymous .workspace {
 
 .metadata-readonly-name .bi {
   color: var(--bs-secondary-color);
+}
+
+@media (max-width: 767.98px) {
+  .account-general-layout {
+    flex-direction: column-reverse;
+  }
+
+  .account-general-summary {
+    width: 100%;
+    grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  }
+}
+
+.header-account-photo {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: cover;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.account-menu-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.account-menu-user-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.account-menu-user-link:hover .account-menu-name,
+.account-menu-user-link:focus-visible .account-menu-name {
+  text-decoration: underline;
+}
+
+.account-menu-photo {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  border: 1px solid var(--bs-border-color);
 }

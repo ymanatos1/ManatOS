@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import {
+  dependencyChangePathsForEvent,
+  reactiveEventMatchesDependencies,
+} from '../../src/runtime/calculations/dependency-runtime.js';
 import { SurfaceEventRuntime } from '../../src/runtime/events/surface-event-runtime.js';
 import {
   bindExpression,
@@ -8,19 +12,51 @@ import { EffectiveUiMetadataResolver } from '../../src/runtime/resolvers/effecti
 import { EntryStateRuntime } from '../../src/runtime/state/entry-state-runtime.js';
 import { SurfaceRuntime } from '../../src/runtime/surface/surface-runtime.js';
 
+describe('UI Runtime V2 reactive event projection', () => {
+  it('uses one matcher for local, foreign-surface and root CTX events', () => {
+    const localValue = Object.freeze({
+      id: 'evt-local',
+      sequence: 1,
+      timestamp: 1,
+      type: 'value:changed' as const,
+      surfaceId: 'child',
+      source: 'engine' as const,
+      causeEventId: null,
+      payload: { field: 'name' },
+    });
+    expect(dependencyChangePathsForEvent('child', localValue)).toEqual([
+      'fields.name.value',
+      'surface:child:fields.name.value',
+    ]);
+    expect(reactiveEventMatchesDependencies('child', localValue, ['fields.name.value'])).toBe(true);
+
+    const parentCtx = Object.freeze({
+      id: 'evt-parent',
+      sequence: 2,
+      timestamp: 2,
+      type: 'ctx:changed' as const,
+      surfaceId: 'parent',
+      source: 'engine' as const,
+      causeEventId: null,
+      payload: { path: 'policy.enabled' },
+    });
+    expect(
+      reactiveEventMatchesDependencies('child', parentCtx, ['surface:parent:policy.enabled']),
+    ).toBe(true);
+    expect(reactiveEventMatchesDependencies('child', parentCtx, ['policy.enabled'])).toBe(false);
+  });
+});
+
 describe('UI Runtime V2 canonical CTX dependency paths', () => {
-  it('normalizes field and surface facts into one dependency namespace', () => {
+  it('exposes only scope-resolved dependency ownership, not static compatibility projections', () => {
     const binding = bindExpression<boolean>(
       "firstName != '' && state.dirty && mode === 'edit'",
       new Set(['firstName']),
     );
 
-    expect(binding.dependencyPaths).toEqual(['fields.firstName.value', 'state.dirty', 'mode']);
-  });
-
-  it('preserves explicit nested V2 UI paths as absolute dependency paths', () => {
-    const binding = bindExpression<boolean>('ctx.ui.level.state.loading == false', new Set());
-    expect(binding.dependencyPaths).toEqual(['ctx.ui.level.state.loading']);
+    expect('dependencyPaths' in binding).toBe(false);
+    expect('variablePaths' in binding).toBe(false);
+    expect('fieldDependencies' in binding).toBe(false);
   });
 
   it('recalculates declarative UX when canonical non-field CTX state changes', () => {
@@ -52,6 +88,71 @@ describe('UI Runtime V2 canonical CTX dependency paths', () => {
     expect((ctxEvent?.payload as { path?: string }).path).toBe('state.dirty');
   });
 
+  it('does not evaluate CTX dependencies against a partially initialized entry', () => {
+    const events = new SurfaceEventRuntime();
+    const surfaces = new SurfaceRuntime(events);
+    const surface = surfaces.open({
+      host: 'page',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'principal',
+    });
+    const entry = new EntryStateRuntime(surface.id, events);
+    entry.defineField('firstName');
+
+    let evaluations = 0;
+    entry.addUxCalculation({
+      target: 'firstName',
+      property: 'visible',
+      dependsOn: [`surface:${surface.id}:state.valid`],
+      calculate: () => {
+        evaluations += 1;
+        return true;
+      },
+    });
+
+    surfaces.setState(surface.id, 'valid', false, 'engine');
+    expect(evaluations).toBe(0);
+
+    entry.initialize({});
+    expect(evaluations).toBe(1);
+    expect(entry.fields.require('firstName').ux.visible).toBe(true);
+
+    surfaces.setState(surface.id, 'valid', true, 'engine');
+    expect(evaluations).toBe(2);
+  });
+
+  it('evaluates each calculation once per semantic event even when multiple dependency identities match', () => {
+    const events = new SurfaceEventRuntime();
+    const surfaces = new SurfaceRuntime(events);
+    const surface = surfaces.open({
+      host: 'page',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'principal',
+    });
+    const entry = new EntryStateRuntime(surface.id, events);
+    entry.defineField('firstName');
+    entry.defineField('displayName');
+
+    let evaluations = 0;
+    entry.addValueCalculation({
+      target: 'displayName',
+      dependsOn: ['fields.firstName.value', `surface:${surface.id}:fields.firstName.value`],
+      calculate: ({ values }) => {
+        evaluations += 1;
+        return values.firstName;
+      },
+    });
+
+    entry.initialize({ server: { firstName: 'Yiannis' } });
+    expect(evaluations).toBe(1);
+
+    entry.fields.setValue({ field: 'firstName', value: 'John', source: 'user' });
+    expect(evaluations).toBe(2);
+    expect(entry.fields.require('displayName').value).toBe('John');
+  });
+
   it('keeps immutable surface facts declarative without requiring mutation events', () => {
     const events = new SurfaceEventRuntime();
     const surfaces = new SurfaceRuntime(events);
@@ -68,7 +169,42 @@ describe('UI Runtime V2 canonical CTX dependency paths', () => {
     expect(binding.evaluate(createEntryExpressionScope(surface, entry.fields), 'test.mode')).toBe(
       true,
     );
-    expect(binding.dependencyPaths).toEqual(['mode']);
+    expect(
+      binding.resolveDependencyPaths(createEntryExpressionScope(surface, entry.fields)),
+    ).toEqual([`surface:${surface.id}:mode`]);
+  });
+
+  it('projects one canonical event identity for local, inherited and root dependency consumers', () => {
+    const events = new SurfaceEventRuntime();
+    const surfaces = new SurfaceRuntime(events);
+    const parent = surfaces.open({ host: 'page', kind: 'list', mode: 'browse', name: 'parents' });
+    const child = surfaces.open({
+      parentId: parent.id,
+      host: 'popup',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'child',
+      entry: {},
+    });
+    const entry = new EntryStateRuntime(child.id, events);
+    entry.defineField('name');
+    entry.addUxCalculation({
+      target: 'name',
+      property: 'visible',
+      dependsOn: [`surface:${parent.id}:policy.enabled`],
+      calculate: () => true,
+    });
+    entry.initialize({});
+    expect(entry.fields.require('name').ux.visible).toBe(true);
+
+    entry.fields.setUx('name', 'visible', false, 'engine');
+    events.emit({
+      type: 'ctx:changed',
+      surfaceId: parent.id,
+      source: 'engine',
+      payload: { path: 'policy.enabled', oldValue: false, newValue: true },
+    });
+    expect(entry.fields.require('name').ux.visible).toBe(true);
   });
 });
 
@@ -98,18 +234,12 @@ describe('UI Runtime V2 lexical parent dependencies', () => {
     let root: Readonly<Record<string, unknown>> = {
       ui: {
         level: {
-          id: parent.id,
-          host: parent.host,
-          kind: parent.kind,
+          control: { id: parent.id, host: parent.host, kind: parent.kind },
           inheritedPolicy: false,
           level: {
-            id: middle.id,
-            host: middle.host,
-            kind: middle.kind,
+            control: { id: middle.id, host: middle.host, kind: middle.kind },
             level: {
-              id: child.id,
-              host: child.host,
-              kind: child.kind,
+              control: { id: child.id, host: child.host, kind: child.kind },
             },
           },
         },
@@ -165,14 +295,10 @@ describe('UI Runtime V2 lexical parent dependencies', () => {
     const root = {
       ui: {
         level: {
-          id: parent.id,
-          host: parent.host,
-          kind: parent.kind,
+          control: { id: parent.id, host: parent.host, kind: parent.kind },
           policy: { var1: 'parent' },
           level: {
-            id: child.id,
-            host: child.host,
-            kind: child.kind,
+            control: { id: child.id, host: child.host, kind: child.kind },
             policy: { other: 'child' },
           },
         },

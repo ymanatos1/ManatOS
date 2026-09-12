@@ -19,7 +19,7 @@ function principalEntry(events: SurfaceEventRuntime) {
   }
   entry.addValueCalculation({
     target: 'name',
-    dependsOn: ['principalType', 'firstName', 'lastName'],
+    dependsOn: ['fields.principalType.value', 'fields.firstName.value', 'fields.lastName.value'],
     calculate: ({ values }) => {
       if (values.principalType !== 'Person') return values.name;
       return [values.firstName, values.lastName].filter(Boolean).join(' ');
@@ -28,7 +28,7 @@ function principalEntry(events: SurfaceEventRuntime) {
   entry.addUxCalculation({
     target: 'parentId',
     property: 'readonly',
-    dependsOn: ['principalType'],
+    dependsOn: ['fields.principalType.value'],
     calculate: ({ values }) => values.principalType === 'Company',
   });
   return { surfaces, surface, entry };
@@ -108,11 +108,11 @@ describe('UI Runtime V2 entry state and dependency contracts', () => {
 
     const projection = projectUiCtx(pages, new Map([[popup.id, entry.fields]]));
     const popupCtx = projection.level?.level;
-    expect(popupCtx?.id).toBe(popup.id);
-    expect(popupCtx?.mode).toBe('create');
-    expect(popupCtx?.presentation.kind).toBe('entry');
+    expect(popupCtx?.control.id).toBe(popup.id);
+    expect(popupCtx?.control.mode).toBe('create');
+    expect(popupCtx?.control.presentation.kind).toBe('entry');
     expect(popupCtx?.fields?.firstName?.value).toBe('Yiannis');
-    expect('mode' in (popupCtx?.invocation ?? {})).toBe(false);
+    expect('mode' in (popupCtx?.control.invocation ?? {})).toBe(false);
   });
 
   it('does not emit duplicate change events when a calculation resolves to the current value', () => {

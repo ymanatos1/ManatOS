@@ -18,6 +18,11 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     const metadata = await sharedSource('src/metadata/ui/business.ts');
     const quick = await uiSource('views/components/sysbo/hierarchy/record-quick.ejs');
     const workspace = await uiSource('public/js/sysbo/hierarchy/hierarchy-workspace.js');
+    const workspaceModel = await uiSource('public/js/sysbo/hierarchy/hierarchy-workspace-model.js');
+    const draftStore = await uiSource('public/js/sysbo/hierarchy/hierarchy-draft-store.js');
+    const relationships = await uiSource(
+      'public/js/sysbo/hierarchy/hierarchy-relationship-runtime.js',
+    );
     const hierarchyPage = await uiSource(
       'views/components/sysbo/hierarchy/hierarchy-workspace.ejs',
     );
@@ -30,8 +35,10 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
       'fieldOverrides?: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>',
     );
     expect(metadata).toContain('recordQuick: {');
-    expect(metadata).toContain('enabled: { createDefaultValue: true }');
-    expect(metadata).toContain("principalType: { createDefaultValue: 'Person' }");
+    const canonical = await sharedSource('src/metadata/bo/business.ts');
+    const commonCanonical = await sharedSource('src/metadata/bo/common.ts');
+    expect(commonCanonical).toContain('createDefaultValue: true');
+    expect(canonical).toContain("createDefaultValue: 'Person'");
     expect(metadata).toContain("icon: { mode: 'composed', entityScale: 0.72, typeScale: 1.15");
     expect(hierarchyPage).toContain('entryRepresentation: entryRepresentationRuntime');
     expect(metadata).not.toContain("entityIcon: 'people-fill'");
@@ -64,16 +71,22 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     expect(workspace).toContain("String(entry?.[idField] ?? '') === String(id)");
     expect(workspace).toContain('completeDraftRecord');
     expect(workspace).toContain('withCalculatedHierarchy');
-    expect(workspace).toContain('[rootField]: rootFor(row)');
+    expect(workspace).toContain('hierarchyModel.withCalculatedHierarchy(rows)');
+    expect(workspaceModel).toContain('[rootField]: rootFor(row)');
     expect(workspace).toContain('refreshWorkspaceSummary');
     expect(workspace).toContain('workspaceDirty');
     expect(workspace).toContain(
       'hierarchyCommit.disabled = !state.complete || !dirty || Boolean(draft)',
     );
-    expect(workspace).toContain('manatos:hierarchy-draft:');
+    expect(draftStore).toContain("const prefix = 'manatos:hierarchy-draft:'");
+    expect(workspace).toContain('createHierarchyDraftStore');
     expect(workspace).toContain('restoreWorkspaceDraft');
     expect(workspace).toContain('Unsaved changes since draft');
-    expect(workspace).toContain("draftSupported = hierarchyMode === 'create'");
+    expect(draftStore).toContain("const supported = hierarchyMode === 'create'");
+    expect(workspace).toContain('const draftSupported = hierarchyDraftStore.supported');
+    expect(workspace).toContain('createHierarchyRelationshipRuntime');
+    expect(workspace).toContain('hierarchyRelationships.removeNode(memberId)');
+    expect(workspace).toContain('hierarchyRelationships.openExistingEntrySelector');
     expect(workspace).toContain('clearCreateWorkspaceDrafts');
     expect(sourceWithoutWhitespace(workspace)).toContain(
       sourceWithoutWhitespace('window.location.assign(workspace.dataset.hierarchyCloseHref'),
@@ -89,10 +102,10 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
       'href="/bo/${encodeURIComponent(entityKey)}/${encodeURIComponent(id)}"',
     );
     expect(tree).toContain('is already a child of');
-    expect(workspace).toContain('is already a sibling of');
-    expect(workspace).toContain('const workingById = new Map(entries()');
-    expect(workspace).toContain('return working ? { ...row, ...working } : row;');
-    expect(workspace).toContain('is already the parent of');
+    expect(relationships).toContain('is already a sibling of');
+    expect(relationships).toContain('const workingById = new Map(entries()');
+    expect(relationships).toContain('return working ? { ...row, ...working } : row;');
+    expect(relationships).toContain('is already the parent of');
     expect(workspace).not.toContain('Draft saved${savedDraftAt');
     expect(workspace).toContain('data-hierarchy-save-draft');
     expect(hierarchyPage).toContain('data-hierarchy-clear-all');
@@ -125,7 +138,7 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     expect(workspace).toContain("active.command === 'add-parent'");
     expect(workspace).toContain("workspaceValuePath('focusedMemberId')");
     expect(workspace).not.toContain('fields.focusedMemberId.value');
-    expect(workspace).toContain('`${pagePath}.resources.referenceData`');
+    expect(relationships).toContain('`${pagePath}.resources.referenceData`');
     expect(hierarchyPage).not.toContain('data-ctx-scope-path');
     expect(workspace).toContain('const activeUiLevelPath = () =>');
     expect(workspace).not.toContain("runtime.resolve('ctx.page')");
@@ -177,8 +190,8 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     expect(css).toContain(".metadata-hierarchy-node-delete[aria-expanded='true']");
     expect(css).toContain('background: var(--bs-body-bg);');
     expect(css).toContain('.metadata-hierarchy-node.is-drop-invalid');
-    expect(workspace).toContain("'move-member'");
-    expect(workspace).toContain("'clear-parent'");
+    expect(relationships).toContain("'move-member'");
+    expect(relationships).toContain("'clear-parent'");
     expect(workspace).toContain('canHaveParentTrait');
     expect(workspace).toContain('containerTrait');
     expect(workspace).not.toContain(
@@ -198,14 +211,19 @@ describe('hierarchy draft persistence and relation selection', () => {
     const hierarchyWorkspaceScript = await uiSource(
       'public/js/sysbo/hierarchy/hierarchy-workspace.js',
     );
-    expect(hierarchyWorkspaceScript).toContain(
-      'const draftStorageKey = `${draftStoragePrefix}${userId}:${entityKey}:${draftIdentity}`',
+    const hierarchyDraftStore = await uiSource(
+      'public/js/sysbo/hierarchy/hierarchy-draft-store.js',
     );
-    expect(hierarchyWorkspaceScript).not.toContain(
-      '`${draftStoragePrefix}${bootId}:${userId}:${entityKey}:${hierarchyRootIdentity}`',
+    expect(hierarchyDraftStore).toContain(
+      'const storageKey = `${prefix}${userId}:${entityKey}:${identity}`',
     );
-    expect(hierarchyWorkspaceScript).toContain('compatibleDraftPayload');
-    expect(hierarchyWorkspaceScript).toContain('storedDraftCandidates');
+    expect(hierarchyDraftStore).not.toContain(
+      '`${prefix}${bootId}:${userId}:${entityKey}:${hierarchyRootIdentity}`',
+    );
+    expect(hierarchyDraftStore).toContain('compatiblePayload');
+    expect(hierarchyDraftStore).toContain('const candidates = () =>');
+    expect(hierarchyWorkspaceScript).toContain('hierarchyDraftStore.compatiblePayload');
+    expect(hierarchyWorkspaceScript).toContain('hierarchyDraftStore.candidates');
   });
 
   it('reuses the generic record selector for hierarchy existing-entry placement without component fetches', async () => {
@@ -213,6 +231,9 @@ describe('hierarchy draft persistence and relation selection', () => {
     const uiCss = await uiSource('public/css/ui.css');
     const hierarchyWorkspaceScript = await uiSource(
       'public/js/sysbo/hierarchy/hierarchy-workspace.js',
+    );
+    const hierarchyRelationshipRuntime = await uiSource(
+      'public/js/sysbo/hierarchy/hierarchy-relationship-runtime.js',
     );
     const recordSelectorScript = await uiSource('public/js/popups/record-selector.js');
     const hierarchyPage = await uiSource(
@@ -243,27 +264,29 @@ describe('hierarchy draft persistence and relation selection', () => {
       'const showPagingControls = isSelectorPaging || paging.totalPages > 1',
     );
 
-    expect(hierarchyWorkspaceScript).toContain('relationCandidateEligibility');
-    expect(hierarchyWorkspaceScript).toContain('relationListExceptions');
-    expect(hierarchyWorkspaceScript).toContain('window.ManatOSRecordSelector');
-    expect(hierarchyWorkspaceScript).toContain("purpose: 'hierarchy-add-existing'");
-    expect(hierarchyWorkspaceScript).toContain('queryPredicate: listExceptions');
-    expect(hierarchyWorkspaceScript).toContain('factsForCandidate: (candidate) =>');
-    expect(hierarchyWorkspaceScript).toContain('alreadyInContext: Boolean');
-    expect(hierarchyWorkspaceScript).toContain('relation,');
-    expect(hierarchyWorkspaceScript).toContain('addDatabaseEntryForRelation');
-    expect(hierarchyWorkspaceScript).toContain('relateExistingNode(`use-existing-${relation}`');
+    expect(hierarchyRelationshipRuntime).toContain('relationCandidateEligibility');
+    expect(hierarchyWorkspaceScript).not.toContain('relationListExceptions');
+    expect(hierarchyRelationshipRuntime).toContain('window.ManatOS?.popup?.recordSelector');
+    expect(hierarchyRelationshipRuntime).toContain("purpose: 'select'");
+    expect(hierarchyWorkspaceScript).not.toContain('queryPredicate: listExceptions');
+    expect(hierarchyRelationshipRuntime).toContain('factsForCandidate: (candidate) =>');
+    expect(hierarchyRelationshipRuntime).toContain('alreadyInContext: Boolean');
+    expect(hierarchyRelationshipRuntime).toContain(
+      'relationCandidateEligibility(member, candidate, relation)',
+    );
+    expect(hierarchyRelationshipRuntime).toContain('addDatabaseEntryForRelation');
+    expect(hierarchyRelationshipRuntime).toContain('relateExistingNode(`use-existing-${relation}`');
     expect(hierarchyWorkspaceScript).not.toContain('const displayCellHtml =');
     expect(hierarchyWorkspaceScript).not.toContain('fetch(`/api/v1/');
 
     expect(recordSelector).toContain('data-selector-ctx');
     expect(recordSelector).toContain('data-selector-select disabled');
-    expect(recordSelectorScript).toContain("kind: 'record-selector'");
+    expect(recordSelectorScript).toContain("kind: 'selector'");
     expect(recordSelectorScript).not.toContain('const displayCellHtml =');
-    expect(recordSelectorScript).toContain('callingParams: { ...resolvedCallingParams }');
-    expect(recordSelectorScript).toContain('entriesOriginal: source.map');
+    expect(recordSelectorScript).toContain('invocation: { ...resolvedInvocation }');
+    expect(recordSelectorScript).toContain('originalEntries: source.map');
     expect(recordSelectorScript).toContain('popupRuntime?.toggleInspection?.({');
-    expect(recordSelectorScript).toContain('popupRuntime?.clearInspection?.(selectorCtxButton)');
+    expect(recordSelectorScript).toContain('popupRuntime.clearInspection?.(selectorCtxButton)');
     expect(recordSelectorScript).toContain(
       'Keep the same row DOM node alive so browser dblclick semantics remain',
     );

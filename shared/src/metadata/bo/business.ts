@@ -31,8 +31,9 @@ import { commonSysBOFields } from './common.js';
 
 export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
   key: 'sys-principals',
-  name: 'Principal',
-  pluralName: 'Principals',
+  name: 'sysPrincipals',
+  label: 'Principal',
+  pluralLabel: 'Principals',
 
   primaryField: 'name',
 
@@ -71,8 +72,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       label: 'Full name',
       calculation: {
         expression:
-          "principalType === 'Person' ? (firstName != null && firstName !== '' ? (lastName != null && lastName !== '' ? firstName + ' ' + lastName : firstName) : lastName != null && lastName !== '' ? lastName : name) : name",
-        triggeredBy: ['principalType', 'firstName', 'lastName'],
+          "principalType === 'Person' ? (firstName != null && firstName !== '' ? (lastName != null && lastName !== '' ? firstName + ' ' + lastName : firstName) : lastName != null && lastName !== '' ? lastName : '') : name",
         persisted: true,
       },
     },
@@ -93,6 +93,15 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       maxLength: 100,
     },
 
+    photo: {
+      key: 'photo',
+      label: 'Photo',
+      type: 'picture',
+      order: 19,
+      nullable: true,
+      applicationManaged: true,
+    },
+
     principalType: {
       key: 'principalType',
       label: 'Principal type',
@@ -100,6 +109,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
       order: 20,
 
       required: true,
+      createDefaultValue: 'Person',
       enumValues: Object.values(SysBOPrincipalType),
       enumItems: [
         {
@@ -210,8 +220,9 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
  */
 export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
   key: 'sys-applications',
-  name: 'Application',
-  pluralName: 'Applications',
+  name: 'sysApplications',
+  label: 'Application',
+  pluralLabel: 'Applications',
 
   primaryField: 'name',
 
@@ -236,6 +247,7 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
 
       maxLength: 50,
       versionFormat: 'semver',
+      createDefaultValue: '0.0.1',
     },
 
     description: {
@@ -245,6 +257,23 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
       order: 50,
 
       maxLength: 2000,
+    },
+
+    pictures: {
+      key: 'pictures',
+      label: 'Pictures',
+      type: 'pictures',
+      order: 60,
+      nullable: true,
+      applicationManaged: true,
+    },
+
+    details: {
+      key: 'details',
+      label: 'Details',
+      type: 'richText',
+      order: 70,
+      nullable: true,
     },
   },
 };
@@ -258,8 +287,9 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
  */
 export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
   key: 'sys-licenses',
-  name: 'License',
-  pluralName: 'Licenses',
+  name: 'sysLicenses',
+  label: 'License',
+  pluralLabel: 'Licenses',
 
   primaryField: 'name',
 
@@ -314,6 +344,9 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       order: 30,
 
       required: true,
+      createDefaultValue: {
+        expression: "FirstCtx($entity-fields.platformId.enumItems, 'value')",
+      },
       enumValues: MANATOS_COMPANY.platforms
         .filter((platform) => platform.enabled)
         .map((platform) => platform.id),
@@ -363,6 +396,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       order: 60,
 
       required: true,
+      createDefaultValue: 'Active',
       enumValues: Object.values(SysBOLicenseStatus),
       enumItems: [
         {
@@ -399,6 +433,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       label: 'Valid from',
       type: 'date',
       order: 70,
+      createDefaultValue: { expression: 'CurrentDay()' },
     },
 
     validityDuration: {
@@ -412,7 +447,6 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       calculation: {
         expression:
           'validFrom == null || validUntil == null ? null : CalendarDurationBetween(validFrom, validUntil)',
-        triggeredBy: ['validUntil'],
       },
     },
 
@@ -426,7 +460,6 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       calculation: {
         expression:
           'validFrom == null || validityDuration == null ? null : CalendarAddDuration(validFrom, validityDuration)',
-        triggeredBy: ['validFrom', 'validityDuration'],
       },
     },
 
@@ -437,6 +470,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
       order: 90,
 
       required: true,
+      createDefaultValue: 1,
     },
 
     description: {
@@ -453,8 +487,9 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 /** Persisted application configuration metadata. */
 export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
   key: 'sys-configurations',
-  name: 'Configuration',
-  pluralName: 'Configurations',
+  name: 'sysConfigurations',
+  label: 'Configuration',
+  pluralLabel: 'Configurations',
   primaryField: 'name',
   fieldDefinition: {
     ...commonSysBOFields,

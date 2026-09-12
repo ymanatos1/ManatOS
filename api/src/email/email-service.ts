@@ -1,7 +1,7 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 
-import { EmailDeliveryError, type SysBOUser } from '@manatos/shared';
+import { EmailDeliveryError, operationContext, type SysBOUser } from '@manatos/shared';
 
 import { logger } from '../logging/logger.js';
 
@@ -72,22 +72,25 @@ class SmtpEmailService implements IEmailService {
   }
 
   async verifyConnection(): Promise<void> {
-    logger.info('Verifying SMTP connection', {
-      host: this.mail.host,
-      port: this.mail.port,
-    });
-
-    try {
-      await this.transporter.verify();
-      logger.info('SMTP connection verified', {
+    await operationContext.run('Verify SMTP connection', async (scope) => {
+      scope.addContext({ host: this.mail.host, port: this.mail.port, secure: this.mail.secure });
+      logger.info('Verifying SMTP connection', {
         host: this.mail.host,
         port: this.mail.port,
-        secure: this.mail.secure,
       });
-    } catch (error) {
-      logger.error('SMTP connection verification failed', { error });
-      throw new EmailDeliveryError('SMTP connection verification failed.', error);
-    }
+
+      try {
+        await this.transporter.verify();
+        logger.info('SMTP connection verified', {
+          host: this.mail.host,
+          port: this.mail.port,
+          secure: this.mail.secure,
+        });
+      } catch (error) {
+        logger.error('SMTP connection verification failed', { error });
+        throw new EmailDeliveryError('SMTP connection verification failed.', error);
+      }
+    });
   }
 
   async sendWelcomeAndVerificationEmail(user: SysBOUser, verificationUrl?: string): Promise<void> {
@@ -136,42 +139,48 @@ class SmtpEmailService implements IEmailService {
     mailType: string,
     userId: string,
   ): Promise<void> {
-    logger.info('Email delivery started', {
-      mailType,
-      userId,
-      to,
-      from: this.mail.fromAddress,
-    });
+    await operationContext.run(`Send ${mailType} email`, async (scope) => {
+      scope.addContext({ mailType, userId, to });
 
-    try {
-      const result = await this.transporter.sendMail({
-        from: { name: this.mail.fromName, address: this.mail.fromAddress! },
-        to,
-        subject,
-        text,
-        html,
-      });
-
-      logger.info('Email delivered to SMTP server', {
-        mailType,
-        userId,
-        to,
-        messageId: result.messageId,
-        accepted: result.accepted,
-        rejected: result.rejected,
-        response: result.response,
-      });
-    } catch (error) {
-      logger.error('Email delivery failed', {
+      logger.info('Email delivery started', {
         mailType,
         userId,
         to,
         from: this.mail.fromAddress,
-        error,
       });
 
-      throw new EmailDeliveryError(`Failed to send '${mailType}' email to '${to}'.`, error);
-    }
+      try {
+        const result = await operationContext.run('Submit message to SMTP server', async () =>
+          this.transporter.sendMail({
+            from: { name: this.mail.fromName, address: this.mail.fromAddress! },
+            to,
+            subject,
+            text,
+            html,
+          }),
+        );
+
+        logger.info('Email delivered to SMTP server', {
+          mailType,
+          userId,
+          to,
+          messageId: result.messageId,
+          accepted: result.accepted,
+          rejected: result.rejected,
+          response: result.response,
+        });
+      } catch (error) {
+        logger.error('Email delivery failed', {
+          mailType,
+          userId,
+          to,
+          from: this.mail.fromAddress,
+          error,
+        });
+
+        throw new EmailDeliveryError(`Failed to send '${mailType}' email to '${to}'.`, error);
+      }
+    });
   }
 }
 

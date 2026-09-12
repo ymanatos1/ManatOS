@@ -84,14 +84,14 @@ Before mutation, the owner determines whether the node can be changed. Read-only
 
 Typical ownership examples:
 
-| Node                 | Typical owner                    | Writable?                                              |
-| -------------------- | -------------------------------- | ------------------------------------------------------ |
-| `fields.<key>.value` | entry field runtime              | yes, subject to field semantics                        |
-| `entry.original`     | entry initialization             | no after initialization                                |
-| `entry.current`      | field projection                 | derived/read-only projection                           |
-| `state.dirty`        | aggregate entry/surface state    | runtime-derived                                        |
-| `facts.*`            | bootstrap/API/runtime fact owner | normally replaced by its owner, not edited by controls |
-| `presentation.*`     | surface/presentation runtime     | only through the owning presentation mechanism         |
+| Node                  | Typical owner                    | Writable?                                              |
+| --------------------- | -------------------------------- | ------------------------------------------------------ |
+| `fields.<key>.value`  | entry field runtime              | yes, subject to field semantics                        |
+| `entry.original`      | entry initialization             | no after initialization                                |
+| `entry.current`       | field projection                 | derived/read-only projection                           |
+| `control.state.dirty` | aggregate entry/surface state    | runtime-derived                                        |
+| `facts.*`             | bootstrap/API/runtime fact owner | normally replaced by its owner, not edited by controls |
+| `presentation.*`      | surface/presentation runtime     | only through the owning presentation mechanism         |
 
 ### 3. Record the cause
 
@@ -178,6 +178,14 @@ fullName calculation
 
 When either dependency changes, the calculation becomes eligible for reevaluation.
 
+### Binding dependencies to the actual owner
+
+A compiled expression binding does not expose a second, static dependency projection. Dependency
+identity is resolved only against the materialized lexical scope through `resolveDependencyPaths(...)`,
+using the same owner lookup rules as evaluation. This prevents diagnostic/compatibility metadata from
+becoming a parallel dependency authority and avoids incorrectly binding inherited state to whichever
+surface happens to be current.
+
 ### Exact and overlapping paths
 
 Dependencies are hierarchical. A change to a descendant can matter to a consumer of an ancestor and vice versa. The dependency runtime therefore considers paths related when they are equal or one is a descendant of the other.
@@ -194,6 +202,11 @@ A consumer deliberately depending on `fields.address` is interested in a change 
 Calculations can react to local field paths and to owner-qualified surface paths. This lets a child surface inherit or depend on legitimate ancestor state without copying that state into the child.
 
 The principle is: **reference the owner; do not duplicate the fact merely to make it locally convenient.**
+
+Browser entry-form runtimes also bind to their owning entry path when they start. A selector or popup
+opened later may become the deepest `ctx.ui.level`, but it must not retarget the parent form's
+transaction projection (`control.state.dirty`, `control.state.valid`, or `control.state.blocked`) or baseline promotion.
+Topology depth describes nesting; it does not transfer ownership.
 
 ### Initialization is special but deterministic
 
@@ -231,10 +244,48 @@ For the same authoritative CTX state and same side-effect-free expression, calcu
 Derived values should be computed from authoritative state instead of independently synchronized whenever practical:
 
 ```text
-field dirty    = field.value vs entry.original[field]
+field dirty    = fields.<key>.value vs fields.<key>.originalValue
 entry.current  = projection of fields[*].value
+visual changed = projection of fields[*].dirty
 surface dirty  = aggregate owned dirty state
 ```
+
+The browser metadata-entry shell now separates those sources directly. Canonical entity fields
+contribute through the read-only `fields.<key>.dirty` projections. Non-CTX workflows own their own
+reversible comparison and register only aggregate contributor facts with the entry shell. The shell
+never serializes or inspects their private values. Sensitive provider credential transaction values
+and committed related-collection payloads therefore remain with their owning components, while CSRF
+values, popup tokens and ordinary canonical field controls cannot accidentally become dirty-state
+authorities.
+
+Navigation protection and Save enablement consume the same combined predicate: canonical field dirty
+OR explicit contributor dirty. Provider/entity-specific pending-dirty latches remain forbidden; each
+component owns its baseline and validity semantics while the generic shell owns only contributor
+registration. Reduction of contributor facts (`dirty`, `valid`, `blocked`, `blockingCount`) is one pure
+`@manatos/shared` policy consumed by both the browser adapter and host-neutral
+`EntryAggregateStateRuntime`; neither layer reimplements those predicates. Canonical-field validity is
+evaluated independently from contributor validity before both feed the shared aggregate policy.
+
+The browser shell now also keeps a private per-entry contributor registry matching the host-neutral
+`EntryAggregateStateRuntime` contract: contributors report only `dirty`, `valid`, and
+`blocksPersistence`. Components do not receive the registry or a mutable form-state handle. They
+register an owned contributor through the generic `manatos:form-contributor-register` event, and the
+entry shell keeps the contributor map entirely inside its runtime closure. `manatos:form-state-ready`
+exists only as a script-order handshake so components rendered before the shell can replay registration;
+`manatos:form-contributor-state` asks the shell to recompute after an already-registered contributor's
+private state changes. Contributor ownership lasts for the owning form runtime lifetime; there is no
+separate contributor-removal event because current contributors are form/component scoped and disappear
+with that runtime. A related collection owns one contributor for both its committed-value dirtiness
+and its active-draft blocking, so no parallel child-editor DOM/event state is required. Contributor
+identities and counts are runtime bookkeeping and never become semantic CTX. The owning entry exposes
+only the aggregate `control.state.dirty`, `control.state.valid`, and `control.state.blocked` facts. Browser/runtime code uses the
+same `blocked` / `blockingCount` vocabulary internally; the retired `internalEditing` /
+`internalEditorCount` terminology must not reappear.
+
+Retryable application-error actions use the semantic `data-popup-action="retry"` popup contract. The popup
+runtime emits a cancelable `manatos:retry-request`; the owning entry runtime handles it locally when
+appropriate, otherwise the popup runtime falls back to reloading the page. Retry ownership is therefore
+not exposed through a mutable `window` callback.
 
 ### Why this matters
 
@@ -291,6 +342,7 @@ Subscribers
 +-- global       whole-CTX (`*`) listeners
 +-- total        direct + dependent + global
 +-- kinds        counts grouped by semantic subscriber kind
++-- registrations matching subscriber labels, kinds and registered paths
 ```
 
 ### Direct
@@ -307,7 +359,7 @@ A global subscriber registered `*`. Examples include runtime-wide consumers that
 
 ### Total and kinds
 
-`total` answers “how many currently registered consumers overlap this node?” `kinds` answers “what sort of consumers are they?” These are live runtime diagnostics, not persisted CTX state.
+`total` answers “how many currently registered consumers overlap this node?” `kinds` answers “what sort of consumers are they?” `registrations` explains **which** matching consumers produced those counts, using their diagnostic label, semantic kind and registered canonical paths. The CTX Viewer exposes this as **Subscriber details** so an unexpectedly high count can be traced to concrete runtime consumers rather than guessed from a number. These are live runtime diagnostics, not persisted CTX state.
 
 ### `watchable` is not a subscriber count
 
@@ -387,7 +439,9 @@ Typed surface events remain useful inside runtime modules for strongly typed lif
 
 ### Field updates
 
-The current browser field-update helper also maintains field dirty/aggregate dirty information and reports projection paths such as `entry.current.<key>` as related paths. This is an intermediate implementation detail on the road to the universal CTX mutation mechanism; generic callers should not reproduce this synchronization themselves.
+Browser entry-field writes use the canonical field-mutation boundary (`updateField` in the current browser runtime). User input, calculated values and metadata/default policy writes all enter through that boundary. It owns the semantic update of `fields.<key>.value`, selected option decoration, dirty/aggregate state, related record projections such as `entry.current.<key>`, dependency notification and causal provenance. Generic callers must not reproduce those effects with direct `replace()` calls, DOM-derived semantic metadata or synthetic change events.
+
+The DOM remains a legitimate input/presentation boundary: a native control may provide the raw value of a user edit and may be updated to display a programmatic CTX value. It is not an evaluator scope, field-state store or option-catalogue authority.
 
 ### Dependency matching cost
 
@@ -483,3 +537,16 @@ Before accepting a new CTX/event feature, ask:
 - Can a developer trace a cascade back to one root cause?
 
 If the answer requires a second representation, second mutation path, second event path or entity-specific runtime special case, the design should be reconsidered before adding machinery.
+
+## Canonical reactive dependency event projection
+
+Expression dependencies are resolved against their lexical CTX owner before they are registered. Runtime mutation events must therefore be projected back into the same dependency identity before calculations, validation, or other declarative consumers decide whether to rerun.
+
+The projection rule is shared infrastructure rather than a feature-specific convention:
+
+- a field value mutation on the current surface projects both `fields.<field>.value` and `surface:<surfaceId>:fields.<field>.value`;
+- a CTX mutation on the current surface projects both its local path and `surface:<surfaceId>:<path>`;
+- a mutation owned by another UI surface projects only its owner-qualified `surface:<surfaceId>:...` identity;
+- a root CTX mutation already carries its absolute `ctx.*` identity and is not rewritten.
+
+This is intentionally consumed by calculated values/UX state, reactive validation, and declarative tab visibility. Those consumers must not maintain independent owner/path matching algorithms: otherwise a lexical dependency can evaluate correctly yet fail to react when its owning ancestor changes. Dependency matching itself uses the shared ancestor/descendant path rule (`reactiveDependencyMatchesChange`) so a container replacement invalidates its descendants and a descendant mutation invalidates a dependency on the containing semantic node. A single semantic event may project to more than one dependency identity (for example, a local field path and its owner-qualified path); calculations are deduplicated at the event boundary, so one calculation executes at most once for that event. The initialization pass likewise evaluates each registered calculation once, regardless of how many of its dependencies participate in the initial graph.

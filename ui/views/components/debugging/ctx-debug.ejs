@@ -45,7 +45,7 @@
     <button class="debug-tool-button" id="ctxDebugProperties" type="button" title="Selected node properties" aria-label="Show selected CTX node properties">
       <i class="bi bi-info-square"></i>
     </button>
-    <button class="debug-tool-button" id="ctxDebugFind" type="button" title="Find CTX variable by name" aria-label="Find CTX variable by name">
+    <button class="debug-tool-button" id="ctxDebugFind" type="button" title="Find CTX variable by key or value" aria-label="Find CTX variable by key or value">
       <i class="bi bi-search"></i>
     </button>
     <button class="debug-tool-button" id="ctxDebugCli" type="button" title="Open CLI at selected CTX node" aria-label="Open CLI at selected CTX node" aria-pressed="false">
@@ -60,17 +60,35 @@
     >
       <i class="bi bi-window-plus"></i>
     </button>
-    <div class="ctx-debug-find d-none" id="ctxDebugFindBox">
-      <input id="ctxDebugFindInput" type="text" autocomplete="off" placeholder="variable name" aria-label="CTX variable name">
-      <div class="ctx-debug-find-history d-none" id="ctxDebugFindHistory" role="listbox" aria-label="Recent CTX searches"></div>
-    </div>
-    <strong class="debug-tool-selection" id="ctxDebugSelection" title="Current CTX selection">ctx</strong>
     <span
       class="ctx-debug-stats"
       id="ctxDebugStats"
       tabindex="0"
       aria-label="CTX viewer statistics"
     ></span>
+  </div>
+  <div class="ctx-debug-selection-path" id="ctxDebugSelectionPath" title="Current canonical CTX path">ctx</div>
+
+  <div class="ctx-debug-find-row d-none" id="ctxDebugFindBox" role="search" aria-label="Find in CTX">
+    <div class="ctx-debug-find-input-wrap">
+      <input id="ctxDebugFindInput" type="text" autocomplete="off" placeholder="Find in CTX…" aria-label="CTX find pattern">
+      <div class="ctx-debug-find-history d-none" id="ctxDebugFindHistory" role="listbox" aria-label="Recent CTX searches"></div>
+    </div>
+    <button class="debug-tool-button" id="ctxDebugFindPrevious" type="button" title="Find previous" aria-label="Find previous">
+      <i class="bi bi-arrow-up"></i>
+    </button>
+    <button class="debug-tool-button" id="ctxDebugFindNext" type="button" title="Find next" aria-label="Find next">
+      <i class="bi bi-arrow-down"></i>
+    </button>
+    <select id="ctxDebugFindMode" aria-label="CTX find target" title="Find by key, value, or both">
+      <option value="key">By key</option>
+      <option value="value">By value</option>
+      <option value="both">By key + value</option>
+    </select>
+    <select id="ctxDebugFindSyntax" aria-label="CTX find syntax" title="Wildcard or regular-expression matching">
+      <option value="wildcard">Wildcard</option>
+      <option value="regex">RegExpr</option>
+    </select>
   </div>
 
   <!--
@@ -82,6 +100,10 @@
     <div class="ctx-debug-properties-heading">
       <span id="ctxDebugPropertiesTitle"><strong class="ctx-debug-properties-variable-name">ctx</strong></span>
       <button class="btn-close btn-close-sm" type="button" id="ctxDebugPropertiesClose" aria-label="Close node properties"></button>
+    </div>
+    <div class="ctx-debug-properties-tabs" role="tablist" aria-label="CTX node property sections">
+      <button type="button" class="ctx-debug-properties-tab is-active" data-properties-tab="main" role="tab" aria-selected="true">Main</button>
+      <button type="button" class="ctx-debug-properties-tab" data-properties-tab="subscribers" role="tab" aria-selected="false">Subscribers</button>
     </div>
     <div class="ctx-debug-properties-body" id="ctxDebugPropertiesBody"></div>
     <div class="ctx-debug-properties-resize" id="ctxDebugPropertiesResize" title="Drag to resize; double-click to reset" aria-hidden="true"></div>

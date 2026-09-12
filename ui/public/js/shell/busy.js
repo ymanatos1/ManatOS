@@ -4,7 +4,7 @@
    *
    * Any link can opt in with data-busy. Any form can opt in with
    * data-busy-submit. The same API is intentionally reusable by future
-   * fetch/API operations: window.manatosBusy.show({...}) / hide().
+   * fetch/API operations: window.ManatOS.busy.show({...}) / hide().
    * ===================================================================== */
 
   const busyOverlay = document.getElementById('manatosBusyOverlay');
@@ -14,30 +14,27 @@
   const busyIcon = document.getElementById('manatosBusyIcon');
   const busyActionWrap = document.getElementById('manatosBusyActionWrap');
   const busyAction = document.getElementById('manatosBusyAction');
+  const nativeFetch = window.fetch.bind(window);
+  const activityCounts = new Map();
+  const REQUEST_SHOW_DELAY_MS = 180;
+  const REQUEST_TIMEOUT_MS = 45_000;
+  let requestShowTimer = null;
   let actionHandler = null;
+  let manualBusyDepth = 0;
 
-  const showBusy = ({
+  const renderBusy = ({
     title = 'Please wait…',
     message = 'ManatOS is completing the requested operation.',
     icon = 'bi-arrow-repeat',
     actionLabel,
     onAction,
   } = {}) => {
-    if (!busyOverlay) {
-      return;
-    }
+    if (!busyOverlay) return;
 
-    if (busyTitle) {
-      busyTitle.textContent = title;
-    }
+    if (busyTitle) busyTitle.textContent = title;
+    if (busyMessage) busyMessage.textContent = message;
+    if (busyIcon) busyIcon.className = `bi ${icon}`;
 
-    if (busyMessage) {
-      busyMessage.textContent = message;
-    }
-
-    if (busyIcon) {
-      busyIcon.className = `bi ${icon}`;
-    }
     actionHandler = typeof onAction === 'function' ? onAction : null;
     if (busyActionWrap) busyActionWrap.hidden = !actionHandler;
     if (busyAction) busyAction.textContent = actionLabel || 'Cancel';
@@ -48,7 +45,7 @@
     busyBackground?.setAttribute('inert', '');
   };
 
-  const hideBusy = () => {
+  const clearBusyPresentation = () => {
     busyOverlay?.classList.remove('is-visible');
     busyOverlay?.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('manatos-busy');
@@ -57,9 +54,94 @@
     if (busyActionWrap) busyActionWrap.hidden = true;
   };
 
+  const requestActive = () => (activityCounts.get('request') || 0) > 0 || manualBusyDepth > 0;
+  const synchronizeRequestPresentation = () => {
+    if (requestActive()) return;
+    if (requestShowTimer !== null) window.clearTimeout(requestShowTimer);
+    requestShowTimer = null;
+    clearBusyPresentation();
+  };
+
+  const beginActivity = (channel = 'request', options = {}) => {
+    const normalizedChannel = String(channel || 'request');
+    activityCounts.set(normalizedChannel, (activityCounts.get(normalizedChannel) || 0) + 1);
+
+    if (
+      normalizedChannel === 'request' &&
+      requestShowTimer === null &&
+      !busyOverlay?.classList.contains('is-visible')
+    ) {
+      requestShowTimer = window.setTimeout(() => {
+        requestShowTimer = null;
+        if (requestActive()) renderBusy(options);
+      }, REQUEST_SHOW_DELAY_MS);
+    }
+
+    let ended = false;
+    return () => {
+      if (ended) return;
+      ended = true;
+      activityCounts.set(
+        normalizedChannel,
+        Math.max(0, (activityCounts.get(normalizedChannel) || 0) - 1),
+      );
+      if (normalizedChannel === 'request') synchronizeRequestPresentation();
+    };
+  };
+
+  const showBusy = (options = {}) => {
+    manualBusyDepth += 1;
+    renderBusy(options);
+  };
+
+  const hideBusy = () => {
+    manualBusyDepth = Math.max(0, manualBusyDepth - 1);
+    synchronizeRequestPresentation();
+  };
+
+  const requestFetch = async (input, init = {}) => {
+    const { manatosBusy = true, manatosTimeoutMs = REQUEST_TIMEOUT_MS, ...fetchInit } = init || {};
+    if (manatosBusy === false) return nativeFetch(input, fetchInit);
+
+    const endActivity = beginActivity('request');
+    const timeoutMs = Number(manatosTimeoutMs);
+    const timeoutController =
+      Number.isFinite(timeoutMs) && timeoutMs > 0 ? new AbortController() : null;
+    let timeoutId = null;
+
+    if (timeoutController) {
+      timeoutId = window.setTimeout(() => timeoutController.abort(), timeoutMs);
+      if (fetchInit.signal) {
+        if (typeof AbortSignal.any === 'function') {
+          fetchInit.signal = AbortSignal.any([fetchInit.signal, timeoutController.signal]);
+        } else {
+          fetchInit.signal.addEventListener('abort', () => timeoutController.abort(), {
+            once: true,
+          });
+          fetchInit.signal = timeoutController.signal;
+        }
+      } else {
+        fetchInit.signal = timeoutController.signal;
+      }
+    }
+
+    try {
+      return await nativeFetch(input, fetchInit);
+    } finally {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      endActivity();
+    }
+  };
+
   busyAction?.addEventListener('click', () => actionHandler?.());
 
-  window.manatosBusy = { show: showBusy, hide: hideBusy };
+  window.fetch = requestFetch;
+  window.ManatOS = window.ManatOS || {};
+  window.ManatOS.activity = Object.freeze({
+    begin: beginActivity,
+    count: (channel = 'request') => activityCounts.get(String(channel)) || 0,
+  });
+  window.ManatOS.busy = Object.freeze({ show: showBusy, hide: hideBusy });
 
   // Delegate link handling so provider buttons and other remote-operation
   // links inserted after page load receive the same busy-state behavior.

@@ -1,21 +1,20 @@
-/* Metadata-driven reactive CTX/evaluator runtime.
+/* Metadata-driven reactive entry-form runtime.
  *
- * This cohesive runtime is intentionally isolated from generic form lifecycle code.
- * Canonical expression source is compiled locally for live calculated fields and
- * CTX-driven UI properties using the shared ManatOS expression compiler.
+ * Owns form/CTX synchronization, dependency registration and causal reactive
+ * scheduling. AST execution and compile-cache transport live in the sibling
+ * expression-runtime service and are consumed here through one explicit boundary.
  */
 
 /* ==========================================================================
  * Metadata-driven reactive CTX fields
  *
- * Expression source is embedded beside calculated controls. While the user edits
- * ordinary form fields, this browser runtime compiles it once per execution host
- * and reuses the cached AST to refresh calculated values immediately.
+ * Expression source remains available at presentation boundaries while AST objects
+ * stay outside ordinary DOM transport and are resolved from the expression registry.
  * Every source-field mutation also emits the normal manatos:ctx-change event;
  * when the development CTX runtime is present the actual browser CTX node is
  * updated first so DEBUG observes the same value transition.
  *
- * The reactive plan is compiled once from those locally compiled ASTs. Calculated values and
+ * The reactive plan is built once from registry-resolved ASTs. Calculated values and
  * evaluator-driven UI properties share one dependency registry, so a source
  * change evaluates only the entries that depend on that field and propagates
  * through calculated-field dependencies without reparsing expressions.
@@ -27,21 +26,16 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
 });
 
 (async () => {
-  const form = document.querySelector('form.metadata-driven-record-form');
-  if (!(form instanceof HTMLFormElement)) {
-    resolveExpressionRuntimeReady?.(null);
-    return;
-  }
+  const formCandidate = document.querySelector('form.metadata-driven-record-form');
+  const form = formCandidate instanceof HTMLFormElement ? formCandidate : null;
+  const initializationOwner = 'reactive-entry';
+  const entryInitialization = window.ManatOS?.entryInitialization ?? null;
+  if (form) entryInitialization?.begin(initializationOwner);
+  await entryInitialization?.readyForWork?.();
 
   const CHANGE_EVENT = 'manatos:ctx-change';
   const runtime = window.ManatOS?.ctx;
-  const expressionCompiler = await window.ManatOS?.expressionCompilerReady;
-  const reactivePolicy = await import('/shared-runtime/reactive-runtime-policy.js');
-  if (!expressionCompiler) {
-    resolveExpressionRuntimeReady?.(null);
-    return;
-  }
-
+  const reactivePolicy = await import('/shared-runtime/policies/reactive-runtime-policy.js');
   const leafPagePath = () => {
     let node = runtime?.value?.ui?.level;
     if (!node) return null;
@@ -74,545 +68,50 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
         return null;
       }
     }
+    if (control instanceof HTMLInputElement && control.dataset.ctxValueType === 'json') {
+      if (!control.value) return null;
+      try {
+        return JSON.parse(control.value);
+      } catch {
+        return null;
+      }
+    }
     return control?.value ?? null;
   };
 
-  /**
-   * Resolve a live form field as an evaluator value. Bare field references use
-   * the control's scalar value, while member access keeps a tiny field wrapper
-   * so declarative enum-item metadata (for example
-   * `principalType.option.canHaveParent`) remains available even when the CTX
-   * debugger/runtime is disabled. This keeps reactive UI decisions independent
-   * from developer tooling and mirrors the server evaluator's field semantics.
-   */
-  let normalizationValueActive = false;
-  let normalizationValue;
-  const resolveLocalFieldVariable = (members) => {
-    if (!Array.isArray(members) || !members.length || typeof members[0] !== 'string')
-      return undefined;
-    const key = members[0];
-    if (normalizationValueActive && key === 'value' && members.length === 1)
-      return normalizationValue;
-    const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
-    const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
-    let fieldValue;
-    let option;
-    if (control) {
-      fieldValue = controlValue(control);
-      option = window.ManatOSFieldComponents?.getFieldOption?.(control);
-    } else {
-      return undefined;
-    }
-
-    if (members.length === 1) return fieldValue;
-
-    let value = { value: fieldValue, option };
-    for (const member of members.slice(1)) {
-      if (value == null || (typeof value !== 'object' && typeof value !== 'function'))
-        return undefined;
-      value = value[member];
-    }
-    return value;
-  };
-
-  let explicitEvaluationScopePath = null;
-  let explicitEvaluationScopeValue = null;
-  let explicitScopeMemo = new Map();
-  let explicitScopeActive = new Set();
-
-  /**
-   * Resolve a non-absolute variable against an explicit caller scope.
-   *
-   * `evaluateAstWithScope()` is used for detached, structured scopes such as a
-   * selector invocation or a list-row presentation. Once the first identifier
-   * belongs to that scope, all remaining members must stay inside it. A missing
-   * optional child is therefore a resolved `undefined` value; it must not fall
-   * through and accidentally bind to a same-named value in the surrounding
-   * page CTX. This mirrors ManatOS' lexical rule: first identifier lookup may
-   * search outward, but nested member lookup is strictly downward.
-   */
-  const scopedValue = (members) => {
-    if (!explicitEvaluationScopeValue || !Array.isArray(members) || !members.length) {
-      return { owned: false, value: undefined };
-    }
-
-    const [first, ...remaining] = members;
-    if (
-      typeof first !== 'string' ||
-      !Object.prototype.hasOwnProperty.call(explicitEvaluationScopeValue, first)
-    ) {
-      return { owned: false, value: undefined };
-    }
-
-    let value = explicitEvaluationScopeValue[first];
-    for (const member of remaining) {
-      if (value == null || (typeof value !== 'object' && typeof value !== 'function')) {
-        return { owned: true, value: undefined };
-      }
-      value = value[member];
-    }
-
-    if (value && typeof value === 'object' && value.__manatosExpressionAst) {
-      if (explicitScopeMemo.has(value)) return { owned: true, value: explicitScopeMemo.get(value) };
-      if (explicitScopeActive.has(value)) return { owned: true, value: value.value ?? null };
-      explicitScopeActive.add(value);
-      try {
-        const calculated = evaluate(value.__manatosExpressionAst);
-        explicitScopeMemo.set(value, calculated);
-        return { owned: true, value: calculated };
-      } finally {
-        explicitScopeActive.delete(value);
-      }
-    }
-    return { owned: true, value };
-  };
-
-  const resolveVariable = (node) => {
-    if (!node || !Array.isArray(node.members) || !node.members.length) return undefined;
-
-    if (!node.absolute && explicitEvaluationScopeValue) {
-      const scoped = scopedValue(node.members);
-      if (scoped.owned) return scoped.value;
-    }
-
-    // Non-absolute expressions resolve local form fields first. This includes
-    // rich enum option traits and therefore works in production even when the
-    // development CTX runtime is not loaded.
-    if (!node.absolute && !explicitEvaluationScopePath) {
-      const local = resolveLocalFieldVariable(node.members);
-      if (local !== undefined) return local;
-    }
-
-    // Root/page/user/system paths continue through the generic CTX resolver.
-    if (runtime?.resolve) {
-      const scopePath =
-        explicitEvaluationScopePath ?? entryPageFieldsPath?.replace(/\.fields$/, '') ?? undefined;
-      const resolved = runtime.resolve(node.path, scopePath);
-      if (resolved !== undefined) return resolved;
-    }
-    throw new Error(
-      `Reactive expression variable not available in this browser scope: ${node.path}`,
+  const fieldOptionFromCtx = (key, value) => {
+    if (!entryPageFieldsPath || !key) return undefined;
+    const options = runtime?.get?.(`${entryPageFieldsPath}.${key}.options`);
+    if (!Array.isArray(options)) return undefined;
+    return options.find(
+      (candidate) => String(candidate?.value ?? candidate?.id ?? '') === String(value ?? ''),
     );
   };
 
-  const scalar = (value) =>
-    value === null ||
-    ['string', 'number', 'boolean', 'undefined'].includes(typeof value) ||
-    value instanceof Date;
-  const num = (value, op) => {
-    if (typeof value !== 'number' || !Number.isFinite(value))
-      throw new Error(`${op} requires numbers`);
-    return value;
-  };
-  const truthy = (value) => {
-    if (!scalar(value))
-      throw new Error('Structured values are not supported by reactive scalar expressions yet.');
-    return Boolean(value);
-  };
-  const plus = (left, right) => {
-    if (typeof left === 'string' || typeof right === 'string') return String(left) + String(right);
-    return num(left, '+') + num(right, '+');
-  };
+  const csrfToken =
+    form?.querySelector('input[name="_csrf"]')?.value ||
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+    '';
 
-  const parseCalendarDate = (raw) => {
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(raw || ''));
-    if (!match) return null;
-    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-    return Number.isNaN(date.getTime()) ? null : date;
-  };
-  const formatCalendarDate = (date) => {
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
-    const pad2 = (value) => String(value).padStart(2, '0');
-    return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
-  };
-  const normalizedCalendarDuration = (value) => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const part = (key) => {
-      const numeric = Number(value[key] || 0);
-      return Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : 0;
-    };
-    return { years: part('years'), months: part('months'), days: part('days') };
-  };
-  const daysInCalendarMonth = (year, monthIndex) =>
-    new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-  const withClampedCalendarYearMonth = (date, year, monthIndex) =>
-    new Date(
-      Date.UTC(
-        year,
-        monthIndex,
-        Math.min(date.getUTCDate(), daysInCalendarMonth(year, monthIndex)),
-      ),
-    );
-  const addCalendarDuration = (start, duration) => {
-    let cursor = withClampedCalendarYearMonth(
-      start,
-      start.getUTCFullYear() + duration.years,
-      start.getUTCMonth(),
-    );
-    const monthTotal = cursor.getUTCFullYear() * 12 + cursor.getUTCMonth() + duration.months;
-    cursor = withClampedCalendarYearMonth(cursor, Math.floor(monthTotal / 12), monthTotal % 12);
-    return new Date(cursor.getTime() + duration.days * 24 * 60 * 60 * 1000);
-  };
-  const calendarDurationBetween = (start, end) => {
-    if (end.getTime() < start.getTime()) return null;
-    let years = Math.max(0, end.getUTCFullYear() - start.getUTCFullYear());
-    while (
-      years > 0 &&
-      addCalendarDuration(start, { years, months: 0, days: 0 }).getTime() > end.getTime()
-    )
-      years -= 1;
-    let cursor = addCalendarDuration(start, { years, months: 0, days: 0 });
-    let months = Math.max(
-      0,
-      (end.getUTCFullYear() - cursor.getUTCFullYear()) * 12 +
-        (end.getUTCMonth() - cursor.getUTCMonth()),
-    );
-    while (
-      months > 0 &&
-      addCalendarDuration(cursor, { years: 0, months, days: 0 }).getTime() > end.getTime()
-    )
-      months -= 1;
-    cursor = addCalendarDuration(cursor, { years: 0, months, days: 0 });
-    const days = Math.max(
-      0,
-      Math.round((end.getTime() - cursor.getTime()) / (24 * 60 * 60 * 1000)),
-    );
-    return { years, months, days };
-  };
-
-  const evaluate = (node) => {
-    if (!node) return undefined;
-    switch (node.kind) {
-      case 'literal':
-        return node.value;
-      case 'variable':
-        return resolveVariable(node);
-      case 'group':
-        return evaluate(node.expression);
-      case 'unary': {
-        const value = evaluate(node.operand);
-        if (node.operator === '!') return !truthy(value);
-        if (node.operator === '~') return ~num(value, '~');
-        if (node.operator === '+') return num(value, '+');
-        if (node.operator === '-') return -num(value, '-');
-        return undefined;
-      }
-      case 'binary': {
-        const left = evaluate(node.left);
-        if (node.operator === '??') return left == null ? evaluate(node.right) : left;
-        if (node.operator === '&&') return truthy(left) ? evaluate(node.right) : left;
-        if (node.operator === '||') return truthy(left) ? left : evaluate(node.right);
-        const right = evaluate(node.right);
-        switch (node.operator) {
-          case '+':
-            return plus(left, right);
-          case '-':
-            return num(left, '-') - num(right, '-');
-          case '*':
-            return num(left, '*') * num(right, '*');
-          case '/':
-            return num(left, '/') / num(right, '/');
-          case '%':
-            return num(left, '%') % num(right, '%');
-          case '**':
-            return num(left, '**') ** num(right, '**');
-          // Intentional JS/TS-style scalar equality split, matching the server evaluator.
-          case '==':
-            return left == right;
-          case '!=':
-            return left != right;
-          case '===':
-            return left === right;
-          case '!==':
-            return left !== right;
-          case '<':
-            return left < right;
-          case '<=':
-            return left <= right;
-          case '>':
-            return left > right;
-          case '>=':
-            return left >= right;
-          case '<<':
-            return num(left, '<<') << (num(right, '<<') & 31);
-          case '>>':
-            return num(left, '>>') >> (num(right, '>>') & 31);
-          case '>>>':
-            return (num(left, '>>>') >>> (num(right, '>>>') & 31)) >>> 0;
-          case '&':
-            return num(left, '&') & num(right, '&');
-          case '^':
-            return num(left, '^') ^ num(right, '^');
-          case '|':
-            return num(left, '|') | num(right, '|');
-          default:
-            return undefined;
-        }
-      }
-      case 'conditional':
-        return truthy(evaluate(node.condition))
-          ? evaluate(node.whenTrue)
-          : evaluate(node.whenFalse);
-      case 'function': {
-        const args = (node.arguments || []).map(evaluate);
-        if (node.functionName === 'CurrentUiLevel' || node.functionName === 'TraverseUiLevels') {
-          const levels = [];
-          let level = runtime?.value?.ui?.level ?? null;
-          while (level) {
-            levels.push(level);
-            level = level.level ?? null;
-          }
-          return node.functionName === 'CurrentUiLevel' ? (levels.at(-1) ?? null) : levels;
-        }
-        if (node.functionName === 'CurrentDay') {
-          const now = new Date();
-          const pad = (v) => String(v).padStart(2, '0');
-          return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T00:00`;
-        }
-        if (node.functionName === 'EmailAddress') {
-          const normalized = String(args[0] ?? '')
-            .trim()
-            .toLocaleLowerCase();
-          if (!normalized) return null;
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
-            throw new Error('EmailAddress requires a valid email address.');
-          return normalized;
-        }
-        if (node.functionName === 'TelephoneNbr') {
-          const clean = (value) => String(value ?? '').trim();
-          if (args.length === 1) {
-            const raw = clean(args[0]);
-            if (!raw) return null;
-            const digits = raw.replace(/\D/g, '');
-            if (!raw.startsWith('+') || digits.length < 4 || digits.length > 15)
-              throw new Error(
-                'TelephoneNbr requires an international number beginning with + and containing 4-15 digits.',
-              );
-            return `+${digits}`;
-          }
-          const country = clean(args[0]);
-          const countryDigits = country.replace(/\D/g, '');
-          const numberDigits = clean(args[1]).replace(/\D/g, '');
-          if (
-            !country.startsWith('+') ||
-            !countryDigits ||
-            numberDigits.length < 3 ||
-            `${countryDigits}${numberDigits}`.length > 15
-          )
-            throw new Error('TelephoneNbr requires a valid country code and national number.');
-          return `+${countryDigits}${numberDigits}`;
-        }
-        if (node.functionName === 'SqRoot') return Math.sqrt(Number(args[0]));
-        if (node.functionName === 'TraverseCtx') {
-          const [startId, collection, parentField, resultField] = args;
-          if (startId == null || startId === '' || !collection || typeof collection !== 'object')
-            return null;
-          const keyed = (container, key) => {
-            if (Array.isArray(container)) {
-              return container.find(
-                (item) => item && typeof item === 'object' && (item.id === key || item.key === key),
-              );
-            }
-            return container?.[key];
-          };
-          const seen = new Set();
-          let id = startId;
-          for (let depth = 0; depth < 256; depth += 1) {
-            const key = String(id);
-            if (seen.has(key)) throw new Error(`TraverseCtx detected a parent cycle at ${key}.`);
-            seen.add(key);
-            const row = keyed(collection, key);
-            if (!row || typeof row !== 'object') return null;
-            const parent = row[parentField];
-            if (parent == null || parent === '')
-              return resultField ? (row[resultField] ?? null) : row;
-            id = parent;
-          }
-          throw new Error('TraverseCtx exceeded the maximum traversal depth of 256.');
-        }
-        if (node.functionName === 'CalendarAddDuration') {
-          const start = parseCalendarDate(args[0]);
-          const duration = normalizedCalendarDuration(args[1]);
-          return start && duration
-            ? formatCalendarDate(addCalendarDuration(start, duration))
-            : null;
-        }
-        if (node.functionName === 'CalendarDurationBetween') {
-          const start = parseCalendarDate(args[0]);
-          const end = parseCalendarDate(args[1]);
-          return start && end ? calendarDurationBetween(start, end) : null;
-        }
-        if (node.functionName === 'GetTime') return Date.now();
-        if (node.functionName === 'StrFormat') {
-          return String(args[0] ?? '').replace(/\{(\d+)\}/g, (match, raw) =>
-            Number(raw) + 1 < args.length ? String(args[Number(raw) + 1] ?? '') : match,
-          );
-        }
-        return undefined;
-      }
-      default:
-        return undefined;
-    }
-  };
-
-  const csrfToken = form.querySelector('input[name="_csrf"]')?.value || '';
-
-  /*
-   * One owner evaluation pass may contain several reactive consumers of the
-   * same resolver-backed subexpression (for example the actual calculated
-   * field plus its Debugging-tab value). Keep a pass-scoped promise cache so
-   * those consumers share one remote capability call without changing lazy
-   * AST semantics or leaking results across independent user events.
-   */
-  let ownedCapabilityPassCache = null;
-  const withOwnedCapabilityPass = async (action) => {
-    if (ownedCapabilityPassCache) return action();
-    ownedCapabilityPassCache = new Map();
-    try {
-      return await action();
-    } finally {
-      ownedCapabilityPassCache = null;
-    }
-  };
-
-  /**
-   * Browser-owned hybrid evaluation. The browser remains responsible for the
-   * complete AST and preserves lazy operators/conditionals. Only a function node
-   * whose parser-annotated capability is unavailable locally is delegated.
-   * Phase 1 delegates EntityResolver calls individually; later planning may batch
-   * compatible reached subtrees without changing ownership semantics.
-   */
-  const evaluateOwned = async (node) => {
-    if (!node) return undefined;
-    switch (node.kind) {
-      case 'literal':
-      case 'variable':
-        return evaluate(node);
-      case 'group':
-        return evaluateOwned(node.expression);
-      case 'unary': {
-        const value = await evaluateOwned(node.operand);
-        return evaluate({ ...node, operand: { kind: 'literal', value } });
-      }
-      case 'binary': {
-        const left = await evaluateOwned(node.left);
-        if (node.operator === '??') return left == null ? evaluateOwned(node.right) : left;
-        if (node.operator === '&&') return truthy(left) ? evaluateOwned(node.right) : left;
-        if (node.operator === '||') return truthy(left) ? left : evaluateOwned(node.right);
-        const right = await evaluateOwned(node.right);
-        return evaluate({
-          ...node,
-          left: { kind: 'literal', value: left },
-          right: { kind: 'literal', value: right },
-        });
-      }
-      case 'conditional': {
-        const condition = await evaluateOwned(node.condition);
-        if (typeof condition !== 'boolean')
-          throw new Error(
-            `?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`,
-          );
-        return condition ? evaluateOwned(node.whenTrue) : evaluateOwned(node.whenFalse);
-      }
-      case 'function': {
-        const args = [];
-        for (const argument of node.arguments || []) args.push(await evaluateOwned(argument));
-        const localCapabilities = new Set(['pure', 'clock', 'ctx']);
-        if (node.capability === 'entityResolver') {
-          const cacheKey = `${node.functionName}:${JSON.stringify(args)}`;
-          const executeRemote = async () => {
-            const response = await fetch('/bo/expression/evaluate-function', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ _csrf: csrfToken, functionName: node.functionName, args }),
-            });
-            const payload = await response.json();
-            if (!response.ok)
-              throw new Error(
-                payload.error || payload.errorMessage || 'Remote expression capability failed.',
-              );
-            return payload.value;
-          };
-          if (!ownedCapabilityPassCache) return executeRemote();
-          if (!ownedCapabilityPassCache.has(cacheKey)) {
-            ownedCapabilityPassCache.set(cacheKey, executeRemote());
-          }
-          try {
-            return await ownedCapabilityPassCache.get(cacheKey);
-          } catch (error) {
-            ownedCapabilityPassCache.delete(cacheKey);
-            throw error;
-          }
-        }
-        if (node.capability && !localCapabilities.has(node.capability)) {
-          throw new Error(
-            `Function ${node.functionName} requires capability '${node.capability}', unavailable to browser evaluation owner.`,
-          );
-        }
-        return evaluate({ ...node, arguments: args.map((value) => ({ kind: 'literal', value })) });
-      }
-      default:
-        return evaluate(node);
-    }
-  };
+  const createExpressionRuntime = window.ManatOS?.createEntryExpressionRuntime;
+  if (typeof createExpressionRuntime !== 'function')
+    throw new Error('Entry expression runtime service is unavailable.');
+  const { evaluate, evaluateOwned, withOwnedCapabilityPass, astForSource, loadAstForSource } =
+    createExpressionRuntime({
+      runtime,
+      entryPagePath,
+      entryPageFieldsPath,
+      csrfToken,
+      entryInitialization,
+    });
 
   window.ManatOS.expression = Object.freeze({
+    astForSource,
+    loadAstForSource,
     evaluateAst: (ast) => evaluate(ast),
     evaluateAstOwned: (ast) => evaluateOwned(ast),
-    evaluateAstAt: (ast, scopePath) => {
-      const previousScope = explicitEvaluationScopePath;
-      explicitEvaluationScopePath = scopePath || null;
-      try {
-        return evaluate(ast);
-      } finally {
-        explicitEvaluationScopePath = previousScope;
-      }
-    },
-    evaluateAstOwnedAt: async (ast, scopePath) => {
-      const previousScope = explicitEvaluationScopePath;
-      explicitEvaluationScopePath = scopePath || null;
-      try {
-        return await evaluateOwned(ast);
-      } finally {
-        explicitEvaluationScopePath = previousScope;
-      }
-    },
-    evaluateAstWithScope: (ast, scope) => {
-      const previousPath = explicitEvaluationScopePath;
-      const previousValue = explicitEvaluationScopeValue;
-      const previousMemo = explicitScopeMemo;
-      const previousActive = explicitScopeActive;
-      explicitEvaluationScopePath = null;
-      explicitEvaluationScopeValue = scope && typeof scope === 'object' ? scope : null;
-      explicitScopeMemo = new Map();
-      explicitScopeActive = new Set();
-      try {
-        return evaluate(ast);
-      } finally {
-        explicitEvaluationScopePath = previousPath;
-        explicitEvaluationScopeValue = previousValue;
-        explicitScopeMemo = previousMemo;
-        explicitScopeActive = previousActive;
-      }
-    },
-    evaluateAstOwnedWithScope: async (ast, scope) => {
-      const previousPath = explicitEvaluationScopePath;
-      const previousValue = explicitEvaluationScopeValue;
-      const previousMemo = explicitScopeMemo;
-      const previousActive = explicitScopeActive;
-      explicitEvaluationScopePath = null;
-      explicitEvaluationScopeValue = scope && typeof scope === 'object' ? scope : null;
-      explicitScopeMemo = new Map();
-      explicitScopeActive = new Set();
-      try {
-        return await evaluateOwned(ast);
-      } finally {
-        explicitEvaluationScopePath = previousPath;
-        explicitEvaluationScopeValue = previousValue;
-        explicitScopeMemo = previousMemo;
-        explicitScopeActive = previousActive;
-      }
-    },
+    evaluateAstAt: (ast, scopePath) => evaluate(ast, scopePath || null),
+    evaluateAstOwnedAt: (ast, scopePath) => evaluateOwned(ast, scopePath || null),
     currentCtxPath: () => entryPagePath,
     currentCtxNode: () => {
       const path = entryPagePath;
@@ -621,10 +120,15 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
   });
   resolveExpressionRuntimeReady?.(window.ManatOS.expression);
 
+  // The evaluator is a page-runtime capability, not an entry-form capability.
+  // List/page actions also consume metadata expressions, so publish the evaluator
+  // on every shell page and stop here only after that capability exists.
+  if (!form) return;
+
   // Normalization is a canonical field-metadata concern. Components merely
-  // edit values; this generic pipeline evaluates the field's precompiled
-  // normalize AST on blur and publishes the normalized value through CTX.
-  form.addEventListener('focusout', (event) => {
+  // edit values; this generic pipeline resolves the field AST lazily from
+  // canonical authored source on blur and publishes the normalized value through CTX.
+  form.addEventListener('focusout', async (event) => {
     const control =
       event.target instanceof Element ? event.target.closest('[data-ctx-field]') : null;
     if (!(
@@ -636,18 +140,12 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     const container = control.closest('[data-ctx-field-container]');
     if (!container?.dataset.fieldNormalizeExpression) return;
     try {
-      const ast = expressionCompiler.ast(container.dataset.fieldNormalizeExpression || '');
+      const ast = await loadAstForSource(container.dataset.fieldNormalizeExpression);
       if (!ast) return;
       const previous = control.value;
-      normalizationValueActive = true;
-      normalizationValue = previous;
-      let normalized;
-      try {
-        normalized = evaluate(ast);
-      } finally {
-        normalizationValueActive = false;
-        normalizationValue = undefined;
-      }
+      const normalized = evaluate(ast, null, {
+        operands: Object.freeze({ value: previous }),
+      });
       if (normalized == null && previous === '') return;
       const next = normalized == null ? '' : String(normalized);
       if (next !== previous) {
@@ -673,29 +171,13 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
       control.setCustomValidity('');
   });
 
-  /*
-   * Compile the browser-side reactive plan from portable expression source.
-   * The shared compiler caches by source, so metadata transport stays simple
-   * while each execution host owns its runtime-local AST representation.
-   */
-  const astCache = new WeakMap();
-  const compileAttribute = (element, attribute) => {
-    let byAttribute = astCache.get(element);
-    if (!byAttribute) {
-      byAttribute = new Map();
-      astCache.set(element, byAttribute);
-    }
-    if (byAttribute.has(attribute)) return byAttribute.get(attribute);
-    try {
-      const source = element.getAttribute(attribute);
-      const ast = source ? expressionCompiler.ast(source) : null;
-      byAttribute.set(attribute, ast);
-      return ast;
-    } catch (error) {
-      console.error('[ManatOS expression compile]', error);
-      byAttribute.set(attribute, null);
-      return null;
-    }
+  /* Resolve browser execution AST data by authored source through the UI compile boundary. */
+  const compileAttribute = async (element, attribute) => {
+    const source = element.getAttribute(attribute);
+    if (!source) return null;
+    const ast = await loadAstForSource(source);
+    if (!ast) console.error('[ManatOS expression AST registry] Missing resolved AST', source);
+    return ast;
   };
 
   const expressionDependencyPaths = (ast) => {
@@ -706,7 +188,14 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
       if (!node || typeof node !== 'object') return;
 
       if (node.kind === 'variable' && typeof node.path === 'string') {
-        const resolvedPath = runtime?.resolvePath?.(node.path, scopePath);
+        // Dependency discovery consumes the same canonical variable AST as
+        // evaluation. Using node.path would reparse aliases such as
+        // $level-entity-fields and loses dynamic path members.
+        const resolvedPath = runtime?.resolveVariableWithPath?.(
+          node,
+          scopePath,
+          (dynamicExpression) => evaluate(dynamicExpression, scopePath),
+        )?.path;
         if (typeof resolvedPath === 'string' && resolvedPath) {
           dependencies.add(resolvedPath);
         }
@@ -746,49 +235,34 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
   };
 
   const writeCalculatedControlValue = (control, value) => {
-    window.ManatOSFieldComponents?.setFieldValue?.(control, value, { emit: false });
+    window.ManatOS?.fieldComponents?.setFieldValue?.(control, value, { emit: false });
   };
 
   /*
-   * Canonical normal-field calculations use the same locally compiled AST/evaluator
-   * plan as other calculated fields. The UI component arranging a field never participates
-   * in the calculation. `triggeredBy` is matched against CTX causal provenance,
-   * preserving the original user-authoritative field through dependent writes.
+   * Canonical field calculations are discovered from entity metadata, never from
+   * whichever presentation container happens to render the field. This keeps
+   * summary/read-only/hidden calculated fields semantic and presentation-neutral.
+   * Dependencies still come exclusively from the cached canonical AST.
    */
-  form.querySelectorAll('[data-field-calculation-expression]').forEach((container) => {
-    if (!(container instanceof HTMLElement)) return;
-    const ast = compileAttribute(container, 'data-field-calculation-expression');
-    if (!ast) return;
-    const key = container.dataset.ctxFieldContainer;
-    if (!key) return;
-    let triggeredBy = [];
-    try {
-      const parsed = JSON.parse(container.dataset.fieldCalculationTriggeredBy || '[]');
-      if (Array.isArray(parsed))
-        triggeredBy = parsed.filter((value) => typeof value === 'string' && value);
-    } catch {
-      /* invalid metadata is already visible through server-side diagnostics */
-    }
-    const scopePath = entryPagePath ?? undefined;
-    const triggerPaths = new Set(
-      triggeredBy.map((fieldKey) => runtime?.resolvePath?.(fieldKey, scopePath)).filter(Boolean),
-    );
+  const entrySurface = entryPagePath ? runtime?.get?.(entryPagePath) : null;
+  const entryEntity = Object.values(runtime?.value?.entities || {}).find(
+    (candidate) => candidate?.key === entrySurface?.control?.entityKey,
+  );
+  const canonicalFieldDefinitions = entryEntity?.metadata?.fieldDefinition || {};
 
+  for (const [key, definition] of Object.entries(canonicalFieldDefinitions)) {
+    const source = definition?.calculation?.expression;
+    if (typeof source !== 'string' || !source.trim()) continue;
+    const ast = await loadAstForSource(source);
+    if (!ast) continue;
     registerEntry({
       kind: 'field-calculation',
       key,
       dependencyPaths: expressionDependencyPaths(ast),
-      run: async (change) => {
+      run: async (change, evaluationPass) => {
         const authoritativePath = change?.cause?.triggerPath || change?.changedPath;
-        if (triggerPaths.size) {
-          if (!authoritativePath) return false;
-          if (
-            ![...triggerPaths].some((triggerPath) => pathsOverlap(triggerPath, authoritativePath))
-          )
-            return false;
-        }
         try {
-          const next = await evaluateOwned(ast);
+          const next = await evaluateOwned(ast, null, evaluationPass);
           const pagePath = entryPagePath;
           const fieldsPath = entryPageFieldsPath;
           if (!pagePath || !fieldsPath || !runtime?.updateField) return false;
@@ -799,19 +273,28 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
           const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
           const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
           writeCalculatedControlValue(control, next);
-          const option = window.ManatOSFieldComponents?.getFieldOption?.(control);
+          form
+            .querySelectorAll(
+              `[data-v2-summary-field-key="${escaped}"] [data-v2-summary-dynamic-value]`,
+            )
+            .forEach((element) => {
+              if (element instanceof HTMLElement)
+                element.textContent = next == null || next === '' ? '—' : String(next);
+            });
+          const option = fieldOptionFromCtx(key, next);
           runtime.updateField(pagePath, key, next, option, {
             source: 'calculated-field',
             triggerPath: authoritativePath || valuePath,
-            ...(change.cause?.rootEventId ? { rootEventId: change.cause.rootEventId } : {}),
+            ...(change?.cause?.rootEventId ? { rootEventId: change.cause.rootEventId } : {}),
           });
           return true;
-        } catch {
+        } catch (error) {
+          console.error('[ManatOS calculated field]', { key, error });
           return false;
         }
       },
     });
-  });
+  }
 
   const debugValueText = (value) => {
     // The debugger must expose raw evaluator values, not field presentation
@@ -834,30 +317,23 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
 
   /*
    * Development-only Debugging-tab cells subscribe to the same resolved CTX
-   * dependency paths as visible calculated values. Their AST is still the
-   * locally compiled AST from the portable formula source.
+   * dependency paths as visible calculated values. The DOM carries only the
+   * authored expression source; the executable AST is resolved lazily through
+   * the same non-semantic browser execution mirror used by production consumers.
    */
-  form.querySelectorAll('[data-debug-calculation-value]').forEach((cell) => {
-    if (!(cell instanceof HTMLElement)) return;
+  for (const cell of form.querySelectorAll('[data-debug-calculation-value]')) {
+    if (!(cell instanceof HTMLElement)) continue;
+    const sourceElement = cell.closest('tr')?.querySelector('[data-debug-expression]');
+    const source = sourceElement?.textContent ?? '';
+    const ast = await loadAstForSource(source);
+    if (!ast) continue;
 
-    // Debugging is an intentional tooling exception to the normal source-only
-    // metadata transport: these cells inspect the AST itself, so consume the
-    // diagnostic AST payload directly rather than routing it through the
-    // production expression-source compiler.
-    let ast = null;
-    try {
-      const rawAst = cell.getAttribute('data-debug-calculation-ast');
-      ast = rawAst ? JSON.parse(rawAst) : null;
-    } catch {
-      ast = null;
-    }
-    if (!ast) return;
     registerEntry({
       kind: 'debug-value',
       dependencyPaths: expressionDependencyPaths(ast),
-      run: async () => {
+      run: async (_change, evaluationPass) => {
         try {
-          const next = debugValueText(await evaluateOwned(ast));
+          const next = debugValueText(await evaluateOwned(ast, null, evaluationPass));
           const changed = cell.textContent !== next;
           if (changed) cell.textContent = next;
           return changed;
@@ -866,17 +342,17 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
         }
       },
     });
-  });
+  }
 
   /*
-   * Layout spans use the same precompiled-AST reactive pipeline as field
+   * Layout spans use the same cached-AST reactive pipeline as field
    * visibility/editability. Metadata may therefore reflow a grid when a CTX
    * dependency changes without any entity/component-specific JavaScript.
    */
-  form.querySelectorAll('[data-ui-grid-span-expression]').forEach((container) => {
-    if (!(container instanceof HTMLElement)) return;
-    const spanAst = compileAttribute(container, 'data-ui-grid-span-expression');
-    if (!spanAst) return;
+  for (const container of form.querySelectorAll('[data-ui-grid-span-expression]')) {
+    if (!(container instanceof HTMLElement)) continue;
+    const spanAst = await compileAttribute(container, 'data-ui-grid-span-expression');
+    if (!spanAst) continue;
     const fallback = Math.max(
       1,
       Math.min(12, Number(container.dataset.uiGridSpanFallback || 12) || 12),
@@ -885,9 +361,9 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     registerEntry({
       kind: 'grid-span',
       dependencyPaths: expressionDependencyPaths(spanAst),
-      run: async () => {
+      run: async (_change, evaluationPass) => {
         try {
-          const evaluated = Number(await evaluateOwned(spanAst));
+          const evaluated = Number(await evaluateOwned(spanAst, null, evaluationPass));
           const nextSpan = Number.isFinite(evaluated)
             ? Math.max(1, Math.min(12, Math.trunc(evaluated)))
             : fallback;
@@ -902,20 +378,20 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
         }
       },
     });
-  });
+  }
 
-  form.querySelectorAll('[data-ctx-field-container]').forEach((container) => {
-    if (!(container instanceof HTMLElement)) return;
-    const visibleAst = compileAttribute(container, 'data-ui-visible-expression');
-    const editableAst = compileAttribute(container, 'data-ui-editable-expression');
+  for (const container of form.querySelectorAll('[data-ctx-field-container]')) {
+    if (!(container instanceof HTMLElement)) continue;
+    const visibleAst = await compileAttribute(container, 'data-ui-visible-expression');
+    const editableAst = await compileAttribute(container, 'data-ui-editable-expression');
 
     if (visibleAst) {
       registerEntry({
         kind: 'visible',
         dependencyPaths: expressionDependencyPaths(visibleAst),
-        run: async () => {
+        run: async (_change, evaluationPass) => {
           try {
-            const nextHidden = (await evaluateOwned(visibleAst)) === false;
+            const nextHidden = (await evaluateOwned(visibleAst, null, evaluationPass)) === false;
             const changed = container.hidden !== nextHidden;
             container.hidden = nextHidden;
             return changed;
@@ -930,9 +406,9 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
       registerEntry({
         kind: 'editable',
         dependencyPaths: expressionDependencyPaths(editableAst),
-        run: async () => {
+        run: async (_change, evaluationPass) => {
           try {
-            const editable = (await evaluateOwned(editableAst)) !== false;
+            const editable = (await evaluateOwned(editableAst, null, evaluationPass)) !== false;
             const controls = [...container.querySelectorAll('[data-ctx-field]')];
             const readonlySubmit = container.querySelector('[data-readonly-submit]');
             const hasReadOnlyValue = container.dataset.uiHasReadonlyValue === 'true';
@@ -964,7 +440,7 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
                   ) {
                     control.value = readOnlyValue == null ? '' : String(readOnlyValue);
                   }
-                  window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), {
+                  window.ManatOS?.fieldComponents?.setFieldValue?.(control, controlValue(control), {
                     emit: false,
                   });
 
@@ -977,12 +453,6 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
                       source: 'field-editability',
                       triggerPath: valuePath,
                     });
-                  } else if (key && fieldsPath && runtime?.replace) {
-                    const valuePath = `${fieldsPath}.${key}.value`;
-                    runtime.replace(valuePath, readOnlyValue, {
-                      source: 'field-editability',
-                      triggerPath: valuePath,
-                    });
                   }
                   changed = true;
                 }
@@ -991,7 +461,7 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
               if (control instanceof HTMLInputElement && control.type !== 'checkbox')
                 control.readOnly = !editable;
               else control.disabled = !editable;
-              window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), {
+              window.ManatOS?.fieldComponents?.setFieldValue?.(control, controlValue(control), {
                 emit: false,
               });
               if (wasEditable !== editable) changed = true;
@@ -1009,7 +479,7 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
         },
       });
     }
-  });
+  }
 
   /*
    * CTX-event scheduler.
@@ -1029,7 +499,7 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     processingChanges = true;
     let executions = 0;
     try {
-      await withOwnedCapabilityPass(async () => {
+      await withOwnedCapabilityPass(async (evaluationPass) => {
         while (pendingChanges.length) {
           const currentChange = pendingChanges.shift();
           pendingChangeKeys.delete(currentChange.queueKey);
@@ -1041,7 +511,7 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
               )
             )
               continue;
-            await entry.run(currentChange);
+            await entry.run(currentChange, evaluationPass);
             executions += 1;
             if (executions > 512) {
               console.error(
@@ -1085,11 +555,11 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
   };
 
   const runAllReactiveEntries = () =>
-    withOwnedCapabilityPass(async () => {
+    withOwnedCapabilityPass(async (evaluationPass) => {
       // Preserve deterministic metadata order even though some entries may cross
       // an async capability boundary. Dependent CTX writes still re-enter the
       // normal causal event scheduler.
-      for (const entry of reactiveEntries) await entry.run();
+      for (const entry of reactiveEntries) await entry.run(undefined, evaluationPass);
     });
 
   const syncSourceField = (control, eventCause = {}) => {
@@ -1099,7 +569,9 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     const fieldsPath = entryPageFieldsPath;
     const path = fieldsPath ? `${fieldsPath}.${key}.value` : `fields.${key}.value`;
 
-    window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), { emit: false });
+    window.ManatOS?.fieldComponents?.setFieldValue?.(control, controlValue(control), {
+      emit: false,
+    });
 
     const source =
       typeof eventCause.source === 'string' && eventCause.source ? eventCause.source : 'form-field';
@@ -1113,27 +585,11 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
       ...(eventCause.rootEventId ? { rootEventId: eventCause.rootEventId } : {}),
     };
 
-    if (fieldsPath && runtime?.updateField) {
-      const pagePath = entryPagePath;
-      const option = window.ManatOSFieldComponents?.getFieldOption?.(control);
-      runtime.updateField(pagePath, key, value, option, cause);
-    } else if (fieldsPath && runtime?.replace) {
-      // Generic replace is normalized by ctx-runtime through the same canonical
-      // field mutation authority; there is no second current-record write.
-      runtime.replace(path, value, cause);
-    } else {
-      window.dispatchEvent(
-        new CustomEvent(CHANGE_EVENT, {
-          detail: {
-            operation: 'replace',
-            path,
-            relatedPaths: [],
-            newValue: value,
-            cause,
-          },
-        }),
-      );
-    }
+    if (!fieldsPath || !entryPagePath || !runtime?.updateField)
+      throw new Error('Canonical CTX field mutation authority is unavailable.');
+
+    const option = fieldOptionFromCtx(key, value);
+    runtime.updateField(entryPagePath, key, value, option, cause);
   };
 
   const react = (event) => {
@@ -1165,7 +621,7 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
   form.addEventListener('change', react);
   queueMicrotask(async () => {
     form.querySelectorAll('[data-ctx-field]').forEach((control) => {
-      window.ManatOSFieldComponents?.setFieldValue?.(control, controlValue(control), {
+      window.ManatOS?.fieldComponents?.setFieldValue?.(control, controlValue(control), {
         emit: false,
       });
     });
@@ -1176,23 +632,29 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
      * every dependent calculated field/UI property receives exactly the same
      * causal event it would receive from a user/programmatic field change.
      */
-    let invocationDefaults = {};
-    try {
-      invocationDefaults = JSON.parse(
-        form.querySelector('input[name="_entryDefaults"]')?.value || '{}',
-      );
-    } catch {
-      invocationDefaults = {};
-    }
-    for (const key of Object.keys(invocationDefaults)) {
+    const invocationValues = entryPagePath
+      ? (runtime?.get?.(`${entryPagePath}.control.invocation.rules.values`) ?? {})
+      : {};
+    for (const [key, valueRule] of Object.entries(invocationValues)) {
+      if (
+        !valueRule ||
+        typeof valueRule !== 'object' ||
+        (!Object.prototype.hasOwnProperty.call(valueRule, 'default') &&
+          !Object.prototype.hasOwnProperty.call(valueRule, 'fixed'))
+      )
+        continue;
       const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
       const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
       if (control) syncSourceField(control, { source: 'entry-invocation', triggerField: key });
     }
 
-    await runAllReactiveEntries();
-    form.dispatchEvent(new Event('change', { bubbles: true }));
-    form.dataset.metadataFormInitialized = 'true';
-    form.dispatchEvent(new Event('manatos:form-initialized'));
+    try {
+      await runAllReactiveEntries();
+      form.dispatchEvent(new Event('change', { bubbles: true }));
+      form.dataset.metadataFormInitialized = 'true';
+      form.dispatchEvent(new Event('manatos:form-initialized'));
+    } finally {
+      entryInitialization?.end(initializationOwner);
+    }
   });
 })();

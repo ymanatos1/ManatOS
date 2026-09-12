@@ -1,5 +1,4 @@
 import type { CompanyInfo, EntityContribution, SysPlatform } from '../domain/company-platform.js';
-import type { ExpressionNode } from '../expressions/types.js';
 
 export interface ManatOSSysBOContext {
   key: string;
@@ -45,14 +44,18 @@ export interface ManatOSSystemContext {
 /**
  * Canonical entity knowledge available from every context branch.
  *
- * Registry property names are expression-safe identifiers (for example
- * `sysUsers` or `externalIdentities`); `key` preserves the canonical metadata
- * key (`sys-users`, `external-identities`, etc.). Entries may describe either
+ * Registry property names are canonical symbolic entity names declared by
+ * metadata (for example `sysUsers` or `sysExternalIdentities`). `key` preserves
+ * the secondary metadata/storage/API key (`sys-users`, `external-identities`, etc.).
+ * Entries may describe either
  * first-class SysBOs or canonical related/value objects and can be enriched
  * later when metadata is loaded on demand.
  */
 export interface ManatOSEntityContext {
+  /** Secondary metadata/storage/API key retained for its explicit technical uses. */
   key: string;
+  /** Canonical symbolic entity name; this is also the ctx.entities property key. */
+  name: string;
   metadata?: unknown;
   uiMetadata?: unknown;
 }
@@ -100,8 +103,6 @@ export interface ManatOSCalculatedContextField<T = unknown> {
   /** Optional materialized/edited anchor; normal evaluation still uses expression. */
   value: T | null;
   expression: string;
-  /** Parsed, context-agnostic AST compiled when the calculated field is declared. */
-  ast: ExpressionNode;
 }
 
 export type ManatOSContextField<T = unknown> =
@@ -157,7 +158,7 @@ export interface ManatOSUserContext {
  * stable identity; `key` is accepted for metadata-style collection members.
  * Keys do not have to be expression identifiers: UUIDs and similar ids are
  * addressable through quoted bracket syntax, for example
- * `ctx.ui.level.dataList['8c7d...']`.
+ * `ctx.ui.level.list.entries['8c7d...']`.
  */
 export function contextCollectionMemberKey(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null;

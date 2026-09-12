@@ -98,6 +98,10 @@
               ? debuggingStartPath
               : 'ctx.ui.level',
           csrfToken: debuggingCsrfToken,
+          displayPath:
+            (typeof debuggingStartDisplayPath !== 'undefined' && debuggingStartDisplayPath)
+              ? debuggingStartDisplayPath
+              : null,
           docked: false
         }) %>
       <% } else { %>
@@ -189,7 +193,6 @@
                     <td
                       class="debugging-current-value"
                       data-debug-calculation-value
-                      <% if (debugRow.ast) { %>data-debug-calculation-ast="<%= JSON.stringify(debugRow.ast) %>"<% } %>
                     ><%= debugRow.value %></td>
                   </tr>
                 <% } %>

@@ -16,14 +16,23 @@ describe('system connectivity watchdog', () => {
 
     expect(watchdog).toContain('const FAILURE_THRESHOLD = 3');
     expect(watchdog).toContain('ManatOS system unavailable');
-    expect(watchdog).toContain('Automatic polling has been stopped');
-    expect(watchdog).toContain("target.closest('a[href]')");
+    expect(watchdog).toContain('automatic polling has been stopped');
+    expect(watchdog).toContain('data-system-retry');
+    expect(watchdog).toContain("fetch('/runtime/health'");
+    expect(watchdog).toContain('workspaceRecovery?.markUnavailableAndDispose?.()');
+    expect(watchdog).toContain("await fetch('/auth/logout'");
+    expect(watchdog).toContain("location.assign('/?auth=signin')");
+    expect(watchdog).not.toContain('data-system-sign-in');
+    expect(watchdog).not.toContain('signInAndRecover');
     expect(watchdog).toContain('manatos:system-unavailable');
     expect(watchdog).toContain('dismissTransientUi();');
     expect(watchdog).toContain('manatos:dismiss-transient-ui');
     expect(watchdog).toContain('[data-manatos-transient-ui]');
     expect(watchdog).toContain('document.querySelectorAll(\'[data-bs-toggle="dropdown"]\')');
     expect(watchdog).toContain('bootstrapApi.Dropdown.getInstance(toggle)?.hide()');
+    expect(shell.indexOf('/js/runtime/workspace-recovery.js')).toBeLessThan(
+      shell.indexOf('/js/shell/system-connectivity.js'),
+    );
     expect(shell.indexOf('/js/shell/system-connectivity.js')).toBeLessThan(
       shell.indexOf('/js/runtime/bootstrap-runtime.js'),
     );
@@ -40,7 +49,7 @@ describe('system connectivity watchdog', () => {
     expect(traffic).toContain("window.addEventListener('manatos:system-unavailable'");
     expect(traffic).toContain('window.clearInterval(pollTimer)');
     expect(traffic).toContain('state.pollInFlight');
-    expect(traffic).toContain('window.ManatOSConnectivity?.unavailable === true');
+    expect(traffic).toContain('window.ManatOS?.connectivity?.unavailable === true');
     expect(traffic).toContain('state.pollInFlight = true');
     expect(traffic).toContain('state.pollInFlight = false');
   });

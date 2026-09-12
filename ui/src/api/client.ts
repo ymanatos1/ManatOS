@@ -105,6 +105,19 @@ export class ApiClient {
     );
   }
 
+  /** Execute a GET that intentionally returns non-JSON content (for example a picture). */
+  async getRaw(path: string, options: ApiRequestOptions = {}): Promise<Response> {
+    const response = await fetch(config.API_BASE_URL + path, {
+      method: 'GET',
+      headers: {
+        ...(options.accessToken ? { authorization: `Bearer ${options.accessToken}` } : {}),
+        ...(options.internal ? { 'x-internal-api-key': config.INTERNAL_API_KEY } : {}),
+      },
+    });
+    if (!response.ok) await this.fail(response, options);
+    return response;
+  }
+
   /**
    * Execute a POST command.
    */

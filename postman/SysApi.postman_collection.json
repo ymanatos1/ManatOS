@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "116a6257-0413-4473-ab8a-eed1e069313c",
     "name": "ManatOS Multi-Platform API",
-    "description": "Postman collection for the ManatOS Multi-Platform API: server operations, authentication, metadata-driven SysBO CRUD, canonical/UI metadata, relationship delete-impact preflight, runtime configuration, public UI bootstrap, external authentication and security tests.\n\nHierarchy/Organization workspace note: the Principal Organization editor is a metadata-driven UI aggregate over owner-context entries[]. recordQuick edits, drag/drop/detach and Create Organization drafts are intentionally not separate REST resources. The authoritative persistence boundary is the generic SysBO $aggregate-commit endpoint. Create drafts remain browser-local and are cleared only after a successful commit. List-like candidate surfaces use the generic listExceptions exclude-when-true query predicate, which is passed through the API into storage before paging.",
+    "description": "Postman collection for the ManatOS Multi-Platform API. It mirrors the executable OpenAPI/Swagger route families and adds runnable/local examples for authentication, metadata-driven SysBO CRUD, capabilities, binary picture resources, aggregate persistence, trusted internal workflows and security tests.\n\nHierarchy/Organization workspace note: the Principal Organization editor is a metadata-driven UI aggregate over owner-context entries[]. recordQuick edits, drag/drop/detach and Create Organization drafts are intentionally not separate REST resources. The authoritative persistence boundary is the generic SysBO $aggregate-commit endpoint. Create drafts remain browser-local and are cleared only after a successful commit. List-like candidate surfaces use the generic listExceptions exclude-when-true query predicate, which is passed through the API into storage before paging.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1253976",
     "_collection_link": "https://go.postman.co/collection/1253976-116a6257-0413-4473-ab8a-eed1e069313c?source=collection_link"
@@ -98,6 +98,32 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "OpenAPI document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/openapi.json",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "openapi.json"]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Executable OpenAPI 3.1 contract used by Swagger UI."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
         }
       ]
     },
@@ -663,6 +689,50 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Lookup Local Identity",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "x-internal-api-key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/auth/lookup?identity=Admin",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "{{apiVersion}}", "internal", "auth", "lookup"]
+                },
+                "description": "Trusted UI/BFF lookup. Does not create a session."
+              },
+              "response": []
+            },
+            {
+              "name": "List User External Identities",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "x-internal-api-key",
+                    "value": "{{internalApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/internal/SysUsers/{{testUserId}}/external-identities",
+                  "host": ["{{baseUrl}}"],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "internal",
+                    "SysUsers",
+                    "{{testUserId}}",
+                    "external-identities"
+                  ]
+                }
+              },
+              "response": []
             }
           ],
           "auth": {
@@ -1061,6 +1131,88 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Photo resource",
+              "item": [
+                {
+                  "name": "Read user photo",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}/$picture/photo",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysUsers",
+                        "{{testUserId}}",
+                        "$picture",
+                        "photo"
+                      ]
+                    },
+                    "description": "Returns raw image bytes when the user has a photo. A 404 is expected when no photo is stored."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Replace user photo",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}/$picture/photo",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysUsers",
+                        "{{testUserId}}",
+                        "$picture",
+                        "photo"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"contentType\": \"image/png\",\n  \"dataBase64\": \"{{testPictureDataBase64}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "Manual binary-field example. Set testPictureDataBase64 to a small base64-encoded PNG before running."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Clear user photo",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysUsers/{{testUserId}}/$picture/photo",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysUsers",
+                        "{{testUserId}}",
+                        "$picture",
+                        "photo"
+                      ]
+                    },
+                    "description": "Clears the application-managed photo field."
+                  },
+                  "response": []
+                }
+              ]
             }
           ]
         },
@@ -1149,6 +1301,34 @@
                 "description": "Demonstrates the generic listExceptions query contract used by list-like selectors. Rows for which the canonical expression evaluates true are excluded in storage before totals/paging are calculated. A future RDBMS adapter translates the same structured query semantics to parameterized SQL."
               },
               "response": []
+            },
+            {
+              "name": "SysPrincipal record capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}/$capabilities",
+                  "host": ["{{baseUrl}}"],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysPrincipals",
+                    "{{testPrincipalId}}",
+                    "$capabilities"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+                  }
+                }
+              ]
             },
             {
               "name": "SysPrincipals metadata",
@@ -1419,6 +1599,87 @@
                 "description": "Atomically commits one owner-managed Principal aggregate. Temporary draft:* ids are resolved server-side. The UI clears any Create Organization browser draft and returns to the Principals list only after this request succeeds; failed commits keep the working state."
               },
               "response": []
+            },
+            {
+              "name": "Photo resource",
+              "item": [
+                {
+                  "name": "Read principal photo",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}/$picture/photo",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipals",
+                        "{{testPrincipalId}}",
+                        "$picture",
+                        "photo"
+                      ]
+                    },
+                    "description": "Returns raw image bytes when the Principal has a photo."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Replace principal photo",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}/$picture/photo",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipals",
+                        "{{testPrincipalId}}",
+                        "$picture",
+                        "photo"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"contentType\": \"image/png\",\n  \"dataBase64\": \"{{testPictureDataBase64}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "Manual binary-field example. Set testPictureDataBase64 before running."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Clear principal photo",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysPrincipals/{{testPrincipalId}}/$picture/photo",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysPrincipals",
+                        "{{testPrincipalId}}",
+                        "$picture",
+                        "photo"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
             }
           ]
         },
@@ -1507,6 +1768,34 @@
                       "pm.test('GET response has no success message', () => pm.expect(json).to.not.have.property('message'));",
                       "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));"
                     ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysApplication record capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}/$capabilities",
+                  "host": ["{{baseUrl}}"],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysApplications",
+                    "{{testApplicationId}}",
+                    "$capabilities"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
                   }
                 }
               ]
@@ -1711,6 +2000,68 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Pictures resource",
+              "item": [
+                {
+                  "name": "Replace application pictures",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}/$pictures/pictures",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysApplications",
+                        "{{testApplicationId}}",
+                        "$pictures",
+                        "pictures"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"changed\": true,\n  \"pictures\": [\n    {\n      \"contentType\": \"image/png\",\n      \"dataBase64\": \"{{testPictureDataBase64}}\"\n    }\n  ]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "Replaces the ordered application Pictures collection. Existing items can be retained by sending their id only."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Read application picture item",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/{{apiVersion}}/SysApplications/{{testApplicationId}}/$pictures/pictures/{{testApplicationPictureId}}",
+                      "host": ["{{baseUrl}}"],
+                      "path": [
+                        "api",
+                        "{{apiVersion}}",
+                        "SysApplications",
+                        "{{testApplicationId}}",
+                        "$pictures",
+                        "pictures",
+                        "{{testApplicationPictureId}}"
+                      ]
+                    },
+                    "description": "Returns raw image bytes for one Pictures collection item."
+                  },
+                  "response": []
+                }
+              ]
             }
           ]
         },
@@ -1800,6 +2151,34 @@
                       "pm.test('Metadata is under data.metadata', () => pm.expect(json.data.metadata).to.be.an('object'));",
                       "pm.test('Validity duration is canonical duration metadata', () => pm.expect(json.data.metadata.fieldDefinition.validityDuration.type).to.eql('duration'));"
                     ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SysLicense record capabilities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/{{apiVersion}}/SysLicenses/{{testLicenseId}}/$capabilities",
+                  "host": ["{{baseUrl}}"],
+                  "path": [
+                    "api",
+                    "{{apiVersion}}",
+                    "SysLicenses",
+                    "{{testLicenseId}}",
+                    "$capabilities"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
                   }
                 }
               ]
@@ -3324,6 +3703,18 @@
     {
       "key": "testPrincipalAddressId",
       "value": ""
+    },
+    {
+      "key": "testPictureDataBase64",
+      "value": "",
+      "type": "string",
+      "description": "Small base64-encoded PNG/JPEG/WebP/GIF used by manual $picture/$pictures examples."
+    },
+    {
+      "key": "testApplicationPictureId",
+      "value": "",
+      "type": "string",
+      "description": "Picture id returned in SysApplication.pictures metadata after storing Pictures."
     }
   ]
 }

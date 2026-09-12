@@ -1,10 +1,11 @@
 /* ==========================================================================
  * Metadata-driven per-field change highlighting
  *
- * Change decoration is derived from the initialized CTX/form baseline rather
- * than from a one-way input latch. Direct edits and evaluator/calculation writes
- * therefore use the same reversible rule, and returning to the original value
- * removes the visual marker again.
+ * Change decoration is a pure presentation of canonical CTX field dirtiness.
+ * `fields.<key>.originalValue` owns the baseline, `fields.<key>.value` owns the
+ * live value, and `fields.<key>.dirty` is their derived comparison. This
+ * runtime deliberately keeps no private baseline copy or independent equality
+ * rule, so visual highlighting cannot drift from semantic CTX state.
  * ======================================================================== */
 (() => {
   const form = document.querySelector('form.metadata-driven-record-form');
@@ -25,70 +26,17 @@
     return path;
   };
 
-  const cloneValue = (value) => {
-    if (value === undefined) return undefined;
-    try {
-      return structuredClone(value);
-    } catch {
-      try {
-        return JSON.parse(JSON.stringify(value));
-      } catch {
-        return value;
-      }
-    }
-  };
-
-  const sameValue = (left, right) => {
-    try {
-      return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
-    } catch {
-      return String(left ?? '') === String(right ?? '');
-    }
-  };
-
-  const domFieldValue = (container) => {
-    const control = container.querySelector('[data-ctx-field]');
-    if (control instanceof HTMLInputElement) {
-      if (control.type === 'checkbox') return control.checked;
-      if (control.dataset.ctxValueType === 'duration') {
-        if (!control.value) return null;
-        try {
-          return JSON.parse(control.value);
-        } catch {
-          return control.value;
-        }
-      }
-      return control.value;
-    }
-    if (control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)
-      return control.value;
-    return undefined;
-  };
-
-  const fieldValue = (container, key) => {
+  const fieldDirty = (key) => {
     const pagePath = leafPagePath();
-    const ctxValue = pagePath ? runtime?.get?.(`${pagePath}.fields.${key}.value`) : undefined;
-    return ctxValue !== undefined ? ctxValue : domFieldValue(container);
-  };
-
-  const baselines = new Map();
-
-  const captureBaselines = () => {
-    baselines.clear();
-    for (const container of containers) {
-      if (!(container instanceof HTMLElement)) continue;
-      const key = container.dataset.ctxFieldContainer;
-      if (key) baselines.set(key, cloneValue(fieldValue(container, key)));
-    }
+    return pagePath ? runtime?.get?.(`${pagePath}.fields.${key}.dirty`) === true : false;
   };
 
   const update = () => {
     for (const container of containers) {
       if (!(container instanceof HTMLElement)) continue;
       const key = container.dataset.ctxFieldContainer;
-      if (!key || !baselines.has(key)) continue;
-      const changed = !sameValue(baselines.get(key), fieldValue(container, key));
-      container.classList.toggle('metadata-field-changed', changed);
+      if (!key) continue;
+      container.classList.toggle('metadata-field-changed', fieldDirty(key));
     }
   };
 
@@ -97,15 +45,9 @@
   form.addEventListener('change', schedule);
   runtime?.trackSubscriber?.('*', { kind: 'form', label: 'Field changed-state' });
   window.addEventListener('manatos:ctx-change', schedule);
-  form.addEventListener('manatos:form-saved', () => {
-    captureBaselines();
-    update();
-  });
+  form.addEventListener('manatos:form-saved', schedule);
+  form.addEventListener('manatos:form-baseline-captured', schedule);
 
-  // Wait until create defaults and first-pass calculations have settled. They
-  // are the visual baseline; only subsequent user/causal changes are marked.
-  requestAnimationFrame(() => {
-    captureBaselines();
-    update();
-  });
+  // Initial decoration is derived from CTX exactly like every later refresh.
+  requestAnimationFrame(update);
 })();

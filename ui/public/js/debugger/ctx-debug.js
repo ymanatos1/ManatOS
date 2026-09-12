@@ -12,6 +12,9 @@
 
   const ctx = runtime.value;
 
+  const pathPresentation = window.ManatOS?.debug?.ctxPath;
+  const displayCtxPath = (path) => pathPresentation?.display?.(path) || path;
+
   /*
    * DEBUG state is developer-workspace state, not application/business state.
    * localStorage intentionally preserves layout/selection/expansion across
@@ -124,37 +127,31 @@
   const semanticArrayPath = (path, key) =>
     CONTEXT_IDENTIFIER.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`;
 
-  /** Resolve one strict downward member, including keyed access into arrays. */
-  const resolveMember = (container, member) => {
-    if (container == null) return undefined;
-    if (Array.isArray(container)) {
-      if (typeof member === 'number') return container[member];
-      if (member in container) return container[member];
-      return container.find((item) => collectionMemberKey(item) === member);
-    }
-    if (!isObject(container)) return undefined;
-    return container[member];
-  };
-
   const UI_SURFACE_HOSTS = new Set(['page', 'popup']);
   const UI_SURFACE_KINDS = new Set(['static', 'list', 'entry', 'selector', 'hierarchy', 'custom']);
   const UI_SURFACE_MODES = new Set(['browse', 'create', 'edit', 'view', 'select', 'manage']);
 
   /** Recognize a canonical V2 UI level by contract, never by its debugger path. */
-  const isUiSurfaceLevel = (value) =>
-    isObject(value) &&
-    typeof value.id === 'string' &&
-    UI_SURFACE_HOSTS.has(value.host) &&
-    UI_SURFACE_KINDS.has(value.kind) &&
-    UI_SURFACE_MODES.has(value.mode) &&
-    typeof value.name === 'string' &&
-    typeof value.path === 'string' &&
-    typeof value.scope === 'string' &&
-    isObject(value.state) &&
-    typeof value.state.lifecycle === 'string';
+  const isUiSurfaceLevel = (value) => {
+    const control = isObject(value?.control) ? value.control : null;
+    return (
+      Boolean(control) &&
+      typeof control.id === 'string' &&
+      UI_SURFACE_HOSTS.has(control.host) &&
+      UI_SURFACE_KINDS.has(control.kind) &&
+      UI_SURFACE_MODES.has(control.mode) &&
+      typeof control.name === 'string' &&
+      typeof control.path === 'string' &&
+      typeof control.scope === 'string' &&
+      isObject(control.state) &&
+      typeof control.state.lifecycle === 'string'
+    );
+  };
 
-  const uiSurfaceBadgeText = (value) =>
-    `${String(value.host).toUpperCase()} · ${String(value.kind).toUpperCase()} · ${value.name}`;
+  const uiSurfaceBadgeText = (value) => {
+    const control = value.control;
+    return `${String(control.host).toUpperCase()} · ${String(control.kind).toUpperCase()} · ${control.name}`;
+  };
 
   const displayValue = (value) => {
     if (value === null) return 'null';
@@ -241,7 +238,7 @@
     } else if (ownerPath.startsWith('ctx.ui.level')) {
       let candidatePath = ownerPath;
       while (candidatePath.startsWith('ctx.ui.level')) {
-        const entityKey = getExact(candidatePath)?.entityKey;
+        const entityKey = getExact(`${candidatePath}.control`)?.entityKey;
         if (typeof entityKey === 'string' && entityKey) {
           entityName =
             Object.keys(ctx.entities || {}).find(
@@ -278,28 +275,11 @@
   const isCalculatedContextField = (value) =>
     isObject(value) && typeof value.expression === 'string';
 
-  /** Canonical parser output embedded in ordinary CTX values such as query predicates. */
-  const isCompiledExpression = (value) =>
-    isObject(value) &&
-    typeof value.source === 'string' &&
-    isObject(value.ast) &&
-    Array.isArray(value.requiredCapabilities);
-
   const expressionSourceFor = (value) =>
-    isCalculatedContextField(value)
-      ? value.expression
-      : isCompiledExpression(value)
-        ? value.source
-        : null;
+    isCalculatedContextField(value) ? value.expression : null;
 
-  /** A CTX leaf that contains canonical expression source text. */
-  const isExpressionSourcePath = (path) => {
-    if (typeof path !== 'string') return false;
-    if (path.endsWith('.expression')) return true;
-    if (!path.endsWith('.source')) return false;
-    const parentPath = path.slice(0, -'.source'.length);
-    return isCompiledExpression(runtime.resolve?.(parentPath));
-  };
+  /** A semantic CTX leaf that contains authored expression source text. */
+  const isExpressionSourcePath = (path) => typeof path === 'string' && path.endsWith('.expression');
 
   const objectChildren = (path, value) => {
     if (!isObject(value)) return [];
@@ -326,9 +306,7 @@
       });
     }
 
-    const entries = Object.entries(value).filter(
-      ([key]) => !(isCalculatedContextField(value) && key === 'ast'),
-    );
+    const entries = Object.entries(value);
 
     /*
      * Root CTX ordering is presentation-only. Keep company first for the
@@ -359,71 +337,16 @@
 
   const childrenFor = (path, value) => [...virtualChildren(path), ...objectChildren(path, value)];
 
-  function getExact(path) {
-    if (path === 'ctx') return ctx;
-    const tokens = tokenize(path.replace(/^ctx\.?/, ''));
-    let value = ctx;
-    for (const token of tokens) {
-      if (value == null) return undefined;
-      value = resolveMember(value, token);
-    }
-    return value;
-  }
-
-  /**
-   * Canonical array syntax is `array[1]`. The parser also accepts `array.[1]`
-   * because historical/persisted CTX paths may still use that spelling; this is
-   * input compatibility only and does not create a second CTX topology.
-   * It intentionally rejects '-' and other expression-significant punctuation
-   * in dotted identifiers. Brackets accept either non-negative numeric indexes
-   * or quoted semantic collection keys such as UUID record ids.
+  /*
+   * CTX debugging is an observer of the canonical browser context runtime.
+   * Never maintain a second path parser/resolver here: keyed arrays, bracket
+   * syntax and future CTX path semantics must resolve exactly as application
+   * expressions and mutation routing do.
    */
-  function tokenize(path) {
-    if (!path) return [];
-    const normalized = path.replace(/\.\[/g, '[');
-    const tokens = [];
-    let index = 0;
-
-    while (index < normalized.length) {
-      if (normalized[index] === '.') {
-        index += 1;
-        continue;
-      }
-
-      if (normalized[index] === '[') {
-        const end = normalized.indexOf(']', index);
-        if (end < 0) throw new Error(`Invalid ctx array path: ${path}`);
-        const raw = normalized.slice(index + 1, end).trim();
-        if (/^\d+$/.test(raw)) {
-          tokens.push(Number(raw));
-        } else if (
-          (raw.startsWith('"') && raw.endsWith('"')) ||
-          (raw.startsWith("'") && raw.endsWith("'"))
-        ) {
-          try {
-            tokens.push(
-              raw.startsWith('"') ? JSON.parse(raw) : raw.slice(1, -1).replace(/\\'/g, "'"),
-            );
-          } catch {
-            throw new Error(`Invalid ctx array key: ${raw}`);
-          }
-        } else {
-          throw new Error(`Invalid ctx array index/key: ${raw}`);
-        }
-        index = end + 1;
-        continue;
-      }
-
-      const match = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(normalized.slice(index));
-      if (!match) throw new Error(`Invalid ctx identifier in path: ${path}`);
-      tokens.push(match[0]);
-      index += match[0].length;
-    }
-    return tokens;
-  }
+  const getExact = (path) => runtime.get(path);
 
   /**
-   * Lexical resolver contract used by the future expression evaluator:
+   * Current lexical resolver contract used by the expression runtime:
    * resolve the FIRST identifier at the current page scope, then parent pages,
    * then root. Once found, all remaining segments are traversed strictly
    * downward; lookup never jumps back to a parent for a missing child. Array
@@ -448,7 +371,7 @@
       else if (ownerPath.startsWith('ctx.ui.level')) {
         let candidatePath = ownerPath;
         while (candidatePath.startsWith('ctx.ui.level')) {
-          const entityKey = getExact(candidatePath)?.entityKey;
+          const entityKey = getExact(`${candidatePath}.control`)?.entityKey;
           if (typeof entityKey === 'string' && entityKey) {
             entityName =
               Object.keys(ctx.entities || {}).find(
@@ -491,6 +414,7 @@
   const cliButton = document.getElementById('ctxDebugCli');
   const openViewButton = document.getElementById('ctxDebugOpenView');
   const selectionElement = document.getElementById('ctxDebugSelection');
+  const selectionPathElement = document.getElementById('ctxDebugSelectionPath');
   const statsElement = document.getElementById('ctxDebugStats');
 
   /*
@@ -516,12 +440,6 @@
   const propertiesClose = document.getElementById('ctxDebugPropertiesClose');
   const propertiesTitle = document.getElementById('ctxDebugPropertiesTitle');
   const propertiesResize = document.getElementById('ctxDebugPropertiesResize');
-  const findButton = document.getElementById('ctxDebugFind');
-  const findBox = document.getElementById('ctxDebugFindBox');
-  const findInput = document.getElementById('ctxDebugFindInput');
-  const findHistoryList = document.getElementById('ctxDebugFindHistory');
-  const FIND_HISTORY_KEY = `manatos.debug.ctx.find-history.v1.${bootId}`;
-  const FIND_HISTORY_LIMIT = 30;
   let watchedPath = typeof persisted?.watchedPath === 'string' ? persisted.watchedPath : null;
   let changedPath = null;
   let changedTimer = null;
@@ -568,11 +486,12 @@
       forwardButton.disabled = history.index < 0 || history.index >= history.entries.length - 1;
     if (selectionElement) {
       selectionElement.textContent = nodeNameFromPath(state.selected);
-      selectionElement.title = state.selected;
+      selectionElement.title = displayCtxPath(state.selected);
     }
+    if (selectionPathElement) pathPresentation?.render?.(selectionPathElement, state.selected);
     if (cliButton) {
-      cliButton.title = `Open CLI at ${state.selected}`;
-      cliButton.setAttribute('aria-label', `Open CLI at ${state.selected}`);
+      cliButton.title = `Open CLI at ${displayCtxPath(state.selected)}`;
+      cliButton.setAttribute('aria-label', `Open CLI at ${displayCtxPath(state.selected)}`);
     }
     if (watchButton) {
       const isDerived = state.selected.endsWith('()') || state.selected.endsWith('.__source');
@@ -623,6 +542,12 @@
     requestAnimationFrame(() => ensureSelectedVisible({ align: 'start' }));
   };
 
+  const syncPropertiesPresentation = () => {
+    propertiesPanel?.classList.toggle('d-none', !state.propertiesOpen);
+    propertiesPanel?.setAttribute('aria-hidden', String(!state.propertiesOpen));
+    selectionPathElement?.classList.toggle('d-none', state.propertiesOpen);
+  };
+
   const selectPath = (
     requestedPath,
     { remember = true, expandSelected = false, revealExpandedRange = false } = {},
@@ -650,8 +575,7 @@
     // Node selection and history navigation must not change the developer's
     // persisted Properties-panel preference. render() applies that preference
     // consistently after the selection changes.
-    propertiesPanel?.classList.toggle('d-none', !state.propertiesOpen);
-    propertiesPanel?.setAttribute('aria-hidden', String(!state.propertiesOpen));
+    syncPropertiesPresentation();
     saveState();
     render({
       revealSelection: true,
@@ -683,7 +607,7 @@
     cliButton.setAttribute('aria-pressed', String(open));
     cliButton.title = open
       ? 'CTX CLI is open; click to hide or retarget from another node'
-      : `Open CLI at ${state.selected}`;
+      : `Open CLI at ${displayCtxPath(state.selected)}`;
   });
 
   window.addEventListener('manatos:ctx-viewer-select', (event) => {
@@ -712,68 +636,17 @@
     return path.split('.').at(-1)?.replace(/\[\]$/, '') ?? path;
   };
 
-  const readFindHistory = () => {
-    try {
-      const values = JSON.parse(sessionStorage.getItem(FIND_HISTORY_KEY) || '[]');
-      return Array.isArray(values)
-        ? values.filter((v) => typeof v === 'string' && v.trim()).slice(0, FIND_HISTORY_LIMIT)
-        : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const closeFindHistory = () => findHistoryList?.classList.add('d-none');
-
-  const refreshFindHistory = () => {
-    if (!findHistoryList) return;
-    const values = readFindHistory();
-    findHistoryList.replaceChildren(
-      ...values.map((value) => {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.className = 'ctx-debug-find-history-item';
-        option.textContent = value;
-        option.title = value;
-        option.setAttribute('role', 'option');
-        option.addEventListener('mousedown', (event) => event.preventDefault());
-        option.addEventListener('click', () => {
-          if (findInput) findInput.value = value;
-          closeFindHistory();
-          findNextByName(value);
-        });
-        return option;
-      }),
-    );
-    findHistoryList.classList.toggle('d-none', values.length === 0);
-  };
-
-  const rememberFind = (term) => {
-    const values = [term, ...readFindHistory().filter((v) => v !== term)].slice(
-      0,
-      FIND_HISTORY_LIMIT,
-    );
-    try {
-      sessionStorage.setItem(FIND_HISTORY_KEY, JSON.stringify(values));
-    } catch {
-      /* debugger only */
-    }
-    refreshFindHistory();
-  };
-
-  const findNextByName = (rawTerm) => {
-    const term = rawTerm.trim();
-    if (!term) return;
-    rememberFind(term);
-    const paths = allRealNodePaths();
-    const current = Math.max(0, paths.indexOf(state.selected));
-    const ordered = [...paths.slice(current + 1), ...paths.slice(0, current + 1)];
-    const exact = ordered.find((path) => nodeNameFromPath(path) === term);
-    const match =
-      exact ??
-      ordered.find((path) => nodeNameFromPath(path).toLowerCase().includes(term.toLowerCase()));
-    if (match) selectPath(match);
-  };
+  const createCtxFindRuntime = window.ManatOS?.createCtxFindRuntime;
+  if (typeof createCtxFindRuntime !== 'function')
+    throw new Error('CTX find runtime service is unavailable.');
+  createCtxFindRuntime({
+    bootId,
+    allRealNodePaths,
+    selectedPath: () => state.selected,
+    getValue: (path) => (path === 'ctx' ? ctx : getExact(path)),
+    nodeNameFromPath,
+    selectPath,
+  });
 
   const semanticDescriptor = (path, value, derived = false, source = false) => {
     if (source) return { kind: 'reference', type: 'string', attributes: ['derived', 'readonly'] };
@@ -818,6 +691,33 @@
 
   const iconForCtxNode = (descriptor) => CTX_KIND_ICONS[descriptor.kind] || 'bi-dot';
 
+  const activeEntryAliasTargets = () => {
+    let level = ctx?.ui?.level;
+    if (!level) return new Map();
+    let levelPath = 'ctx.ui.level';
+    while (level?.level) {
+      level = level.level;
+      levelPath += '.level';
+    }
+    if (level?.control?.kind !== 'entry') return new Map();
+
+    const entityName = getExact(`${levelPath}.control.entityName`);
+    if (!entityName) return new Map();
+
+    const entityPath = `ctx.entities.${entityName}`;
+    const fieldsPath = `${entityPath}.metadata.fieldDefinition`;
+    const entryCurrentPath = `${levelPath}.entry.current`;
+
+    return new Map([
+      [levelPath, ['#level']],
+      [entityPath, ['$entity', '$level-entity']],
+      [fieldsPath, ['$entity-fields', '$level-entity-fields']],
+      [entryCurrentPath, ['$entry-current']],
+    ]);
+  };
+
+  const aliasesForCtxPath = (path) => activeEntryAliasTargets().get(path) || [];
+
   const nodeKind = (path, value, derived = false, source = false) => {
     if (source) return 'reference';
     if (derived) return 'derived';
@@ -846,126 +746,7 @@
     return { path, value: getExact(path), derived: false, source: false, sourcePath: null };
   };
 
-  const astDescriptor = (node) => {
-    if (!node || typeof node !== 'object')
-      return { value: 'Invalid', type: 'AST node', icon: 'bi-exclamation-triangle' };
-    switch (node.kind) {
-      case 'literal': {
-        const literalValue =
-          typeof node.value === 'string'
-            ? `'${String(node.value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
-            : displayValue(node.value);
-        return { value: literalValue, type: 'literal', icon: 'bi-quote' };
-      }
-      case 'variable':
-        return { value: node.path, type: 'variable', icon: 'bi-tag' };
-      case 'binary':
-        return { value: node.operator, type: 'binary', icon: 'bi-calculator' };
-      case 'unary':
-        return { value: node.operator, type: 'unary', icon: 'bi-calculator' };
-      case 'group':
-        return { value: '(...)', type: 'group', icon: 'bi-parentheses' };
-      case 'conditional':
-        return { value: '?:', type: 'conditional', icon: 'bi-signpost-split' };
-      case 'function':
-        return { value: node.functionName, type: 'function', icon: 'bi-gear' };
-      default:
-        return {
-          value: String(node.kind ?? 'Unknown'),
-          type: 'unknown',
-          icon: 'bi-question-circle',
-        };
-    }
-  };
-
-  const astChildren = (node) => {
-    if (!node || typeof node !== 'object') return [];
-    switch (node.kind) {
-      case 'binary':
-        return [
-          { role: 'left', node: node.left },
-          { role: 'right', node: node.right },
-        ];
-      case 'unary':
-        return [{ role: 'operand', node: node.operand }];
-      case 'group':
-        return [{ role: 'expression', node: node.expression }];
-      case 'conditional':
-        return [
-          { role: 'condition', node: node.condition },
-          { role: 'true', node: node.whenTrue },
-          { role: 'false', node: node.whenFalse },
-        ];
-      case 'function':
-        return (node.arguments || []).map((argument, index) => ({
-          role: `arg[${index}]`,
-          node: argument,
-        }));
-      default:
-        return [];
-    }
-  };
-
-  const renderAstNode = (node, role = null) => {
-    const item = document.createElement('li');
-    item.className = 'ctx-debug-ast-node';
-
-    const line = document.createElement('div');
-    line.className = 'ctx-debug-ast-line';
-
-    const descriptor = astDescriptor(node);
-
-    const icon = document.createElement('i');
-    icon.className = `bi ${descriptor.icon} ctx-debug-ast-icon`;
-    icon.setAttribute('aria-hidden', 'true');
-    line.appendChild(icon);
-
-    const value = document.createElement('span');
-    value.className = `ctx-debug-ast-value ctx-debug-ast-${String(node?.kind ?? 'unknown')}`;
-    value.textContent = descriptor.value;
-    line.appendChild(value);
-
-    if (role) {
-      const roleElement = document.createElement('span');
-      roleElement.className = 'ctx-debug-ast-role';
-      roleElement.textContent = `(${role})`;
-      line.appendChild(roleElement);
-    }
-
-    const separator = document.createElement('span');
-    separator.className = 'ctx-debug-ast-separator';
-    separator.textContent = '-';
-    line.appendChild(separator);
-
-    const type = document.createElement('span');
-    type.className = 'ctx-debug-ast-type';
-    type.textContent = descriptor.type;
-    line.appendChild(type);
-
-    item.appendChild(line);
-
-    const children = astChildren(node);
-    if (children.length) {
-      const list = document.createElement('ul');
-      list.className = 'ctx-debug-ast-children';
-      children.forEach((child) => list.appendChild(renderAstNode(child.node, child.role)));
-      item.appendChild(list);
-    }
-    return item;
-  };
-
-  const renderAst = (ast) => {
-    const section = document.createElement('div');
-    section.className = 'ctx-debug-ast-section';
-    const title = document.createElement('div');
-    title.className = 'ctx-debug-ast-title';
-    title.textContent = 'AST';
-    const tree = document.createElement('ul');
-    tree.className = 'ctx-debug-ast-tree';
-    tree.appendChild(renderAstNode(ast));
-    section.append(title, tree);
-    return section;
-  };
+  let propertiesTab = 'main';
 
   const renderProperties = () => {
     if (!propertiesPanel || !propertiesBody || propertiesPanel.classList.contains('d-none')) return;
@@ -974,73 +755,69 @@
     const kind = descriptor.kind;
     const children = info.derived ? [] : objectChildren(info.path, info.value);
     const calculated = isCalculatedContextField(info.value);
-    const compiledExpression = isCompiledExpression(info.value);
     const expressionSource = expressionSourceFor(info.value);
-    if (propertiesTitle) {
-      const variableName = nodeNameFromPath(info.path);
-      const prefix = info.path.slice(0, Math.max(0, info.path.length - variableName.length));
-      const variableElement = document.createElement('strong');
-      variableElement.className = 'ctx-debug-properties-variable-name';
-      variableElement.textContent = variableName;
-      propertiesTitle.replaceChildren(document.createTextNode(prefix), variableElement);
-      propertiesTitle.title = info.path;
-    }
-    const rows = [
-      ['Path', info.path],
-      ...(isUiSurfaceLevel(info.value) ? [['UI level', uiSurfaceBadgeText(info.value)]] : []),
-      ['Kind', calculated ? 'calculated' : compiledExpression ? 'compiled-expression' : kind],
-      ['Type', descriptor.type],
-      ['Attributes', descriptor.attributes.length ? descriptor.attributes.join(', ') : '—'],
-      ['Watchable', descriptor.watchable === false || info.derived || info.source ? 'no' : 'yes'],
-      [
-        'Subscribers',
-        descriptor.subscribers
-          ? `${descriptor.subscribers.total} (direct ${descriptor.subscribers.direct}, dependent ${descriptor.subscribers.dependent}, global ${descriptor.subscribers.global})`
-          : '0',
-      ],
-      [
-        'JavaScript type',
-        info.value === null ? 'null' : Array.isArray(info.value) ? 'array' : typeof info.value,
-      ],
-      ['Value', displayValue(info.value)],
-      ['Children', String(children.length)],
-    ];
-    if (info.sourcePath) rows.splice(4, 0, ['Derived from', info.sourcePath]);
-    if (expressionSource) rows.splice(4, 0, ['Expression', expressionSource]);
+    if (propertiesTitle) pathPresentation?.render?.(propertiesTitle, info.path);
 
-    propertiesBody.replaceChildren();
-    for (const [label, value] of rows) {
-      const row = document.createElement('div');
-      row.className = 'ctx-debug-property-row';
-      const labelElement = document.createElement('span');
-      labelElement.className = 'ctx-debug-property-label';
-      labelElement.textContent = label;
-      const valueElement = document.createElement('span');
-      valueElement.className = 'ctx-debug-property-value';
-      const formulaValue =
-        label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path));
-      if (formulaValue && typeof value === 'string' && window.ManatOSDebugExpression) {
-        valueElement.classList.add('ctx-debug-expression');
-        window.ManatOSDebugExpression.highlightElement(valueElement, value);
-      } else {
-        valueElement.textContent = value;
-      }
-      if (label === 'Derived from' && info.sourcePath) {
-        valueElement.classList.add('is-link');
-        valueElement.title = `Go to ${info.sourcePath}`;
-        valueElement.addEventListener('click', () => {
-          propertiesPanel.classList.add('d-none');
-          propertiesPanel.setAttribute('aria-hidden', 'true');
-          selectPath(info.sourcePath);
-        });
-      }
-      row.append(labelElement, valueElement);
-      propertiesBody.appendChild(row);
-      if (expressionSource && label === 'Expression' && isObject(info.value?.ast)) {
-        propertiesBody.appendChild(renderAst(info.value.ast));
-      }
-    }
+    const rows = [
+      ...(aliasesForCtxPath(info.path).length
+        ? [{ label: 'Aliases', value: aliasesForCtxPath(info.path).join(', ') }]
+        : []),
+      ...(isUiSurfaceLevel(info.value)
+        ? [{ label: 'UI level', value: uiSurfaceBadgeText(info.value) }]
+        : []),
+      { label: 'Kind', value: calculated ? 'calculated' : kind },
+      { label: 'Type', value: descriptor.type },
+      {
+        label: 'Attributes',
+        value: descriptor.attributes.length ? descriptor.attributes.join(', ') : '—',
+      },
+      {
+        label: 'Watchable',
+        value: descriptor.watchable === false || info.derived || info.source ? 'no' : 'yes',
+      },
+      {
+        label: 'JavaScript type',
+        value:
+          info.value === null ? 'null' : Array.isArray(info.value) ? 'array' : typeof info.value,
+      },
+      {
+        label: 'Value',
+        value: displayValue(info.value),
+        formula: isExpressionSourcePath(info.path),
+      },
+      { label: 'Children', value: String(children.length) },
+    ];
+    if (info.sourcePath)
+      rows.splice(4, 0, {
+        label: 'Derived from',
+        value: info.sourcePath,
+        linkPath: info.sourcePath,
+      });
+    if (expressionSource)
+      rows.splice(4, 0, { label: 'Expression', value: expressionSource, formula: true });
+
+    window.ManatOS?.debug?.ctxProperties?.render({
+      panel: propertiesPanel,
+      body: propertiesBody,
+      activeTab: propertiesTab,
+      rows,
+      subscribers: descriptor.subscribers,
+      onNavigate: (path) => {
+        propertiesPanel.classList.add('d-none');
+        propertiesPanel.setAttribute('aria-hidden', 'true');
+        selectPath(path);
+      },
+    });
   };
+
+  propertiesPanel?.addEventListener('click', (event) => {
+    const tab =
+      event.target instanceof Element ? event.target.closest('[data-properties-tab]') : null;
+    if (!(tab instanceof HTMLButtonElement)) return;
+    propertiesTab =
+      tab.getAttribute('data-properties-tab') === 'subscribers' ? 'subscribers' : 'main';
+    renderProperties();
+  });
 
   const renderNode = ({ key, path, value, derived = false, source = false, sourcePath = null }) => {
     const children = childrenForDebugger(path, value, derived);
@@ -1098,7 +875,7 @@
       const badge = document.createElement('span');
       badge.className = 'ctx-debug-ui-level-badge';
       badge.textContent = uiSurfaceBadgeText(value);
-      badge.title = `V2 UI level: ${value.host}/${value.kind}/${value.mode}`;
+      badge.title = `V2 UI level: ${value.control.host}/${value.control.kind}/${value.control.mode}`;
       row.appendChild(badge);
     }
 
@@ -1107,22 +884,16 @@
       valueElement.className = 'ctx-debug-value';
       if (derived) {
         valueElement.textContent = '= derived';
-      } else if (isCompiledExpression(value) && window.ManatOSDebugExpression) {
-        valueElement.appendChild(document.createTextNode('= '));
-        const formulaElement = document.createElement('span');
-        formulaElement.className = 'ctx-debug-expression';
-        window.ManatOSDebugExpression.highlightElement(formulaElement, value.source);
-        valueElement.appendChild(formulaElement);
       } else if (!isObject(value)) {
         if (
           typeof value === 'string' &&
           isExpressionSourcePath(path) &&
-          window.ManatOSDebugExpression
+          window.ManatOS?.debug?.expression
         ) {
           valueElement.appendChild(document.createTextNode('= '));
           const formulaElement = document.createElement('span');
           formulaElement.className = 'ctx-debug-expression';
-          window.ManatOSDebugExpression.highlightElement(formulaElement, value);
+          window.ManatOS?.debug?.expression.highlightElement(formulaElement, value);
           valueElement.appendChild(formulaElement);
         } else {
           valueElement.textContent = `= ${displayValue(value)}`;
@@ -1163,7 +934,7 @@
     }
 
     state.expanded = new Set([...state.expanded].filter((path) => pathExists(path)));
-    treeElement.replaceChildren(renderNode({ key: 'ctx', path: 'ctx', value: ctx }));
+    treeElement.replaceChildren(renderNode({ key: '$ (ctx)', path: 'ctx', value: ctx }));
     restoreScrollState();
 
     if (statsElement) {
@@ -1211,35 +982,6 @@
     watchedPath = watchedPath === state.selected ? null : state.selected;
     persistState();
     updateToolbar();
-  });
-
-  refreshFindHistory();
-  findButton?.addEventListener('click', () => {
-    findBox?.classList.toggle('d-none');
-    if (findBox && !findBox.classList.contains('d-none')) {
-      refreshFindHistory();
-      findInput?.focus();
-      findInput?.select();
-    } else {
-      closeFindHistory();
-    }
-  });
-  findInput?.addEventListener('focus', refreshFindHistory);
-  findInput?.addEventListener('input', refreshFindHistory);
-  findInput?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      closeFindHistory();
-      findNextByName(findInput.value);
-    } else if (event.key === 'Escape') {
-      closeFindHistory();
-      findBox?.classList.add('d-none');
-      findButton?.focus();
-    }
-  });
-  document.addEventListener('click', (event) => {
-    if (findBox && !findBox.contains(event.target) && event.target !== findButton)
-      closeFindHistory();
   });
 
   // The shared shell owns the outer Developer Tools dock resize.
@@ -1290,8 +1032,7 @@
     if (!propertiesPanel) return;
     const opening = propertiesPanel.classList.contains('d-none');
     state.propertiesOpen = opening;
-    propertiesPanel.classList.toggle('d-none', !opening);
-    propertiesPanel.setAttribute('aria-hidden', String(!opening));
+    syncPropertiesPresentation();
     if (opening) {
       applyPropertiesHeight();
       renderProperties();
@@ -1302,8 +1043,7 @@
 
   propertiesClose?.addEventListener('click', () => {
     state.propertiesOpen = false;
-    propertiesPanel?.classList.add('d-none');
-    propertiesPanel?.setAttribute('aria-hidden', 'true');
+    syncPropertiesPresentation();
     persistState();
     requestAnimationFrame(ensureSelectedVisible);
   });
@@ -1337,8 +1077,7 @@
 
   if (propertiesPanel) {
     applyPropertiesHeight();
-    propertiesPanel.classList.toggle('d-none', !state.propertiesOpen);
-    propertiesPanel.setAttribute('aria-hidden', String(!state.propertiesOpen));
+    syncPropertiesPresentation();
   }
 
   rememberSelection(state.selected);

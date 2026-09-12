@@ -16,9 +16,13 @@ function assertSurfaceName(name: string): string {
   return normalized;
 }
 
-function childPath(parent: SurfaceContext | null, host: SurfaceHost, name: string): string {
+function childPath(
+  navigationParent: SurfaceContext | null,
+  host: SurfaceHost,
+  name: string,
+): string {
   const segment = `${host}:${name}`;
-  return parent ? `${parent.path}/${segment}` : `/ui/${segment}`;
+  return navigationParent ? `${navigationParent.path}/${segment}` : `/ui/${segment}`;
 }
 
 function newSurfaceState(): SurfaceState {
@@ -69,7 +73,13 @@ export class SurfaceRuntime {
 
   open(request: OpenSurfaceRequest): SurfaceContext {
     const parent = request.parentId ? this.#required(request.parentId) : null;
-    const navigation = this.navigationPolicy.evaluate({ parent, childHost: request.host });
+    const navigationParentId =
+      request.navigationParentId === undefined ? (parent?.id ?? null) : request.navigationParentId;
+    const navigationParent = navigationParentId ? this.#required(navigationParentId) : null;
+    const navigation = this.navigationPolicy.evaluate({
+      parent: navigationParent,
+      childHost: request.host,
+    });
     if (!navigation.allowed) {
       throw new Error(navigation.reason ?? 'V2 navigation denied by policy.');
     }
@@ -94,13 +104,17 @@ export class SurfaceRuntime {
     const surface: SurfaceContext = {
       id,
       parentId: parent?.id ?? null,
+      navigationParentId,
       host: request.host,
       kind: request.kind,
       mode: request.mode,
       name,
-      path: childPath(parent, request.host, name),
+      // CTX/surfaceRef addressing follows the navigation topology. Semantic ownership
+      // remains independently represented by parentId/children.
+      path: childPath(navigationParent, request.host, name),
       scope: request.scope ?? parent?.scope ?? 'sys',
       ...(request.entityKey ? { entityKey: request.entityKey } : {}),
+      ...(request.entityName ? { entityName: request.entityName } : {}),
       ...(request.recordId ? { recordId: request.recordId } : {}),
       invocation,
       presentation,
@@ -114,6 +128,26 @@ export class SurfaceRuntime {
             },
           }
         : {}),
+      ...((request.facts ?? request.entry?.facts)
+        ? { facts: Object.freeze({ ...(request.facts ?? request.entry?.facts ?? {}) }) }
+        : {}),
+      ...(request.selection
+        ? {
+            selection: {
+              current: request.selection.current ?? null,
+              selected: Object.freeze([...(request.selection.selected ?? [])]),
+              facts: Object.freeze({ ...(request.selection.facts ?? {}) }),
+            },
+          }
+        : {}),
+      ...(request.row
+        ? {
+            row: {
+              current: request.row.current ?? null,
+              facts: Object.freeze({ ...(request.row.facts ?? {}) }),
+            },
+          }
+        : {}),
       ...(request.resources ? { resources: Object.freeze({ ...request.resources }) } : {}),
       ...(request.list
         ? {
@@ -124,7 +158,6 @@ export class SurfaceRuntime {
           }
         : {}),
       children: [],
-      activeChildId: null,
     };
 
     this.events.emit({
@@ -132,6 +165,7 @@ export class SurfaceRuntime {
       surfaceId: id,
       payload: {
         parentId: surface.parentId,
+        navigationParentId: surface.navigationParentId,
         host: surface.host,
         kind: surface.kind,
         mode: surface.mode,
@@ -146,14 +180,8 @@ export class SurfaceRuntime {
     }
 
     this.#byId.set(id, surface);
-    if (parent) {
-      this.#deactivate(parent);
-      parent.children.push(surface);
-      parent.activeChildId = id;
-    } else {
-      this.#deactivateCurrent();
-      this.#roots.push(surface);
-    }
+    if (parent) parent.children.push(surface);
+    else this.#roots.push(surface);
 
     state.lifecycle = 'created';
     this.events.emit({ type: 'surface:created', surfaceId: id, payload: {} });
@@ -214,6 +242,14 @@ export class SurfaceRuntime {
   close(surfaceId: string): void {
     const surface = this.#required(surfaceId);
     const parent = surface.parentId ? this.#required(surface.parentId) : null;
+    const activeBefore = this.activeSurface();
+    const activeInsideClosingBranch = activeBefore
+      ? this.#isOwnedBy(activeBefore, surface.id)
+      : false;
+    const fallbackNavigationParentId =
+      activeInsideClosingBranch && activeBefore
+        ? this.#navigationAncestorOutside(activeBefore, surface.id)
+        : null;
 
     if (parent) {
       this.events.emit({
@@ -227,27 +263,35 @@ export class SurfaceRuntime {
     if (parent) {
       const index = parent.children.findIndex((candidate) => candidate.id === surface.id);
       if (index >= 0) parent.children.splice(index, 1);
-      parent.activeChildId = parent.children.at(-1)?.id ?? null;
       this.events.emit({
         type: 'child:closed',
         surfaceId: parent.id,
         payload: { childSurfaceId: surface.id },
       });
-      const next = parent.activeChildId ? this.#required(parent.activeChildId) : parent;
-      this.#activate(next);
     } else {
       const index = this.#roots.findIndex((candidate) => candidate.id === surface.id);
       if (index >= 0) this.#roots.splice(index, 1);
-      const nextRoot = this.#roots.at(-1) ?? null;
-      if (nextRoot) this.#activate(this.#deepestActive(nextRoot));
-      else this.#activeSurfaceId = null;
     }
+
+    // Closing an inactive ownership branch must not disturb the currently active
+    // navigation surface. If the active surface was disposed, navigation
+    // restoration follows that surface's navigation parent first; semantic
+    // ownership is only a lifecycle fallback.
+    if (activeBefore && this.#byId.has(activeBefore.id)) return;
+
+    const navigationFallback = fallbackNavigationParentId
+      ? (this.#byId.get(fallbackNavigationParentId) ?? null)
+      : null;
+    const semanticFallback = parent && this.#byId.has(parent.id) ? parent : null;
+    const rootFallback = this.#roots.at(-1) ?? null;
+    const next = navigationFallback ?? semanticFallback ?? rootFallback;
+    if (next) this.#activate(next);
+    else this.#activeSurfaceId = null;
   }
 
   #disposeBranch(surface: SurfaceContext): void {
     for (const child of [...surface.children].reverse()) this.#disposeBranch(child);
     surface.children.length = 0;
-    surface.activeChildId = null;
 
     surface.state.lifecycle = 'closing';
     surface.state.active = false;
@@ -283,15 +327,29 @@ export class SurfaceRuntime {
     if (current) this.#deactivate(current);
   }
 
+  #isOwnedBy(surface: SurfaceContext, ancestorId: string): boolean {
+    let cursor: SurfaceContext | null = surface;
+    while (cursor) {
+      if (cursor.id === ancestorId) return true;
+      cursor = cursor.parentId ? (this.#byId.get(cursor.parentId) ?? null) : null;
+    }
+    return false;
+  }
+
+  #navigationAncestorOutside(surface: SurfaceContext, closingOwnerId: string): string | null {
+    let navigationParentId = surface.navigationParentId;
+    while (navigationParentId) {
+      const candidate = this.#byId.get(navigationParentId);
+      if (!candidate) return null;
+      if (!this.#isOwnedBy(candidate, closingOwnerId)) return candidate.id;
+      navigationParentId = candidate.navigationParentId;
+    }
+    return null;
+  }
+
   #required(surfaceId: string): SurfaceContext {
     const surface = this.#byId.get(surfaceId);
     if (!surface) throw new Error(`V2 surface not found: ${surfaceId}`);
     return surface;
-  }
-
-  #deepestActive(surface: SurfaceContext): SurfaceContext {
-    let cursor = surface;
-    while (cursor.activeChildId) cursor = this.#required(cursor.activeChildId);
-    return cursor;
   }
 }

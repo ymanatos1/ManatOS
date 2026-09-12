@@ -9,7 +9,14 @@ export type ExpressionLiteralValue = string | number | boolean | null;
 export type ExpressionScalarValue = ExpressionLiteralValue | Date;
 export type ExpressionValue = ExpressionScalarValue | readonly ExpressionScalarValue[];
 
-export type ExpressionPathMember = string | number;
+export interface ExpressionDynamicPathMember {
+  kind: 'dynamic-path';
+  expression: ExpressionNode;
+  /** Original parenthesized source retained for diagnostics/debugging. */
+  source: string;
+}
+
+export type ExpressionPathMember = string | number | ExpressionDynamicPathMember;
 
 export interface ExpressionLiteralNode {
   kind: 'literal';
@@ -27,7 +34,7 @@ export interface ExpressionVariableNode {
   path: string;
   /** Parsed path members. Numeric array indexes are stored as numbers. */
   members: readonly ExpressionPathMember[];
-  /** True only for an explicit ctx.* root-qualified reference. */
+  /** True only for an explicit $ root-qualified reference. */
   absolute: boolean;
 }
 

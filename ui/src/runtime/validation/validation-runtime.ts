@@ -1,6 +1,9 @@
 import type { DependencyPath } from '../calculations/dependency-runtime.js';
-import { fieldValueDependency } from '../calculations/dependency-runtime.js';
-import { ROOT_CTX_EVENT_SURFACE_ID } from '../context/root-ctx-runtime.js';
+import {
+  dependencyChangePathsForEvent,
+  fieldValueDependency,
+  reactiveEventMatchesDependencies,
+} from '../calculations/dependency-runtime.js';
 import type { SurfaceEvent, SurfaceEventRuntime } from '../events/surface-event-runtime.js';
 import type { FieldStateRuntime, FieldValidationIssue } from '../state/field-state-runtime.js';
 import type { SurfaceEventSource } from '../surface/contracts.js';
@@ -28,10 +31,6 @@ function isEmpty(value: unknown): boolean {
   );
 }
 
-function related(left: string, right: string): boolean {
-  return left === right || left.startsWith(`${right}.`) || right.startsWith(`${left}.`);
-}
-
 function normalizeIssues(
   result: ReturnType<FieldValidator['validate']>,
 ): readonly FieldValidationIssue[] {
@@ -51,20 +50,19 @@ export class ValidationRuntime {
   readonly #fields: FieldStateRuntime;
   readonly #validators = new Map<string, FieldValidator[]>();
   readonly #unsubscribers: (() => void)[];
+  #initialized = false;
 
   constructor(surfaceId: string, fields: FieldStateRuntime, events: SurfaceEventRuntime) {
     this.#surfaceId = surfaceId;
     this.#fields = fields;
     this.#unsubscribers = [
       events.subscribe('value:changed', (event) => {
-        if (event.surfaceId !== surfaceId) return;
-        const field = (event.payload as { field?: unknown }).field;
-        if (typeof field === 'string') this.#validateAffected(fieldValueDependency(field), event);
+        if (!this.#initialized) return;
+        this.#validateAffectedEvent(event);
       }),
       events.subscribe('ctx:changed', (event) => {
-        if (event.surfaceId !== surfaceId && event.surfaceId !== ROOT_CTX_EVENT_SURFACE_ID) return;
-        const path = (event.payload as { path?: unknown }).path;
-        if (typeof path === 'string' && path) this.#validateAffected(path, event);
+        if (!this.#initialized) return;
+        this.#validateAffectedEvent(event);
       }),
       events.subscribe('field-state:changed', (event) => {
         if (event.surfaceId !== surfaceId) return;
@@ -74,7 +72,9 @@ export class ValidationRuntime {
         }
       }),
       events.subscribe('entry:initialized', (event) => {
-        if (event.surfaceId === surfaceId) this.validateAll(event);
+        if (event.surfaceId !== surfaceId) return;
+        this.#initialized = true;
+        this.validateAll(event);
       }),
     ];
   }
@@ -127,25 +127,31 @@ export class ValidationRuntime {
     for (const unsubscribe of this.#unsubscribers) unsubscribe();
   }
 
-  #validateAffected(changedPath: DependencyPath, cause: SurfaceEvent): void {
-    const targets = new Set<string>();
+  #validateAffectedEvent(cause: SurfaceEvent): void {
+    const changedPaths = dependencyChangePathsForEvent(this.#surfaceId, cause);
+    if (!changedPaths.length) return;
 
-    const changedField = /^fields\.([^.]+)\.value$/.exec(changedPath)?.[1];
-    if (changedField && this.#fields.get(changedField)) targets.add(changedField);
+    const targets = new Map<string, DependencyPath>();
+    if (cause.type === 'value:changed' && cause.surfaceId === this.#surfaceId) {
+      const changedField = (cause.payload as { field?: unknown }).field;
+      if (typeof changedField === 'string' && this.#fields.get(changedField)) {
+        targets.set(changedField, fieldValueDependency(changedField));
+      }
+    }
 
     for (const [target, validators] of this.#validators) {
       for (const validator of validators) {
         const dependencies = validator.dependsOn?.length
           ? validator.dependsOn
           : [fieldValueDependency(target)];
-        if (dependencies.some((dependency) => related(dependency, changedPath))) {
-          targets.add(target);
+        if (reactiveEventMatchesDependencies(this.#surfaceId, cause, dependencies)) {
+          targets.set(target, targets.get(target) ?? changedPaths[0]!);
           break;
         }
       }
     }
 
-    for (const target of targets) this.validateField(target, cause, changedPath);
+    for (const [target, changedPath] of targets) this.validateField(target, cause, changedPath);
   }
 
   #syntheticEvent(): SurfaceEvent {

@@ -11,14 +11,14 @@ const uiSource = (relativePath: string) =>
   readFile(resolve(testDirectory, '..', '..', relativePath), 'utf8');
 
 describe('metadata-driven SysUser presentation', () => {
-  it('places Description on a full row immediately below the user-name row', async () => {
+  it('places Photo with identity/state, then Description on its own full row', async () => {
     const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
     const usersStart = uiMetadata.indexOf('export const sysBOUsersUIMetadata');
     const usersEnd = uiMetadata.indexOf('export const sysBOExtAuthProvidersUIMetadata', usersStart);
     const users = uiMetadata.slice(usersStart, usersEnd);
 
     expect(users).toMatch(
-      /field: 'name', span: 6[\s\S]*?field: 'enabled', span: 6[\s\S]*?field: 'description', span: 12/,
+      /field: 'name', span: 6[\s\S]*?field: 'enabled', span: 2[\s\S]*?field: 'photo', span: 4[\s\S]*?field: 'email', span: 6[\s\S]*?field: 'telephoneNumber', span: 6[\s\S]*?kind: 'break'[\s\S]*?field: 'description', span: 12/,
     );
     expect(users.indexOf("field: 'description'")).toBeLessThan(users.indexOf("field: 'firstName'"));
   });

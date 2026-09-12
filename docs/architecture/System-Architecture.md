@@ -246,7 +246,7 @@ The storage implementation is responsible for atomic persistence where the domai
 3. CTX-observable, side-effect-free decisions are candidates for declarative expressions.
 4. UI policy does not replace server authorization.
 5. The server does not fabricate client UI runtime topology.
-6. Expression source is portable; compiled AST is runtime-local by default.
+6. Expression source is portable; compiled AST is process-local runtime infrastructure and is never semantic CTX, metadata, or surface-invocation state.
 7. Entry live scalar authority is `fields.<key>.value`.
 8. Entry baseline authority is `fields.<k>.originalValue`; `entry.original.<k>` is a read-only mirror.
 9. Transactional baseline/working pairs are retained when they represent genuinely different states.

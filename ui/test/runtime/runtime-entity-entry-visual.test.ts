@@ -9,7 +9,7 @@ const source = (relativePath: string) =>
 
 describe('V2 EntityEntry visual runtime', () => {
   it('renders the generic entry scenario exclusively through the shared V2 component', async () => {
-    const route = await source('src/routes/sysbo/record-renderer.ts');
+    const route = await source('src/routes/sysbo/entry/renderer.ts');
     const page = await source('views/pages/sysbo/entry.ejs');
     const component = await source('views/components/runtime/entity-entry.ejs');
     const saveSplitAction = await source(
@@ -36,7 +36,7 @@ describe('V2 EntityEntry visual runtime', () => {
   });
 
   it('initializes V2 from authoritative server values instead of the legacy ctx.page field projection', async () => {
-    const route = await source('src/routes/sysbo/record-renderer.ts');
+    const route = await source('src/routes/sysbo/entry/renderer.ts');
     expect(route).toContain('buildEntryInitializationSeed');
     expect(route).toContain('const v2ServerValues = v2InitializationSeed.fields');
     expect(route).not.toContain('v2Entry.initialize({ server: v2ServerValues })');
@@ -62,7 +62,8 @@ describe('V2 EntityEntry visual runtime', () => {
     expect(component).toContain(": 'ctx.ui.level.level'");
     expect(component).toContain('uiDebuggingDisplayRows');
     expect(component).toContain("include('../sysbo/entry/content/summary'");
-    expect(component).toContain('compiledUIRecord,');
+    expect(component).toContain('metadataUI,');
+    expect(component).not.toContain('compiledUIRecord,');
     expect(component).not.toContain('compileUIExpression');
     expect(component).toContain("include('../sysbo/entry/shell/metadata-component'");
     expect(component).toContain("tab.layout === 'component' && tab.component");
@@ -97,7 +98,7 @@ describe('V2 EntityEntry visual runtime', () => {
   });
 
   it('keeps developer capability gating on the server but composes the V2 Debugging tab in the browser', async () => {
-    const route = await source('src/routes/sysbo/record-renderer.ts');
+    const route = await source('src/routes/sysbo/entry/renderer.ts');
     const v2 = await source('views/components/runtime/entity-entry.ejs');
     const runtime = await source('public/js/runtime/entry-policy-runtime.js');
 
@@ -147,10 +148,10 @@ describe('V2 EntityEntry visual runtime', () => {
     expect(summary).toContain('data-v2-summary-tone-expression');
     expect(summary).toContain('data-v2-summary-icon-expression');
     expect(runtime).toContain('refreshSummaryPresentation');
-    expect(runtime).toContain('expressionCompiler.ast(source)');
+    expect(runtime).toContain('expressions.loadAstForSource(host.dataset.v2SummaryToneExpression)');
     expect(runtime).toContain('expressions.evaluateAstOwnedAt(ast, path)');
   });
-  it('never evaluates V2 UI expressions during SSR and emits expression-source contracts for browser ownership', async () => {
+  it('never evaluates V2 UI expressions during SSR and emits authored source without per-element AST transport', async () => {
     const component = await source('views/components/runtime/entity-entry.ejs');
     const runtime = await source('public/js/sysbo/entry/form-runtime.js');
 
@@ -161,12 +162,15 @@ describe('V2 EntityEntry visual runtime', () => {
     expect(component).toContain('data-ui-grid-span-fallback');
     expect(component).toContain("content.kind === 'spacer'");
     expect(runtime).toContain("kind: 'grid-span'");
-    expect(runtime).toContain('await evaluateOwned(spanAst)');
-    expect(runtime).toContain("form.querySelectorAll('[data-field-calculation-expression]')");
+    expect(runtime).toContain('await evaluateOwned(spanAst, null, evaluationPass)');
+    expect(runtime).toContain(
+      'const canonicalFieldDefinitions = entryEntity?.metadata?.fieldDefinition || {}',
+    );
     expect(runtime).toContain("compileAttribute(container, 'data-ui-visible-expression')");
     expect(runtime).toContain("compileAttribute(container, 'data-ui-editable-expression')");
     expect(component).not.toContain('data-field-calculation-ast');
     expect(component).not.toContain('data-ui-visible-ast');
     expect(component).not.toContain('data-ui-editable-ast');
+    expect(runtime).toContain('astForSource');
   });
 });

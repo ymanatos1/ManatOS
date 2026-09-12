@@ -6,7 +6,6 @@
 
   const ctx = window.ManatOS?.ctx;
   let expressions = window.ManatOS?.expression ?? null;
-  let expressionCompiler = null;
   let fieldPolicy = null;
   if (!ctx) return;
 
@@ -24,14 +23,18 @@
   const path = leafPath();
   if (!path) return;
   const surface = ctx.get(path);
-  if (!surface || surface.kind !== 'entry') return;
+  if (!surface || surface.control?.kind !== 'entry') return;
 
   const entity = Object.values(ctx.value?.entities || {}).find(
-    (candidate) => candidate?.key === surface.entityKey,
+    (candidate) => candidate?.key === surface.control?.entityKey,
   );
   const metadata = entity?.metadata;
   const uiMetadata = entity?.uiMetadata;
   if (!metadata || !uiMetadata) return;
+
+  const initializationOwner = 'entry-policy';
+  const entryInitialization = window.ManatOS?.entryInitialization ?? null;
+  entryInitialization?.begin(initializationOwner);
 
   const controlFor = (key) => {
     const escaped = globalThis.CSS?.escape ? CSS.escape(key) : String(key).replace(/"/g, '\\"');
@@ -39,17 +42,32 @@
   };
 
   const setField = (key, value, action) => {
-    const control = controlFor(key);
-    if (control) {
-      window.ManatOSFieldComponents?.setFieldValue?.(control, value, { emit: true });
-      return;
-    }
     const fieldPath = `${path}.fields.${key}.value`;
-    ctx.replace?.(fieldPath, value, {
+    const cause = {
       source: 'entry-policy-runtime',
       action,
       triggerPath: fieldPath,
-    });
+    };
+    const control = controlFor(key);
+
+    /*
+     * Policy/default writes are programmatic CTX mutations, not simulated user
+     * input. Mirror the resolved value into the native control without emitting
+     * input/change, then cross the same canonical CTX field-mutation boundary
+     * used by every other scalar writer. This avoids a DOM-event round trip in
+     * which another initialization listener can observe/replay the old value.
+     */
+    if (!ctx.updateField) throw new Error('Canonical CTX field mutation authority is unavailable.');
+
+    const fieldContext = ctx.get(`${path}.fields.${key}`);
+    const options = Array.isArray(fieldContext?.options) ? fieldContext.options : [];
+    const option =
+      options.find((candidate) =>
+        Object.is(candidate?.value ?? candidate?.id ?? null, value ?? null),
+      ) ?? null;
+
+    if (control) window.ManatOS?.fieldComponents?.setFieldValue?.(control, value, { emit: false });
+    ctx.updateField(path, key, value, option, cause);
   };
 
   const evaluate = async (declaration, fallback = undefined) => {
@@ -60,7 +78,7 @@
     )
       return declaration ?? fallback;
     try {
-      const ast = expressionCompiler?.ast(declaration.expression);
+      const ast = await expressions.loadAstForSource?.(declaration.expression);
       return ast ? await expressions.evaluateAstOwnedAt(ast, path) : fallback;
     } catch (error) {
       console.error('[ManatOS entry policy expression]', error);
@@ -68,27 +86,55 @@
     }
   };
 
-  const applyCreateDefaults = async () => {
-    if (surface.mode !== 'create') return;
+  /**
+   * Apply canonical BO create defaults in metadata order. Dynamic defaults are
+   * evaluated against the live CTX after each preceding default is written, so
+   * dependent defaults (for example callbackPath after provider) observe the
+   * same canonical entry state. U-metadata does not own business defaults.
+   */
+  const applyCanonicalCreateDefaults = async () => {
+    if (surface.control.mode !== 'create') return;
     const fields = Object.values(metadata.fieldDefinition || {}).sort(
       (left, right) => Number(left?.order || 0) - Number(right?.order || 0),
     );
+
     for (const field of fields) {
-      const key = field?.key;
+      if (!field || typeof field !== 'object' || field.sensitive === true) continue;
+      if (!Object.prototype.hasOwnProperty.call(field, 'createDefaultValue')) continue;
+      const key = String(field.key || '');
       if (!key) continue;
-      const override = uiMetadata.record?.fieldOverrides?.[key];
-      if (!override || !Object.prototype.hasOwnProperty.call(override, 'createDefaultValue'))
-        continue;
       const current = ctx.get(`${path}.fields.${key}.value`);
-      if (!fieldPolicy.isEmptyEntryFieldValue(current)) continue;
-      const value = await evaluate(override.createDefaultValue, null);
-      setField(key, value, 'metadata-default');
+      if (current !== null && current !== undefined && current !== '') continue;
+
+      let value = await evaluate(field.createDefaultValue, null);
+      if (value === undefined) continue;
+
+      // Canonical metadata owns the default expression and CTX owns the effective
+      // option domain for this entry invocation. The rendered control is only a
+      // presentation target; it must not become a second catalogue authority.
+      // Keep a canonical default when it is legal; otherwise choose the first
+      // currently available option before later defaults observe the value.
+      // This is generic enum behaviour (page and popup), not provider-specific.
+      if (field.type === 'enum') {
+        const options = ctx.get(`${path}.fields.${key}.options`);
+        const allowed = Array.isArray(options)
+          ? options
+              .map((option) => option?.value)
+              .filter((optionValue) => optionValue !== null && optionValue !== undefined)
+              .map(String)
+          : null;
+        if (allowed?.length) value = fieldPolicy.reconcileRestrictedOptionValue(value, allowed);
+      }
+
+      setField(key, value, 'canonical-create-default');
     }
   };
 
   const reconcileInvocationRestrictions = () => {
-    if (surface.mode !== 'create') return;
-    for (const [key, restriction] of Object.entries(surface.invocation?.uiOverrides || {})) {
+    if (surface.control.mode !== 'create') return;
+    for (const [key, restriction] of Object.entries(
+      surface.control.invocation?.rules?.fields || {},
+    )) {
       const field = metadata.fieldDefinition?.[key];
       if (field?.type !== 'enum' || !restriction || typeof restriction !== 'object') continue;
       const allowed = fieldPolicy.allowedInvocationOptionValues(field, restriction);
@@ -109,12 +155,19 @@
 
       const override = uiMetadata.record?.fieldOverrides?.[key] || {};
       const { visible, editable } = fieldPolicy.staticEntryFieldUx(
-        surface.mode,
+        surface.control.mode,
         field.readOnly === true,
         override,
       );
 
-      container.hidden = !visible;
+      const dynamicVisible =
+        override?.visible &&
+        typeof override.visible === 'object' &&
+        typeof override.visible.expression === 'string';
+      // Dynamic visibility is owned by the reactive form runtime. Applying the
+      // static fallback here after that runtime has initialized can overwrite a
+      // correctly evaluated hidden state (for example provider-specific fields).
+      if (!dynamicVisible) container.hidden = !visible;
       container.classList.toggle('effective-field-editable', editable);
       container.classList.toggle('effective-field-readonly', !editable);
 
@@ -151,15 +204,13 @@
       let tone = null;
       let icon = null;
       try {
-        const source = host.dataset.v2SummaryToneExpression || '';
-        const ast = source ? expressionCompiler.ast(source) : null;
+        const ast = await expressions.loadAstForSource(host.dataset.v2SummaryToneExpression);
         if (ast) tone = await expressions.evaluateAstOwnedAt(ast, path);
       } catch (error) {
         console.error('[ManatOS summary tone expression]', error);
       }
       try {
-        const source = host.dataset.v2SummaryIconExpression || '';
-        const ast = source ? expressionCompiler.ast(source) : null;
+        const ast = await expressions.loadAstForSource(host.dataset.v2SummaryIconExpression);
         if (ast) icon = await expressions.evaluateAstOwnedAt(ast, path);
       } catch (error) {
         console.error('[ManatOS summary icon expression]', error);
@@ -201,47 +252,57 @@
   };
 
   /**
-   * Evaluate detached related-row calculations/presentation entirely in the
-   * browser. The row itself is a factual read model; portable expression source
-   * is compiled once by the shared browser compiler and cached per execution host.
+   * Evaluate related-row calculations/presentation against the canonical V2
+   * collection resource row already observable in CTX. No detached browser-only
+   * scope is manufactured for presentation expressions.
    */
   const refreshRelatedCollectionPresentation = async () => {
     const hosts = [...form.querySelectorAll('[data-v2-related-value]')];
     for (const host of hosts) {
       if (!(host instanceof HTMLElement)) continue;
-      const rowHost = host.closest('[data-v2-related-row]');
+      const rowHost = host.closest('[data-v2-related-row-index]');
       if (!(rowHost instanceof HTMLElement)) continue;
 
-      const row = parseDataJson(rowHost.dataset.v2RelatedRow, {});
-      const scopeKeys = parseDataJson(rowHost.dataset.v2RelatedScopeKeys, []);
-      const scope = Object.fromEntries(
-        (Array.isArray(scopeKeys) ? scopeKeys : []).map((key) => [String(key), null]),
-      );
-      Object.assign(scope, row && typeof row === 'object' ? row : {});
+      const sourceKey = host.dataset.v2RelatedSourceKey || '';
+      const rowIndex = Number(rowHost.dataset.v2RelatedRowIndex);
+      if (!sourceKey || !Number.isInteger(rowIndex) || rowIndex < 0) continue;
+      const rowPath = `${path}.resources.collections[${JSON.stringify(sourceKey)}].current[${rowIndex}]`;
+      const row = ctx.get(rowPath);
+      if (!row || typeof row !== 'object') continue;
 
-      const valueSource = host.dataset.v2RelatedValueExpression || '';
-      const toneSource = host.dataset.v2RelatedToneExpression || '';
-      const iconSource = host.dataset.v2RelatedIconExpression || '';
-      const valueAst = valueSource ? expressionCompiler.ast(valueSource) : null;
-      const toneAst = toneSource ? expressionCompiler.ast(toneSource) : null;
-      const iconAst = iconSource ? expressionCompiler.ast(iconSource) : null;
+      const valueAst = await expressions.loadAstForSource(host.dataset.v2RelatedValueExpression);
+      const toneAst = await expressions.loadAstForSource(host.dataset.v2RelatedToneExpression);
+      const iconAst = await expressions.loadAstForSource(host.dataset.v2RelatedIconExpression);
       const sourceField = host.dataset.v2RelatedSourceField || host.dataset.v2RelatedFieldKey || '';
-      let raw = sourceField ? scope[sourceField] : undefined;
+      let raw = sourceField ? row[sourceField] : undefined;
       let tone = null;
       let icon = null;
 
       try {
-        if (valueAst) raw = await expressions.evaluateAstOwnedWithScope(valueAst, scope);
+        if (valueAst) raw = await expressions.evaluateAstOwnedAt(valueAst, rowPath);
       } catch (error) {
-        console.error('[ManatOS related collection value expression]', error);
+        const diagnostic = {
+          error,
+          message: error instanceof Error ? error.message : String(error),
+          rowPath,
+          sourceKey,
+          rowIndex,
+          sourceField,
+          sourceFieldValue: sourceField ? row[sourceField] : undefined,
+          rowKeys: Object.keys(row),
+          row: { ...row },
+          valueAst,
+          exactOwner: ctx.get(rowPath),
+        };
+        console.error('[ManatOS related collection value expression]', diagnostic);
       }
       try {
-        if (toneAst) tone = await expressions.evaluateAstOwnedWithScope(toneAst, scope);
+        if (toneAst) tone = await expressions.evaluateAstOwnedAt(toneAst, rowPath);
       } catch (error) {
         console.error('[ManatOS related collection tone expression]', error);
       }
       try {
-        if (iconAst) icon = await expressions.evaluateAstOwnedWithScope(iconAst, scope);
+        if (iconAst) icon = await expressions.evaluateAstOwnedAt(iconAst, rowPath);
       } catch (error) {
         console.error('[ManatOS related collection icon expression]', error);
       }
@@ -259,10 +320,11 @@
       if (selectedOption) label = String(selectedOption.label ?? selectedOption.value ?? label);
       if (fieldType === 'boolean') label = raw ? 'Enabled' : 'Disabled';
       if (fieldType === 'reference' && raw !== null && raw !== undefined && raw !== '') {
-        const references = ctx.get(`${path}.resources.relatedReferenceData`) || {};
         const sourceKey = host.dataset.v2RelatedSourceKey || '';
         const fieldKey = host.dataset.v2RelatedFieldKey || '';
-        const match = (references?.[sourceKey]?.[fieldKey] || []).find(
+        const references =
+          ctx.get(`${path}.resources.collections[${JSON.stringify(sourceKey)}].references`) || {};
+        const match = (references?.[fieldKey] || []).find(
           (candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(raw),
         );
         label = String(match?.name ?? match?.label ?? raw);
@@ -286,8 +348,8 @@
   };
 
   /**
-   * Resolve metadata component bindings from portable expression source against
-   * the owning V2 entry scope. Components receive the resulting values through their
+   * Resolve metadata component bindings from the UI-resolved AST against the owning
+   * V2 entry scope. Components receive the resulting values through their
    * stable host dataset/event contract; EJS never executes binding expressions.
    */
   const refreshMetadataComponentBindings = async () => {
@@ -305,7 +367,8 @@
       for (const [bindingKey, source] of Object.entries(bindingExpressions || {})) {
         if (typeof source !== 'string' || !source) continue;
         try {
-          const ast = expressionCompiler.ast(source);
+          const ast = await expressions.loadAstForSource(source);
+          if (!ast) continue;
           resolved[bindingKey] = await expressions.evaluateAstOwnedAt(ast, ownerPath);
         } catch (error) {
           console.error('[ManatOS metadata component binding expression]', error);
@@ -384,35 +447,31 @@
     template.remove();
   };
 
-  const activateRequestedTab = () => {
+  const activateRequestedTab = ({ restoreRequested = false } = {}) => {
     const visibleButtons = [...document.querySelectorAll('.entity-tabs [data-v2-tab-id]')].filter(
       (candidate) =>
         candidate instanceof HTMLButtonElement && !candidate.closest('.nav-item')?.hidden,
     );
     if (!visibleButtons.length) return;
 
-    const requested = surface.state?.navigation?.activeTabId;
+    const current = visibleButtons.find((button) => button.classList.contains('active'));
+    if (current && !restoreRequested) return;
+
+    const requested = surface.control.state?.navigation?.activeTabId;
     const target =
-      visibleButtons.find((button) => button.dataset.v2TabId === requested) || visibleButtons[0];
+      (restoreRequested && visibleButtons.find((button) => button.dataset.v2TabId === requested)) ||
+      current ||
+      visibleButtons[0];
     if (!(target instanceof HTMLButtonElement)) return;
     if (!target.classList.contains('active')) target.click();
   };
 
-  const refreshTabVisibility = async () => {
+  const refreshTabVisibility = async ({ restoreRequested = false } = {}) => {
     const buttons = [...document.querySelectorAll('.entity-tabs [data-v2-tab-id]')];
     for (const button of buttons) {
       if (!(button instanceof HTMLButtonElement)) continue;
       let visible = button.dataset.v2TabStaticVisible !== 'false';
-      let ast = null;
-      const source = button.dataset.v2TabVisibleExpression || '';
-      if (source) {
-        try {
-          const compiler = await window.ManatOS?.expressionCompilerReady;
-          ast = compiler?.ast(source) ?? null;
-        } catch (error) {
-          console.error('[ManatOS tab visibility expression compile]', error);
-        }
-      }
+      const ast = await expressions.loadAstForSource(button.dataset.v2TabVisibleExpression);
       if (ast) {
         try {
           visible = (await expressions.evaluateAstOwnedAt(ast, path)) !== false;
@@ -426,36 +485,38 @@
       if (pane instanceof HTMLElement) pane.hidden = !visible;
     }
 
-    activateRequestedTab();
+    activateRequestedTab({ restoreRequested });
   };
 
   (async () => {
-    const [compiler, evaluator, policyModule] = await Promise.all([
-      window.ManatOS?.expressionCompilerReady,
+    const [evaluator, policyModule] = await Promise.all([
       window.ManatOS?.expressionRuntimeReady,
-      import('/shared-runtime/entry-field-policy.js'),
+      import('/shared-runtime/policies/entry-field-policy.js'),
     ]);
-    expressionCompiler = compiler ?? null;
     expressions = evaluator ?? window.ManatOS?.expression ?? null;
     fieldPolicy = policyModule ?? null;
-    if (!expressionCompiler || !expressions || !fieldPolicy) return;
-
-    installDeveloperDebuggingTab();
-    applyStaticFieldPolicy();
-    await applyCreateDefaults();
-    reconcileInvocationRestrictions();
-    await refreshTabVisibility();
-    await refreshEntryActions();
-    await refreshSummaryPresentation();
-    await refreshRelatedCollectionPresentation();
-    await refreshMetadataComponentBindings();
-    ctx.trackSubscriber?.('*', { kind: 'runtime', label: 'Entry policy' });
-    window.addEventListener('manatos:ctx-change', () => {
-      void refreshTabVisibility();
-      void refreshEntryActions();
-      void refreshSummaryPresentation();
-      void refreshRelatedCollectionPresentation();
-      void refreshMetadataComponentBindings();
-    });
+    try {
+      if (!expressions || !fieldPolicy) return;
+      await entryInitialization?.readyForWork?.();
+      installDeveloperDebuggingTab();
+      applyStaticFieldPolicy();
+      await applyCanonicalCreateDefaults();
+      reconcileInvocationRestrictions();
+      await refreshTabVisibility({ restoreRequested: true });
+      await refreshEntryActions();
+      await refreshSummaryPresentation();
+      await refreshRelatedCollectionPresentation();
+      await refreshMetadataComponentBindings();
+      ctx.trackSubscriber?.('*', { kind: 'runtime', label: 'Entry policy' });
+      window.addEventListener('manatos:ctx-change', () => {
+        void refreshTabVisibility();
+        void refreshEntryActions();
+        void refreshSummaryPresentation();
+        void refreshRelatedCollectionPresentation();
+        void refreshMetadataComponentBindings();
+      });
+    } finally {
+      entryInitialization?.end(initializationOwner);
+    }
   })();
 })();

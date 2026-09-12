@@ -19,45 +19,23 @@
 
 <%
   const o = component.options || {};
-  const rows = componentData?.relatedData?.[o.sourceKey] || [];
-  const refs = componentData?.relatedReferenceData?.[o.sourceKey]?.[o.targetField] || [];
   const itemFields = Array.isArray(o.itemFields) ? o.itemFields : [];
   const structured = itemFields.length > 0;
 
-  const referenceFor = (id) => refs.find((candidate) =>
-    String(candidate?.value ?? candidate?.id ?? '') === String(id ?? '')
-  );
-
   /*
-   * Persisted relationship rows contain only the target id. Hydrate the editor
-   * from the generic reference projection supplied by the route. Scalar editors
-   * keep their simple value contract; structured editors project only the
-   * metadata-declared item fields from the referenced canonical record.
+   * The related-collection loader owns persistence-row hydration and selects the
+   * editor's authoritative working-record projection before rendering begins.
+   * The component therefore consumes exactly one source: collectionResourceData.
+   * It must not rebuild an alternate model from relationship rows/reference data.
    */
-  const v2Collection = componentData?.relatedEditingData?.[o.sourceKey];
-  // Production V2 collection editors consume the component-owned resource/read-model
-  // projection only. Retired page-context entry state must never be consulted.
-  const ctxCollection = Array.isArray(v2Collection) ? v2Collection : null;
-  const initialValues = ctxCollection || rows.map((row) => {
-    const id = row[o.targetField];
-    const reference = referenceFor(id);
-    if (structured) {
-      if (!reference) return null;
-      const projected = Object.fromEntries(itemFields.map((field) => [field.key, String(reference?.[field.key] ?? '')]));
-      if (o.displayField && reference?.[o.displayField] != null) projected.__display = String(reference[o.displayField]);
-      return projected;
-    }
-    return String(reference?.[o.valueField] ?? reference?.label ?? id ?? '');
-  }).filter((value) => value != null && (structured || Boolean(value)));
+  const v2Collection = componentData?.collectionResourceData?.[o.sourceKey]?.rows;
+  const initialValues = Array.isArray(v2Collection) ? v2Collection : [];
 
   const editorId = `collection-editor-${o.sourceKey}`;
   const collapsible = o.collapsible === true;
 %>
 <section class="metadata-collection-editor" id="<%= editorId %>"
   data-collection-editor
-  data-entry-child-editor
-  data-child-editor-active="false"
-  data-child-editor-dirty="false"
   data-field-type="<%= o.fieldType || 'string' %>"
   data-duplicate-comparison="<%= o.duplicateComparison || 'exact' %>">
   <div class="d-flex align-items-center justify-content-between mb-2">
@@ -209,6 +187,8 @@
   let values = structured
     ? initial.map((value) => ({ ...value }))
     : [...initial];
+  const collectionSnapshot = () => JSON.stringify(values);
+  let collectionBaseline = null;
 
   const items = root.querySelector('[data-collection-items]');
   const summary = root.querySelector('[data-collection-summary]');
@@ -217,6 +197,29 @@
   const box = root.querySelector('[data-collection-new]');
   const scalarInput = root.querySelector('[data-collection-input]');
   const structuredInputs = [...root.querySelectorAll('[data-collection-item-field]')];
+  const form = root.closest('form');
+  const registerCollectionContributor = () => {
+    form?.dispatchEvent(
+      new CustomEvent('manatos:form-contributor-register', {
+        bubbles: true,
+        detail: {
+          id: `collection:<%= o.sourceKey %>`,
+          contributor: () => ({
+            dirty: collectionBaseline !== null && collectionSnapshot() !== collectionBaseline,
+            valid: true,
+            blocksPersistence: !box.classList.contains('d-none'),
+          }),
+        },
+      }),
+    );
+  };
+  const commitCollectionBaseline = () => {
+    collectionBaseline = collectionSnapshot();
+  };
+  registerCollectionContributor();
+  form?.addEventListener('manatos:form-state-ready', registerCollectionContributor);
+  form?.addEventListener('manatos:form-baseline-captured', commitCollectionBaseline);
+  form?.addEventListener('manatos:form-saved', commitCollectionBaseline);
   const syncVisualSelect = (input) => {
     if (!(input instanceof HTMLInputElement) || input.type !== 'hidden') return;
     const picker = input.closest('[data-collection-select-picker]');
@@ -471,19 +474,14 @@
   };
 
   /**
-   * Publish child-editor ownership to the parent entry form. Parent Save is
-   * disabled while any registered child editor is active, regardless of page
-   * dirtiness, because a draft has not yet joined the parent's entry.
+   * Refresh this collection's aggregate contributor. An active inline draft
+   * blocks parent persistence without becoming parent-entry dirtiness.
    */
   const publishEditorState = () => {
-    const active = !box.classList.contains('d-none');
-    const draftDirty = active && editorDraftDirty();
-    root.dataset.childEditorActive = String(active);
-    root.dataset.childEditorDirty = String(draftDirty);
-    root.dispatchEvent(new CustomEvent('manatos:child-editor-state', {
-      bubbles: true,
-      detail: { active, dirty: draftDirty, sourceKey: <%- JSON.stringify(o.sourceKey) %> },
-    }));
+    // The collection contributor owns both committed-value dirtiness and active
+    // draft blocking. Its private callback is registered once; later changes only
+    // ask the owning entry shell to recompute aggregate facts.
+    form?.dispatchEvent(new Event('manatos:form-contributor-state', { bubbles: true }));
   };
 
   const clearEditor = () => {

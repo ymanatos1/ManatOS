@@ -49,8 +49,10 @@ Entity list page
 ```text
 ctx.ui
 └── level                         # owning list UI level
-    ├── name / kind / mode        # list surface identity
-    ├── dataList[]                # projected list records
+    ├── control (name / kind / mode / invocation / presentation / state / facts)        # list surface identity
+    ├── list
+    │   ├── originalEntries[]     # baseline list projection when meaningful
+    │   └── entries[]             # current projected list records
     ├── filters / search / paging # collection query state
     └── state                     # list-surface runtime state
 ```
@@ -88,7 +90,7 @@ The first visible editable field in the first editable tab receives initial focu
 ctx.ui
 └── level                         # list or other parent level
     └── level                     # entry UI level
-        ├── name / kind / mode
+        ├── control (name / kind / mode / invocation / presentation / state / facts)
         ├── fields
         │   └── <fieldKey>
         │       ├── value         # sole live scalar authority
@@ -145,60 +147,65 @@ A selector must never have a second answer for "what is this entry called?". Ent
 
 ```text
 ctx.ui
-└── ... level                     # caller
-    └── level                     # selector/popup child
-├── kind = "record-selector"
-├── callingParams
-│   ├── purpose
-│   ├── presentationMode
-│   ├── entityKey / idField
-│   ├── selectionMode
-│   ├── sourceEntityKey / sourceRecordId / sourceRecordName
-│   ├── targetField / targetFieldLabel
-│   ├── relation / anchorRecordId
-│   ├── queryPredicate
-│   └── allowClear / showContextNote / autofocusSearch
-├── presentation
-│   ├── mode
-│   ├── title
-│   └── contextNote
-├── dataList[]
-├── selector-local working state
-├── filters
-├── search
-├── paging
-├── selectedId / selectedIds[]
-└── state
+└── ... level                     # caller surface
+    └── level                     # selector surface
+        ├── kind = "record-selector"
+        ├── invocation
+        │   ├── entityName
+        │   ├── purpose = "select"
+        │   ├── caller?
+        │   │   ├── surfaceRef
+        │   │   ├── entityName?
+        │   │   └── recordId?
+        │   ├── presentation?
+        │   ├── rules?
+        │   │   ├── values
+        │   │   ├── fields
+        │   │   ├── query
+        │   │   └── actions
+        │   └── behavior?
+        ├── presentation
+        ├── list
+        │   ├── originalEntries[]
+        │   └── entries[]
+        ├── selector-local working state
+        ├── filters / search / paging
+        ├── selectedId / selectedIds[]
+        └── state
 ```
 
-`callingParams.queryPredicate` is a canonical precompiled expression. The browser evaluates the supplied AST; it does not reparse the source string or reconstruct caller-specific exclusions. The expression remains inspectable in CTX Viewer and transportable toward storage-side selection.
+`invocation.rules.query` carries canonical query restrictions in a generic form. Expression-bearing restrictions carry authored expression source only; the browser resolves ASTs lazily through the canonical expression runtime and never stores AST objects in semantic CTX or invocation state. Relationship-specific concepts such as hierarchy placement or uniqueness are translated by the caller into those generic restrictions before the selector opens.
 
 ### Reference-field call example
 
 ```text
 User(Admin).principalId
   -> field tools / Select existing entry...
-  -> selector(entityKey = sys-principals,
-              purpose = reference-field,
-              targetField = principalId,
-              sourceEntityKey = sys-users,
-              sourceRecordId = <Admin id>,
-              queryPredicate = <canonical uniqueness/eligibility expression>)
-  -> selected Principal
+  -> caller creates SurfaceInvocation
+       entityName = SysBOPrincipal
+       purpose = select
+       caller.surfaceRef = <User entry surface>
+       rules.query = <generic candidate restrictions>
+       behavior = <generic selector behavior>
+  -> selector returns selected Principal record
+  -> caller-side continuation knows target field principalId
   -> reference field value + CTX update
   -> ordinary Save transaction
 ```
+
+The child selector never receives `targetField` as part of its semantic invocation. The destination belongs to the caller's continuation state.
 
 ### Hierarchy call example
 
 ```text
 Organization workspace / Add existing entry...
-  -> selector(entityKey = sys-principals,
-              purpose = hierarchy-add-existing,
-              relation = sibling|child|...,
-              anchorRecordId = <principal id>,
-              queryPredicate = <hierarchy eligibility expression>)
-  -> selected Principal
+  -> caller creates SurfaceInvocation
+       entityName = SysBOPrincipal
+       purpose = select
+       caller.surfaceRef = <Organization surface>
+       rules.query = <generic hierarchy eligibility restriction>
+  -> selector returns selected Principal record
+  -> Organization continuation applies sibling/child placement
   -> hierarchy draft relation
   -> Commit
 ```
@@ -235,35 +242,27 @@ It loads the canonical `/bo/<entity>/new` or `/bo/<entity>/<id>` route in an emb
 therefore reuses the same tabs, fields, evaluator rules, CTX construction, validation, save path and
 entry representation.
 
+Popup completion is returned to callers as one canonical surface-result envelope (`outcome`, `value`, `record`, and `metadata`). Callers do not receive or depend on the transport `postMessage` payload as a parallel compatibility result.
+
 ### Invocation layering
 
-A caller may supply an invocation envelope in addition to canonical entity/UI metadata. Effective
-field behavior is resolved in one direction:
+A caller may supply a canonical `SurfaceInvocation` in addition to canonical entity/UI metadata. Effective field behavior is resolved in one direction:
 
 ```text
 canonical BO metadata
         +
 canonical UI metadata
         +
-caller create defaults / UI-attribute overrides
+SurfaceInvocation.rules
         +
 normal mode + authorization rules
         =
 effective hosted entry
 ```
 
-Caller defaults seed create-mode fields and remain editable unless the caller also overrides the
-field UI attributes. A fixed relationship value is represented as a create default plus
-`editable:false`/`readOnlyValue`, so the normal field renderer both displays the locked value and
-submits it. `allowedValues` narrows an enum catalogue for that invocation without adding a new enum
-component implementation.
+`rules.values.<field>.default` seeds create-mode values while leaving them editable. `rules.values.<field>.fixed` expresses a caller-imposed fixed value; `rules.fields` supplies generic field behavior restrictions, and field-domain restrictions such as allowed enum values belong there rather than in relationship-specific parameters.
 
-A reference field may declare `referenceSelection.createRelated` metadata. The generic reference
-component projects source-entry values through that declaration rather than containing knowledge of
-Users, Principals or any other concrete relationship. For the User -> Person Principal identity
-relationship, the invocation seeds First/Last name from the User, fixes the inverse User field to the
-calling User, and narrows Principal type to Person. Full name is still calculated by ordinary
-Principal metadata.
+A reference field may declare `referenceSelection.createRelated` metadata. The caller-side reference runtime translates that relationship declaration into the generic invocation contract rather than teaching the hosted entry about Users, Principals or any other concrete relationship. For the User -> Person Principal identity relationship, that translation can seed First/Last name, fix the inverse User field to the calling User, and restrict Principal type to Person. Full name is still calculated by ordinary Principal metadata.
 
 ### Create-related sequence
 
@@ -303,35 +302,39 @@ Principal viewer.
 
 ### Popup CTX
 
-While open, the caller page exposes the host under its normal popup slot:
+A popup is only one possible **container** for a hosted surface. The hosted entry owns its normal canonical CTX and receives the same host-neutral `SurfaceInvocation` contract used by first-level and nested pages.
 
 ```text
 ctx.ui
-└── ... level                     # caller
-    └── level                     # selector/popup child
-  kind: "entry-popup"
-  callingParams
-    purpose
-    presentationMode
-    entityKey
-    sourceEntityKey
-    sourceRecordId
-    targetField
-    mode
-    defaults
-    uiOverrides
-  presentation
-  state
+└── ... level                     # caller surface
+    └── level                     # outer popup host/provenance surface
+        ├── host = "popup"
+        ├── kind = "entry"
+        ├── invocation
+        │   ├── entityName
+        │   ├── purpose = view | create | inspect
+        │   ├── caller?
+        │   ├── presentation?
+        │   ├── rules?
+        │   └── behavior?
+        ├── presentation
+        └── state.popup           # host geometry/lifecycle only
+
+hosted iframe ctx.ui.level       # sole owner of live entry semantics
+├── entry
+├── fields
+├── facts
+└── state                         # entry lifecycle/validation/etc.
 ```
 
-The embedded entry owns its own ordinary entry CTX. `callingParams` describe why/how the host was
-opened; they are not mutable form state.
+Navigation hierarchy, popup nesting and semantic ownership are separate concerns. The child does not receive a parent `targetField` or parent mutation instruction; the caller keeps the continuation that decides what to do with the returned create/update/view result.
 
 ### Hosted-entry interaction rules
 
 Hosted metadata entries follow the same popup contract as every other ManatOS popup. In developer
-mode the popup header exposes the standard **CTX** inspection action, which targets the caller page's
-`popup` envelope without duplicating CTX controls inside the hosted document. The host sizes itself
+mode the popup header exposes the standard **CTX** inspection action for the outer popup host/provenance
+surface. The hosted iframe retains sole ownership of its live entry CTX; the parent does not mirror
+`entry`, `fields`, `facts` or entry lifecycle state into the outer surface. The host sizes itself
 from the embedded entry's live content and remeasures after tab/layout changes, subject to viewport
 limits; short tabs therefore do not inherit a permanently tall dialog.
 

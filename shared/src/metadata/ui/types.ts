@@ -208,6 +208,67 @@ export interface SysBOUIRecordTabMetadata {
   component?: Readonly<SysBOUIComponentMetadata>;
 }
 
+export type SysBOUIPictureCropMode = 'proportional' | 'free';
+
+export interface SysBOUIPictureEditorMetadata {
+  /** Maximum local source-image size accepted by the editor before cropping. */
+  maxSourceBytes?: number;
+
+  /** Aspect ratio used by proportional cropping (width / height). */
+  cropAspectRatio?: number;
+
+  /** Crop modes exposed by the reusable editor. First entry is the default. */
+  cropModes?: readonly SysBOUIPictureCropMode[];
+
+  /** Longest output edge in pixels after cropping/resampling. */
+  outputSize?: number;
+
+  /** Encoded output format produced by the client-side editor. */
+  outputContentType?: 'image/jpeg' | 'image/png' | 'image/webp';
+
+  /** Lossy encoder quality in the 0..1 range when applicable. */
+  outputQuality?: number;
+}
+
+export type SysBOUIRichTextMode = 'visual' | 'markdown' | 'preview';
+
+export interface SysBOUIRichTextHeightMetadata {
+  /** Initial shared editor height, in CSS pixels, for a newly opened surface. */
+  initial?: number;
+
+  /** Lower resize bound, in CSS pixels. */
+  min?: number;
+
+  /** Optional upper resize bound, in CSS pixels. */
+  max?: number;
+
+  /** Whether the user may resize the shared rich-text surface vertically. */
+  resizable?: boolean;
+}
+
+export interface SysBOUIRichTextPresentationMetadata {
+  /** Canonical persisted rich-text media type. */
+  contentType: 'text/markdown' | 'text/html';
+
+  /** Available modes, in toolbar order. Omitted means the standard three modes. */
+  modes?: readonly SysBOUIRichTextMode[];
+
+  /** Mode selected when a page/popup instance is first opened. */
+  initialMode?: SysBOUIRichTextMode;
+
+  /** Shared geometry for all enabled modes. Runtime resizing remains private UI state. */
+  height?: Readonly<SysBOUIRichTextHeightMetadata>;
+
+  /*
+   * Reserved extension surface for future declarative policy. Good candidates
+   * include Markdown spellcheck/wrapping, Visual toolbar/features, Preview link
+   * handling/sanitization, help/cheatsheet availability, placeholders, allowed
+   * embeds/media and content-length limits. These are presentation policy only;
+   * caret/selection, scroll position, current runtime height and editor lifecycle
+   * state remain private browser state rather than metadata or semantic CTX.
+   */
+}
+
 export interface SysBOUIFieldPresentationMetadata {
   /**
    * Output presentation only. It must never redefine entity/domain semantics.
@@ -221,6 +282,12 @@ export interface SysBOUIFieldPresentationMetadata {
   /** Static or evaluator-backed visual decoration. */
   icon?: SysBOUIDynamicValue<SysBOUIIconKey>;
   tone?: SysBOUIDynamicValue<SysBOUIStatusTone>;
+
+  /** Optional generic editor policy for canonical picture fields. */
+  pictureEditor?: Readonly<SysBOUIPictureEditorMetadata>;
+
+  /** Optional generic presentation policy for canonical rich-text fields. */
+  richText?: Readonly<SysBOUIRichTextPresentationMetadata>;
 }
 
 export interface SysBOUIFieldOverrideMetadata {
@@ -256,7 +323,6 @@ export interface SysBOUIFieldOverrideMetadata {
    * May be evaluator-backed for context-sensitive defaults; it is not a domain
    * default unless the canonical entity metadata/API enforces the same rule.
    */
-  createDefaultValue?: SysBOUIDynamicValue<string | number | boolean | null>;
 
   /**
    * Optional submitted/displayed value while a dynamic editable rule resolves

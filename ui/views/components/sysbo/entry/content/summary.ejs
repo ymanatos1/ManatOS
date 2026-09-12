@@ -53,6 +53,7 @@
     <div
       class="account-summary-value"
       data-v2-summary-presentation
+      data-v2-summary-field-key="<%= key %>"
       <% if (toneExpression) { %>
         data-v2-summary-tone-expression="<%= toneExpression %>"
       <% } %>
@@ -99,7 +100,7 @@
 <%- include('related-collections', {
   tab,
   relatedCollections,
-  pageRelatedData,
+  pageCollectionResourceData,
   relatedMetadataRegistry,
   collectionValue,
   relatedRowHref,

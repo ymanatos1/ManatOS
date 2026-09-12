@@ -9,7 +9,7 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 describe('SysBO V2 CTX data flow', () => {
   it('loads API rows and filter values directly on the list page before rendering either list engine', async () => {
     const listRenderer = await readFile(
-      resolve(testDirectory, '../../src/routes/sysbo/list-renderer.ts'),
+      resolve(testDirectory, '../../src/routes/sysbo/list/renderer.ts'),
       'utf8',
     );
     const uiHostRuntime = await readFile(
@@ -17,7 +17,7 @@ describe('SysBO V2 CTX data flow', () => {
       'utf8',
     );
     const listQuery = await readFile(
-      resolve(testDirectory, '../../src/routes/sysbo/list-query.ts'),
+      resolve(testDirectory, '../../src/routes/sysbo/list/query.ts'),
       'utf8',
     );
 
@@ -57,15 +57,21 @@ describe('SysBO V2 CTX data flow', () => {
     );
 
     expect(runtime).toContain('const leafPagePath =');
-    expect(runtime).toContain('runtime.updateField(pagePath, key, value, option');
+    expect(runtime).toContain('runtime.updateField(entryPagePath, key, value, option');
     expect(runtime).toContain('window.addEventListener(CHANGE_EVENT');
     expect(ctxRuntime).toContain('entryOriginal');
     expect(ctxRuntime).toContain('entry');
     expect(ctxRuntime).toContain('const updateField =');
     expect(ctxRuntime).toContain("candidate === 'ctx.ui.level'");
     expect(ctxRuntime).toContain('scopes.push(levelCandidate)');
-    expect(ctxRuntime).toContain('Object.prototype.hasOwnProperty.call(scopeValue.facts, first)');
-    expect(ctxRuntime).toContain("pagePath === 'ctx.ui.level'");
+    expect(ctxRuntime).toContain(
+      'Object.prototype.hasOwnProperty.call(scopeValue.control.facts, first)',
+    );
+    // Field writes are canonical for every UI level; there is no root-entry-only
+    // compatibility branch or parallel page.entry write authority.
+    expect(ctxRuntime).not.toContain("pagePath === 'ctx.ui.level'");
+    expect(ctxRuntime).toContain('fields.<key>.value is the sole live authority');
+    expect(ctxRuntime).not.toContain('page.entry[key] = value');
     expect(ctxRuntime).toContain('get: () => !Object.is(field.originalValue, field.value)');
     // Dotted/camelCase CTX paths such as page.page.entryOriginal must tokenize
     // one identifier at a time; an end-anchored identifier regex broke every
@@ -80,11 +86,11 @@ describe('SysBO V2 CTX data flow', () => {
   });
   it('keeps the populated parent entries alive while its child entry page is open', async () => {
     const recordRenderer = await readFile(
-      resolve(testDirectory, '../../src/routes/sysbo/record-renderer.ts'),
+      resolve(testDirectory, '../../src/routes/sysbo/entry/renderer.ts'),
       'utf8',
     );
     const parentList = await readFile(
-      resolve(testDirectory, '../../src/routes/sysbo/parent-list.ts'),
+      resolve(testDirectory, '../../src/routes/sysbo/list/parent-list.ts'),
       'utf8',
     );
     const uiHostRuntime = await readFile(
@@ -111,7 +117,7 @@ describe('SysBO V2 CTX data flow', () => {
       'utf8',
     );
     const ownerManaged = await readFile(
-      resolve(testDirectory, '../../src/routes/sysbo/owner-managed-entry.ts'),
+      resolve(testDirectory, '../../src/routes/sysbo/entry/owner-managed-entry.ts'),
       'utf8',
     );
     const workspace = await readFile(

@@ -6,47 +6,47 @@
     return text ? text.replace(/^bi-/, '') : null;
   };
 
-  const relationScopeFor = (config, row) => {
-    const result = {};
-    const definitions = config?.relationships || {};
-    const referenceData = config?.referenceData || {};
-    for (const [relationshipKey, definition] of Object.entries(definitions)) {
-      const fieldKey = String(definition?.field || '');
-      if (!fieldKey) continue;
-      const value = row?.[fieldKey];
-      const related = Array.isArray(referenceData[fieldKey])
-        ? referenceData[fieldKey].find(
-            (candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value ?? ''),
-          )
-        : null;
-      if (related) result[relationshipKey] = related;
+  const relationRowFor = (config, row, relationshipKey) => {
+    const definition = config?.relationships?.[relationshipKey];
+    const fieldKey = String(definition?.field || '');
+    if (!fieldKey) return null;
+    const value = row?.[fieldKey];
+    const candidates = config?.referenceData?.[fieldKey];
+    return Array.isArray(candidates)
+      ? candidates.find(
+          (candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value ?? ''),
+        ) || null
+      : null;
+  };
+
+  const expressionSources = (config) => {
+    const sources = new Set();
+    for (const source of [config?.name, config?.type, config?.description, config?.status]) {
+      if (typeof source?.expression === 'string' && source.expression)
+        sources.add(source.expression);
     }
-    return result;
-  };
-
-  const compileAst = (source) => {
-    const text = typeof source === 'string' ? source.trim() : '';
-    return text ? (window.ManatOS?.expressionCompiler?.ast(text) ?? null) : null;
-  };
-
-  const scopeFor = (config, row) => {
-    const scope = { ...row, relations: relationScopeFor(config, row) };
-    for (const [key, source] of Object.entries(config?.calculations || {})) {
-      const ast = compileAst(source);
-      scope[key] = ast
-        ? { __manatosExpressionAst: ast, value: row?.[key] ?? null }
-        : (row?.[key] ?? null);
+    for (const calculation of Object.values(config?.calculations || {})) {
+      if (typeof calculation?.source === 'string' && calculation.source)
+        sources.add(calculation.source);
     }
-    return scope;
+    return [...sources];
   };
 
-  const sourceValue = (config, source, row, fallback = null) => {
+  const prepare = async (config) => {
+    const evaluator = window.ManatOS?.expression;
+    if (!evaluator?.loadAstForSource) return;
+    await Promise.all(
+      expressionSources(config).map((source) => evaluator.loadAstForSource(source)),
+    );
+  };
+
+  const sourceValue = (config, source, row, fallback = null, ownerPath = null) => {
     if (!source) return fallback;
     const evaluator = window.ManatOS?.expression;
-    if (source.expression && evaluator?.evaluateAstWithScope) {
+    if (source.expression && ownerPath && evaluator?.evaluateAstAt) {
       try {
-        const ast = compileAst(source.expression);
-        if (ast) return evaluator.evaluateAstWithScope(ast, scopeFor(config, row));
+        const ast = evaluator.astForSource?.(source.expression) ?? null;
+        if (ast) return evaluator.evaluateAstAt(ast, ownerPath);
       } catch (error) {
         console.warn('[ManatOS entry representation]', error);
       }
@@ -68,13 +68,20 @@
   const relationTypeRow = (config, row) => {
     const expression = String(config?.type?.expression || '').trim();
     const key = /^relations\.([A-Za-z_$][A-Za-z0-9_$]*)\./.exec(expression)?.[1];
-    return key ? (relationScopeFor(config, row)?.[key] ?? null) : null;
+    return key ? relationRowFor(config, row, key) : null;
   };
 
   const resolve = (config, row, options = {}) => {
     const metadata = options.metadata || {};
     const typeField = directTypeField(config, metadata);
-    const typeValue = sourceValue(config, config?.type, row, typeField ? row?.[typeField] : null);
+    const ownerPath = typeof options.ownerPath === 'string' ? options.ownerPath : null;
+    const typeValue = sourceValue(
+      config,
+      config?.type,
+      row,
+      typeField ? row?.[typeField] : null,
+      ownerPath,
+    );
     const typeMetadata = typeField ? metadata?.fieldDefinition?.[typeField] : null;
     const enumItem = Array.isArray(typeMetadata?.enumItems)
       ? typeMetadata.enumItems.find((item) => String(item?.value ?? '') === String(typeValue ?? ''))
@@ -108,7 +115,9 @@
             : [entityIcon].filter(Boolean);
 
     return {
-      name: String(sourceValue(config, config?.name, row, options.fallbackName ?? '') ?? ''),
+      name: String(
+        sourceValue(config, config?.name, row, options.fallbackName ?? '', ownerPath) ?? '',
+      ),
       typeValue,
       typeName:
         enumItem?.label ??
@@ -123,5 +132,5 @@
   };
 
   window.ManatOS = window.ManatOS || {};
-  window.ManatOS.entryRepresentation = Object.freeze({ resolve, sourceValue, scopeFor });
+  window.ManatOS.entryRepresentation = Object.freeze({ prepare, resolve, sourceValue });
 })();

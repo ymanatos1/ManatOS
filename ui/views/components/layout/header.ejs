@@ -147,16 +147,38 @@
           title="Open account menu"
           aria-label="Open account menu"
         >
-          <i class="bi bi-person-circle me-1"></i>
+          <% if (currentUser.photo) { %>
+            <img
+              class="header-account-photo me-1"
+              src="/bo/sys-users/<%= encodeURIComponent(currentUser.id) %>/picture/photo?revision=<%= encodeURIComponent(String(currentUser.photo.revision || '')) %>"
+              alt=""
+            >
+          <% } else { %>
+            <i class="bi bi-person-circle me-1"></i>
+          <% } %>
           Account
         </button>
 
         <ul class="dropdown-menu dropdown-menu-end shadow-sm account-menu">
           <li class="px-3 pt-2 pb-1">
-            <div class="account-menu-name"><%= currentUser.name %></div>
-            <span class="badge rounded-pill text-bg-light border account-role-badge">
-              <%= currentUser.role %>
-            </span>
+            <div class="account-menu-identity">
+              <a
+                class="account-menu-user-link"
+                href="/bo/sys-users/<%= encodeURIComponent(currentUser.id) %>"
+                title="Edit account user"
+                aria-label="Edit account user <%= currentUser.name %>"
+              >
+                <% if (currentUser.photo) { %>
+                  <img
+                    class="account-menu-photo"
+                    src="/bo/sys-users/<%= encodeURIComponent(currentUser.id) %>/picture/photo?revision=<%= encodeURIComponent(String(currentUser.photo.revision || '')) %>"
+                    alt=""
+                  >
+                <% } %>
+                <span class="account-menu-name"><%= currentUser.name %></span>
+              </a>
+              <span class="badge rounded-pill text-bg-light border account-role-badge"><%= currentUser.role %></span>
+            </div>
           </li>
 
           <li><hr class="dropdown-divider"></li>

@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler } from 'express';
 
-import { AppError } from '@manatos/shared';
+import { AppError, operationContext } from '@manatos/shared';
 
 import { config } from '../../config.js';
 import { runtimeString } from '../../runtime-configuration.js';
@@ -15,6 +15,7 @@ import { logger } from '../../logging/logger.js';
  */
 const httpStatusByErrorCode: Record<string, number> = {
   VALIDATION_ERROR: 400,
+  REQUEST_ENTITY_TOO_LARGE: 413,
 
   INVALID_CREDENTIALS: 401,
   AUTHENTICATION_REQUIRED: 401,
@@ -71,22 +72,42 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
   /**
    * Convert unexpected/native exceptions into our standard AppError.
    */
+  const bodyParserError =
+    error && typeof error === 'object' ? (error as { type?: unknown; message?: unknown }) : null;
+
   const appError =
     error instanceof AppError
       ? error
-      : new AppError(
-          'UNEXPECTED_ERROR',
+      : bodyParserError?.type === 'entity.too.large'
+        ? new AppError(
+            'REQUEST_ENTITY_TOO_LARGE',
+            typeof bodyParserError.message === 'string'
+              ? bodyParserError.message
+              : 'request entity too large',
+            'Request entity too large.',
+            false,
+            { cause: error },
+          )
+        : new AppError(
+            'UNEXPECTED_ERROR',
 
-          error instanceof Error ? error.message : String(error),
+            error instanceof Error ? error.message : String(error),
 
-          'An unexpected server error occurred.',
+            'An unexpected server error occurred.',
 
-          true,
+            true,
 
-          {
-            cause: error,
-          },
-        );
+            {
+              cause: error,
+            },
+          );
+
+  /*
+   * Every API failure, including parser/middleware/native failures, receives
+   * the request-wide semantic trace. AppErrors that already carry a richer
+   * trace keep it unchanged.
+   */
+  operationContext.attachCurrentTrace(appError);
 
   const detailLevel = runtimeString(
     'API_ERROR_DETAIL_LEVEL',

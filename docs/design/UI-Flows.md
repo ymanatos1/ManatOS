@@ -232,15 +232,16 @@ A calculated field may therefore become visually changed because one of its depe
 The generic record selector is a reusable branch of administration/list behavior rather than a separate entity page.
 
 ```text
-Participants: U=Operator | C=Calling component/workspace | RS=Record selector | CTX=popup.callingParams + state | R=Owning runtime
+Participants: U=Operator | C=Calling component/workspace | RS=Record selector | CTX=selector surface invocation + state | R=Owning runtime
 
  1. U --> C  Select/Add existing entry…
- 2. C --> RS  Open with entity + purpose + candidates + rules
- 3. RS --> CTX  Publish resolved callingParams
- 4. RS --> RS  Evaluate precompiled UI policy against callingParams
- 5. U --> RS  Search/filter/page/select
- 6. RS --> C  Return canonical selected record(s)
- 7. C --> R  Apply caller-specific operation
+ 2. C --> C  Translate caller semantics into generic SurfaceInvocation rules
+ 3. C --> RS  Open hosted selector surface
+ 4. RS --> CTX  Own canonical selector invocation + local working state
+ 5. RS --> RS  Evaluate source-defined rules against selector-owned CTX
+ 6. U --> RS  Search/filter/page/select
+ 7. RS --> C  Return generic selected record(s)
+ 8. C --> R  Apply caller-side continuation / caller-specific operation
 ```
 
 Two current examples deliberately share this flow:
@@ -248,7 +249,7 @@ Two current examples deliberately share this flow:
 - a reference field invokes **Select existing entry…** and applies the returned id through the canonical reference-field runtime;
 - the Principal Organization workspace invokes **Add existing entry…** and applies hierarchy-specific parent/child/sibling rules.
 
-The selector reuses ordinary list toolbar/filter/header/paging components. Selection eligibility and result meaning remain caller-owned. Presentation policy is evaluator-driven from the same `callingParams` visible in CTX: Organization currently requests the subdued workspace treatment, while reference-field invocation requests the entry-oriented treatment.
+The selector reuses ordinary list toolbar/filter/header/paging components. Selection eligibility and result meaning remain caller-owned. Caller-specific semantics are translated before opening into generic invocation/query/behavior rules; the selector enforces those rules against its own canonical CTX. Presentation/container nesting is therefore independent from semantic ownership.
 
 ## 6. Principal reference recalculation flow
 

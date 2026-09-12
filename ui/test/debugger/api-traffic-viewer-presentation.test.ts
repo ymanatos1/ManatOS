@@ -88,6 +88,9 @@ describe('API Traffic developer viewer', () => {
     expect(viewerSource).toContain('routeKey');
     expect(viewerSource).toContain('routeCounts');
     expect(viewerSource).toContain('ROUTE_COUNT_STATE_KEY');
+    expect(viewerSource).toContain("ROUTE_STATE_KEY = 'manatos.debug.apiTraffic.routes.v2'");
+    expect(viewerSource).not.toContain('LEGACY_ROUTE_STATE_KEY');
+    expect(viewerSource).not.toContain('apiTraffic.routes.v1.');
     expect(viewerSource).toContain('countTraffic(incoming)');
     expect(sourceWithoutWhitespace(viewerSource)).toContain(
       sourceWithoutWhitespace('sessionStorage.setItem(ROUTE_COUNT_STATE_KEY'),
@@ -122,7 +125,7 @@ describe('API Traffic developer viewer', () => {
     expect(viewerSource).toContain('countedEntryIds');
     expect(viewerSource).toContain('Route counters are');
     expect(viewerSource).not.toContain('state.routeCounts.clear()');
-    expect(viewerSource).toContain('window.__manatosApiTrafficRuntime?.dispose?.()');
+    expect(viewerSource).toContain('window.ManatOS?.debug?.apiTraffic?.dispose?.()');
     expect(viewerSource).toContain("window.addEventListener('online', resumePolling)");
     expect(viewerSource).not.toContain("document.addEventListener('pointerdown', resumePolling");
     expect(viewerSource).toContain('data-api-traffic-column-resize');

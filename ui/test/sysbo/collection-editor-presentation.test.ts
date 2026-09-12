@@ -12,8 +12,26 @@ describe('generic transactional collection editor', () => {
     expect(component).not.toContain('SysEmailAddress');
     expect(component).not.toContain('SysTelephoneNumber');
     expect(component).toContain('relatedChanges.');
-    expect(component).toContain('reference?.[o.valueField]');
-    expect(component).toContain('reference?.label');
+    expect(component).toContain('componentData?.collectionResourceData?.[o.sourceKey]?.rows');
+    expect(component).not.toContain('componentData?.relatedData');
+    expect(component).not.toContain('componentData?.relatedReferenceData');
+  });
+
+  it('persists every declared collection editor through the same metadata-driven Save contract', async () => {
+    const entryWrite = await source('src/routes/sysbo/entry/write.ts');
+    const discovery = await source('src/routes/sysbo/related/collection-editor-metadata.ts');
+
+    expect(entryWrite).toContain('collectionEditorDescriptors(uiMetadata)');
+    expect(entryWrite).toContain('`relatedChanges.${descriptor.sourceKey}`');
+    expect(entryWrite).toContain('descriptor.itemFieldKeys.map');
+    expect(entryWrite).not.toContain("definition.key === 'sys-principals'");
+    expect(entryWrite).not.toContain('principalRelatedChanges');
+    expect(entryWrite).not.toContain("'emailAddresses'");
+    expect(entryWrite).not.toContain("'telephoneNumbers'");
+    expect(entryWrite).not.toContain("'addresses'");
+    expect(discovery).toContain("component?.key === 'collection-editor'");
+    expect(discovery).toContain('options?.sourceKey');
+    expect(discovery).toContain('options?.itemFields');
   });
 
   it('supports scalar and structured collection values through metadata rather than component forks', async () => {
@@ -42,8 +60,8 @@ describe('generic transactional collection editor', () => {
   });
 
   it('hydrates persisted relationship ids through canonical reference records', async () => {
-    const dataAccess = await source('src/routes/sysbo/data-access.ts');
-    const relatedCollections = await source('src/routes/sysbo/related-collections.ts');
+    const dataAccess = await source('src/routes/sysbo/shared/data-access.ts');
+    const relatedCollections = await source('src/routes/sysbo/related/collections.ts');
     expect(dataAccess).not.toContain('referencedPrimaryField');
     expect(dataAccess).toContain('value: id');
     expect(dataAccess).toContain('const representation = resolveEntryRepresentation(');
@@ -52,7 +70,8 @@ describe('generic transactional collection editor', () => {
     expect(dataAccess).toContain('label: entryName');
     expect(dataAccess).toContain('__entryIcons: representation.icons');
     expect(relatedCollections).toContain('collection.source?.kind');
-    expect(relatedCollections).toContain('relatedEditingData[sourceKey]');
+    expect(relatedCollections).toContain('collectionResourceData[sourceKey]');
+    expect(relatedCollections).not.toContain('relatedEditingData');
     expect(dataAccess).not.toContain("field.referenceBOKey === 'sys-email-addresses'");
     expect(dataAccess).not.toContain("field.referenceBOKey === 'sys-telephone-numbers'");
     expect(relatedCollections).not.toContain("'sys-email-addresses'");
@@ -94,8 +113,17 @@ describe('generic transactional collection editor', () => {
     expect(component).toContain('let collapsed = collapsible;');
     expect(component).not.toContain('sessionStorage.setItem(collapseStorageKey');
     expect(component).toContain("item.addEventListener('click', () => beginEdit(index))");
-    expect(component).toContain('data-entry-child-editor');
-    expect(component).toContain('manatos:child-editor-state');
+    expect(component).not.toContain('data-entry-child-editor');
+    expect(component).toContain('data-collection-payload');
+    expect(component).not.toContain('data-form-state-contributor');
+    expect(component).toContain('collectionSnapshot');
+    expect(component).toContain('collectionBaseline');
+    expect(component).toContain("new CustomEvent('manatos:form-contributor-register'");
+    expect(component).toContain('id: `collection:<%= o.sourceKey %>`');
+    expect(component).not.toContain('manatos:child-editor-state');
+    expect(component).not.toContain('data-child-editor-dirty');
+    expect(component).not.toContain("Symbol.for('ManatOS.SysBO.EntryFormState')");
+    expect(component).toContain("blocksPersistence: !box.classList.contains('d-none')");
     expect(css).toContain('.metadata-collection-summary {');
     expect(css).toContain('flex-wrap: wrap;');
   });
@@ -113,7 +141,7 @@ describe('V2 collection CTX ownership', () => {
   it('projects V2 drafts exclusively to component resources', async () => {
     const editor = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     const host = await source('views/components/sysbo/entry/shell/metadata-component.ejs');
-    const renderer = await source('src/routes/sysbo/record-renderer.ts');
+    const renderer = await source('src/routes/sysbo/entry/renderer.ts');
     const projection = await source('src/runtime/state/collection-resource-projection.ts');
 
     expect(host).toContain('data-ctx-scope-path');
@@ -122,17 +150,27 @@ describe('V2 collection CTX ownership', () => {
     expect(editor).not.toContain('ctx.page');
     expect(renderer).toContain('surfaceResources.collections');
     expect(renderer).toContain('projectCollectionResources');
-    expect(projection).toContain('original: Object.freeze(cloneValues(source))');
-    expect(projection).toContain('current: Object.freeze(cloneValues(source))');
+    expect(projection).toContain('original: Object.freeze(cloneValues(source.rows ?? []))');
+    expect(projection).toContain('current: Object.freeze(cloneValues(source.rows ?? []))');
+    expect(projection).toContain('references: Object.freeze(');
   });
 
   it('keeps V2 collection initialization independent from the retired ctx.page entry branch', async () => {
     const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     const v2Entry = await source('views/components/runtime/entity-entry.ejs');
 
-    expect(component).toContain('componentData?.relatedEditingData?.[o.sourceKey]');
+    expect(component).toContain('componentData?.collectionResourceData?.[o.sourceKey]?.rows');
+    expect(component).toContain(
+      'const initialValues = Array.isArray(v2Collection) ? v2Collection : [];',
+    );
+    expect(component).not.toContain('componentData?.relatedData');
+    expect(component).not.toContain('componentData?.relatedReferenceData');
+    expect(component).not.toContain('relatedEditingData');
     expect(component).not.toContain('ctxPage?.entry');
     expect(component).not.toContain('v1Collection');
     expect(v2Entry).not.toContain("ctxPage: typeof ctxPage !== 'undefined' ? ctxPage : null");
+    expect(v2Entry).not.toContain('relatedData');
+    expect(v2Entry).toContain('pageCollectionResourceData');
+    expect(v2Entry).not.toContain('relatedReferenceData: pageRelatedReferenceData');
   });
 });

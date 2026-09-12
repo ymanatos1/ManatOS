@@ -68,12 +68,28 @@ export function createLocalAuthRouter() {
 
             await establishUiSession(req, login, 'local');
 
+            if (req.get('X-ManatOS-Reauthenticate') === '1') {
+              res.json({ success: true, data: { user: login.user } });
+              return;
+            }
+
             res.redirect('/account');
           },
 
           'Signing in',
         );
       } catch (error) {
+        if (req.get('X-ManatOS-Reauthenticate') === '1') {
+          const message = error instanceof AppError ? error.userMessage : 'Sign-in failed.';
+          res.status(401).json({
+            success: false,
+            error: {
+              code: error instanceof AppError ? error.code : 'REAUTHENTICATION_FAILED',
+              message,
+            },
+          });
+          return;
+        }
         next(error);
       }
     },

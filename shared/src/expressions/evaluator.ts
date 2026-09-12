@@ -6,7 +6,7 @@ import {
 import { ExpressionEvaluationError, emitExpressionDiagnostic } from './diagnostics.js';
 import { expressionFunctions } from './functions/registry.js';
 import { compileExpression } from './parser.js';
-import { resolveExpressionVariable } from './resolver.js';
+import { resolveExpressionVariable, resolveExpressionVariableAsync } from './resolver.js';
 import type {
   CompiledExpression,
   ExpressionEvaluationCaller,
@@ -58,11 +58,9 @@ function evaluateCalculatedField(
   const fieldPath = contextPathOf(state.ctxRoot, field) ?? `<calculated:${field.expression}>`;
   state.active.add(field);
   try {
-    const compiled = field.ast
-      ? { source: field.expression, ast: field.ast, requiredCapabilities: [] }
-      : compileExpression(field.expression, {
-          ...(state.options.diagnosticSink ? { diagnosticSink: state.options.diagnosticSink } : {}),
-        });
+    const compiled = compileExpression(field.expression, {
+      ...(state.options.diagnosticSink ? { diagnosticSink: state.options.diagnosticSink } : {}),
+    });
 
     const nextChain =
       state.evaluationChain[state.evaluationChain.length - 1] === fieldPath
@@ -239,7 +237,9 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
       return evaluateNode(node.expression, state);
 
     case 'variable': {
-      const resolved = resolveExpressionVariable(node, state.ctxRoot, state.currentCtxNode);
+      const resolved = resolveExpressionVariable(node, state.ctxRoot, state.currentCtxNode, {
+        evaluateDynamicPath: (expression) => evaluateNode(expression, state),
+      });
       if (!resolved.found) {
         throw new ExpressionEvaluationError(
           `Expression variable not found: ${node.path}`,
@@ -448,7 +448,9 @@ export async function evaluateCompiledExpressionAsync(
       case 'group':
         return evaluate(node.expression, scope);
       case 'variable': {
-        const resolved = resolveExpressionVariable(node, execution.root, scope);
+        const resolved = await resolveExpressionVariableAsync(node, execution.root, scope, {
+          evaluateDynamicPath: (expression) => evaluate(expression, scope),
+        });
         if (!resolved.found) {
           throw new ExpressionEvaluationError(
             `Expression variable not found: ${node.path}`,
@@ -463,9 +465,7 @@ export async function evaluateCompiledExpressionAsync(
           if (active.has(field)) return fieldFallbackValue(field);
           active.add(field);
           try {
-            const nested = field.ast
-              ? { source: field.expression, ast: field.ast, requiredCapabilities: [] }
-              : compileExpression(field.expression);
+            const nested = compileExpression(field.expression);
             const value = await evaluate(nested.ast, resolved.owner ?? scope);
             memo.set(field, value);
             return value;

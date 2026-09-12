@@ -97,6 +97,7 @@
       const response = await fetch('/auth/external-providers', {
         headers: { accept: 'application/json' },
         cache: 'no-store',
+        manatosBusy: false,
       });
 
       if (!response.ok) {

@@ -9,10 +9,10 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 describe('generic SysBO delete presentation', () => {
   it('derives friendly delete labels from canonical metadata instead of legacy EJS view-model metadata', async () => {
     const entryWrite = await readFile(
-      resolve(testDirectory, '../../src/routes/sysbo/entry-write.ts'),
+      resolve(testDirectory, '../../src/routes/sysbo/entry/write.ts'),
       'utf8',
     );
-    expect(entryWrite).toContain('definition.boMetadata.name');
+    expect(entryWrite).toContain('definition.boMetadata.label');
     expect(entryWrite).not.toContain('editViewModel.deleteEntityLabel');
   });
 
@@ -34,6 +34,6 @@ describe('generic SysBO delete presentation', () => {
     expect(view).toContain('data-delete-unsaved-warning');
     expect(view).toContain('Unsaved changes will also be lost');
     expect(forms).toContain("deleteModal?.addEventListener('show.bs.modal'");
-    expect(forms).toContain("warning?.classList.toggle('d-none', !dirty())");
+    expect(forms).toContain("warning?.classList.toggle('d-none', !hasPendingWork())");
   });
 });

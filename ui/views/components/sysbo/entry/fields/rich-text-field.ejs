@@ -1,0 +1,76 @@
+<%#
+  COMPONENT: Rich text field
+
+  Purpose:
+  - Renders one canonical rich-text field with visual, Markdown source and preview modes.
+
+  Inputs / metadata:
+  - Uses the canonical field value plus fieldOverride.presentation.richText.
+
+  CTX contract:
+  - The canonical persisted/CTX value remains one string. Editor documents, selections and mode are private browser state.
+
+  Embeds / delegates:
+  - Visual editing is delegated to the reusable rich-text runtime, backed by Milkdown Crepe when available.
+
+  Runtime contract:
+  - data-rich-text-* hooks are owned by rich-text-runtime.js. The hidden textarea is the canonical form/CTX control.
+%>
+<%
+  const richText = fieldOverride?.presentation?.richText || {};
+  const contentType = String(richText.contentType || 'text/markdown');
+  const requestedModes = Array.isArray(richText.modes) && richText.modes.length
+    ? richText.modes
+    : ['visual', 'markdown', 'preview'];
+  const validModes = requestedModes.filter((mode, index, list) =>
+    ['visual', 'markdown', 'preview'].includes(mode) && list.indexOf(mode) === index
+  );
+  const modes = validModes.length ? validModes : ['markdown'];
+  const requestedInitialMode = String(richText.initialMode || modes[0]);
+  const initialMode = modes.includes(requestedInitialMode) ? requestedInitialMode : modes[0];
+  const initialHeight = Number.isFinite(Number(richText.height?.initial)) ? Number(richText.height.initial) : 160;
+  const minHeight = Number.isFinite(Number(richText.height?.min)) ? Number(richText.height.min) : 100;
+  const maxHeight = Number.isFinite(Number(richText.height?.max)) ? Number(richText.height.max) : 800;
+  const resizable = richText.height?.resizable !== false;
+  const textValue = value == null ? '' : String(value);
+%>
+<div
+  class="metadata-rich-text-field"
+  data-rich-text-field
+  data-rich-text-content-type="<%= contentType %>"
+  data-rich-text-initial-mode="<%= initialMode %>"
+  data-rich-text-modes="<%= modes.join(',') %>"
+  data-rich-text-initial-height="<%= initialHeight %>"
+  data-rich-text-min-height="<%= minHeight %>"
+  data-rich-text-max-height="<%= maxHeight %>"
+  data-rich-text-resizable="<%= resizable ? 'true' : 'false' %>"
+>
+  <div class="metadata-rich-text-toolbar d-flex flex-wrap align-items-center gap-2 mb-2">
+    <% if (modes.length > 1) { %>
+      <div class="btn-group btn-group-sm" role="group" aria-label="Rich text view">
+        <% modes.forEach((mode) => { const runtimeMode = mode === 'markdown' ? 'source' : mode; %>
+          <button
+            type="button"
+            class="btn <%= mode === initialMode ? 'btn-primary' : 'btn-outline-secondary' %>"
+            data-rich-text-mode="<%= runtimeMode %>"
+          ><%= mode === 'markdown' ? 'Markdown' : mode.charAt(0).toUpperCase() + mode.slice(1) %></button>
+        <% }) %>
+      </div>
+    <% } %>
+    <span class="small text-secondary ms-auto" data-rich-text-engine-status>Markdown · Milkdown</span>
+  </div>
+
+  <div class="metadata-rich-text-visual<%= initialMode === 'visual' ? '' : ' d-none' %>" data-rich-text-visual></div>
+
+  <textarea
+    class="form-control metadata-rich-text-source<%= initialMode === 'markdown' ? '' : ' d-none' %><%= resizable ? '' : ' is-fixed-height' %>"
+    rows="6"
+    name="<%= key %>"
+    data-rich-text-source
+    data-ctx-field="<%= key %>"
+    <%= editable ? '' : 'readonly' %>
+  ><%= textValue %></textarea>
+
+  <div class="metadata-rich-text-preview<%= initialMode === 'preview' ? '' : ' d-none' %>" data-rich-text-preview></div>
+  <div class="form-text">Stored as <code><%= contentType %></code>. Switch views without changing the canonical format.</div>
+</div>

@@ -32,7 +32,9 @@
             aria-selected="<%= tab.id === activeTabId ? 'true' : 'false' %>"
             data-v2-tab-id="<%= tab.id %>"
             <% if (typeof tab.staticVisible === 'boolean') { %>data-v2-tab-static-visible="<%= tab.staticVisible ? 'true' : 'false' %>"<% } %>
-            <% if (tab.visibleExpression) { %>data-v2-tab-visible-expression="<%= tab.visibleExpression %>"<% } %>
+            <% if (tab.visibleExpression) { %>
+              data-v2-tab-visible-expression="<%= tab.visibleExpression %>"
+            <% } %>
             <% if (tab.navigationTrack?.statePath) { %>
               data-navigation-track-path="<%= tab.navigationTrack.statePath %>"
               data-navigation-track-value="<%= tab.id %>"

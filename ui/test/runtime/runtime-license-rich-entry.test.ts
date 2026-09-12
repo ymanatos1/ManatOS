@@ -8,18 +8,14 @@ describe('V2 License rich-entry acceptance', () => {
   it('keeps License composition declarative while accepted generic V2 entry infrastructure owns state', () => {
     const businessUi = source('../../../shared/src/metadata/ui/business.ts');
     const businessMetadata = source('../../../shared/src/metadata/bo/business.ts');
-    const renderer = source('../../src/routes/sysbo/record-renderer.ts');
+    const renderer = source('../../src/routes/sysbo/entry/renderer.ts');
     const rangeComponent = source(
       '../../views/components/sysbo/entry/content/date-duration-range.ejs',
     );
 
-    expect(businessUi).toContain(
-      `platformId: { createDefaultValue: { expression: "FirstCtx(platformId.options, 'value')" } }`,
-    );
-    expect(businessUi).toContain(
-      `validFrom: { createDefaultValue: { expression: 'CurrentDay()' } }`,
-    );
-    expect(businessUi).toContain("status: { createDefaultValue: 'Active' }");
+    expect(businessMetadata).toContain("FirstCtx($entity-fields.platformId.enumItems, 'value')");
+    expect(businessMetadata).toContain("createDefaultValue: { expression: 'CurrentDay()' }");
+    expect(businessMetadata).toContain("createDefaultValue: 'Active'");
     expect(businessUi).toContain("key: 'date-duration-range'");
 
     expect(businessMetadata).toContain(

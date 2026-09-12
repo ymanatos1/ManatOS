@@ -35,7 +35,13 @@
   const entityInputAutocomplete = typeof inputAutocomplete === 'string' ? inputAutocomplete : undefined;
   const entityInputDataAttributes = typeof inputDataAttributes !== 'undefined' ? inputDataAttributes : undefined;
 %>
-<% if (field.type === 'boolean') { %>
+<% if (field.type === 'picture') { %>
+  <%- include('picture-field', { key, field, value, editable, fieldLabel, definition, item, fieldOverride: typeof fieldOverride !== 'undefined' ? fieldOverride : null }) %>
+<% } else if (field.type === 'pictures') { %>
+  <%- include('pictures-field', { key, field, value, editable, fieldLabel, definition, item, fieldOverride: typeof fieldOverride !== 'undefined' ? fieldOverride : null }) %>
+<% } else if (field.type === 'richText') { %>
+  <%- include('rich-text-field', { key, field, value, editable, fieldLabel, fieldOverride: typeof fieldOverride !== 'undefined' ? fieldOverride : null }) %>
+<% } else if (field.type === 'boolean') { %>
   <%- include('boolean-field', { key, field, value, editable, fieldLabel, bindCtx: entityBindCtx, inputId: entityInputId, inputName: entityInputName }) %>
 <% } else if (field.type === 'enum') { %>
   <% const enumItems = enumItemsFor(field); %>

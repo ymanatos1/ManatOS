@@ -68,15 +68,16 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     ],
     fieldOverrides: {
       // A newly sketched Principal starts enabled just like the full create form.
-      enabled: { createDefaultValue: true },
       // Principal type has one canonical create default across full and quick records.
       // Keeping both surfaces aligned avoids owner/editor-specific creation semantics.
-      principalType: { createDefaultValue: 'Person' },
-      firstName: { visible: { expression: "principalType === 'Person'" } },
-      lastName: { visible: { expression: "principalType === 'Person'" } },
+      firstName: { visible: { expression: "#level.entry.current.principalType === 'Person'" } },
+      lastName: { visible: { expression: "#level.entry.current.principalType === 'Person'" } },
       name: {
-        visible: { expression: 'principalType.option != null' },
-        editable: { expression: "principalType.option != null && principalType !== 'Person'" },
+        visible: { expression: '#level.fields.principalType.option != null' },
+        editable: {
+          expression:
+            "#level.fields.principalType.option != null && #level.entry.current.principalType !== 'Person'",
+        },
       },
     },
   },
@@ -89,6 +90,7 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         [
           'principalType',
           'enabled',
+          'photo',
           'firstName',
           'lastName',
           'name',
@@ -109,8 +111,9 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
            * remain paired on the final row without renderer/entity special cases.
            */
           content: [
-            { kind: 'field', field: 'principalType', span: 6 },
-            { kind: 'field', field: 'enabled', span: 6 },
+            { kind: 'field', field: 'principalType', span: 5 },
+            { kind: 'field', field: 'enabled', span: 3 },
+            { kind: 'field', field: 'photo', span: 4 },
             { kind: 'field', field: 'firstName', span: 6 },
             { kind: 'field', field: 'lastName', span: 6 },
             { kind: 'field', field: 'name', span: 6 },
@@ -372,26 +375,34 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     ],
     fieldOverrides: {
       ...systemFieldOverrides,
-      enabled: { createDefaultValue: true },
+      photo: {
+        presentation: {
+          pictureEditor: {
+            maxSourceBytes: 20_000_000,
+            cropAspectRatio: 1,
+            cropModes: ['proportional', 'free'],
+            outputSize: 768,
+            outputContentType: 'image/jpeg',
+            outputQuality: 0.9,
+          },
+        },
+      },
       firstName: {
-        visible: { expression: "principalType === 'Person'" },
+        visible: { expression: "#level.entry.current.principalType === 'Person'" },
       },
       lastName: {
-        visible: { expression: "principalType === 'Person'" },
+        visible: { expression: "#level.entry.current.principalType === 'Person'" },
       },
       name: {
-        visible: { expression: 'principalType.option != null' },
-        editable: { expression: "principalType.option != null && principalType !== 'Person'" },
+        visible: { expression: '#level.fields.principalType.option != null' },
+        editable: {
+          expression:
+            "#level.fields.principalType.option != null && #level.entry.current.principalType !== 'Person'",
+        },
       },
       userId: {
-        visible: { expression: "principalType === 'Person'" },
+        visible: { expression: "#level.entry.current.principalType === 'Person'" },
         editable: { expression: "user.permissions.userRole === 'Admin'" },
-      },
-      principalType: {
-        // Seed the create CTX itself, not merely the visible select. This means
-        // principalType.option is decorated from canonical enumItems before any
-        // dependent editability expression is evaluated.
-        createDefaultValue: 'Person',
       },
       parentId: {
         // Parentability is a separate declarative enum trait from containment: a
@@ -399,7 +410,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         // Group and System records may themselves belong to a parent. The evaluator reads
         // the selected enum item's canonical metadata through CTX.
         editable: {
-          expression: 'principalType.option != null && principalType.option.canHaveParent === true',
+          expression:
+            '#level.fields.principalType.option != null && #level.fields.principalType.option.canHaveParent === true',
         },
         readOnlyValue: null,
       },
@@ -495,6 +507,14 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
           { kind: 'field', field: 'version', span: 6 },
         ],
       }),
+      tab('details', 'Details', 20, ['details', 'pictures'], {
+        icon: 'card-text',
+        layout: 'form',
+        content: [
+          { kind: 'field', field: 'details', span: 12 },
+          { kind: 'field', field: 'pictures', span: 12 },
+        ],
+      }),
       tab('licenses', 'Licenses', 800, ['licenses'], {
         icon: 'key',
         layout: 'summary',
@@ -504,8 +524,47 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
     ],
     fieldOverrides: {
       ...systemFieldOverrides,
-      enabled: { createDefaultValue: true },
-      version: { createDefaultValue: '0.0.1' },
+      pictures: {
+        presentation: {
+          pictureEditor: {
+            maxSourceBytes: 20_000_000,
+            cropAspectRatio: 1,
+            cropModes: ['proportional', 'free'],
+            outputSize: 1024,
+            outputContentType: 'image/jpeg',
+            outputQuality: 0.9,
+          },
+        },
+      },
+      details: {
+        presentation: {
+          /*
+           * Rich-text UI policy is declarative and local to this presentation.
+           * The canonical BO field remains one persisted Markdown string.
+           *
+           * Other useful per-field choices supported by this contract are:
+           * - modes: choose any ordered subset of visual/markdown/preview;
+           * - initialMode: choose the mode shown on page/popup opening;
+           * - height.initial/min/max: shared geometry for every enabled mode;
+           * - height.resizable: allow/forbid user vertical resizing.
+           *
+           * Future presentation-only candidates are documented on
+           * SysBOUIRichTextPresentationMetadata in ui/types.ts rather than
+           * hardcoded into entity renderers.
+           */
+          richText: {
+            contentType: 'text/markdown',
+            modes: ['markdown', 'visual', 'preview'],
+            initialMode: 'markdown',
+            height: {
+              initial: 160,
+              min: 100,
+              max: 800,
+              resizable: true,
+            },
+          },
+        },
+      },
     },
     entryActions: standardEntryActions,
     relatedCollections: {
@@ -604,11 +663,6 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
        * null. CurrentDay() supplies the current calendar day at local midnight.
        */
       name: { label: 'License name' },
-      platformId: { createDefaultValue: { expression: "FirstCtx(platformId.options, 'value')" } },
-      status: { createDefaultValue: 'Active' },
-      validFrom: { createDefaultValue: { expression: 'CurrentDay()' } },
-      quantity: { createDefaultValue: 1 },
-      enabled: { createDefaultValue: true },
     },
     entryActions: standardEntryActions,
   },

@@ -15,6 +15,11 @@ const debuggerCssSource = readFileSync(
   'utf8',
 );
 
+const ctxFindRuntimeSource = readFileSync(
+  resolve(process.cwd(), 'public/js/debugger/ctx-find-runtime.js'),
+  'utf8',
+);
+
 const pageContextSource = readFileSync(
   resolve(process.cwd(), 'src/middleware/page-context.ts'),
   'utf8',
@@ -32,6 +37,11 @@ const targetViewsSource = readFileSync(
   'utf8',
 );
 
+const ctxPropertiesSource = readFileSync(
+  resolve(process.cwd(), 'public/js/debugger/ctx-properties.js'),
+  'utf8',
+);
+
 const uiHostSource = readFileSync(
   resolve(process.cwd(), 'public/js/runtime/ui-host-runtime.js'),
   'utf8',
@@ -44,10 +54,20 @@ const expressionFormatSource = readFileSync(
   'utf8',
 );
 
+const ctxPathFormatSource = readFileSync(
+  resolve(process.cwd(), 'public/js/debugger/ctx-path-format.js'),
+  'utf8',
+);
+
 const shellViewSource = readFileSync(resolve(process.cwd(), 'views/layout/shell.ejs'), 'utf8');
 
 const developerToolsViewSource = readFileSync(
   resolve(process.cwd(), 'views/components/debugging/developer-tools.ejs'),
+  'utf8',
+);
+
+const ctxDebugViewSource = readFileSync(
+  resolve(process.cwd(), 'views/components/debugging/ctx-debug.ejs'),
   'utf8',
 );
 
@@ -82,6 +102,71 @@ const fieldToolsSource = readFileSync(
 );
 
 describe('CTX debugger presentation state', () => {
+  it('uses a toggleable second-row CTX finder with previous/next, key/value, wildcard and regex modes', () => {
+    expect(developerToolsViewSource).toContain("include('ctx-debug')");
+    expect(ctxDebugViewSource).toContain('id="ctxDebugFindBox"');
+    expect(ctxDebugViewSource).toContain('id="ctxDebugFindPrevious"');
+    expect(ctxDebugViewSource).toContain('id="ctxDebugFindNext"');
+    expect(ctxDebugViewSource).toContain('<option value="key">By key</option>');
+    expect(ctxDebugViewSource).toContain('<option value="value">By value</option>');
+    expect(ctxDebugViewSource).toContain('<option value="wildcard">Wildcard</option>');
+    expect(ctxDebugViewSource).toContain('<option value="regex">RegExpr</option>');
+    expect(ctxFindRuntimeSource).toContain("document.getElementById('ctxDebugFindSyntax')");
+    expect(ctxFindRuntimeSource).toContain('const wildcardPattern = (term) =>');
+    expect(ctxFindRuntimeSource).toContain('const searchableValue = (value) =>');
+    expect(ctxFindRuntimeSource).toContain("const mode = findMode?.value || 'key'");
+    expect(ctxFindRuntimeSource).toContain('const findMatch = (rawTerm, direction = 1) =>');
+    expect(ctxFindRuntimeSource).toContain('event.shiftKey ? -1 : 1');
+    expect(ctxFindRuntimeSource).toContain("new RegExp(term, 'i')");
+    expect(debuggerSource).toContain('createCtxFindRuntime({');
+    expect(debuggerSource).not.toContain('const findMatch = (rawTerm, direction = 1) =>');
+    expect(shellViewSource).toContain('/js/debugger/ctx-find-runtime.js');
+    expect(shellViewSource.indexOf('/js/debugger/ctx-find-runtime.js')).toBeLessThan(
+      shellViewSource.indexOf('/js/debugger/ctx-debug.js'),
+    );
+    expect(debuggerCssSource).toContain('.ctx-debug-find-row');
+    expect(debuggerCssSource).toContain('1.15rem 1.15rem 4.35rem 4.85rem');
+    expect(debuggerCssSource).toContain('.ctx-debug-find-row > .debug-tool-button');
+    expect(debuggerCssSource).toContain('padding-right: 1.15rem');
+  });
+  it('observes CTX through the canonical runtime path resolver instead of duplicating path semantics', () => {
+    expect(debuggerSource).toContain('const getExact = (path) => runtime.get(path)');
+    expect(debuggerSource).not.toContain('function getExact(path)');
+    expect(debuggerSource).not.toContain('function tokenize(path)');
+    expect(debuggerSource).not.toContain('const resolveMember = (container, member) =>');
+    expect(debuggerSource).toContain(
+      'Current lexical resolver contract used by the expression runtime',
+    );
+    expect(debuggerSource).not.toContain('future expression evaluator');
+  });
+
+  it('surfaces active CTX aliases without inventing removed initialization semantics', () => {
+    expect(debuggerSource).not.toContain("initialization: 'bi-hourglass-split'");
+    expect(debuggerSource).toContain('const activeEntryAliasTargets = () =>');
+    expect(debuggerSource).toContain("[levelPath, ['#level']]");
+    expect(debuggerSource).toContain("[entityPath, ['$entity', '$level-entity']]");
+    expect(debuggerSource).toContain("[fieldsPath, ['$entity-fields', '$level-entity-fields']]");
+    expect(debuggerSource).toContain("[entryCurrentPath, ['$entry-current']]");
+    expect(debuggerSource).not.toContain('initializationCurrentPath');
+    expect(debuggerSource).toContain(
+      "{ label: 'Aliases', value: aliasesForCtxPath(info.path).join(', ') }",
+    );
+    expect(debuggerSource).toContain('pathPresentation?.display?.(path)');
+    expect(debuggerSource).not.toContain("['Path', displayCtxPath(info.path)]");
+    expect(targetViewsSource).toContain('pathPresentation?.display?.(path)');
+    expect(targetViewsSource).not.toContain("['Path', shownSelectionPath]");
+    expect(targetViewsSource).toContain('pathPresentation?.render?.(view.rootPath, view.path)');
+    expect(targetViewsSource).toContain('displayCtxPath(view.path)');
+    expect(targetViewsSource).toContain('displayCtxPath(view.selected)');
+    expect(debuggerSource).toContain("key: '$ (ctx)'");
+    expect(targetViewsSource).toContain("view.path === 'ctx' ? '$ (ctx)'");
+    expect(ctxPropertiesSource).toContain("document.createElement('span')");
+    expect(ctxPropertiesSource).toContain('subscriber.match');
+    expect(ctxPropertiesSource).toContain('subscriber.paths.map(displayCtxPath)');
+    expect(ctxPropertiesSource).toContain('paths.title = rawPaths');
+    expect(ctxPropertiesSource).not.toContain("const paths = document.createElement('div')");
+  });
+
   it('shows company above system at the CTX root without mutating CTX semantics', () => {
     expect(debuggerSource).toContain(
       "const preferred = ['company', 'system', 'entities', 'user', 'ui']",
@@ -104,9 +189,11 @@ describe('CTX debugger presentation state', () => {
 
   it('recognizes V2 UI levels by contract and presents them with debugger badges', () => {
     expect(debuggerSource).toContain('const isUiSurfaceLevel = (value)');
-    expect(debuggerSource).toContain('UI_SURFACE_HOSTS.has(value.host)');
+    expect(debuggerSource).toContain('UI_SURFACE_HOSTS.has(control.host)');
     expect(debuggerSource).toContain("badge.className = 'ctx-debug-ui-level-badge'");
-    expect(debuggerSource).toContain("['UI level', uiSurfaceBadgeText(info.value)]");
+    expect(debuggerSource).toContain(
+      "{ label: 'UI level', value: uiSurfaceBadgeText(info.value) }",
+    );
     expect(debuggerCssSource).toContain('.ctx-debug-ui-level-badge');
   });
 
@@ -115,8 +202,11 @@ describe('CTX debugger presentation state', () => {
     const selectEnd = debuggerSource.indexOf('const allRealNodePaths =', selectStart);
     const selectSource = debuggerSource.slice(selectStart, selectEnd);
 
-    expect(selectSource).toContain("classList.toggle('d-none', !state.propertiesOpen)");
+    expect(selectSource).toContain('syncPropertiesPresentation()');
     expect(selectSource).not.toContain('state.propertiesOpen = true');
+    expect(debuggerSource).toContain(
+      "selectionPathElement?.classList.toggle('d-none', state.propertiesOpen)",
+    );
 
     // Tree expand/collapse must not override the same preference either.
     const renderNodeStart = debuggerSource.indexOf('const renderNode =');
@@ -138,20 +228,26 @@ describe('CTX debugger presentation state', () => {
   });
 
   it('uses one shared lexical highlighter for entry-form and CTX expressions', () => {
-    expect(expressionFormatSource).toContain('window.ManatOSDebugExpression');
+    expect(expressionFormatSource).toContain('window.ManatOS.debug.expression');
     expect(expressionFormatSource).toContain("emit(identifier, 'path')");
     expect(debuggerSource).toContain('const isExpressionSourcePath = (path)');
-    expect(debuggerSource).toContain('const isCompiledExpression = (value)');
-    expect(debuggerSource).toContain("compiledExpression ? 'compiled-expression'");
-    expect(debuggerSource).toContain("path.endsWith('.source')");
-    expect(debuggerSource).toContain('highlightElement(formulaElement, value.source)');
+    expect(debuggerSource).not.toContain('const isCompiledExpression = (value)');
+    expect(debuggerSource).not.toContain('compiled-expression');
+    expect(debuggerSource).not.toContain('value.requiredCapabilities');
+    expect(debuggerSource).not.toContain('info.value?.ast');
+    expect(debuggerSource).not.toContain('renderAst(');
+    expect(debuggerSource).not.toContain('ctx-debug-ast-');
+    expect(targetViewsSource).not.toContain("key === 'ast'");
+    expect(themeSource).not.toContain('.ctx-debug-ast-');
+    expect(debuggerSource).toContain('formula: isExpressionSourcePath(info.path)');
     expect(debuggerSource).toContain(
-      "label === 'Expression' || (label === 'Value' && isExpressionSourcePath(info.path))",
+      "{ label: 'Expression', value: expressionSource, formula: true }",
     );
+    expect(ctxPropertiesSource).toContain("if (row.formula && typeof row.value === 'string'");
     expect(sourceWithoutWhitespace(debuggerSource)).toContain(
       sourceWithoutWhitespace("typeof value === 'string' && isExpressionSourcePath(path)"),
     );
-    expect(debuggerSource).toContain('window.ManatOSDebugExpression.highlightElement');
+    expect(debuggerSource).toContain('window.ManatOS?.debug?.expression.highlightElement');
     expect(shellViewSource).toContain('/js/debugger/expression-format.js');
     expect(shellViewSource.indexOf('/js/debugger/expression-format.js')).toBeLessThan(
       shellViewSource.indexOf('/js/debugger/ctx-debug.js'),
@@ -188,7 +284,9 @@ describe('CTX debugger presentation state', () => {
     expect(detachedToolsSource).toContain('if (!restoring && !mainNavigating) restoreDock()');
     expect(detachedToolsSource).toContain('mainNavigating = true');
     expect(detachedToolsSource).not.toContain('detachedWindow.close();');
-    expect(detachedToolsSource).toContain('window.ManatOSDeveloperToolsHost = Object.freeze');
+    expect(detachedToolsSource).toContain(
+      'window.ManatOS.debug.developerToolsHost = Object.freeze',
+    );
     expect(detachedToolsSource).toContain('manatos:developer-tools-visibility-changed');
     expect(detachedToolsSource).toContain('restoreDock({ preserveDetachedRequest: true })');
     expect(detachedToolsSource).not.toContain('toggleButton?.addEventListener(');
@@ -278,5 +376,39 @@ describe('CTX debugger presentation state', () => {
       'const hasInspectionActions = Boolean(debugRow.definitionPath || debugRow.valuePath)',
     );
     expect(debuggingPanelSource).toContain('<% if (hasInspectionActions) { %>');
+  });
+
+  it('keeps the main CTX viewer selection non-duplicated and separates subscriber properties', async () => {
+    const template = ctxDebugViewSource;
+    const runtime = debuggerSource;
+    expect(template).not.toContain('id="ctxDebugSelection"');
+    expect(template).toContain('id="ctxDebugSelectionPath"');
+    expect(runtime).toContain('pathPresentation?.render?.(selectionPathElement, state.selected)');
+    expect(template).toContain('data-properties-tab="main"');
+    expect(template).toContain('data-properties-tab="subscribers"');
+    expect(runtime).toContain('ctxProperties?.render');
+    expect(targetViewsSource).toContain('ctxProperties?.render');
+    expect(targetViewsSource).toContain('data-properties-tab="subscribers"');
+    expect(ctxPropertiesSource).toContain("activeTab === 'subscribers'");
+    expect(ctxPropertiesSource).toContain("list.className = 'ctx-debug-subscriber-list'");
+    expect(ctxPropertiesSource).toContain('debug.expression.highlightElement');
+    expect(runtime).toContain('pathPresentation?.render?.(propertiesTitle, info.path)');
+  });
+  it('uses one shared compact CTX path caption renderer for main and rooted views', () => {
+    expect(ctxPathFormatSource).toContain("['ctx.ui.level', '$level']");
+    expect(ctxPathFormatSource).toContain('const render = (element, path) =>');
+    expect(ctxPathFormatSource).toContain(
+      'element.replaceChildren(document.createTextNode(shown.prefix), strong)',
+    );
+    expect(debuggerSource).toContain('window.ManatOS?.debug?.ctxPath');
+    expect(debuggerSource).toContain(
+      'pathPresentation?.render?.(selectionPathElement, state.selected)',
+    );
+    expect(debuggerSource).toContain('pathPresentation?.render?.(propertiesTitle, info.path)');
+    expect(targetViewsSource).toContain('window.ManatOS?.debug?.ctxPath');
+    expect(targetViewsSource).toContain('pathPresentation?.render?.(view.rootPath, view.path)');
+    expect(targetViewsSource).toContain(
+      'pathPresentation?.render?.(view.propertiesTitle, view.selected)',
+    );
   });
 });

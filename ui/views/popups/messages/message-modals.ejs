@@ -64,31 +64,39 @@
   }) %>
 <% } %>
 
-<% if (typeof applicationError !== 'undefined' && applicationError) { %>
-  <%- include('../shared/message-popup', {
-    modalId: 'applicationErrorModal',
-    labelId: 'applicationErrorModalLabel',
-    dialogClass: 'modal-lg',
-    icon: 'bi-exclamation-triangle',
-    headerClass: 'bg-danger-subtle',
-    modalTitle: 'Operation failed',
-    message: applicationError.userMessage,
-    operationTrace: applicationError.operationTrace || [],
-    popupCallingParams: {
-      error: {
-        name: applicationError.name || 'AppError',
-        code: applicationError.code || null,
-        message: applicationError.message || null,
-        userMessage: applicationError.userMessage || null,
-        retryable: applicationError.retryable === true,
-        operationTrace: applicationError.operationTrace || []
+<%
+  const runtimeApplicationError =
+    typeof applicationError !== 'undefined' && applicationError ? applicationError : null;
+%>
+<%- include('../shared/message-popup', {
+  modalId: 'applicationErrorModal',
+  labelId: 'applicationErrorModalLabel',
+  dialogClass: 'modal-lg',
+  icon: 'bi-exclamation-triangle',
+  headerClass: 'bg-danger-subtle',
+  modalTitle: 'Operation failed',
+  message: runtimeApplicationError?.userMessage || '',
+  operationTrace: runtimeApplicationError?.operationTrace || [],
+  autoShow: Boolean(runtimeApplicationError),
+  popupInvocation: runtimeApplicationError
+    ? {
+        error: {
+          name: runtimeApplicationError.name || 'AppError',
+          code: runtimeApplicationError.code || null,
+          message: runtimeApplicationError.message || null,
+          userMessage: runtimeApplicationError.userMessage || null,
+          retryable: runtimeApplicationError.retryable === true,
+          operationTrace: runtimeApplicationError.operationTrace || []
+        }
       }
-    },
-    actions: [
-      { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
-      ...(applicationError.retryable
-        ? [{ label: 'Retry', variant: 'btn-primary', onclick: "window.manatosRetry?.() || history.go(0)" }]
-        : [])
-    ]
-  }) %>
-<% } %>
+    : {},
+  actions: [
+    { label: 'Cancel', variant: 'btn-secondary', dismiss: true },
+    {
+      label: 'Retry',
+      variant: 'btn-primary',
+      action: 'retry',
+      className: runtimeApplicationError?.retryable ? '' : 'd-none'
+    }
+  ]
+}) %>

@@ -352,6 +352,36 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
     },
   }),
 
+  /**
+   * Find the first member in a CTX-addressable collection whose `matchField`
+   * equals `matchValue`. With `resultField`, return that member property.
+   * Returns null when the collection/member/result is absent.
+   *
+   * This is a generic CTX collection primitive; entity/enum semantics belong
+   * in metadata and callers, not in this function.
+   */
+  FindCtx: checked({
+    name: 'FindCtx',
+    capability: 'ctx',
+    signature: {
+      text: 'FindCtx(collection, matchField, matchValue, resultField?: string)',
+      minArguments: 3,
+      maxArguments: 4,
+      argumentTypes: ['any', 'string', 'any', 'string'],
+    },
+    evaluate: ([collection, matchField, matchValue, resultField]) => {
+      if (collection == null || typeof collection !== 'object') return null;
+      const members = Array.isArray(collection)
+        ? collection
+        : Object.values(collection as Record<string, unknown>);
+      const found = members.find(
+        (member) => resolveContextMember(member, matchField as string) === matchValue,
+      );
+      if (found === undefined) return null;
+      return resultField ? (resolveContextMember(found, resultField as string) ?? null) : found;
+    },
+  }),
+
   /* ------------------------------------------------------------------------
    * Calendar and clock functions
    * --------------------------------------------------------------------- */

@@ -37,11 +37,20 @@
           credentials: 'same-origin',
           headers: {
             Accept: 'application/json',
+            'X-ManatOS-Application-Command': '1',
           },
         });
 
         if (!response.ok) {
-          throw new Error(`Configuration update failed with HTTP ${response.status}.`);
+          const payload = await response.json().catch(() => null);
+          window.ManatOS?.errors?.fromResponse?.(response, payload, {
+            retry: () => form.requestSubmit(submit),
+          });
+          const failure = new Error(
+            payload?.error?.message || `Configuration update failed with HTTP ${response.status}.`,
+          );
+          failure.manatosPresented = true;
+          throw failure;
         }
 
         if (result instanceof HTMLElement) {
@@ -50,10 +59,16 @@
         }
       } catch (error) {
         console.warn('Configuration value could not be applied in place.', error);
-
-        if (result instanceof HTMLElement) {
-          result.textContent = 'Apply failed. The value was not confirmed as saved.';
-          result.classList.add('text-danger');
+        if (error?.manatosPresented !== true) {
+          window.ManatOS?.errors?.present?.(
+            {
+              code: 'CONFIGURATION_APPLY_FAILED',
+              message: error instanceof Error ? error.message : String(error),
+              userMessage: 'The configuration value could not be applied.',
+              retryable: true,
+            },
+            { retry: () => form.requestSubmit(submit) },
+          );
         }
       } finally {
         submit.disabled = false;

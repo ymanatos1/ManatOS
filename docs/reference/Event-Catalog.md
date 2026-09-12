@@ -14,3 +14,9 @@ The public event model is semantic rather than DOM-centric.
 A logical change should not be independently emitted by multiple writers. Dependency matching understands relevant ancestor/descendant path overlap. Derived recalculation uses the authoritative mutation route for its result rather than directly editing arbitrary mirrors.
 
 Browser custom-event names are implementation details unless explicitly promoted to a public integration contract; this catalog documents their semantic roles.
+
+## Canonical V2 surface events
+
+The V2 surface dispatcher currently defines lifecycle (`surface:*`, `child:*`), CTX/value mutation, field/validation, entry lifecycle/aggregate, selection and command events. Calculations, validation and declarative UX consume one canonical event-to-dependency projection; one semantic event may project to multiple dependency identities but each matching target is deduplicated at the event boundary. Pre-initialization field/CTX events do not trigger entry calculations, validation or declarative tab policy; `entry:initialized` establishes their deterministic first pass.
+
+See [CTX and Expression Runtime Guide](CTX-and-Expression-Runtime-Guide.md) for ownership, causality and worked examples.

@@ -7,13 +7,14 @@ const source = (relativePath: string) =>
 describe('V2 Application rich-entry acceptance', () => {
   it('keeps Application-specific composition declarative while generic V2 infrastructure owns state', () => {
     const businessUi = source('../../../shared/src/metadata/ui/business.ts');
-    const renderer = source('../../src/routes/sysbo/record-renderer.ts');
+    const businessMetadata = source('../../../shared/src/metadata/bo/business.ts');
+    const renderer = source('../../src/routes/sysbo/entry/renderer.ts');
     const collectionProjection = source(
       '../../src/runtime/state/collection-resource-projection.ts',
     );
 
     expect(businessUi).toContain("licenses: relatedLicensesCollection('applicationId')");
-    expect(businessUi).toContain("version: { createDefaultValue: '0.0.1' }");
+    expect(businessMetadata).toContain("createDefaultValue: '0.0.1'");
     expect(businessUi).toContain("href: '/bo/sys-applications/{id}/play'");
 
     expect(renderer).toContain('projectCollectionResources(');

@@ -16,7 +16,10 @@ export type SysBOFieldType =
   | 'duration'
   | 'version'
   | 'enum'
-  | 'reference';
+  | 'reference'
+  | 'picture'
+  | 'pictures'
+  | 'richText';
 
 /**
  * Metadata describing one field/property of a SysBO.
@@ -67,18 +70,14 @@ export interface SysBOFieldCalculationMetadata {
   expression: string;
 
   /**
-   * Optional causal triggers for an editable assisted-calculation field.
-   * Omit for authoritative/read-only calculated fields: those are recalculated
-   * whenever their dependencies change.
-   */
-  triggeredBy?: readonly string[];
-
-  /**
    * Materialize the calculated value into persisted entity data. The API
    * recalculates these values before commit, including background/API writes.
    */
   persisted?: boolean;
 }
+
+export type SysBOCreateDefaultValue =
+  string | number | boolean | null | Readonly<{ expression: string }>;
 
 export interface SysBOFieldMetadata {
   key: string;
@@ -91,6 +90,9 @@ export interface SysBOFieldMetadata {
 
   generated?: boolean;
   readOnly?: boolean;
+
+  /** Canonical initial value for newly created records. */
+  createDefaultValue?: SysBOCreateDefaultValue;
 
   /**
    * Persisted field maintained by application/domain logic rather than by a
@@ -278,10 +280,14 @@ export interface ManatOSEntryMetadata {
 }
 
 export interface ManatOSObjectMetadata<T> {
-  /** Stable metadata identity; may describe a first-class SysBO or a related value object. */
+  /** Stable secondary metadata/storage/API key (for example `sys-users`). */
   key: string;
+  /** Canonical symbolic entity name used as the ctx.entities property key. */
   name: string;
-  pluralName: string;
+  /** Human-facing singular label; presentation only, never entity identity. */
+  label: string;
+  /** Human-facing plural label; presentation only, never entity identity. */
+  pluralLabel: string;
 
   /** Main human/business identifying property of one object instance. */
   primaryField: keyof T & string;

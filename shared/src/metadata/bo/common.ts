@@ -21,14 +21,31 @@ export const externalAuthProviderOptionItems = [
     label: 'Microsoft',
     icon: 'microsoft',
     tenant: 'common',
+    callbackPath: '/auth/microsoft/callback',
   },
-  // Keep optional provider traits structurally present. The expression language
-  // is intentionally strict about missing object members, so metadata formulas
-  // may safely inspect `provider.option.tenant` for every provider without
-  // weakening object-path semantics globally.
-  { value: SysBOExtAuthProviderType.Google, label: 'Google', icon: 'google', tenant: null },
-  { value: SysBOExtAuthProviderType.Facebook, label: 'Facebook', icon: 'facebook', tenant: null },
-  { value: SysBOExtAuthProviderType.GitHub, label: 'GitHub', icon: 'github', tenant: null },
+  // Keep optional provider traits structurally present. CTX expressions resolve
+  // these canonical enum attributes explicitly through $entity-fields.
+  {
+    value: SysBOExtAuthProviderType.Google,
+    label: 'Google',
+    icon: 'google',
+    tenant: null,
+    callbackPath: '/auth/google/callback',
+  },
+  {
+    value: SysBOExtAuthProviderType.Facebook,
+    label: 'Facebook',
+    icon: 'facebook',
+    tenant: null,
+    callbackPath: '/auth/facebook/callback',
+  },
+  {
+    value: SysBOExtAuthProviderType.GitHub,
+    label: 'GitHub',
+    icon: 'github',
+    tenant: null,
+    callbackPath: '/auth/github/callback',
+  },
 ] as const;
 
 export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
@@ -64,6 +81,7 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
     order: 900,
 
     required: true,
+    createDefaultValue: true,
   },
 
   createdAt: {

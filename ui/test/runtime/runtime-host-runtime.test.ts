@@ -58,6 +58,46 @@ describe('UI Runtime V2 host projection', () => {
     hosts.dispose();
   });
 
+  it('keeps semantic ownership distinct from navigation hierarchy', () => {
+    const events = new SurfaceEventRuntime();
+    const surfaces = new SurfaceRuntime(events);
+    const log: string[] = [];
+    const hosts = new SurfaceHostRuntime(
+      surfaces,
+      events,
+      fakeHost('page', log) as unknown as PageHost,
+      fakeHost('popup', log) as unknown as PopupHost,
+      () => ({ element: {} as HTMLElement, dispose: () => undefined }),
+    );
+
+    const owner = surfaces.open({ host: 'page', kind: 'entry', mode: 'edit', name: 'owner' });
+    const navigationParent = surfaces.open({
+      host: 'page',
+      kind: 'list',
+      mode: 'browse',
+      name: 'navigation-parent',
+    });
+    const child = surfaces.open({
+      parentId: owner.id,
+      navigationParentId: navigationParent.id,
+      host: 'popup',
+      kind: 'selector',
+      mode: 'select',
+      name: 'child',
+    });
+
+    expect(child.parentId).toBe(owner.id);
+    expect(child.navigationParentId).toBe(navigationParent.id);
+    expect(child.path).toBe('/ui/page:navigation-parent/popup:child');
+    expect(owner.children.map((surface) => surface.id)).toContain(child.id);
+    expect(log).toContain(`deactivate:${navigationParent.id}:true`);
+    expect(log).not.toContain(`deactivate:${owner.id}:true`);
+
+    surfaces.close(child.id);
+    expect(surfaces.activeSurface()?.id).toBe(navigationParent.id);
+    hosts.dispose();
+  });
+
   it('projects recursive surface disposal into host disposal', () => {
     const events = new SurfaceEventRuntime();
     const surfaces = new SurfaceRuntime(events);

@@ -1,10 +1,11 @@
 (async () => {
   'use strict';
 
-  await window.ManatOS?.expressionCompilerReady;
-
   const runtime = window.ManatOS?.ctx;
   if (!runtime?.resolve) return;
+
+  const reactivePolicy = await import('/shared-runtime/policies/reactive-runtime-policy.js');
+  const pathsOverlap = reactivePolicy.reactivePathsOverlap;
 
   const components = [...document.querySelectorAll('[data-metadata-component="hierarchy-tree"]')];
   if (!components.length) return;
@@ -117,13 +118,6 @@
       .filter((path) => typeof path === 'string' && path);
   };
 
-  const pathsOverlap = (left, right) => {
-    if (left === right) return true;
-    const childOf = (candidate, parent) =>
-      candidate.startsWith(`${parent}.`) || candidate.startsWith(`${parent}[`);
-    return childOf(left, right) || childOf(right, left);
-  };
-
   /**
    * Convert either an ordered list snapshot or an ID-keyed workspace snapshot
    * into rows. Keyed maps are used by transactional hierarchy workspaces where
@@ -200,6 +194,8 @@
 
     const list = resolveSource(component, dataSource);
     const current = resolveSource(component, currentSource);
+    const listPath = resolveSourcePath(component, dataSource);
+    const currentPath = resolveSourcePath(component, currentSource);
     const editingId = workspaceMode ? String(component.dataset.hierarchyEditingId || '') : '';
     const rows = projectedRows(list, current, idField).filter(
       (row) => !editingId || String(row?.[idField] ?? '') !== editingId,
@@ -307,12 +303,44 @@
     const metadata = entityMetadata(component.dataset.entityKey || '');
     const entityIcon = String(options.entityIcon || '').replace(/^bi-/, '');
     const entryResolver = window.ManatOS?.entryRepresentation;
+    const entryOwnerPath = (row) => {
+      if (!row || typeof row !== 'object') return null;
+      const rowId = row?.[idField];
+      if (
+        currentIsRecord &&
+        currentPath &&
+        String(current?.[idField] ?? '') === String(rowId ?? '')
+      ) {
+        return currentPath;
+      }
+      if (!listPath) return null;
+      if (Array.isArray(list)) {
+        const index = list.findIndex(
+          (candidate) =>
+            candidate &&
+            typeof candidate === 'object' &&
+            String(candidate?.[idField] ?? '') === String(rowId ?? ''),
+        );
+        return index >= 0 ? `${listPath}[${index}]` : null;
+      }
+      if (list && typeof list === 'object') {
+        const key = Object.keys(list).find(
+          (candidateKey) =>
+            list[candidateKey] &&
+            typeof list[candidateKey] === 'object' &&
+            String(list[candidateKey]?.[idField] ?? '') === String(rowId ?? ''),
+        );
+        return key ? `${listPath}[${JSON.stringify(key)}]` : null;
+      }
+      return null;
+    };
     const resolveEntry = (row) =>
       entryResolver?.resolve
         ? entryResolver.resolve(entryRepresentation, row, {
             metadata,
             entityIcon,
             fallbackName: row?.[labelField] ?? '',
+            ownerPath: entryOwnerPath(row),
           })
         : {
             name: String(row?.[labelField] ?? ''),
@@ -668,9 +696,9 @@
           const node = button.closest('[data-hierarchy-node-id]');
           const memberId = node?.dataset?.hierarchyNodeId || '';
           const entityKey = component.dataset.entityKey || '';
-          const popup = window.ManatOSEntryPopup;
+          const popup = window.ManatOS?.popup?.entry;
           /*
-           * Hosted entry documents delegate ManatOSEntryPopup.open() to their
+           * Hosted entry documents delegate ManatOS.popup.entry.open() to their
            * owning window. Therefore the same generic node action works for a
            * page or any nested popup level; no entity or nesting-depth branch is
            * needed here.
@@ -686,14 +714,11 @@
             token,
             title: node?.dataset?.hierarchyNodeLabel || 'View entry',
             url: `/bo/${encodeURIComponent(entityKey)}/${encodeURIComponent(memberId)}?${params.toString()}`,
-            callingParams: {
-              purpose: 'hierarchy-view-entry',
-              presentationMode: 'entry',
-              entityKey,
-              selectionMode: 'single',
-              sourceEntityKey: entityKey,
-              sourceRecordId: memberId,
-              mode: 'view',
+            entityKey,
+            mode: 'view',
+            invocation: {
+              purpose: 'view',
+              presentation: { layout: 'entry' },
             },
           });
         });
@@ -865,6 +890,15 @@
       : [];
     if (targets.length) scheduleRedraw(targets);
   });
+
+  const entryRepresentationResolver = window.ManatOS?.entryRepresentation;
+  if (entryRepresentationResolver?.prepare) {
+    await Promise.all(
+      components.map((component) =>
+        entryRepresentationResolver.prepare(optionsFor(component).entryRepresentation || {}),
+      ),
+    );
+  }
 
   scheduleRedraw();
 })();

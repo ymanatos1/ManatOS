@@ -32,8 +32,13 @@ describe('UI Runtime V2 surface architecture', () => {
       mode: 'create',
       name: 'principalEntry',
       invocation: {
-        purpose: 'reference-field-add-entry',
-        defaults: { firstName: 'Yiannis', lastName: 'Manatos' },
+        purpose: 'create',
+        rules: {
+          values: {
+            firstName: { default: 'Yiannis' },
+            lastName: { default: 'Manatos' },
+          },
+        },
       },
       presentation: { title: 'Add Principal' },
       entry: { current: { firstName: 'Yiannis', lastName: 'Manatos' } },
@@ -169,9 +174,64 @@ describe('UI Runtime V2 surface architecture', () => {
     expect(runtime.find(popup.id)).toBeNull();
     expect(runtime.find(nested.id)).toBeNull();
     expect(page.children).toEqual([]);
-    expect(page.activeChildId).toBeNull();
     expect(runtime.activeSurface()).toBe(page);
     expect(page.state.active).toBe(true);
+  });
+
+  it('does not expose navigation activation as semantic ownership state', () => {
+    const runtime = new SurfaceRuntime();
+    const owner = runtime.open({ host: 'page', kind: 'entry', mode: 'edit', name: 'owner' });
+    const navigationParent = runtime.open({
+      host: 'page',
+      kind: 'list',
+      mode: 'browse',
+      name: 'navigationParent',
+    });
+    const child = runtime.open({
+      parentId: owner.id,
+      navigationParentId: navigationParent.id,
+      host: 'popup',
+      kind: 'selector',
+      mode: 'select',
+      name: 'child',
+    });
+
+    expect(owner.children.map((surface) => surface.id)).toEqual([child.id]);
+    expect('activeChildId' in owner).toBe(false);
+    expect(child.path).toBe('/ui/page:navigationParent/popup:child');
+    expect(child.path).not.toContain('/page:owner/');
+    expect(runtime.activeSurface()).toBe(child);
+
+    runtime.close(child.id);
+    expect(runtime.activeSurface()).toBe(navigationParent);
+    expect(owner.children).toEqual([]);
+  });
+
+  it('closing an inactive ownership branch preserves the independently active navigation surface', () => {
+    const runtime = new SurfaceRuntime();
+    const inactiveRoot = runtime.open({
+      host: 'page',
+      kind: 'entry',
+      mode: 'edit',
+      name: 'inactiveRoot',
+    });
+    runtime.open({
+      parentId: inactiveRoot.id,
+      host: 'popup',
+      kind: 'entry',
+      mode: 'view',
+      name: 'ownedChild',
+    });
+    const activeRoot = runtime.open({
+      host: 'page',
+      kind: 'list',
+      mode: 'browse',
+      name: 'activeRoot',
+    });
+
+    expect(runtime.activeSurface()).toBe(activeRoot);
+    runtime.close(inactiveRoot.id);
+    expect(runtime.activeSurface()).toBe(activeRoot);
   });
 
   it('emits ordered lifecycle events that can be traced independently of DOM behavior', () => {

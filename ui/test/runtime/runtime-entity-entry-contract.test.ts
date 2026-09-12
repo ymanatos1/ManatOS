@@ -10,7 +10,7 @@ const uiSource = (relativePath: string) =>
 
 describe('V2 EntityEntry canonical runtime', () => {
   it('keeps SysBO entry topology and policy browser-owned after V2 acceptance', async () => {
-    const route = await uiSource('src/routes/sysbo/record-renderer.ts');
+    const route = await uiSource('src/routes/sysbo/entry/renderer.ts');
     expect(route).not.toContain('enableV2Scenario');
     expect(route).toContain("'pages/sysbo/entry'");
     expect(route).not.toContain('new SurfaceRuntime()');
@@ -21,7 +21,7 @@ describe('V2 EntityEntry canonical runtime', () => {
   });
 
   it('keeps the canonical entry renderer free of retired engine-selection paths', async () => {
-    const route = await uiSource('src/routes/sysbo/record-renderer.ts');
+    const route = await uiSource('src/routes/sysbo/entry/renderer.ts');
 
     expect(route).not.toContain('engineSelection');
     expect(route).not.toContain('compareSemanticSnapshots');

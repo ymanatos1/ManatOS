@@ -28,7 +28,8 @@
   <% const collection = relatedCollections[key]; %>
   <% if (!collection) continue; %>
   <% const collectionSourceKey = collection.sourceKey ?? key; %>
-  <% const rows = Array.isArray(pageRelatedData[collectionSourceKey]) ? pageRelatedData[collectionSourceKey] : []; %>
+  <% const collectionResource = pageCollectionResourceData?.[collectionSourceKey]; %>
+  <% const rows = Array.isArray(collectionResource?.rows) ? collectionResource.rows : []; %>
   <% const rowMetadata = relatedMetadataRegistry[collection.entityKey]; %>
   <% const relatedRowIcon = collection.rowIcon || collection.icon || null; %>
   <% const relatedEntryIcons = (row) => {
@@ -56,12 +57,11 @@
             </tr>
           </thead>
           <tbody>
-            <% for (const row of rows) { %>
+            <% for (const [relatedRowIndex, row] of rows.entries()) { %>
               <% const rowHref = relatedRowHref(collection, row); %>
               <% let relatedFieldIndex = 0; %>
               <tr
-                data-v2-related-row="<%= JSON.stringify(row) %>"
-                data-v2-related-scope-keys="<%= JSON.stringify(Object.keys(rowMetadata?.fieldDefinition || {})) %>"
+                data-v2-related-row-index="<%= relatedRowIndex %>"
               >
                 <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
                   <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
@@ -83,9 +83,15 @@
                       data-v2-related-field-type="<%= canonicalField?.type || 'string' %>"
                       data-v2-related-option-items="<%= JSON.stringify([...(canonicalField?.optionItems || []), ...(canonicalField?.enumItems || [])]) %>"
                       data-v2-related-empty-text="<%= collectionField.presentation?.emptyText || '—' %>"
-                      <% if (valueExpression) { %>data-v2-related-value-expression="<%= valueExpression %>"<% } %>
-                      <% if (toneExpression) { %>data-v2-related-tone-expression="<%= toneExpression %>"<% } %>
-                      <% if (iconExpression) { %>data-v2-related-icon-expression="<%= iconExpression %>"<% } %>
+                      <% if (valueExpression) { %>
+                      data-v2-related-value-expression="<%= valueExpression %>"
+                      <% } %>
+                      <% if (toneExpression) { %>
+                      data-v2-related-tone-expression="<%= toneExpression %>"
+                      <% } %>
+                      <% if (iconExpression) { %>
+                      data-v2-related-icon-expression="<%= iconExpression %>"
+                      <% } %>
                     <% } %>
                   >
                     <% if (relatedFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
@@ -144,11 +150,10 @@
       </div>
     <% } else if (rows.length > 0) { %>
       <div class="authentication-identity-list">
-        <% for (const row of rows) { %>
+        <% for (const [relatedRowIndex, row] of rows.entries()) { %>
           <div
             class="authentication-identity-row"
-            data-v2-related-row="<%= JSON.stringify(row) %>"
-            data-v2-related-scope-keys="<%= JSON.stringify(Object.keys(rowMetadata?.fieldDefinition || {})) %>"
+            data-v2-related-row-index="<%= relatedRowIndex %>"
           >
             <% let relatedPanelFieldIndex = 0; %>
             <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
@@ -172,9 +177,15 @@
                   data-v2-related-field-type="<%= canonicalField?.type || 'string' %>"
                   data-v2-related-option-items="<%= JSON.stringify([...(canonicalField?.optionItems || []), ...(canonicalField?.enumItems || [])]) %>"
                   data-v2-related-empty-text="<%= collectionField.presentation?.emptyText || '—' %>"
-                  <% if (valueExpression) { %>data-v2-related-value-expression="<%= valueExpression %>"<% } %>
-                  <% if (toneExpression) { %>data-v2-related-tone-expression="<%= toneExpression %>"<% } %>
-                  <% if (iconExpression) { %>data-v2-related-icon-expression="<%= iconExpression %>"<% } %>
+                  <% if (valueExpression) { %>
+                      data-v2-related-value-expression="<%= valueExpression %>"
+                      <% } %>
+                  <% if (toneExpression) { %>
+                      data-v2-related-tone-expression="<%= toneExpression %>"
+                      <% } %>
+                  <% if (iconExpression) { %>
+                      data-v2-related-icon-expression="<%= iconExpression %>"
+                      <% } %>
                 <% } %>
               >
                 <% if (relatedPanelFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>

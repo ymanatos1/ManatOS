@@ -10,13 +10,18 @@
       "enabled": true,
       "createdAt": "2026-08-22T04:54:43.873Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-08T20:07:22.560Z",
+      "updatedAt": "2026-09-11T09:56:45.499Z",
       "updatedBy": "Admin",
       "firstName": "Yiannis",
       "lastName": "Manatos",
       "description": "Yiannis is the Admin here!",
       "telephoneNumber": null,
-      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea"
+      "principalId": "00ca6124-5764-420c-830c-ff288dd1faea",
+      "photo": {
+        "contentType": "image/jpeg",
+        "size": 158154,
+        "revision": "e26e32cd-15b8-4448-bbe8-96b92c4aff1c"
+      }
     },
     "8cd7dbd9-5b00-4e27-b061-53b6d725c33c": {
       "name": "Yiannis",
@@ -28,12 +33,19 @@
       "enabled": true,
       "createdAt": "2026-08-23T07:28:35.159Z",
       "createdBy": "Yiannis",
-      "updatedAt": "2026-08-30T05:21:39.016Z",
+      "updatedAt": "2026-09-12T06:51:45.271Z",
       "updatedBy": "Admin",
       "emailVerifiedAt": "2026-08-25T03:10:21.371Z",
       "emailVerificationSource": "github",
       "firstName": "Yiannis",
-      "lastName": "Manatos"
+      "lastName": "Manatos",
+      "telephoneNumber": null,
+      "principalId": null,
+      "photo": {
+        "contentType": "image/jpeg",
+        "size": 86939,
+        "revision": "977c7427-0437-4c48-a142-808d1dd8dbe3"
+      }
     },
     "9067a0c2-7ed1-4568-aaa6-5f0d7eb1ebd5": {
       "name": "YiannisManatos",
@@ -49,11 +61,16 @@
       "enabled": true,
       "createdAt": "2026-08-30T05:43:29.131Z",
       "createdBy": "InternalApi",
-      "updatedAt": "2026-09-05T13:06:55.151Z",
+      "updatedAt": "2026-09-11T19:27:42.428Z",
       "updatedBy": "Admin",
       "description": "hey",
       "telephoneNumber": "+309344550",
-      "principalId": null
+      "principalId": null,
+      "photo": {
+        "contentType": "image/jpeg",
+        "size": 65581,
+        "revision": "fd1380c8-4147-4105-a758-47d068f815bc"
+      }
     }
   },
   "sysPrincipals": {
@@ -90,12 +107,17 @@
       "parentId": "37d5a118-9568-4577-84fb-5b3a4706168a",
       "createdAt": "2026-08-30T12:10:41.692Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-05T13:14:12.665Z",
+      "updatedAt": "2026-09-11T19:02:45.195Z",
       "updatedBy": "Admin",
       "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad",
       "description": "fdfff",
       "firstName": "Guest",
-      "lastName": "Yiannis"
+      "lastName": "Yiannis",
+      "photo": {
+        "contentType": "image/jpeg",
+        "size": 140114,
+        "revision": "88886fde-7ed0-4085-aa32-b7882ce58055"
+      }
     },
     "37d5a118-9568-4577-84fb-5b3a4706168a": {
       "name": "ManatOS Guests Group",
@@ -109,18 +131,18 @@
       "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad"
     },
     "f7e8b2ea-7b4b-4f63-85e0-e0c7977fbac5": {
-      "name": "Mitsos",
+      "name": "Mitsos Lachtaras",
       "enabled": true,
       "principalType": "Person",
       "parentId": "55fe0fdd-f1a7-4819-8d29-37b5d63ca1f0",
       "description": "ff",
       "createdAt": "2026-09-01T04:56:29.334Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-07T03:51:03.363Z",
+      "updatedAt": "2026-09-10T08:41:50.591Z",
       "updatedBy": "Admin",
       "rootPrincipalId": "ce34b655-e494-438f-a091-ab18d2b37bad",
       "firstName": "Mitsos",
-      "lastName": ""
+      "lastName": "Lachtaras"
     },
     "bb728ee8-dca2-4919-a456-bd2b5b9e138f": {
       "name": "Maria Guest",
@@ -418,10 +440,43 @@
       "fullName": "Legal software",
       "createdAt": "2026-08-31T00:36:44.357Z",
       "createdBy": "Admin",
-      "updatedAt": "2026-09-01T06:41:57.117Z",
+      "updatedAt": "2026-09-12T06:52:33.812Z",
       "updatedBy": "Admin",
       "version": "0.0.2",
-      "description": "Legal services software."
+      "description": "Legal services software.",
+      "details": "# Dikigoriko application\n\nIt rocks!",
+      "pictures": [
+        {
+          "id": "996bac4b-c86b-45ec-8596-aff09354fe81",
+          "contentType": "image/jpeg",
+          "size": 91308,
+          "revision": "21d23d58-3aee-40bc-8fdd-376bb89da485"
+        },
+        {
+          "id": "1830f6c7-f074-48b6-8f3e-375f74f83c36",
+          "contentType": "image/jpeg",
+          "size": 208631,
+          "revision": "bcacc24b-2c61-42b9-91d7-4dc6357a1071"
+        },
+        {
+          "id": "0eeda4e8-3c69-4c0b-b307-c46acf53b857",
+          "contentType": "image/jpeg",
+          "size": 208631,
+          "revision": "e8c79f87-c433-496c-a6b4-5190086c6f63"
+        },
+        {
+          "id": "0e2ea8d2-1433-4175-8c51-a8ee669cac63",
+          "contentType": "image/jpeg",
+          "size": 69070,
+          "revision": "6d4a1409-3f7a-4aca-9288-48ac97ec15e3"
+        },
+        {
+          "id": "1223b07c-d7e3-4e67-9e8a-0fc820ef5e2d",
+          "contentType": "image/jpeg",
+          "size": 167857,
+          "revision": "6fcfab14-a830-4df7-ae05-1136900788d0"
+        }
+      ]
     }
   },
   "sysConfigurations": {

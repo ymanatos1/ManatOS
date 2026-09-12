@@ -73,6 +73,7 @@
       headers: { Accept: 'application/json' },
       cache: 'no-store',
       credentials: 'same-origin',
+      manatosBusy: false,
     });
     if (!response.ok) throw new Error(`Current-user context returned ${response.status}`);
     const payload = await response.json();
@@ -121,11 +122,11 @@
         credentials: 'same-origin',
       });
     } catch (error) {
-      window.ManatOSConnectivity?.reportFailure?.('ui-bootstrap');
+      window.ManatOS?.connectivity?.reportFailure?.('ui-bootstrap');
       throw error;
     }
 
-    window.ManatOSConnectivity?.reportSuccess?.('ui-bootstrap');
+    window.ManatOS?.connectivity?.reportSuccess?.('ui-bootstrap');
     if (!response.ok) throw new Error(`UI bootstrap returned ${response.status}`);
 
     const revision = Number(response.headers.get('X-ManatOS-Bootstrap-Revision'));
@@ -143,12 +144,12 @@
         credentials: 'same-origin',
       });
     } catch (error) {
-      window.ManatOSConnectivity?.reportFailure?.('ui-health');
+      window.ManatOS?.connectivity?.reportFailure?.('ui-health');
       throw error;
     }
 
     // Any HTTP response proves the same-origin UI process is reachable.
-    window.ManatOSConnectivity?.reportSuccess?.('ui-health');
+    window.ManatOS?.connectivity?.reportSuccess?.('ui-health');
     if (!response.ok) throw new Error(`UI health returned ${response.status}`);
 
     const health = await response.json();

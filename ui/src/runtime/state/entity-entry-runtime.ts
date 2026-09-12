@@ -6,10 +6,12 @@ import {
   type SysBOUIMetadata,
   type SysBOUIRecordTabMetadata,
 } from '@manatos/shared';
+import { reactiveEventMatchesDependencies } from '../calculations/dependency-runtime.js';
 import type { SurfaceEvent, SurfaceEventRuntime } from '../events/surface-event-runtime.js';
 import { EffectiveUiMetadataResolver } from '../resolvers/effective-ui-metadata-resolver.js';
 import {
   bindExpression,
+  createEntityInitializationExpressionScope,
   createEntryExpressionScope,
   type V2ExpressionRootSource,
 } from '../resolvers/expression-binding.js';
@@ -57,6 +59,7 @@ export class EntityEntryRuntime {
   readonly #referenceData: Readonly<Record<string, readonly Readonly<Record<string, unknown>>[]>>;
   readonly #tabs = new Map<string, EntityEntryTabState>();
   readonly #unsubscribers: (() => void)[] = [];
+  #initialized = false;
 
   constructor(options: EntityEntryRuntimeOptions) {
     if (options.surface.kind !== 'entry') {
@@ -100,8 +103,20 @@ export class EntityEntryRuntime {
         },
         ...(() => {
           const base = options.uiMetadata.record.fieldOverrides[field.key];
-          const invocation = this.surface.invocation.uiOverrides?.[field.key] as
-            Readonly<{ label?: string; visible?: boolean; editable?: boolean }> | undefined;
+          const rule = this.surface.invocation.rules?.fields?.[field.key];
+          const valueRule = this.surface.invocation.rules?.values?.[field.key];
+          const fixed = valueRule
+            ? Object.prototype.hasOwnProperty.call(valueRule, 'fixed')
+            : false;
+          const invocation =
+            rule || fixed
+              ? {
+                  ...(rule?.label !== undefined ? { label: rule.label } : {}),
+                  ...(rule?.visible !== undefined ? { visible: rule.visible } : {}),
+                  ...(fixed ? { editable: false } : {}),
+                  ...(!fixed && rule?.readOnly !== undefined ? { editable: !rule.readOnly } : {}),
+                }
+              : undefined;
           const override =
             base || invocation ? { ...(base ?? {}), ...(invocation ?? {}) } : undefined;
           return override ? { override } : {};
@@ -183,16 +198,27 @@ export class EntityEntryRuntime {
      */
     if (this.surface.mode === 'create') this.#reconcileInvocationOptionRestrictions();
 
+    const invocationValues = this.surface.invocation.rules?.values ?? {};
+    const invocationDefaults = Object.fromEntries(
+      Object.entries(invocationValues)
+        .filter(([, rule]) => Object.prototype.hasOwnProperty.call(rule, 'default'))
+        .map(([field, rule]) => [field, rule.default]),
+    );
+    const invocationFixed = Object.fromEntries(
+      Object.entries(invocationValues)
+        .filter(([, rule]) => Object.prototype.hasOwnProperty.call(rule, 'fixed'))
+        .map(([field, rule]) => [field, rule.fixed]),
+    );
     this.entry.apply(
       {
-        ...(this.surface.invocation.defaults ?? {}),
+        ...invocationDefaults,
         ...(initialization.callerDefaults ?? {}),
       },
       'caller-default',
     );
     this.entry.apply(
       {
-        ...(this.surface.invocation.overrides ?? {}),
+        ...invocationFixed,
         ...(initialization.callerOverrides ?? {}),
       },
       'caller-override',
@@ -200,6 +226,7 @@ export class EntityEntryRuntime {
     if (this.surface.mode === 'create') this.#reconcileInvocationOptionRestrictions();
 
     this.entry.completeInitialization();
+    this.#initialized = true;
     this.validation.validateAll();
     this.#refreshTabs();
   }
@@ -212,27 +239,36 @@ export class EntityEntryRuntime {
 
     for (const fieldMetadata of orderedFields) {
       const fieldKey = fieldMetadata.key;
-      const override = this.#uiMetadata.record.fieldOverrides[fieldKey];
-      if (!override || !Object.prototype.hasOwnProperty.call(override, 'createDefaultValue'))
-        continue;
+      if (!Object.prototype.hasOwnProperty.call(fieldMetadata, 'createDefaultValue')) continue;
 
       const field = this.entry.fields.get(fieldKey);
       if (!field || !isEmptyEntryFieldValue(field.value)) continue;
 
-      const candidate = override.createDefaultValue;
-      const value =
+      const candidate = fieldMetadata.createDefaultValue;
+      let value =
         candidate && typeof candidate === 'object' && 'expression' in candidate
           ? bindExpression(candidate.expression, knownFields).evaluate(
-              createEntryExpressionScope(
+              createEntityInitializationExpressionScope(
                 this.surface,
                 this.entry.fields,
                 this.#rootSource,
-                this.#fieldMetadata,
-                this.#referenceData,
               ),
-              `${this.surface.path}.fields.${fieldKey}.createDefaultValue`,
+              `${this.surface.path}.fields.${fieldKey}.value`,
             )
           : (candidate ?? null);
+
+      // Canonical metadata owns the default, but a concrete entry invocation may
+      // expose a narrower factual option domain (for example already-used enum
+      // values removed from a create catalogue). Reconcile before applying so
+      // every later default observes the effective value through CTX.
+      if (fieldMetadata.type === 'enum') {
+        const available = this.#referenceData[fieldKey];
+        const allowed = available
+          ?.map((item) => item.value)
+          .filter((item) => item != null)
+          .map(String);
+        if (allowed?.length) value = reconcileRestrictedOptionValue(value, allowed);
+      }
 
       // Apply immediately rather than accumulating a detached defaults object.
       // The next default therefore observes this value through CTX.
@@ -242,7 +278,7 @@ export class EntityEntryRuntime {
 
   #reconcileInvocationOptionRestrictions(): void {
     for (const [fieldKey, rawOverride] of Object.entries(
-      this.surface.invocation.uiOverrides ?? {},
+      this.surface.invocation.rules?.fields ?? {},
     )) {
       const metadata = this.#fieldMetadata[fieldKey];
       if (!metadata || metadata.type !== 'enum' || !rawOverride || typeof rawOverride !== 'object')
@@ -304,28 +340,11 @@ export class EntityEntryRuntime {
       );
       const dependencies = binding.resolveDependencyPaths(dependencyScope);
       const refresh = (event: SurfaceEvent): void => {
-        const rawPath =
-          event.type === 'value:changed'
-            ? `fields.${String((event.payload as { field?: unknown }).field)}.value`
-            : String((event.payload as { path?: unknown }).path ?? '');
-        if (!rawPath) return;
-        const paths =
-          event.surfaceId === '@ctx-root'
-            ? [rawPath]
-            : event.surfaceId === this.surface.id
-              ? [rawPath, `surface:${event.surfaceId}:${rawPath}`]
-              : [`surface:${event.surfaceId}:${rawPath}`];
-        if (
-          !dependencies.some((dependency) =>
-            paths.some(
-              (path) =>
-                dependency === path ||
-                dependency.startsWith(`${path}.`) ||
-                path.startsWith(`${dependency}.`),
-            ),
-          )
-        )
-          return;
+        // Dynamic UI policy must not evaluate against a partially initialized
+        // entry. The deterministic post-initialization refresh below establishes
+        // the first visible state once every initialization layer has settled.
+        if (!this.#initialized) return;
+        if (!reactiveEventMatchesDependencies(this.surface.id, event, dependencies)) return;
         this.#resolveTab(tab, binding);
       };
       this.#unsubscribers.push(this.#events.subscribe('value:changed', refresh));

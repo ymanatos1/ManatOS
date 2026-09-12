@@ -497,6 +497,43 @@ body.manatos-busy {
   overflow: hidden;
 }
 
+/* Entry field content is rendered from the start so initialization/runtime code
+ * operates on the real DOM and retains normal layout measurements, but it is not
+ * visually exposed until every initialization owner has settled. The class is
+ * emitted by the server as well as maintained by EntryInitializationRuntime, so
+ * there is no first-paint flash of unresolved defaults/calculated state. */
+.metadata-driven-record-form.manatos-entry-initializing > .entity-tabs,
+.metadata-driven-record-form.manatos-entry-initializing > .entity-tab-content {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Normal page entries keep their destination layout reserved during bootstrap,
+ * but expose one stable readiness affordance instead of a visually empty form.
+ * Hosted entry popups are gated by their parent popup runtime, so this status is
+ * never shown as a second popup-loading authority. */
+.metadata-driven-record-form {
+  position: relative;
+}
+
+.manatos-entry-opening-status {
+  display: none;
+}
+
+.metadata-driven-record-form.manatos-entry-initializing .manatos-entry-opening-status {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 8rem;
+  color: var(--manatos-muted);
+  font-weight: 600;
+  pointer-events: none;
+}
+
 /* =========================================================================
    Entity/account tabbed detail pages
    ========================================================================= */
@@ -902,7 +939,7 @@ body.manatos-busy {
 
 .metadata-version-editor {
   display: grid;
-  grid-template-columns: 6.5rem auto 6.5rem auto 6.5rem;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   flex: 1 1 auto;
   min-width: 0;
@@ -1114,11 +1151,28 @@ button.metadata-collection-summary-item:focus-visible {
   margin: 0;
 }
 .metadata-entry-popup .card-body {
+  position: relative;
   width: 100%;
   min-height: 0;
   height: auto;
   flex: 1 1 auto;
   overflow: hidden;
+}
+.metadata-entry-popup.manatos-popup-initializing .card-body::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2rem;
+  height: 2rem;
+  margin: -1rem 0 0 -1rem;
+  border: 0.22rem solid var(--bs-border-color);
+  border-top-color: var(--bs-primary);
+  border-radius: 50%;
+  animation: manatos-busy-spin 0.9s linear infinite;
+}
+.metadata-entry-popup.manatos-popup-initializing iframe {
+  visibility: hidden;
 }
 .metadata-entry-popup iframe {
   width: 100%;
@@ -1141,4 +1195,287 @@ button.metadata-collection-summary-item:focus-visible {
 
 .metadata-driven-record-form .effective-field-readonly .form-check-input {
   cursor: default;
+}
+
+.metadata-picture-field {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+}
+
+.metadata-picture-preview {
+  display: inline-flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.45rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.metadata-picture-preview:not(:disabled) {
+  cursor: pointer;
+}
+
+.metadata-picture-preview:not(:disabled):hover,
+.metadata-picture-preview:not(:disabled):focus-visible {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 0.15rem color-mix(in srgb, var(--bs-primary) 18%, transparent);
+}
+
+.metadata-picture-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.metadata-picture-placeholder {
+  color: var(--bs-secondary-color);
+  font-size: 1.65rem;
+}
+
+.metadata-picture-delete {
+  position: absolute;
+  top: 0.2rem;
+  left: 2.55rem;
+  z-index: 2;
+  padding: 0.12rem 0.32rem;
+}
+
+.metadata-picture-field > .metadata-picture-help {
+  flex: 1 1 12rem;
+  margin-top: 0;
+}
+
+.metadata-picture-editor-dialog {
+  width: min(96vw, 80rem);
+  max-width: min(96vw, 80rem);
+}
+
+/* Batch picture editing needs enough room for the file rail without shrinking the crop workspace. */
+.metadata-picture-editor-modal:has([data-picture-editor-file-list]:not(.d-none)) {
+  --bs-modal-width: min(72rem, calc(100vw - 3rem));
+}
+
+.metadata-picture-crop-stage {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.55rem;
+  background:
+    linear-gradient(45deg, var(--bs-tertiary-bg) 25%, transparent 25%) 0 0 / 1rem 1rem,
+    linear-gradient(-45deg, var(--bs-tertiary-bg) 25%, transparent 25%) 0 0 / 1rem 1rem,
+    linear-gradient(45deg, transparent 75%, var(--bs-tertiary-bg) 75%) 0 0 / 1rem 1rem,
+    linear-gradient(-45deg, transparent 75%, var(--bs-tertiary-bg) 75%) 0 0 / 1rem 1rem;
+}
+
+.metadata-picture-crop-stage canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 1120px);
+  max-height: 60vh;
+  touch-action: none;
+  cursor: default;
+}
+
+.metadata-picture-crop-stage canvas[data-picture-editor-active-tool='move'] {
+  cursor: grab;
+}
+
+.metadata-picture-crop-stage canvas[data-picture-editor-active-tool='move']:active {
+  cursor: grabbing;
+}
+
+.metadata-picture-crop-stage canvas[data-picture-editor-active-tool='crop'] {
+  cursor: crosshair;
+}
+
+.metadata-picture-crop-stage canvas[data-picture-selection-hover='true'] {
+  cursor: grab;
+}
+
+.metadata-picture-crop-stage canvas[data-picture-selection-dragging='true'] {
+  cursor: grabbing;
+}
+
+.metadata-pictures-field {
+  min-width: 0;
+}
+
+.metadata-pictures-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 6rem);
+  align-items: start;
+  align-content: start;
+  gap: 0.6rem;
+  max-width: 100%;
+  max-height: 20.5rem;
+  padding: 0.25rem 0.1rem 0.45rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.metadata-pictures-item,
+.metadata-pictures-add {
+  position: relative;
+  width: 6rem;
+  height: 6rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.55rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.metadata-pictures-item {
+  overflow: hidden;
+  cursor: grab;
+}
+
+.metadata-pictures-item.is-dragging {
+  opacity: 0.45;
+}
+
+.metadata-pictures-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.metadata-pictures-delete {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.metadata-pictures-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--bs-primary);
+  font-size: 1.5rem;
+}
+
+.metadata-picture-editor-modal [data-picture-editor-tool] {
+  min-width: 5.5rem;
+}
+
+/* Canonical rich-text entity field: editor mode is private UI state; the hidden/source textarea remains the CTX control. */
+.metadata-rich-text-field {
+  min-width: 0;
+}
+
+.metadata-rich-text-visual,
+.metadata-rich-text-preview,
+.metadata-rich-text-source {
+  min-height: var(--manatos-rich-text-min-height, 100px);
+  max-height: var(--manatos-rich-text-max-height, 800px);
+  height: var(--manatos-rich-text-height, 160px);
+}
+
+.metadata-rich-text-visual,
+.metadata-rich-text-preview {
+  padding: 1rem;
+  overflow: auto;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: var(--bs-body-bg);
+}
+
+.metadata-rich-text-visual.is-readonly-fallback {
+  white-space: pre-wrap;
+  font-family: var(--bs-font-monospace);
+}
+
+.metadata-rich-text-preview > :last-child {
+  margin-bottom: 0;
+}
+
+.metadata-rich-text-source {
+  resize: vertical;
+  font-family: var(--bs-font-monospace);
+}
+
+.metadata-rich-text-source.is-fixed-height {
+  resize: none;
+}
+
+.metadata-picture-editor-workspace {
+  display: flex;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.metadata-picture-editor-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.metadata-picture-editor-file-list {
+  flex: 0 0 15rem;
+  max-height: 68vh;
+  overflow-y: auto;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.55rem;
+  background: var(--bs-tertiary-bg);
+  padding: 0.4rem;
+}
+
+.metadata-picture-editor-file {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.4rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.metadata-picture-editor-file:hover,
+.metadata-picture-editor-file.active {
+  background: var(--bs-secondary-bg);
+}
+
+.metadata-picture-editor-file.active {
+  box-shadow: inset 0 0 0 1px var(--bs-primary);
+}
+
+.metadata-picture-editor-file img {
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: cover;
+  border-radius: 0.3rem;
+  background: var(--bs-body-bg);
+}
+
+.metadata-picture-editor-file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 767.98px) {
+  .metadata-picture-editor-workspace {
+    flex-direction: column;
+  }
+
+  .metadata-picture-editor-file-list {
+    flex-basis: auto;
+    max-height: 10rem;
+  }
 }

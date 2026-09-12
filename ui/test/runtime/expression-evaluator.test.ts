@@ -37,6 +37,18 @@ function testCtx() {
 }
 
 describe('ManatOS expression parser/evaluator', () => {
+  it('interns one AST per exact expression source for the process lifetime', () => {
+    const source = "firstname+' '+lastname";
+    const first = compileExpression(source);
+    const second = compileExpression(source);
+    const differentlyAuthored = compileExpression("firstname + ' ' + lastname");
+
+    expect(second).toBe(first);
+    expect(second.ast).toBe(first.ast);
+    expect(differentlyAuthored).not.toBe(first);
+    expect(differentlyAuthored.ast).not.toBe(first.ast);
+  });
+
   it('annotates function capabilities while preserving lazy execution semantics', () => {
     const compiled = compileExpression(
       "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
@@ -107,6 +119,87 @@ describe('ManatOS expression parser/evaluator', () => {
 
     expect(evaluateTest("entries['p2'].parentId", ctx, entryFields)).toBe('p1');
     expect(evaluateTest('entry.parentId', ctx, entryFields)).toBe('p2');
+  });
+
+  it('resolves CTX root/parent/level selectors, dynamic path segments and level-entity aliases', () => {
+    const providerOptions = [
+      { value: 'microsoft', label: 'Microsoft' },
+      { value: 'google', label: 'Google' },
+    ];
+    const entryFields = { provider: { value: null } };
+    const entry = {
+      control: {
+        id: 'entry',
+        host: 'page',
+        kind: 'entry',
+        mode: 'create',
+        name: 'entry',
+        path: '/ui/page:sys-ext-auth-providers/new',
+        scope: 'sys',
+        entityKey: 'sys-ext-auth-providers',
+        entityName: 'sysExtAuthProviders',
+        state: { lifecycle: 'ready' },
+      },
+      fields: entryFields,
+    };
+    const list = {
+      control: {
+        id: 'list',
+        host: 'page',
+        kind: 'list',
+        mode: 'browse',
+        name: 'list',
+        path: '/ui/page:sys-ext-auth-providers',
+        scope: 'sys',
+        state: { lifecycle: 'ready' },
+      },
+      level: entry,
+    };
+    const ctx = {
+      entities: {
+        sysExtAuthProviders: {
+          metadata: {
+            fieldDefinition: {
+              provider: { enumItems: providerOptions },
+            },
+          },
+        },
+      },
+      ui: { level: list },
+    };
+
+    expect(evaluateTest('$', ctx, entryFields)).toBe(ctx);
+    expect(evaluateTest('#.control.entityName', ctx, entryFields)).toBe('sysExtAuthProviders');
+    expect(evaluateTest('#level.control.entityName', ctx, entryFields)).toBe('sysExtAuthProviders');
+    expect(
+      evaluateTest(
+        '$.entities.(#level.control.entityName).metadata.fieldDefinition.provider.enumItems[0].value',
+        ctx,
+        entryFields,
+      ),
+    ).toBe('microsoft');
+    expect(
+      evaluateTest(
+        '$level-entity.metadata.fieldDefinition.provider.enumItems[1].value',
+        ctx,
+        entryFields,
+      ),
+    ).toBe('google');
+    expect(
+      evaluateTest("FirstCtx($level-entity-fields.provider.enumItems, 'value')", ctx, entryFields),
+    ).toBe('microsoft');
+
+    const initialization = {
+      entityName: 'sysExtAuthProviders',
+      entry: { current: { provider: 'microsoft' } },
+    };
+    expect(
+      evaluateTest("FirstCtx($entity-fields.provider.enumItems, 'value')", ctx, initialization),
+    ).toBe('microsoft');
+    expect(evaluateTest('$entry-current.provider', ctx, initialization)).toBe('microsoft');
+    expect(() => evaluateTest('$.entities.(null)', ctx, entryFields)).toThrow(
+      /dynamic CTX path segment.*non-empty string or non-negative integer/i,
+    );
   });
 
   it('derives the current V2 UI level and full active chain from nested ctx.ui.level contexts', () => {
@@ -359,12 +452,12 @@ describe('ManatOS expression parser/evaluator', () => {
     );
   });
 
-  it('resolves lexical variables from the current ctx node and explicit ctx paths from root', () => {
+  it('resolves lexical variables from the current ctx node and explicit $ paths from root', () => {
     const ctx = testCtx();
     expect(evaluateTest("firstname + ' ' + lastname", ctx, ctx.page.fields)).toBe(
       'Yiannis Manatos',
     );
-    expect(evaluateTest('ctx.page.fields.amount.value * 2', ctx, ctx.page.fields)).toBe(24);
+    expect(evaluateTest('$.page.fields.amount.value * 2', ctx, ctx.page.fields)).toBe(24);
   });
 
   it('resolves arrays both by zero-based index and semantic member id wherever they occur in CTX', () => {
@@ -387,8 +480,8 @@ describe('ManatOS expression parser/evaluator', () => {
       },
     };
     const entry = ctx.page.page;
-    expect(evaluateTest('ctx.company.platforms[0].name', ctx, entry)).toBe('ManatOS CRM Platform');
-    expect(evaluateTest('ctx.company.platforms.protocrm.name', ctx, entry)).toBe(
+    expect(evaluateTest('$.company.platforms[0].name', ctx, entry)).toBe('ManatOS CRM Platform');
+    expect(evaluateTest('$.company.platforms.protocrm.name', ctx, entry)).toBe(
       'ManatOS CRM Platform',
     );
     expect(evaluateTest('entry.emailAddresses[1].address', ctx, entry)).toBe('second@example.com');
@@ -416,12 +509,16 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest('fullName', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
   });
 
-  it('parses calculated fields when declared but resolves fresh variable values only when read', () => {
+  it('keeps calculated fields semantic and resolves fresh variable values only when read', () => {
     const ctx = testCtx();
     const fullName = calculatedContextField("firstname + ' ' + lastname");
     ctx.page.fields = { ...ctx.page.fields, fullname: fullName };
 
-    expect(fullName.ast.kind).toBe('binary');
+    expect(fullName).toEqual({
+      expression: "firstname + ' ' + lastname",
+      value: null,
+    });
+    expect('ast' in fullName).toBe(false);
     expect(evaluateTest('fullname', ctx, ctx.page.fields)).toBe('Yiannis Manatos');
 
     ctx.page.fields.firstname.value = 'John';

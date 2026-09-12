@@ -1,5 +1,6 @@
 import {
   ForbiddenAppError,
+  operationContext,
   SysBOUserRole,
   type SysBOAuthorizationCapabilities,
   type PlatformAuthorizationCapabilities,
@@ -47,13 +48,17 @@ export class AuthorizationService {
     sysBOKey: string,
     record?: SysBOEntity,
   ): Promise<void> {
-    const allowed = await this.can(action, subject, sysBOKey, record);
+    await operationContext.run('Authorize SysBO operation', async (scope) => {
+      scope.addContext({ action, sysBOKey, userId: subject.userId, recordId: record?.id ?? null });
 
-    if (!allowed) {
-      throw new ForbiddenAppError(
-        `${subject.userName} is not authorized to ${action} ${sysBOKey}.`,
-      );
-    }
+      const allowed = await this.can(action, subject, sysBOKey, record);
+
+      if (!allowed) {
+        throw new ForbiddenAppError(
+          `${subject.userName} is not authorized to ${action} ${sysBOKey}.`,
+        );
+      }
+    });
   }
 
   /**

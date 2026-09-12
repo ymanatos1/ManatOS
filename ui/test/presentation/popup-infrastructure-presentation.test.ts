@@ -34,9 +34,13 @@ describe('popup infrastructure presentation', () => {
     expect(runtime).toContain('const closeUiLevel = (handle) =>');
     expect(runtime).toContain('runtime.delete(handle.path');
     expect(runtime).toContain("action: 'reactivate-parent-surface'");
+    expect(runtime).toContain('`${handle.parentPath}.control.state`');
+    expect(runtime).toContain('...(entityKey ? { entityKey: String(entityKey) } : {}),');
+    expect(runtime).toContain('snapshotDescriptors');
+    expect(runtime).toContain('restoreDescriptor');
   });
 
-  it('renders signed-in identity immediately before the language selector', async () => {
+  it('does not duplicate signed-in identity in horizontal navigation', async () => {
     const html = await ejs.renderFile(horizontalNavView, {
       currentUser: { name: 'Admin', role: 'Admin' },
       app: {
@@ -47,9 +51,8 @@ describe('popup infrastructure presentation', () => {
     });
     const $ = load(html);
 
-    expect($('.horizontal-user-identity .horizontal-user-name').text().trim()).toBe('Admin');
-    expect($('.horizontal-user-identity .horizontal-user-role').text().trim()).toBe('Admin');
-    expect($('.horizontal-user-identity').nextAll('.horizontal-language-nav').length).toBe(1);
+    expect($('.horizontal-user-identity')).toHaveLength(0);
+    expect($('.horizontal-language-nav')).toHaveLength(1);
   });
 
   it('keeps stable rich-popup copy in the centralized semantic content model', () => {
@@ -111,8 +114,8 @@ describe('popup infrastructure presentation', () => {
     );
 
     expect(popupRuntime).toContain('const preparePopupPlacement =');
-    expect(popupRuntime).toContain("parent?.level?.host === 'popup'");
-    expect(popupRuntime).toContain('parent.level.state?.popup');
+    expect(popupRuntime).toContain("parent?.level?.control?.host === 'popup'");
+    expect(popupRuntime).toContain('parent.level.control.state?.popup');
     expect(popupRuntime).toContain('openedPopupsCounter');
     expect(popupRuntime).toContain('POPUP_CASCADE_DELTA_X');
     expect(popupRuntime).toContain('POPUP_CASCADE_DELTA_Y');
@@ -138,7 +141,7 @@ describe('popup infrastructure presentation', () => {
     expect(popupRuntime).toContain('target.focus({ preventScroll: true })');
   });
 
-  it('projects Bootstrap popups into the same callingParams/presentation/state CTX contract as custom popups', async () => {
+  it('projects Bootstrap popups into the same invocation/presentation/state CTX contract as custom popups', async () => {
     const popupRuntime = await readFile(
       resolve(testDirectory, '../../public/js/popups/popup-runtime.js'),
       'utf8',
@@ -149,10 +152,10 @@ describe('popup infrastructure presentation', () => {
     );
 
     expect(popupRuntime).toContain("kind: String(modal.dataset.popupKind || 'modal')");
-    expect(popupRuntime).toContain('const createPayload =');
-    expect(popupRuntime).toContain('callingParams: { ...callingParams }');
-    expect(popupRuntime).toContain('callingParams.presentationMode');
-    expect(popupRuntime).toContain('callingParams.title');
+    expect(popupRuntime).not.toContain('const createPayload =');
+    expect(popupRuntime).toContain('invocation: { ...invocation }');
+    expect(popupRuntime).toContain('invocation.presentation?.layout');
+    expect(popupRuntime).toContain('invocation.presentation?.title');
     expect(popupRuntime).toContain('presentation: {');
     expect(popupRuntime).toContain('state: {');
     expect(popupRuntime).toContain('const surfaceByModal = new WeakMap()');
@@ -160,12 +163,13 @@ describe('popup infrastructure presentation', () => {
     expect(popupRuntime).toContain('const popupPath = () => activePopupPath()');
     expect(popupRuntime).not.toContain("'ctx.page'");
     expect(recordSelector).not.toContain('popupRuntime?.popupPath?.()');
-    expect(recordSelector).toContain(
-      "const fallbackPopupPath = `${leafPagePath() || 'ctx.ui.level'}.level`",
-    );
-    expect(recordSelector).toContain('const popupPath = v2Surface?.path || fallbackPopupPath');
-    expect(recordSelector).toContain('const popupRuntime = window.ManatOSPopupRuntime');
-    expect(recordSelector).toContain('popupRuntime?.createPayload?.({');
+    expect(recordSelector).toContain('const v2Surface = popupRuntime?.openUiLevel?.({');
+    expect(recordSelector).toContain('const popupPath = v2Surface.path');
+    expect(recordSelector).not.toContain('fallbackPopupPath');
+    expect(recordSelector).not.toContain("action: 'open-selector-surface'");
+    expect(recordSelector).toContain('const popupRuntime = window.ManatOS?.popup?.runtime');
+    expect(recordSelector).not.toContain('popupRuntime?.createPayload?.({');
+    expect(recordSelector).toContain('popupRuntime.updateUiLevel?.(');
   });
 
   it('installs popup lifecycle before auto-show bootstrapping and keeps shell recentering loosely coupled', async () => {
@@ -177,12 +181,20 @@ describe('popup infrastructure presentation', () => {
       resolve(testDirectory, '../../public/js/shell/shell.js'),
       'utf8',
     );
+    const popupRuntime = await readFile(
+      resolve(testDirectory, '../../public/js/popups/popup-runtime.js'),
+      'utf8',
+    );
 
     const popupRuntimeIndex = shellView.indexOf('/js/popups/popup-runtime.js');
     const busyRuntimeIndex = shellView.indexOf('/js/shell/busy.js');
     expect(popupRuntimeIndex).toBeGreaterThan(-1);
     expect(busyRuntimeIndex).toBeGreaterThan(-1);
     expect(popupRuntimeIndex).toBeLessThan(busyRuntimeIndex);
-    expect(shellRuntime).toContain('window.ManatOSPopupRuntime?.refreshVisibleModalCenters?.()');
+    expect(shellRuntime).toContain(
+      'window.ManatOS?.popup?.runtime?.refreshVisibleModalCenters?.()',
+    );
+    expect(popupRuntime).toContain('window.ManatOS.popup.runtime = Object.freeze');
+    expect(popupRuntime).not.toContain('window.ManatOSPopupRuntime =');
   });
 });

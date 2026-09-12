@@ -13,8 +13,9 @@ import { commonSysBOFields, externalAuthProviderOptionItems } from './common.js'
 
 export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
   key: 'sys-users',
-  name: 'User',
-  pluralName: 'Users',
+  name: 'sysUsers',
+  label: 'User',
+  pluralLabel: 'Users',
 
   primaryField: 'name',
 
@@ -94,6 +95,15 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
       nullable: true,
       maxLength: 32,
       normalize: { expression: 'TelephoneNbr(value)' },
+    },
+
+    photo: {
+      key: 'photo',
+      label: 'Photo',
+      type: 'picture',
+      order: 22,
+      nullable: true,
+      applicationManaged: true,
     },
 
     principalId: {
@@ -242,8 +252,9 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
 export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExternalIdentity> = {
   key: 'external-identities',
-  name: 'External identity',
-  pluralName: 'External identities',
+  name: 'sysExternalIdentities',
+  label: 'External identity',
+  pluralLabel: 'External identities',
   primaryField: 'provider',
   relationships: {
     user: {
@@ -347,8 +358,9 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
 
 export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserInvitation> = {
   key: 'user-invitations',
-  name: 'User invitation',
-  pluralName: 'User invitations',
+  name: 'sysUserInvitations',
+  label: 'User invitation',
+  pluralLabel: 'User invitations',
   primaryField: 'email',
   relationships: {
     principal: {
@@ -426,8 +438,9 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
 
 export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> = {
   key: 'sys-ext-auth-providers',
-  name: 'External authentication provider',
-  pluralName: 'External authentication providers',
+  name: 'sysExtAuthProviders',
+  label: 'External authentication provider',
+  pluralLabel: 'External authentication providers',
   // Provider is the human/business identity shown as the clickable list value.
   primaryField: 'provider',
   entry: {
@@ -438,6 +451,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
   },
   fieldDefinition: {
     ...commonSysBOFields,
+    enabled: { ...commonSysBOFields.enabled! },
     name: {
       ...commonSysBOFields.name!,
       label: 'Provider name',
@@ -453,6 +467,9 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
       unique: true,
       enumValues: Object.values(SysBOExtAuthProviderType),
       enumItems: externalAuthProviderOptionItems,
+      createDefaultValue: {
+        expression: "FirstCtx($entity-fields.provider.enumItems, 'value')",
+      },
     },
     clientId: {
       key: 'clientId',
@@ -482,6 +499,10 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
       maxLength: 300,
       generated: true,
       readOnly: true,
+      createDefaultValue: {
+        expression:
+          "FindCtx($entity-fields.provider.enumItems, 'value', $entry-current.provider, 'callbackPath')",
+      },
     },
     tenant: {
       key: 'tenant',

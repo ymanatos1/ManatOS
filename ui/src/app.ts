@@ -58,8 +58,8 @@ export function createUiApp() {
   app.set('view engine', 'ejs');
   app.set('views', resolve(uiRoot, 'views'));
 
-  app.use(express.urlencoded({ extended: true }));
-  app.use(express.json());
+  app.use(express.urlencoded({ extended: true, limit: '16mb' }));
+  app.use(express.json({ limit: '2mb' }));
 
   app.get('/favicon.ico', (_req, res) => {
     res.sendFile(resolve(uiRoot, 'public/assets/m1/favicon.ico'));
@@ -67,8 +67,19 @@ export function createUiApp() {
 
   app.use('/assets', express.static(resolve(uiRoot, 'public/assets')));
   app.use('/css', express.static(resolve(uiRoot, 'public/css')));
-  // Expose the built shared package as ES modules so the browser compiles the
-  // same canonical expression language locally instead of receiving serialized ASTs.
+  // Repository-built browser bundles and their emitted assets live under
+  // public/vendor. Serve them from the same /vendor URL space used by package
+  // assets so browser imports never fall through to the HTML 404 handler.
+  app.use(
+    '/vendor',
+    express.static(resolve(uiRoot, 'public/vendor'), {
+      setHeaders(response) {
+        if (config.NODE_ENV !== 'production') response.setHeader('Cache-Control', 'no-store');
+      },
+    }),
+  );
+  // Expose browser-safe shared runtime modules (evaluation policy, field policy, etc.).
+  // Canonical metadata expressions themselves cross the browser boundary already parsed.
   app.use('/shared-runtime', express.static(sharedRuntimeRoot));
   app.use(
     '/js',

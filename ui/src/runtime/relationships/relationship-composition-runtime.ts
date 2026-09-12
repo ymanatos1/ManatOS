@@ -109,7 +109,7 @@ export class RelationshipCompositionRuntime {
       scope: attached.surface.scope,
       entityKey: decision.details.targetEntityKey,
       ...(payload.recordId ? { recordId: payload.recordId } : {}),
-      invocation: this.#invocation(attached, field, payload.targetField, action),
+      invocation: this.#invocation(attached, field, action),
       ...(action === 'add-entry' ? { entry: { original: null, current: {} } } : {}),
     });
     this.#pending.set(child.id, { sourceSurfaceId, targetField: payload.targetField });
@@ -142,7 +142,6 @@ export class RelationshipCompositionRuntime {
   #invocation(
     attached: AttachedEntry,
     field: SysBOFieldMetadata,
-    targetField: string,
     action: 'add-entry' | 'select-existing' | 'open-entry',
   ): SurfaceInvocation {
     const related = field.referenceSelection?.createRelated;
@@ -159,32 +158,53 @@ export class RelationshipCompositionRuntime {
           )
         : undefined;
     const defaults = action === 'add-entry' ? project(related?.defaults) : undefined;
-    const overrides = action === 'add-entry' ? project(related?.fixedValues) : undefined;
+    const fixed = action === 'add-entry' ? project(related?.fixedValues) : undefined;
+    const valueRules = {
+      ...Object.fromEntries(
+        Object.entries(defaults ?? {}).map(([fieldName, value]) => [fieldName, { default: value }]),
+      ),
+      ...Object.fromEntries(
+        Object.entries(fixed ?? {}).map(([fieldName, value]) => [fieldName, { fixed: value }]),
+      ),
+    };
+    const fieldRules = Object.fromEntries(
+      Object.entries(related?.uiOverrides ?? {}).map(([fieldName, rule]) => {
+        const source = rule as Readonly<Record<string, unknown>>;
+        return [
+          fieldName,
+          {
+            ...(typeof source.visible === 'boolean' ? { visible: source.visible } : {}),
+            ...(typeof source.readOnly === 'boolean' ? { readOnly: source.readOnly } : {}),
+            ...(source.editable === false ? { readOnly: true } : {}),
+            ...(typeof source.required === 'boolean' ? { required: source.required } : {}),
+            ...(typeof source.enabled === 'boolean' ? { enabled: source.enabled } : {}),
+            ...(typeof source.label === 'string' ? { label: source.label } : {}),
+            ...(Array.isArray(source.allowedValues) ? { allowedValues: source.allowedValues } : {}),
+            ...(Array.isArray(source.excludedValues)
+              ? { excludedValues: source.excludedValues }
+              : {}),
+            ...(typeof source.allowedEnumItemTrait === 'string'
+              ? { allowedEnumItemTrait: source.allowedEnumItemTrait }
+              : {}),
+          },
+        ];
+      }),
+    );
     return {
-      purpose: `relationship:${action}`,
-      sourceSurfaceId: attached.surface.id,
-      ...(attached.surface.entityKey ? { sourceEntityKey: attached.surface.entityKey } : {}),
-      ...(attached.surface.recordId ? { sourceRecordId: attached.surface.recordId } : {}),
-      ...(field.referenceBOKey ? { targetEntityKey: field.referenceBOKey } : {}),
-      targetField,
-      ...(action === 'select-existing' ? { selectionMode: 'single' as const } : {}),
-      ...(defaults ? { defaults } : {}),
-      ...(overrides ? { overrides } : {}),
-      ...(related?.uiOverrides ? { uiOverrides: related.uiOverrides } : {}),
-      ...(field.referenceSelection
-        ? {
-            parameters: {
-              relationshipSelection: {
-                ...(field.referenceSelection.filterExpression
-                  ? { filterExpression: field.referenceSelection.filterExpression }
-                  : {}),
-                ...(field.referenceSelection.uniqueThrough
-                  ? { uniqueThrough: field.referenceSelection.uniqueThrough }
-                  : {}),
-              },
-            },
-          }
-        : {}),
+      purpose: action === 'select-existing' ? 'select' : action === 'add-entry' ? 'create' : 'view',
+      caller: {
+        surfaceRef: attached.surface.path,
+        ...(attached.surface.entityName ? { entityName: attached.surface.entityName } : {}),
+        ...(attached.surface.recordId ? { recordId: attached.surface.recordId } : {}),
+      },
+      rules: {
+        ...(Object.keys(valueRules).length ? { values: valueRules } : {}),
+        ...(Object.keys(fieldRules).length ? { fields: fieldRules } : {}),
+        ...(action === 'select-existing' && field.referenceSelection?.filterExpression
+          ? { query: { predicate: field.referenceSelection.filterExpression } }
+          : {}),
+      },
+      ...(action === 'select-existing' ? { behavior: { selection: 'single' as const } } : {}),
     };
   }
 

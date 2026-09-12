@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { sysBOApplicationsMetadata, sysBOLicensesMetadata } from '@manatos/shared';
+import {
+  sysBOApplicationsMetadata,
+  sysBOLicensesMetadata,
+  sysBOExtAuthProvidersMetadata,
+  sysBOPrincipalsMetadata,
+  sysBOUsersMetadata,
+  sysBOUsersUIMetadata,
+} from '@manatos/shared';
 
 import { allSysBOUIMetadata } from '../../src/metadata/sysbo-ui-registry.js';
 
@@ -47,13 +54,14 @@ describe('metadata-driven SysBO UI conventions', () => {
     }
   });
 
-  it('keeps the User General tab identity/state first, then Email and Telephone before a dedicated Description row', () => {
+  it('keeps the User General tab identity/state/photo first, then Email and Telephone before a dedicated Description row', () => {
     const user = allSysBOUIMetadata['sys-users'];
     const general = user.record.tabs.find((tab) => tab.id === 'general');
 
-    expect(general?.fields.slice(0, 5)).toEqual([
+    expect(general?.fields.slice(0, 6)).toEqual([
       'name',
       'enabled',
+      'photo',
       'email',
       'telephoneNumber',
       'description',
@@ -61,9 +69,10 @@ describe('metadata-driven SysBO UI conventions', () => {
     expect(general?.fields.indexOf('description')).toBeLessThan(
       general?.fields.indexOf('firstName') ?? -1,
     );
-    expect(general?.content?.slice(0, 6)).toEqual([
+    expect(general?.content?.slice(0, 7)).toEqual([
       { kind: 'field', field: 'name', span: 6 },
-      { kind: 'field', field: 'enabled', span: 6 },
+      { kind: 'field', field: 'enabled', span: 2 },
+      { kind: 'field', field: 'photo', span: 4 },
       { kind: 'field', field: 'email', span: 6 },
       { kind: 'field', field: 'telephoneNumber', span: 6 },
       { kind: 'break' },
@@ -78,6 +87,7 @@ describe('metadata-driven SysBO UI conventions', () => {
     expect(general?.fields).toEqual([
       'principalType',
       'enabled',
+      'photo',
       'firstName',
       'lastName',
       'name',
@@ -86,10 +96,13 @@ describe('metadata-driven SysBO UI conventions', () => {
       'parentId',
       'rootPrincipalId',
     ]);
-    expect(principal.record.fieldOverrides.principalType?.createDefaultValue).toBe('Person');
+    expect(sysBOPrincipalsMetadata.fieldDefinition.principalType?.createDefaultValue).toBe(
+      'Person',
+    );
     expect(general?.content).toEqual([
-      { kind: 'field', field: 'principalType', span: 6 },
-      { kind: 'field', field: 'enabled', span: 6 },
+      { kind: 'field', field: 'principalType', span: 5 },
+      { kind: 'field', field: 'enabled', span: 3 },
+      { kind: 'field', field: 'photo', span: 4 },
       { kind: 'field', field: 'firstName', span: 6 },
       { kind: 'field', field: 'lastName', span: 6 },
       { kind: 'field', field: 'name', span: 6 },
@@ -118,6 +131,17 @@ describe('metadata-driven SysBO UI conventions', () => {
       { kind: 'field', field: 'description', span: 12 },
       { kind: 'field', field: 'version', span: 6 },
     ]);
+
+    const details = application.record.tabs.find((tab) => tab.id === 'details');
+    expect(details?.fields).toEqual(['details', 'pictures']);
+    expect(details?.content).toEqual([
+      { kind: 'field', field: 'details', span: 12 },
+      { kind: 'field', field: 'pictures', span: 12 },
+    ]);
+    expect(sysBOApplicationsMetadata.fieldDefinition.details).toMatchObject({
+      type: 'richText',
+      nullable: true,
+    });
   });
 
   it('gives every metadata-driven entry form the same standard Save/Delete lifecycle actions', () => {
@@ -180,10 +204,11 @@ describe('metadata-driven SysBO UI conventions', () => {
 
     const sysUser = allSysBOUIMetadata['sys-users'];
     expect(sysUser.record.entryActions?.delete?.enabled).toEqual({
-      expression: 'id !== user.fields.id.value',
+      expression: '#level.entry.current.id !== $.user.fields.id.value',
     });
     expect(sysUser.record.entryActions?.delete?.disabledReason).toEqual({
-      expression: "id === user.fields.id.value ? 'You cannot delete your own user account.' : null",
+      expression:
+        "#level.entry.current.id === $.user.fields.id.value ? 'You cannot delete your own user account.' : null",
     });
     expect(sysUser.record.entryActions?.verifyEmail).toMatchObject({
       kind: 'command',
@@ -200,17 +225,17 @@ describe('metadata-driven SysBO UI conventions', () => {
     const applications = allSysBOUIMetadata['sys-applications'];
     const licenses = allSysBOUIMetadata['sys-licenses'];
 
-    expect(applications.record.fieldOverrides.enabled?.createDefaultValue).toBe(true);
+    expect(sysBOApplicationsMetadata.fieldDefinition.enabled?.createDefaultValue).toBe(true);
     expect(licenses.record.fieldOverrides.name?.label).toBe('License name');
-    expect(licenses.record.fieldOverrides.platformId?.createDefaultValue).toEqual({
-      expression: "FirstCtx(platformId.options, 'value')",
+    expect(sysBOLicensesMetadata.fieldDefinition.platformId?.createDefaultValue).toEqual({
+      expression: "FirstCtx($entity-fields.platformId.enumItems, 'value')",
     });
     expect(sysBOLicensesMetadata.fieldDefinition.platformId?.enumItems?.[0]).toMatchObject({
       value: expect.any(String),
       label: 'protoCRM',
     });
-    expect(licenses.record.fieldOverrides.status?.createDefaultValue).toBe('Active');
-    expect(licenses.record.fieldOverrides.validFrom?.createDefaultValue).toEqual({
+    expect(sysBOLicensesMetadata.fieldDefinition.status?.createDefaultValue).toBe('Active');
+    expect(sysBOLicensesMetadata.fieldDefinition.validFrom?.createDefaultValue).toEqual({
       expression: 'CurrentDay()',
     });
     expect(sysBOLicensesMetadata.fieldDefinition.validFrom?.type).toBe('date');
@@ -222,13 +247,11 @@ describe('metadata-driven SysBO UI conventions', () => {
       calculation: {
         expression:
           'validFrom == null || validUntil == null ? null : CalendarDurationBetween(validFrom, validUntil)',
-        triggeredBy: ['validUntil'],
       },
     });
     expect(sysBOLicensesMetadata.fieldDefinition.validUntil?.calculation).toEqual({
       expression:
         'validFrom == null || validityDuration == null ? null : CalendarAddDuration(validFrom, validityDuration)',
-      triggeredBy: ['validFrom', 'validityDuration'],
     });
     const general = licenses.record.tabs.find((tab) => tab.id === 'general');
     const contents = licenses.record.tabs.find((tab) => tab.id === 'contents');
@@ -251,8 +274,8 @@ describe('metadata-driven SysBO UI conventions', () => {
     expect(general?.content).not.toContainEqual(validityComponent);
     expect(contents?.content?.[0]).toEqual(validityComponent);
     expect(general?.content).toContainEqual({ kind: 'field', field: 'description', span: 12 });
-    expect(licenses.record.fieldOverrides.quantity?.createDefaultValue).toBe(1);
-    expect(licenses.record.fieldOverrides.enabled?.createDefaultValue).toBe(true);
+    expect(sysBOLicensesMetadata.fieldDefinition.quantity?.createDefaultValue).toBe(1);
+    expect(sysBOLicensesMetadata.fieldDefinition.enabled?.createDefaultValue).toBe(true);
 
     expect(contents).toMatchObject({
       label: 'Contents',
@@ -304,7 +327,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       component: {
         key: 'contextual-help',
         readOnly: true,
-        bindings: { selectedKey: { expression: 'provider.value' } },
+        bindings: { selectedKey: { expression: '#level.entry.current.provider' } },
         options: {
           itemsDataKey: 'providerDefinitions',
           itemKey: 'provider',
@@ -326,7 +349,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       component: {
         key: 'contextual-help',
         readOnly: true,
-        bindings: { selectedKey: { expression: 'provider.value' } },
+        bindings: { selectedKey: { expression: '#level.entry.current.provider' } },
         options: {
           itemsDataKey: 'providerDefinitions',
           itemKey: 'provider',
@@ -337,6 +360,24 @@ describe('metadata-driven SysBO UI conventions', () => {
       },
     });
     expect(providers.record.fieldOverrides.callbackPath?.helpText).toContain('PUBLIC_BASE_URL');
-    expect(providers.record.fieldOverrides.enabled?.createDefaultValue).toBe(true);
+    expect(sysBOExtAuthProvidersMetadata.fieldDefinition.enabled?.createDefaultValue).toBe(true);
+  });
+
+  it('declares the User photo as a canonical picture field in the General tab', () => {
+    expect(sysBOUsersMetadata.fieldDefinition.photo?.type).toBe('picture');
+    expect(sysBOUsersMetadata.fieldDefinition.photo?.applicationManaged).toBe(true);
+    const general = sysBOUsersUIMetadata.record.tabs.find((tab) => tab.id === 'general');
+    expect(general?.fields).toContain('photo');
+    expect(
+      sysBOUsersUIMetadata.record.fieldOverrides.photo?.presentation?.pictureEditor,
+    ).toMatchObject({
+      maxSourceBytes: 20_000_000,
+      cropAspectRatio: 1,
+      outputSize: 768,
+      outputContentType: 'image/jpeg',
+    });
+    expect(general?.content).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'field', field: 'photo' })]),
+    );
   });
 });

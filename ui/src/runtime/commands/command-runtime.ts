@@ -54,11 +54,11 @@ export class CommandRuntime {
     this.register('surface.back', (command) => {
       const surface = this.surfaces.find(command.surfaceId);
       if (!surface) throw new Error(`V2 command source surface not found: ${command.surfaceId}`);
-      const parentId = surface.parentId;
+      const navigationParentId = surface.navigationParentId;
       const result: SurfaceResult = { outcome: 'cancelled', surfaceId: surface.id };
       this.#results.set(surface.id, result);
       this.surfaces.close(surface.id);
-      return parentId ? this.surfaces.find(parentId) : null;
+      return navigationParentId ? this.surfaces.find(navigationParentId) : null;
     });
   }
 

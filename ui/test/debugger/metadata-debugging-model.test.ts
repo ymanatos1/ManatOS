@@ -12,12 +12,6 @@ const baseInput = () => ({
   },
   metadataUI: { record: { tabs: [], entryActions: {} } },
   compiledEntityContextName: 'SysUser',
-  compiledEntityContext: {
-    metadata: {
-      fieldDefinition: { fullName: { calculation: { ast: { type: 'BinaryExpression' } } } },
-    },
-  },
-  compiledUIRecord: {},
   ctxFields: { firstName: { value: 'Ada' }, fullName: { value: 'Ada Test' } },
   ctxValue: (key: string) =>
     key === 'fullName' ? 'Ada Test' : key === 'firstName' ? 'Ada' : undefined,
@@ -25,9 +19,6 @@ const baseInput = () => ({
   overrides: {},
   relatedCollections: {},
   relatedMetadataRegistry: {},
-  pageRelatedData: {},
-  collectionValue: vi.fn(),
-  relatedExpressionScope: vi.fn((row: unknown) => row),
 });
 
 describe('metadata Debugging model', () => {
@@ -44,6 +35,7 @@ describe('metadata Debugging model', () => {
       'ctx.entities.SysUser.metadata.fieldDefinition.fullName.calculation.expression',
     );
     expect(valueRow?.row.valuePath).toBe('ctx.ui.level.entry.fullName');
+    expect(valueRow?.row).not.toHaveProperty('ast');
   });
 
   it('returns no expression rows when developer Debugging is disabled', () => {

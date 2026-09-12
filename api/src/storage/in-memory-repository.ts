@@ -94,7 +94,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
 
     /*
      * Apply caller-supplied list exceptions before ordinary filtering, sorting
-     * and paging. The canonical AST is storage-neutral: the in-memory adapter
+     * and paging. The compiled predicate AST is storage-neutral within the API runtime: the in-memory adapter
      * evaluates it directly today; a future RDBMS adapter can translate the
      * same AST into a parameterized SQL WHERE predicate. True means EXCLUDE.
      */
@@ -274,7 +274,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
     const existing = this.records.get(id);
 
     if (!existing) {
-      throw new NotFoundError(this.metadata.name, id);
+      throw new NotFoundError(this.metadata.label, id);
     }
 
     /*
@@ -334,7 +334,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
     const existing = this.records.get(id);
 
     if (!existing) {
-      throw new NotFoundError(this.metadata.name, id);
+      throw new NotFoundError(this.metadata.label, id);
     }
 
     await auditService.beforeDelete(actor, this.metadata.key, existing);
@@ -399,7 +399,7 @@ export class InMemoryRepository<T extends SysBOEntity> {
         throw new ConflictError(
           'DUPLICATE_BO_VALUE',
 
-          `${this.metadata.name}.${field.key} '${String(value)}' already exists.`,
+          `${this.metadata.label}.${field.key} '${String(value)}' already exists.`,
 
           `${field.label} '${String(value)}' is already in use. Please enter another value.`,
         );

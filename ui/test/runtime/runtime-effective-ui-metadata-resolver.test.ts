@@ -24,7 +24,9 @@ describe('V2 EffectiveUiMetadataResolver', () => {
       { field: 'principalType' },
       {
         field: 'parentId',
-        override: { editable: { expression: "principalType !== 'Company'" } },
+        override: {
+          editable: { expression: "#level.entry.current.principalType !== 'Company'" },
+        },
       },
     ]);
 

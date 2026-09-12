@@ -56,7 +56,7 @@
   // changes safe during boot and delegate modal recentering once that runtime
   // is available. This avoids a hard global-symbol dependency from shell.js.
   const refreshVisibleModalCenters = () => {
-    window.ManatOSPopupRuntime?.refreshVisibleModalCenters?.();
+    window.ManatOS?.popup?.runtime?.refreshVisibleModalCenters?.();
   };
 
   const DEVELOPER_DOCK_WIDTH_KEY = 'manatos.debug.developerDock.width.v2';

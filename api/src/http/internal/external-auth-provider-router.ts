@@ -6,7 +6,7 @@ import type {
   SaveStoredSysBOExtAuthProviderInput,
   SaveVerifiedSysBOExtAuthProviderInput,
   SysBOExtAuthProviderService,
-} from '../../services/sys-ext-auth-provider-service.js';
+} from '../../services/sysbo/external-auth-provider-service.js';
 import { sendCommand } from '../response.js';
 
 /**

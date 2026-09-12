@@ -35,7 +35,7 @@ describe('message modal presentation', () => {
     expect($('#warningMessageModal .modal-body').text()).toContain('could not be sent');
   });
 
-  it('projects the transport-safe application error into popup callingParams for CTX inspection', async () => {
+  it('projects the transport-safe application error into popup invocation for CTX inspection', async () => {
     const html = await ejs.renderFile(view, {
       applicationError: {
         name: 'ConflictError',
@@ -47,17 +47,17 @@ describe('message modal presentation', () => {
       },
     });
     const $ = load(html);
-    const callingParams = JSON.parse(
-      $('#applicationErrorModal').attr('data-popup-calling-params') || '{}',
+    const invocation = JSON.parse(
+      $('#applicationErrorModal').attr('data-popup-invocation') || '{}',
     );
 
-    expect(callingParams.error).toMatchObject({
+    expect(invocation.error).toMatchObject({
       name: 'ConflictError',
       code: 'RELATIONSHIP_CONFLICT',
       message: 'Principal is already linked.',
       userMessage: 'That Principal is already linked to another User.',
       retryable: false,
     });
-    expect(callingParams.error.operationTrace).toEqual([{ id: 'op-1', status: 'failed' }]);
+    expect(invocation.error.operationTrace).toEqual([{ id: 'op-1', status: 'failed' }]);
   });
 });

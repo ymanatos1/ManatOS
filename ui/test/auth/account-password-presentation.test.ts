@@ -35,5 +35,13 @@ describe('account password presentation', () => {
     expect(form.attr('data-busy-title')).toContain('Changing your password');
     expect($('[data-rule="match"]').length).toBe(1);
     expect($('[data-password-submit]').is('[disabled]')).toBe(true);
+    const footerRight = $('.modal-footer .popup-footer-right');
+    const rightActions = footerRight
+      .children()
+      .map((_, element) => $(element).text().trim())
+      .get();
+    expect($('.modal-footer .popup-footer-left').children().length).toBe(0);
+    expect(rightActions).toEqual(['Cancel', 'Change password']);
+    expect(footerRight.find('a').first().attr('href')).toBe('/account');
   });
 });
