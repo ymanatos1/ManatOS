@@ -318,6 +318,19 @@
     control.setCustomValidity(message);
   };
 
+  const setVersionValue = (root, control, value) => {
+    if (!(root instanceof Element) || !(control instanceof HTMLInputElement)) return;
+    const source = value == null ? '' : String(value).trim();
+    const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(source);
+    const parts = ['major', 'minor', 'patch'];
+    root.querySelectorAll('[data-version-part]').forEach((partControl) => {
+      if (!(partControl instanceof HTMLInputElement)) return;
+      const index = parts.indexOf(partControl.dataset.versionPart || '');
+      partControl.value = index >= 0 && match ? match[index + 1] : '';
+    });
+    control.value = source;
+  };
+
   const setFieldValue = (control, value, { emit = false, cause = {} } = {}) => {
     if (!(
       control instanceof HTMLInputElement ||
@@ -331,7 +344,8 @@
       setDurationValue(root, value, { emit, cause });
       return;
     }
-    if (component === 'reference') setReferenceValue(control, value);
+    if (component === 'version') setVersionValue(root, control, value);
+    else if (component === 'reference') setReferenceValue(control, value);
     else if (component === 'enum') setEnumValue(control, value);
     else if (control instanceof HTMLInputElement && control.type === 'checkbox')
       control.checked = Boolean(value);
@@ -394,6 +408,21 @@
         } catch {
           /* Clipboard may be unavailable in insecure contexts. */
         }
+        return;
+      }
+      case 'revert': {
+        if (action.disabled || isReadOnly(control)) return;
+        const ctxRuntime = window.ManatOS?.ctx;
+        const pagePath = owningEntryPath(root) || owningEntryPath(control);
+        const fieldKey = action.dataset.fieldKey || control.dataset.ctxField;
+        if (!ctxRuntime?.updateField || !pagePath || !fieldKey) return;
+        const field = ctxRuntime.get?.(`${pagePath}.fields.${fieldKey}`);
+        if (!field || field.dirty !== true) return;
+        ctxRuntime.updateField(pagePath, fieldKey, field.originalValue, undefined, {
+          source: 'field-tools',
+          action: 'revert',
+          triggerPath: `${pagePath}.fields.${fieldKey}.value`,
+        });
         return;
       }
       case 'inspect-ctx': {

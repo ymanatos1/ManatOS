@@ -22,6 +22,7 @@
   const details = document.getElementById('apiTrafficDetails');
   const detailsTitle = document.getElementById('apiTrafficDetailsTitle');
   const detailsBody = document.getElementById('apiTrafficDetailsBody');
+  const detailsTabs = document.getElementById('apiTrafficDetailsTabs');
   const detailsClose = document.getElementById('apiTrafficDetailsClose');
   const requestTab = document.getElementById('apiTrafficRequestTab');
   const responseTab = document.getElementById('apiTrafficResponseTab');
@@ -81,7 +82,13 @@
     ignoreRouteSelections: saved.ignoreRouteSelections === true,
     lastId: null,
     selectedId: typeof saved.selectedId === 'string' ? saved.selectedId : null,
-    detailTab: saved.detailTab === 'response' ? 'response' : 'request',
+    detailTab:
+      typeof saved.detailTab === 'string' &&
+      (saved.detailTab === 'request' ||
+        saved.detailTab === 'response' ||
+        saved.detailTab.startsWith('log:'))
+        ? saved.detailTab
+        : 'request',
     hiddenRoutes: new Set(readLocalArray(ROUTE_STATE_KEY)),
     knownRoutes: new Set(readLocalArray(ROUTE_CATALOG_KEY)),
     // Boot-scoped counters live in sessionStorage, never durable localStorage.
@@ -102,6 +109,8 @@
     pollingSuspended: false,
     pollInFlight: false,
     renderedDetailKey: null,
+    logsByRequestId: new Map(),
+    logRequestsInFlight: new Set(),
   };
 
   const persistState = () => {
@@ -185,6 +194,39 @@
   };
 
   const selectedEntry = () => state.entries.find((entry) => entry.id === state.selectedId) || null;
+
+  const detailLogName = () =>
+    state.detailTab.startsWith('log:') ? state.detailTab.slice('log:'.length) : null;
+
+  const availableLogs = (entry) => state.logsByRequestId.get(entry.requestId) || [];
+
+  const loadLogsForEntry = async (entry) => {
+    if (
+      !entry?.requestId ||
+      state.logsByRequestId.has(entry.requestId) ||
+      state.logRequestsInFlight.has(entry.requestId)
+    )
+      return;
+
+    state.logRequestsInFlight.add(entry.requestId);
+    try {
+      const response = await fetch(
+        `/bo/debug/api-traffic/${encodeURIComponent(entry.requestId)}/logs`,
+        { headers: { Accept: 'application/json' }, cache: 'no-store', manatosBusy: false },
+      );
+      if (!response.ok) return;
+      const payload = await response.json();
+      state.logsByRequestId.set(entry.requestId, Array.isArray(payload.logs) ? payload.logs : []);
+    } catch {
+      state.logsByRequestId.set(entry.requestId, []);
+    } finally {
+      state.logRequestsInFlight.delete(entry.requestId);
+      if (selectedEntry()?.requestId === entry.requestId) {
+        state.renderedDetailKey = null;
+        renderDetails(true);
+      }
+    }
+  };
 
   const observeRoutes = (entries) => {
     let changed = false;
@@ -312,14 +354,20 @@
       return;
     }
 
-    const detailKey = `${entry.id}:${state.detailTab}`;
+    const logs = availableLogs(entry);
+    const selectedLogName = detailLogName();
+    if (selectedLogName && !logs.some((log) => log.name === selectedLogName)) {
+      state.detailTab = 'request';
+    }
+
+    const detailKey = `${entry.id}:${state.detailTab}:${logs.map((log) => log.name).join('|')}`;
     if (!force && state.renderedDetailKey === detailKey) return;
 
     /*
-     * The traffic list is live, but the selected request/response is an
+     * The traffic list is live, but the selected request/response/log is an
      * inspection surface. Polling must never rebuild its DOM because doing so
-     * resets the developer's scroll position while they are reading a payload.
-     * Re-render details only when the selected entry or active detail tab changes.
+     * resets the developer's scroll position while they are reading payloads.
+     * Re-render details only when selection, tab or available log sources change.
      */
     state.renderedDetailKey = detailKey;
     details.classList.remove('d-none');
@@ -329,6 +377,26 @@
     requestTab?.setAttribute('aria-selected', String(state.detailTab === 'request'));
     responseTab?.setAttribute('aria-selected', String(state.detailTab === 'response'));
 
+    detailsTabs?.querySelectorAll('[data-api-log-tab]').forEach((tab) => tab.remove());
+    for (const log of logs) {
+      const tab = document.createElement('button');
+      tab.className = `api-traffic-details-tab${
+        state.detailTab === `log:${log.name}` ? ' is-active' : ''
+      }`;
+      tab.type = 'button';
+      tab.role = 'tab';
+      tab.dataset.apiLogTab = log.name;
+      tab.setAttribute('aria-selected', String(state.detailTab === `log:${log.name}`));
+      tab.textContent = log.name;
+      tab.addEventListener('click', () => {
+        state.detailTab = `log:${log.name}`;
+        state.renderedDetailKey = null;
+        persistState();
+        renderDetails(true);
+      });
+      detailsTabs?.appendChild(tab);
+    }
+
     const meta = `<dl class="api-traffic-meta">
       <dt>Status</dt><dd>${escapeHtml(entry.status ?? 'network error')}</dd>
       <dt>Duration</dt><dd>${escapeHtml(entry.durationMs)} ms</dd>
@@ -337,9 +405,16 @@
     </dl>`;
     if (state.detailTab === 'request') {
       detailsBody.innerHTML = `${meta}${entry.requestBody === undefined ? '<div class="api-traffic-empty">No request body.</div>' : `<pre>${escapeHtml(pretty(entry.requestBody))}</pre>`}`;
-    } else {
+    } else if (state.detailTab === 'response') {
       detailsBody.innerHTML = `${meta}${entry.error ? `<pre>${escapeHtml(entry.error)}</pre>` : ''}${entry.responseBody === undefined ? '<div class="api-traffic-empty">No response body.</div>' : `<pre>${escapeHtml(pretty(entry.responseBody))}</pre>`}`;
+    } else {
+      const log = logs.find((candidate) => state.detailTab === `log:${candidate.name}`);
+      detailsBody.innerHTML = log
+        ? `${meta}<pre>${escapeHtml(log.content)}</pre>`
+        : `${meta}<div class="api-traffic-empty">The selected log is no longer available.</div>`;
     }
+
+    void loadLogsForEntry(entry);
   };
 
   const render = () => {
@@ -570,6 +645,8 @@
     state.lastId = null;
     state.selectedId = null;
     state.renderedDetailKey = null;
+    state.logsByRequestId.clear();
+    state.logRequestsInFlight.clear();
     // Clear only the visible/captured request buffer. Route counters are
     // intentionally boot-lifetime telemetry and therefore continue until the
     // ManatOS UI boot id changes on a system/server restart.

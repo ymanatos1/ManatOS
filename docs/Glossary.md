@@ -25,7 +25,8 @@ This glossary is the quick lookup for terminology used throughout the ManatOS do
 | Resource               | Owner-managed runtime data exposed for component/surface behavior without pretending it is a persisted field. |
 | Selector               | List-like child surface that returns a semantic selection result to its caller.                               |
 | Surface                | Internal runtime object represented publicly through a UI level.                                              |
-| SysBO                  | Metadata-described System Business Object known to generic ManatOS infrastructure.                            |
+| Entity                 | Generic metadata-driven business-object definition; may be system-owned or future application-defined.        |
+| SysBO                  | System-owned entity naming/category convention; not a synonym for every entity using the infrastructure.      |
 | UI level               | One node in the recursive active page/popup UI chain.                                                         |
 | UI metadata            | Metadata describing presentation and interaction independently of canonical entity semantics.                 |
 | Workspace              | Owner-managed transactional working model for compound/aggregate editing.                                     |

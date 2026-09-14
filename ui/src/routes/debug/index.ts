@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { config } from '../../config.js';
 import { clearApiTrafficEntries, listApiTrafficEntries } from '../../debug/api-traffic-store.js';
+import { readApiTrafficLogs } from '../../debug/api-traffic-log-reader.js';
 import { requireCsrf } from '../../middleware/csrf.js';
 
 /**
@@ -22,6 +23,15 @@ export function createDebugRoutes(): Router {
     const afterId = typeof _req.query.after === 'string' ? _req.query.after : undefined;
     res.set('Cache-Control', 'no-store');
     res.json({ entries: listApiTrafficEntries(afterId) });
+  });
+
+  router.get('/api-traffic/:requestId/logs', async (req, res) => {
+    if (config.NODE_ENV === 'production') {
+      res.sendStatus(404);
+      return;
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json({ logs: await readApiTrafficLogs(String(req.params.requestId ?? '')) });
   });
 
   router.post('/api-traffic/clear', requireCsrf, (_req, res) => {

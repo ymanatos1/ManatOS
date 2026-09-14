@@ -2,6 +2,7 @@ import {
   ForbiddenAppError,
   operationContext,
   SysBOUserRole,
+  type EntityCollectionAuthorizationCapabilities,
   type SysBOAuthorizationCapabilities,
   type PlatformAuthorizationCapabilities,
   type SysBOEntity,
@@ -27,8 +28,8 @@ export type SysBOAuthorizationAction = 'read' | 'create' | 'update' | 'delete';
  * Central authorization service for SysBO access.
  *
  * Read:
- *   Company-owned entities follow their record rules; protoCRM applications are
- *   entitlement-scoped for every non-Admin user.
+ *   Company-owned entities follow their record rules. Superusers have inspection-only
+ *   access to protected administration/platform entities; Administrators retain full access.
  *
  * Create:
  *   Generic creation is Admin-only.
@@ -38,9 +39,7 @@ export type SysBOAuthorizationAction = 'read' | 'create' | 'update' | 'delete';
  *   Guest/User/Superuser may modify only related records.
  */
 export class AuthorizationService {
-  constructor(store: InMemoryDataStore) {
-    void store;
-  }
+  constructor(private readonly store: InMemoryDataStore) {}
 
   async assertCan(
     action: SysBOAuthorizationAction,
@@ -92,10 +91,31 @@ export class AuthorizationService {
   }
 
   /**
+   * Resolve collection capabilities for several entities through the same
+   * authoritative can() policy used by CRUD and per-entity capability routes.
+   * This projection exists so shell/navigation consumers do not reconstruct
+   * role/entity visibility rules independently.
+   */
+  async entityCollectionCapabilities(
+    subject: AuthorizationSubject,
+    sysBOKeys: readonly string[],
+  ): Promise<EntityCollectionAuthorizationCapabilities> {
+    return Object.fromEntries(
+      await Promise.all(
+        [...new Set(sysBOKeys)].map(
+          async (sysBOKey) => [sysBOKey, await this.capabilities(subject, sysBOKey)] as const,
+        ),
+      ),
+    );
+  }
+
+  /**
    * Resolve safe platform-level capability facts for UI/other clients.
    *
-   * This deliberately owns the Admin bypass and license/principal traversal so
-   * no client needs enough raw authorization inputs to reconstruct policy.
+   * This deliberately owns the role/platform-access decision and future
+   * license/principal traversal so no client needs enough raw authorization
+   * inputs to reconstruct policy. Admin and Superuser currently have platform
+   * execution access; User/Guest do not.
    */
   async platformCapabilities(
     subject: AuthorizationSubject,
@@ -107,7 +127,8 @@ export class AuthorizationService {
     void platformId;
 
     return {
-      platformAccess: subject.role === SysBOUserRole.Admin,
+      platformAccess:
+        subject.role === SysBOUserRole.Admin || subject.role === SysBOUserRole.Superuser,
     };
   }
 
@@ -117,9 +138,13 @@ export class AuthorizationService {
     sysBOKey: string,
     record?: SysBOEntity,
   ): Promise<boolean> {
-    /** External authentication configuration contains security-sensitive settings. */
-    if (sysBOKey === 'sys-ext-auth-providers') {
-      return subject.role === SysBOUserRole.Admin;
+    /**
+     * Protected configuration surfaces are fully writable only by Administrators.
+     * Superusers may inspect them, but may never mutate them through generic entity CRUD.
+     */
+    if (sysBOKey === 'sys-ext-auth-providers' || sysBOKey === 'sys-configurations') {
+      if (subject.role === SysBOUserRole.Admin) return true;
+      return subject.role === SysBOUserRole.Superuser && action === 'read';
     }
 
     /**
@@ -135,12 +160,15 @@ export class AuthorizationService {
       );
     }
 
+    /** Administrators have full access to every other entity operation. */
+    if (subject.role === SysBOUserRole.Admin) return true;
+
     /**
-     * Administrators may perform every other action.
+     * Superuser is an inspection role for generic entity administration.
+     * Read rules below still scope what can be inspected; all generic mutations
+     * are denied before audit/relationship fallbacks can accidentally grant them.
      */
-    if (subject.role === SysBOUserRole.Admin) {
-      return true;
-    }
+    if (subject.role === SysBOUserRole.Superuser && action !== 'read') return false;
 
     /**
      * SysBOUser reads are record-scoped for every non-Admin role.
@@ -153,10 +181,24 @@ export class AuthorizationService {
     if (action === 'read' && sysBOKey === 'sys-users') {
       return record === undefined || record.id === subject.userId;
     }
-    /** Platform applications are Admin-only until the new license authorization model lands. */
-    if (action === 'read' && sysBOKey === 'sys-applications') return false;
-    /** License administration remains Admin-only while entitlement rules are redesigned. */
-    if (action === 'read' && sysBOKey === 'sys-licenses') return false;
+    /** protoCRM Applications are inspectable by Superusers; User/Guest remain denied. */
+    if (action === 'read' && sysBOKey === 'sys-applications') {
+      return subject.role === SysBOUserRole.Superuser;
+    }
+
+    /**
+     * Company identity/licensing reads are organization-scoped for non-Admins.
+     * Collection access remains available so the list pipeline can return zero
+     * or more authorized rows; direct record reads use the same row predicate.
+     */
+    if (action === 'read' && sysBOKey === 'sys-principals') {
+      if (subject.role === SysBOUserRole.Guest) return false;
+      return record === undefined || this.principalIsInSubjectOrganization(subject, record);
+    }
+    if (action === 'read' && sysBOKey === 'sys-licenses') {
+      if (subject.role === SysBOUserRole.Guest) return false;
+      return record === undefined || this.licenseIsInSubjectOrganization(subject, record);
+    }
 
     /** Other Company-owned SysBO reads retain the current baseline rule. */
     if (action === 'read') {
@@ -233,6 +275,35 @@ export class AuthorizationService {
     }
 
     return visible;
+  }
+
+  private async subjectOrganizationRootId(subject: AuthorizationSubject): Promise<string | null> {
+    const user = await this.store.sysUsers.getById(subject.userId);
+    if (!user?.principalId) return null;
+
+    const principal = await this.store.sysPrincipals.getById(user.principalId);
+    if (!principal) return null;
+    return principal.rootPrincipalId ?? principal.id;
+  }
+
+  private async principalIsInSubjectOrganization(
+    subject: AuthorizationSubject,
+    record: SysBOEntity,
+  ): Promise<boolean> {
+    const rootId = await this.subjectOrganizationRootId(subject);
+    if (!rootId) return false;
+    const principal = record as SysBOEntity & { rootPrincipalId?: string | null };
+    return principal.id === rootId || principal.rootPrincipalId === rootId;
+  }
+
+  private async licenseIsInSubjectOrganization(
+    subject: AuthorizationSubject,
+    record: SysBOEntity,
+  ): Promise<boolean> {
+    const principalId = (record as SysBOEntity & { principalId?: string }).principalId;
+    if (!principalId) return false;
+    const principal = await this.store.sysPrincipals.getById(principalId);
+    return principal ? this.principalIsInSubjectOrganization(subject, principal) : false;
   }
 
   /**

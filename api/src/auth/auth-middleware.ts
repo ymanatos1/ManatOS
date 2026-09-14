@@ -10,6 +10,7 @@ import {
 import { operationMiddleware } from '../http/middleware/operation-middleware.js';
 
 import { accessTokenStore } from './access-token-store.js';
+import { apiContextRuntime } from '../context/api-context-runtime.js';
 
 /**
  * Require a valid API Bearer session.
@@ -54,6 +55,7 @@ const requireAuthenticatedCore: RequestHandler = (req, _res, next) => {
   }
 
   req.auth = auth;
+  apiContextRuntime.setUser({ userId: auth.userId, userName: auth.userName, role: auth.role });
 
   req.accessToken = token;
 

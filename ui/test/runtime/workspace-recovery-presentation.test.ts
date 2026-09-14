@@ -26,6 +26,7 @@ describe('persistent per-user workspace recovery', () => {
     expect(recovery).toContain('await window.ManatOS?.uiHost?.prepareGentleClose?.(level.path)');
     expect(recovery).toContain('await window.ManatOS?.popup?.entry?.gentleCloseAll?.()');
     expect(recovery).toContain('gentleCloseAllRecoverableModals?.()');
+    expect(recovery).toContain('retireAllVisibleModals?.()');
     expect(recovery).toContain('await writePackage(recoveryPackage)');
     expect(recovery.indexOf('await writePackage(recoveryPackage)')).toBeLessThan(
       recovery.indexOf('await window.ManatOS?.uiHost?.prepareGentleClose?.(level.path)'),
@@ -47,6 +48,8 @@ describe('persistent per-user workspace recovery', () => {
     expect(popup).toContain('const gentleCloseAll = async () =>');
     expect(popup).toContain('const restoreDescriptor = async (descriptor) =>');
     expect(popupRuntime).toContain('gentleCloseAllRecoverableModals');
+    expect(popupRuntime).toContain('retireAllVisibleModals');
+    expect(popupRuntime).toContain("document.querySelectorAll('.modal-backdrop')");
   });
 
   it('captures only dirty fields and restores specialized fields through the component contract', async () => {

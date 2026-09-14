@@ -21,7 +21,7 @@ It is intentionally flow-oriented: each section answers **which screens particip
 [AUTH] Authenticated session
 [ADMIN] Administrative workspace
 [ACCOUNT] Account details
-[BO] SysBO list / entry
+[BO] metadata-driven entity list / entry
 [PROVIDER] External provider administration
 [ORG] Principal organization workspace
 [REL] Related-entry editors
@@ -91,7 +91,7 @@ Flow:
 
 Registration uses system-page controls and shared password-policy behavior. The resulting SysUser later appears through the normal metadata-driven Users administration pages; **registration UI and SysUser administration are different presentation/workflow layers over related business data**.
 
-For the metadata-driven User entry model, see [`../apps-design/protocrm/Users-and-Principals.md`](../apps-design/protocrm/Users-and-Principals.md).
+For the metadata-driven User entry model, see [`../company/Users-and-Principals.md`](../company/Users-and-Principals.md).
 
 ---
 
@@ -165,12 +165,12 @@ See [`../usage/System-and-Account-Pages.md`](../usage/System-and-Account-Pages.m
 
 ---
 
-## 5. Generic SysBO administration flow
+## 5. Generic entity administration flow
 
 This is the model flow for Users, Principals, Applications, Licenses and future metadata-driven entities.
 
 ```text
-Participants: U=Operator | L=Generic list page | E=Generic entry page | CTX=Page CTX | API=SysBO API
+Participants: U=Operator | L=Generic list page | E=Generic entry page | CTX=Page CTX | API=current system-entity API
 
  1. U --> L  Search/filter/sort/select
  2. L --> E  Open existing or Add new

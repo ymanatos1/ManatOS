@@ -79,15 +79,6 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     return control?.value ?? null;
   };
 
-  const fieldOptionFromCtx = (key, value) => {
-    if (!entryPageFieldsPath || !key) return undefined;
-    const options = runtime?.get?.(`${entryPageFieldsPath}.${key}.options`);
-    if (!Array.isArray(options)) return undefined;
-    return options.find(
-      (candidate) => String(candidate?.value ?? candidate?.id ?? '') === String(value ?? ''),
-    );
-  };
-
   const csrfToken =
     form?.querySelector('input[name="_csrf"]')?.value ||
     document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
@@ -234,10 +225,6 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     return false;
   };
 
-  const writeCalculatedControlValue = (control, value) => {
-    window.ManatOS?.fieldComponents?.setFieldValue?.(control, value, { emit: false });
-  };
-
   /*
    * Canonical field calculations are discovered from entity metadata, never from
    * whichever presentation container happens to render the field. This keeps
@@ -270,19 +257,7 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
           const current = runtime.get?.(valuePath);
           if (sameReactiveValue(current, next)) return false;
 
-          const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
-          const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
-          writeCalculatedControlValue(control, next);
-          form
-            .querySelectorAll(
-              `[data-v2-summary-field-key="${escaped}"] [data-v2-summary-dynamic-value]`,
-            )
-            .forEach((element) => {
-              if (element instanceof HTMLElement)
-                element.textContent = next == null || next === '' ? '—' : String(next);
-            });
-          const option = fieldOptionFromCtx(key, next);
-          runtime.updateField(pagePath, key, next, option, {
+          runtime.updateField(pagePath, key, next, undefined, {
             source: 'calculated-field',
             triggerPath: authoritativePath || valuePath,
             ...(change?.cause?.rootEventId ? { rootEventId: change.cause.rootEventId } : {}),
@@ -431,19 +406,6 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
               if (!editable && hasReadOnlyValue) {
                 const current = controlValue(control);
                 if (!Object.is(current, readOnlyValue)) {
-                  if (control instanceof HTMLInputElement && control.type === 'checkbox') {
-                    control.checked = Boolean(readOnlyValue);
-                  } else if (
-                    control instanceof HTMLInputElement ||
-                    control instanceof HTMLSelectElement ||
-                    control instanceof HTMLTextAreaElement
-                  ) {
-                    control.value = readOnlyValue == null ? '' : String(readOnlyValue);
-                  }
-                  window.ManatOS?.fieldComponents?.setFieldValue?.(control, controlValue(control), {
-                    emit: false,
-                  });
-
                   const key = control.dataset.ctxField;
                   const pagePath = entryPagePath;
                   const fieldsPath = entryPageFieldsPath;
@@ -569,10 +531,6 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     const fieldsPath = entryPageFieldsPath;
     const path = fieldsPath ? `${fieldsPath}.${key}.value` : `fields.${key}.value`;
 
-    window.ManatOS?.fieldComponents?.setFieldValue?.(control, controlValue(control), {
-      emit: false,
-    });
-
     const source =
       typeof eventCause.source === 'string' && eventCause.source ? eventCause.source : 'form-field';
     const triggerPath =
@@ -588,8 +546,51 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
     if (!fieldsPath || !entryPagePath || !runtime?.updateField)
       throw new Error('Canonical CTX field mutation authority is unavailable.');
 
-    const option = fieldOptionFromCtx(key, value);
-    runtime.updateField(entryPagePath, key, value, option, cause);
+    runtime.updateField(entryPagePath, key, value, undefined, cause);
+  };
+
+  const fieldKeyFromCtxPath = (path) => {
+    if (!entryPageFieldsPath || typeof path !== 'string') return null;
+    const prefix = `${entryPageFieldsPath}.`;
+    if (!path.startsWith(prefix)) return null;
+    const remainder = path.slice(prefix.length);
+    const separator = remainder.indexOf('.');
+    return separator > 0 ? remainder.slice(0, separator) : null;
+  };
+
+  const projectFieldFromCtx = (key) => {
+    if (!form || !entryPageFieldsPath || !key) return;
+    const field = runtime?.get?.(`${entryPageFieldsPath}.${key}`);
+    if (!field || typeof field !== 'object') return;
+    const escaped = globalThis.CSS?.escape ? CSS.escape(key) : key.replace(/"/g, '\\"');
+    const control = form.querySelector(`[data-ctx-field="${escaped}"]`);
+    if (control) {
+      window.ManatOS?.fieldComponents?.setFieldValue?.(control, field.value, { emit: false });
+    }
+    form
+      .querySelectorAll(`[data-v2-summary-field-key="${escaped}"] [data-v2-summary-dynamic-value]`)
+      .forEach((element) => {
+        if (element instanceof HTMLElement)
+          element.textContent =
+            field.value == null || field.value === '' ? '—' : String(field.value);
+      });
+    form
+      .querySelectorAll(`[data-field-input-action="revert"][data-field-key="${escaped}"]`)
+      .forEach((action) => {
+        if (!(action instanceof HTMLButtonElement)) return;
+        const canRevert = field.dirty === true && !action.closest('.is-readonly');
+        action.disabled = !canRevert;
+        action.setAttribute('aria-disabled', String(!canRevert));
+      });
+  };
+
+  const projectCtxFieldChange = (change) => {
+    const paths = [
+      change?.path,
+      ...(Array.isArray(change?.relatedPaths) ? change.relatedPaths : []),
+    ];
+    const keys = new Set(paths.map(fieldKeyFromCtxPath).filter(Boolean));
+    keys.forEach(projectFieldFromCtx);
   };
 
   const react = (event) => {
@@ -602,7 +603,9 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
   // entirely driven by CTX value paths discovered from AST dependencies.
   runtime?.trackSubscriber?.('*', { kind: 'scheduler', label: 'Reactive expression scheduler' });
   window.addEventListener(CHANGE_EVENT, (event) => {
-    enqueueChange(event?.detail || {});
+    const change = event?.detail || {};
+    projectCtxFieldChange(change);
+    enqueueChange(change);
   });
 
   form.addEventListener('click', (event) => {
@@ -620,11 +623,10 @@ window.ManatOS.expressionRuntimeReady = new Promise((resolve) => {
   form.addEventListener('input', react);
   form.addEventListener('change', react);
   queueMicrotask(async () => {
-    form.querySelectorAll('[data-ctx-field]').forEach((control) => {
-      window.ManatOS?.fieldComponents?.setFieldValue?.(control, controlValue(control), {
-        emit: false,
-      });
-    });
+    if (entryPageFieldsPath) {
+      const fields = runtime?.get?.(entryPageFieldsPath);
+      if (fields && typeof fields === 'object') Object.keys(fields).forEach(projectFieldFromCtx);
+    }
 
     /*
      * Hosted-entry caller defaults are real field assignments, not inert render

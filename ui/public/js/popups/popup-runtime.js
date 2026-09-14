@@ -294,19 +294,23 @@
     if (!handle) return;
     const current = ctxRuntime()?.get?.(handle.path);
     if (!current || typeof current !== 'object') return;
-    updateUiLevel(
-      handle,
-      {
-        resources: {
-          ...(current.resources && typeof current.resources === 'object' ? current.resources : {}),
-          popup: payload,
-        },
-      },
-      {
-        source: options.source || 'popup-runtime',
-        action: options.action || 'popup-state',
-      },
-    );
+    const patch =
+      options.placement === 'surface'
+        ? payload && typeof payload === 'object' && !Array.isArray(payload)
+          ? payload
+          : {}
+        : {
+            resources: {
+              ...(current.resources && typeof current.resources === 'object'
+                ? current.resources
+                : {}),
+              popup: payload,
+            },
+          };
+    updateUiLevel(handle, patch, {
+      source: options.source || 'popup-runtime',
+      action: options.action || 'popup-state',
+    });
   };
 
   const clearContext = (options = {}) => {
@@ -703,6 +707,37 @@
     }
   };
 
+  /**
+   * Final outage-only modal retirement. Recovery has already captured popup
+   * descriptors and user changes before this runs, so this deliberately avoids
+   * normal Cancel/dismiss workflows that could open another confirmation popup.
+   */
+  const retireAllVisibleModals = () => {
+    for (const modal of document.querySelectorAll('.modal.show, .modal[style*="display: block"]')) {
+      if (!(modal instanceof HTMLElement)) continue;
+      try {
+        window.bootstrap?.Modal?.getInstance(modal)?.dispose();
+      } catch {
+        // Outage teardown must continue even if Bootstrap already lost instance state.
+      }
+      modal.classList.remove('show');
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      modal.removeAttribute('aria-modal');
+      modal.removeAttribute('role');
+      surfaceByModal.delete(modal);
+      invocationByModal.delete(modal);
+      recoveryOrderByModal.delete(modal);
+      retryByModal.delete(modal);
+    }
+    document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+    clearInspection();
+    activeModal = null;
+  };
+
   const restoreDescriptor = async (descriptor) => {
     if (!descriptor || descriptor.type !== 'modal' || !descriptor.popupId) return true;
     const modal = document.getElementById(descriptor.popupId);
@@ -740,6 +775,7 @@
     nextRecoveryOrder,
     snapshotDescriptors,
     gentleCloseAllRecoverableModals,
+    retireAllVisibleModals,
     restoreDescriptor,
   });
 })();

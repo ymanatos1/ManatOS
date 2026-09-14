@@ -14,5 +14,8 @@ describe('configuration presentation', () => {
     expect(source).toContain('Restart required');
     expect(source).toContain("item.valueType === 'boolean'");
     expect(source).toContain('data-config-apply-result');
+    expect(source).toContain('configurationReadOnly === true');
+    expect(source).toContain('Inspection mode.');
+    expect(source).toContain('if (!inspectionOnly)');
   });
 });

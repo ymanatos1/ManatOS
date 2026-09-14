@@ -12,7 +12,7 @@ ui     -> EJS + sessions + external auth + generic CRUD
 
 The UI uses the API over HTTP. It never reads `data/database.json` directly.
 
-The metadata-driven UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions. Authored expression source is the portable contract: the API process and UI process each compile lazily into their own process-local AST cache, while the browser never parses grammar itself and requests AST execution data through the UI compile boundary when needed. Do not add renderer special cases for one SysBO when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one SysBO must be checked against all registered metadata-driven SysBOs. Live entry state belongs in CTX: `fields.<key>.value` is the scalar value authority, `fields.<key>.originalValue` is its baseline, and `entry.current`/`entry.original` are read-only record mirrors; list data is published through the owning UI level's canonical `list.entries` projection (with `list.originalEntries` when a baseline is meaningful); calculated mutations use the same canonical CTX mutation/events as user changes. Canonical field calculations may opt into generic persistence with `calculation.persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
+The metadata-driven entity UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions. Authored expression source is the portable contract: the API process and UI process each compile lazily into their own process-local AST cache, while the browser never parses grammar itself and requests AST execution data through the UI compile boundary when needed. Do not add renderer special cases for one system entity when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one current SysBO must be checked against all registered metadata-driven entities. Live entry state belongs in CTX: `fields.<key>.value` is the scalar value authority, `fields.<key>.originalValue` is its baseline, and `entry.current`/`entry.original` are read-only record mirrors; list data is published through the owning UI level's canonical `list.entries` projection (with `list.originalEntries` when a baseline is meaningful); calculated mutations use the same canonical CTX mutation/events as user changes. Canonical field calculations may opt into generic persistence with `calculation.persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
 
 ## Commands
 
@@ -134,7 +134,7 @@ The REST API uses one global response-envelope rule:
 - successful command operations (`POST`, `PUT`, `PATCH`, `DELETE`) return `success + message + data`;
 - failures return `success: false` plus a root `message` and an `error` object. The root message mirrors `error.message` so clients have one predictable user-facing message location.
 
-Generic SysBO list responses place the collection in `data.items` and pagination information in `data.paging`. BO metadata is available through `GET /$metadata` or can be included in a list with `?includeMetadata=true`.
+Current generic system-entity list responses place the collection in `data.items` and pagination information in `data.paging`. BO metadata is available through `GET /$metadata` or can be included in a list with `?includeMetadata=true`.
 
 ## Server operational endpoints
 
@@ -159,7 +159,7 @@ api/test/integration/api.integration.test.ts
 api/test/integration/api.auth.integration.test.ts
 ```
 
-`storage.contract.test.ts` exercises persistence behavior intended to remain stable across future datastore adapters. `api.integration.test.ts` uses `SysApplication` as the representative generic SysBO instead of repeating identical CRUD tests for every resource. `api.auth.integration.test.ts` concentrates the security-sensitive registration, login, password and multi-session flows.
+`storage.contract.test.ts` exercises persistence behavior intended to remain stable across future datastore adapters. `api.integration.test.ts` uses `SysApplication` as the representative current generic system entity instead of repeating identical CRUD tests for every resource. `api.auth.integration.test.ts` concentrates the security-sensitive registration, login, password and multi-session flows.
 
 Each integration test constructs the real Express application with a temporary in-memory datastore and temporary JSON persistence file; it does not require a listening server and never touches the development database.
 
@@ -203,7 +203,7 @@ Storage-key suffixes such as `.v1` or `.v2` are storage-schema/version labels, n
 
 ## API traffic diagnostics
 
-`ui/src/debug/api-traffic-store.ts` is the development-only **UI-server** sanitized trace buffer for the ManatOS UI -> API boundary. `ApiClient` records requests centrally so entity routes and individual features must not implement their own traffic logging. This is intentionally different from the CTX Viewer: live CTX state is browser-owned and therefore has no corresponding UI-server trace store. Both visual tools are tabs of the one shell-owned Developer Tools dock; do not reintroduce independent CTX/API dock panels or an internal split divider. The traffic viewer is transport-generic; future expression/resolver diagnostics may enrich entries without coupling the panel to `TraverseEntity` or any particular SysBO.
+`ui/src/debug/api-traffic-store.ts` is the development-only **UI-server** sanitized trace buffer for the ManatOS UI -> API boundary. `ApiClient` records requests centrally so entity routes and individual features must not implement their own traffic logging. This is intentionally different from the CTX Viewer: live CTX state is browser-owned and therefore has no corresponding UI-server trace store. Both visual tools are tabs of the one shell-owned Developer Tools dock; do not reintroduce independent CTX/API dock panels or an internal split divider. The traffic viewer is transport-generic; future expression/resolver diagnostics may enrich entries without coupling the panel to `TraverseEntity` or any particular entity.
 
 The browser diagnostic poll must remain singleton-safe and sequential. Route-pattern show/hide choices may persist as user preferences, while route counters are scoped to the current UI-server boot. The shared connectivity watchdog owns consecutive transport-failure handling; after three sequential transport failures, automatic polls stop until explicit user refresh/navigation.
 

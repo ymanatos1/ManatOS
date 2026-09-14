@@ -264,8 +264,10 @@
        * reach the CSRF middleware without req.body populated. Keep this generic
        * for every metadata-driven entry form and preserve repeated controls.
        */
-      const body = formBody(saveMode);
       const send = async () => {
+        // Rebuild for every attempt: in-place reauthentication rotates the
+        // browser session and therefore the form's CSRF token.
+        const body = formBody(saveMode);
         const response = await fetch(form.action, {
           method: 'POST',
           body,
@@ -282,11 +284,14 @@
 
       let { response, payload } = await send();
       if (response.status === 401 && payload?.error?.code === 'UI_API_SESSION_EXPIRED') {
-        const reauthenticated = await window.ManatOS?.reauthenticate?.();
+        const reauthenticated = await window.ManatOS?.reauthenticate?.({
+          reason: 'session-expired',
+          operation: 'save',
+        });
         if (!reauthenticated) {
-          throw new Error(
-            'Session expired; sign in again to continue saving your unsaved changes.',
-          );
+          // Cancel is not an operation failure. Leave the entry dirty and
+          // mounted exactly as it was so the user can Save again later.
+          return;
         }
         ({ response, payload } = await send());
       }

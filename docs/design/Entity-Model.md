@@ -1,6 +1,8 @@
 # Entity Model
 
-System Business Objects (SysBOs) are canonical entity definitions shared by the API, UI metadata and persistence contracts. An entity model describes business identity and structure independently of a particular list, form or storage implementation.
+Entities are canonical business-object definitions shared by API, UI metadata and persistence contracts. An entity model describes business identity and structure independently of a particular list, form or storage implementation.
+
+Current system-owned definitions use the `SysBO` naming/category convention, but the entity infrastructure itself is generic. Future non-systemic entities defined by Applications are expected to use these same contracts without being described as SysBOs.
 
 ## Canonical contents
 

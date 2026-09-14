@@ -53,12 +53,15 @@ import { createAuthRouter } from './auth/router.js';
 import { sendFailure } from './http/response.js';
 import type { IEmailService } from './email/email-service.js';
 import type { SysBOConfigurationService } from './services/sysbo/configuration-service.js';
+import type { SystemSettingsStore } from './system-settings.js';
 
 import { createPublicRouter } from './http/routes/public-router.js';
 import { createExpressionRouter } from './http/routes/expression-router.js';
 import { createPlatformCapabilityRouter } from './http/routes/platform-capability-router.js';
+import { createAuthorizationCapabilityRouter } from './http/routes/authorization-capability-router.js';
 import { createConfigurationRouter } from './http/routes/configuration-router.js';
 import { createExtAuthProviderAdminRouter } from './http/routes/ext-auth-provider-admin-router.js';
+import { createSystemSettingsRouter } from './http/routes/system-settings-router.js';
 
 import type {
   SysBOExtAuthProviderService,
@@ -84,6 +87,8 @@ export interface ApiServices {
   extAuthProviders: SysBOExtAuthProviderService;
 
   externalIdentities: ExternalIdentityService;
+
+  systemSettings: SystemSettingsStore;
 }
 
 /**
@@ -203,6 +208,17 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use('/api/v1/platforms', requireAuthenticated, createPlatformCapabilityRouter(authorization));
 
   /**
+   * API-authoritative collection capability projection used by shell/navigation
+   * consumers. This prevents the UI from maintaining a parallel role/entity
+   * visibility matrix.
+   */
+  app.use(
+    '/api/v1/authorization',
+    requireAuthenticated,
+    createAuthorizationCapabilityRouter(authorization),
+  );
+
+  /**
    * SysBOUser CRUD.
    *
    * SysBOUser creation requires specialized processing because a supplied
@@ -295,8 +311,11 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     createSysBORouter(services.principals, sysBOPrincipalsMetadata, authorization),
   );
 
-  /** Admin-only application configuration. */
+  /** Application configuration: Superuser inspection; Admin mutation. */
   app.use('/api/v1/SysConfigurations', createConfigurationRouter(services.configurations));
+
+  /** Admin-only bootstrap/infrastructure settings. */
+  app.use('/api/v1/system-settings', createSystemSettingsRouter(services.systemSettings));
 
   app.use(
     '/api/v1/SysEmailAddresses',

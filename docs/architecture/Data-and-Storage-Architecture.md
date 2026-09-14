@@ -1,69 +1,469 @@
 # Data and Storage Architecture
 
-Current storage is deliberately replaceable:
+## Purpose
+
+Storage in ManatOS is a replaceable infrastructure boundary, not a property of individual entities or business services. Business behavior is defined in canonical metadata, services, policies and shared runtime contracts. A storage adapter is responsible for preserving those semantics using the facilities of its underlying engine.
+
+The design therefore separates four questions that are easy to conflate:
+
+1. **What semantics must the system guarantee?** These are system behavioral guarantees and are invariant across providers.
+2. **What can a storage engine do natively?** These are effective adapter capabilities.
+3. **How will a particular adapter realize the required semantics?** This is adapter strategy.
+4. **How is a prospective target configured and prepared without changing the active datastore?** This is the storage configuration/target workflow.
+
+This separation is foundational. Entity code must not contain branches such as `if SQL Server ...` or `if JSON ...`. A capability is not permission to weaken a semantic guarantee. It is information used by the adapter layer to choose the most appropriate physical mechanism.
+
+## Architectural position
+
+The current execution path is conceptually:
 
 ```text
-Service -> Repository/DataStore contract -> InMemoryDataStore -> JsonFilePersistence
+HTTP/API operation
+      |
+      v
+application/service behavior
+      |
+      v
+canonical entity + relationship metadata
+      |
+      v
+storage-neutral repository/DataStore operations
+      |
+      v
+active StorageAdapter implementation
+      |
+      +-----------------------------+
+      |                             |
+      v                             v
+InMemoryDataStore              future/current RDBMS adapters
+      |                             |
+      v                             v
+JsonFilePersistence            relational engine
 ```
 
-Business code does not know the JSON filename.
+The current production-capable provider keeps records in GUID-keyed Maps and persists them as JSON. Business code does not know the JSON filename, persistence directory or file format. The same service and metadata contracts are intended to execute against relational adapters as those runtime implementations become available.
 
-Records are held in GUID-keyed Maps and persisted as JSON objects keyed by the same GUID.
+The active datastore and a configured **target datastore** are distinct concepts. An administrator may configure, validate and prepare a SQL target while the application continues to run against JSON. Target administration is deliberately not a hidden switchover mechanism.
 
-`SysConfiguration` records use the same persistence boundary. Sensitive configuration values are stored only in encrypted form; normal configuration projections do not return plaintext or ciphertext. The encryption root/key itself is deployment configuration and is deliberately not stored in the datastore it protects.
+## Canonical storage concepts
 
-Unique fields declared by BO metadata are enforced case-insensitively by the in-memory repository. Future database adapters should map these invariants to database UNIQUE constraints.
+### Storage adapter
 
-The demonstration transaction clones current Maps, executes the logical operation, atomically writes JSON and restores the snapshot if any stage fails. A SQL adapter would use a real transaction instead.
+A storage adapter is the runtime implementation behind the persistence contract. It owns physical storage mechanics and any engine-specific translation. The common `StorageAdapter` contract currently includes picture/blob operations and explicit flush semantics and is expected to expand as relational runtime implementations mature.
 
-Sessions, reset tokens and verification tokens are outside business persistence by design.
+A concrete adapter is identified by a stable adapter ID and has:
 
-Canonical relationship metadata is also storage-neutral. Relationship integrity and delete-impact planning operate through metadata/repository boundaries, so cascade, unlink, set-null and restrict behavior can remain consistent when the current in-memory/JSON adapter is replaced by a relational implementation.
+- a human-readable name and description;
+- a family ID;
+- configuration tabs and fields;
+- runtime availability state;
+- optional target-workflow operations;
+- effective native capabilities resolved by the registry.
 
-## Storage adapter flush contract
+Concrete adapters currently registered include the in-memory/JSON provider and relational definitions for SQL Server, MariaDB, PostgreSQL and SQLite. A definition may exist for configuration/target preparation before the corresponding adapter is ready to serve as the active business datastore. `runtimeAvailable` makes that distinction explicit.
 
-Storage adapters expose an explicit asynchronous `flush()` capability and return provider/persistence information plus whether a physical flush occurred.
+### Adapter family
 
-For `InMemoryDataStore`, flushing writes the complete current state through `JsonFilePersistence` to `data/database.json`.
+An adapter family describes capabilities shared by a class of engines. Families are internal architecture, not selectable datastore instances.
 
-A traditional transactional SQL adapter may implement the same contract as a successful no-op because committed database writes are already durable. The HTTP layer therefore does not contain database-engine-specific flush logic.
-
-The Admin-only server command is:
+The current hierarchy is:
 
 ```text
-POST /flush-db
+document-file
+
+relational
+├── server-rdbms
+│   ├── SQL Server adapter
+│   ├── MariaDB adapter
+│   └── PostgreSQL adapter
+└── embedded-rdbms
+    └── SQLite adapter
 ```
 
-This design keeps persistence behavior inside the storage adapter, where future SQLite, MySQL, PostgreSQL or SQL Server implementations can provide engine-appropriate semantics.
+The hierarchy prevents repeated declarations such as “supports tables, indexes and foreign keys” on every relational engine. A family may inherit from another family and add or override capabilities. A concrete adapter may then override a family value when the engine differs from the family default.
 
-## Health and readiness
+The family hierarchy is resolved centrally by the adapter registry. Consumers receive the effective result and provenance rather than reimplementing inheritance.
 
-The current in-memory adapter exposes a lightweight, non-mutating health check. Server liveness is available at `GET /health`; readiness is available at `GET /ready` and currently includes datastore readiness.
+### Storage configuration
 
-## Backward-compatible JSON loader normalization
+A storage configuration is an administrator-created instance describing how ManatOS should connect to or persist through a concrete adapter. A configuration is not the adapter definition itself.
 
-The JSON adapter can evolve persisted records without requiring a separate migration command for additive model changes. `JsonFilePersistence.load()` normalizes older records while reconstructing the in-memory Maps.
+For example, two SQL Server configurations may use the same adapter but point at different servers/databases. Conversely, selecting an adapter definition in the registry does not create or activate a configuration.
 
-For `SysExtAuthProvider`, databases written before the persisted `credentialsVerified` field existed are upgraded in memory during API startup. If the field is absent, the loader infers it from the legacy authoritative facts: a Client ID, encrypted Client Secret and `credentialsVerifiedAt` timestamp mean the stored pair was previously verified; otherwise the flag becomes `false`.
+Bootstrap storage selection is persisted in `system-settings.json`. The selected configuration is the configuration intended for the **next API start**. The running API keeps its active provider for its process lifetime; editing settings does not mutate the provider underneath live operations.
 
-This normalization is automatic whenever the API initializes the datastore. It does **not** immediately rewrite `data/database.json`; the normalized property is written on the next normal persistence/flush operation. No `.env` flag or manual JSON edit activates it.
+This distinction is intentional because storage replacement is a system lifecycle decision, not an ordinary live UI preference.
 
-This mechanism is intentionally specific to the current JSON adapter. Future relational adapters should use explicit schema/data migrations for equivalent changes.
+## System behavioral guarantees
 
-## Binary field resources
+Capabilities describe native engine facilities. They do **not** define what callers may rely on. The behavioral contract does that.
 
-Canonical entity metadata may expose binary-backed semantic field types such as `picture` (0..1) and `pictures` (ordered 0..n). Entity/CTX values contain only storage-neutral descriptors; binary bytes are owned by the active storage adapter and never become semantic CTX state.
+The current storage behavioral contract includes:
 
-The JSON/InMemory adapter stores descriptors in entity JSON and image bytes as sidecar resources below the persistence `images/` directory. A future RDBMS adapter should map binary-backed fields to a shared binary-resource relation rather than adding picture-specific BLOB columns to every business-object table. The intended relational shape is one generic binary-resource table (resource id, media type, size/hash/revision and BLOB/native binary payload) plus an owning-field relationship (entity/object identity, record id, field key, resource id and ordinal). Scalar `picture` is cardinality 0..1; ordered `pictures` is 0..n. This same storage boundary can later support non-image binary field types without changing entity semantics.
+| Behavior                     | System guarantee                                                             |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| `writes.atomic`              | A logical mutation completes as a unit or persisted state remains unchanged. |
+| `integrity.unique`           | Metadata-declared uniqueness is enforced consistently.                       |
+| `integrity.references`       | Metadata-declared relationships preserve reference/delete semantics.         |
+| `calculations.persisted`     | Fields declared as persisted calculations are materialized consistently.     |
+| `schema.semantic-projection` | Canonical metadata can be projected into a storage-neutral desired schema.   |
 
-Collection picture identities are stable and independent of ordinal. Reordering therefore changes relationship order only; adding/deleting one picture does not rewrite unrelated BLOBs. Storage-provider APIs remain resource-oriented so SQL Server `varbinary(max)`, PostgreSQL `bytea`, MySQL/MariaDB BLOBs, filesystem sidecars, or future object storage can implement the same canonical contract.
+These guarantees belong to the system contract even when the active engine lacks a corresponding native facility.
 
-## Rich text is canonical text, not a binary resource
+For example, the JSON provider does not have native database transactions, UNIQUE constraints or foreign keys. ManatOS still promises atomic logical writes, uniqueness and relationship integrity by implementing those semantics in adapter/application code. A relational provider can use native transactions, constraints and foreign keys where appropriate.
 
-`richText` is a semantic ManatOS field type. Its canonical entity, form and CTX value is a string; the editor implementation is presentation infrastructure and never becomes entity state. The initial canonical rich-text content type is `text/markdown`. The reusable field component may offer Visual, Markdown-source and Preview modes, but all three edit or present the same Markdown string so switching modes does not introduce a format-conversion boundary.
+## Native capability model
 
-The current browser presentation uses Milkdown Crepe as the replaceable visual Markdown editor adapter. Metadata declares `richText` plus its content type, not Milkdown. A future editor can therefore replace Milkdown without changing entity metadata, CTX, expressions or persistence.
+Capabilities answer only one question: **what can this adapter/engine realize natively?**
 
-The JSON/InMemory adapter persists rich text as an ordinary JSON string. A future relational adapter should map unbounded rich text to the database's native long-text type (`nvarchar(max)`, `text`, or equivalent), not to the binary-resource table merely because that database also supports BLOBs. Opaque files and media remain binary resources; semantically textual rich content remains text and is directly usable by expressions.
+The current capability catalog is grouped into:
 
-The existing JSON binary sidecar folder remains `images/` for now. Generalizing `PictureFileStorage` and that folder to a `blobs/`/binary-resource boundary is a separate storage migration to perform when ManatOS introduces a non-image binary field type, rather than coupling storage naming to the first rich-text field.
+- data model — relational and document-record storage;
+- transactions — atomic transactions and savepoints;
+- schema — tables and indexes;
+- integrity — primary keys, unique constraints, foreign keys and check constraints;
+- calculated data — generated/computed columns and triggers;
+- programmability — views, stored functions and stored procedures;
+- administration — multiple databases/catalogs.
+
+Each effective capability includes:
+
+- the capability key;
+- category, label and description;
+- supported/not-supported value;
+- source ID/name;
+- whether the value came from a family or concrete adapter.
+
+The System Settings **Capabilities** tab is therefore diagnostic/administrative projection of the registry result. It is not a second policy engine and it does not decide business behavior.
+
+## Capability inheritance
+
+Capability resolution walks the family lineage from parent to child and then applies concrete-adapter overrides.
+
+Conceptually:
+
+```text
+relational defaults
+      |
+      v
+server-rdbms additions
+      |
+      v
+SQL Server overrides (if any)
+      |
+      v
+effective SQL Server capabilities
+```
+
+The provenance shown in the UI is part of the design. It explains why a capability has its value and avoids duplicating family knowledge in each adapter definition.
+
+The system must reject family cycles and unknown family IDs rather than silently producing an ambiguous capability set.
+
+## Behavior-to-capability strategy
+
+The adapter strategy layer maps invariant behavior to a mechanism appropriate for the effective capabilities.
+
+Examples from the current strategy resolver:
+
+| Required behavior      | Native capability                     | Native strategy               | Fallback strategy                     |
+| ---------------------- | ------------------------------------- | ----------------------------- | ------------------------------------- |
+| atomic writes          | `transactions.atomic`                 | native transaction            | adapter transaction/snapshot          |
+| uniqueness             | `integrity.unique-constraints`        | native UNIQUE constraint      | adapter uniqueness check              |
+| references             | `integrity.foreign-keys`              | native foreign key            | adapter relationship integrity        |
+| persisted calculations | generated columns/triggers where safe | translated native calculation | application evaluator/materialization |
+| semantic schema        | n/a                                   | n/a                           | schema planner from metadata          |
+
+The strategy resolver is the correct place for capability-driven implementation choice. Business services, entity metadata and UI code should not ask which adapter is active in order to decide semantics.
+
+A strategy may deliberately choose a fallback even when a native capability exists. Capability means “possible,” not “always preferable.” Translation safety, expression semantics, portability and operational complexity remain relevant.
+
+## Canonical semantic schema
+
+Relational storage requires a physical schema, but ManatOS does not define that schema independently in each SQL adapter. It first projects a **semantic desired schema** from canonical entity metadata.
+
+The current desired relational model contains tables and columns derived from registered object metadata. Column semantics include:
+
+- field type;
+- required/nullability state;
+- maximum length;
+- uniqueness requirement;
+- referenced business-object key;
+- persisted calculation expression.
+
+This desired model describes requirements, not SQL syntax. For example, `referenceBOKey` means the field semantically references another entity. A relational adapter may realize that as a native foreign key; another adapter may enforce the same relationship in code.
+
+Similarly, a persisted calculation is represented by its canonical expression and persisted requirement, not by a SQL computed-column expression. Translation into an engine-specific expression is a later physical strategy.
+
+This indirection prevents the SQL Server schema from becoming the canonical definition of the business model.
+
+## Physical schema planning
+
+Engine-specific DDL logic translates the semantic desired schema into physical changes.
+
+The current relational planner is intentionally conservative and additive. It can describe missing tables/columns and prepare an initial target schema. It does not yet claim to be the final migration engine for destructive or transformational changes.
+
+Future versioned migration work must explicitly own operations such as:
+
+- changing column types or lengths;
+- adding/removing constraints where data may violate them;
+- renaming/splitting/merging fields;
+- data transformations;
+- destructive removal;
+- migration ordering and rollback/recovery policy.
+
+Schema readiness and migration history must not be inferred only from “the current shape looks approximately right.”
+
+## Persisted calculations
+
+A field may declare a calculation whose result is itself persisted. The invariant is the resulting stored value, not the physical calculation mechanism.
+
+Current examples include:
+
+- Principal canonical/full name for Person principals;
+- Principal `rootPrincipalId`, derived by traversing the parent hierarchy;
+- Telephone `fullNumber`;
+- Address `formattedAddress`.
+
+The JSON provider evaluates these expressions in ManatOS code before persistence. Where a calculation can affect dependent records, metadata-driven refresh/cascade logic recalculates the affected collection. Principal root propagation is an important example: changing a parent can change the root of descendants.
+
+A relational adapter may later choose among:
+
+- application-side evaluation identical to JSON;
+- generated/computed columns;
+- triggers;
+- stored functions/procedures;
+- another engine-native mechanism.
+
+The adapter must use a native mechanism only when the canonical expression can be translated safely and the resulting behavior remains equivalent. The existence of generated columns does not imply that every persisted expression belongs in a generated column.
+
+## Relationship integrity
+
+Relationships are declared in canonical entity metadata. Storage is responsible for preserving their persistence semantics, but the relationship definition is not storage-specific.
+
+Relationship metadata can describe:
+
+- source and target fields;
+- cardinality;
+- inverse relationships;
+- delete behavior such as restrict, cascade, unlink or set-null;
+- aggregate transaction requirements.
+
+The in-memory/JSON implementation executes the required integrity logic in ManatOS code. A relational strategy may map suitable relationships to native foreign keys and ON DELETE behavior. If a native mechanism cannot represent the full semantic rule, adapter/application logic remains responsible for the remainder.
+
+## Uniqueness and constraints
+
+Metadata-declared unique fields are part of the semantic contract. The JSON repository currently enforces uniqueness case-insensitively where the metadata requires it.
+
+Relational adapters should realize compatible invariants with native UNIQUE constraints/indexes, taking canonical normalization/case semantics into account. A database default collation must not accidentally redefine ManatOS uniqueness rules.
+
+The same principle applies to check constraints: native checks are useful only when they accurately represent the canonical validation/integrity semantics.
+
+## Atomicity and transactions
+
+The current JSON transaction strategy snapshots the in-memory Maps, performs the logical operation, writes persistence atomically and restores the snapshot if the operation fails. This gives callers an all-or-nothing semantic behavior despite the absence of a database transaction manager.
+
+A relational adapter should normally use a native transaction. Savepoints may be used for nested/partial units where the system transaction model requires them, but savepoint support is a capability, not itself a behavioral requirement.
+
+The transaction boundary follows the logical business operation, including relationship and aggregate writes. It must not be reduced to “each repository write succeeded independently.”
+
+## Binary/picture persistence
+
+Picture fields are part of the storage boundary but need not be embedded in the main record representation. `StorageAdapter` exposes read/write/delete operations for scalar pictures and collection picture items.
+
+This keeps entity metadata/storage semantics stable while allowing adapters to choose appropriate blob/file mechanisms. The record stores canonical picture metadata; bytes may be stored separately according to the adapter.
+
+## Storage configuration lifecycle
+
+Configuration progresses through explicit stages rather than a single “connected/not connected” flag.
+
+The current workflow is conceptually:
+
+```text
+Configuration
+    |
+    v
+Connection
+    |
+    v
+Database
+    |
+    v
+Schema
+    |
+    v
+Data / migration readiness
+```
+
+The first stage establishes a valid named configuration and concrete adapter. Later stages establish progressively stronger operational readiness.
+
+Important lifecycle rules are:
+
+- later-stage values are not discarded merely because an earlier stage becomes invalid;
+- tabs may remain visible when persisted settings exist so an administrator can inspect/repair them;
+- actions requiring an unmet prerequisite are disabled/blocked, rather than deleting state;
+- readiness/status are distinct from configuration existence;
+- selection for next API start requires a configuration that is eligible for runtime use.
+
+This staged model is shared by adapter definitions and the generic System Settings UI; individual storage engines contribute fields and workflow capabilities instead of receiving custom pages.
+
+## Prospective target operations
+
+Relational target administration is explicitly separated from active persistence.
+
+A configured relational adapter may provide target operations for:
+
+- testing an ephemeral connection;
+- discovering databases/catalogs;
+- inspecting whether a database exists;
+- creating/preparing a database;
+- inspecting schema differences;
+- preparing the additive schema.
+
+These operations execute against a prospective target and do not replace the current active store. This lets an administrator prepare a migration target while ManatOS remains fully operational on another provider.
+
+The same target contracts can later participate in startup readiness for an active relational provider.
+
+## Runtime storage selection
+
+Storage selection has two distinct moments:
+
+1. **Administrative selection** persists which ready configuration should be used on the next API start.
+2. **API bootstrap** resolves that selection and constructs the active provider for the process lifetime.
+
+The running provider is intentionally stable. Live replacement would require explicit quiescing, consistency, migration and failure-recovery semantics and is not implied by the current settings UI.
+
+## API CTX integration
+
+Storage operations executed inside an HTTP API request create nested API CTX levels through `runStorageOperation()`.
+
+Conceptually:
+
+```text
+$.api.level-<request-id>
+    |
+    +-- user
+    |
+    +-- level-<storage-operation>
+           resources.storage.adapterId
+           resources.storage.familyId
+           resources.storage.capabilities
+           resources.storage.behaviors
+```
+
+The storage level is marked with the `storage` diagnostic group. Descendant operations may create deeper levels while retaining request ancestry.
+
+Bootstrap/background storage activity does not manufacture a fake HTTP request CTX. It executes normally when no request context exists.
+
+## Diagnostics and snapshots
+
+When API storage CTX debugging is enabled, request and storage CTX are captured before their ephemeral runtime levels are disposed.
+
+The configured debug directory is an API-process setting. A request is keyed by the same request/correlation ID used by API Traffic and API logging. Typical artifacts are:
+
+```text
+<debug-root>/<request-id>/api.json
+<debug-root>/<request-id>/storage/<storage-level-id>/ctx.json
+<debug-root>/<request-id>/storage/<storage-level-id>/levels/<child-level-id>/ctx.json
+```
+
+Snapshots are diagnostic representations, not persistence. Sensitive names are centrally redacted; buffers/circular values are sanitized; snapshot-write failure must never fail the business request.
+
+For the wider correlation model, see [Diagnostics and Observability Architecture](Diagnostics-and-Observability-Architecture.md).
+
+## Configuration and secret storage
+
+Storage configuration itself is system configuration. Secret adapter fields are marked declaratively and encrypted before being written to `system-settings.json`.
+
+Normal settings projections do not expose either plaintext secrets or encrypted ciphertext. The encryption root/key is deployment configuration and is deliberately not persisted in the datastore/settings document that it protects.
+
+`SysConfiguration` business configuration records use the normal business persistence boundary; bootstrap/system settings are a different lifecycle concern.
+
+## What is intentionally outside business storage
+
+Authentication/session runtime material such as active sessions, reset tokens and verification tokens is not treated as ordinary business persistence. Their lifecycle/security semantics are separate from company/entity data.
+
+This boundary prevents “replace the business datastore” from silently redefining ephemeral authentication state.
+
+## Adding another adapter without changing business code
+
+A new adapter should fit the architecture by:
+
+1. defining a concrete adapter ID and family;
+2. declaring only genuine capability overrides;
+3. providing configuration fields/tabs and any target workflow;
+4. implementing required runtime persistence contracts when `runtimeAvailable` becomes true;
+5. selecting strategies from the system behavioral contract rather than changing entity behavior;
+6. translating the semantic desired schema when relational/native schema is applicable;
+7. preserving relationship, uniqueness, calculation and transaction invariants;
+8. participating in the same API CTX/diagnostic model.
+
+If adding an adapter requires entity-specific conditionals throughout services or metadata, the adapter boundary is being violated.
+
+## Worked example: one persisted calculation across providers
+
+Consider Principal `rootPrincipalId`.
+
+The semantic definition says that the value is a persisted calculation derived by parent traversal. The entity/service layer does not say “use a trigger.”
+
+With JSON:
+
+```text
+metadata expression
+   -> shared evaluator
+   -> persisted-calculation materializer
+   -> descendant refresh when hierarchy changes
+   -> JSON persistence
+```
+
+With a relational adapter, a strategy may decide:
+
+```text
+metadata expression
+   -> translator can safely represent semantics?
+        yes -> generated/trigger/procedure/native strategy
+        no  -> same application materializer
+   -> transactional persistence
+```
+
+Both paths must yield the same persisted semantic result. The physical mechanism is secondary.
+
+## Worked example: relationship integrity across providers
+
+A License references its customer Principal. Canonical relationship metadata owns that semantic link.
+
+With JSON, ManatOS checks/maintains the relationship during persistence. With an RDBMS, a compatible physical schema can add a foreign key. If delete semantics require behavior beyond the engine constraint, adapter/application logic completes the contract.
+
+Again, callers rely on the relationship invariant, not on the presence of a particular DDL construct.
+
+## Design rules
+
+The storage architecture should continue to obey these rules:
+
+- no entity/business branching on adapter IDs;
+- no capability checks in UI/business code to weaken semantic guarantees;
+- canonical metadata defines storage-neutral semantics;
+- adapter families remove repeated engine facts but remain internal infrastructure;
+- concrete adapters remain independently selectable/configurable;
+- capability provenance is observable;
+- target preparation never silently changes active storage;
+- desired schema is semantic before it is physical;
+- native mechanisms are implementation strategies, not canonical truth;
+- application fallback remains legitimate when native translation is unsafe;
+- authorization/query predicates should move toward datastore selection for capable adapters rather than post-materialization filtering;
+- diagnostic CTX/logging must not become part of persistence semantics.
+
+## Current maturity and next steps
+
+The architecture is ahead of some runtime implementations. The JSON provider is the current active persistence implementation. Relational definitions, capability inheritance, target operations, semantic desired schema and initial additive preparation exist, while complete relational business-data runtime adapters and versioned migration strategy remain future implementation work.
+
+That is an intentional staged development path: configuration and architecture are established before claiming runtime readiness.
+
+## Audience-specific follow-up
+
+- **Architects/designers:** this document is the canonical storage architecture narrative.
+- **Adapter implementers:** see [Storage Adapters](../development/Storage-Adapters.md).
+- **Reference readers:** see [Storage Catalog](../reference/Storage-Catalog.md) and [Configuration Catalog](../reference/Configuration-Catalog.md).
+- **Administrators:** see [Administration](../usage/Administration.md) and [Configuration](../usage/Configuration.md).
+- **Readers new to ManatOS:** see [Concepts](../Concepts.md) and [System Map](../System-Map.md).
+
+Related architecture: [Metadata Architecture](Metadata-Architecture.md), [API Architecture](API-Architecture.md), [Runtime Architecture](Runtime-Architecture.md), [Context Architecture](Context-Architecture.md), and [Diagnostics and Observability Architecture](Diagnostics-and-Observability-Architecture.md).

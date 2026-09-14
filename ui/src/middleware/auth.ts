@@ -78,14 +78,16 @@ export const requireSignedIn: RequestHandler = (req, res, next) => {
  *
  * The API still performs the final authorization check.
  */
-export const requireAdmin: RequestHandler = (_req, res, next) => {
-  const user = res.locals.currentUser as import('@manatos/shared').SysBOUser | null;
+export function requireRole(...roles: SysBOUserRole[]): RequestHandler {
+  return (_req, res, next) => {
+    const user = res.locals.currentUser as import('@manatos/shared').SysBOUser | null;
+    if (!user || !roles.includes(user.role)) {
+      next(createError(403, `Required role: ${roles.join(' or ')}.`));
+      return;
+    }
+    next();
+  };
+}
 
-  if (!user || user.role !== SysBOUserRole.Admin) {
-    next(createError(403, 'Administrator access is required.'));
-
-    return;
-  }
-
-  next();
-};
+export const requireAdmin = requireRole(SysBOUserRole.Admin);
+export const requireAdminOrSuperuser = requireRole(SysBOUserRole.Admin, SysBOUserRole.Superuser);

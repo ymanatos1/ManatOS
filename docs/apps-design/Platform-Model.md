@@ -4,7 +4,7 @@ A platform is a product/domain contribution inside the company context. It provi
 
 ## What a platform owns
 
-Platform definitions own concerns that are genuinely product-specific: platform identity, navigation contributions, assets/presentation and the set of applications or capabilities exposed by that product. They do not own generic SysBO behavior, CTX semantics, authentication infrastructure or persistence mechanics simply because those facilities are used by the platform.
+Platform definitions own concerns that are genuinely product-specific: platform identity, navigation contributions, assets/presentation and the set of applications or capabilities exposed by that product. They do not own generic entity behavior, CTX semantics, authentication infrastructure or persistence mechanics simply because those facilities are used by the platform. Current platform system entities may use the SysBO naming convention, but that convention does not define the generic entity infrastructure.
 
 ```text
 Company context

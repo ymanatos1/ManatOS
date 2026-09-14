@@ -10,6 +10,7 @@ Reference documents are optimized for exact lookup. Narrative rationale lives in
 - [Entity Catalog](Entity-Catalog.md)
 - [API Catalog](API-Catalog.md)
 - [Configuration Catalog](Configuration-Catalog.md)
+- [Storage Catalog](Storage-Catalog.md)
 - [Terminology](Terminology.md)
 
 Catalogs describe public/stable semantic contracts. Incidental private variables are intentionally not elevated into documentation contracts.

@@ -67,6 +67,7 @@ export function createUiApp() {
 
   app.use('/assets', express.static(resolve(uiRoot, 'public/assets')));
   app.use('/css', express.static(resolve(uiRoot, 'public/css')));
+  app.use('/images', express.static(resolve(uiRoot, 'public/images')));
   // Repository-built browser bundles and their emitted assets live under
   // public/vendor. Serve them from the same /vendor URL space used by package
   // assets so browser imports never fall through to the HTML 404 handler.

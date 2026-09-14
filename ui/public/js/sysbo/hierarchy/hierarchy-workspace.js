@@ -30,9 +30,24 @@
   };
   const pagePath = activeUiLevelPath();
   if (!pagePath) return;
-  const page = runtime.resolve(pagePath);
+
+  // runtime.resolve() consumes expression notation. Canonical CTX identities use
+  // the `ctx...` form, so absolute reads must be translated to the `$...`
+  // expression form. Passing `ctx.ui...` directly is a relative lookup for a
+  // child named `ctx` and therefore resolves to undefined.
+  const resolveCanonical = (path) =>
+    runtime.resolve(path === 'ctx' ? '$' : `$.${String(path).replace(/^ctx\.?/, '')}`);
+
+  const page = resolveCanonical(pagePath);
+  if (!page) return;
+
+  // Pin the reusable hierarchy component to the workspace surface. Without an
+  // explicit scope, opening a nested popup can make the global leaf UI level the
+  // popup and cause the hierarchy to resolve its sources from the wrong owner.
+  component.dataset.ctxScopePath = pagePath;
+
   const workspaceValue = (key, fallback = null) => {
-    const facts = runtime.resolve(`${pagePath}.resources.workspace`);
+    const facts = resolveCanonical(`${pagePath}.resources.workspace`);
     return facts?.[key] ?? fallback;
   };
   const workspaceValuePath = (key) => `${pagePath}.resources.workspace.${key}`;
@@ -107,7 +122,7 @@
   await entryResolver?.prepare?.(entryRepresentation);
   const entryOwnerPath = (row) => {
     if (!row || typeof row !== 'object') return null;
-    const values = runtime.resolve(entriesPath);
+    const values = resolveCanonical(entriesPath);
     if (!Array.isArray(values)) return null;
     const rowId = row?.[idField];
     const index = values.findIndex(
@@ -145,7 +160,7 @@
   const hierarchyClearAll = workspace.querySelector('[data-hierarchy-clear-all]');
 
   const entries = () => {
-    const value = runtime.resolve(entriesPath);
+    const value = resolveCanonical(entriesPath);
     return Array.isArray(value) ? value : [];
   };
 
@@ -196,7 +211,7 @@
   const hierarchyCompletion = (rows) => hierarchyModel.completion(rows);
 
   const originalEntries = () => {
-    const value = runtime.resolve(originalEntriesPath);
+    const value = resolveCanonical(originalEntriesPath);
     return Array.isArray(value) ? value : [];
   };
 
@@ -245,7 +260,7 @@
   });
 
   const setRuntimeValue = (path, value, action) => {
-    if (runtime.resolve(path) === value) return;
+    if (resolveCanonical(path) === value) return;
     runtime.replace(path, value, { source: 'hierarchy-workspace', action, triggerPath: path });
   };
 
@@ -1080,7 +1095,7 @@
       setRuntimeValue(workspaceValuePath('focusedMemberId'), memberId, 'focus-member');
 
       const fieldValues = {
-        ...(runtime.resolve(`${pagePath}.resources.workspace`) || {}),
+        ...(resolveCanonical(`${pagePath}.resources.workspace`) || {}),
       };
       const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
       const form = document.createElement('form');

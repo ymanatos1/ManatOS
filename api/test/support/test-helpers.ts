@@ -19,6 +19,7 @@ import {
 import { SecretsEncryptionService } from '../../src/security/secrets-encryption-service.js';
 import { SysBOExtAuthProviderService } from '../../src/services/sysbo/external-auth-provider-service.js';
 import { SysBOConfigurationService } from '../../src/services/sysbo/configuration-service.js';
+import { SystemSettingsStore } from '../../src/system-settings.js';
 
 /**
  * Standard credentials used by integration tests.
@@ -53,9 +54,16 @@ export async function createTestApi() {
 
   await store.initialize();
 
-  const users = new SysBOUserService(store);
-
   const encryption = new SecretsEncryptionService('test', Buffer.alloc(32, 7).toString('base64'));
+
+  const systemSettings = new SystemSettingsStore(
+    join(directory, 'system-settings.json'),
+    databasePath,
+    encryption,
+  );
+  await systemSettings.initialize();
+
+  const users = new SysBOUserService(store);
   const configurations = new SysBOConfigurationService(store, encryption);
   await configurations.seedMissing();
 
@@ -79,6 +87,8 @@ export async function createTestApi() {
     licenses: new SysBOLicenseService(store),
 
     externalIdentities: new ExternalIdentityService(store, users),
+
+    systemSettings,
   };
 
   const app = createApp(store, services);

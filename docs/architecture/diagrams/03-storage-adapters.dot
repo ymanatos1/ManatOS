@@ -1,0 +1,14 @@
+digraph G {
+ graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - Storage Adapter Capability and Strategy Model"];
+ node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=TB;
+ entity [label="Generic entity/business-object services\nmetadata-driven persistence semantics", fillcolor="#e8f4e5"];
+ behavior [label="System behavioral guarantees\natomic writes | uniqueness | references\npersisted calculations | semantic schema"];
+ registry [label="Storage registry\nadapter + family inheritance\neffective native capabilities"];
+ strategy [label="Adapter implementation strategy\nchoose native mechanism or ManatOS fallback"];
+ mem [label="InMemory JSON\ncurrent runnable adapter\napplication checks/calculations"];
+ relational [label="Relational family"];
+ server [label="Server RDBMS family\nSQL Server | MariaDB | PostgreSQL"];
+ embedded [label="Embedded RDBMS family\nSQLite"];
+ schema [label="Desired semantic schema -> physical strategy\nconstraints | indexes | references\ncalculated data | programmable objects"];
+ entity -> behavior -> strategy; registry -> strategy; strategy -> mem; strategy -> relational; relational -> server; relational -> embedded; strategy -> schema;
+}

@@ -1,6 +1,12 @@
 # Developer Tools
 
-When developer mode is enabled, the Developer Tools surface provides live runtime inspection without becoming another application-state authority. Its main areas are CTX Viewer, API Traffic and debugging CLI/context inspection.
+In the **current Express/browser client**, when developer mode is enabled, the Developer Tools surface provides live runtime inspection without becoming another application-state authority. Its main areas are CTX Viewer, API Traffic and debugging CLI/context inspection.
+
+## API Traffic logs
+
+Selecting an API Traffic row shows Request and Response details. When the UI and API share the same local filesystem layout, additional tabs appear for each available API log file containing that request's API-call ID. No tab is shown for a log source with no matching records.
+
+The local lookup uses the Storage **Debug output directory** System Setting to locate the shared logs area. This is a development convenience rather than a deployment contract; a UI running on another server may not be able to read API files directly.
 
 ## CTX Viewer
 
@@ -17,5 +23,7 @@ API Traffic correlates browser actions with HTTP activity. It is useful for dete
 ## Workspace behavior
 
 The tool surface can be docked or detached while remaining attached to the same live page/runtime instance. Presentation preferences such as tabs, width, expansion state or detached-window geometry may persist as developer workspace preferences. Live CTX values and captured API responses do not become persisted business state.
+
+These tools are a development capability of the current client, not a requirement that every future Angular/React/mobile client reproduce this exact dock. Portable diagnostic semantics are described in [Diagnostics and Observability Architecture](../architecture/Diagnostics-and-Observability-Architecture.md).
 
 See [Development / Developer Tools](../development/Developer-Tools.md) for implementation-oriented details and [CTX Catalog](../reference/CTX-Catalog.md) for the context paths being inspected.

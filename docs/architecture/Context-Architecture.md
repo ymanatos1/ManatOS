@@ -32,3 +32,25 @@ See [Context Model](../design/Context-Model.md) for mechanics and [CTX Catalog](
 ### Debugger resolution boundary
 
 The CTX debugger is a diagnostic observer of the same browser context runtime used by expression lookup and mutation routing. It must use the runtime's canonical path APIs (for example `get()`, and `tokenize()` when tokenization is actually required) rather than carrying a private path parser or keyed-array resolver. Debug presentation may add aliases, icons, provenance, watch state and other non-semantic annotations, but those annotations never define an alternate CTX topology or resolution rule.
+
+## API CTX
+
+The API process owns one global CTX tree. Long-lived semantic branches (`company`, `system`, `entities`) coexist with `api`, whose children are short-lived request levels:
+
+```text
+$
+├── company
+├── system
+├── entities
+└── api
+    ├── level-<call-id>
+    │   ├── user
+    │   └── level-<subsystem>
+    └── level-<parallel-call-id>
+```
+
+Each request creates a unique call level and its own request-scoped user context. Major subsystem work can create nested levels beneath that call; STORAGE uses this mechanism and persisted-calculation work may nest further. Recursive lexical CTX lookup lets nested work resolve request/ancestor context without a process-global mutable “current level”.
+
+Execution-local `AsyncLocalStorage` carries only the pointer to the current call/level; semantic state remains in the single API CTX tree. Parallel requests and parallel nested operations therefore keep independent identities. Request and nested levels are removed deterministically after execution.
+
+The API and UI CTX trees are independently constructed from authoritative sources. They share semantic contracts where appropriate but are not synchronized copies.

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 
 import {
@@ -160,6 +161,10 @@ export async function establishUiSession(
   authenticationMethod: string,
 ): Promise<void> {
   await regenerateSession(req);
+
+  // Authentication rotates the browser session. Rotate the CSRF token with it
+  // so the newly authenticated session never inherits the anonymous token.
+  req.session.csrfToken = randomUUID();
 
   req.session.userId = login.user.id;
 

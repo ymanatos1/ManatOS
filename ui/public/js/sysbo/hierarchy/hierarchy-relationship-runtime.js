@@ -129,7 +129,8 @@ window.ManatOS.createHierarchyRelationshipRuntime = ({
   };
 
   const allReferenceEntries = () => {
-    const referenceData = runtime.resolve(`${pagePath}.resources.referenceData`) ?? {};
+    const referenceData =
+      runtime.resolve(`$.${String(pagePath).replace(/^ctx\.?/, '')}.resources.referenceData`) ?? {};
     const candidates = referenceData?.[parentField];
     if (!Array.isArray(candidates)) return [];
 

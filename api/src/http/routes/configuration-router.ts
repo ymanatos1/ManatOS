@@ -1,22 +1,24 @@
 import { Router } from 'express';
 
-import { requireAdmin, requireAuthenticated } from '../../auth/auth-middleware.js';
+import { SysBOUserRole } from '@manatos/shared';
+
+import { requireAdmin, requireAuthenticated, requireRole } from '../../auth/auth-middleware.js';
 import { authenticatedAuditActor } from '../../audit/audit-service.js';
 import type { SysBOConfigurationService } from '../../services/sysbo/configuration-service.js';
 import { sendCommand, sendQuery } from '../response.js';
 
-/** Admin-only application configuration HTTP surface. */
+/** Application configuration: Superuser inspection; Admin mutation. */
 export function createConfigurationRouter(configurations: SysBOConfigurationService) {
   const router = Router();
 
-  router.use(requireAuthenticated, requireAdmin);
+  router.use(requireAuthenticated);
 
-  router.get('/', async (_req, res) => {
+  router.get('/', requireRole(SysBOUserRole.Admin, SysBOUserRole.Superuser), async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     sendQuery(res, { items: await configurations.safeList() });
   });
 
-  router.patch('/:id/value', async (req, res) => {
+  router.patch('/:id/value', requireAdmin, async (req, res) => {
     const subject = req.auth!;
     const actor = authenticatedAuditActor(subject.userId, subject.userName);
     const item = await configurations.setValue(

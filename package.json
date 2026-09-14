@@ -33,5 +33,8 @@
   },
   "dependencies": {
     "nodemailer": "^9.0.5"
+  },
+  "allowScripts": {
+    "msnodesqlv8@5.5.0": true
   }
 }

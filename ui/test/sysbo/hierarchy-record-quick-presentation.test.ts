@@ -133,14 +133,25 @@ describe('owner-managed hierarchy recordQuick presentation', () => {
     expect(workspace).toContain('/hierarchy/commit');
     expect(hierarchyPage).toContain('data-hierarchy-close');
     expect(hierarchyPage).toContain('>Close</button>');
+    expect(hierarchyPage).not.toContain('>Cancel</a>');
     expect(hierarchyPage).toContain('data-hierarchy-commit');
     expect(hierarchyPage).toContain('>Commit</button>');
     expect(workspace).toContain("active.command === 'add-parent'");
     expect(workspace).toContain("workspaceValuePath('focusedMemberId')");
     expect(workspace).not.toContain('fields.focusedMemberId.value');
-    expect(relationships).toContain('`${pagePath}.resources.referenceData`');
+    expect(relationships).toContain('runtime.resolve(`$.${String(pagePath)');
     expect(hierarchyPage).not.toContain('data-ctx-scope-path');
     expect(workspace).toContain('const activeUiLevelPath = () =>');
+    expect(workspace).toContain('const resolveCanonical = (path) =>');
+    expect(workspace).toContain('const values = resolveCanonical(entriesPath);');
+    expect(workspace).toContain('const value = resolveCanonical(entriesPath);');
+    expect(workspace).toContain('const value = resolveCanonical(originalEntriesPath);');
+    expect(workspace).toContain('if (resolveCanonical(path) === value) return;');
+    expect(workspace).not.toContain('runtime.resolve(entriesPath)');
+    expect(workspace).not.toContain('runtime.resolve(originalEntriesPath)');
+    expect(workspace).not.toContain('if (runtime.resolve(path) === value) return;');
+    expect(workspace).toContain('component.dataset.ctxScopePath = pagePath');
+    expect(workspace).not.toContain('runtime.resolve(pagePath)');
     expect(workspace).not.toContain("runtime.resolve('ctx.page')");
     expect(tree).toContain("component.dataset.hierarchyEditingId || ''");
     expect(sourceWithoutWhitespace(tree)).toMatch(

@@ -18,9 +18,15 @@ A **Platform** is a coherent product/domain environment hosted by ManatOS. A pla
 
 An **Application** is a platform-level business capability. Applications participate in platform composition and access/licensing semantics. They do not require a separate copy of the core runtime.
 
+## Entity
+
+An **Entity** is a business-object definition known to the generic ManatOS metadata/runtime/storage infrastructure. An entity has a stable key, fields, relationships, persistence semantics and other entity-level rules. The infrastructure is intentionally generic enough to support both system-owned entities and future entities defined by Applications.
+
 ## SysBO
 
-A **SysBO** (System Business Object) is a business/system entity known to the generic ManatOS infrastructure through canonical metadata. A SysBO has a stable entity key, fields, relationships, persistence semantics, and other entity-level rules. Examples include Users, Principals, Applications, Licenses, and External Authentication Providers.
+A **SysBO** (System Business Object) is a **system-owned entity naming/category convention**, currently used for ManatOS company entities and protoCRM platform system entities. Examples include company-owned Users, Principals, Licenses and External Authentication Providers, plus the protoCRM-owned Applications entity.
+
+`SysBO` is not a synonym for every entity. Future application-defined, non-systemic entities are expected to use the same generic entity infrastructure without acquiring the `SysBO` prefix merely because they share that infrastructure.
 
 A SysBO's stable entity key is distinct from an individual record's storage-generated identifier.
 
@@ -30,17 +36,23 @@ A SysBO's stable entity key is distinct from an individual record's storage-gene
 
 This distinction allows non-UI consumers to work with business objects without understanding tabs, popups, CTX UI topology, or browser components.
 
+## Client
+
+A **client** is a presentation/interaction implementation that consumes ManatOS server contracts. The current repository client is Node.js/Express TypeScript + EJS/Bootstrap + browser runtime, but this is one implementation. Angular, React, mobile, desktop or other clients may implement the same capabilities without changing API/domain/storage architecture.
+
+A UI-capable client may implement ManatOS UI metadata, CTX/context and expression semantics. A non-UI integration client may consume business APIs without those presentation concepts.
+
 ## UI metadata
 
-**UI metadata** describes how a UI-capable client may present and interact with a business object: list behavior, entry tabs, fields, components, actions, presentation rules, and dynamic UI decisions.
+**UI metadata** describes framework-neutral presentation semantics for how a UI-capable client may present and interact with a business object: list behavior, entry tabs, fields, components, actions, presentation rules, and dynamic UI decisions.
 
 Canonical entity metadata and UI metadata are related but intentionally separate concerns.
 
 ## CTX
 
-**CTX** is the observable runtime context tree used by the expression/runtime system and developer diagnostics. Its major public branches include system, entities, company, user, and UI state.
+**CTX** is the observable runtime context tree used by the expression/runtime system and developer diagnostics. UI and API hosts build independent CTX trees from authoritative sources while sharing common semantic contracts.
 
-A simplified shape is:
+A simplified UI shape is:
 
 ```text
 ctx
@@ -48,15 +60,27 @@ ctx
 +-- entities
 +-- company
 +-- user
-|   +-- fields
-|   +-- permissions
 +-- ui
     +-- level
         +-- level
             +-- ...
 ```
 
-CTX is runtime state; it is not itself business persistence. Mutation through CTX is significant because mutation ownership also determines event publication, dependency propagation, and lifecycle behavior.
+A simplified API shape is:
+
+```text
+$
++-- system
++-- entities
++-- company
++-- api
+    +-- level-<call-id>
+        +-- user
+        +-- level-<subsystem>
+            +-- ...
+```
+
+CTX is runtime state; it is not itself business persistence. Mutation/lifecycle ownership determines event/dependency behavior on the UI and deterministic request/subsystem cleanup on the API.
 
 ## UI level
 
@@ -141,6 +165,24 @@ A **resource** is component/surface-owned runtime data made observable for compo
 ## Storage adapter
 
 A **storage adapter** implements persistence behind ManatOS storage contracts. Query semantics remain structured where possible so capable adapters can translate filtering, authorization, or exception predicates into native datastore selection rather than requiring UI-side or post-materialization filtering.
+
+A concrete adapter is distinct from a **storage configuration** (one configured connection/target) and from an **adapter family** (shared capability inheritance such as server RDBMS or embedded RDBMS).
+
+## Storage capability
+
+A **storage capability** describes a facility the underlying engine can provide natively, such as atomic transactions, foreign keys, generated columns, triggers or stored procedures. This is different from an authorization capability. Storage capabilities describe implementation possibilities; they do not grant user permission and they do not weaken system semantics when absent.
+
+## System behavioral guarantee
+
+A **system behavioral guarantee** is a storage-independent invariant callers may rely on, such as atomic logical writes, uniqueness, referential integrity or persisted calculations. Every active adapter must provide the invariant, using either a native mechanism or adapter/application fallback.
+
+## Adapter strategy
+
+An **adapter strategy** is the chosen physical mechanism used to satisfy a system behavioral guarantee for one adapter. For example, uniqueness may use a native UNIQUE constraint on a relational engine or an adapter-side uniqueness check for JSON.
+
+## Diagnostic correlation
+
+A **diagnostic correlation ID** (the API request ID) is the stable join key used by API Traffic, API logs, API CTX and persisted diagnostic snapshots for the same request. It is diagnostic identity, not authentication/authorization identity.
 
 ## Application Foundation
 

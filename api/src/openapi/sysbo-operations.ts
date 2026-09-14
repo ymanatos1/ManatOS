@@ -140,6 +140,45 @@ export function platformCapabilityOperation() {
   };
 }
 
+export function entityCollectionCapabilitiesOperation() {
+  return {
+    get: {
+      summary: 'Get current entity collection capabilities',
+      description:
+        'Returns one API-resolved collection capability map for the effective Company + Platform entity catalogue. Shell/navigation clients consume this projection instead of reproducing role/entity visibility policy.',
+      tags: ['System Business Objects'],
+      security: [{ bearerAuth: [] }],
+      responses: {
+        '200': {
+          description: 'Current entity collection capability projection.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', const: true },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      entities: {
+                        type: 'object',
+                        additionalProperties: {
+                          $ref: '#/components/schemas/SysBOAuthorizationCapabilities',
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        '401': failureResponse('Authentication required.'),
+      },
+    },
+  };
+}
+
 export function sysBOCapabilityPaths(basePath: string, name: string, tag: string) {
   const responseSchema = {
     type: 'object',

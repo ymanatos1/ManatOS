@@ -1,4 +1,6 @@
-import { AppError, operationContext, type OperationNodeSnapshot } from '@manatos/shared';
+import { randomUUID } from 'node:crypto';
+
+import { AppError, type OperationNodeSnapshot } from '@manatos/shared';
 
 import { config } from '../config.js';
 import { addApiTrafficEntry, sanitizeTrafficValue } from '../debug/api-traffic-store.js';
@@ -253,6 +255,11 @@ export class ApiClient {
       if (config.NODE_ENV !== 'production') addApiTrafficEntry(entry);
     };
 
+    // One transport correlation id belongs to this UI -> API call. The API
+    // accepts it as x-request-id and returns the same id, so API Traffic,
+    // server logs and API CTX snapshots all share one key.
+    const apiRequestId = randomUUID();
+
     let response: Response;
     try {
       response = await fetch(
@@ -263,6 +270,7 @@ export class ApiClient {
 
           headers: {
             accept: 'application/json',
+            'x-request-id': apiRequestId,
 
             /**
              * Add Content-Type only when a request body exists.
@@ -316,7 +324,7 @@ export class ApiClient {
       );
     } catch (error) {
       recordTraffic({
-        requestId: operationContext.getRequestId(),
+        requestId: apiRequestId,
         startedAt: startedAt.toISOString(),
         durationMs: Math.max(0, Math.round((performance.now() - started) * 10) / 10),
         method,
@@ -339,7 +347,7 @@ export class ApiClient {
     }
 
     recordTraffic({
-      requestId: operationContext.getRequestId(),
+      requestId: apiRequestId,
       startedAt: startedAt.toISOString(),
       durationMs: Math.max(0, Math.round((performance.now() - started) * 10) / 10),
       method,

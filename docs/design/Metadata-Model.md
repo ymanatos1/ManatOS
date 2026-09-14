@@ -2,10 +2,10 @@
 
 ## Layers
 
-ManatOS separates canonical entity definition from UI presentation metadata.
+ManatOS separates canonical entity definition from UI presentation metadata. Current system-owned definitions may use SysBO names, but this model is generic and is intended to support future application-defined entities as well.
 
 ```text
-SysBO
+Entity
 +-- canonical metadata
 |   +-- fields
 |   +-- relationships

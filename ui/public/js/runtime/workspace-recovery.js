@@ -236,6 +236,10 @@
     }
     await window.ManatOS?.popup?.entry?.gentleCloseAll?.();
     await window.ManatOS?.popup?.runtime?.gentleCloseAllRecoverableModals?.();
+    // A normal dismiss can legitimately launch another confirmation modal.
+    // Recovery is already durable, so retire any surviving/new popup UI without
+    // invoking another domain workflow before the unavailable surface replaces it.
+    window.ManatOS?.popup?.runtime?.retireAllVisibleModals?.();
 
     clearLegacyOutageDrafts(userId);
     window.ManatOS?.uiHost?.disposeAll?.(

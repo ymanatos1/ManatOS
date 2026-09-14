@@ -1,6 +1,5 @@
 import {
   type CompanyInfo,
-  type ManatOSCompanyContext,
   type ManatOSContext,
   type ManatOSContextField,
   type ManatOSContextFields,
@@ -13,8 +12,12 @@ import {
   contextPointer,
   type SysPlatform,
   type PlatformAuthorizationCapabilities,
-  allManatOSObjectMetadata,
+  createCompanyContext,
+  createSystemContext,
+  entityContextName,
 } from '@manatos/shared';
+
+export { entityContextName } from '@manatos/shared';
 
 const CONTEXT_IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 function assertContextIdentifier(value: string, purpose: string): string {
@@ -22,35 +25,6 @@ function assertContextIdentifier(value: string, purpose: string): string {
     throw new Error(`Invalid ManatOS ctx ${purpose} identifier: ${value}`);
   }
   return value;
-}
-
-/**
- * Resolve the canonical symbolic entity name declared by metadata.
- *
- * CTX never derives or invents an entity identity from the secondary `key`.
- * The metadata `name` is the single authoritative ctx.entities property name.
- */
-export function entityContextName(objectKey: string): string {
-  const metadata = allManatOSObjectMetadata[objectKey as keyof typeof allManatOSObjectMetadata];
-  if (!metadata) {
-    throw new Error(`Unknown ManatOS object key for ctx.entities: ${objectKey}`);
-  }
-  return assertContextIdentifier(metadata.name, 'entity');
-}
-
-function sysBOContext(entries: CompanyInfo['entities'] | SysPlatform['entities']) {
-  return Object.freeze(
-    Object.fromEntries(
-      entries.map((contribution) => [
-        entityContextName(contribution.sysBOKey),
-        Object.freeze({
-          key: contribution.sysBOKey,
-          name: entityContextName(contribution.sysBOKey),
-          contribution,
-        }),
-      ]),
-    ),
-  );
 }
 
 export function contextField<T>(
@@ -201,46 +175,21 @@ export function createManatOSContext(
   runtimeMode = 'development',
   platformCapabilities: Readonly<PlatformAuthorizationCapabilities> = { platformAccess: false },
 ): ManatOSContext {
-  const foundPlatformIndex = company.platforms.findIndex(
-    (candidate) => candidate.id === currentPlatform.id,
-  );
-  const currentPlatformIndex = foundPlatformIndex >= 0 ? foundPlatformIndex : 0;
-
-  const platforms = company.platforms.map((platform) =>
-    Object.freeze({
-      ...platform,
-      sysBO: sysBOContext(platform.entities),
-    }),
-  );
-
-  const companyContext: ManatOSCompanyContext = Object.freeze({
-    ...company,
-    sysBO: sysBOContext(company.entities),
-    platforms: Object.freeze(platforms),
-    currentPlatform: currentPlatform.id,
-    currentPlatformIndex,
-  });
-
   return {
     // Keep runtime/system facts first so generic object traversal (including
     // the CTX debugger) presents the infrastructure branch before business
     // entities/company/user/page state. JavaScript preserves insertion order
     // for these string-keyed object properties.
-    system: Object.freeze({
+    system: createSystemContext({
       scope,
-      runtime: Object.freeze({
-        mode: runtimeMode,
-        developerMode: runtimeMode !== 'production',
-      }),
-      server: Object.freeze({ apiBaseUrl }),
-      client: Object.freeze({
-        kind: 'web-ejs',
-        version: clientVersion,
-        features: Object.freeze({ ...clientFeatures }),
-      }),
+      runtimeMode,
+      apiBaseUrl,
+      clientKind: 'web-ejs',
+      clientVersion,
+      clientFeatures,
     }),
     entities: {},
-    company: companyContext,
+    company: createCompanyContext(company, currentPlatform),
     user: userContext(user, currentPlatform, scope, platformCapabilities),
   };
 }

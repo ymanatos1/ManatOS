@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import {
   allManatOSObjectMetadata,
   evaluateExpression,
-  evaluateExpressionAsync,
   operationContext,
   type SysBOCreateInput,
   type SysBOEntity,
@@ -15,6 +14,8 @@ import {
 } from '@manatos/shared';
 
 import type { AuditActor } from '../../audit/audit-service.js';
+
+import { materializePersistedCalculations } from '../../storage/persisted-calculation.js';
 
 import type { InMemoryDataStore } from '../../storage/in-memory-data-store.js';
 
@@ -430,70 +431,12 @@ export class GenericSysBOService<T extends SysBOEntity> {
     );
   }
 
-  /**
-   * Materialize every metadata-declared persisted calculated field against a
-   * minimal, entity-agnostic execution scope. The current candidate entity is
-   * the lexical scope; persistence-backed functions use the generic EntityResolver
-   * capability rather than depending on a UI/list entries snapshot.
-   *
-   * Several calculated fields may depend on one another. Iterate to a fixed point
-   * with a strict safety bound; no entity/field names are hard-coded here.
-   */
+  /** Materialize the canonical persisted-calculation behavior before commit. */
   protected async materializePersistedCalculatedFields(record: T): Promise<T> {
-    const calculations = Object.entries(this.metadata.fieldDefinition)
-      .filter(([, field]) => field.calculation?.persisted === true)
-      .map(([key, field]) => [key, field.calculation!] as const);
-    if (!calculations.length) return record;
-
-    const candidate = { ...(record as unknown as Record<string, unknown>) };
-    // One resolver per top-level materialization gives all fixed-point passes a
-    // request-local canonical lookup cache without leaking data across operations.
-    const entityResolver = new DataStoreEntityResolver(this.store);
-
-    const maxPasses = Math.max(4, calculations.length * 4);
-    for (let pass = 0; pass < maxPasses; pass += 1) {
-      /*
-       * Calculated expressions resolve against the canonical field context, not
-       * merely properties physically present on a partial input object. Optional
-       * fields therefore remain addressable with value=undefined and can safely
-       * participate in conditional calculations without becoming required.
-       */
-      const fields = Object.fromEntries(
-        Object.keys(this.metadata.fieldDefinition).map((key) => [key, { value: candidate[key] }]),
-      );
-      const entryPage = { fields, entry: candidate };
-      const ctx = { page: { page: entryPage } };
-
-      let changed = false;
-      for (const [key, field] of calculations) {
-        const value = await evaluateExpressionAsync(
-          field.expression,
-          {
-            owner: 'api-domain',
-            root: ctx,
-            scope: fields,
-            capabilities: ['pure', 'clock', 'ctx', 'entityResolver'],
-            entityResolver,
-          },
-          {
-            source: 'calculated-field',
-            sourcePath: `fieldDefinition.${key}.calculation`,
-            targetPath: key,
-            purpose: 'materialize persisted calculated field before persistence',
-          },
-        );
-
-        if (!Object.is(candidate[key], value)) {
-          candidate[key] = value;
-          changed = true;
-        }
-      }
-
-      if (!changed) return candidate as unknown as T;
-    }
-
-    throw new Error(
-      `Persisted calculated fields for ${this.metadata.key} did not settle within ${maxPasses} evaluation passes.`,
+    return materializePersistedCalculations(
+      this.metadata,
+      record,
+      new DataStoreEntityResolver(this.store),
     );
   }
 

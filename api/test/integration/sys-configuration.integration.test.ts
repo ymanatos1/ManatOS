@@ -1,9 +1,11 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { SysBOUserRole } from '@manatos/shared';
+import { SYSTEM_AUDIT_ACTOR } from '../../src/audit/audit-service.js';
 import { bearer, createTestApi, loginAdmin, seedAdmin } from '../support/test-helpers.js';
 
 describe('SysBOConfiguration API', () => {
-  it('is Admin-only, updates typed values and never returns encrypted secret material', async () => {
+  it('allows Superuser inspection, keeps mutation Admin-only, and never returns encrypted secret material', async () => {
     const { app, services } = await createTestApi();
     await seedAdmin(services.users);
     const token = await loginAdmin(app);
@@ -25,7 +27,34 @@ describe('SysBOConfiguration API', () => {
     expect(items.some((item) => item.name === 'UI_SYSBO_LICENSES_VIEW_MODE')).toBe(false);
     expect(items.some((item) => item.name === 'UI_SYSBO_EXT_AUTH_PROVIDERS_VIEW_MODE')).toBe(false);
 
+    const superuser = await services.users.createUser(
+      {
+        name: 'ConfigInspector',
+        email: 'config-inspector@example.test',
+        password: 'ConfigInspector!123',
+        role: SysBOUserRole.Superuser,
+        emailVerified: true,
+        enabled: true,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    const superLogin = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ identity: superuser.name, password: 'ConfigInspector!123' });
+    expect(superLogin.status).toBe(200);
+    const superToken = String(superLogin.body?.data?.accessToken ?? '');
+    const inspected = await request(app)
+      .get('/api/v1/SysConfigurations')
+      .set('Authorization', bearer(superToken));
+    expect(inspected.status).toBe(200);
+
     const pageSize = items.find((item) => item.name === 'API_DEFAULT_PAGE_SIZE');
+    const forbiddenUpdate = await request(app)
+      .patch(`/api/v1/SysConfigurations/${pageSize?.id}/value`)
+      .set('Authorization', bearer(superToken))
+      .send({ value: '99' });
+    expect(forbiddenUpdate.status).toBe(403);
+
     const update = await request(app)
       .patch(`/api/v1/SysConfigurations/${pageSize?.id}/value`)
       .set('Authorization', bearer(token))

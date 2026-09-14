@@ -61,10 +61,12 @@ describe('V2 post-cutover architecture audit', () => {
     expect(ctxRuntime).not.toContain('isV2Surface');
     expect(ctxRuntime).not.toContain('page.entry[key] = value');
     expect(formRuntime).not.toContain('syncCurrentValue');
-    expect(formRuntime).toContain('runtime.updateField(entryPagePath, key, value, option, cause);');
+    expect(formRuntime).toContain(
+      'runtime.updateField(entryPagePath, key, value, undefined, cause);',
+    );
     expect(save).not.toContain('runtime.updateField?.');
     expect(save).not.toContain('runtime.updateBaseline?.');
-    expect(policy).toContain('ctx.updateField(path, key, value, option, cause);');
+    expect(policy).toContain('ctx.updateField(path, key, value, undefined, cause);');
     expect(policy).toContain('ctx.get(`${path}.fields.${key}.options`)');
     expect(policy).not.toContain('getFieldOptions?.(control)');
     expect(policy).not.toContain('getFieldOption?.(control)');
@@ -200,7 +202,9 @@ describe('V2 post-cutover architecture audit', () => {
 
     expect(renderer).toContain('referenceData:');
     expect(renderer).toContain('parentListContext.referenceData');
-    expect(relationships).toContain('`${pagePath}.resources.referenceData`');
+    expect(relationships).toContain(
+      "runtime.resolve(`$.${String(pagePath).replace(/^ctx\\.?/, '')}.resources.referenceData`)",
+    );
     expect(workspace).toContain("let path = 'ctx.ui.level'");
     expect(workspace).toContain('`${pagePath}.resources.workspace`');
     expect(workspace).not.toContain("runtime.resolve('ctx.page')");
@@ -446,5 +450,16 @@ describe('V2 post-cutover architecture audit', () => {
     expect(policy).not.toContain('surface.entityKey');
     expect(formRuntime).toContain('entrySurface?.control?.entityKey');
     expect(formRuntime).not.toContain('entrySurface?.entityKey');
+  });
+
+  it('projects canonical CTX field changes back into field components without DOM write duplication', async () => {
+    const formRuntime = await ui('public/js/sysbo/entry/form-runtime.js');
+    const policy = await ui('public/js/runtime/entry-policy-runtime.js');
+
+    expect(formRuntime).toContain('const projectFieldFromCtx = (key) =>');
+    expect(formRuntime).toContain('projectCtxFieldChange(change)');
+    expect(formRuntime).toContain('setFieldValue?.(control, field.value, { emit: false })');
+    expect(policy).toContain('ctx.updateField(path, key, value, undefined, cause)');
+    expect(policy).not.toContain('setFieldValue?.(control, value, { emit: false })');
   });
 });

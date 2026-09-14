@@ -1,0 +1,16 @@
+digraph G {
+ graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - Client/UI Contract Architecture"];
+ node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=TB;
+ api [label="Authoritative API / domain\nbusiness operations + authorization", fillcolor="#dcecff"];
+ contracts [label="Portable client contracts\ncanonical metadata | UI metadata\ncapabilities | API envelopes\nexpression/context semantics", fillcolor="#fff3cd"];
+ client [label="UI-capable client\npresentation + interaction state\nframework-independent semantics", fillcolor="#e8f4e5"];
+ current [label="Current realization\nNode.js/Express BFF + EJS/Bootstrap\n+ browser CTX/runtime", fillcolor="#f4f4f4"];
+ future [label="Potential realizations\nAngular | React | mobile | desktop\nspecialized/read-only clients", fillcolor="#f4f4f4"];
+ storage [label="Storage adapters\nserver-owned persistence semantics", fillcolor="#fce8e6"];
+ api -> contracts [label="projects facts/contracts"];
+ contracts -> client [label="consumed by"];
+ client -> api [label="authorized API operations"];
+ client -> current [style=dashed, label="realized today as"];
+ client -> future [style=dashed, label="may also be realized as"];
+ api -> storage [label="persistence boundary"];
+}

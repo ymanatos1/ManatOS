@@ -38,6 +38,38 @@ const navigationCtx = (role: SysBOUserRole, platformAccess: boolean) => {
   );
 };
 
+const collectionCapabilities = (
+  role: SysBOUserRole,
+  applicationRead = role === SysBOUserRole.Admin || role === SysBOUserRole.Superuser,
+) => {
+  const capability = (read: boolean) => ({ read, create: false, update: false, delete: false });
+  return {
+    'sys-users': capability(true),
+    'sys-principals': capability(role !== SysBOUserRole.Guest),
+    'sys-licenses': capability(
+      role === SysBOUserRole.Admin ||
+        role === SysBOUserRole.Superuser ||
+        role === SysBOUserRole.User,
+    ),
+    'sys-applications': capability(applicationRead),
+    'sys-ext-auth-providers': capability(
+      role === SysBOUserRole.Admin || role === SysBOUserRole.Superuser,
+    ),
+    'sys-configurations': capability(
+      role === SysBOUserRole.Admin || role === SysBOUserRole.Superuser,
+    ),
+  };
+};
+
+const navigationAccess = (
+  role: SysBOUserRole,
+  platformAccess: boolean,
+  applicationRead = role === SysBOUserRole.Admin || role === SysBOUserRole.Superuser,
+) => ({
+  ctx: navigationCtx(role, platformAccess),
+  entityCapabilities: collectionCapabilities(role, applicationRead),
+});
+
 describe('company/platform navigation composition', () => {
   it('composes the Company catalogue from the canonical protoCRM platform module', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
@@ -51,7 +83,13 @@ describe('company/platform navigation composition', () => {
   });
 
   it('places Platform immediately after Company in horizontal navigation', () => {
-    const navigation = navigationFor(SysBOUserRole.Admin, true).horizontal;
+    const navigation = navigationFor(
+      SysBOUserRole.Admin,
+      true,
+      MANATOS_COMPANY,
+      resolvePlatform(MANATOS_COMPANY),
+      navigationAccess(SysBOUserRole.Admin, true),
+    ).horizontal;
 
     expect(navigation.slice(0, 4).map((item) => item.id)).toEqual([
       'home',
@@ -88,9 +126,13 @@ describe('company/platform navigation composition', () => {
 
   it('merges Company and protoCRM contributions into the current left-nav order', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
-    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform, {
-      ctx: navigationCtx(SysBOUserRole.Admin, true),
-    }).vertical;
+    const navigation = navigationFor(
+      SysBOUserRole.Admin,
+      true,
+      MANATOS_COMPANY,
+      platform,
+      navigationAccess(SysBOUserRole.Admin, true),
+    ).vertical;
 
     expect(navigation.map((item) => item.id)).toEqual([
       'account',
@@ -118,6 +160,7 @@ describe('company/platform navigation composition', () => {
     ).toBe('bi-globe2');
     expect(configuration?.children?.map((item) => item.id)).toEqual([
       'system-configuration',
+      'system-settings',
       'external-authentication',
     ]);
   });
@@ -144,10 +187,12 @@ describe('company/platform navigation composition', () => {
       true,
       MANATOS_COMPANY,
       platform,
+      navigationAccess(SysBOUserRole.Admin, true),
     ).vertical.find((item) => item.id === 'configuration');
 
     expect(configuration?.children?.map((item) => item.id)).toEqual([
       'system-configuration',
+      'system-settings',
       'external-authentication',
       'platform-settings',
     ]);
@@ -159,7 +204,13 @@ describe('company/platform navigation composition', () => {
       entities: [],
     };
 
-    const navigation = navigationFor(SysBOUserRole.Admin, true, MANATOS_COMPANY, platform);
+    const navigation = navigationFor(
+      SysBOUserRole.Admin,
+      true,
+      MANATOS_COMPANY,
+      platform,
+      navigationAccess(SysBOUserRole.Admin, true),
+    );
 
     expect(navigation.vertical.some((item) => item.id === 'app-playground')).toBe(false);
     expect(navigation.horizontal.some((item) => item.id === 'app-playground')).toBe(false);
@@ -178,9 +229,37 @@ describe('company/platform navigation composition', () => {
     });
   });
 
-  it('gates protoCRM application navigation by entitlement for every non-Admin role', () => {
-    for (const role of [SysBOUserRole.Guest, SysBOUserRole.User, SysBOUserRole.Superuser]) {
-      const unlicensed = navigationFor(role, true);
+  it('declares entity-backed navigation through API collection-read capabilities, not role copies', () => {
+    const byId = new Map(MANATOS_COMPANY.navigation.map((item) => [item.id, item]));
+    expect(byId.get('users')).toMatchObject({ requiresEntityRead: 'sys-users' });
+    expect(byId.get('principals')).toMatchObject({ requiresEntityRead: 'sys-principals' });
+    expect(byId.get('licenses')).toMatchObject({ requiresEntityRead: 'sys-licenses' });
+    expect(byId.get('external-authentication')).toMatchObject({
+      requiresEntityRead: 'sys-ext-auth-providers',
+    });
+    expect(byId.get('principals')?.visible).toBeUndefined();
+    expect(byId.get('licenses')?.visible).toBeUndefined();
+
+    const platformById = new Map(
+      resolvePlatform(MANATOS_COMPANY).navigation.map((item) => [item.id, item]),
+    );
+    expect(platformById.get('applications')).toMatchObject({
+      requiresEntityRead: 'sys-applications',
+    });
+    expect(platformById.get('app-playground')).toMatchObject({
+      requiresEntityRead: 'sys-applications',
+    });
+  });
+
+  it('keeps User/Guest Apps Playground execution-gated while allowing Superuser execution', () => {
+    for (const role of [SysBOUserRole.Guest, SysBOUserRole.User]) {
+      const unlicensed = navigationFor(
+        role,
+        true,
+        MANATOS_COMPANY,
+        resolvePlatform(MANATOS_COMPANY),
+        navigationAccess(role, false),
+      );
       expect(unlicensed.vertical.some((item) => item.id === 'app-playground')).toBe(false);
       expect(unlicensed.horizontal.some((item) => item.id === 'app-playground')).toBe(false);
       expect(
@@ -189,35 +268,71 @@ describe('company/platform navigation composition', () => {
           ?.children?.some((item) => item.id === 'applications'),
       ).toBe(false);
 
-      const licensed = navigationFor(
+      const platformOnly = navigationFor(
         role,
         true,
         MANATOS_COMPANY,
         resolvePlatform(MANATOS_COMPANY),
-        { ctx: navigationCtx(role, true) },
+        navigationAccess(role, true),
       );
-      expect(licensed.vertical.some((item) => item.id === 'app-playground')).toBe(true);
-      expect(licensed.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
+      expect(platformOnly.vertical.some((item) => item.id === 'app-playground')).toBe(false);
+      expect(platformOnly.horizontal.some((item) => item.id === 'app-playground')).toBe(false);
       expect(
-        licensed.vertical
+        platformOnly.vertical
+          .find((item) => item.id === 'administration')
+          ?.children?.some((item) => item.id === 'applications'),
+      ).toBe(false);
+
+      const fullyAuthorized = navigationFor(
+        role,
+        true,
+        MANATOS_COMPANY,
+        resolvePlatform(MANATOS_COMPANY),
+        navigationAccess(role, true, true),
+      );
+      expect(fullyAuthorized.vertical.some((item) => item.id === 'app-playground')).toBe(true);
+      expect(fullyAuthorized.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
+      expect(
+        fullyAuthorized.vertical
           .find((item) => item.id === 'administration')
           ?.children?.some((item) => item.id === 'applications'),
       ).toBe(true);
     }
+
+    const superuser = navigationFor(
+      SysBOUserRole.Superuser,
+      true,
+      MANATOS_COMPANY,
+      resolvePlatform(MANATOS_COMPANY),
+      navigationAccess(SysBOUserRole.Superuser, true),
+    );
+    expect(superuser.vertical.some((item) => item.id === 'app-playground')).toBe(true);
+    expect(superuser.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
+    expect(
+      superuser.vertical
+        .find((item) => item.id === 'administration')
+        ?.children?.some((item) => item.id === 'applications'),
+    ).toBe(true);
 
     const admin = navigationFor(
       SysBOUserRole.Admin,
       true,
       MANATOS_COMPANY,
       resolvePlatform(MANATOS_COMPANY),
-      { ctx: navigationCtx(SysBOUserRole.Admin, true) },
+      navigationAccess(SysBOUserRole.Admin, true),
     );
     expect(admin.vertical.some((item) => item.id === 'app-playground')).toBe(true);
     expect(admin.horizontal.some((item) => item.id === 'app-playground')).toBe(true);
   });
 
   it('gives Guest access to the Users area without exposing unrelated administration entities', () => {
-    const navigation = navigationFor(SysBOUserRole.Guest, true).vertical;
+    const navigation = navigationFor(
+      SysBOUserRole.Guest,
+      true,
+      MANATOS_COMPANY,
+      resolvePlatform(MANATOS_COMPANY),
+      navigationAccess(SysBOUserRole.Guest, false),
+    ).vertical;
     const administration = navigation.find((item) => item.id === 'administration');
 
     expect(administration).toBeDefined();
@@ -225,13 +340,33 @@ describe('company/platform navigation composition', () => {
     expect(navigation.some((item) => item.id === 'configuration')).toBe(false);
   });
 
-  it('preserves existing User navigation visibility and includes Superuser', () => {
+  it('keeps User operational navigation limited and exposes Superuser inspection surfaces', () => {
     for (const role of [SysBOUserRole.User, SysBOUserRole.Superuser]) {
-      const navigation = navigationFor(role, true).vertical;
+      const navigation = navigationFor(
+        role,
+        true,
+        MANATOS_COMPANY,
+        resolvePlatform(MANATOS_COMPANY),
+        navigationAccess(role, false),
+      ).vertical;
       expect(navigation.some((item) => item.id === 'administration')).toBe(true);
-      expect(navigation.some((item) => item.id === 'configuration')).toBe(false);
+      expect(navigation.some((item) => item.id === 'configuration')).toBe(
+        role === SysBOUserRole.Superuser,
+      );
       expect(navigation.find((item) => item.id === 'preferences')?.separatorBefore).toBe(true);
     }
+  });
+
+  it('fails entity-backed navigation closed without API-projected collection capabilities', () => {
+    const navigation = navigationFor(
+      SysBOUserRole.Admin,
+      true,
+      MANATOS_COMPANY,
+      resolvePlatform(MANATOS_COMPANY),
+      { ctx: navigationCtx(SysBOUserRole.Admin, true) },
+    ).vertical;
+
+    expect(navigation.find((item) => item.id === 'administration')?.children).toEqual([]);
   });
 });
 

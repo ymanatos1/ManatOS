@@ -20,6 +20,12 @@ import { SecretsEncryptionService } from './security/secrets-encryption-service.
 import { SysBOExtAuthProviderService } from './services/sysbo/external-auth-provider-service.js';
 import { SysBOConfigurationService } from './services/sysbo/configuration-service.js';
 import { RelationshipIntegrityService } from './services/relationships/integrity-service.js';
+import { SystemSettingsStore, IN_MEMORY_JSON_ADAPTER_ID } from './system-settings.js';
+import { apiContextRuntime } from './context/api-context-runtime.js';
+import {
+  apiContextSnapshotCapture,
+  configureApiContextSnapshots,
+} from './context/api-context-snapshot.js';
 
 /**
  * Application composition root.
@@ -31,11 +37,43 @@ import { RelationshipIntegrityService } from './services/relationships/integrity
  */
 
 /**
- * Current persistence implementation:
- *
- * InMemoryDataStore + JSON file persistence.
+ * Bootstrap/system settings are deliberately independent of the selected
+ * business datastore. The API creates the file with safe defaults on first
+ * startup and repairs a missing/invalid current-storage selection.
  */
-const store = new InMemoryDataStore(new JsonFilePersistence(config.DATA_FILE));
+const secretsEncryption = new SecretsEncryptionService(
+  config.SECRETS_ENCRYPTION_ACTIVE_KEY_ID,
+  config.SECRETS_ENCRYPTION_KEY,
+);
+
+const systemSettings = new SystemSettingsStore(
+  config.SYSTEM_SETTINGS_FILE,
+  config.DATA_FILE,
+  secretsEncryption,
+);
+await systemSettings.initialize();
+configureApiContextSnapshots(() => {
+  const debugging = systemSettings.storageDebuggingSettings();
+  return {
+    enabled: debugging.apiStorageContextEnabled,
+    outputDirectory: debugging.outputDirectory,
+  };
+});
+apiContextRuntime.setSnapshotCapture(apiContextSnapshotCapture());
+const storageConfiguration = systemSettings.currentStorageConfiguration();
+
+if (storageConfiguration.adapterId !== IN_MEMORY_JSON_ADAPTER_ID) {
+  throw new Error(
+    `Storage adapter '${storageConfiguration.adapterId}' is not available in this build.`,
+  );
+}
+
+const store = new InMemoryDataStore(
+  new JsonFilePersistence(
+    storageConfiguration.settings.dataFile ?? config.DATA_FILE,
+    storageConfiguration.settings.binaryRoot,
+  ),
+);
 
 try {
   await store.initialize();
@@ -57,7 +95,12 @@ try {
     });
   }
 
-  logger.info('Primary datastore initialized', { dataFile: config.DATA_FILE });
+  logger.info('Primary datastore initialized', {
+    storageConfigurationId: storageConfiguration.id,
+    storageAdapter: storageConfiguration.adapterId,
+    dataFile: storageConfiguration.settings.dataFile,
+    binaryRoot: storageConfiguration.settings.binaryRoot,
+  });
 } catch (error) {
   /**
    * File logging is deliberately independent from the business datastore, so
@@ -65,7 +108,9 @@ try {
    * primary database itself is unavailable.
    */
   logger.fatal('Primary datastore initialization failed', {
-    dataFile: config.DATA_FILE,
+    storageConfigurationId: storageConfiguration.id,
+    storageAdapter: storageConfiguration.adapterId,
+    dataFile: storageConfiguration.settings.dataFile,
     error,
   });
   throw error;
@@ -75,11 +120,6 @@ try {
  * Construct domain/application services.
  */
 const users = new SysBOUserService(store);
-
-const secretsEncryption = new SecretsEncryptionService(
-  config.SECRETS_ENCRYPTION_ACTIVE_KEY_ID,
-  config.SECRETS_ENCRYPTION_KEY,
-);
 
 const configurations = new SysBOConfigurationService(store, secretsEncryption);
 await configurations.seedMissing();
@@ -116,6 +156,8 @@ const services = {
   extAuthProviders: new SysBOExtAuthProviderService(store, secretsEncryption),
 
   externalIdentities: new ExternalIdentityService(store, users),
+
+  systemSettings,
 };
 
 /**

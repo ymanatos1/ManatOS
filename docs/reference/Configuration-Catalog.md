@@ -64,7 +64,7 @@ Some values are consumed dynamically through the runtime configuration cache. Ot
 
 ## Administration API
 
-Configuration management is Admin-only.
+Configuration mutation/management is Admin-only. Superuser may inspect configuration through read-only contracts/surfaces; User and Guest do not receive configuration access.
 
 ```text
 GET   /api/v1/SysConfigurations
@@ -72,3 +72,14 @@ PATCH /api/v1/SysConfigurations/{id}/value
 ```
 
 The PATCH endpoint validates values according to the setting metadata and preserves secret confidentiality.
+
+## Bootstrap storage/debugging settings
+
+Storage-provider selection and storage debugging are bootstrap/system settings persisted in `system-settings.json`, independently of `SysConfiguration` records and independently of the selected business datastore.
+
+Storage debugging currently includes:
+
+- API storage CTX snapshot enable/disable;
+- debug output directory, default `../data/logs/api/` relative to the API process.
+
+The same directory setting is also used by the co-located UI developer debugger as a filesystem location hint when discovering API log files. That local visibility is optional and is not required for normal UI/API operation.

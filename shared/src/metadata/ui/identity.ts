@@ -72,9 +72,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           icon: 'shield-lock',
           layout: 'summary',
           visible: {
-            expression:
-              "mode !== 'create' && " +
-              "(user.permissions.userRole === 'Admin' || #level.entry.current.id === $.user.fields.id.value)",
+            expression: "mode !== 'create' && permissions.update === true",
           },
         },
       ),

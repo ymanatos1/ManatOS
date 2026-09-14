@@ -40,6 +40,7 @@ Temporary client identities are resolved at the aggregate boundary. A successful
 ## Resources
 
 Hierarchy visualizations expose component-owned read models through the surface `resources` channel rather than introducing hierarchy-specific global CTX topology.
+
 ## Runtime responsibility split
 
 The browser hierarchy implementation keeps one semantic working graph in CTX while separating implementation responsibilities:

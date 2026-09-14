@@ -1,8 +1,10 @@
 <%
   const groupEntries = Object.entries(configurationGroups || {});
+  const inspectionOnly = configurationReadOnly === true;
   const icons = { UI:'bi-window', API:'bi-braces', Mail:'bi-envelope-at', Logging:'bi-journal-text', 'Errors & diagnostics':'bi-bug', Sessions:'bi-clock-history' };
 %>
 <div class="alert alert-info d-flex gap-2" role="note"><i class="bi bi-shield-lock-fill"></i><div><strong>Secrets stay protected.</strong> Sensitive values are encrypted at rest and are never returned to this page. Enter a new value only when you want to replace the stored secret.</div></div>
+<% if (inspectionOnly) { %><div class="alert alert-info"><i class="bi bi-eye me-2"></i><strong>Inspection mode.</strong> Superusers can inspect system configuration; only Administrators can change it.</div><% } %>
 <div class="row g-4">
 <% for (const [group, items] of groupEntries) { %>
   <div class="col-12 col-xl-6">
@@ -16,13 +18,13 @@
             <p class="small text-secondary mb-2"><%= item.description || '' %></p>
             <div class="input-group">
               <% if (item.valueType === 'boolean') { %>
-                <select class="form-select" id="cfg-<%= item.id %>" name="value"><option value="true" <%= item.value === 'true' ? 'selected' : '' %>>Enabled / true</option><option value="false" <%= item.value === 'false' ? 'selected' : '' %>>Disabled / false</option></select>
+                <select class="form-select" <%= inspectionOnly ? 'disabled aria-readonly="true"' : '' %> id="cfg-<%= item.id %>" name="value"><option value="true" <%= item.value === 'true' ? 'selected' : '' %>>Enabled / true</option><option value="false" <%= item.value === 'false' ? 'selected' : '' %>>Disabled / false</option></select>
               <% } else if (item.valueType === 'enum') { %>
-                <select class="form-select" id="cfg-<%= item.id %>" name="value"><% for (const option of (item.allowedValues || [])) { %><option value="<%= option %>" <%= item.value === option ? 'selected' : '' %>><%= option %></option><% } %></select>
+                <select class="form-select" <%= inspectionOnly ? 'disabled aria-readonly="true"' : '' %> id="cfg-<%= item.id %>" name="value"><% for (const option of (item.allowedValues || [])) { %><option value="<%= option %>" <%= item.value === option ? 'selected' : '' %>><%= option %></option><% } %></select>
               <% } else { %>
-                <input class="form-control" id="cfg-<%= item.id %>" name="value" type="<%= item.sensitive ? 'password' : (item.valueType === 'number' ? 'number' : 'text') %>" value="<%= item.sensitive ? '' : (item.value || '') %>" placeholder="<%= item.sensitive && item.secretConfigured ? 'Leave blank to keep the stored secret' : '' %>" <%= item.valueType === 'number' ? 'min="1"' : '' %>>
+                <input class="form-control" <%= inspectionOnly ? 'readonly aria-readonly="true"' : '' %> id="cfg-<%= item.id %>" name="value" type="<%= item.sensitive ? 'password' : (item.valueType === 'number' ? 'number' : 'text') %>" value="<%= item.sensitive ? '' : (item.value || '') %>" placeholder="<%= item.sensitive && item.secretConfigured ? 'Leave blank to keep the stored secret' : '' %>" <%= item.valueType === 'number' ? 'min="1"' : '' %>>
               <% } %>
-              <button class="btn btn-outline-primary" type="submit"><i class="bi bi-check2"></i> Apply</button>
+              <% if (!inspectionOnly) { %><button class="btn btn-outline-primary" type="submit"><i class="bi bi-check2"></i> Apply</button><% } %>
             </div>
             <div class="form-text" data-config-apply-result aria-live="polite"></div>
             <% if (item.defaultValue && !item.sensitive) { %><div class="form-text">Default: <code><%= item.defaultValue %></code></div><% } %>

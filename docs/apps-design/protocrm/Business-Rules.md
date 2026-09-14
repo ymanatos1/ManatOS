@@ -1,16 +1,13 @@
 # Business Rules
 
-Business rules are represented at the layer that owns their semantics. The platform intentionally avoids concentrating every rule either in browser code or in one monolithic service.
+protoCRM owns rules whose semantics belong to its Applications, Apps Playground and future CRM/application tooling. Company-owned identity, Principal hierarchy, licensing and external-authentication rules are documented under the [ManatOS Company Domain](../../company/README.md) even when protoCRM consumes their results.
 
-## Representative rules
+## Representative platform rules
 
-- User ↔ Person Principal relationship integrity;
-- Person full-name calculation;
-- Parent/Root Principal traversal and organization hierarchy semantics;
-- normalized reusable email, telephone and postal-address values;
-- platform/application/license relationships and restrictions;
-- server-authoritative role and capability policy;
-- metadata-driven eligibility and exception predicates for selectors and lists.
+- platform/Application availability and navigation contributions;
+- Application relationships and restrictions;
+- future application-defined entity behavior;
+- CRM-specific rules introduced by future protoCRM tools.
 
 ## Placement rule
 

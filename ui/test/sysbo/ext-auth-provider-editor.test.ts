@@ -128,6 +128,7 @@ describe('external authentication provider metadata-driven editor', () => {
     const renderer = await source('views/components/runtime/entity-entry.ejs');
     const runtime = await source('public/js/auth/external-provider.js');
     const fieldRuntime = await source('public/js/sysbo/entry/field-runtime.js');
+    const ctxRuntime = await source('public/js/runtime/context-runtime.js');
     const formRuntime = await source('public/js/sysbo/entry/form-runtime.js');
     const expressionRuntime = await source('public/js/sysbo/entry/expression-runtime.js');
 
@@ -145,8 +146,8 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(runtime).toContain("callback.dispatchEvent(new Event('change', { bubbles: true }))");
     expect(fieldRuntime).not.toContain('const getFieldOptions =');
     expect(fieldRuntime).not.toContain('const getFieldOption =');
-    expect(formRuntime).toContain('const fieldOptionFromCtx = (key, value) =>');
-    expect(formRuntime).toContain('runtime?.get?.(`${entryPageFieldsPath}.${key}.options`)');
+    expect(ctxRuntime).toContain('Array.isArray(field.options)');
+    expect(ctxRuntime).toContain('field.options.find(');
     expect(formRuntime).not.toContain('getFieldOption?.(control)');
     expect(formRuntime).not.toContain('getFieldOptions?.(control)');
     expect(formRuntime).not.toContain('let value = { value: fieldValue, option, options };');
@@ -164,8 +165,8 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(runtime).not.toContain('if (createMode && !provider.value)');
 
     const entryPolicy = await source('public/js/runtime/entry-policy-runtime.js');
-    expect(entryPolicy).toContain('setFieldValue?.(control, value, { emit: false })');
-    expect(entryPolicy).toContain('ctx.updateField(path, key, value, option, cause)');
+    expect(entryPolicy).toContain('ctx.updateField(path, key, value, undefined, cause)');
+    expect(entryPolicy).not.toContain('setFieldValue?.(control, value, { emit: false })');
     expect(entryPolicy).toContain('const applyCanonicalCreateDefaults = async () =>');
     expect(entryPolicy).toContain("field, 'createDefaultValue'");
     expect(entryPolicy).toContain("setField(key, value, 'canonical-create-default')");

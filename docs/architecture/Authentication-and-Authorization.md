@@ -2,7 +2,7 @@
 
 Registration creates SysUser role Guest. A customer relationship later promotes an ordinary Guest to User. Admin is not automatically changed by commercial relationships.
 
-Every authenticated user may access and update their own `SysUser` record through the generic SysBO entry surface, subject to field-level security metadata. This does **not** grant administrative access to other users: role assignment remains Admin-only, another user record is not writable without the applicable authorization rule, and self-deletion remains prohibited.
+Every authenticated user may read their own `SysUser` record. Guest/User may update their own account where record/field policy permits; Superuser remains inspection-only; Admin has full User administration subject to explicit safety rules. Role assignment remains Admin-only and self-deletion remains prohibited.
 
 ## Email registration
 
@@ -22,12 +22,12 @@ Provider definitions and callback paths are code-defined. Admins configure one r
 
 The implementation keeps the full provider/credential/verification domain model, but presents it in four clear layers:
 
-| Layer                  | Typical operations                                                                                            | Access                                                                 | Intended caller                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
-| Provider configuration | list/create/update/delete provider records; provider definitions                                              | **Admin only** with API Bearer token                                   | Admin tools / ManatOS UI                  |
-| Credential management  | store/replace an encrypted credential pair; remove credentials                                                | **Trusted Admin/BFF**: Admin Bearer token **and** `x-internal-api-key` | ManatOS UI server/BFF                     |
-| Verification workflow  | obtain a stored pair for testing; persist successful verification; temporary OAuth test state/callback/status | **Internal UI workflow only**                                          | ManatOS UI server and OAuth callback flow |
-| Runtime availability   | anonymous-safe providers currently usable for sign-in                                                         | **Public/anonymous**                                                   | Sign-in / registration UI                 |
+| Layer                  | Typical operations                                                                                            | Access                                                                              | Intended caller                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Provider configuration | list/read provider records and provider definitions; create/update/delete provider records                    | **Superuser read-only inspection; Admin full administration** with API Bearer token | Administrative clients / current ManatOS web UI |
+| Credential management  | store/replace an encrypted credential pair; remove credentials                                                | **Trusted Admin/BFF**: Admin Bearer token **and** `x-internal-api-key`              | Current ManatOS web BFF                         |
+| Verification workflow  | obtain a stored pair for testing; persist successful verification; temporary OAuth test state/callback/status | **Internal trusted workflow only**                                                  | Current web BFF and OAuth callback flow         |
+| Runtime availability   | anonymous-safe providers currently usable for sign-in                                                         | **Public/anonymous**                                                                | Sign-in / registration clients                  |
 
 The internal verification workflow is deliberately not a general-purpose client API. In particular, API clients must not mark `credentialsVerified` directly: it is persisted, read-only, application-managed state and becomes `true` only after the real provider OAuth test succeeds. Swagger groups these operations separately and Postman places routine provider/credential-management examples with the provider collection while keeping verification mechanics documented as internal infrastructure.
 
@@ -74,7 +74,7 @@ PUT  /api/v1/auth/password
 
 `GET /sessions` lists the current user's active API sessions. `POST /logout` revokes only the current session. `POST /logout-all` revokes every active API session for that user, including the session making the request.
 
-API access-token sessions are separate from Express/EJS browser sessions and are not business data.
+API access-token sessions are separate from client presentation/session state and are not business data. The current Express/EJS client uses a server-side website session as one concrete client topology.
 
 ## Authentication response convention
 
@@ -90,7 +90,7 @@ This document describes the current ManatOS authorization architecture and runti
 
 `api/src/auth/authorization-service.ts` is the authoritative SysBO and platform authorization service. Authorization is evaluated on the API side against the authenticated subject and, when required, persisted records and relationship/license data.
 
-The browser and Express UI server never grant access. They may consume resolved capability facts for presentation, but every API read or mutation is independently authorized again when the operation executes.
+No client implementation grants API access. Clients may consume resolved capability facts for presentation, but every API read or mutation is independently authorized again when the operation executes. The current Express web client follows this rule, and future Angular/React/mobile clients must do the same.
 
 The canonical SysBO authorization actions are:
 
@@ -115,46 +115,61 @@ role
 
 The API authentication layer supplies this subject to `AuthorizationService`. The service does not depend on Express request objects.
 
-## 3. Current SysBO policy
+## 3. Current entity and role policy
 
-The policy is centralized in `AuthorizationService.can()` and reused by direct operation enforcement, list visibility, and capability projection.
+The policy is centralized in `AuthorizationService.can()` and reused by direct operation enforcement, list visibility and capability projection. Route/middleware guards must not introduce a contradictory second interpretation of the same entity permission. Specialized trusted commands may add stricter checks where their semantics require them.
 
-### External authentication providers
+### Four-role semantic contract
 
-`sys-ext-auth-providers` is Admin-only for normal SysBO access because provider configuration contains security-sensitive settings.
+The current roles are **Guest, User, Superuser and Admin**. Admin is the full-administration role. Superuser is intentionally different: it receives broader inspection/platform-use capabilities without generic entity mutation.
 
-### SysBOUser deletion
+| Surface/data                  | Guest       | User             | Superuser                              | Admin               |
+| ----------------------------- | ----------- | ---------------- | -------------------------------------- | ------------------- |
+| Users                         | own row     | own row          | own row, read-only inspection          | full administration |
+| Principals                    | unavailable | own organization | own organization, read-only inspection | full administration |
+| Licenses                      | unavailable | own organization | own organization, read-only inspection | full administration |
+| Applications                  | unavailable | unavailable      | read-only inspection                   | full administration |
+| Apps Playground               | unavailable | unavailable      | execution/use access                   | full access         |
+| External Authentication       | unavailable | unavailable      | read-only inspection                   | full administration |
+| System Configuration/Settings | unavailable | unavailable      | read-only inspection                   | full administration |
 
-Deletion of `sys-users` is stricter than the generic relationship policy:
-
-- only Admin may delete a SysBOUser;
-- an Admin may not delete their own SysBOUser record.
+This matrix describes outcomes. Clients must not reproduce it as their authorization engine; they consume capability projections.
 
 ### Admin baseline
 
-After explicit security exceptions such as SysBOUser self-delete and external-provider protection, Admin may perform the normal SysBO actions.
+After explicit safety invariants such as SysBOUser self-delete, Admin may perform normal entity/system administration. Admin remains the only role with generic create/update/delete rights over protected administration/platform entities.
 
-### Non-Admin reads
+### Superuser inspection and platform execution
 
-- `sys-users`: collection access may enter the list pipeline, but record visibility is restricted to the authenticated user's own row; direct record reads enforce the same rule.
-- `sys-applications`: protoCRM visibility requires an effective license reachable through a Principal linked to the user. An application-restricted license narrows access to its named application; a platform-wide license covers all protoCRM applications.
-- `sys-licenses`: only licenses owned by Principals linked to the user are visible.
-- other Company-owned SysBOs currently use the generic readable baseline unless a more specific rule exists.
+Superuser is read-only for generic entity administration. It may inspect protected Applications, External Authentication and System Configuration/Settings and may inspect organization-scoped Principals/Licenses and its own User row. Generic create/update/delete remains denied.
 
-### Non-Admin creation
+Superuser also receives protoCRM `platformAccess`, allowing Apps Playground execution/use. This is deliberately **not** derived from Applications mutation rights: executing/using an application is a platform capability, while editing the Application definition is an entity mutation capability.
 
-Generic SysBO creation is Admin-only. Public Guest registration is a separate trusted workflow and does not use generic SysBOUser create authorization.
+### User operational scope
 
-### Non-Admin update/delete relationships
+User can read its own User row and organization-scoped Principals/Licenses. It does not receive Applications, Apps Playground, External Authentication or System Configuration/Settings access. Where User update is permitted, record/field/command rules still apply; role assignment and other privileged commands remain protected.
 
-For update/delete, a record may be related to the current user through its server-owned audit identity (`createdBy` / `updatedBy`). Entity-specific relationships are then evaluated where applicable:
+### Guest baseline
 
-- `sys-users`: own SysBOUser record;
-- `sys-principals`: an enabled User↔Principal relationship;
-- `sys-licenses`: the license's owning Principal is linked to the user;
-- `sys-applications`: a current application/platform license links the user to the application, then the application permission policy determines whether the definition may be modified.
+Guest has the restricted baseline. Its own account identity may be available as defined by account policy, but organization administration, Licenses, Applications/platform execution and protected configuration surfaces are unavailable.
 
-Unknown/future SysBOs do not receive an implicit write grant; after the generic audit relationship check they fail closed unless a specific policy is added.
+### Row scoping
+
+Collection permission and row permission are separate decisions. A permitted list may legitimately return zero rows. Row scoping is applied through the same authorization service before client-visible filtering/paging.
+
+- `sys-users`: non-Admin visibility is restricted to the authenticated user's own row.
+- `sys-principals`: User/Superuser visibility is restricted to the user's organization/principal relationships.
+- `sys-licenses`: User/Superuser visibility is restricted to licenses belonging to that organization/principal scope.
+- `sys-applications`: Superuser may inspect; User/Guest are denied.
+- protected configuration/provider entities: Superuser may inspect; Admin may administer.
+
+### Mutation and specialized commands
+
+Generic entity creation is Admin-only unless an explicit public/trusted workflow exists (for example Guest registration). Superuser's inspection role never implies generic mutation. Fine-grained operations such as User role assignment, identity linking, administrative email verification, credential replacement/verification and system-setting changes may have stricter command/field policies than generic entity read capability.
+
+Deletion of `sys-users` is additionally constrained: only Admin may delete a User, and an Admin may not delete their own current User record.
+
+Unknown/future entities do not receive implicit grants; policy fails closed until their intended semantics are defined.
 
 ## 4. License and application entitlement
 
@@ -167,7 +182,7 @@ License validity is defined by the shared domain helpers in `shared/src/domain/c
 - `platformId` must match;
 - an optional `applicationId` restricts the license to one application.
 
-Authorization traverses enabled User↔Principal relationships to determine whether a current user owns the relevant entitlement. These relationship/license inputs remain API-private.
+These helpers define licensing semantics for current/future entitlement decisions. They do **not** currently grant User/Guest access to protoCRM Applications or Apps Playground. Current platform access is explicitly projected for Admin and Superuser; license/relationship inputs remain server-private and may be used by later entitlement policy without requiring clients to reconstruct it.
 
 ## 5. Capability projection APIs
 
@@ -221,7 +236,7 @@ Current projection:
 }
 ```
 
-The API owns Admin bypass, Principal traversal, license validity and platform matching. Clients receive only the boolean outcome.
+The API owns the platform-access decision. In the current four-role policy, `platformAccess` is true for Admin and Superuser and false for User and Guest. Clients receive only the boolean outcome and must not infer it from Applications CRUD capability or locally reconstruct entitlement policy.
 
 ## 6. API enforcement
 
@@ -229,7 +244,7 @@ Capability projections are never bearer permissions. The API still calls `Author
 
 A stale, modified, or fabricated client capability cannot authorize an API request.
 
-The same rule applies to browser CTX: capability facts may control visibility, enabled state and navigation, but posted CTX is never trusted as authorization evidence.
+The same rule applies to client CTX/context state: capability facts may control visibility, enabled state and navigation, but client-posted context is never trusted as authorization evidence.
 
 ## 7. List authorization and storage boundary
 
@@ -237,13 +252,13 @@ List authorization must remove unauthorized rows before client-visible filtering
 
 The current Map-backed/in-memory implementation materializes candidate rows and applies the same record-level `read` policy through `AuthorizationService.filterListItems()` before client query operations.
 
-A future RDBMS storage adapter must preserve the same semantic boundary by translating the authorization predicate into database selection (`WHERE`, joins, EXISTS predicates, etc.) rather than fetching unauthorized rows and filtering them in the browser or after paging.
+A future RDBMS storage adapter must preserve the same semantic boundary by translating the authorization predicate into database selection (`WHERE`, joins, EXISTS predicates, etc.) rather than fetching unauthorized rows and filtering them in a client or after paging.
 
 This is the same end-to-end rule used by canonical list-exception predicates: selection semantics belong in the query/storage pipeline, not in UI-only post-filtering.
 
-## 8. UI/CTX projection
+## 8. Client capability/context projection
 
-`ui/src/sysbo/permissions.ts::resolveUIEntityPermissions()` is a capability client, not a policy engine. It requests collection or record `$capabilities` and exposes the canonical shape:
+A UI-capable client is a capability consumer, not a policy engine. In the current Express client, `ui/src/sysbo/permissions.ts::resolveUIEntityPermissions()` implements that boundary. It requests collection or record `$capabilities` and exposes the canonical shape:
 
 ```text
 permissions.read
@@ -288,7 +303,7 @@ The following are current ManatOS security contracts:
 6. Metadata consumes capability facts from CTX; generic UI renderers do not rebuild role/license policy.
 7. Missing or malformed access facts fail closed for capability-backed presentation.
 8. Secrets, credential material, license-policy internals and unnecessary relationship data are not exposed through capability projections.
-9. Datastore access, persistence side effects, relationship mutation and security enforcement remain outside browser expression evaluation.
+9. Datastore access, persistence side effects, relationship mutation and security enforcement remain outside client presentation-expression evaluation.
 
 ## 11. Server-side declarative policy expressions
 

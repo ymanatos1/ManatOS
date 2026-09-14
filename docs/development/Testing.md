@@ -62,7 +62,7 @@ Covers representative end-to-end API behavior without exhaustively repeating ide
 - OpenAPI path smoke checks;
 - global 404/failure response envelope.
 
-`SysApplication` is used as the representative generic SysBO because all four generic resources share the same `createSysBORouter()` implementation. Domain-specific behavior should be tested in its own service/integration tests rather than copying the same CRUD assertions four times.
+`SysApplication` is used as the representative current generic system entity because all four generic resources share the same `createSysBORouter()` implementation. Domain-specific behavior should be tested in its own service/integration tests rather than copying the same CRUD assertions four times.
 
 ### `api.auth.integration.test.ts`
 
@@ -84,11 +84,11 @@ Covers the security-sensitive public authentication contract:
 
 `ext-auth-provider.integration.test.ts` protects the complete credential lifecycle: secure storage of unverified pairs, persisted application-managed verification state, pairwise Client ID/secret replacement, encrypted secret storage, unrelated edits preserving credentials and verification state, atomic credential removal, callback-path ownership and public/runtime exposure only after verification.
 
-`sys-configuration.integration.test.ts` protects Admin-only configuration updates, typed values and the rule that encrypted secret material is never returned through normal API projections.
+`sys-configuration.integration.test.ts` protects Superuser read-only inspection versus Admin-only configuration updates, typed values and the rule that encrypted secret material is never returned through normal API projections.
 
 ## UI test coverage
 
-The UI suite is a first-class part of normal verification. It combines deterministic TypeScript tests, EJS/Cheerio presentation tests and Supertest route/integration tests. It covers authentication, session handling, external-provider presentation, configuration pages, operation/error presentation and generic SysBO UI behavior.
+The UI suite is a first-class part of normal verification. It combines deterministic TypeScript tests, EJS/Cheerio presentation tests and Supertest route/integration tests. It covers authentication, session handling, external-provider presentation, configuration pages, operation/error presentation and generic metadata-driven entity UI behavior.
 
 Current generic-SysBO coverage protects canonical + UI metadata loading, evaluator-backed properties, CTX-path dependency/cascading calculated-field reactivity, `fields.<key>.originalValue`/`fields.<key>.value` field authority and the `entry.original`/`entry.current` read-only mirrors, reversible dirty/valid Save state, initial editable-field focus, all-readonly tab presentation, CTX-driven breadcrumbs/components, development-only calculated-expression diagnostics, relationship-aware delete confirmations, persisted canonical calculated fields, SysUser own-record access rules and evaluator-backed navigation. It also protects generic dynamic values, API-resolved platform capability facts, nested CTX field-node access (`permissions.create`), entry-action `visible/enabled/disabledReason`, list Add decisions, and the absence of duplicate renderer-side permission gates. These are engine contracts and must stay entity/field agnostic wherever possible; shared conventions are checked across all registered metadata-driven entities to prevent drift.
 

@@ -57,7 +57,7 @@ describe('SysBO V2 CTX data flow', () => {
     );
 
     expect(runtime).toContain('const leafPagePath =');
-    expect(runtime).toContain('runtime.updateField(entryPagePath, key, value, option');
+    expect(runtime).toContain('runtime.updateField(entryPagePath, key, value, undefined, cause)');
     expect(runtime).toContain('window.addEventListener(CHANGE_EVENT');
     expect(ctxRuntime).toContain('entryOriginal');
     expect(ctxRuntime).toContain('entry');

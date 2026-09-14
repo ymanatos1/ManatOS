@@ -68,8 +68,9 @@ describe('system connectivity watchdog', () => {
     const healthErrorCheck = bootstrap.indexOf('if (!response.ok)', healthSuccess);
     expect(healthSuccess).toBeGreaterThan(-1);
     expect(healthSuccess).toBeLessThan(healthErrorCheck);
-    expect(traffic.indexOf("reportSuccess?.('api-traffic')")).toBeLessThan(
-      traffic.indexOf('if (!response.ok)'),
-    );
+    const trafficSuccess = traffic.indexOf("reportSuccess?.('api-traffic')");
+    const trafficErrorCheck = traffic.indexOf('if (!response.ok)', trafficSuccess);
+    expect(trafficSuccess).toBeGreaterThan(-1);
+    expect(trafficErrorCheck).toBeGreaterThan(trafficSuccess);
   });
 });

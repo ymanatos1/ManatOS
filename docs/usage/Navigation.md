@@ -19,4 +19,4 @@ Shell
 
 This ownership matters because state and field writes belong to the surface that created them, not simply whichever surface is currently deepest.
 
-If an expected administrative item is absent, check the current identity/role, platform access and required entity availability before assuming the feature is missing.
+If an expected administrative item is absent, check the current identity/role, platform access and required entity capability before assuming the feature is missing. Admin should receive full administrative navigation. Superuser may see read-only inspection surfaces and Apps Playground because those are separately projected capabilities. User/Guest receive narrower navigation.

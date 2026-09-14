@@ -28,6 +28,13 @@ export interface NavigationContribution {
   /** Static or evaluator-backed visibility against the current CTX root. */
   visible?: ManatOSDynamicValue<boolean>;
   requiresEntityKeys?: string[];
+  /**
+   * Canonical collection-read capability required before this contribution is
+   * exposed. The UI receives this fact from the API AuthorizationService; the
+   * navigation catalogue therefore declares a dependency without reproducing
+   * role/entity policy locally.
+   */
+  requiresEntityRead?: string;
 }
 
 /** One SysBO/entity capability contributed by a Company or Platform. */

@@ -13,6 +13,7 @@ A reader can stay within one area and obtain a useful, largely self-contained ex
 | Engineer examining exact runtime semantics | [Design](design/README.md)                            |
 | Contributor implementing changes           | [Development](development/README.md)                  |
 | Application or platform designer           | [Application Design](apps-design/README.md)           |
+| ManatOS company-domain reader              | [Company Domain](company/README.md)                   |
 | protoCRM domain reader                     | [protoCRM Design](apps-design/protocrm/README.md)     |
 | User / administrator                       | [Usage](usage/README.md)                              |
 | Reader looking up an exact contract        | [Reference](reference/README.md)                      |
@@ -22,9 +23,11 @@ A reader can stay within one area and obtain a useful, largely self-contained ex
 - [System Overview](ManatOS.md) — purpose, scope, composition and boundaries.
 - [Concepts](Concepts.md) — the vocabulary needed by the rest of the documentation.
 - [System Map](System-Map.md) — processes, contracts and responsibility flow.
+- [ManatOS Company Domain](company/README.md) — company-owned identity, hierarchy, licensing and authentication-provider concepts.
 - [protoCRM](protoCRM.md) — the first concrete platform and how it exercises the foundation.
 - [Glossary](Glossary.md) — concise definitions.
 - [Documentation Map](Documentation-Map.md) — complete navigation map.
+- [Documentation Coverage Audit](Documentation-Coverage-Audit.md) — coverage of major infrastructures across architecture, development, reference and usage audiences.
 
 ## Documentation contract
 

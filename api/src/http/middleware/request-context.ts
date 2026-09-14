@@ -4,6 +4,8 @@ import type { RequestHandler } from 'express';
 
 import { operationContext } from '@manatos/shared';
 
+import { apiContextRuntime } from '../../context/api-context-runtime.js';
+
 /**
  * Establishes the application execution context for every HTTP request.
  *
@@ -30,16 +32,22 @@ export const requestContextMiddleware: RequestHandler = (req, res, next) => {
    * Establish AsyncLocalStorage state before execution continues
    * through the rest of the Express middleware pipeline.
    */
-  operationContext.runRequest(requestId, () => {
-    operationContext.beginRequestOperation(`${req.method} ${req.path}`, 'Processing API request');
+  apiContextRuntime.runRequest(requestId, { method: req.method, path: req.path }, () => {
+    operationContext.runRequest(requestId, () => {
+      operationContext.beginRequestOperation(`${req.method} ${req.path}`, 'Processing API request');
 
-    /*
-     * The request root deliberately spans body parsing, authentication, routing
-     * and service execution. Successful requests discard it at response end;
-     * failures are snapshotted by the central error handler before that point.
-     */
-    res.once('finish', () => operationContext.completeRequestOperation());
+      /*
+       * Both diagnostic operations and semantic API CTX span the complete HTTP
+       * lifecycle. Cleanup is idempotent because close may follow finish.
+       */
+      const complete = () => {
+        operationContext.completeRequestOperation();
+        apiContextRuntime.endRequest(requestId);
+      };
+      res.once('finish', complete);
+      res.once('close', complete);
 
-    next();
+      next();
+    });
   });
 };

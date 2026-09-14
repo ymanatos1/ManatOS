@@ -13,3 +13,14 @@ Thumbs.db
 
 # Generated browser vendor bundles/assets.
 ui/public/vendor/
+
+# Runtime/bootstrap data is created by ManatOS and must not be versioned.
+/data/
+
+# Local source/documentation archive helpers are developer-machine conveniences.
+/ZIP_*.cmd
+/documentation.zip
+/src.zip
+/api.zip
+/shared.zip
+/ui.zip

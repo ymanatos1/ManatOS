@@ -163,7 +163,11 @@ describe('CTX debugger presentation state', () => {
     expect(ctxPropertiesSource).toContain("document.createElement('span')");
     expect(ctxPropertiesSource).toContain('subscriber.match');
     expect(ctxPropertiesSource).toContain('subscriber.paths.map(displayCtxPath)');
-    expect(ctxPropertiesSource).toContain('paths.title = rawPaths');
+    expect(ctxPropertiesSource).toContain('count > 0 ?');
+    expect(ctxPropertiesSource).toContain('item.title = [');
+    expect(ctxPropertiesSource).toContain(
+      "`Path${subscriber.paths.length === 1 ? '' : 's'}: ${rawPaths}`",
+    );
     expect(ctxPropertiesSource).not.toContain("const paths = document.createElement('div')");
   });
 
@@ -385,12 +389,16 @@ describe('CTX debugger presentation state', () => {
     expect(template).toContain('id="ctxDebugSelectionPath"');
     expect(runtime).toContain('pathPresentation?.render?.(selectionPathElement, state.selected)');
     expect(template).toContain('data-properties-tab="main"');
+    expect(template).toContain('data-properties-tab="attributes"');
     expect(template).toContain('data-properties-tab="subscribers"');
     expect(runtime).toContain('ctxProperties?.render');
     expect(targetViewsSource).toContain('ctxProperties?.render');
+    expect(targetViewsSource).toContain('data-properties-tab="attributes"');
     expect(targetViewsSource).toContain('data-properties-tab="subscribers"');
+    expect(ctxPropertiesSource).toContain("activeTab === 'attributes'");
     expect(ctxPropertiesSource).toContain("activeTab === 'subscribers'");
     expect(ctxPropertiesSource).toContain("list.className = 'ctx-debug-subscriber-list'");
+    expect(ctxPropertiesSource).toContain("button.classList.toggle('has-registrations'");
     expect(ctxPropertiesSource).toContain('debug.expression.highlightElement');
     expect(runtime).toContain('pathPresentation?.render?.(propertiesTitle, info.path)');
   });

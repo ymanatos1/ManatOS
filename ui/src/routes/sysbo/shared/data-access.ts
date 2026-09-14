@@ -60,6 +60,26 @@ export async function canonicalSysBOUIMetadata(
   return response.data.metadataUI;
 }
 
+function apiErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null;
+  const response = (error as { response?: unknown }).response;
+  if (!response || typeof response !== 'object') return null;
+  const status = (response as { status?: unknown }).status;
+  return typeof status === 'number' ? status : null;
+}
+
+function apiErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : null;
+}
+
+function referenceCatalogueUnavailable(error: unknown): boolean {
+  const status = apiErrorStatus(error);
+  const code = apiErrorCode(error);
+  return status === 403 || code === 'FORBIDDEN' || code === 'HTTP_403';
+}
+
 export interface ReferenceSelectorContext {
   referenceData: Record<string, Readonly<Record<string, unknown>>[]>;
   excludedCandidateIds: readonly string[];
@@ -126,10 +146,26 @@ export async function references(
       continue;
     }
 
-    const response = await apiClient.get<SysBOListData<unknown>>(
-      `/api/v1/${apiPath}?pageSize=500&sort=name`,
-      apiSessionOptions(req),
-    );
+    let response;
+    try {
+      response = await apiClient.get<SysBOListData<unknown>>(
+        `/api/v1/${apiPath}?pageSize=500&sort=name`,
+        apiSessionOptions(req),
+      );
+    } catch (error) {
+      /*
+       * A parent entity may be readable while one of its referenced catalogues
+       * is not. Reference choices are presentation support data, not authority
+       * to read the referenced entity. Preserve the parent page and expose no
+       * choices for an inaccessible catalogue; unexpected API failures still
+       * propagate so diagnostics are not hidden.
+       */
+      if (referenceCatalogueUnavailable(error)) {
+        output[field.key] = [];
+        continue;
+      }
+      throw error;
+    }
 
     const referencedDefinition = getSysBODefinition(field.referenceBOKey);
     /*

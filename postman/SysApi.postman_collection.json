@@ -128,6 +128,189 @@
       ]
     },
     {
+      "name": "System Settings - Storage",
+      "description": "Admin-only bootstrap storage configuration/workflow and storage debugging settings. These settings are persisted independently of the selected business datastore.",
+      "item": [
+        {
+          "name": "Get Storage Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/system-settings/storage",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "system-settings", "storage"]
+            },
+            "description": "Returns configured storage providers, selected/running IDs, workflow state, effective adapter capabilities and storage debugging settings."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Storage Debugging",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"apiStorageContextEnabled\": true,\n  \"outputDirectory\": \"../data/logs/api/\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/system-settings/storage/debugging",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "system-settings", "storage", "debugging"]
+            },
+            "description": "Enables/disables post-request API/STORAGE CTX snapshots and sets their API-process-relative or absolute output directory."
+          },
+          "response": []
+        },
+        {
+          "name": "Select Storage For Next API Start",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configurationId\": \"{{storageConfigurationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/system-settings/storage/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "system-settings", "storage", "current"]
+            },
+            "description": "Selects a Ready/runnable storage configuration for the next API start; it does not hot-swap the running datastore."
+          },
+          "response": []
+        },
+        {
+          "name": "Test Prospective Storage Connection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configurationId\": \"{{storageConfigurationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/system-settings/storage/target/test-connection",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "system-settings",
+                "storage",
+                "target",
+                "test-connection"
+              ]
+            },
+            "description": "Runs the adapter-neutral target connection check through a STORAGE API-CTX level without changing the running datastore."
+          },
+          "response": []
+        },
+        {
+          "name": "Inspect Prospective Storage Schema",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configurationId\": \"{{storageConfigurationId}}\",\n  \"database\": \"{{storageDatabase}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/system-settings/storage/target/schema/inspect",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "system-settings",
+                "storage",
+                "target",
+                "schema",
+                "inspect"
+              ]
+            },
+            "description": "Inspects a prospective relational target against the current semantic desired-schema projection."
+          },
+          "response": []
+        },
+        {
+          "name": "Prepare Prospective Storage Schema",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configurationId\": \"{{storageConfigurationId}}\",\n  \"database\": \"{{storageDatabase}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/system-settings/storage/target/schema/prepare",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "{{apiVersion}}",
+                "system-settings",
+                "storage",
+                "target",
+                "schema",
+                "prepare"
+              ]
+            },
+            "description": "Applies the currently supported additive schema preparation strategy to a prospective relational target."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Authentication",
       "item": [
         {
@@ -3611,6 +3794,16 @@
     {
       "key": "adminUserId",
       "value": ""
+    },
+    {
+      "key": "storageConfigurationId",
+      "value": "default-json",
+      "description": "Storage configuration id used by System Settings storage examples."
+    },
+    {
+      "key": "storageDatabase",
+      "value": "ManatOS_DB",
+      "description": "Prospective relational database name used by storage target examples."
     },
     {
       "key": "testUserId",

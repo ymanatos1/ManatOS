@@ -88,6 +88,22 @@ For entry reference fields, `fields.<k>.options[]` is the effective selector dom
 
 A pointer node has `{ kind: 'pointer', value }` and is immutable. Arrays retain numeric indexing and can additionally resolve members by stable `id`/`key`; arbitrary IDs use quoted bracket paths. This is resolver behavior, not duplicated storage.
 
+## API request/subsystem levels
+
+The API process has its own CTX tree. It shares the long-lived `system`, `entities` and `company` semantics but does not expose a root `user` or `ui` branch. Request-owned state lives under `api`:
+
+| Path                              | Meaning                                | Owner / lifecycle                   |
+| --------------------------------- | -------------------------------------- | ----------------------------------- |
+| `$.api.level-<call-id>`           | one active API request                 | request middleware; removed on exit |
+| `.user`                           | authenticated subject for that request | request-owned                       |
+| `.control.request.method/path`    | request identity/facts                 | request-owned                       |
+| `.level-<subsystem>`              | nested major subsystem operation       | subsystem runtime; removed on exit  |
+| nested STORAGE/calculation levels | storage/calculation execution context  | storage runtime; removed on exit    |
+
+Lexical resolution from a nested API level can resolve request-owned `user` and ancestor resources without copying them into each level. Parallel requests and parallel child operations keep separate level identities.
+
+When storage CTX snapshots are enabled, selected request/subsystem subtrees may be serialized immediately before disposal for diagnostics. Those files are not another CTX authority.
+
 ## Ownership invariants
 
 1. CTX is observable runtime state, not a persistence database.

@@ -10,7 +10,7 @@
 
   let activePromise = null;
 
-  const reauthenticate = () => {
+  const reauthenticate = (invocation = {}) => {
     if (activePromise) return activePromise;
 
     activePromise = new Promise((resolve) => {
@@ -30,6 +30,36 @@
       }
 
       const modal = BootstrapModal.getOrCreateInstance(modalElement);
+      const normalizedInvocation = Object.freeze({
+        reason: typeof invocation?.reason === 'string' ? invocation.reason : null,
+        operation: typeof invocation?.operation === 'string' ? invocation.operation : null,
+      });
+      const title = modalElement.querySelector('.auth-entry-copy .popup-content-title');
+      const paragraphs = [
+        ...modalElement.querySelectorAll('.auth-entry-copy .popup-content-paragraph'),
+      ];
+      const originalCopy = Object.freeze({
+        title: title?.textContent || '',
+        paragraphs: paragraphs.map((paragraph) => paragraph.textContent || ''),
+      });
+      const popupInvocation = Object.freeze({
+        purpose: 'auth-sign-in',
+        ...normalizedInvocation,
+      });
+      modalElement.dataset.popupInvocation = JSON.stringify(popupInvocation);
+
+      if (normalizedInvocation.reason === 'session-expired') {
+        if (title) title.textContent = 'Your session has expired';
+        const operationText =
+          normalizedInvocation.operation === 'save'
+            ? 'continue saving your unsaved changes'
+            : 'continue the interrupted operation';
+        if (paragraphs[0]) paragraphs[0].textContent = `Sign in again to ${operationText}.`;
+        if (paragraphs[1])
+          paragraphs[1].textContent =
+            'Your current workspace and unsaved changes remain preserved while you sign in.';
+      }
+
       let completed = false;
       let settled = false;
 
@@ -39,6 +69,11 @@
         form.removeEventListener('submit', submitHandler, true);
         modalElement.removeEventListener('hidden.bs.modal', hiddenHandler);
         delete form.dataset.manatosReauthentication;
+        delete modalElement.dataset.popupInvocation;
+        if (title) title.textContent = originalCopy.title;
+        paragraphs.forEach((paragraph, index) => {
+          paragraph.textContent = originalCopy.paragraphs[index] || '';
+        });
         activePromise = null;
         resolve(value);
       };
@@ -66,6 +101,22 @@
         setMessage('Signing in again…');
 
         try {
+          // A long-lived document can outlive its Express session. Refresh the
+          // anonymous-session CSRF token before credential submission instead
+          // of trusting the token rendered many hours ago.
+          const csrfResponse = await fetch('/auth/csrf', {
+            headers: { Accept: 'application/json' },
+          });
+          const csrfPayload = await csrfResponse.json().catch(() => null);
+          const csrfToken = csrfPayload?.data?.csrfToken;
+          if (!csrfResponse.ok || !csrfPayload?.success || !csrfToken) {
+            setMessage('Sign-in could not be prepared. Your unsaved changes are still preserved.');
+            return;
+          }
+
+          const csrfControl = form.querySelector('input[name="_csrf"]');
+          if (csrfControl instanceof HTMLInputElement) csrfControl.value = csrfToken;
+
           const body = new URLSearchParams();
           for (const [name, value] of new FormData(form).entries()) {
             if (typeof value === 'string') body.append(name, value);
@@ -86,6 +137,16 @@
             );
             return;
           }
+          // establishUiSession rotates both the Express session and CSRF token.
+          // Rebind every form in the still-mounted document to that new token so
+          // the interrupted Save and subsequent commands can continue in place.
+          const authenticatedCsrfToken = payload?.data?.csrfToken;
+          if (authenticatedCsrfToken) {
+            document.querySelectorAll('input[name="_csrf"]').forEach((control) => {
+              if (control instanceof HTMLInputElement) control.value = authenticatedCsrfToken;
+            });
+          }
+
           completed = payload?.data?.user || true;
           setMessage('');
           modal.hide();

@@ -1,6 +1,6 @@
 # Entity Lists
 
-An entity list is the generic collection surface for a canonical SysBO. It combines entity metadata, UI list metadata, query state and projected canonical records without requiring entity-specific page code for ordinary behavior.
+An entity list is the generic collection surface for a canonical entity. Current system-owned resources happen to use SysBO names/routes, but the list contract is generic. It combines entity metadata, UI list metadata, query state and projected canonical records without requiring entity-specific page code for ordinary behavior.
 
 ## Responsibilities
 

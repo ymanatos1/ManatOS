@@ -363,10 +363,6 @@
           description.type ||
           (value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value),
       },
-      {
-        label: 'Attributes',
-        value: Array.isArray(description.attributes) ? description.attributes.join(', ') : '',
-      },
       { label: 'Watchable', value: description.watchable === false ? 'no' : 'yes' },
       {
         label: 'Value',
@@ -387,6 +383,7 @@
       body: view.propertiesBody,
       activeTab: view.propertiesTab,
       rows,
+      attributes: Array.isArray(description.attributes) ? description.attributes : [],
       subscribers: description.subscribers,
     });
   };
@@ -594,6 +591,7 @@
         <div class="ctx-debug-properties-heading"><span class="ctx-target-view-properties-title"></span><button class="btn-close btn-close-sm ctx-target-view-properties-close" type="button" aria-label="Close node properties"></button></div>
         <div class="ctx-debug-properties-tabs" role="tablist" aria-label="CTX node property sections">
           <button type="button" class="ctx-debug-properties-tab is-active" data-properties-tab="main" role="tab" aria-selected="true">Main</button>
+          <button type="button" class="ctx-debug-properties-tab" data-properties-tab="attributes" role="tab" aria-selected="false">Attributes</button>
           <button type="button" class="ctx-debug-properties-tab" data-properties-tab="subscribers" role="tab" aria-selected="false">Subscribers</button>
         </div>
         <div class="ctx-debug-properties-body ctx-target-view-properties-body"></div>
@@ -639,8 +637,10 @@
       const tab =
         event.target instanceof Element ? event.target.closest('[data-properties-tab]') : null;
       if (!(tab instanceof HTMLButtonElement)) return;
-      view.propertiesTab =
-        tab.getAttribute('data-properties-tab') === 'subscribers' ? 'subscribers' : 'main';
+      const requestedTab = tab.getAttribute('data-properties-tab');
+      view.propertiesTab = ['main', 'attributes', 'subscribers'].includes(requestedTab)
+        ? requestedTab
+        : 'main';
       renderProperties(view);
     });
 

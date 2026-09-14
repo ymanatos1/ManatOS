@@ -1,0 +1,13 @@
+digraph G {
+ graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - Runtime and CTX Architecture"];
+ node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=TB;
+ client [label="Client runtime\nmetadata/UI + interaction\n(browser/mobile/other)", fillcolor="#e8f4e5"];
+ ui [label="Current web presentation host/BFF\nNode.js/Express/EJS :3001\n(one client realization)", fillcolor="#dcecff"];
+ api [label="API process\nExpress :3000\nglobal API CTX tree", fillcolor="#dcecff"];
+ roots [label="Long-lived API CTX\n$.company  $.system  $.entities"];
+ requests [label="$.api.level-<call-id>\nrequest-owned $.user\nparallel request branches"];
+ levels [label="Nested subsystem levels\nSTORAGE -> calculation/...\nlexical ancestor lookup"];
+ storage [label="Selected StorageAdapter\nbehavioral guarantees + strategy"];
+ client -> ui -> api; api -> roots; roots -> requests; requests -> levels; levels -> storage;
+ ui -> api [label="x-request-id correlation\nBearer/internal auth"];
+}

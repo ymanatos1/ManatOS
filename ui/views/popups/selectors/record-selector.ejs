@@ -48,7 +48,10 @@
     ? selectorPageSizeOptions
     : (Array.isArray(app?.ui?.bootstrap?.ui?.pageSizeOptions) ? app.ui.bootstrap.ui.pageSizeOptions : [10, 25, 50]);
   const candidateInput = typeof selectorCandidates !== 'undefined' ? selectorCandidates : null;
-  const recordSelectorQueryExclude = Array.isArray(selectorQueryExclude) ? selectorQueryExclude : [];
+  const recordSelectorQueryExclude =
+    typeof selectorQueryExclude !== 'undefined' && Array.isArray(selectorQueryExclude)
+      ? selectorQueryExclude
+      : [];
   const recordSelectorCandidates = Array.isArray(candidateInput) ? candidateInput : [];
   const recordSelectorInitialTotal = Number(selectorInitialTotal || recordSelectorCandidates.length || 0);
   const recordSelectorReferenceData = selectorReferenceData || {};

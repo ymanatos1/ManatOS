@@ -1,0 +1,11 @@
+digraph G {
+ graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - API Surface and Generic Entity Pipeline"];
+ node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=TB;
+ routes [label="Express API routes\n/auth | /SysUsers | generic entity routes\n/system-settings | /platforms/.../capabilities", fillcolor="#dcecff"];
+ auth [label="Authentication + AuthorizationService\nentity capability + row visibility policy"];
+ meta [label="Canonical entity metadata\nfields | relationships | calculations | UI metadata"];
+ service [label="Generic entity/business-object services\nvalidation + relationship workflows"];
+ query [label="Collection pipeline\nauthorization BEFORE client filter/sort/page"];
+ store [label="StorageAdapter / repositories"];
+ routes -> auth -> service; meta -> service; service -> query; query -> store; service -> store;
+}

@@ -47,6 +47,7 @@ import {
 } from './openapi/schemas.js';
 import {
   adminVerifyEmailOperation,
+  entityCollectionCapabilitiesOperation,
   expressionFunctionOperation,
   genericSysBOPaths,
   platformCapabilityOperation,
@@ -180,6 +181,7 @@ export function buildOpenApiSpec() {
       '/api/v1/public/ui-bootstrap': uiBootstrapOperation(),
       '/api/v1/public/external-auth-providers': publicExternalAuthProvidersOperation(),
       '/api/v1/platforms/{platformId}/$capabilities': platformCapabilityOperation(),
+      '/api/v1/authorization/entities/$capabilities': entityCollectionCapabilitiesOperation(),
       '/api/v1/expressions/evaluate-function': expressionFunctionOperation(),
 
       ...userPaths,

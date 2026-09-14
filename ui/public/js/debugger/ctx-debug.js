@@ -768,10 +768,6 @@
       { label: 'Kind', value: calculated ? 'calculated' : kind },
       { label: 'Type', value: descriptor.type },
       {
-        label: 'Attributes',
-        value: descriptor.attributes.length ? descriptor.attributes.join(', ') : '—',
-      },
-      {
         label: 'Watchable',
         value: descriptor.watchable === false || info.derived || info.source ? 'no' : 'yes',
       },
@@ -801,6 +797,7 @@
       body: propertiesBody,
       activeTab: propertiesTab,
       rows,
+      attributes: descriptor.attributes,
       subscribers: descriptor.subscribers,
       onNavigate: (path) => {
         propertiesPanel.classList.add('d-none');
@@ -814,8 +811,10 @@
     const tab =
       event.target instanceof Element ? event.target.closest('[data-properties-tab]') : null;
     if (!(tab instanceof HTMLButtonElement)) return;
-    propertiesTab =
-      tab.getAttribute('data-properties-tab') === 'subscribers' ? 'subscribers' : 'main';
+    const requestedTab = tab.getAttribute('data-properties-tab');
+    propertiesTab = ['main', 'attributes', 'subscribers'].includes(requestedTab)
+      ? requestedTab
+      : 'main';
     renderProperties();
   });
 

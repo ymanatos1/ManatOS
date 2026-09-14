@@ -694,8 +694,17 @@
       ...stringLengthIssues(metadataFieldDefinition(page, key), value),
     ];
     field.valid = !field.validationIssues.some((issue) => issue?.severity === 'error');
-    if (Object.prototype.hasOwnProperty.call(field, 'option') || option !== undefined) {
-      field.option = option ?? null;
+    const resolvedOption =
+      option !== undefined
+        ? option
+        : Array.isArray(field.options)
+          ? (field.options.find(
+              (candidate) =>
+                String(candidate?.value ?? candidate?.id ?? '') === String(value ?? ''),
+            ) ?? null)
+          : undefined;
+    if (Object.prototype.hasOwnProperty.call(field, 'option') || resolvedOption !== undefined) {
+      field.option = resolvedOption ?? null;
     }
 
     const relatedPaths = [];

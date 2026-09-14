@@ -13,6 +13,71 @@ import {
 } from '../support/test-helpers.js';
 
 describe('SysBO authorization capability API', () => {
+  it.each([
+    [SysBOUserRole.Admin, true, true, true, true, true],
+    [SysBOUserRole.Superuser, true, true, true, true, true],
+    [SysBOUserRole.User, true, true, true, false, false],
+    [SysBOUserRole.Guest, true, false, false, false, false],
+  ] as const)(
+    'projects one canonical entity collection-capability map for %s',
+    async (role, users, principals, licenses, applications, externalAuth) => {
+      const context = await createTestApi();
+      let token: string;
+
+      if (role === SysBOUserRole.Admin) {
+        await seedAdmin(context.services.users);
+        token = await loginAdmin(context.app);
+      } else {
+        const user = await context.services.users.createUser(
+          {
+            name: `Capability${role}`,
+            email: `capability-${role.toLowerCase()}@example.test`,
+            password: 'VeryStrong-Test-Password-42!',
+            role,
+            emailVerified: true,
+            enabled: true,
+          },
+          SYSTEM_AUDIT_ACTOR,
+        );
+        const login = await request(context.app)
+          .post('/api/v1/auth/login')
+          .send({ identity: user.name, password: 'VeryStrong-Test-Password-42!' });
+        expect(login.status).toBe(200);
+        token = String(login.body?.data?.accessToken ?? '');
+      }
+
+      const response = await request(context.app)
+        .get('/api/v1/authorization/entities/$capabilities')
+        .set('authorization', bearer(token));
+
+      expect(response.status).toBe(200);
+      expectQuerySuccess(response.body);
+      const entities = response.body.data.entities as Record<string, { read: boolean }>;
+      expect(entities['sys-users']?.read).toBe(users);
+      expect(entities['sys-principals']?.read).toBe(principals);
+      expect(entities['sys-licenses']?.read).toBe(licenses);
+      expect(entities['sys-applications']?.read).toBe(applications);
+      expect(entities['sys-ext-auth-providers']?.read).toBe(externalAuth);
+      expect(entities['sys-configurations']?.read).toBe(
+        role === SysBOUserRole.Admin || role === SysBOUserRole.Superuser,
+      );
+
+      const metadataExpectations = [
+        ['SysUsers', users],
+        ['SysPrincipals', principals],
+        ['SysLicenses', licenses],
+        ['SysApplications', applications],
+        ['SysExtAuthProviders', externalAuth],
+      ] as const;
+      for (const [path, readable] of metadataExpectations) {
+        const metadata = await request(context.app)
+          .get(`/api/v1/${path}/$metadata`)
+          .set('authorization', bearer(token));
+        expect(metadata.status).toBe(readable ? 200 : 403);
+      }
+    },
+  );
+
   it('returns collection capabilities from the authoritative API policy', async () => {
     const context = await createTestApi();
     await seedAdmin(context.services.users);
@@ -121,7 +186,38 @@ describe('SysBO authorization capability API', () => {
     expect(response.body.data).not.toHaveProperty('role');
   });
 
-  it('keeps non-Admin platform access false even when licenses exist', async () => {
+  it('projects Superuser platform execution access without exposing policy inputs', async () => {
+    const context = await createTestApi();
+    const superuser = await context.services.users.createUser(
+      {
+        name: 'PlatformCapabilitySuperuser',
+        email: 'platform-capability-superuser@example.test',
+        password: 'VeryStrong-Test-Password-42!',
+        role: SysBOUserRole.Superuser,
+        emailVerified: true,
+        enabled: true,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+
+    const login = await request(context.app)
+      .post('/api/v1/auth/login')
+      .send({ identity: superuser.name, password: 'VeryStrong-Test-Password-42!' });
+    expect(login.status).toBe(200);
+    const token = String(login.body?.data?.accessToken ?? '');
+
+    const response = await request(context.app)
+      .get(`/api/v1/platforms/${PROTOCRM_PLATFORM_ID}/$capabilities`)
+      .set('authorization', bearer(token));
+
+    expect(response.status).toBe(200);
+    expect(response.body?.data).toEqual({
+      platformId: PROTOCRM_PLATFORM_ID,
+      capabilities: { platformAccess: true },
+    });
+  });
+
+  it('keeps User platform access false even when licenses exist', async () => {
     const context = await createTestApi();
     const user = await context.services.users.createUser(
       {

@@ -42,6 +42,7 @@ describe('generic existing-record selector', () => {
     expect(rowCells).toContain("field.type === 'reference'");
     expect(rowCells).toContain("field.type === 'boolean'");
     expect(selectorView).toContain('selectorCandidates');
+    expect(selectorView).toContain("typeof selectorQueryExclude !== 'undefined'");
     expect(reference).toContain('selectorCandidates: references');
     expect(hierarchy).toContain('selectorCandidates: Array.isArray');
     expect(runtime).toContain("panel.querySelector('[data-selector-candidate-rows]')");
@@ -147,6 +148,10 @@ describe('generic existing-record selector', () => {
     expect(reference).not.toContain('targetField.referenceBOKey === referenceTargetKey');
     expect(dataAccess).toContain('selectorContextForReferenceField');
     expect(dataAccess).toContain('referenceData: await references(req, targetDefinition, { ctx })');
+    expect(dataAccess).toContain('referenceCatalogueUnavailable(error)');
+    expect(dataAccess).toContain("code === 'FORBIDDEN'");
+    expect(dataAccess).toContain("code === 'HTTP_403'");
+    expect(dataAccess).toContain('output[field.key] = []');
     expect(dataAccess).toContain('const selectedId = options.sourceRecord?.[field.key]');
     expect(dataAccess).toContain(
       'if (persistedCandidate) projected.push(projectReference(persistedCandidate))',

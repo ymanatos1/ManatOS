@@ -11,3 +11,5 @@ A useful reading order is:
 5. [protoCRM](protocrm/README.md) — the current concrete platform and worked domain example.
 
 The architecture and design folders remain authoritative for generic runtime semantics. Documents here restate enough of those concepts to make application design understandable on its own and link deeper when exact CTX, metadata, expression or security contracts matter.
+
+Company-owned system entities are documented separately under [ManatOS Company Domain](../company/README.md). Platform/application design may consume those entities without redefining their ownership.

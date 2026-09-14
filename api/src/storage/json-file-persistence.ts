@@ -18,13 +18,18 @@ import { emptyDatabaseState, type DatabaseState, type PersistedDatabaseState } f
 export class JsonFilePersistence {
   private readonly filePath: string;
 
-  constructor(filePath: string) {
+  private readonly binaryRootPath: string;
+
+  constructor(filePath: string, binaryRoot?: string) {
     this.filePath = resolve(process.cwd(), filePath);
+    this.binaryRootPath = binaryRoot
+      ? resolve(process.cwd(), binaryRoot)
+      : join(dirname(this.filePath), 'images');
   }
 
-  /** Binary assets belonging to the JSON-backed adapter live beside the JSON file. */
+  /** Binary assets belonging to the JSON-backed adapter use the configured filesystem root. */
   pictureRootDirectory(): string {
-    return join(dirname(this.filePath), 'images');
+    return this.binaryRootPath;
   }
 
   /**

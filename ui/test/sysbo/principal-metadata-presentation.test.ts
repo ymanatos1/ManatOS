@@ -63,7 +63,8 @@ describe('metadata-driven Principal presentation', () => {
     expect(entry).toContain('data-enum-selected-icon');
     expect(entry).toContain('data-enum-item');
     const fieldRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
-    expect(runtime).toContain('const fieldOptionFromCtx = (key, value) =>');
+    expect(ctxRuntime).toContain('Array.isArray(field.options)');
+    expect(ctxRuntime).toContain('field.options.find(');
     expect(runtime).not.toContain('window.ManatOS?.fieldComponents?.getFieldOption?.(control)');
     expect(runtime).not.toContain('selectedEnumItem');
     expect(runtime).not.toContain('dataset.enumItems');
@@ -262,8 +263,8 @@ describe('metadata-driven Principal presentation', () => {
     expect(hierarchyModel).toContain('keyedHierarchySnapshot');
     expect(hierarchyModel).toContain('hierarchyRootIdForMember');
     expect(workspace).toContain('data-metadata-hierarchy-workspace');
-    expect(workspace).toContain("dataSource: 'entries'");
-    expect(workspace).toContain("focusSource: 'focusedMemberId'");
+    expect(workspace).toContain("dataSource: 'list.entries'");
+    expect(workspace).toContain("focusSource: 'resources.workspace.focusedMemberId'");
     expect(workspace).toContain("interactionMode: 'workspace'");
     expect(workspace).not.toContain('data-hierarchy-save-close');
     expect(hierarchyRuntime).toContain('const collectionRows =');

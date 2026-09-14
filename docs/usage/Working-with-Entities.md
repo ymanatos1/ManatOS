@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide is the authoritative structural reference for metadata-driven SysBO **list pages, entry pages and the existing-record selector page surface**. These surfaces are driven by canonical BO metadata, UI metadata and CTX; entity-specific templates must not recreate field, reference, representation or query semantics.
+This guide is the authoritative structural reference for metadata-driven entity **list pages, entry pages and the existing-record selector page surface**. Current system-owned entities use SysBO routes/names, but these surfaces are driven by generic canonical entity metadata, UI metadata and CTX; entity-specific templates must not recreate field, reference, representation or query semantics.
 
 ## End-to-end page model
 
@@ -222,7 +222,7 @@ Principals are the strongest reference/reference-field and hierarchy model. Thei
 
 ### Applications
 
-Applications are the compact baseline SysBO model and demonstrate straightforward metadata-driven entry/list behavior plus related Licenses.
+Applications are the compact baseline system-entity model and demonstrate straightforward metadata-driven entry/list behavior plus related Licenses.
 
 ### Licenses
 

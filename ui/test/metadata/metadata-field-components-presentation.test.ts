@@ -172,6 +172,8 @@ describe('metadata-driven field/content component infrastructure', () => {
     const runtime = await uiSource('public/js/sysbo/entry/field-runtime.js');
 
     expect(tools).toContain('Copy current value');
+    expect(tools).toContain('Revert change');
+    expect(tools).toContain('data-field-input-action="revert"');
     expect(tools).toContain('Inspect in CTX Viewer');
     expect(tools).toContain('showDeveloperTools && inspectCtx');
     expect(tools).toContain('const actionEnabled = (action) =>');
@@ -191,6 +193,9 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(reference).toContain('Select existing entry…');
     expect(runtime).toContain("case 'select-existing'");
     expect(runtime).toContain("case 'copy'");
+    expect(runtime).toContain("case 'revert'");
+    expect(runtime).toContain('field.originalValue');
+    expect(runtime).toContain("source: 'field-tools'");
     expect(runtime).toContain("case 'inspect-ctx'");
     expect(runtime).toContain('manatos:ctx-viewer-show');
     expect(runtime).toContain('manatos:ctx-viewer-select');
@@ -378,11 +383,13 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(registry).toContain("'information-panel': '../../../presentation/information-panel'");
   });
 
-  it('keeps enum option extraction inside the canonical field-component runtime', async () => {
+  it('keeps enum option resolution inside the canonical CTX field mutation runtime', async () => {
     const runtime = await uiSource('public/js/sysbo/entry/form-runtime.js');
     const fieldRuntime = await uiSource('public/js/sysbo/entry/field-runtime.js');
+    const ctxRuntime = await uiSource('public/js/runtime/context-runtime.js');
 
-    expect(runtime).toContain('const fieldOptionFromCtx = (key, value) =>');
+    expect(ctxRuntime).toContain('Array.isArray(field.options)');
+    expect(ctxRuntime).toContain('field.options.find(');
     expect(runtime).not.toContain('window.ManatOS?.fieldComponents?.getFieldOption?.(control)');
     expect(runtime).not.toContain('selectedEnumItem');
     expect(runtime).not.toContain('dataset.enumItems');

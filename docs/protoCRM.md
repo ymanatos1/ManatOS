@@ -1,12 +1,9 @@
 # protoCRM
 
-protoCRM is the current concrete platform hosted by ManatOS. It uses the common metadata, API, CTX, expression, UI, authorization, relationship, and persistence foundations rather than implementing a separate framework stack.
+protoCRM is the first concrete ManatOS platform. It demonstrates how a platform contributes its own Applications, navigation and product-specific surfaces while consuming the common ManatOS entity/runtime/security/storage foundation.
 
-Its current system/domain surface includes Users, Principals, Applications, Licenses, contact-information entities, external authentication providers, configuration, organization/hierarchy behavior, account functionality, and platform navigation/access behavior.
+The currently implemented protoCRM-owned system scope centers on **Applications** and **Apps Playground**. Future protoCRM tools and application-defined entities will extend that platform scope.
 
-protoCRM is important in the documentation for two reasons:
+Users/Account, Principals, Licenses, External Authentication Providers, organization hierarchy and Principal contact information belong to the **ManatOS company domain**. protoCRM may reference or consume those concepts, but they are not platform-owned simply because they participate in protoCRM workflows.
 
-1. it is a product/platform that can be understood and used in its own right; and
-2. it provides concrete examples of how ManatOS concepts become application behavior.
-
-The detailed platform documentation lives under [Application Design / protoCRM](apps-design/protocrm/README.md). User-facing behavior belongs under [Usage](usage/README.md), while generic ManatOS mechanisms are documented under [Architecture](architecture/README.md), [Design](design/README.md), and [Reference](reference/README.md).
+See [protoCRM Design](apps-design/protocrm/README.md) and [ManatOS Company Domain](company/README.md).

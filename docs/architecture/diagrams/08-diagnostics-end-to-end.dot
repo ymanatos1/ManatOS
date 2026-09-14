@@ -1,0 +1,15 @@
+digraph G {
+ graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - End-to-End Diagnostics and Observability"];
+ node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=LR;
+ clientctx [label="Client runtime diagnostics\nCTX Viewer / expressions\nfields / dependencies / lifecycle", fillcolor="#e8f4e5"];
+ traffic [label="API Traffic\nrequest R\nrequest/response/timing", fillcolor="#fff3cd"];
+ api [label="API request R\nOperation Context\n$.api.level-R", fillcolor="#dcecff"];
+ logs [label="Structured API logs\nrequestId=R", fillcolor="#f4f4f4"];
+ snap [label="API CTX snapshot\n<R>/api.json", fillcolor="#f4f4f4"];
+ storage [label="Storage CTX\n<R>/storage/.../ctx.json", fillcolor="#fce8e6"];
+ clientctx -> traffic [label="client action"];
+ traffic -> api [label="x-request-id: R"];
+ api -> logs [label="correlates"];
+ api -> snap [label="capture before disposal"];
+ api -> storage [label="nested subsystem levels"];
+}

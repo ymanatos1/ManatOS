@@ -23,9 +23,9 @@ Company
 ## Design invariants
 
 - application identity must remain stable independently of one UI page;
-- ordinary application fields and relationships use canonical SysBO metadata;
+- ordinary application fields and relationships use canonical entity metadata;
 - authorization remains server authoritative;
 - related records reuse generic relationship/list presentation;
 - application-specific UI should extend common composition rather than create a parallel framework.
 
-See [Platform Model](Platform-Model.md), [Application Design Principles](Application-Design-Principles.md), and [protoCRM Applications and Licenses](protocrm/Applications-and-Licenses.md).
+See [Platform Model](Platform-Model.md), [Application Design Principles](Application-Design-Principles.md), and [protoCRM Applications](protocrm/Applications.md) and [ManatOS Licensing](../company/Licensing.md).

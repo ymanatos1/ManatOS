@@ -37,6 +37,8 @@ import { PictureFileStorage } from './picture-file-storage.js';
 import type { DatabaseState } from './types.js';
 
 import type { StorageAdapter, StorageFlushResult } from './storage-adapter.js';
+import { IN_MEMORY_JSON_ADAPTER_ID } from './adapters/in-memory-json/definition.js';
+import { runStorageOperation } from './execution-context.js';
 
 /**
  * Replaceable data-store adapter.
@@ -233,47 +235,52 @@ export class InMemoryDataStore implements StorageAdapter {
    * a replacement for real database transactions.
    */
   async executeTransaction<T>(operation: () => Promise<T>): Promise<T> {
-    return operationContext.run('Execute datastore transaction', async () => {
-      const snapshot = structuredClone(this.state);
+    return runStorageOperation(IN_MEMORY_JSON_ADAPTER_ID, 'transaction', () =>
+      operationContext.run('Execute datastore transaction', async () => {
+        const snapshot = structuredClone(this.state);
 
-      try {
-        const result = await operation();
+        try {
+          const result = await operation();
 
-        await this.persistence.save(this.state);
+          await this.persistence.save(this.state);
 
-        return result;
-      } catch (error) {
-        /**
-         * IMPORTANT:
-         *
-         * Do not replace `this.state` or rebuild repository wrapper objects here.
-         * Long-lived domain services keep references to the repositories created
-         * during application startup. Replacing those wrappers after a rollback
-         * leaves the services pointing at detached Maps and can make an existing
-         * SysBOUser appear to disappear in a later request.
-         *
-         * Restore every collection IN PLACE instead. This preserves the identity
-         * of both the DatabaseState Maps and the repository wrappers while still
-         * returning the datastore to its pre-transaction contents.
-         */
-        restoreMap(this.state.sysUsers, snapshot.sysUsers);
-        restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
-        restoreMap(this.state.sysEmailAddresses, snapshot.sysEmailAddresses);
-        restoreMap(this.state.sysPrincipalEmailAddresses, snapshot.sysPrincipalEmailAddresses);
-        restoreMap(this.state.sysTelephoneNumbers, snapshot.sysTelephoneNumbers);
-        restoreMap(this.state.sysPrincipalTelephoneNumbers, snapshot.sysPrincipalTelephoneNumbers);
-        restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
-        restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
-        restoreMap(this.state.sysApplications, snapshot.sysApplications);
-        restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
-        restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
-        restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
-        restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
-        restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
+          return result;
+        } catch (error) {
+          /**
+           * IMPORTANT:
+           *
+           * Do not replace `this.state` or rebuild repository wrapper objects here.
+           * Long-lived domain services keep references to the repositories created
+           * during application startup. Replacing those wrappers after a rollback
+           * leaves the services pointing at detached Maps and can make an existing
+           * SysBOUser appear to disappear in a later request.
+           *
+           * Restore every collection IN PLACE instead. This preserves the identity
+           * of both the DatabaseState Maps and the repository wrappers while still
+           * returning the datastore to its pre-transaction contents.
+           */
+          restoreMap(this.state.sysUsers, snapshot.sysUsers);
+          restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
+          restoreMap(this.state.sysEmailAddresses, snapshot.sysEmailAddresses);
+          restoreMap(this.state.sysPrincipalEmailAddresses, snapshot.sysPrincipalEmailAddresses);
+          restoreMap(this.state.sysTelephoneNumbers, snapshot.sysTelephoneNumbers);
+          restoreMap(
+            this.state.sysPrincipalTelephoneNumbers,
+            snapshot.sysPrincipalTelephoneNumbers,
+          );
+          restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
+          restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
+          restoreMap(this.state.sysApplications, snapshot.sysApplications);
+          restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
+          restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
+          restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
+          restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
+          restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
 
-        throw error;
-      }
-    });
+          throw error;
+        }
+      }),
+    );
   }
 
   /**

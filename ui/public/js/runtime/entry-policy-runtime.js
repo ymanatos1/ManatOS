@@ -36,11 +36,6 @@
   const entryInitialization = window.ManatOS?.entryInitialization ?? null;
   entryInitialization?.begin(initializationOwner);
 
-  const controlFor = (key) => {
-    const escaped = globalThis.CSS?.escape ? CSS.escape(key) : String(key).replace(/"/g, '\\"');
-    return form.querySelector(`[data-ctx-field="${escaped}"]`);
-  };
-
   const setField = (key, value, action) => {
     const fieldPath = `${path}.fields.${key}.value`;
     const cause = {
@@ -48,26 +43,15 @@
       action,
       triggerPath: fieldPath,
     };
-    const control = controlFor(key);
-
     /*
-     * Policy/default writes are programmatic CTX mutations, not simulated user
-     * input. Mirror the resolved value into the native control without emitting
-     * input/change, then cross the same canonical CTX field-mutation boundary
-     * used by every other scalar writer. This avoids a DOM-event round trip in
-     * which another initialization listener can observe/replay the old value.
+     * Policy/default writes are canonical CTX mutations. The entry form's
+     * generic CTX -> component projection reflects the committed value back
+     * into whichever field component presents it; callers never mirror DOM
+     * state themselves.
      */
     if (!ctx.updateField) throw new Error('Canonical CTX field mutation authority is unavailable.');
 
-    const fieldContext = ctx.get(`${path}.fields.${key}`);
-    const options = Array.isArray(fieldContext?.options) ? fieldContext.options : [];
-    const option =
-      options.find((candidate) =>
-        Object.is(candidate?.value ?? candidate?.id ?? null, value ?? null),
-      ) ?? null;
-
-    if (control) window.ManatOS?.fieldComponents?.setFieldValue?.(control, value, { emit: false });
-    ctx.updateField(path, key, value, option, cause);
+    ctx.updateField(path, key, value, undefined, cause);
   };
 
   const evaluate = async (declaration, fallback = undefined) => {

@@ -37,6 +37,12 @@ const browserBootstrapSource = readFileSync(
   resolve(process.cwd(), 'public/js/runtime/bootstrap-runtime.js'),
   'utf8',
 );
+const debugRouteSource = readFileSync(resolve(process.cwd(), 'src/routes/debug/index.ts'), 'utf8');
+const apiClientSource = readFileSync(resolve(process.cwd(), 'src/api/client.ts'), 'utf8');
+const logReaderSource = readFileSync(
+  resolve(process.cwd(), 'src/debug/api-traffic-log-reader.ts'),
+  'utf8',
+);
 
 describe('API Traffic developer viewer', () => {
   it('hosts CTX Viewer and API Traffic as tabs of one dock and remembers the active tab', () => {
@@ -108,6 +114,20 @@ describe('API Traffic developer viewer', () => {
     expect(viewerSource).toContain('state.pollingSuspended');
     expect(viewerViewSource).toContain('apiTrafficRequestTab');
     expect(viewerViewSource).toContain('apiTrafficResponseTab');
+    expect(viewerViewSource).toContain('apiTrafficDetailsTabs');
+    expect(viewerSource).toContain('/logs');
+    expect(viewerSource).toContain('data-api-log-tab');
+    expect(debugRouteSource).toContain("'/api-traffic/:requestId/logs'");
+    expect(debugRouteSource).toContain('readApiTrafficLogs');
+    expect(logReaderSource).toContain("resolve(repositoryRoot, 'data/system-settings.json')");
+    expect(logReaderSource).toContain("resolve(repositoryRoot, 'api', value)");
+    expect(logReaderSource).toContain("resolve(debugDirectory, safeRequestId, 'storage')");
+    expect(logReaderSource).toContain("resolve(debugDirectory, safeRequestId, 'api.json')");
+    expect(logReaderSource).toContain("name: 'API CTX'");
+    expect(logReaderSource).toContain("entry.name !== 'ctx.json'");
+    expect(logReaderSource).toContain('Storage CTX ·');
+    expect(apiClientSource).toContain("'x-request-id': apiRequestId");
+    expect(apiClientSource).toContain('requestId: apiRequestId');
     expect(viewerViewSource).toContain('apiTrafficFilter');
     expect(viewerViewSource).toContain('apiTrafficRoutes');
     expect(viewerViewSource).toContain('apiTrafficIgnoreRoutes');

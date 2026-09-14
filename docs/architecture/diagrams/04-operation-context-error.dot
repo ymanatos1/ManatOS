@@ -1,0 +1,12 @@
+digraph G {
+ graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - Request Correlation, Operations, Logs and API CTX"];
+ node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=LR;
+ ui [label="UI API client\ngenerates apiRequestId"];
+ req [label="x-request-id\nONE correlation id", fillcolor="#dcecff"];
+ op [label="OperationContext\nrequest root + child operations"];
+ ctx [label="API CTX\n$.api.level-<call-id>\nrequest user + nested levels"];
+ logs [label="Structured API logs\nrequestId on every request log"];
+ snap [label="Debug snapshots\n<debug-root>/<call-id>/api.json\nstorage/.../ctx.json"];
+ traffic [label="API Traffic debugger\nRequest | Response | matching log tabs", fillcolor="#e8f4e5"];
+ ui -> req; req -> op; req -> ctx; req -> logs; ctx -> snap; req -> traffic; logs -> traffic [label="local shared-files mode"];
+}

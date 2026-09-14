@@ -49,7 +49,7 @@ describe('platform feature organization', () => {
     expect(pageContext).toContain('platformCapabilities');
     expect(pageContext).not.toContain('/api/v1/SysLicenses?pageSize=1000');
     expect(pageContext).not.toContain('licenseGrantsPlatformAccess');
-    expect(pageContext).toContain('{ ctx: res.locals.ctx }');
+    expect(pageContext).toContain('{ ctx: res.locals.ctx, entityCapabilities }');
     expect(pageContext).not.toContain('currentPlatformEntitled');
     expect(pageContext).not.toContain('platformEntitled:');
     expect(access).toContain('contextPlatformAccess(res.locals.ctx, platformId)');

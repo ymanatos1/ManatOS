@@ -9,6 +9,7 @@ import {
   type ManatOSContext,
   type ManatOSDynamicValue,
   type NavigationContribution,
+  type SysBOAuthorizationCapabilities,
   type SysPlatform,
 } from '@manatos/shared';
 
@@ -23,6 +24,8 @@ export interface AppNavMenuItem {
   dockBottom?: boolean;
   /** Static or evaluator-backed visibility against the current CTX root. */
   visible?: ManatOSDynamicValue<boolean>;
+  /** API-projected collection-read capability required for this entry. */
+  requiresEntityRead?: string;
 }
 
 const baseHorizontalNavMenu: AppNavMenuItem[] = [
@@ -150,12 +153,18 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
     ...(item.action === 'open-preferences' ? { action: 'open-preferences' as const } : {}),
     ...(item.dockBottom ? { dockBottom: true } : {}),
     ...(item.visible !== undefined ? { visible: item.visible } : {}),
+    ...(item.requiresEntityRead ? { requiresEntityRead: item.requiresEntityRead } : {}),
   };
 }
 
 export interface NavigationAccessContext {
   /** Authoritative request CTX used by evaluator-backed visibility/access. */
   ctx?: ManatOSContext;
+  /**
+   * API-authoritative collection capabilities used for entity-backed shell
+   * visibility. Missing capability facts fail closed.
+   */
+  entityCapabilities?: Readonly<Record<string, SysBOAuthorizationCapabilities>>;
 }
 
 function dynamicNavigationVisible(
@@ -214,6 +223,12 @@ export function navigationFor(
   };
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {
+      if (
+        item.requiresEntityRead &&
+        access.entityCapabilities?.[item.requiresEntityRead]?.read !== true
+      ) {
+        return [];
+      }
       const evaluatedVisible = dynamicNavigationVisible(item.visible, evaluationCtx, item.id);
       if (evaluatedVisible === false) return [];
 

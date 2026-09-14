@@ -57,9 +57,17 @@ failure          -> success:false + message + error [+ data]
 
 Operational endpoints such as health/readiness belong to the running service rather than versioned business resources.
 
-## 3. Metadata-driven SysBO model
+## 2.1 Client implementation independence
 
-A SysBO definition has a stable entity key such as `sys-users` or `sys-principals`. Storage-generated record identifiers are independent of that key.
+The repository currently ships a Node.js/Express TypeScript web client, but ManatOS architecture is **not coupled to Express/EJS or to a browser-only topology**. The portable boundary is API contracts + metadata + capability projections + client/runtime semantics. Future Angular, React, mobile, desktop or specialized clients may consume those contracts.
+
+Architecture documents therefore describe client/UI semantics first. Implementation-specific Express/EJS details belong to the current-client development/design documentation and are identified as such.
+
+## 3. Metadata-driven entity model
+
+The generic entity model has a stable entity key and is independent of a particular UI or storage provider. Current system-owned entities use the SysBO naming/category convention, with keys such as `sys-users` or `sys-principals`; storage-generated record identifiers are independent of those keys.
+
+The same entity/metadata/runtime/storage contracts are intended to support future non-systemic entities defined by Applications. Those entities should not be described as SysBOs merely because the first registered objects are system-owned.
 
 Two metadata layers are intentionally distinct:
 
@@ -177,9 +185,9 @@ fields.<k>.value               entry.original[k]
 
 `facts` are API-safe observations useful to expressions but not persisted fields. They never enter persistence payloads merely because they exist in CTX.
 
-## 7. UI ownership
+## 7. Client/UI ownership
 
-The client UI engine owns:
+A UI-capable client owns its presentation/runtime concerns:
 
 - page/popup composition;
 - recursive UI-level lifecycle;
@@ -189,7 +197,7 @@ The client UI engine owns:
 - hierarchy working state;
 - evaluation of UI-owned declarative expressions.
 
-The server may provide declarative UI metadata. It does not construct runtime client topology or execute client presentation semantics.
+The server may provide declarative UI metadata. It does not construct runtime client topology or execute client presentation semantics. The current Node.js/Express TypeScript UI is one realization of this boundary; Angular, React, mobile or other clients may realize it differently without changing the system contract.
 
 ## 8. Security boundary
 

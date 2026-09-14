@@ -63,7 +63,10 @@ describe('canonical field type / value-source architecture', () => {
     expect(formRuntime).toContain(
       'const canonicalFieldDefinitions = entryEntity?.metadata?.fieldDefinition || {}',
     );
+    expect(formRuntime).toContain('const projectFieldFromCtx = (key) =>');
     expect(formRuntime).toContain('ManatOS?.fieldComponents?.setFieldValue');
+    expect(formRuntime).toContain('projectCtxFieldChange(change)');
+    expect(formRuntime).toContain('{ emit: false }');
     expect(formRuntime).toContain('definition?.calculation?.expression');
     expect(formRuntime).not.toContain(
       "form.querySelectorAll('[data-field-calculation-expression]')",
@@ -77,11 +80,14 @@ describe('canonical field type / value-source architecture', () => {
     expect(fieldRuntime).toContain('const setEnumValue =');
   });
 
-  it('materializes persisted calculations from canonical field metadata at the API boundary', async () => {
+  it('materializes persisted calculations from canonical field metadata at the storage boundary', async () => {
     const service = await api('src/services/sysbo/generic-service.ts');
-    expect(service).toContain('field.calculation?.persisted === true');
-    expect(service).toContain('fieldDefinition.${key}.calculation');
-    expect(service).not.toContain('metadata.derivedFields');
+    const persistedCalculation = await api('src/storage/persisted-calculation.ts');
+
+    expect(service).toContain('materializePersistedCalculations');
+    expect(persistedCalculation).toContain('field.calculation?.persisted === true');
+    expect(persistedCalculation).toContain('fieldDefinition.${key}.calculation');
+    expect(persistedCalculation).not.toContain('metadata.derivedFields');
   });
   it('enforces metadata string lengths in the UI component and canonical CTX field mutation path', async () => {
     const text = await ui('views/components/sysbo/entry/fields/text-field.ejs');
@@ -99,6 +105,10 @@ describe('canonical field type / value-source architecture', () => {
     expect(ctxRuntime).toContain("source: 'metadata-length'");
     expect(ctxRuntime).toContain('field.validationIssues =');
     expect(ctxRuntime).toContain('field.valid =');
+    expect(ctxRuntime).toContain('const resolvedOption =');
+    expect(ctxRuntime).toContain(
+      'if (match) return updateField(match[1], match[2], value, undefined, cause)',
+    );
   });
   it('resolves ordinary field variables through real CTX during explicit initialization scopes', async () => {
     const expressionRuntime = await ui('public/js/sysbo/entry/expression-runtime.js');

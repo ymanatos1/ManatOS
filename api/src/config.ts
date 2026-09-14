@@ -41,6 +41,9 @@ const schema = z.object({
    */
   DATA_FILE: z.string().default('../data/database.json'),
 
+  /** Bootstrap/system settings persisted independently of the active datastore. */
+  SYSTEM_SETTINGS_FILE: z.string().default('../data/system-settings.json'),
+
   /**
    * Shared secret protecting trusted internal API operations.
    */

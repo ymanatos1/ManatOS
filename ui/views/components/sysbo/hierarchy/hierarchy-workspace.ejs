@@ -63,9 +63,9 @@
     data-metadata-component="<%= hierarchyDescriptor.component.key %>"
     data-metadata-component-options="<%= JSON.stringify({
       ...(hierarchyDescriptor.component.options || {}),
-      dataSource: 'entries',
-      currentSource: 'entries',
-      focusSource: 'focusedMemberId',
+      dataSource: 'list.entries',
+      currentSource: 'list.entries',
+      focusSource: 'resources.workspace.focusedMemberId',
       emptyAddLabel: `Add ${metadata.label}`,
       emptyAddTitle: `Create ${metadata.label}`,
       interactionMode: 'workspace',
@@ -104,8 +104,7 @@
     <% } %>
     <div class="d-flex justify-content-end gap-2 ms-auto">
       <% if (hierarchyMode === 'create') { %>
-        <a class="btn btn-outline-secondary" href="/bo/<%= encodeURIComponent(definition.key) %>">Cancel</a>
-        <button type="button" class="btn btn-outline-primary" data-hierarchy-close>Close</button>
+        <button type="button" class="btn btn-outline-secondary" data-hierarchy-close>Close</button>
       <% } else { %>
         <button type="button" class="btn btn-outline-secondary" data-hierarchy-edit-exit>Close</button>
       <% } %>

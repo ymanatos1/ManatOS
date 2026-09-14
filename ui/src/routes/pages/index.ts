@@ -2,7 +2,13 @@ import { Router } from 'express';
 
 import createError from 'http-errors';
 
-import { AppError, MANATOS_COMPANY, validatePassword, type SysBOUser } from '@manatos/shared';
+import {
+  AppError,
+  MANATOS_COMPANY,
+  SysBOUserRole,
+  validatePassword,
+  type SysBOUser,
+} from '@manatos/shared';
 
 import { apiClient } from '../../api/client.js';
 
@@ -10,7 +16,7 @@ import { apiSessionOptions } from '../../auth/api-session.js';
 
 import { config } from '../../config.js';
 
-import { requireAdmin, requireSignedIn } from '../../middleware/auth.js';
+import { requireAdmin, requireAdminOrSuperuser, requireSignedIn } from '../../middleware/auth.js';
 
 import { requireCsrf } from '../../middleware/csrf.js';
 
@@ -37,7 +43,7 @@ export function createPageRoutes() {
       ),
   );
 
-  router.get('/configuration', requireSignedIn, requireAdmin, async (req, res, next) => {
+  router.get('/configuration', requireSignedIn, requireAdminOrSuperuser, async (req, res, next) => {
     try {
       const response = await apiClient.get<{ items: Array<Record<string, unknown>> }>(
         '/api/v1/SysConfigurations',
@@ -54,6 +60,7 @@ export function createPageRoutes() {
         titleSubtitle:
           'Runtime application settings. Changes marked restart-required take effect after the corresponding service restarts.',
         configurationGroups: groups,
+        configurationReadOnly: res.locals.currentUser?.role === SysBOUserRole.Superuser,
       });
     } catch (error) {
       next(error);
@@ -86,6 +93,206 @@ export function createPageRoutes() {
       }
     },
   );
+
+  router.get(
+    '/system-settings',
+    requireSignedIn,
+    requireAdminOrSuperuser,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.get<{
+          currentConfigurationId: string;
+          selectedConfigurationId: string;
+          runningConfigurationId: string;
+          configurations: Array<Record<string, unknown>>;
+          adapters: Array<Record<string, unknown>>;
+          debugging: {
+            apiStorageContextEnabled: boolean;
+            outputDirectory: string;
+          };
+          restartRequired: boolean;
+        }>('/api/v1/system-settings/storage', apiSessionOptions(req));
+
+        await renderPage(res, 'pages/system-settings', {
+          title: 'System settings',
+          titleIcon: 'bi-gear-wide-connected',
+          titleSubtitle:
+            'Infrastructure settings used by ManatOS itself. Storage changes are persisted immediately and become active after the API restarts.',
+          storageSettings: response.data,
+          storageSettingsReadOnly: res.locals.currentUser?.role === SysBOUserRole.Superuser,
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/system-settings/storage/configurations',
+    requireSignedIn,
+    requireAdmin,
+    requireCsrf,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.post(
+          '/api/v1/system-settings/storage/configurations',
+          req.body,
+          apiSessionOptions(req),
+        );
+        res.json(response);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/system-settings/storage/configurations/order',
+    requireSignedIn,
+    requireAdmin,
+    requireCsrf,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.patch(
+          '/api/v1/system-settings/storage/configurations/order',
+          { ids: req.body.ids },
+          apiSessionOptions(req),
+        );
+        res.json(response);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/system-settings/storage/configurations/:id/delete',
+    requireSignedIn,
+    requireAdmin,
+    requireCsrf,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.delete(
+          '/api/v1/system-settings/storage/configurations/' +
+            encodeURIComponent(String(req.params.id ?? '')),
+          apiSessionOptions(req),
+        );
+        res.json(response);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/system-settings/storage/configurations/:id',
+    requireSignedIn,
+    requireAdmin,
+    requireCsrf,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.patch(
+          '/api/v1/system-settings/storage/configurations/' +
+            encodeURIComponent(String(req.params.id ?? '')),
+          req.body,
+          apiSessionOptions(req),
+        );
+        res.json(response);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/system-settings/storage/configurations/:id/order',
+    requireSignedIn,
+    requireAdmin,
+    requireCsrf,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.patch(
+          '/api/v1/system-settings/storage/configurations/' +
+            encodeURIComponent(String(req.params.id ?? '')) +
+            '/order',
+          { direction: req.body.direction },
+          apiSessionOptions(req),
+        );
+        res.json(response);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/system-settings/storage/current',
+    requireSignedIn,
+    requireAdmin,
+    requireCsrf,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.patch(
+          '/api/v1/system-settings/storage/current',
+          { configurationId: req.body.configurationId },
+          apiSessionOptions(req),
+        );
+        res.json(response);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/system-settings/storage/debugging',
+    requireSignedIn,
+    requireAdmin,
+    requireCsrf,
+    async (req, res, next) => {
+      try {
+        const response = await apiClient.patch(
+          '/api/v1/system-settings/storage/debugging',
+          {
+            apiStorageContextEnabled: req.body.apiStorageContextEnabled === true,
+            outputDirectory: req.body.outputDirectory,
+          },
+          apiSessionOptions(req),
+        );
+        res.json(response);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  for (const operation of [
+    'test-connection',
+    'databases',
+    'database/inspect',
+    'database/prepare',
+    'schema/inspect',
+    'schema/prepare',
+  ]) {
+    router.post(
+      `/system-settings/storage/target/${operation}`,
+      requireSignedIn,
+      requireAdmin,
+      requireCsrf,
+      async (req, res, next) => {
+        try {
+          const response = await apiClient.post(
+            `/api/v1/system-settings/storage/target/${operation}`,
+            req.body,
+            apiSessionOptions(req),
+          );
+          res.json(response);
+        } catch (error) {
+          next(error);
+        }
+      },
+    );
+  }
 
   router.get(
     '/company',

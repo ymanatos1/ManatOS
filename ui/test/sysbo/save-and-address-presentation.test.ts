@@ -52,13 +52,26 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     );
     expect(entrySave).toContain("'X-Requested-With': 'ManatOS-InPlace-Save'");
     expect(entrySave).toContain("payload?.error?.code === 'UI_API_SESSION_EXPIRED'");
-    expect(entrySave).toContain('window.ManatOS?.reauthenticate?.()');
+    expect(entrySave).toContain('window.ManatOS?.reauthenticate?.({');
+    expect(entrySave).toContain("reason: 'session-expired'");
+    expect(entrySave).toContain("operation: 'save'");
     expect(entrySave).not.toContain('manatos:entry-draft:');
     expect(entrySave).not.toContain('restoreDraft');
     expect(entrySave).not.toContain('saveDraft');
     expect(entryState).not.toContain('Local draft restored');
     expect(reauth).toContain('window.ManatOS.reauthenticate = reauthenticate');
     expect(reauth).toContain("'X-ManatOS-Reauthenticate': '1'");
+    expect(reauth).toContain("fetch('/auth/csrf'");
+    expect(reauth).toContain('document.querySelectorAll(\'input[name="_csrf"]\')');
+    expect(reauth).toContain('const reauthenticate = (invocation = {}) =>');
+    expect(reauth).toContain("normalizedInvocation.reason === 'session-expired'");
+    expect(reauth).toContain(
+      'modalElement.dataset.popupInvocation = JSON.stringify(popupInvocation)',
+    );
+    expect(reauth).toContain("title.textContent = 'Your session has expired'");
+    expect(reauth).toContain('delete modalElement.dataset.popupInvocation');
+    expect(entrySave).toContain('const body = formBody(saveMode);');
+    expect(entrySave).toContain('Cancel is not an operation failure');
     expect(shell).toContain('/js/auth/reauth.js');
     expect(entrySave).toContain('const body = new URLSearchParams();');
     expect(entrySave).toContain('new FormData(form).entries()');

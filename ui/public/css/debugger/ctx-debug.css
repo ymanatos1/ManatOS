@@ -1010,10 +1010,12 @@ html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none {
 .api-traffic-details-tabs {
   display: flex;
   gap: 0.25rem;
+  overflow-x: auto;
   padding: 0.35rem 0.55rem 0;
   background: #f8fafc;
 }
 .api-traffic-details-tab {
+  flex: 0 0 auto;
   border: 1px solid #b8c7d9;
   border-bottom: 0;
   border-radius: 0.25rem 0.25rem 0 0;
@@ -1658,4 +1660,48 @@ html[data-manatos-debug-visible='true'][data-manatos-debug-tab='apiTraffic']
   line-height: 1.25;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.ctx-debug-subscriber-tabs {
+  display: flex;
+  gap: 0.1rem;
+  padding: 0.22rem 0.45rem 0;
+  border-bottom: 1px solid #d5dde7;
+}
+
+.ctx-debug-subscriber-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0.16rem 0.42rem;
+  background: transparent;
+  color: #52606d;
+  font: inherit;
+  font-size: 0.67rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.ctx-debug-subscriber-tab.is-active {
+  border-bottom-color: #0d6efd;
+  color: #0d6efd;
+}
+
+.ctx-debug-subscriber-tab-content {
+  min-height: 2.2rem;
+}
+
+.ctx-debug-subscriber-tab.has-registrations {
+  font-weight: 700;
+}
+
+.ctx-debug-attribute-list {
+  margin: 0.35rem 0.55rem 0.4rem 1.45rem;
+  padding: 0;
+  font-size: 0.69rem;
+  line-height: 1.3;
+}
+
+.ctx-debug-attribute-list li {
+  margin-bottom: 0.18rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }

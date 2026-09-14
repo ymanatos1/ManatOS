@@ -5,6 +5,7 @@ import {
   allManatOSObjectMetadata,
   resolvePlatform,
   sysBOUsersMetadata,
+  type EntityCollectionAuthorizationCapabilities,
   type PlatformAuthorizationCapabilities,
   type SysBOApplication,
   type SysBOUser,
@@ -104,16 +105,23 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
      * traverse principal relationships, or reproduce Admin bypass rules.
      */
     let platformCapabilities: PlatformAuthorizationCapabilities = { platformAccess: false };
+    let entityCapabilities: EntityCollectionAuthorizationCapabilities = {};
     if (user) {
-      platformCapabilities = (
-        await apiClient.get<{
+      const [platformCapabilityResponse, entityCapabilityResponse] = await Promise.all([
+        apiClient.get<{
           platformId: string;
           capabilities: PlatformAuthorizationCapabilities;
         }>(
           `/api/v1/platforms/${encodeURIComponent(currentPlatform.id)}/$capabilities`,
           apiSessionOptions(req),
-        )
-      ).data.capabilities;
+        ),
+        apiClient.get<{ entities: EntityCollectionAuthorizationCapabilities }>(
+          '/api/v1/authorization/entities/$capabilities',
+          apiSessionOptions(req),
+        ),
+      ]);
+      platformCapabilities = platformCapabilityResponse.data.capabilities;
+      entityCapabilities = entityCapabilityResponse.data.entities;
     }
 
     res.locals.currentUser = user;
@@ -179,7 +187,7 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
         Boolean(user),
         MANATOS_COMPANY,
         currentPlatform,
-        { ctx: res.locals.ctx },
+        { ctx: res.locals.ctx, entityCapabilities },
       ),
 
       /**

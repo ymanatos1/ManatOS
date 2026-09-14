@@ -12,6 +12,11 @@ export interface SysBOAuthorizationCapabilities {
   delete: boolean;
 }
 
+/** Collection capability projections keyed by canonical entity/SysBO key. */
+export type EntityCollectionAuthorizationCapabilities = Readonly<
+  Record<string, SysBOAuthorizationCapabilities>
+>;
+
 /**
  * Canonical API capability projection for one platform scope.
  *

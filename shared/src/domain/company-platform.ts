@@ -81,7 +81,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-users',
       order: 310,
       requiresEntityKeys: ['sys-users'],
-      visible: { expression: 'user.permissions.userRole !== null' },
+      requiresEntityRead: 'sys-users',
     },
     {
       id: 'principals',
@@ -91,9 +91,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-principals',
       order: 320,
       requiresEntityKeys: ['sys-principals'],
-      visible: {
-        expression: "user.permissions.userRole !== 'Guest'",
-      },
+      requiresEntityRead: 'sys-principals',
     },
     {
       id: 'configuration',
@@ -101,7 +99,10 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-sliders2',
       order: 890,
       separatorBefore: true,
-      visible: { expression: "user.permissions.userRole === 'Admin'" },
+      visible: {
+        expression:
+          "user.permissions.userRole === 'Admin' || user.permissions.userRole === 'Superuser'",
+      },
     },
     {
       id: 'system-configuration',
@@ -110,8 +111,20 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-sliders',
       url: '/configuration',
       order: 400,
-      visible: { expression: "user.permissions.userRole === 'Admin'" },
       requiresEntityKeys: ['sys-configurations'],
+      requiresEntityRead: 'sys-configurations',
+    },
+    {
+      id: 'system-settings',
+      parentId: 'configuration',
+      text: 'System settings',
+      icon: 'bi-gear-wide-connected',
+      url: '/system-settings',
+      order: 405,
+      visible: {
+        expression:
+          "user.permissions.userRole === 'Admin' || user.permissions.userRole === 'Superuser'",
+      },
     },
     {
       id: 'external-authentication',
@@ -120,8 +133,8 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-globe2',
       url: '/bo/sys-ext-auth-providers',
       order: 410,
-      visible: { expression: "user.permissions.userRole === 'Admin'" },
       requiresEntityKeys: ['sys-ext-auth-providers'],
+      requiresEntityRead: 'sys-ext-auth-providers',
     },
     {
       id: 'licenses',
@@ -131,9 +144,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       url: '/bo/sys-licenses',
       order: 340,
       requiresEntityKeys: ['sys-licenses'],
-      visible: {
-        expression: "user.permissions.userRole !== 'Guest'",
-      },
+      requiresEntityRead: 'sys-licenses',
     },
     {
       id: 'preferences',

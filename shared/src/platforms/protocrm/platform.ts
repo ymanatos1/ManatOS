@@ -81,6 +81,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
       url: '/app-playground',
       order: 200,
       requiresEntityKeys: ['sys-applications'],
+      requiresEntityRead: 'sys-applications',
       visible: {
         expression: 'user.permissions.platforms.protocrm.capabilities.platformAccess === true',
       },
@@ -93,9 +94,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
       url: '/bo/sys-applications',
       order: 330,
       requiresEntityKeys: ['sys-applications'],
-      visible: {
-        expression: 'user.permissions.platforms.protocrm.capabilities.platformAccess === true',
-      },
+      requiresEntityRead: 'sys-applications',
     },
   ],
 };

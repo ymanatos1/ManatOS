@@ -28,6 +28,17 @@ export function createLocalAuthRouter() {
   const router = Router();
 
   /**
+   * Refresh the CSRF token for a long-lived browser document.
+   *
+   * When the Express session has expired, csrfTokenMiddleware has already
+   * created a fresh anonymous session/token before this route runs. In-place
+   * reauthentication fetches this token before posting credentials.
+   */
+  router.get('/csrf', (req, res) => {
+    res.json({ success: true, data: { csrfToken: req.session.csrfToken } });
+  });
+
+  /**
    * Local website sign-in.
    *
    * This is now the real API login flow rather than a separate internal
@@ -69,7 +80,10 @@ export function createLocalAuthRouter() {
             await establishUiSession(req, login, 'local');
 
             if (req.get('X-ManatOS-Reauthenticate') === '1') {
-              res.json({ success: true, data: { user: login.user } });
+              res.json({
+                success: true,
+                data: { user: login.user, csrfToken: req.session.csrfToken },
+              });
               return;
             }
 

@@ -16,6 +16,7 @@ Start with [System Architecture](System-Architecture.md). Then use the specializ
 - [Security Architecture](Security-Architecture.md)
 - [Authentication and Authorization](Authentication-and-Authorization.md)
 - [Data and Storage Architecture](Data-and-Storage-Architecture.md)
+- [Diagnostics and Observability Architecture](Diagnostics-and-Observability-Architecture.md)
 - [Expression Architecture](Expression-Architecture.md)
 - [Events and Reactivity](Events-and-Reactivity.md)
 - [Platform and Application Architecture](Platform-and-Application-Architecture.md)

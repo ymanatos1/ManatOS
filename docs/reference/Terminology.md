@@ -1,6 +1,7 @@
 # Terminology
 
-**SysBO** — System Business Object known through canonical metadata.  
+**Entity** — generic metadata-driven business-object definition; may be system-owned or future application-defined.  
+**SysBO** — system-owned entity naming/category convention used by ManatOS/company and platform system objects; not a synonym for every entity.  
 **Canonical metadata** — domain/entity contract independent of a specific UI.  
 **UI metadata** — presentation/interaction contract layered over canonical metadata.  
 **CTX** — observable runtime context tree used by expressions, reactivity and diagnostics.  

@@ -1479,3 +1479,77 @@ button.metadata-collection-summary-item:focus-visible {
     max-height: 10rem;
   }
 }
+
+/* System Settings storage editor: keep the tab strip horizontal without the
+   browser's vertical overflow arrows; horizontal scrolling appears only when
+   the available modal width is genuinely insufficient. */
+.storage-configuration-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.storage-configuration-tabs .nav-item {
+  flex: 0 0 auto;
+}
+
+.storage-field-changed > .form-label {
+  font-weight: 700 !important;
+}
+
+/* Storage configuration ordering uses an explicit drag affordance. */
+.storage-configuration-drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.storage-configuration-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Keep enough vertical room in Configuration for the branded adapter picker to
+   open without turning the modal body into a short scroll viewport. */
+#storageConfigurationModal[data-storage-active-step='configuration'] .modal-body {
+  min-height: min(30rem, calc(100vh - 13rem));
+}
+
+/* The rich next-start configuration picker supports branded adapter icons and
+   independently styled configuration names, which native <option> elements do not. */
+.storage-current-picker-button {
+  min-height: 2.4rem;
+}
+
+.storage-current-picker-menu {
+  max-height: min(24rem, 55vh);
+  overflow-y: auto;
+}
+
+.storage-current-picker-menu .dropdown-item:disabled {
+  opacity: 0.55;
+}
+
+/* Capabilities grow independently from the storage workflow. Category pills
+   avoid one very tall table, while each category keeps its own bounded scroll. */
+.storage-capability-category-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.storage-capability-category-tabs .nav-link {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 0.32rem 0.58rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.storage-capability-table-scroll {
+  max-height: min(24rem, 48vh);
+  overflow-y: auto;
+}
+
+.storage-capability-table-scroll thead {
+  z-index: 1;
+}
