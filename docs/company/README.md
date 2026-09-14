@@ -1,15 +1,19 @@
 # ManatOS Company Domain
 
-The ManatOS company domain owns system-wide identity, administration and commercial/platform-governance concepts that exist independently of whichever platform is selected.
+The company domain is the ManatOS-owned business foundation shared by platforms and applications. It includes authenticated Users/accounts, Principals, organization hierarchies, reusable contact information, Licenses and external authentication-provider configuration. These concepts remain company-level even when a platform such as protoCRM consumes them.
 
-Current company-owned entities include Users/Account identity, Principals and organization hierarchy, Licenses, External Authentication Providers, and the reusable contact-value/link entities used by Principals. These are not protoCRM domain objects merely because protoCRM consumes them.
+A User represents system/authentication identity; a Principal represents the richer business identity of a person, organization or other principal type. Linking them allows organization-scoped authorization without collapsing authentication and business-domain concerns into one record model.
+
+Licenses connect Principals/organizations to platform or application entitlement but remain company-owned records. External authentication providers are likewise authentication infrastructure rather than protoCRM application data.
 
 ## Reading map
 
-- [Users and Principals](Users-and-Principals.md)
-- [Organizations and Hierarchies](Organizations-and-Hierarchies.md)
-- [Contact Information](Contact-Information.md)
-- [Licensing](Licensing.md)
-- [External Authentication Providers](External-Authentication-Providers.md)
+- [`Users-and-Principals.md`](Users-and-Principals.md) — account/business-identity relationship and principal semantics.
+- [`Organizations-and-Hierarchies.md`](Organizations-and-Hierarchies.md) — organization structure, roots and hierarchy behavior.
+- [`Contact-Information.md`](Contact-Information.md) — reusable email, telephone and address information.
+- [`Licensing.md`](Licensing.md) — platform/application-aware licensing and entitlement data.
+- [`External-Authentication-Providers.md`](External-Authentication-Providers.md) — provider definitions, credentials, verification and external identities.
 
-The generic metadata/entity/CTX/storage infrastructure used by these system entities is also intended to support future non-systemic, application-defined entities. `SysBO` is therefore a naming prefix/category for system-owned business objects, not a synonym for every entity that can use the infrastructure.
+Related subjects: [`security/`](../security/), [`platforms/`](../platforms/), [`entities/`](../entities/) and [`api/`](../api/).
+
+Return to the [documentation map](../README.md) or [repository overview](../../README.md).

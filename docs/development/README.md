@@ -1,25 +1,21 @@
 # Development
 
-This area is for contributors changing the repository. It explains setup, structure, verification, debugging, extension points and the architectural checks that should precede a patch.
+This subject owns the practical repository/developer workflow that is intentionally kept out of the main project overview. Use it for environment preparation, repository structure, build/run commands, testing, coding principles, cross-cutting extension guidance and documentation standards.
 
 ## Start here
 
-- [Getting Started](Getting-Started.md)
-- [Repository Structure](Repository-Structure.md)
-- [Coding Principles](Coding-Principles.md)
-- [Building and Running](Building-and-Running.md)
-- [Testing](Testing.md)
-- [Debugging and Developer Tools](Developer-Tools.md)
+- [`Getting-Started.md`](Getting-Started.md) — prerequisites and initial development setup.
+- [`Repository-Structure.md`](Repository-Structure.md) — source/workspace layout and ownership.
+- [`Building-and-Running.md`](Building-and-Running.md) — running the API/client processes and build workflow.
+- [`Testing.md`](Testing.md) — tests, verification and architectural/contract coverage.
+- [`Coding-Principles.md`](Coding-Principles.md) — implementation principles and common conventions.
+- [`Extension-Points.md`](Extension-Points.md) — cross-cutting extension map; subsystem-specific guides live with their subjects.
+- [`Documentation-Standards.md`](Documentation-Standards.md) — permanent documentation conventions.
 
-## Common extension tasks
+## Subject-specific development guides
 
-- [Adding an Entity](Adding-an-Entity.md)
-- [Adding UI Metadata](Adding-UI-Metadata.md)
-- [Adding a Component](Adding-a-Component.md)
-- [Adding an Expression](Adding-an-Expression.md)
-- [Adding an API Capability](Adding-an-API-Capability.md)
-- [Storage Adapters](Storage-Adapters.md)
-- [Security Guidelines](Security-Guidelines.md)
-- [Extension Points](Extension-Points.md)
+Development instructions now live beside the subsystem they extend: entity/component guides under [`entities/`](../entities/), expression extension under [`expressions/`](../expressions/), API capability extension under [`api/`](../api/), client implementation guidance under [`clients/`](../clients/), security guidance under [`security/`](../security/), storage adapters under [`storage/`](../storage/) and developer diagnostic tools under [`diagnostics/`](../diagnostics/).
 
-Before implementing entity-specific code, check whether the behavior is a reusable metadata, expression, policy, component or runtime concern.
+The authoritative full-repository verification remains the repository workflow documented in [`Testing.md`](Testing.md).
+
+Return to the [documentation map](../README.md) or [repository overview](../../README.md).

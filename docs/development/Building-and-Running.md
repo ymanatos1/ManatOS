@@ -12,4 +12,4 @@ It runs linting, Prettier checks, TypeScript builds and API/UI test suites. `npm
 
 Default development URLs are configuration-driven; the common local setup uses UI on port 3001 and API on port 3000. Deployment can place a reverse proxy in front of both processes.
 
-See [Configuration Reference](../reference/Configuration-Catalog.md) and [Testing](Testing.md).
+See [Configuration Reference](../system/Configuration-Catalog.md) and [Testing](Testing.md).

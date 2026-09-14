@@ -191,7 +191,7 @@ Reusable inline/collection editors participate through the owning entry form's p
 
 ## Adding expression functions
 
-Every registered expression function must document and declare the narrowest capability it requires (`pure`, `clock`, `ctx`, or `entityResolver`). Functions must remain entity-agnostic and must never import storage adapters directly. Persistence-backed behavior belongs behind `EntityResolver`; browser-owned formulas delegate only reached unavailable-capability calls and then resume locally. See [Expression Parsing and Evaluation Mechanics](../architecture/Expression-Architecture.md).
+Every registered expression function must document and declare the narrowest capability it requires (`pure`, `clock`, `ctx`, or `entityResolver`). Functions must remain entity-agnostic and must never import storage adapters directly. Persistence-backed behavior belongs behind `EntityResolver`; browser-owned formulas delegate only reached unavailable-capability calls and then resume locally. See [Expression Parsing and Evaluation Mechanics](../expressions/Expression-Architecture.md).
 
 ## Browser runtime service namespace
 

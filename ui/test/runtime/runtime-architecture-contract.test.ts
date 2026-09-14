@@ -10,8 +10,8 @@ const repo = (path: string) => readFile(resolve(here, '..', '..', '..', path), '
 describe('V2 post-cutover architecture audit', () => {
   it('keeps developer guidance aligned with process-local expression AST ownership', async () => {
     const gettingStarted = await repo('docs/development/Getting-Started.md');
-    const developerTools = await repo('docs/development/Developer-Tools.md');
-    const systemArchitecture = await repo('docs/architecture/System-Architecture.md');
+    const developerTools = await repo('docs/diagnostics/Developer-Tools.md');
+    const systemArchitecture = await repo('docs/system/System-Architecture.md');
     const shell = await ui('views/layout/shell.ejs');
 
     expect(gettingStarted).toContain('the API process and UI process each compile lazily');
