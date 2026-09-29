@@ -32,7 +32,9 @@ describe('V2 EntityEntry visual runtime', () => {
       "const isEntryPopupHost = typeof entryPopupHost !== 'undefined' && entryPopupHost",
     );
     expect(component).toContain('<% if (isEntryPopupHost) { %>');
-    expect(component).toContain('<span data-form-close-cancel-label>Close</span>');
+    expect(component).toContain("<%= compactEntryDensity ? 'Cancel' : 'Close' %>");
+    expect(component).toContain('const v2DeleteAction = isViewMode');
+    expect(component).toContain('const v2CommandActions = isViewMode');
   });
 
   it('initializes V2 from authoritative server values instead of the legacy ctx.page field projection', async () => {
@@ -40,8 +42,7 @@ describe('V2 EntityEntry visual runtime', () => {
     expect(route).toContain('buildEntryInitializationSeed');
     expect(route).toContain('const v2ServerValues = v2InitializationSeed.fields');
     expect(route).not.toContain('v2Entry.initialize({ server: v2ServerValues })');
-    expect(route).not.toContain('new EntityEntryRuntime');
-    expect(route).toContain("purpose: 'open-entity-entry'");
+    expect(route).toContain("purpose: surface.purpose ?? 'open-entity-entry'");
     expect(route).toContain('current: v2ServerValues');
     expect(route).toContain('const v2RuntimeFacts = v2InitializationSeed.facts');
     expect(route).toContain('facts: { ...v2RuntimeFacts, permissions: effectivePermissions }');
@@ -100,7 +101,7 @@ describe('V2 EntityEntry visual runtime', () => {
   it('keeps developer capability gating on the server but composes the V2 Debugging tab in the browser', async () => {
     const route = await source('src/routes/sysbo/entry/renderer.ts');
     const v2 = await source('views/components/runtime/entity-entry.ejs');
-    const runtime = await source('public/js/runtime/entry-policy-runtime.js');
+    const runtime = await source('public/js/sysbo/entry/entry-policy-runtime.js');
 
     expect(route).not.toContain('effectiveRecordTabs(');
     expect(route).not.toContain('developerMode');
@@ -113,6 +114,21 @@ describe('V2 EntityEntry visual runtime', () => {
     expect(runtime).toContain('nav.querySelector(\'[data-v2-tab-id="debugging"]\')');
     expect(runtime).toContain("content.querySelector('#metadata-debugging-pane')");
   });
+  it('propagates expression diagnostics to the host Debugging tab and owning CTX mirrors', async () => {
+    const component = await source('views/components/runtime/entity-entry.ejs');
+    const shell = await source('public/js/shell/shell.js');
+    const css = await source('public/css/ui.css');
+
+    expect(component).toContain('data-debugging-host-tab');
+    expect(component).toContain('data-debugging-host-errors-count');
+    expect(shell).toContain("tab.classList.toggle('debugging-host-errors-present', count > 0)");
+    expect(shell).toContain('fieldOwnersForDiagnostic');
+    expect(shell).toContain('ctx-expression-error-owner');
+    expect(shell).toContain('data-ctx-expression-error-indicator');
+    expect(css).toContain('#metadata-debugging-tab.debugging-host-errors-present');
+    expect(css).toContain('.ctx-debug-row.ctx-expression-error-owner .ctx-debug-key');
+  });
+
   it('uses the runtime option domain for V2 render/debug expression scope', async () => {
     const component = await source('views/components/runtime/entity-entry.ejs');
 
@@ -130,26 +146,29 @@ describe('V2 EntityEntry visual runtime', () => {
     );
   });
 
-  it('carries popup invocation tokens in V2 so Close uses popup lifecycle instead of iframe navigation', async () => {
+  it('carries host-neutral invocation tokens in V2 so hosted Close uses the owning surface lifecycle', async () => {
     const component = await source('views/components/runtime/entity-entry.ejs');
 
     expect(component).toContain("typeof entryPopupHost !== 'undefined' && entryPopupHost");
-    expect(component).toContain('name="_entryPopup" value="1"');
-    expect(component).toContain('name="_entryPopupToken"');
+    expect(component).toContain('name="_entryHost" value="popup"');
+    expect(component).toContain('name="_entryToken"');
     expect(component).toContain("entryPopupToken || ''");
   });
 
   it('evaluates dynamic summary presentation in the browser-owned V2 entry scope', async () => {
     const summary = await source('views/components/sysbo/entry/content/summary.ejs');
-    const runtime = await source('public/js/runtime/entry-policy-runtime.js');
+    const runtime = await source('public/js/sysbo/entry/entry-policy-runtime.js');
 
     expect(summary).not.toContain('dynamicUIValue(');
     expect(summary).not.toContain('ctxExpressionValue(');
     expect(summary).toContain('data-v2-summary-tone-expression');
     expect(summary).toContain('data-v2-summary-icon-expression');
     expect(runtime).toContain('refreshSummaryPresentation');
-    expect(runtime).toContain('expressions.loadAstForSource(host.dataset.v2SummaryToneExpression)');
-    expect(runtime).toContain('expressions.evaluateAstOwnedAt(ast, path)');
+    expect(runtime).toContain(
+      'evaluateSourceOwnedAt(host.dataset.v2SummaryToneExpression, path, null)',
+    );
+    expect(runtime).toContain('const ast = await expressions.loadAstForSource(source);');
+    expect(runtime).toContain('return expressions.evaluateAstOwnedAt(ast, ownerPath);');
   });
   it('never evaluates V2 UI expressions during SSR and emits authored source without per-element AST transport', async () => {
     const component = await source('views/components/runtime/entity-entry.ejs');

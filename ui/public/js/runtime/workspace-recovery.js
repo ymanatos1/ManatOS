@@ -14,6 +14,21 @@
   const VERSION = 2;
   const DB_NAME = 'manatos-workspace-recovery';
   const STORE_NAME = 'packages';
+  const dismissedPackageKey = (userId) => `manatos.workspace-recovery.dismissed:${userId}`;
+  const dismissedPackageSavedAt = (userId) => {
+    try {
+      return sessionStorage.getItem(dismissedPackageKey(userId));
+    } catch {
+      return null;
+    }
+  };
+  const rememberDismissedPackage = (userId, savedAt) => {
+    try {
+      if (userId && savedAt) sessionStorage.setItem(dismissedPackageKey(userId), savedAt);
+    } catch {
+      // IndexedDB deletion remains authoritative when sessionStorage is unavailable.
+    }
+  };
 
   const currentUserId = () =>
     document.querySelector('meta[name="manatos-user-id"]')?.getAttribute('content') ||
@@ -308,9 +323,48 @@
     return modal;
   };
 
+  const recoverySuccessModal = () => {
+    let modal = document.getElementById('workspaceRecoverySuccessModal');
+    if (modal instanceof HTMLElement) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'workspaceRecoverySuccessModal';
+    modal.tabIndex = -1;
+    modal.setAttribute('aria-labelledby', 'workspaceRecoverySuccessModalLabel');
+    modal.dataset.popupInvocation = JSON.stringify({ behavior: { recoverable: false } });
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-success-subtle">
+            <h5 class="modal-title" id="workspaceRecoverySuccessModalLabel">
+              <i class="bi bi-check-circle me-2" aria-hidden="true"></i>Workspace restored
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">Your unsaved changes are restored!</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.append(modal);
+    window.ManatOS?.popup?.runtime?.registerBootstrapModal?.(modal);
+    return modal;
+  };
+
+  const presentRecoverySuccess = () => {
+    const modal = recoverySuccessModal();
+    window.bootstrap?.Modal?.getOrCreateInstance(modal)?.show();
+  };
+
   const offer = async (userId) => {
     const recoveryPackage = await readPackage(userId);
     if (!recoveryPackage) return 'none';
+    if (dismissedPackageSavedAt(userId) === recoveryPackage.savedAt) {
+      await removePackage(userId);
+      return 'none';
+    }
 
     return await new Promise((resolve) => {
       const modalElement = recoveryModal();
@@ -340,8 +394,9 @@
       };
       const onForget = async () => {
         cleanup();
-        modal.hide();
+        rememberDismissedPackage(userId, recoveryPackage.savedAt);
         await removePackage(userId);
+        modal.hide();
         resolve('forget');
       };
       restore?.addEventListener('click', onRestore);
@@ -490,6 +545,8 @@
       }
       await removePackage(recoveryPackage.userId);
       window.dispatchEvent(new CustomEvent('manatos:workspace-recovered'));
+      window.ManatOS?.busy?.hide?.();
+      presentRecoverySuccess();
       return true;
     } catch (error) {
       const structured =

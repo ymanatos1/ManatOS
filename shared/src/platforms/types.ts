@@ -37,10 +37,10 @@ export interface NavigationContribution {
   requiresEntityRead?: string;
 }
 
-/** One SysBO/entity capability contributed by a Company or Platform. */
-export interface EntityContribution {
-  sysBOKey: string;
-  description?: string;
+/** One subsystem selection contributed by ManatOS or the selected platform. */
+export interface SubsystemSelection {
+  key: string;
+  selected: boolean;
 }
 
 /** Code-defined ManatOS platform catalogue entry. */
@@ -67,7 +67,7 @@ export interface SysPlatform {
       icon?: string;
     }>;
   };
-  entities: EntityContribution[];
+  subsystems: SubsystemSelection[];
   navigation: NavigationContribution[];
 }
 
@@ -86,7 +86,7 @@ export interface CompanyInfo {
     headerLogo: ThemedImageRef;
     companyPageImage?: ImageRef;
   };
-  entities: EntityContribution[];
+  subsystems: SubsystemSelection[];
   navigation: NavigationContribution[];
   defaultPlatformId: string;
   /** Company-owned Home-page presentation. */

@@ -4,7 +4,7 @@ const source = async (path: string) => readFile(new URL(`../../${path}`, import.
 
 describe('generic transactional collection editor', () => {
   it('keeps Principal Contact declarative and the component entity-agnostic', async () => {
-    const metadata = await source('../shared/src/metadata/ui/business.ts');
+    const metadata = await source('../shared/src/metadata/ui/principals/ui-principals.ts');
     const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     expect(metadata).toContain("tab('contact', 'Contact', 20");
     expect(metadata).toContain("key: 'collection-editor'");
@@ -31,19 +31,29 @@ describe('generic transactional collection editor', () => {
     expect(entryWrite).not.toContain("'addresses'");
     expect(discovery).toContain("component?.key === 'collection-editor'");
     expect(discovery).toContain('options?.sourceKey');
-    expect(discovery).toContain('options?.itemFields');
+    expect(discovery).toContain('options?.identityFields');
+    expect(discovery).not.toContain('options?.fieldOverrides');
   });
 
   it('supports scalar and structured collection values through metadata rather than component forks', async () => {
-    const metadata = await source('../shared/src/metadata/ui/business.ts');
+    const metadata = await source('../shared/src/metadata/ui/principals/ui-principals.ts');
     const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
 
     expect(metadata).toContain("sourceKey: 'emailAddresses'");
     expect(metadata).toContain("sourceKey: 'telephoneNumbers'");
     expect(metadata).toContain("identityFields: ['countryCode', 'number']");
+    expect(metadata).toContain("key: 'number',\n                    inputType: 'tel'");
+    expect(metadata).not.toContain("key: 'number',\n                    label: 'Telephone number'");
     expect(metadata).toContain("validation: 'country-code'");
     expect(metadata).toContain("validation: 'telephone-number'");
-    expect(component).toContain('const itemFields = Array.isArray(o.itemFields)');
+    expect(component).toContain(
+      'const canonicalItemFields = itemEntityMetadata?.fieldDefinition || {}',
+    );
+    expect(component).toContain('const fieldOverrides = Array.isArray(o.fieldOverrides)');
+    expect(component).not.toContain('o.itemFields');
+    expect(component).toContain('label: canonical.label || override.label || override.key');
+    expect(component).toContain('required: canonical.required === true');
+    expect(component).toContain('maxLength: canonical.maxLength');
     expect(component).toContain('data-collection-item-field');
     expect(component).toContain("field.validation === 'country-code'");
     expect(component).toContain("case 'digits'");
@@ -89,7 +99,7 @@ describe('generic transactional collection editor', () => {
 
   it('uses the universal required-field label convention and shared country catalogue projections', async () => {
     const editor = await source('views/components/sysbo/entry/content/collection-editor.ejs');
-    const metadata = await source('../shared/src/metadata/ui/business.ts');
+    const metadata = await source('../shared/src/metadata/ui/principals/ui-principals.ts');
     const countries = await source('../shared/src/domain/system-country-catalog.ts');
     expect(editor).toContain('metadata-field-required-marker');
     expect(editor).toContain('data-collection-field-container');
@@ -100,7 +110,7 @@ describe('generic transactional collection editor', () => {
   });
 
   it('collapses contact collections into wrapped object summaries without disturbing an open editor', async () => {
-    const metadata = await source('../shared/src/metadata/ui/business.ts');
+    const metadata = await source('../shared/src/metadata/ui/principals/ui-principals.ts');
     const component = await source('views/components/sysbo/entry/content/collection-editor.ejs');
     const css = await source('public/css/pages.css');
 
@@ -147,6 +157,11 @@ describe('V2 collection CTX ownership', () => {
     expect(host).toContain('data-ctx-scope-path');
     expect(editor).toContain('host?.dataset?.ctxScopePath');
     expect(editor).toContain('.resources.collections.<%= o.sourceKey %>.current');
+    expect(editor).toContain("host: 'embedded'");
+    expect(editor).toContain("dataMode: 'local'");
+    expect(editor).toContain("persistenceOwner: 'parent'");
+    expect(editor).toContain('`${embeddedEntrySurface.path}.fields.${key}.value`');
+    expect(editor).not.toContain('`${embeddedEntrySurface.path}.entry.current`');
     expect(editor).not.toContain('ctx.page');
     expect(renderer).toContain('surfaceResources.collections');
     expect(renderer).toContain('projectCollectionResources');

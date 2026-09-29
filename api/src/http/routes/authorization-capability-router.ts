@@ -30,5 +30,30 @@ export function createAuthorizationCapabilityRouter(authorization: Authorization
     sendQuery(res, { entities });
   });
 
+  /**
+   * One authoritative projection for UI page-context hydration. Keeping platform
+   * and entity capabilities in one API operation prevents every rendered UI
+   * request from repeating two independent authorization round trips while the
+   * API remains the sole owner of authorization policy.
+   */
+  router.get('/context/:platformId/$capabilities', async (req, res) => {
+    if (!req.auth) throw new AuthenticationError();
+
+    const platform = resolvePlatform(MANATOS_COMPANY);
+    const platformId = String(req.params.platformId ?? '').trim();
+    if (platformId !== platform.id) {
+      res.status(404).json({ success: false, error: { message: 'Unknown platform.' } });
+      return;
+    }
+
+    const entityKeys = [...effectiveEntityKeys(MANATOS_COMPANY, platform)].sort();
+    const [platformCapabilities, entities] = await Promise.all([
+      authorization.platformCapabilities(req.auth, platformId),
+      authorization.entityCollectionCapabilities(req.auth, entityKeys),
+    ]);
+
+    sendQuery(res, { platformId, platformCapabilities, entities });
+  });
+
   return router;
 }

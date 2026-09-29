@@ -6,8 +6,12 @@
  * and CTX state.navigation only observes the resulting selected tab.
  * ======================================================================== */
 (() => {
-  const form = document.querySelector('form.metadata-driven-record-form');
-  if (!(form instanceof HTMLFormElement)) return;
+  'use strict';
+
+  const surfaceRuntime = window.ManatOS?.entrySurfaces;
+  if (!surfaceRuntime?.register) return;
+
+  const instances = new WeakMap();
 
   const editableControlSelector = [
     'input:not([type="hidden"]):not([disabled]):not([readonly]):not([aria-hidden="true"])',
@@ -22,28 +26,46 @@
       [...pane.querySelectorAll(editableControlSelector)].find((control) => {
         if (!(control instanceof HTMLElement)) return false;
         const container = control.closest('[data-ctx-field-container]');
-        // Inactive Bootstrap tab panes are display:none, so geometry cannot be
-        // used here; we still need to discover their first editable field.
         return !container?.hidden;
       }) ?? null
     );
   };
 
-  const focusInitialEditableField = () => {
-    /*
-     * Navigation ownership rule:
-     * this helper never changes tabs. The active tab is established by normal
-     * user/programmatic navigation (including post-engine restoration), and the
-     * navigation tracker records the resulting state in CTX. Initial focus only
-     * selects a suitable control inside the tab that is actually active.
-     */
-    const activePane = form.querySelector('.entity-tab-content > .tab-pane.active');
-    const targetControl = editableControlIn(activePane);
-    if (!(targetControl instanceof HTMLElement)) return;
-    requestAnimationFrame(() => targetControl.focus({ preventScroll: true }));
+  const install = (form) => {
+    if (!(form instanceof HTMLFormElement) || instances.has(form)) return true;
+    const pagePath = form.dataset.ctxScopePath || null;
+    if (!pagePath) return false;
+
+    const instance = { pagePath, initialFocusApplied: false, disposed: false };
+    instances.set(form, instance);
+
+    const focusInitialEditableField = () => {
+      if (instance.initialFocusApplied || instance.disposed || !form.isConnected) return;
+      const activePane = form.querySelector('.entity-tab-content > .tab-pane.active');
+      const targetControl = editableControlIn(activePane);
+      if (!(targetControl instanceof HTMLElement)) return;
+      requestAnimationFrame(() => {
+        if (instance.disposed || !targetControl.isConnected || targetControl.closest('[hidden]'))
+          return;
+        targetControl.focus({ preventScroll: true });
+        instance.initialFocusApplied = document.activeElement === targetControl;
+      });
+    };
+
+    form.addEventListener('manatos:form-initialized', focusInitialEditableField);
+    form.addEventListener('manatos:form-state-ready', focusInitialEditableField);
+    form.addEventListener('manatos:form-initialization-settled', focusInitialEditableField);
+
+    const dispose = (event) => {
+      if (String(event?.detail?.path || '') !== pagePath) return;
+      instance.disposed = true;
+      window.removeEventListener('manatos:ui-level-disposing', dispose);
+    };
+    window.addEventListener('manatos:ui-level-disposing', dispose);
+
+    requestAnimationFrame(focusInitialEditableField);
+    return true;
   };
 
-  // Reactive visibility/editability initialization runs in microtasks. Wait one
-  // animation frame so focus is based on the final first-paint field state.
-  requestAnimationFrame(focusInitialEditableField);
+  surfaceRuntime.register('entry-focus', install);
 })();

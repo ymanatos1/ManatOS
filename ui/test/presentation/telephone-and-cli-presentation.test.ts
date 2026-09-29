@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { expressionFunctions, sysBOUsersMetadata } from '@manatos/shared';
 import { describe, expect, it } from 'vitest';
 
 import { sourceWithoutWhitespace } from '../support/source-contract.js';
@@ -12,24 +13,46 @@ const sharedSource = (relativePath: string) =>
 
 describe('telephone field normalization and debugging CLI presentation', () => {
   it('keeps normalization metadata-driven and uses the reusable telephone field component', async () => {
-    const metadata = await sharedSource('src/metadata/bo/identity.ts');
-    const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/auth/ui-users.ts');
     const dispatcher = await uiSource('views/components/sysbo/entry/fields/entity-field.ejs');
     const formField = await uiSource('views/components/sysbo/entry/fields/form-field.ejs');
     const telephone = await uiSource('views/components/sysbo/entry/fields/telephone-field.ejs');
     const runtime = await uiSource('public/js/sysbo/entry/form-runtime.js');
-    expect(metadata).toContain("normalize: { expression: 'TelephoneNbr(value)' }");
+    const expressionRuntime = await uiSource('public/js/sysbo/entry/expression-runtime.js');
+    expect(sysBOUsersMetadata.fieldDefinition.telephoneNumber?.normalize?.expression).toBe(
+      'TelephoneNbr(value)',
+    );
     expect(uiMetadata).toContain("field: 'telephoneNumber'");
     expect(dispatcher).toContain("field.type === 'telephone'");
-    expect(formField).toContain('data-field-normalize-expression');
+    expect(formField).not.toContain('data-field-normalize-expression');
     expect(telephone).not.toContain('TelephoneNbr');
-    expect(runtime).toContain('container?.dataset.fieldNormalizeExpression');
-    expect(runtime).toContain('await loadAstForSource(container.dataset.fieldNormalizeExpression)');
-    expect(runtime).not.toContain('fieldNormalizeAst');
+    expect(runtime).toContain('const normalizationAstByField = new Map()');
+    expect(runtime).toContain('const source = definition?.normalize?.expression');
+    expect(runtime).toContain('normalizedFieldCandidate(key, rawValue)');
+    expect(runtime).toContain("normalize: event.type === 'change'");
+    expect(runtime).not.toContain('fieldNormalizeExpression');
     expect(sourceWithoutWhitespace(runtime)).toContain(
-      sourceWithoutWhitespace("syncSourceField(control, { source: 'field-normalization'"),
+      sourceWithoutWhitespace("source: 'field-normalization'"),
     );
     expect(runtime).not.toContain('publish(control');
+    expect(expressionRuntime).toContain('const browserFunctionImplementations = Object.freeze({');
+    expect(expressionRuntime).toContain('Capitalize(args)');
+    expect(expressionRuntime).toContain('first.toUpperCase()');
+    expect(expressionRuntime).toContain('validateBrowserExecutionBindings(payload.ast)');
+  });
+
+  it('keeps every canonical browser-capable expression function bound in the browser executor', async () => {
+    const expressionRuntime = await uiSource('public/js/sysbo/entry/expression-runtime.js');
+    const locallyExecutable = Object.values(expressionFunctions)
+      .filter((definition) => definition.capability !== 'entityResolver')
+      .map((definition) => definition.name);
+
+    for (const functionName of locallyExecutable) {
+      expect(expressionRuntime).toContain(`${functionName}(`);
+    }
+    expect(expressionRuntime).toContain(
+      'Canonical expression function ${node.functionName} has no browser binding',
+    );
   });
 
   it('uses one CLI component for page and CTX-viewer instances with independent local histories', async () => {
@@ -65,7 +88,7 @@ describe('telephone field normalization and debugging CLI presentation', () => {
     expect(cli).not.toContain('/bo/debug/compile-expression');
     expect(routes).toContain("router.post('/expression/evaluate-function'");
     expect(cli).toContain("candidate.capability === 'entityResolver'");
-    expect(routes).toContain('compileExpression(expression)');
+    expect(routes).toContain('compileExpression(expression, {');
     expect(cli).toContain('document.querySelector(\'meta[name="csrf-token"]\')');
     expect(cli).toContain('server returned non-JSON');
     expect(cli).toContain("candidate.functionName === 'FirstCtx'");

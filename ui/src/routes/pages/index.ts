@@ -24,7 +24,13 @@ import { emailService } from '../../email/email-service.js';
 
 import { renderPage } from '../../presentation/page/render-page.js';
 
-import { externalIdentitiesForUser } from '../../auth/user-authentication.js';
+import { getSysBODefinition } from '../../sysbo/definitions.js';
+import { resolveUIEntityPermissions } from '../../sysbo/permissions.js';
+import { renderMetadataDrivenRecord } from '../sysbo/entry/renderer.js';
+import {
+  documentationManifest,
+  readDocumentationResource,
+} from '../../documentation/repository-docs.js';
 
 export function createPageRoutes() {
   const router = Router();
@@ -350,98 +356,113 @@ export function createPageRoutes() {
     (_req, res) => res.redirect(`${config.API_BASE_URL}/api-docs/`),
   );
 
-  router.get(
-    '/account',
+  /**
+   * Repository documentation browser.
+   *
+   * This is a separate top-level system tool, not a page/popup/embedded UI
+   * level. Repository documentation files remain the only documentation source;
+   * the browser discovers and reads that tree without copying it into a second
+   * persistence model.
+   */
+  router.get('/documentation', requireSignedIn, async (_req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      res.render('pages/documentation-browser', {
+        documentationManifest: await documentationManifest(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
-    requireSignedIn,
+  router.get('/documentation/manifest', requireSignedIn, async (_req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      res.json({ items: await documentationManifest() });
+    } catch (error) {
+      next(error);
+    }
+  });
 
-    async (req, res, next) => {
-      try {
-        const user = res.locals.currentUser as SysBOUser;
-        const authenticationIdentities = await externalIdentitiesForUser(user.id);
-        let accountPrincipal: Record<string, unknown> | null = null;
-        if (user.principalId) {
-          try {
-            const principalResponse = await apiClient.get<Record<string, unknown>>(
-              `/api/v1/SysPrincipals/${encodeURIComponent(user.principalId)}`,
-              apiSessionOptions(req),
-            );
-            accountPrincipal = principalResponse.data;
-          } catch {
-            // Account must remain usable even when the linked Principal is not
-            // readable to the current user. The view derives an explanatory
-            // relationship status from principalId instead of failing the page.
-          }
-        }
-
-        await renderPage(
-          res,
-          'pages/account',
-
-          {
-            title: `Account details - [${user.name}]`,
-            breadcrumbTitle: 'Account details',
-            titleIcon: 'bi-person-vcard',
-            authenticationIdentities,
-            accountPrincipal,
-          },
+  router.get('/documentation/content', requireSignedIn, async (req, res, next) => {
+    try {
+      const requestedPath = typeof req.query.path === 'string' ? req.query.path : '';
+      const resource = await readDocumentationResource(requestedPath);
+      res.set('Cache-Control', 'no-store');
+      res.set('Content-Type', resource.contentType);
+      res.set('X-Content-Type-Options', 'nosniff');
+      if (resource.resourceType === 'svg') {
+        res.set(
+          'Content-Security-Policy',
+          "sandbox; default-src 'none'; style-src 'unsafe-inline'",
         );
-      } catch (error) {
-        next(error);
       }
-    },
-  );
-
-  router.get(
-    '/personal',
-
-    requireSignedIn,
-
-    async (_req, res) =>
-      renderPage(
-        res,
-        'pages/personal',
-
-        {
-          title: 'Personal details',
-        },
-      ),
-  );
+      res.send(resource.content);
+    } catch (error) {
+      next(
+        createError(404, error instanceof Error ? error.message : 'Documentation file not found.'),
+      );
+    }
+  });
 
   /**
-   * Update personal account information through the authenticated user's
-   * normal API Bearer session.
+   * Self-service Account is a V2 SysUser entry surface, not a second User page engine.
+   * It deliberately reuses the canonical SysUser metadata/runtime while keeping
+   * its own route identity and self-service lifecycle. The selected Account
+   * uiView decides which canonical SysUser fields are editable.
    */
-  router.post(
-    '/personal',
+  router.get('/account', requireSignedIn, async (req, res, next) => {
+    try {
+      const user = res.locals.currentUser as SysBOUser & { hasPassword?: boolean };
+      const definition = getSysBODefinition('sys-users');
+      const permissions = await resolveUIEntityPermissions(req, definition, user.id);
 
-    requireSignedIn,
-    requireCsrf,
+      if (!permissions.read) throw createError(403, 'Read access is required for this account.');
 
-    async (req, res, next) => {
-      try {
-        const user = res.locals.currentUser as SysBOUser;
+      await renderMetadataDrivenRecord(
+        req,
+        res,
+        definition,
+        permissions,
+        { isNew: false, recordId: user.id },
+        {
+          purpose: 'open-account-entry',
+          uiViewKey: 'quickView',
+          showEntryActions: false,
+          title: `Account details - [${user.name}]`,
+          titleIcon: 'bi-person-vcard',
+          breadcrumbItems: [
+            { label: 'ManatOS', href: '/' },
+            { label: 'Account details', href: null },
+          ],
+          ...(req.query.message === 'password-saved-email-warning'
+            ? {
+                pageModel: {
+                  warningTitle: user.hasPassword
+                    ? 'Password changed with a warning'
+                    : 'Password set with a warning',
+                  warningMessage:
+                    'Your password was saved successfully, but the confirmation email could not be sent.',
+                },
+              }
+            : req.query.message === 'password-saved'
+              ? {
+                  pageModel: {
+                    informationTitle: user.hasPassword ? 'Password changed' : 'Password set',
+                    informationMessage:
+                      'Your password was saved successfully. A confirmation email was sent to your registered email address.',
+                  },
+                }
+              : {}),
+        },
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
 
-        await apiClient.patch(
-          `/api/v1/SysUsers/${user.id}`,
-
-          {
-            firstName: String(req.body.firstName ?? ''),
-
-            lastName: String(req.body.lastName ?? ''),
-
-            description: String(req.body.description ?? ''),
-          },
-
-          apiSessionOptions(req),
-        );
-
-        res.redirect('/personal?message=saved');
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
+  // Backward-compatible alias: Personal details are now part of Account.
+  router.get('/personal', requireSignedIn, (_req, res) => res.redirect('/account'));
 
   /**
    * Dedicated password page for the currently authenticated user.
@@ -510,10 +531,6 @@ export function createPageRoutes() {
         }
 
         const currentPassword = String(req.body.currentPassword ?? '');
-        const changingPassword = Boolean(
-          (res.locals.currentUser as SysBOUser & { hasPassword?: boolean }).hasPassword,
-        );
-
         const updated = (
           await apiClient.put<SysBOUser>(
             '/api/v1/auth/password',
@@ -532,8 +549,6 @@ export function createPageRoutes() {
           )
         ).data;
 
-        const authenticationIdentities = await externalIdentitiesForUser(updated.id);
-
         try {
           await emailService.sendPasswordChangedEmail(updated);
         } catch (error) {
@@ -543,35 +558,13 @@ export function createPageRoutes() {
            * temporarily unavailable.
            */
           if (error instanceof AppError && error.code === 'EMAIL_DELIVERY_FAILED') {
-            await renderPage(res, 'pages/account', {
-              title: `Account details - [${updated.name}]`,
-              breadcrumbTitle: 'Account details',
-              titleIcon: 'bi-person-vcard',
-              authenticationIdentities,
-              warningTitle: changingPassword
-                ? 'Password changed with a warning'
-                : 'Password set with a warning',
-              warningMessage: changingPassword
-                ? 'Your password was changed successfully, but the confirmation email could not be sent.'
-                : 'Your password was set successfully, but the confirmation email could not be sent.',
-            });
-
+            res.redirect('/account?message=password-saved-email-warning');
             return;
           }
 
           throw error;
         }
-
-        await renderPage(res, 'pages/account', {
-          title: `Account details - [${updated.name}]`,
-          breadcrumbTitle: 'Account details',
-          titleIcon: 'bi-person-vcard',
-          authenticationIdentities,
-          informationTitle: changingPassword ? 'Password changed' : 'Password set',
-          informationMessage: changingPassword
-            ? 'Your password was changed successfully. A confirmation email was sent to your registered email address.'
-            : 'Your password was set successfully. A confirmation email was sent to your registered email address.',
-        });
+        res.redirect('/account?message=password-saved');
       } catch (error) {
         next(error);
       }

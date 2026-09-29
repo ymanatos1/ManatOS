@@ -56,7 +56,7 @@ In the current web realization, the browser owns live interactive presentation s
 - UI CTX surfaces and levels;
 - live field state;
 - expression-driven presentation decisions;
-- entry/list/selector/popup/component runtimes;
+- entry/list/selector/component behavior hosted through the browser UI-level runtime;
 - reactive dependency/event handling;
 - developer inspection/debugger UI;
 - client-side interaction state that does not belong in business persistence.
@@ -93,7 +93,11 @@ Nested operations can therefore resolve ancestor state/resources while independe
 
 ## Client surface model
 
-Client UI state is organized as explicit surfaces/levels rather than one global mutable page object. A page, popup or selector has an owner, lifecycle and CTX path.
+Client UI state is organized as explicit surfaces/levels rather than one global mutable page object. The fundamental hosts are `page`, `popup`, and `embedded`; entry/list/selector/custom describe what a hosted level presents. Every level has an owner, lifecycle and CTX path.
+
+The current browser implementation centralizes topology/lifecycle in `public/js/runtime/ui-host-runtime.js`. Popup infrastructure delegates child creation to that authority; embedded children use the same `openChildSurface` path with different parent-activation semantics. This file location is an implementation detail, while the single-host-authority rule is architectural.
+
+UI views are orthogonal to hosting. `resolveSysBOUIView()` composes common record UI metadata with a selected named view. The view key (`main`, `quickView`, `quick`, ...) identifies the concrete presentation; `viewType` (`full`, `quick`, ...) identifies its family. A view does not own a second record, CTX tree, validation model or persistence path.
 
 Entry scalar values have one canonical live authority at field level. Whole-record `current`/`original` projections are mirrors/read models rather than competing writable copies.
 

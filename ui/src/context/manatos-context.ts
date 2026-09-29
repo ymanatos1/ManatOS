@@ -15,6 +15,7 @@ import {
   createCompanyContext,
   createSystemContext,
   entityContextName,
+  allManatOSObjectMetadata,
 } from '@manatos/shared';
 
 export { entityContextName } from '@manatos/shared';
@@ -187,6 +188,8 @@ export function createManatOSContext(
       clientKind: 'web-ejs',
       clientVersion,
       clientFeatures,
+      company,
+      currentPlatform,
     }),
     entities: {},
     company: createCompanyContext(company, currentPlatform),
@@ -209,7 +212,7 @@ function contextMetadata(value: unknown, omitOwnKey = false): unknown {
   const source = value as Record<string, unknown>;
   const projected = Object.fromEntries(
     Object.entries(source)
-      .filter(([key]) => key !== 'ast' && !(omitOwnKey && key === 'key'))
+      .filter(([key]) => key !== 'ast' && !(omitOwnKey && (key === 'key' || key === 'subsystem')))
       .map(([key, child]) => [key, contextMetadata(child)]),
   );
 
@@ -229,9 +232,12 @@ export function registerContextEntity(
 ): ManatOSEntityContext {
   const name = entityContextName(sysBOKey);
   const existing = ctx.entities[name];
+  const canonical = allManatOSObjectMetadata[sysBOKey as keyof typeof allManatOSObjectMetadata];
+  if (!canonical) throw new Error(`Unknown ManatOS object key for ctx.entities: ${sysBOKey}`);
   const entity: ManatOSEntityContext = {
     key: sysBOKey,
     name,
+    subsystem: canonical.subsystem,
     ...(existing ?? {}),
     ...(metadata !== undefined ? { metadata: contextMetadata(metadata, true) } : {}),
     ...(uiMetadata !== undefined ? { uiMetadata: contextMetadata(uiMetadata, true) } : {}),

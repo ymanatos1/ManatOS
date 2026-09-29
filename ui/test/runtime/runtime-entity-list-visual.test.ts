@@ -26,9 +26,8 @@ describe('V2 EntityList visual contract', () => {
   it('leaves list UI topology and action-policy interpretation to the browser V2 host', async () => {
     const route = await uiSource('src/routes/sysbo/list/renderer.ts');
     const host = await uiSource('public/js/runtime/ui-host-runtime.js');
-    const actions = await uiSource('public/js/runtime/list-action-runtime.js');
+    const actions = await uiSource('public/js/sysbo/list/list-action-runtime.js');
 
-    expect(route).not.toContain('new SurfaceRuntime()');
     expect(route).not.toContain('projectUiCtx(');
     expect(route).not.toContain('evaluateExpression(');
     expect(route).toContain('totalEntriesUnfiltered');

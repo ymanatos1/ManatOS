@@ -1,23 +1,17 @@
-import {
-  sysBOExtAuthProvidersMetadata,
-  sysBOExternalIdentityMetadata,
-  sysBOUserInvitationMetadata,
-  sysBOUsersMetadata,
-} from './identity.js';
-import {
-  sysBOAddressesMetadata,
-  sysBOEmailAddressesMetadata,
-  sysBOPrincipalAddressesMetadata,
-  sysBOPrincipalEmailAddressesMetadata,
-  sysBOPrincipalTelephoneNumbersMetadata,
-  sysBOTelephoneNumbersMetadata,
-} from './contact.js';
-import {
-  sysBOApplicationsMetadata,
-  sysBOConfigurationsMetadata,
-  sysBOLicensesMetadata,
-  sysBOPrincipalsMetadata,
-} from './business.js';
+import { sysBOUsersMetadata } from './auth/bo-users.js';
+import { sysBOExternalIdentityMetadata } from './auth/bo-external-identities.js';
+import { sysBOUserInvitationMetadata } from './auth/bo-user-invitations.js';
+import { sysBOExtAuthProvidersMetadata } from './auth/bo-ext-auth-providers.js';
+import { sysBOEmailAddressesMetadata } from './contacts/bo-email-addresses.js';
+import { sysBOPrincipalEmailAddressesMetadata } from './principals/bo-principal-email-addresses.js';
+import { sysBOTelephoneNumbersMetadata } from './contacts/bo-telephone-numbers.js';
+import { sysBOPrincipalTelephoneNumbersMetadata } from './principals/bo-principal-telephone-numbers.js';
+import { sysBOAddressesMetadata } from './contacts/bo-addresses.js';
+import { sysBOPrincipalAddressesMetadata } from './principals/bo-principal-addresses.js';
+import { sysBOPrincipalsMetadata } from './principals/bo-principals.js';
+import { sysBOApplicationsMetadata } from './platforms/protocrm/applications/bo-applications.js';
+import { sysBOLicensesMetadata } from './licensing/bo-licenses.js';
+import { sysBOConfigurationsMetadata } from './configuration/bo-configurations.js';
 
 /** Canonical related/value-object metadata that is not exposed as generic SysBO CRUD. */
 export const allManatOSValueObjectMetadata = {

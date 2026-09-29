@@ -51,6 +51,7 @@ import {
   expressionFunctionOperation,
   genericSysBOPaths,
   platformCapabilityOperation,
+  uiContextCapabilitiesOperation,
 } from './openapi/sysbo-operations.js';
 
 /**
@@ -182,6 +183,7 @@ export function buildOpenApiSpec() {
       '/api/v1/public/external-auth-providers': publicExternalAuthProvidersOperation(),
       '/api/v1/platforms/{platformId}/$capabilities': platformCapabilityOperation(),
       '/api/v1/authorization/entities/$capabilities': entityCollectionCapabilitiesOperation(),
+      '/api/v1/authorization/context/{platformId}/$capabilities': uiContextCapabilitiesOperation(),
       '/api/v1/expressions/evaluate-function': expressionFunctionOperation(),
 
       ...userPaths,

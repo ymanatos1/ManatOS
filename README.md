@@ -1,8 +1,8 @@
 # ManatOS
 
-ManatOS is a metadata-driven application platform whose central goal is to make business structure and reusable behavior explicit rather than burying it in individual pages, controllers, or storage implementations. The repository currently uses Node.js and TypeScript, but the architecture distinguishes the ManatOS system contracts from the technologies used by any particular client or host.
+ManatOS is a **technology foundation** built around a metadata-driven application platform whose central goal is to make business structure and reusable behavior explicit rather than burying it in individual pages, controllers, or storage implementations. The repository currently uses Node.js and TypeScript, but the architecture distinguishes the ManatOS system contracts from the technologies used by any particular client or host.
 
-The current system combines a company-level foundation—users, principals, organizations, licensing and authentication—with platforms and applications such as **protoCRM**. Metadata-driven entities, CTX, expressions, authorization, storage adapters and diagnostics form reusable infrastructure beneath those domains.
+The current system combines a foundation-level Company domain—users, principals, organizations, licensing and authentication—with platforms and applications such as **protoCRM**. Metadata-driven entities, CTX, expressions, authorization, storage adapters and diagnostics form reusable infrastructure beneath those domains.
 
 This README is intentionally substantial. It is designed to provide a useful picture of ManatOS even when read alone: what the major subsystems are, why they exist, how they interact, and where to continue for full detail.
 
@@ -38,9 +38,9 @@ The full system overview is under [`docs/system/`](docs/system/); the subject-or
 
 ## 2. Company, platforms and applications
 
-ManatOS uses a composition model rather than treating every business object as belonging to one application. **Company scope** contains concerns that belong to ManatOS itself: accounts/users, principals, organizations, contact information, licensing and external authentication configuration. **Platform scope** contains capabilities supplied by a platform. **Application scope** contains applications hosted by or associated with a platform.
+ManatOS uses a composition model rather than treating every business object as belonging to one application. **Company scope** is the foundation-level technical catalog/composition scope currently containing accounts/users, principals, organizations, contact information, licensing and external authentication configuration. The term is a domain/runtime label; it does not describe ManatOS's legal or organizational form. **Platform scope** contains capabilities supplied by a platform. **Application scope** contains applications hosted by or associated with a platform.
 
-The current **protoCRM** platform/application area is therefore not the owner of Users, Principals or Licenses. Those are company-level capabilities. `Applications`, Apps Playground and future platform/application tooling belong to platform scope. This distinction matters for navigation, licensing, authorization, metadata ownership and future extensibility.
+The current **protoCRM** platform/application area is therefore not the owner of Users, Principals or Licenses. Those are foundation-level Company-domain capabilities. `Applications`, Apps Playground and future platform/application tooling belong to platform scope. This distinction matters for navigation, licensing, authorization, metadata ownership and future extensibility.
 
 ```text
 Company
@@ -59,7 +59,7 @@ Platforms
 
 The generic metadata-driven entity infrastructure is reusable by both system entities and future application-defined entities. `SysBO` is a naming/category convention for systemic business objects; it is **not** a synonym for every entity in ManatOS.
 
-See [`docs/company/`](docs/company/) for the company domain and [`docs/platforms/`](docs/platforms/) for platform/application composition and protoCRM.
+See [`docs/company/`](docs/company/) for the technical Company domain and [`docs/platforms/`](docs/platforms/) for platform/application composition and protoCRM.
 
 ## 3. Metadata-driven architecture
 
@@ -189,7 +189,7 @@ A capable client consumes canonical metadata and API contracts, maintains its ow
 
 The API remains authoritative for security and persistence. A client may hide a button because a projected capability is false, but hiding the button is not the security boundary. Likewise, a client may maintain rich unsaved state, but it does not redefine canonical entity semantics.
 
-Client surfaces have explicit runtime levels and invocation contracts. Entry forms, list pages, selectors, popups and embedded/hosted surfaces should communicate through canonical contracts rather than mutable window callbacks or duplicated hidden state. Components are projections/adapters around CTX-owned semantic state.
+Client surfaces have explicit runtime levels and invocation contracts. The browser uses one recursive `ctx.ui.level` chain and one host authority for the fundamental `page`, `popup`, and `embedded` surface hosts. Entry forms, lists, selectors and quick/full UI views are interaction/presentation kinds layered on those hosts, not competing surface topologies. They communicate through canonical invocation/CTX contracts rather than mutable window callbacks or duplicated hidden state. Components are projections/adapters around CTX-owned semantic state.
 
 The current web implementation is documented because developers need to maintain it, but implementation-specific details are kept subordinate to the portable architecture.
 
@@ -232,12 +232,12 @@ Authentication establishes the subject; authorization determines what that subje
 
 The current role semantics are intentionally distinct:
 
-| Role | Core meaning |
-| --- | --- |
-| **Admin** | Full administration/access, subject to explicit safety rules such as preventing self-deletion. |
+| Role          | Core meaning                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Admin**     | Full administration/access, subject to explicit safety rules such as preventing self-deletion.                                             |
 | **Superuser** | Read-only/inspection access to protected administration/platform data plus Apps Playground execution; not generic administration mutation. |
-| **User** | Operational access scoped to the authenticated user/organization and allowed capabilities. |
-| **Guest** | Most restricted authenticated role. |
+| **User**      | Operational access scoped to the authenticated user/organization and allowed capabilities.                                                 |
+| **Guest**     | Most restricted authenticated role.                                                                                                        |
 
 For example, Superuser can inspect Applications and system configuration where allowed and can execute Apps Playground, but that does not grant generic create/update/delete permission for Applications. Admin retains the full mutation baseline. Users and Superusers can see organization-scoped Principal/License data according to policy; Guests do not gain those collections merely by being authenticated.
 
@@ -369,13 +369,13 @@ System settings
 
 See [`docs/system/`](docs/system/) for runtime, administration, configuration, errors and system-wide principles.
 
-## 14. Company domain
+## 14. Company domain (technical scope)
 
-The company domain is the ManatOS-owned business foundation shared by platforms. Users/accounts identify authenticated system users. Principals represent people, organizations and other principal types. Organization relationships form hierarchies. Licenses connect company principals to platform/application entitlement. Reusable contact information—email addresses, telephone numbers and structured addresses—belongs to the company/business-object model rather than to a particular screen.
+The Company domain is the foundation-level business domain shared by platforms. `Company` is a technical catalog/composition scope in the domain model; it does not describe ManatOS itself as a company or legal entity. Users/accounts identify authenticated system users. Principals represent people, organizations and other principal types. Organization relationships form hierarchies. Licenses connect company principals to platform/application entitlement. Reusable contact information—email addresses, telephone numbers and structured addresses—belongs to the company/business-object model rather than to a particular screen.
 
 The User-to-Principal relationship separates authentication identity from the richer business principal model. Organization scoping can therefore resolve a user's linked Principal and root organization, then apply the same authorization semantics to lists and direct record reads.
 
-Licenses are platform-aware and can optionally narrow entitlement to an application. They remain company-owned records even though they refer to platform/application scope. This distinction avoids moving licensing ownership into protoCRM merely because protoCRM currently consumes it.
+Licenses are platform-aware and can optionally narrow entitlement to an application. They remain foundation-level Company-domain records even though they refer to platform/application scope. This distinction avoids moving licensing ownership into protoCRM merely because protoCRM currently consumes it.
 
 External authentication provider configuration is likewise company/system-level authentication infrastructure. Provider credentials are protected and verified through trusted operations; normal entity reads do not reveal secret material.
 
@@ -435,7 +435,7 @@ docs/
 ├─ security/       authentication, authorization and capability projection
 ├─ storage/        adapters, families, capabilities, strategies and schema
 ├─ diagnostics/    observability, API Traffic, CTX snapshots and troubleshooting
-├─ company/        ManatOS company-level business domain
+├─ company/        Foundation-level Company business domain
 ├─ platforms/      platform/application architecture and protoCRM
 ├─ development/    repository setup, build/test workflow and cross-cutting development
 └─ diagrams/       cross-system architecture diagrams

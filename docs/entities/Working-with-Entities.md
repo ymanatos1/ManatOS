@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide is the authoritative structural reference for metadata-driven entity **list pages, entry pages and the existing-record selector page surface**. Current system-owned entities use SysBO routes/names, but these surfaces are driven by generic canonical entity metadata, UI metadata and CTX; entity-specific templates must not recreate field, reference, representation or query semantics.
+This guide is the authoritative structural reference for metadata-driven entity **list pages, entry surfaces and the existing-record selector surface**. Current system-owned entities use SysBO routes/names, but these surfaces are driven by generic canonical entity metadata, UI metadata and CTX; entity-specific templates must not recreate field, reference, representation or query semantics.
 
 ## End-to-end page model
 
@@ -53,8 +53,8 @@ ctx.ui
     ├── list
     │   ├── originalEntries[]     # baseline list projection when meaningful
     │   └── entries[]             # current projected list records
-    ├── filters / search / paging # collection query state
-    └── state                     # list-surface runtime state
+    ├── control.facts            # observable query/presentation facts when published
+    └── control.state            # list-surface lifecycle/interaction state
 ```
 
 List filtering/search/sorting is a query contract, not a browser-only rendering concern. Structured exception expressions must remain canonical so a future RDBMS adapter can translate them to storage predicates.
@@ -148,30 +148,37 @@ A selector must never have a second answer for "what is this entry called?". Ent
 ```text
 ctx.ui
 └── ... level                     # caller surface
-    └── level                     # selector surface
-        ├── kind = "record-selector"
-        ├── invocation
-        │   ├── entityName
-        │   ├── purpose = "select"
-        │   ├── caller?
-        │   │   ├── surfaceRef
-        │   │   ├── entityName?
-        │   │   └── recordId?
-        │   ├── presentation?
-        │   ├── rules?
-        │   │   ├── values
-        │   │   ├── fields
-        │   │   ├── query
-        │   │   └── actions
-        │   └── behavior?
-        ├── presentation
+    └── level                     # selector popup surface
+        ├── control
+        │   ├── host = "popup"
+        │   ├── kind = "selector"
+        │   ├── invocation
+        │   │   ├── entityName
+        │   │   ├── purpose = "select"
+        │   │   ├── caller?
+        │   │   ├── presentation?
+        │   │   ├── rules?
+        │   │   │   ├── values
+        │   │   │   ├── fields
+        │   │   │   ├── query
+        │   │   │   └── actions
+        │   │   └── behavior?
+        │   ├── presentation
+        │   ├── facts
+        │   │   ├── search
+        │   │   ├── filters
+        │   │   └── paging
+        │   └── state
         ├── list
         │   ├── originalEntries[]
         │   └── entries[]
-        ├── selector-local working state
-        ├── filters / search / paging
-        ├── selectedId / selectedIds[]
-        └── state
+        ├── selection
+        │   ├── current
+        │   ├── selected[]
+        │   └── facts
+        └── row
+            ├── current
+            └── facts
 ```
 
 `invocation.rules.query` carries canonical query restrictions in a generic form. Expression-bearing restrictions carry authored expression source only; the browser resolves ASTs lazily through the canonical expression runtime and never stores AST objects in semantic CTX or invocation state. Relationship-specific concepts such as hierarchy placement or uniqueness are translated by the caller into those generic restrictions before the selector opens.

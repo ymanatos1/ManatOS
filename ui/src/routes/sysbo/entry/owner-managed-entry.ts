@@ -1,6 +1,6 @@
 import createError from 'http-errors';
 import type { Request } from 'express';
-import type { SysBOMetadata } from '@manatos/shared';
+import { normalizeMetadataFieldValues, type SysBOMetadata } from '@manatos/shared';
 
 export interface OwnerManagedEntryContext extends Readonly<Record<string, unknown>> {
   name: string;
@@ -73,14 +73,17 @@ export function mergeOwnerManagedEntryFromRequest(
   const identityField = String(req.body._ownerIdentityField || 'id');
   const entries = parseRows(req.body._ownerEntries);
   const entriesOriginal = parseRows(req.body._ownerEntriesOriginal);
-  const edited = Object.fromEntries(
-    Object.keys(metadata.fieldDefinition)
-      .filter(
-        (key) =>
-          metadata.fieldDefinition[key]?.sensitive !== true &&
-          Object.prototype.hasOwnProperty.call(req.body, key),
-      )
-      .map((key) => [key, req.body[key]]),
+  const edited = normalizeMetadataFieldValues(
+    metadata,
+    Object.fromEntries(
+      Object.keys(metadata.fieldDefinition)
+        .filter(
+          (key) =>
+            metadata.fieldDefinition[key]?.sensitive !== true &&
+            Object.prototype.hasOwnProperty.call(req.body, key),
+        )
+        .map((key) => [key, req.body[key]]),
+    ),
   );
   const nextEntries = entries.map((candidate) =>
     String(candidate[identityField] ?? '') === id

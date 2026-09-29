@@ -20,9 +20,15 @@ Each subject area should remain readable on its own. Its subject README provides
 
 Future/intended capabilities may be documented when useful, but must be explicitly identified as direction. Never phrase an aspiration as an implemented feature.
 
+## Describe ManatOS as a technology foundation
+
+ManatOS is described as a **technology foundation**. Documentation must not describe ManatOS itself as a company, corporation, incorporated business, or other legal/organizational form.
+
+`Company` remains a valid technical/domain concept in the implemented model (`ctx.company`, Company-scope catalog/composition, Company-domain entities). When documentation uses **Company** in that sense, make the technical scope clear and do not imply that ManatOS itself has that legal form.
+
 ## Use the project name sparingly
 
-“ManatOS” identifies the overall system/repository. Within its own documentation, prefer “the system”, “the foundation”, “the runtime”, “the API”, “the UI”, or the precise subsystem. Repeating the product name in every paragraph adds noise rather than clarity.
+“ManatOS” identifies the technology foundation, overall system, and repository. Within its own documentation, prefer “the system”, “the foundation”, “the runtime”, “the API”, “the UI”, or the precise subsystem. Repeating the product name in every paragraph adds noise rather than clarity.
 
 ## Keep links and catalogs current
 

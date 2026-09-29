@@ -209,6 +209,9 @@ export interface ManatOSRelationshipDeletePolicy {
 }
 
 export interface ManatOSRelationshipMetadata {
+  /** Additional subsystem dependencies beyond the declaring object's own subsystem. */
+  requiredSubsystems?: readonly string[];
+
   /** FK/source fields stored on this object; arrays also support future composite keys. */
   fields: readonly string[];
 
@@ -280,6 +283,9 @@ export interface ManatOSEntryMetadata {
 }
 
 export interface ManatOSObjectMetadata<T> {
+  /** Owning subsystem. Runtime availability is derived from subsystem selection. */
+  subsystem: string;
+
   /** Stable secondary metadata/storage/API key (for example `sys-users`). */
   key: string;
   /** Canonical symbolic entity name used as the ctx.entities property key. */

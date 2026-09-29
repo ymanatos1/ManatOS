@@ -1,9 +1,8 @@
-import {
-  sysBOApplicationsUIMetadata,
-  sysBOLicensesUIMetadata,
-  sysBOPrincipalsUIMetadata,
-} from './business.js';
-import { sysBOExtAuthProvidersUIMetadata, sysBOUsersUIMetadata } from './identity.js';
+import { sysBOUsersUIMetadata } from './auth/ui-users.js';
+import { sysBOExtAuthProvidersUIMetadata } from './auth/ui-ext-auth-providers.js';
+import { sysBOPrincipalsUIMetadata } from './principals/ui-principals.js';
+import { sysBOApplicationsUIMetadata } from './platforms/protocrm/applications/ui-applications.js';
+import { sysBOLicensesUIMetadata } from './licensing/ui-licenses.js';
 
 /**
  * Complete framework-neutral SysBO UI-metadata registry.

@@ -44,7 +44,11 @@ export class SysBOLicenseService extends GenericSysBOService<SysBOLicense> {
     }
 
     if (initialized.applicationId) {
-      if (!platform.entities.some((entity) => entity.sysBOKey === 'sys-applications')) {
+      if (
+        !platform.subsystems.some(
+          (subsystem) => subsystem.key === 'applications' && subsystem.selected,
+        )
+      ) {
         throw new ConflictError(
           'PLATFORM_APPLICATIONS_UNAVAILABLE',
           'Application restriction is unavailable for this platform.',
@@ -86,7 +90,11 @@ export class SysBOLicenseService extends GenericSysBOService<SysBOLicense> {
     }
 
     if (applicationId) {
-      if (!platform.entities.some((entity) => entity.sysBOKey === 'sys-applications')) {
+      if (
+        !platform.subsystems.some(
+          (subsystem) => subsystem.key === 'applications' && subsystem.selected,
+        )
+      ) {
         throw new ConflictError(
           'PLATFORM_APPLICATIONS_UNAVAILABLE',
           'Application restriction is unavailable for this platform.',

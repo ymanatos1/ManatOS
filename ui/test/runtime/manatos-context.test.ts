@@ -158,6 +158,13 @@ describe('ManatOS ctx tree', () => {
 
     expect(entityContextName('sys-users')).toBe('sysUsers');
     expect(ctx.entities.sysUsers?.key).toBe('sys-users');
+    expect(ctx.entities.sysUsers?.subsystem).toBe('auth');
+    expect(ctx.system.subsystems.auth?.selected).toBe(true);
+    expect(ctx.system.subsystems.contacts?.selected).toBe(true);
+    expect(ctx.system.subsystems.principals?.selected).toBe(true);
+    expect(ctx.system.subsystems.licensing?.selected).toBe(true);
+    expect(ctx.system.subsystems.configuration?.selected).toBe(true);
+    expect(ctx.system.subsystems.applications?.selected).toBe(true);
     expect(ctx.entities.sysUsers?.metadata).toEqual({ name: 'sysUsers', label: 'User' });
   });
 

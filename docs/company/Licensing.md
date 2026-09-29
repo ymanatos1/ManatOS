@@ -1,6 +1,6 @@
 # Licensing
 
-Licenses are ManatOS company-level records that govern customer/Principal access to platforms and, optionally, to a particular platform Application. A platform can therefore consume licensing policy without owning the License entity itself.
+Licenses are foundation-level Company-domain records that govern customer/Principal access to platforms and, optionally, to a particular platform Application. A platform can therefore consume licensing policy without owning the License entity itself.
 
 ## License structure
 

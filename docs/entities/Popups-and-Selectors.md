@@ -70,7 +70,11 @@ Closing the deepest child:
 3. restores interaction to the immediate parent;
 4. leaves the parent's semantic state owned by the parent.
 
-This is the same recursive model used for pages; only `host` differs.
+This is the same recursive model used for pages and embedded children; `host` controls mounting and parent-activation behavior. Popup children deactivate their parent while active, whereas embedded children deliberately leave their parent active.
+
+## UI view versus popup host
+
+A popup-hosted entry may request a named UI view, for example the Principal `quick` view. This does not create a special quick-popup runtime: `popup` is the host, `entry` is the semantic kind, and `quick` is the selected record presentation/view family. The dimensions remain orthogonal.
 
 ## Hosted entry ownership boundary
 
@@ -109,4 +113,4 @@ The current browser implementation exposes popup infrastructure beneath the name
 
 This namespace is an implementation surface, not the architecture definition; another client can implement the same semantic popup/selector contract differently.
 
-See [Using Selectors and Popups](Using-Selectors-and-Popups.md), [Client Context Model](../context/Client-Context-Model.md), and [Entity Lists](Entity-Lists.md).
+See [Using Selectors and Popups](Using-Selectors-and-Popups.md), [Entry Opening, Invocation and Optimization Audit](Entry-Opening-Invocation-and-Optimization-Audit.md), [Client Context Model](../context/Client-Context-Model.md), and [Entity Lists](Entity-Lists.md).

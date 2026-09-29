@@ -28,4 +28,4 @@ Company
 - related records reuse generic relationship/list presentation;
 - application-specific UI should extend common composition rather than create a parallel framework.
 
-See [Platform Model](Platform-Model.md), [Application Design Principles](Application-Design-Principles.md), and [protoCRM Applications](protocrm/Applications.md) and [ManatOS Licensing](../company/Licensing.md).
+See [Platform Model](Platform-Model.md), [Application Design Principles](Application-Design-Principles.md), and [protoCRM Applications](protocrm/Applications.md) and [Company-domain Licensing](../company/Licensing.md).

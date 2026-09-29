@@ -4,6 +4,7 @@ import {
   AppError,
   operationContext,
   resolveEntryRepresentation,
+  resolveSysBOUIView,
   type ManatOSContext,
   type SysBOUIMetadata,
   type SysBOUser,
@@ -167,7 +168,9 @@ export async function persistMetadataDrivenEntry(
       scope.addContext({ id, name: req.body.name });
 
       const payload = formPayload(req.body, definition);
-      const uiMetadata = await canonicalSysBOUIMetadata(req, definition);
+      const invocation = entryInvocation(req);
+      const canonicalUIMetadata = await canonicalSysBOUIMetadata(req, definition);
+      const uiMetadata = resolveSysBOUIView(canonicalUIMetadata, invocation.uiViewKey).metadata;
       const relatedChanges = metadataCollectionRelatedChanges(
         req.body as Record<string, unknown>,
         uiMetadata,
@@ -242,7 +245,8 @@ export async function completeMetadataDrivenSave(
         )
       ).data;
     const record = await projectSavedRecordForCtx(res, definition, rawRecord);
-    const uiMetadata = await canonicalSysBOUIMetadata(req, definition);
+    const canonicalUIMetadata = await canonicalSysBOUIMetadata(req, definition);
+    const uiMetadata = resolveSysBOUIView(canonicalUIMetadata, invocation.uiViewKey).metadata;
     const representation = resolveEntryRepresentation(definition.boMetadata, uiMetadata, record, {
       entityIcon: definition.icon,
     });
@@ -257,9 +261,12 @@ export async function completeMetadataDrivenSave(
       close,
     }).replaceAll('<', '\\u003c');
     const continueUrl = `${entryUrl}?${new URLSearchParams({
-      _entryPopup: '1',
-      _entryPopupToken: invocation.token,
+      _entryHost: invocation.host,
+      _entryToken: invocation.token,
       _entryMode: 'edit',
+      ...(invocation.uiViewKey ? { _entryUIView: invocation.uiViewKey } : {}),
+      ...(invocation.density === 'compact' ? { _entryDensity: 'compact' } : {}),
+      ...(invocation.recoverable === false ? { _entryRecoverable: '0' } : {}),
       _entryDefaults: JSON.stringify(invocation.defaults),
       _entryOverrides: JSON.stringify(invocation.uiOverrides),
     }).toString()}`;

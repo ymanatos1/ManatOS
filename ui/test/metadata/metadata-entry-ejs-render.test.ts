@@ -9,6 +9,10 @@ const tabContentPath = resolve(
   testDirectory,
   '../../views/components/sysbo/entry/shell/entry-tab-content.ejs',
 );
+const metadataComponentPath = resolve(
+  testDirectory,
+  '../../views/components/sysbo/entry/shell/metadata-component.ejs',
+);
 
 describe('metadata-driven entry EJS runtime composition', () => {
   it('compiles the canonical V2 entity-entry template', async () => {
@@ -67,7 +71,9 @@ describe('metadata-driven entry EJS runtime composition', () => {
     };
 
     const html = await renderFile(tabContentPath, {
-      tabs: [{ id: 'general', label: 'General', order: 1, fields: ['name'] }],
+      tabs: [
+        { id: 'general', label: 'General', order: 1, content: [{ kind: 'field', field: 'name' }] },
+      ],
       activeTabId: 'general',
       relatedCollections: {},
       metadata,
@@ -77,6 +83,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
       dynamicUIValue,
       fieldVisible,
       fieldEditable,
+      fieldRepresentationFor: (representation: string) => representation,
       fieldComponentContext,
       metadataComponentContext: {},
       metadataComponentPartialFor: () => null,
@@ -105,6 +112,53 @@ describe('metadata-driven entry EJS runtime composition', () => {
 
     expect(html).toContain('data-ctx-field="name"');
     expect(html).toContain('value="Example"');
+  });
+
+  it('renders a collection-bearing metadata component with canonical related entity metadata', async () => {
+    const html = await renderFile(metadataComponentPath, {
+      component: {
+        key: 'collection-editor',
+        options: {
+          sourceKey: 'emailAddresses',
+          itemEntityKey: 'sysEmailAddresses',
+          label: 'Email addresses',
+          fieldOverrides: [{ key: 'value', label: 'Duplicated UI label', inputSpan: 12 }],
+        },
+      },
+      componentBindings: {},
+      componentBindingExpressions: {},
+      componentOptions: {},
+      componentPartial: '../content/collection-editor',
+      metadataComponentContext: {
+        componentData: {
+          collectionResourceData: { emailAddresses: { rows: [] } },
+        },
+        relatedMetadataRegistry: {
+          sysEmailAddresses: {
+            fieldDefinition: {
+              value: {
+                key: 'value',
+                label: 'Email address',
+                type: 'email',
+                required: true,
+                maxLength: 320,
+              },
+            },
+          },
+        },
+        isViewMode: false,
+      },
+      definition: { key: 'sys-principals' },
+      recordMode: 'edit',
+      readOnly: false,
+      span: 12,
+      spanExpression: null,
+      ctxScopePath: 'ctx.ui.level',
+    });
+
+    expect(html).toContain('data-metadata-component="collection-editor"');
+    expect(html).toContain('Email address:');
+    expect(html).toContain('maxlength="320"');
   });
 
   it('renders a summary tab with the explicit reference-selector contract', async () => {
@@ -141,7 +195,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
           id: 'summary',
           label: 'Summary',
           order: 1,
-          fields: ['principalId'],
+          content: [{ kind: 'column', content: [{ kind: 'field', field: 'principalId' }] }],
           layout: 'summary',
         },
       ],
@@ -154,6 +208,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
       dynamicUIValue,
       fieldVisible,
       fieldEditable,
+      fieldRepresentationFor: (representation: string) => representation,
       fieldComponentContext: {},
       metadataComponentContext: {},
       metadataComponentPartialFor: () => null,

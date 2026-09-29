@@ -24,19 +24,24 @@ const popupHeaderView = resolve(testDirectory, '../../views/popups/shared/popup-
 describe('popup infrastructure presentation', () => {
   it('projects client-opened popup surfaces as canonical nested V2 ctx.ui levels', async () => {
     const runtime = await uiSource('public/js/popups/popup-runtime.js');
+    const contextRuntime = await uiSource('public/js/runtime/context-runtime.js');
+    const uiHost = await uiSource('public/js/runtime/ui-host-runtime.js');
 
     expect(runtime).toContain('const uiLeaf = () =>');
     expect(runtime).toContain('const openUiLevel = (');
-    expect(runtime).toContain("lifecycle: 'deactivating', active: false");
-    expect(runtime).toContain("lifecycle: 'active', active: true");
     expect(runtime).toContain("host: 'popup'");
-    expect(runtime).toContain('runtime.replace(childPath, child');
-    expect(runtime).toContain('const closeUiLevel = (handle) =>');
-    expect(runtime).toContain('runtime.delete(handle.path');
-    expect(runtime).toContain("action: 'reactivate-parent-surface'");
-    expect(runtime).toContain('`${handle.parentPath}.control.state`');
-    expect(runtime).toContain('...(entityKey ? { entityKey: String(entityKey) } : {}),');
+    expect(runtime).toContain('window.ManatOS?.uiHost?.openSurface?.({');
+    expect(runtime).toContain('window.ManatOS?.uiHost?.updateChildSurface?.(handle, patch');
+    expect(runtime).toContain('window.ManatOS?.uiHost?.closeSurface?.(handle');
+    expect(uiHost).toContain("lifecycle: 'deactivating', active: false");
+    expect(uiHost).toContain("action: 'reactivate-parent-surface'");
+    expect(uiHost).toContain('`${handle.parentPath}.control.state`');
+    expect(uiHost).toContain('...(entityKey ? { entityKey: String(entityKey) } : {}),');
+    expect(uiHost).toContain("kind === 'entry' && entityKey");
+    expect(uiHost).toContain('entryFields(');
+    expect(contextRuntime).toContain('installEntryMirrors();');
     expect(runtime).toContain('snapshotDescriptors');
+    expect(runtime).toContain('invocation.behavior?.recoverable !== false');
     expect(runtime).toContain('restoreDescriptor');
   });
 
@@ -92,6 +97,9 @@ describe('popup infrastructure presentation', () => {
 
     expect(popupRuntime).toContain("modal.dataset.bsBackdrop = 'static'");
     expect(popupRuntime).toContain("modal.dataset.bsKeyboard = 'false'");
+    expect(popupRuntime).toContain('uiHost?.isUserInputReady?.(path)');
+    expect(popupRuntime).toContain('uiHost?.isUserInputReady?.(path) === false');
+    expect(popupRuntime).not.toContain('deferredEscapePaths');
     expect(popupRuntime).toContain("modal.dataset.bsFocus = 'false'");
     expect(layoutCss).toContain('.manatos-popup-backdrop {');
     expect(layoutCss).toContain('z-index: 1100');
@@ -114,6 +122,11 @@ describe('popup infrastructure presentation', () => {
     );
 
     expect(popupRuntime).toContain('const preparePopupPlacement =');
+    expect(popupRuntime).toContain('anchorToTrigger = false');
+    expect(popupRuntime).toContain('lastPopupTriggerRect = {');
+    expect(popupRuntime).toContain('Number(resolvedAnchor.bottom ?? resolvedAnchor.top) + 8');
+    expect(popupRuntime).toContain('const usableRight =');
+    expect(popupRuntime).toContain('developerToolsDock.getBoundingClientRect()');
     expect(popupRuntime).toContain("parent?.level?.control?.host === 'popup'");
     expect(popupRuntime).toContain('parent.level.control.state?.popup');
     expect(popupRuntime).toContain('openedPopupsCounter');
@@ -153,7 +166,12 @@ describe('popup infrastructure presentation', () => {
 
     expect(popupRuntime).toContain("kind: String(modal.dataset.popupKind || 'modal')");
     expect(popupRuntime).not.toContain('const createPayload =');
-    expect(popupRuntime).toContain('invocation: { ...invocation }');
+    expect(popupRuntime).toContain('invocation,');
+    const uiHost = await readFile(
+      resolve(testDirectory, '../../public/js/runtime/ui-host-runtime.js'),
+      'utf8',
+    );
+    expect(uiHost).toContain('invocation: { ...invocation }');
     expect(popupRuntime).toContain('invocation.presentation?.layout');
     expect(popupRuntime).toContain('invocation.presentation?.title');
     expect(popupRuntime).toContain('presentation: {');
@@ -195,6 +213,49 @@ describe('popup infrastructure presentation', () => {
       'window.ManatOS?.popup?.runtime?.refreshVisibleModalCenters?.()',
     );
     expect(popupRuntime).toContain('window.ManatOS.popup.runtime = Object.freeze');
+    expect(popupRuntime).toContain('const registerBootstrapModal = (modal) =>');
+    expect(popupRuntime).toContain(
+      "document.querySelectorAll('.modal').forEach((modal) => registerBootstrapModal(modal))",
+    );
+    expect(popupRuntime).toContain('registerBootstrapModal,');
+    expect(shellRuntime).toContain(
+      'window.ManatOS?.popup?.runtime?.registerBootstrapModal?.(modal)',
+    );
     expect(popupRuntime).not.toContain('window.ManatOSPopupRuntime =');
+  });
+
+  it('applies universal Escape dismissal and viewport-bounded dropdown behavior across pages and popups', async () => {
+    const shellRuntime = await readFile(
+      resolve(testDirectory, '../../public/js/shell/shell.js'),
+      'utf8',
+    );
+    const popupRuntime = await readFile(
+      resolve(testDirectory, '../../public/js/popups/popup-runtime.js'),
+      'utf8',
+    );
+    const pagesCss = await readFile(resolve(testDirectory, '../../public/css/pages.css'), 'utf8');
+
+    expect(shellRuntime).toContain('const applyViewportDropdownBoundary =');
+    expect(shellRuntime).toContain("toggle.setAttribute('data-bs-boundary', 'viewport')");
+    expect(shellRuntime).toContain("if (event.key !== 'Escape'");
+    expect(shellRuntime).not.toContain("document.querySelectorAll('.dropdown-menu.show')");
+    expect(shellRuntime).toContain('Focus and ordinary field/dropdown presentation never change');
+    expect(popupRuntime).toContain('const dismissalReady = (target = null) =>');
+    expect(popupRuntime).toContain('uiHost?.isUserInputReady?.(target) === true');
+    expect(popupRuntime).toContain('uiHost?.isUserInputReady?.(path) === false');
+    expect(popupRuntime).not.toContain('deferredEscapePaths');
+    expect(popupRuntime).not.toContain('escape-deferred');
+    expect(shellRuntime).not.toContain('popup?.runtime?.dismissalReady?.(scope) !== true');
+    expect(shellRuntime).toContain('window.ManatOS?.popup?.runtime?.requestDismiss?.(');
+    expect(shellRuntime).toContain('visibleModal || visibleBackdrop || null');
+    expect(popupRuntime).toContain('const bindDismissTarget = (handle, target) =>');
+    expect(popupRuntime).toContain('const deepestRegisteredDismissPath = () =>');
+    expect(popupRuntime).toContain('deepestRegisteredDismissPath() || uiLeaf()?.path');
+    expect(popupRuntime).toContain('dismissTargetSurfaces.has(target)');
+    expect(shellRuntime).toContain("'escape'");
+    expect(shellRuntime).not.toContain('const universalDismissAction =');
+    expect(pagesCss).toContain('.metadata-driven-record-form .dropdown-menu');
+    expect(pagesCss).toContain('max-height: min(18rem, calc(100vh - 2rem))');
+    expect(pagesCss).toContain('overscroll-behavior: contain');
   });
 });

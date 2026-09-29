@@ -19,7 +19,7 @@ export interface MetadataOptionField {
 }
 
 export interface MetadataValuePresentation {
-  format?: 'text' | 'name' | 'datetime' | 'datetime-elapsed';
+  format?: 'text' | 'name' | 'date' | 'datetime' | 'datetime-elapsed';
   emptyText?: string;
 }
 
@@ -30,6 +30,18 @@ export const metadataOptionItemForField = (
   [...(field?.optionItems ?? []), ...(field?.enumItems ?? [])].find(
     (candidate) => candidate?.value === value,
   ) ?? null;
+
+/** Resolve semantic field representation without entity-specific metadata duplication. */
+export const metadataFieldRepresentation = (
+  requested: string | null | undefined,
+  fieldType: string | null | undefined,
+): string => {
+  const representation = requested || 'default';
+  if (representation !== 'summary') return representation;
+  if (fieldType === 'boolean' || fieldType === 'enum') return 'badge';
+  if (fieldType === 'reference') return 'entry-link';
+  return representation;
+};
 
 export const metadataOptionToneClass = (item: MetadataOptionItem | null | undefined): string => {
   const tone = item?.tone;
@@ -71,22 +83,39 @@ export const formatMetadataValue = (
   if (value === undefined || value === null || value === '') return presentation.emptyText ?? '—';
 
   if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const duration = value as Record<string, unknown>;
-    if (
-      ['years', 'months', 'days'].every((key) =>
-        Object.prototype.hasOwnProperty.call(duration, key),
-      )
-    ) {
-      const parts = [
-        ['year', Number(duration.years || 0)],
-        ['month', Number(duration.months || 0)],
-        ['day', Number(duration.days || 0)],
-      ] as const;
-      const rendered = parts
-        .filter(([, amount]) => amount > 0)
-        .map(([unit, amount]) => `${amount} ${unit}${amount === 1 ? '' : 's'}`);
-      return rendered.length ? rendered.join(', ') : '0 days';
+    let duration = value as Record<string, unknown>;
+    const visited = new Set<object>();
+    while (duration && typeof duration === 'object' && !Array.isArray(duration)) {
+      if (visited.has(duration)) break;
+      visited.add(duration);
+      if (
+        ['years', 'months', 'days'].some((key) =>
+          Object.prototype.hasOwnProperty.call(duration, key),
+        )
+      ) {
+        const parts = [
+          ['year', Number(duration.years || 0)],
+          ['month', Number(duration.months || 0)],
+          ['day', Number(duration.days || 0)],
+        ] as const;
+        const rendered = parts
+          .filter(([, amount]) => amount > 0)
+          .map(([unit, amount]) => `${amount} ${unit}${amount === 1 ? '' : 's'}`);
+        return rendered.length ? rendered.join(', ') : '0 days';
+      }
+      const nested = duration.value;
+      if (!nested || typeof nested !== 'object' || Array.isArray(nested)) break;
+      duration = nested as Record<string, unknown>;
     }
+  }
+
+  if (presentation.format === 'date') {
+    const source = String(value);
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(source)
+      ? new Date(`${source}T00:00:00`)
+      : new Date(source);
+    if (Number.isNaN(parsed.getTime())) return source;
+    return parsed.toLocaleDateString();
   }
 
   if (presentation.format === 'datetime' || presentation.format === 'datetime-elapsed') {

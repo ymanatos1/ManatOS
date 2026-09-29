@@ -302,7 +302,8 @@ The Organization tab is an owner-managed hierarchy workspace rather than ordinar
 [A] Add / relate / remove / reorganize
 [C] Commit organization
 [API] Persist hierarchy changes
-[X] Close organization page / clear draft
+[K] Keep create draft & leave (create mode only)
+[X] Close/leave
 
 Flow:
   P --> O
@@ -312,9 +313,13 @@ Flow:
   W --> C
   C --> API
   API --> X
+  W --[Create Organization only]--> K
+  K --> X
 ```
 
 The hierarchy workspace owns its transactional graph/draft behavior. Quick-record editors inside it may render canonical entity fields through `entity-field.ejs`, but the workspace — not those field components — owns the draft transaction and final Commit operation.
+
+Create Organization deliberately supports a browser-local continuation draft across normal navigation/closure; Edit Organization does not. This is separate from system-unavailability recovery, which can capture recoverable UI transactions before abnormal disposal. Neither browser mechanism is application persistence: only Commit changes the hierarchy in API/storage. See [`Persistence-Commit-and-Recovery.md`](../entities/Persistence-Commit-and-Recovery.md).
 
 ---
 

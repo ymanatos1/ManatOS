@@ -62,7 +62,7 @@ describe('#16 metadata-driven SysBO UI closure', () => {
   });
 
   it('keeps External Authentication Providers entirely declarative after #16 closure', async () => {
-    const metadata = await source('../shared/src/metadata/ui/identity.ts');
+    const metadata = await source('../shared/src/metadata/ui/auth/ui-ext-auth-providers.ts');
     const registry = await source('src/presentation/metadata/component-registry.ts');
 
     expect(metadata).toContain("key: 'sys-ext-auth-providers'");
@@ -76,15 +76,18 @@ describe('#16 metadata-driven SysBO UI closure', () => {
 
   it('keeps framework-neutral UI metadata as the only presentation contract', async () => {
     const contracts = await source('../shared/src/metadata/ui/types.ts');
-    const businessMetadata = await source('../shared/src/metadata/ui/business.ts');
+    const applicationMetadata = await source(
+      '../shared/src/metadata/ui/platforms/protocrm/applications/ui-applications.ts',
+    );
+    const licenseMetadata = await source('../shared/src/metadata/ui/licensing/ui-licenses.ts');
 
     expect(contracts).toContain('interface SysBOUIMetadata');
     expect(contracts).toContain('interface SysBOUIComponentMetadata');
     expect(contracts).toContain('bindings?:');
     expect(contracts).toContain('relatedCollections');
     expect(contracts).toContain('entryActions');
-    expect(businessMetadata).toContain("href: '/bo/sys-applications/{id}/play'");
-    expect(businessMetadata).toContain("key: 'date-duration-range'");
+    expect(applicationMetadata).toContain("href: '/bo/sys-applications/{id}/play'");
+    expect(licenseMetadata).toContain("key: 'date-duration-range'");
   });
 
   it('uses global runtime paging configuration while metadata selects query fields', async () => {

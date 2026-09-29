@@ -97,7 +97,10 @@ export async function parentListContextForEntry(
   const referenceData =
     referenceFields.some((fieldKey) => metadata.fieldDefinition[fieldKey]?.type === 'reference') ||
     entryUsesRelations
-      ? await references(req, definition, { ctx })
+      ? await references(req, definition, {
+          ctx,
+          ...(entryUsesRelations ? {} : { fieldKeys: referenceFields }),
+        })
       : {};
 
   return {

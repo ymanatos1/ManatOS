@@ -1,6 +1,6 @@
 # Expressions and Reactivity
 
-ManatOS expressions are a constrained declarative language used by canonical/UI metadata for side-effect-free calculations and decisions. Expression source is portable; each process owns its own parser/AST cache and evaluator capabilities.
+ManatOS expressions are a constrained declarative language used by canonical/UI metadata for side-effect-free calculations and decisions. Expression source is portable. The API and UI Node processes each own an independent lazy process-local compiled-expression cache; the browser never parses the language and keeps only a document-lifetime source→AST execution mirror obtained through the UI compile boundary.
 
 ## Reading map
 

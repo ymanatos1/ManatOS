@@ -37,10 +37,18 @@ export function collectionEditorDescriptors(
       const options = optionObject(component.options);
       const sourceKey = typeof options?.sourceKey === 'string' ? options.sourceKey.trim() : '';
       if (sourceKey) {
-        const itemFields = Array.isArray(options?.itemFields) ? options.itemFields : [];
-        const itemFieldKeys = itemFields
-          .map((field) => optionObject(field)?.key)
-          .filter((key): key is string => typeof key === 'string' && key.length > 0);
+        /*
+         * Persistence shape is canonical collection metadata, never renderer layout.
+         * Structured editors declare their semantic identity fields. Scalar editors
+         * deliberately keep an empty key list so their values remain scalar strings.
+         * `fieldOverrides` is presentation-only; persistence remains driven by semantic identityFields.
+         */
+        const identityFields = Array.isArray(options?.identityFields)
+          ? options.identityFields.filter(
+              (key): key is string => typeof key === 'string' && key.trim().length > 0,
+            )
+          : [];
+        const itemFieldKeys = [...identityFields];
         const label =
           typeof options?.label === 'string' && options.label.trim()
             ? options.label.trim()

@@ -44,7 +44,7 @@ describe('platform feature organization', () => {
     const context = await source('src/context/manatos-context.ts');
 
     expect(pageContext).toContain(
-      '/api/v1/platforms/${encodeURIComponent(currentPlatform.id)}/$capabilities',
+      '/api/v1/authorization/context/${encodeURIComponent(currentPlatform.id)}/$capabilities',
     );
     expect(pageContext).toContain('platformCapabilities');
     expect(pageContext).not.toContain('/api/v1/SysLicenses?pageSize=1000');

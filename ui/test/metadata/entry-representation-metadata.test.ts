@@ -46,6 +46,7 @@ describe('canonical entry representation metadata', () => {
   it('consumes calculated fields from the canonical projected record without recomputing them', () => {
     const metadata: SysBOMetadata<Record<string, unknown>> = {
       key: 'people',
+      subsystem: 'test',
       name: 'people',
       label: 'Person',
       pluralLabel: 'People',
@@ -141,6 +142,7 @@ describe('canonical entry representation metadata', () => {
   it('does not create a second calculated-field projection inside entry representation', () => {
     const metadata: SysBOMetadata<Record<string, unknown>> = {
       key: 'people',
+      subsystem: 'test',
       name: 'people',
       label: 'Person',
       pluralLabel: 'People',

@@ -284,7 +284,7 @@ Metadata expressions consume already-resolved CTX facts. Examples include:
 ```text
 permissions.update === true
 permissions.delete === true
-user.permissions.platforms.protocrm.capabilities.platformAccess === true
+$user.permissions.platforms.protocrm.capabilities.platformAccess === true
 ```
 
 Those expressions decide presentation only. Generic renderers must not add entity-specific role or entitlement branches after metadata has been resolved.

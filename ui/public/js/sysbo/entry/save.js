@@ -11,16 +11,7 @@
 
   const runtime = window.ManatOS?.ctx;
 
-  const leafPagePath = () => {
-    let node = runtime?.value?.ui?.level;
-    if (!node) return null;
-    let path = 'ctx.ui.level';
-    while (node?.level) {
-      node = node.level;
-      path += '.level';
-    }
-    return path;
-  };
+  const leafPagePath = () => window.ManatOS?.uiHost?.surfacePath?.('entry') || null;
 
   const formBody = (saveMode = null) => {
     const body = new URLSearchParams();
@@ -31,7 +22,7 @@
     return body;
   };
 
-  const recoveryExcludedNames = new Set(['_csrf', '_saveMode', '_entryPopupToken']);
+  const recoveryExcludedNames = new Set(['_csrf', '_saveMode', '_entryToken']);
 
   const fieldSaveEntries = (key) =>
     [...formBody().entries()].filter(
@@ -173,6 +164,30 @@
     return pagePath ? runtime?.get?.(`${pagePath}.control.state.dirty`) === true : false;
   };
 
+  const saveUserChanges = async () => {
+    const save = form.querySelector('[data-form-save]');
+    if (!(save instanceof HTMLButtonElement) || save.disabled || !form.reportValidity())
+      return false;
+
+    return new Promise((resolve) => {
+      const cleanup = () => {
+        form.removeEventListener('manatos:form-saved', saved);
+        form.removeEventListener('manatos:form-save-failed', failed);
+      };
+      const saved = () => {
+        cleanup();
+        resolve(true);
+      };
+      const failed = () => {
+        cleanup();
+        resolve(false);
+      };
+      form.addEventListener('manatos:form-saved', saved, { once: true });
+      form.addEventListener('manatos:form-save-failed', failed, { once: true });
+      form.requestSubmit(save);
+    });
+  };
+
   const mergePersistedCtx = (record) => {
     if (!record || typeof record !== 'object' || Array.isArray(record) || !runtime?.replace) return;
     const pagePath = leafPagePath();
@@ -222,6 +237,7 @@
       },
       applyUserChanges: applyRecoveryChanges,
       verifyUserChanges: verifyRecoveryChanges,
+      saveUserChanges,
       prepareGentleClose,
     });
   }
@@ -231,6 +247,8 @@
     },
     applyUserChanges: applyRecoveryChanges,
     verifyUserChanges: verifyRecoveryChanges,
+    saveUserChanges,
+    isDirty: currentEntryHasUnsavedChanges,
     prepareGentleClose,
   });
 
@@ -247,6 +265,13 @@
     if (!form.reportValidity()) return;
 
     saving = true;
+    form.dataset.operationPending = 'true';
+    const saveSurfacePath = window.ManatOS?.uiHost?.surfacePath?.('entry') || null;
+    const releaseUserInputBlock = window.ManatOS?.uiHost?.setUserInputBlocked?.(
+      saveSurfacePath,
+      'entry-save',
+      true,
+    );
     saveSucceeded = false;
     const saveControls = [
       ...form.querySelectorAll(
@@ -321,7 +346,7 @@
         });
       mergePersistedCtx(payload.data?.record);
       if (document.body.classList.contains('entry-popup-host')) {
-        const token = form.querySelector('input[name="_entryPopupToken"]')?.value || '';
+        const token = form.querySelector('input[name="_entryToken"]')?.value || '';
         if (token) {
           parent.postMessage(
             {
@@ -381,6 +406,8 @@
       );
     } finally {
       saving = false;
+      delete form.dataset.operationPending;
+      releaseUserInputBlock?.();
       // Only failed saves need a synthetic change to re-evaluate Save enablement.
       // On success, manatos:form-saved has already promoted the new baseline and
       // cleared the draft. Emitting another change here can recreate that draft

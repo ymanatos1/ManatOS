@@ -30,7 +30,8 @@ describe('generic hosted metadata entry popup', () => {
     expect(field).toContain('createRelated = createRelated || {}');
     expect(field).toContain("case 'view-entry'");
     expect(field).toContain("purpose: 'view'");
-    expect(field).toContain("_entryMode: 'view'");
+    expect(field).toContain('entryOpening.open({');
+    expect(field).not.toContain("_entryMode: 'view'");
     expect(field).toContain("case 'add-entry'");
     expect(field).toContain("purpose: 'create'");
     expect(field).toContain('const currentEntry =');
@@ -38,11 +39,15 @@ describe('generic hosted metadata entry popup', () => {
       "resolvedEntry && typeof resolvedEntry === 'object' ? resolvedEntry : {}",
     );
     expect(field).not.toContain("if (!currentEntry || typeof currentEntry !== 'object') return");
-    expect(field).toContain('_entryDefaults: JSON.stringify(defaults)');
-    expect(field).toContain('_entryOverrides: JSON.stringify(overrides)');
+    expect(field).toContain('composeCallerRules?.(');
+    expect(field).toContain('rules,');
+    expect(field).not.toContain('_entryDefaults');
+    expect(field).not.toContain('_entryOverrides');
     expect(field).toContain("const id = String(result?.value || '')");
     expect(field).toContain('const representation = result?.metadata?.representation || {}');
-    expect(renderer).toContain('effectiveEntryUIMetadata(canonicalMetadataUI, invocation)');
+    expect(renderer).toContain('resolveSysBOUIView(');
+    expect(renderer).toContain('surface.uiViewKey ?? invocation.uiViewKey');
+    expect(renderer).toContain('effectiveEntryUIMetadata(resolvedUIView.metadata, invocation)');
     expect(renderer).toContain('referenceData: supplemental.referenceData');
     expect(renderer).toContain('entryRepresentationRuntime(');
     expect(renderer).toContain('supplemental.referenceData,');
@@ -54,15 +59,52 @@ describe('generic hosted metadata entry popup', () => {
 
   it('returns canonical save results and lets hierarchy nodes host the same entry in view mode', async () => {
     const popup = await source('public/js/popups/entry-popup.js');
+    const representation = await source(
+      'views/components/sysbo/entry/fields/field-representation.ejs',
+    );
     const write = await source('src/routes/sysbo/entry/write.ts');
     const tree = await source('public/js/sysbo/hierarchy/hierarchy-tree.js');
+    const shell = await source('public/js/shell/shell.js');
 
     expect(popup).toContain('const popupRuntime = window.ManatOS?.popup?.runtime');
+    expect(representation).toContain('data-entry-link');
+    expect(representation).toContain('data-entry-link-entity-key');
+    expect(popup).toContain("document.body.classList.contains('entry-popup-host')");
+    expect(popup).not.toContain('hostedEscapeHandler');
+    expect(popup).toContain("event.target.closest('[data-form-close-cancel]')");
+    expect(popup).toContain("type: 'manatos:entry-popup-cancel', token");
+    expect(popup).toContain("'[data-form-close-cancel], [data-cancel-operation]'");
+    const entryState = await source('public/js/sysbo/entry/state.js');
+    expect(entryState).toContain('runtime?.registerDismissHandler?.(');
+    expect(entryState).toContain('{ path: entryPagePath }');
+    expect(popup).toContain("popupRuntime.requestDismiss?.(v2Surface, 'close-button')");
+    expect(shell).toContain('window.ManatOS?.popup?.runtime?.requestDismiss?.(');
+    expect(shell).not.toContain('popup?.runtime?.dismissalReady?.(scope) !== true');
+    expect(entryState).toContain('uiHost?.isUserInputReady?.(entryPagePath)');
+    expect(shell).toMatch(/document\.addEventListener\(\s*'keydown',[\s\S]*?true,\s*\);/);
+    expect(popup).toContain("target?.closest('a[data-entry-link], a[data-open-entry-popup]')");
+    expect(popup).toContain('link.dataset.entryPopupEntityKey || null');
+    expect(popup).toContain('link.dataset.entryLinkEntityKey || null');
     expect(popup).toContain('window.ManatOS.popup.entry = Object.freeze');
     expect(popup).not.toContain('window.ManatOSEntryPopup =');
     expect(popup).not.toContain('data-ui-engine-migration');
     expect(popup).not.toContain('inheritUiEngine');
-    expect(popup).toContain('frame.src = url');
+    expect(popup).toContain(
+      "const directReadonlyRequested = mode === 'view' && requestMethod === 'GET'",
+    );
+    expect(popup).toContain(
+      "if (!directReadonlyRequested && requestMethod !== 'POST') startRoutedHost()",
+    );
+    expect(popup).not.toContain("hostedUrl.searchParams.set('_entryRecoverable', '0')");
+    expect(popup).toContain("if (requestMethod === 'POST')");
+    expect(popup).toContain('requestForm.target = frameName');
+    expect(popup).toContain("resolvedInvocation.presentation?.entryDensity === 'compact'");
+    expect(popup).toContain("popupCard.classList.toggle('is-compact-entry', compactEntry)");
+    expect(popup).toContain('resolvedInvocation.presentation?.autoCloseOnBackdrop === true');
+    expect(popup).toContain('const requestHostedCancel = () =>');
+    expect(popup.replace(/\s+/g, '')).toContain(
+      "querySelector('[data-cancel-operation],[data-form-close-cancel]',)",
+    );
     expect(popup).toContain('popupRuntime?.openUiLevel?.({');
     expect(popup).toContain('if (!v2Surface) return null');
     expect(popup).toContain('const popupPath = v2Surface.path');
@@ -71,6 +113,7 @@ describe('generic hosted metadata entry popup', () => {
     expect(popup).not.toContain('.popup`');
     expect(popup).toContain("kind: 'entry'");
     expect(popup).toContain("layout: resolvedInvocation.presentation?.layout || 'entry'");
+    expect(popup).toContain("entryDensity: compactEntry ? 'compact' : 'normal'");
     expect(popup).not.toContain('resolvedCallingParams');
     expect(popup).not.toContain('cloneCtxValue');
     expect(popup).not.toContain('deepestEntryLevel');
@@ -93,6 +136,20 @@ describe('generic hosted metadata entry popup', () => {
     expect(popup).toContain("'manatos:entry-popup-cancel'");
     expect(popup).toContain("'manatos:entry-popup-ready'");
     expect(popup).toContain("popupCard?.classList.remove('manatos-popup-initializing')");
+    expect(popup).toContain("backdrop.classList.add('manatos-popup-show-spinner')");
+    expect(popup).toContain('}, 220);');
+    expect(popup).toContain("new CustomEvent('manatos:entry-opening-measured'");
+    expect(popup).toContain("fetch('/bo/debug/ui-runtime/entry-opening-measurement'");
+    expect(popup).toContain('measurement: latest');
+    expect(popup).toContain('clickToReadyMs:');
+    expect(popup).toContain('clickToFirstVisibleContentMs:');
+    expect(popup).toContain('spinnerShown: spinnerShownAt != null');
+    expect(popup).toContain('hostedResourceCount');
+    expect(popup).toContain("fetch('/bo/debug/ui-runtime/api-request-sequence'");
+    expect(popup).toContain('apiRequestCount,');
+    expect(popup).toContain('apiRequestCount = Number.isFinite(Number(payload?.count))');
+    expect(popup).toContain('measurements: () => [...openingMetrics]');
+    expect(popup).toContain('clearMeasurements: () => openingMetrics.splice(0)');
     expect(popup).toContain(
       "backdrop.className = 'manatos-popup-backdrop manatos-popup-preparing'",
     );
@@ -105,51 +162,71 @@ describe('generic hosted metadata entry popup', () => {
     expect(popup).not.toContain('data-entry-popup-height-difference');
     expect(popup).not.toContain('data-entry-popup-height-toggle');
     expect(popup).toContain('popupRuntime?.preparePopupPlacement?.');
+    expect(popup).toContain('anchorToTrigger,');
+    expect(popup).toContain('const requestedHeight = compactEntry ? 300 : 820');
+    expect(popup).toContain('const idealTop = anchorToTrigger ? originalPopupTop');
     expect(popup).toContain('state: { popup: { ...popupPlacement } }');
     expect(popup).toContain("popupCard.classList.add('is-positioned')");
     expect(popup).toContain('popupCard.style.left = `${popupPlacement.x}px`');
     expect(popup).toContain('popupCard.style.top = `${popupPlacement.y}px`');
     expect(popup).toContain('const estimateHostedHeightDifference = () =>');
     expect(popup).toContain('scheduleHostedHeightEstimate()');
+    expect(popup).toContain('hostedWindow = window');
+    expect(popup).toContain("directHost.addEventListener('shown.bs.tab', hostedTabHandler)");
+    expect(popup).toContain("target?.closest('[data-form-close-cancel], [data-cancel-operation]')");
+    expect(popup).toContain('hostedMutationObserver.observe(directForm');
     expect(popup).toContain('const baselineCenterY = originalPopupTop + originalPopupHeight / 2;');
-    expect(popup).toContain('const idealTop = baselineCenterY - targetHeight / 2;');
     expect(popup).toContain('applyPopupHeightDifference(estimatedHeightDifference)');
+    expect(popup).toContain('directHost.getBoundingClientRect().top');
+    expect(popup).toContain('formRect.top - hostTop');
     expect(popup).toContain(
       "popupCard.style.setProperty('height', `${targetHeight}px`, 'important')",
     );
     expect(popup).toContain('data-related-entry-view-popup');
     expect(popup).toContain("purpose: 'view'");
-    expect(popup).toContain("targetUrl.searchParams.set('_entryMode', 'view')");
+    expect(popup).toContain('entryOpening.open({');
+    expect(popup).not.toContain("targetUrl.searchParams.set('_entryMode', 'view')");
     expect(popup).toContain("hostedWindow.document.addEventListener('shown.bs.tab'");
     expect(popup).toContain("querySelector('.metadata-driven-record-form')");
-    expect(popup).toContain('formRect.bottom + bottomGutter');
-    expect(popup).toContain('const POPUP_HEIGHT_ESTIMATE_CORRECTION = 25;');
+    expect(popup).toContain('const intrinsicFormHeight = Math.max(');
+    expect(popup).toContain('topInset + intrinsicFormHeight + bottomGutter');
+    expect(popup).toContain('const POPUP_HEIGHT_ESTIMATE_CORRECTION = compactEntry ? 18 : 25;');
     expect(popup).toContain(
       'desiredPopupHeight - originalPopupHeight + POPUP_HEIGHT_ESTIMATE_CORRECTION',
     );
     expect(popup).toContain('const clampPopupHeight = (height) =>');
+    expect(popup).toContain('entryForm.scrollHeight');
     expect(popup).toContain('data-entry-popup-ctx');
     expect(tree).not.toContain("document.body.classList.contains('entry-popup-host')");
     expect(tree).toContain('Hosted entry documents delegate ManatOS.popup.entry.open()');
+    expect(tree).toContain('entryOpening.open({');
     expect(write).toContain("type: 'manatos:entry-popup-saved'");
     expect(write).toContain("const close = saveMode === 'close'");
     expect(write).toContain("_entryMode: 'edit'");
     expect(popup).toContain('if (data.close === true) close(surfaceResult)');
     expect(write).toContain('resolveEntryRepresentation');
     expect(tree).toContain("purpose: 'view'");
-    expect(tree).toContain("_entryMode: 'view'");
+    expect(tree).not.toContain("_entryMode: 'view'");
 
-    const shell = await source('views/layout/shell.ejs');
-    expect(shell).toContain('if (!isEntryPopupHost)');
-    expect(shell).not.toContain('body.entry-popup-host .workspace-heading-row');
-    expect(shell).not.toContain('body.entry-popup-host .workspace-titlebar');
+    const shellView = await source('views/layout/shell.ejs');
+    expect(shellView).toContain('if (!isEntryPopupHost)');
+    expect(shellView).not.toContain('body.entry-popup-host .workspace-heading-row');
+    expect(shellView).not.toContain('body.entry-popup-host .workspace-titlebar');
 
     const pages = await source('public/css/pages.css');
     expect(pages).not.toContain('.entry-popup-height-estimate');
     expect(pages).not.toContain('[data-entry-popup-height-toggle]');
     expect(pages).toContain('width: min(1120px, calc(100vw - 3rem))');
     expect(pages).toContain('height: min(820px, calc(100vh - 3rem))');
+    expect(pages).toContain('.metadata-entry-popup.is-compact-entry');
+    expect(pages).toContain('width: min(540px, calc(100vw - 2rem))');
+    expect(pages).toMatch(
+      /\.entry-density-compact \[data-v2-entry-fields\] > \.col-md-6\s*\{\s*width: 50%;\s*\}/,
+    );
     expect(pages).toContain('.metadata-entry-popup.is-positioned');
+    expect(pages).toContain('height: min(300px, calc(100vh - 2rem))');
+    expect(pages).toContain('.entry-density-compact .entity-tab-content > .tab-pane.active');
+    expect(pages).toContain('box-shadow: none');
     expect(pages).toContain('flex-direction: column');
     expect(pages).toContain('flex: 1 1 auto');
     expect(pages).toContain('.metadata-entry-popup.manatos-popup-initializing iframe');
@@ -158,6 +235,8 @@ describe('generic hosted metadata entry popup', () => {
     expect(layout).toContain(
       '.manatos-popup-backdrop.manatos-popup-preparing .metadata-entry-popup',
     );
-    expect(layout).toContain('.manatos-popup-backdrop.manatos-popup-preparing::before');
+    expect(layout).toContain(
+      '.manatos-popup-backdrop.manatos-popup-preparing.manatos-popup-show-spinner::before',
+    );
   });
 });

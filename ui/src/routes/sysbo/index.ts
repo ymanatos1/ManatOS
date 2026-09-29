@@ -36,6 +36,7 @@ import {
   failedSaveItemOverride,
   deleteMetadataDrivenEntry,
 } from './entry/write.js';
+import { entryInvocation } from './entry/invocation.js';
 
 import { clearApiTrafficEntries, listApiTrafficEntries } from '../../debug/api-traffic-store.js';
 
@@ -61,18 +62,23 @@ export function createSysBORoutes() {
    * invocation never carry AST objects. Exact authored source is the cache identity.
    */
   router.post('/expression/compile', requireCsrf, (req, res) => {
+    const diagnostics: Array<Record<string, unknown>> = [];
     try {
       const expression = typeof req.body?.expression === 'string' ? req.body.expression : '';
       if (!expression) {
         res.status(400).json({ error: 'Expression is required.' });
         return;
       }
-      const compiled = compileExpression(expression);
+      const compiled = compileExpression(expression, {
+        diagnosticSink: (diagnostic) =>
+          diagnostics.push(diagnostic as unknown as Record<string, unknown>),
+      });
       res.set('Cache-Control', 'no-store');
       res.json({ expression: compiled.source, ast: compiled.ast });
     } catch (error) {
       res.status(400).json({
         error: error instanceof Error ? error.message : 'Expression could not be parsed.',
+        ...(diagnostics.length ? { diagnostic: diagnostics.at(-1) } : {}),
       });
     }
   });
@@ -214,12 +220,22 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const id = routeParam(req.params.id);
-      const permissions = await resolveUIEntityPermissions(req, definition, id);
-      requirePermission(permissions.read, 'Read access is required for this entity.');
+      const ownerEntryMode = req.body._ownerEntryMode === 'create' ? 'create' : 'edit';
+      const permissions = await resolveUIEntityPermissions(
+        req,
+        definition,
+        ownerEntryMode === 'create' ? undefined : id,
+      );
+      requirePermission(
+        ownerEntryMode === 'create' ? permissions.create : permissions.read,
+        ownerEntryMode === 'create'
+          ? 'Create access is required for this entity.'
+          : 'Read access is required for this entity.',
+      );
 
       const { item, parentOwnerContext } = ownerManagedEntryFromRequest(req, id);
       await renderMetadataDrivenRecord(req, res, definition, permissions, {
-        isNew: false,
+        isNew: ownerEntryMode === 'create',
         recordId: id,
         itemOverride: { ...item },
         parentOwnerContext,
@@ -237,11 +253,44 @@ export function createSysBORoutes() {
     try {
       const definition = getSysBODefinition(routeParam(req.params.key));
       const id = String(req.body.id ?? '');
-      const permissions = await resolveUIEntityPermissions(req, definition, id || undefined);
-      requirePermission(permissions.update, 'Update access is required for this entity.');
+      const ownerEntryMode = req.body._ownerEntryMode === 'create' ? 'create' : 'edit';
+      const permissions = await resolveUIEntityPermissions(
+        req,
+        definition,
+        ownerEntryMode === 'create' ? undefined : id || undefined,
+      );
+      requirePermission(
+        ownerEntryMode === 'create' ? permissions.create : permissions.update,
+        ownerEntryMode === 'create'
+          ? 'Create access is required for this entity.'
+          : 'Update access is required for this entity.',
+      );
 
       const metadata = await canonicalSysBOMetadata(req, definition);
       const ownerUpdate = mergeOwnerManagedEntryFromRequest(req, metadata);
+      const invocation = entryInvocation(req);
+
+      if (invocation.popup && invocation.token && id) {
+        const identityField = String(req.body._ownerIdentityField || 'id');
+        const savedRecord =
+          ownerUpdate.entries.find((entry) => String(entry?.[identityField] ?? '') === id) ?? null;
+        const payload = JSON.stringify({
+          type: 'manatos:entry-popup-saved',
+          token: invocation.token,
+          entityKey: definition.key,
+          id,
+          record: savedRecord,
+          representation: null,
+          close: true,
+        }).replaceAll('<', '\\u003c');
+        res
+          .type('html')
+          .send(
+            `<!doctype html><html><body><script>parent.postMessage(${payload}, window.location.origin);</script></body></html>`,
+          );
+        return;
+      }
+
       await renderMetadataDrivenHierarchyWorkspace(
         req,
         res,

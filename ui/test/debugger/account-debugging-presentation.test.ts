@@ -5,19 +5,16 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const source = (path: string) => readFile(resolve(testDirectory, '..', '..', path), 'utf8');
 
 describe('Account developer debugging presentation', () => {
-  it('shows canonical user calculations only in developer mode and reuses shared formula highlighting', async () => {
-    const source = await readFile(resolve(testDirectory, '../../views/pages/account.ejs'), 'utf8');
+  it('inherits debugging from the canonical V2 SysUser entry surface instead of an Account-only implementation', async () => {
+    const routes = await source('src/routes/pages/index.ts');
+    const renderer = await source('src/routes/sysbo/entry/renderer.ts');
 
-    expect(source).toContain('const accountDebuggingEnabled = Boolean(app?.ui?.debugTools)');
-    expect(source).toContain('buildCalculatedContextDebuggingRows');
-    expect(source).toContain("'ctx.user.fields'");
-    expect(source).toContain('id="account-debugging-tab"');
-    expect(source).toContain('id="account-debugging-pane"');
-    expect(source).toContain('data-readonly-tab="true"');
-    expect(source).toContain("include('../components/debugging/debugging-panel'");
-    expect(source).toContain("debuggingStartPath: 'ctx.user'");
-    expect(source).toContain('accountDebuggingDisplayRows');
+    expect(routes).toContain("purpose: 'open-account-entry'");
+    expect(routes).toContain('renderMetadataDrivenRecord(');
+    expect(renderer).toContain("renderPage(res, 'pages/sysbo/entry'");
+    expect(routes).not.toContain("renderPage(res, 'pages/account'");
   });
 });

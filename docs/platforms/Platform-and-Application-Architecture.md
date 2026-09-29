@@ -6,7 +6,7 @@ ManatOS separates company scope, platform scope and application scope so reusabl
 
 ```text
 Company: ManatOS
-├── company-owned entities/capabilities/navigation
+├── foundation-level Company entities/capabilities/navigation
 └── Platforms
     └── protoCRM
         ├── platform-owned entities/capabilities/navigation
@@ -18,7 +18,7 @@ The composition model sits above individual entities. A platform contributes dom
 
 ## Company scope
 
-Current company-owned concerns include:
+Current foundation-level Company-domain concerns include:
 
 - Account / Users;
 - Principals and organization hierarchy;
@@ -31,7 +31,7 @@ These are not protoCRM features merely because protoCRM consumes identity/licens
 
 ## Platform scope
 
-The current concrete platform is **protoCRM**. Its current system-owned entity is Applications, and Apps Playground is a platform-level surface. Future platform tooling belongs here when it is specific to protoCRM rather than the ManatOS company/application foundation.
+The current concrete platform is **protoCRM**. Its current system-owned entity is Applications, and Apps Playground is a platform-level surface. Future platform tooling belongs here when it is specific to protoCRM rather than the ManatOS foundation/application infrastructure.
 
 ## Application scope
 
@@ -41,7 +41,7 @@ Application-defined behavior should be composed through metadata, policies, APIs
 
 ## Licenses and platform access
 
-Licenses are company-owned because they describe customer/principal entitlement to platforms/applications. Platform access is resolved by the API into a safe capability fact.
+Licenses are foundation-level Company-domain records because they describe customer/principal entitlement to platforms/applications. Platform access is resolved by the API into a safe capability fact.
 
 The UI should consume the resolved fact for navigation/presentation. It should not fetch all license/principal rows and reconstruct the authorization algorithm.
 
@@ -81,7 +81,7 @@ Scope ownership should therefore be represented in composition metadata/director
 - [Application Design](../README.md)
 - [Platform Model](Platform-Model.md)
 - [Application Model](Application-Model.md)
-- [ManatOS Company Domain](../company/README.md)
+- [Company Domain](../company/README.md)
 - [protoCRM Design](protocrm/README.md)
 - [Metadata Architecture](../metadata/Metadata-Architecture.md)
 - [Authentication and Authorization](../security/Authentication-and-Authorization.md)

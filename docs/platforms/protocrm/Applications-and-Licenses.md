@@ -1,6 +1,6 @@
 # Application Licensing — protoCRM Perspective
 
-Licenses are **ManatOS company-level records**; protoCRM does not own the License entity. This document describes the platform-side integration: how protoCRM Applications participate in the company licensing model.
+Licenses are **foundation-level Company-domain records**; protoCRM does not own the License entity. This document describes the platform-side integration: how protoCRM Applications participate in the company licensing model.
 
 The canonical License model is documented in [Company Licensing](../../company/Licensing.md).
 
@@ -17,7 +17,7 @@ ManatOS License -----> Platform (protoCRM)
                            +---- optional restriction ----> Application
 ```
 
-From protoCRM's perspective, the important fact is that an Application can be the target of a company-owned license restriction. Application metadata/presentation can expose related Licenses without taking ownership of their lifecycle or authorization policy.
+From protoCRM's perspective, the important fact is that an Application can be the target of a Company-domain license restriction. Application metadata/presentation can expose related Licenses without taking ownership of their lifecycle or authorization policy.
 
 ## Application catalogue restriction
 
@@ -33,7 +33,7 @@ The API derives platform/application access capabilities. A protoCRM client surf
 
 This distinction is important:
 
-- **License data ownership:** ManatOS Company;
+- **License data ownership:** foundation-level Company domain;
 - **Application ownership:** protoCRM/platform;
 - **authorization decision:** API/server policy;
 - **presentation:** whichever client is rendering the platform.

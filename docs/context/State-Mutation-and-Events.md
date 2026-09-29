@@ -135,16 +135,13 @@ change detail
 
 `relatedPaths` are **not additional mutation authorities**. They tell diagnostics and interested consumers that one authoritative change has observable consequences elsewhere.
 
-## Current runtime layers and convergence
+## Current browser runtime contract
 
-ManatOS currently has two implementation layers participating in this architecture:
+The post-consolidation V2 browser has one public semantic CTX mutation/event authority: the browser CTX runtime. Canonical mutations flow through that runtime and publish `manatos:ctx-change`; semantic node descriptions and subscriber telemetry are maintained beside the CTX value tree rather than as application data.
 
-1. The browser CTX runtime exposes the public live CTX tree, `manatos:ctx-change`, semantic node descriptions and subscriber telemetry.
-2. TypeScript surface runtimes use typed surface events such as `value:changed`, `entry:initialized` and `ctx:changed` internally for field, validation and calculation behavior.
+Entry/form modules also use narrowly scoped DOM lifecycle/coordination events such as `manatos:form-initialized`, `manatos:form-initialization-changed`, `manatos:form-initialization-settled`, `manatos:form-baseline-captured` and contributor-state events. These coordinate browser components; they are **not** a second semantic mutation bus and do not create another CTX authority.
 
-They express the same architectural semantics, but the cleanup programme is intentionally converging mutation/event ownership further. New functionality must **not** create a third mutation path or event system. The desired endpoint is one universal CTX access/mutation mechanism with typed runtime adapters where useful.
-
-This distinction is important for framework developers; ordinary metadata authors should think in canonical CTX paths and expressions rather than implementation-layer events.
+The former parallel TypeScript surface-runtime event model has been removed. New functionality must not recreate it or introduce feature-local mutation/dependency systems. Metadata authors should reason in canonical CTX paths and expressions; runtime code should mutate the canonical owner and let the shared CTX event/dependency projection notify consumers.
 
 ## Mutation causes
 
@@ -166,7 +163,7 @@ A cause is diagnostic and causal metadata. It must not be used as an excuse to b
 
 ### What a dependency means
 
-An expression dependency is a canonical CTX path whose change can invalidate an expression result. Compilation identifies these paths before repeated execution, allowing the runtime to react to state rather than repeatedly rediscovering dependencies from source text.
+An expression dependency is a canonical CTX path whose change can invalidate an expression result. Compilation produces a context-neutral AST. When an entry runtime binds that AST, it walks the variable nodes and resolves them against the entry's materialized lexical CTX scope using the same variable resolver as evaluation. The resulting canonical paths are registered once for that runtime, so source text is not reparsed on each change.
 
 Example:
 
@@ -180,11 +177,9 @@ When either dependency changes, the calculation becomes eligible for reevaluatio
 
 ### Binding dependencies to the actual owner
 
-A compiled expression binding does not expose a second, static dependency projection. Dependency
-identity is resolved only against the materialized lexical scope through `resolveDependencyPaths(...)`,
-using the same owner lookup rules as evaluation. This prevents diagnostic/compatibility metadata from
-becoming a parallel dependency authority and avoids incorrectly binding inherited state to whichever
-surface happens to be current.
+The compiled AST is context-neutral. Browser dependency binding occurs in the owning entry runtime: each variable AST node is resolved through `runtime.resolveVariableWithPath(...)` at that entry's fixed CTX scope. The canonical resolved path is the dependency identity. There is no separate `surface:<id>` dependency namespace and no second dependency projection stored in CTX or metadata.
+
+The entry runtime captures its owning `ctx.ui.level...` path when it starts. A popup/selector opened later may become the topology leaf, but it does not retarget the already-bound parent form's expressions or transaction state.
 
 ### Exact and overlapping paths
 
@@ -197,20 +192,15 @@ fields.address.city
 
 A consumer deliberately depending on `fields.address` is interested in a change to `fields.address.city`. Authors should nevertheless choose the narrowest stable dependency that expresses the rule; broad dependencies cause unnecessary reevaluation and make debugging less precise.
 
-### Local and owner-qualified dependencies
+### Local, ancestor and root dependencies
 
-Calculations can react to local field paths and to owner-qualified surface paths. This lets a child surface inherit or depend on legitimate ancestor state without copying that state into the child.
+Lexical expressions may use concise local names; explicit `$...` references may address root CTX. In both cases the browser binder resolves the variable to its actual canonical CTX path before registration. An expression can therefore depend on legitimate ancestor/root state without copying that state into the child.
 
-The principle is: **reference the owner; do not duplicate the fact merely to make it locally convenient.**
-
-Browser entry-form runtimes also bind to their owning entry path when they start. A selector or popup
-opened later may become the deepest `ctx.ui.level`, but it must not retarget the parent form's
-transaction projection (`control.state.dirty`, `control.state.valid`, or `control.state.blocked`) or baseline promotion.
-Topology depth describes nesting; it does not transfer ownership.
+The principle is: **resolve/reference the owner; do not duplicate the fact merely to make it locally convenient.** Topology depth describes nesting; it does not transfer ownership.
 
 ### Initialization is special but deterministic
 
-An initialized field may equal its original value, so no ordinary `value:changed` event is necessarily emitted. Initialization therefore performs a deterministic initial evaluation when the entry is initialized. Calculated values and UX expressions do not have to wait for the user to edit something before becoming correct.
+An initialized field may equal its original value, so initialization cannot rely on a later CTX change to make derived state correct. The entry runtime therefore performs one deterministic full reactive pass at the `manatos:form-initialized` boundary. Calculated values and UX expressions do not have to wait for the user to edit something before becoming correct.
 
 ## Recalculation and cascade settlement
 
@@ -231,9 +221,9 @@ consumers of fullName invalidated
 
 Calculated writes re-enter the normal mutation/event semantics. This is essential: downstream expressions should not care whether their input was typed by a user or calculated by another expression.
 
-### Loop protection
+### Loop/runaway protection
 
-A dependency graph can accidentally contain cycles. The calculation runtime tracks active calculation targets while settling a causal step. If the same target is already active, it is not recursively re-entered during that step. This is a guard, not permission to design cyclic business rules; metadata should still form understandable, terminating dependency relationships.
+The browser reactive scheduler deduplicates queued `(causal event identity, changed path)` work and drains changes serially. It also aborts a drain after more than 512 reactive-entry executions and reports a possible dependency cycle. This is a guard, not permission to design cyclic business rules; metadata should still form understandable, terminating dependency relationships.
 
 ### Determinism
 
@@ -262,13 +252,12 @@ Navigation protection and Save enablement consume the same combined predicate: c
 OR explicit contributor dirty. Provider/entity-specific pending-dirty latches remain forbidden; each
 component owns its baseline and validity semantics while the generic shell owns only contributor
 registration. Reduction of contributor facts (`dirty`, `valid`, `blocked`, `blockingCount`) is one pure
-`@manatos/shared` policy consumed by both the browser adapter and host-neutral
-`EntryAggregateStateRuntime`; neither layer reimplements those predicates. Canonical-field validity is
-evaluated independently from contributor validity before both feed the shared aggregate policy.
+`@manatos/shared` policy consumed by the browser entry shell; browser code does not reimplement those
+predicates. Canonical-field validity is evaluated independently from contributor validity before both
+feed the shared aggregate policy.
 
-The browser shell now also keeps a private per-entry contributor registry matching the host-neutral
-`EntryAggregateStateRuntime` contract: contributors report only `dirty`, `valid`, and
-`blocksPersistence`. Components do not receive the registry or a mutable form-state handle. They
+The browser shell keeps a private per-entry contributor registry: contributors report only `dirty`,
+`valid`, and `blocksPersistence`. Components do not receive the registry or a mutable form-state handle. They
 register an owned contributor through the generic `manatos:form-contributor-register` event, and the
 entry shell keeps the contributor map entirely inside its runtime closure. `manatos:form-state-ready`
 exists only as a script-order handshake so components rendered before the shell can replay registration;
@@ -359,7 +348,7 @@ A global subscriber registered `*`. Examples include runtime-wide consumers that
 
 ### Total and kinds
 
-`total` answers “how many currently registered consumers overlap this node?” `kinds` answers “what sort of consumers are they?” `registrations` explains **which** matching consumers produced those counts, using their diagnostic label, semantic kind and registered canonical paths. The CTX Viewer exposes this as **Subscriber details** so an unexpectedly high count can be traced to concrete runtime consumers rather than guessed from a number. These are live runtime diagnostics, not persisted CTX state.
+`total` answers “how many currently registered consumers overlap this node?” `kinds` answers “what sort of consumers are they?” `registrations` explains **which** matching consumers produced those counts, using their diagnostic label, semantic kind and registered canonical paths. The CTX Viewer exposes this as **Subscriber details** so an unexpectedly high count can be traced to concrete runtime consumers rather than guessed from a number. These are live runtime diagnostics, not persisted CTX state. The CTX Viewer may persist **inspection coordinates** such as selected/expanded paths, Properties layout, history and a watched path in browser-local developer-workspace state, but it never persists the semantic CTX values or subscriber registry themselves. A later page resolves a missing selected path to the nearest surviving parent.
 
 ### `watchable` is not a subscriber count
 
@@ -425,7 +414,7 @@ component disposes
    +-- unsubscribe
 ```
 
-This is especially important for nested UI levels: the lifetime of a popup subscriber must be bounded by that popup, while page-level consumers survive only as long as their owning page surface.
+This is especially important for nested UI levels: the lifetime of a popup or embedded subscriber must be bounded by its owning child level, while page-level consumers survive only as long as their owning page surface.
 
 ## Runtime developer notes
 
@@ -538,15 +527,10 @@ Before accepting a new CTX/event feature, ask:
 
 If the answer requires a second representation, second mutation path, second event path or entity-specific runtime special case, the design should be reconsidered before adding machinery.
 
-## Canonical reactive dependency event projection
+## Canonical reactive dependency matching
 
-Expression dependencies are resolved against their lexical CTX owner before they are registered. Runtime mutation events must therefore be projected back into the same dependency identity before calculations, validation, or other declarative consumers decide whether to rerun.
+Expression dependencies are resolved against their lexical CTX owner before registration. The resulting **canonical CTX path** is the dependency identity; the runtime does not create a second owner-qualified `surface:<id>` namespace.
 
-The projection rule is shared infrastructure rather than a feature-specific convention:
+The browser entry scheduler consumes the canonical `manatos:ctx-change` event stream. For each event it queues the emitted `path` plus any `relatedPaths`, deduplicates `(root/event identity, changed path)` with the shared `reactiveChangeQueueKey(...)` policy, and compares changed paths with registered dependency paths using `reactivePathsOverlap(...)`. That shared ancestor/descendant rule means replacing a containing semantic node invalidates dependencies below it, while a descendant mutation can invalidate a dependency on the containing node.
 
-- a field value mutation on the current surface projects both `fields.<field>.value` and `surface:<surfaceId>:fields.<field>.value`;
-- a CTX mutation on the current surface projects both its local path and `surface:<surfaceId>:<path>`;
-- a mutation owned by another UI surface projects only its owner-qualified `surface:<surfaceId>:...` identity;
-- a root CTX mutation already carries its absolute `ctx.*` identity and is not rewritten.
-
-This is intentionally consumed by calculated values/UX state, reactive validation, and declarative tab visibility. Those consumers must not maintain independent owner/path matching algorithms: otherwise a lexical dependency can evaluate correctly yet fail to react when its owning ancestor changes. Dependency matching itself uses the shared ancestor/descendant path rule (`reactiveDependencyMatchesChange`) so a container replacement invalidates its descendants and a descendant mutation invalidates a dependency on the containing semantic node. A single semantic event may project to more than one dependency identity (for example, a local field path and its owner-qualified path); calculations are deduplicated at the event boundary, so one calculation executes at most once for that event. The initialization pass likewise evaluates each registered calculation once, regardless of how many of its dependencies participate in the initial graph.
+`relatedPaths` are projections of the **same semantic mutation**, not additional authorities or alternate dependency identities. For example, changing `fields.<field>.value` can also identify the read-only `entry.current.<field>` projection as related. Calculations, validation and declarative presentation state consume this one canonical event/dependency model rather than maintaining feature-specific owner/path matching algorithms. The scheduler deduplicates work at the event boundary so one affected calculation is not rerun merely because several related paths from the same mutation overlap its dependencies. Initialization similarly evaluates each registered calculation through the normal scheduling model rather than manufacturing synthetic surface-qualified paths.

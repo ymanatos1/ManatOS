@@ -1,6 +1,6 @@
 # Users and Principals
 
-A **User** is a ManatOS company-level account/authentication identity. A **Principal** is the company-level generalized business identity used for people and organizations. Separating these concepts prevents authentication concerns from becoming the representation of every person or organization.
+A **User** is a foundation-level Company-domain account/authentication identity. A **Principal** is the Company-domain generalized business identity used for people and organizations. Separating these concepts prevents authentication concerns from becoming the representation of every person or organization.
 
 ## Relationship
 

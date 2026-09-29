@@ -6,14 +6,14 @@ Canonical UI metadata names semantic component keys. The current Express/EJS cli
 
 ## Registered/current component keys
 
-| Component | Purpose | Main capabilities / ownership |
-| --- | --- | --- |
-| `information-panel` | Read-only explanatory/status content. | Presents metadata-provided information without becoming entity state. |
-| `contextual-help` | Context-sensitive help content. | Presents guidance adjacent to a surface/section; no persisted value ownership. |
-| `provider-credentials` | Trusted external-auth provider credential workflow. | Specialized command-oriented UI for credentials that must not be exposed as ordinary entity fields; status/commands remain API-authoritative. |
-| `date-duration-range` | Coordinates start date, structured duration and end date fields. | Composes existing canonical fields and calendar expression semantics; does not create a second date-range entity model. |
-| `collection-editor` | Edits an owned/related collection as part of an entry transaction. | Owns child draft lifecycle, adds/edits/removes rows, contributes aggregate dirty state, reconciles on parent save. Used by contact-information editing. |
-| `hierarchy-tree` | Browser-mounted hierarchy/organization workspace presentation. | Works over a hierarchy workspace draft, supports relationship operations and Tree/Chart-style semantic views as provided by the workspace/UI metadata. It intentionally has no server partial in the component registry. |
+| Component              | Purpose                                                            | Main capabilities / ownership                                                                                                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `information-panel`    | Read-only explanatory/status content.                              | Presents metadata-provided information without becoming entity state.                                                                                                                                                                   |
+| `contextual-help`      | Context-sensitive help content.                                    | Presents guidance adjacent to a surface/section; no persisted value ownership.                                                                                                                                                          |
+| `provider-credentials` | Trusted external-auth provider credential workflow.                | Specialized command-oriented UI for credentials that must not be exposed as ordinary entity fields; status/commands remain API-authoritative.                                                                                           |
+| `date-duration-range`  | Coordinates start date, structured duration and end date fields.   | Composes existing canonical fields and calendar expression semantics; does not create a second date-range entity model.                                                                                                                 |
+| `collection-editor`    | Edits an owned/related collection as part of an entry transaction. | Owns the active member draft, opens it as an embedded child entry UI level, adds/edits/removes rows, contributes aggregate dirty/valid state, and reconciles through the generic parent Save path. Used by contact-information editing. |
+| `hierarchy-tree`       | Browser-mounted hierarchy/organization workspace presentation.     | Works over a hierarchy workspace draft, supports relationship operations and Tree/Chart-style semantic views as provided by the workspace/UI metadata. It intentionally has no server partial in the component registry.                |
 
 The registry can grow; this table should be updated whenever a reusable component key is added.
 

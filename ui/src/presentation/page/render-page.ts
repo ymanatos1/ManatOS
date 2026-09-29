@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
 import { hasUIEntityPermission } from '../../sysbo/permissions.js';
+import { sysBODefinitions } from '../../sysbo/definitions.js';
 import { popupContent } from '../popup/popup-content.js';
 import {
   buildCalculatedContextDebuggingRows,
@@ -12,9 +13,14 @@ import {
 } from '../metadata/debugging-model.js';
 import {
   formatMetadataValue,
+  metadataFieldRepresentation,
   metadataOptionItemForField,
   metadataOptionToneClass,
 } from '../metadata/value-presentation.js';
+import {
+  describeRelatedCollectionField,
+  resolveProjectedRelatedCollectionValue,
+} from '../metadata/related-field-presentation.js';
 import {
   allManatOSObjectMetadata,
   allSysBOUIMetadata,
@@ -72,7 +78,7 @@ export async function renderPage(res: Response, view: string, model: Record<stri
       metadata,
       allSysBOUIMetadata[entityKey as keyof typeof allSysBOUIMetadata],
       entry as Readonly<Record<string, unknown>>,
-      { ...(entityIcon ? { entityIcon } : {}) },
+      { entityIcon: entityIcon ?? sysBODefinitions[entityKey]?.icon ?? null },
     );
   };
 
@@ -109,8 +115,11 @@ export async function renderPage(res: Response, view: string, model: Record<stri
     buildMetadataDebuggingModel,
     buildCalculatedContextDebuggingRows,
     formatMetadataValue,
+    metadataFieldRepresentation,
     metadataOptionItemForField,
     metadataOptionToneClass,
+    describeRelatedCollectionField,
+    resolveProjectedRelatedCollectionValue,
     entryRepresentationFor,
     relatedCollectionMetadataFor,
     hasUIEntityPermission,

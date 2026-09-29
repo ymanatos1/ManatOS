@@ -12,6 +12,8 @@
  * typed as small inspectable shapes avoids `any` while preserving that flexibility.
  */
 
+import { describeRelatedCollectionField } from './related-field-presentation.js';
+
 type UnknownRecord = Readonly<Record<string, unknown>>;
 
 type DebugFieldStateProperty =
@@ -80,7 +82,6 @@ export interface MetadataDebuggingModelInput {
   dynamicUIValue: (value: unknown, scope: unknown, caller: UnknownRecord) => unknown;
   overrides: Readonly<Record<string, UnknownRecord>>;
   relatedCollections: Readonly<Record<string, DebugRelatedCollectionMetadata>>;
-  relatedMetadataRegistry: Readonly<Record<string, DebugCanonicalMetadata>>;
   entryContextPath?: string;
   entryFieldValuePath?: (fieldKey: string) => string;
 }
@@ -137,11 +138,6 @@ const expressionOf = (value: unknown): string | null => {
   return typeof expression === 'string' && expression.length > 0 ? expression : null;
 };
 
-const stringProperty = (value: unknown, key: string): string | null => {
-  const candidate = asRecord(value)?.[key];
-  return typeof candidate === 'string' ? candidate : null;
-};
-
 /**
  * Build the flat Debugging rows for a calculated CTX field collection.
  *
@@ -189,7 +185,6 @@ export function buildMetadataDebuggingModel(
     dynamicUIValue,
     overrides,
     relatedCollections,
-    relatedMetadataRegistry,
     entryContextPath = 'ctx.ui.level',
     entryFieldValuePath,
   } = input;
@@ -361,21 +356,6 @@ export function buildMetadataDebuggingModel(
       }
     }
 
-    for (const [collectionKey, collection] of Object.entries(relatedCollections)) {
-      const entityKey = stringProperty(collection, 'entityKey');
-      if (!entityKey) continue;
-      const relatedMetadata = relatedMetadataRegistry[entityKey];
-      for (const [fieldKey, field] of Object.entries(collection.fields ?? {})) {
-        const formula =
-          expressionOf(field) ??
-          expressionOf(relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation);
-        if (!formula) continue;
-        // Related-row values are browser CTX-owned. Server debugging metadata inventories
-        // the canonical formula only; it must not manufacture a detached row scope.
-        addDebugRow('RELATED ENTITY', null, `${collectionKey}.${fieldKey}`, formula, null, null);
-      }
-    }
-
     /*
      * UI is one top-level group. TABS deliberately comes first, followed by
      * field presentation, related presentation and actions.
@@ -413,9 +393,17 @@ export function buildMetadataDebuggingModel(
     collectDynamicExpressions('UI', 'FIELDS', 'fieldOverrides', uiFieldOverrides);
 
     for (const [collectionKey, collection] of Object.entries(relatedCollections)) {
-      const entityKey = stringProperty(collection, 'entityKey');
-      if (!entityKey) continue;
       for (const [fieldKey, field] of Object.entries(collection.fields ?? {})) {
+        const descriptor = describeRelatedCollectionField(fieldKey, field);
+        if (descriptor.valueExpression) {
+          addDebugRow(
+            'UI',
+            'RELATED',
+            `relatedCollections.${collectionKey}.fields.${fieldKey}.expression`,
+            descriptor.valueExpression,
+            undefined,
+          );
+        }
         collectDynamicExpressions(
           'UI',
           'RELATED',

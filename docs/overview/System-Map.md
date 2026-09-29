@@ -73,12 +73,12 @@ The two paths serve different purposes. Presentation can explain or suppress an 
 ## Application composition
 
 ```text
-Company: ManatOS
+Foundation-level technical Company domain
   +-- Users / Account
   +-- Principals / hierarchy / contact values
   +-- Licenses
   +-- External Authentication Providers
-  +-- company-wide navigation/capabilities
+  +-- foundation-level navigation/capabilities
   +-- Platform: protoCRM
         +-- Applications
         +-- Apps Playground
@@ -88,3 +88,15 @@ Company: ManatOS
 For portable client/UI semantics see [Client and UI Architecture](../clients/Client-Architecture.md). For deeper treatment, continue with [Architecture](../README.md), [Design](../README.md), or [Application Design](../README.md).
 
 For storage specifically, see [Data and Storage Architecture](../storage/Data-and-Storage-Architecture.md) and [Storage Catalog](../storage/Storage-Catalog.md). For request correlation, logs, Operation Context and CTX snapshots, see [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md).
+
+## Client surface topology
+
+```text
+ctx.ui.level                         page host
+    |
+    +-- level                       popup or embedded child
+         |
+         +-- level                  further child when owned
+```
+
+The current browser runtime has one production host authority for this topology. `page`, `popup`, and `embedded` are the fundamental host choices. Entry/list/selector/custom identify what a level is presenting; `uiView` independently selects a named entity-record presentation such as `main`, `account`, or `quick`. This prevents presentation variants from becoming parallel runtime architectures.

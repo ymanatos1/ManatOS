@@ -6,23 +6,23 @@ The currently supported canonical `SysBOFieldType` values are defined in `shared
 
 ## Supported field types
 
-| Type | Canonical value / purpose | Current generic presentation |
-| --- | --- | --- |
-| `guid` | Stable identifier string, commonly generated/read-only. | Text-like read-only/display field unless an explicit interaction needs otherwise. |
-| `string` | General text with optional min/max length. | Text input or text display. |
-| `email` | Email string; can use canonical `EmailAddress(value)` normalization. | Email-oriented input/display semantics. |
+| Type        | Canonical value / purpose                                                                         | Current generic presentation                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `guid`      | Stable identifier string, commonly generated/read-only.                                           | Text-like read-only/display field unless an explicit interaction needs otherwise.                        |
+| `string`    | General text with optional min/max length.                                                        | Text input or text display.                                                                              |
+| `email`     | Email string; can use canonical `EmailAddress(value)` normalization.                              | Email-oriented input/display semantics.                                                                  |
 | `telephone` | International telephone string; canonical normalization is available through `TelephoneNbr(...)`. | Telephone-oriented input/display; compound contact editors may capture country code + number separately. |
-| `boolean` | `true`/`false`. | Checkbox/toggle-style editing and boolean display. |
-| `number` | Numeric scalar. | Number input/display. |
-| `date` | Calendar date, normally `YYYY-MM-DD`. | Date field. |
-| `datetime` | Date/time value used by audit and application fields. | Date/time-oriented display/editing according to effective metadata. |
-| `duration` | Structured calendar duration `{ years, months, days }`. | Dedicated duration field; `durationUnits` can restrict exposed units. |
-| `version` | Version string; canonical `versionFormat: 'semver'` currently means numeric `major.minor.patch`. | Version-aware text editing/validation. |
-| `enum` | One value from canonical enum metadata. | Enum selector using `enumItems`/`enumValues`, labels, icons, tones and traits. |
-| `reference` | Identifier of a record in another entity (`referenceBOKey`). | Reference selector with metadata-defined candidate filtering and related-entry behavior. |
-| `picture` | One structured picture value. | Picture display/editor with pending-value handling. |
-| `pictures` | Multiple structured picture values. | Multi-picture presentation/editor semantics. |
-| `richText` | Structured rich-text/HTML-oriented content managed by the rich-text component. | Rich-text editor/display component. |
+| `boolean`   | `true`/`false`.                                                                                   | Checkbox/toggle-style editing and boolean display.                                                       |
+| `number`    | Numeric scalar.                                                                                   | Number input/display.                                                                                    |
+| `date`      | Calendar date, normally `YYYY-MM-DD`.                                                             | Date field.                                                                                              |
+| `datetime`  | Date/time value used by audit and application fields.                                             | Date/time-oriented display/editing according to effective metadata.                                      |
+| `duration`  | Structured calendar duration `{ years, months, days }`.                                           | Dedicated duration field; `durationUnits` can restrict exposed units.                                    |
+| `version`   | Version string; canonical `versionFormat: 'semver'` currently means numeric `major.minor.patch`.  | Version-aware text editing/validation.                                                                   |
+| `enum`      | One value from canonical enum metadata.                                                           | Enum selector using `enumItems`/`enumValues`, labels, icons, tones and traits.                           |
+| `reference` | Identifier of a record in another entity (`referenceBOKey`).                                      | Reference selector with metadata-defined candidate filtering and related-entry behavior.                 |
+| `picture`   | One structured picture value.                                                                     | Picture display/editor with pending-value handling.                                                      |
+| `pictures`  | Multiple structured picture values.                                                               | Multi-picture presentation/editor semantics.                                                             |
+| `richText`  | Structured rich-text/HTML-oriented content managed by the rich-text component.                    | Rich-text editor/display component.                                                                      |
 
 The type vocabulary is deliberately UI-neutral. A future Angular/mobile client can render the same canonical types differently while preserving their value semantics.
 

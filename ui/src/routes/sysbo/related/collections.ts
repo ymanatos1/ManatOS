@@ -1,6 +1,11 @@
 import type { Request } from 'express';
 
-import type { ManatOSContext, SysBOUIMetadata } from '@manatos/shared';
+import {
+  allManatOSObjectMetadata,
+  type ManatOSContext,
+  type ManatOSObjectMetadata,
+  type SysBOUIMetadata,
+} from '@manatos/shared';
 
 import { apiClient } from '../../../api/client.js';
 import { apiSessionOptions } from '../../../auth/api-session.js';
@@ -34,6 +39,8 @@ export async function loadRelatedCollections(
   effectiveUIMetadata?: SysBOUIMetadata,
   initialCollectionResourceRows: Readonly<Record<string, unknown[]>> = {},
   ctx?: ManatOSContext,
+  requestedCollectionKeys?: ReadonlySet<string>,
+  readOnlyPresentation = false,
 ): Promise<RelatedCollectionData> {
   const collectionResourceData: Record<string, RelatedCollectionResourceData> = Object.fromEntries(
     Object.entries(initialCollectionResourceRows).map(([sourceKey, rows]) => [
@@ -42,6 +49,34 @@ export async function loadRelatedCollections(
     ]),
   );
   const editableCollectionSources = collectionEditorSourceKeys(effectiveUIMetadata);
+  const collectionRequested = (collectionKey: string) =>
+    !requestedCollectionKeys || requestedCollectionKeys.has(collectionKey);
+
+  // Caller-supplied factual rows cross the same canonical projection boundary as
+  // entity-query rows. This prevents custom resource loaders from becoming a
+  // second presentation/calculation path for related records.
+  if (ctx) {
+    for (const [collectionKey, collection] of Object.entries(
+      effectiveUIMetadata?.record.relatedCollections ?? {},
+    )) {
+      if (!collectionRequested(collectionKey)) continue;
+      const sourceKey = collection.sourceKey ?? collectionKey;
+      const resource = collectionResourceData[sourceKey];
+      if (!resource || resource.rows.length === 0) continue;
+      const relatedMetadata = allManatOSObjectMetadata[
+        collection.entityKey as keyof typeof allManatOSObjectMetadata
+      ] as ManatOSObjectMetadata<Record<string, unknown>> | undefined;
+      if (!relatedMetadata) continue;
+      const project = createCalculatedRecordProjector(relatedMetadata, ctx, {
+        source: 'entity-list-runtime',
+        sourcePath: `ctx.entities.${entityContextName(collection.entityKey)}`,
+        purpose: 'project caller-supplied related-collection record field',
+      });
+      resource.rows = await Promise.all(
+        resource.rows.map((row) => project(row as Readonly<Record<string, unknown>>)),
+      );
+    }
+  }
 
   if (isNew) {
     return { collectionResourceData };
@@ -50,6 +85,7 @@ export async function loadRelatedCollections(
   for (const [collectionKey, collection] of Object.entries(
     effectiveUIMetadata?.record.relatedCollections ?? {},
   )) {
+    if (!collectionRequested(collectionKey)) continue;
     if (collection.source?.kind !== 'entity-query') continue;
 
     const currentField = collection.source.currentField ?? 'id';
@@ -98,13 +134,29 @@ export async function loadRelatedCollections(
     );
     if (!needsReferenceData) continue;
 
-    const referenceData = await references(req, relatedDefinition, { ctx });
+    const collectionFieldKeys = Object.keys(collection.fields || {});
+    const selectedIdsByField = readOnlyPresentation
+      ? Object.fromEntries(
+          collectionFieldKeys.map((fieldKey) => [
+            fieldKey,
+            completeRelatedRows
+              .map((row) => row[fieldKey])
+              .filter((value): value is string => typeof value === 'string' && value.length > 0),
+          ]),
+        )
+      : undefined;
+    const referenceData = await references(req, relatedDefinition, {
+      ctx,
+      fieldKeys: collectionFieldKeys,
+      selectionOnly: readOnlyPresentation,
+      ...(selectedIdsByField ? { selectedIdsByField } : {}),
+    });
     collectionResourceData[sourceKey].references = referenceData;
 
     // Reference catalogues can be required for read-only presentation as well.
     // Only a declared collection-editor may replace the query row with its richer
     // referenced-record editing projection.
-    if (!editableCollectionSources.has(sourceKey)) continue;
+    if (readOnlyPresentation || !editableCollectionSources.has(sourceKey)) continue;
 
     /*
      * Relationship rows carry persistence ids while the collection editor

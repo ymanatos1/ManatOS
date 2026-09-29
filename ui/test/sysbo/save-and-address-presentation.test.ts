@@ -84,7 +84,7 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
     expect(entrySave).toContain("document.body.classList.contains('entry-popup-host')");
     expect(entrySave).toContain("type: 'manatos:entry-popup-saved'");
     expect(entrySave).toContain('close: payload.data?.close === true');
-    expect(entrySave).toContain("let path = 'ctx.ui.level'");
+    expect(entrySave).toContain("window.ManatOS?.uiHost?.surfacePath?.('entry')");
     expect(entrySave).not.toContain('runtime.replace(currentPath');
     expect(entrySave).toContain('runtime.replace(fieldPath, value');
     expect(entrySave).toContain('`${pagePath}.fields.${key}.originalValue`');
@@ -101,8 +101,8 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
 
   it('models addresses as canonical internal SysBOs and exposes them through the reusable Contact collection editor', async () => {
     const domain = await shared('src/domain/entities.ts');
-    const metadata = await shared('src/metadata/bo/contact.ts');
-    const uiMetadata = await shared('src/metadata/ui/business.ts');
+    const metadata = `${await shared('src/metadata/bo/contacts/bo-addresses.ts')}\n${await shared('src/metadata/bo/principals/bo-principal-addresses.ts')}`;
+    const uiMetadata = await shared('src/metadata/ui/principals/ui-principals.ts');
     const service = await api('src/services/sysbo/principal-service.ts');
     const collection = await ui('views/components/sysbo/entry/content/collection-editor.ejs');
 

@@ -1,6 +1,6 @@
 # Business Rules
 
-protoCRM owns rules whose semantics belong to its Applications, Apps Playground and future CRM/application tooling. Company-owned identity, Principal hierarchy, licensing and external-authentication rules are documented under the [ManatOS Company Domain](../../company/README.md) even when protoCRM consumes their results.
+protoCRM owns rules whose semantics belong to its Applications, Apps Playground and future CRM/application tooling. Foundation-level Company-domain identity, Principal hierarchy, licensing and external-authentication rules are documented under the [Company Domain](../../company/README.md) even when protoCRM consumes their results.
 
 ## Representative platform rules
 

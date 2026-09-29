@@ -183,7 +183,6 @@ describe('CTX debugger presentation state', () => {
 
   it('keeps a canonical V2 ctx.ui root surface on every rendered page without server topology authorship', () => {
     expect(pageContextSource).not.toContain('projectGenericPageUi(req.path)');
-    expect(pageContextSource).not.toContain('new SurfaceRuntime()');
     expect(pageContextSource).toContain('browser V2 host owns runtime UI topology');
     expect(uiHostSource).toContain('const staticPage = () =>');
     expect(uiHostSource).toContain("host: 'page'");

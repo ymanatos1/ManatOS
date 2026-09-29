@@ -10,7 +10,9 @@ In co-located development deployments, the UI server can also inspect locally vi
 
 **Debugging CLI** supports context/expression-oriented investigation.
 
-The tools can detach into a secondary browser window. Detachment moves the single live developer-tools DOM/runtime instance; it does not clone CTX or create duplicate subscriptions. Workspace presentation preferences can survive ordinary navigation/reload and server restarts, while runtime CTX values and traffic remain live data rather than persisted application state.
+The tools can detach into a secondary browser window. Detachment moves the single live developer-tools DOM/runtime instance; it does not clone CTX or create duplicate subscriptions. Developer-workspace state is deliberately separate from application CTX. The current CTX Viewer stores its selected path, expansion set, scroll anchor, Properties state/height, width, navigation history and watched path in browser `localStorage`; those preferences therefore survive ordinary navigation/reload and currently also survive a UI-server restart. Missing selected paths recover to the nearest surviving parent when the next CTX is rendered. This persistence stores debugger coordinates only, never CTX values.
+
+API Traffic has a different lifetime. Its transient viewer state and route counters are keyed by the current UI boot id and held in `sessionStorage`, so they survive full-page navigation within that boot but start fresh after a UI-server/system restart. Route visibility/catalog choices are durable developer preferences in `localStorage`. A detached Developer Tools window can reconnect across ordinary main-page navigation; a changed UI boot id closes that live detached window rather than allowing it to display stale runtime state.
 
 Use the tools to answer ownership questions: which level owns a field, which value changed, which API operation occurred, and whether a derived state follows the expected dependency.
 

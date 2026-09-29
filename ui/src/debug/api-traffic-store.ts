@@ -64,6 +64,27 @@ export function listApiTrafficEntries(afterId?: string): ApiTrafficEntry[] {
   return index < 0 ? [...entries] : entries.slice(index + 1);
 }
 
+export function apiTrafficSequence(): number {
+  return sequence;
+}
+
+/** Return sanitized transport facts recorded strictly after one sequence snapshot. */
+export function summarizeApiTrafficAfterSequence(afterSequence: number) {
+  const selected = entries.filter((entry) => Number.parseInt(entry.id, 10) > afterSequence);
+  const byRequest = new Map<string, number>();
+  for (const entry of selected) {
+    const key = `${entry.method} ${entry.path}`;
+    byRequest.set(key, (byRequest.get(key) ?? 0) + 1);
+  }
+  return {
+    sequence,
+    count: selected.length,
+    requests: [...byRequest.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([request, count]) => ({ request, count })),
+  };
+}
+
 export function clearApiTrafficEntries(): void {
   entries.length = 0;
 }

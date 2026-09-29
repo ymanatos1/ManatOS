@@ -42,21 +42,25 @@ This catalog describes the public runtime context vocabulary. Exact child nodes 
 
 A level's exact payload depends on surface kind, but the common model includes identity/kind, invocation/effective metadata, permissions/facts, state/resources and optional child `level`.
 
+`control.host` is `page`, `popup` or `embedded`. Popup and embedded children share the same recursive UI-level contract; popup opening deactivates the parent, while an embedded child deliberately leaves its parent active.
+
 ```text
 ctx.ui.level
 ├── control                    universal on every UI level
 │   ├── id / host / kind / mode / name / path / scope
+│   ├── entityKey / entityName / recordId   when applicable
 │   ├── invocation
 │   ├── presentation
 │   ├── state
-│   └── facts
-├── entityKey / entityName / recordId   when applicable
+│   ├── facts
+│   └── supportsUserChanges
 ├── fields                     entry surfaces
 ├── entry                      entry record projections
-├── list                      list/selector record projection
+├── list                       list/hierarchy record projection
 │   ├── originalEntries       optional baseline collection
 │   └── entries               current projected collection
-├── filters / search / paging  list/selector surfaces
+├── resources                  supporting/component read models when applicable
+├── selection / row            selector evaluation state when applicable
 └── level                      optional child surface
 ```
 
@@ -77,6 +81,8 @@ ctx.ui.level
 | `control.state.dirty`           | aggregate transaction state        | includes scalar and legitimate compound-editor contributions                                      |
 
 Entry initialization owner sets, remote-work counters and settlement phase are implementation/lifecycle bookkeeping, not semantic CTX. They remain private to the entry-initialization runtime and its lifecycle events; CTX contains the resulting semantic field and aggregate state only.
+
+`control.state.dirty` is an observable aggregate fact, not a container for contributor drafts. Private component contributors expose only aggregate state to the entry runtime; their values remain with their owners. Browser-local Create Organization drafts and outage-recovery packages likewise remain outside semantic CTX. During abnormal outage recovery, temporary baseline alignment used for gentle disposal is recovery bookkeeping and must not be interpreted as persistence.
 
 ### List / selector resources
 
@@ -118,4 +124,4 @@ See [Client Context Model](Client-Context-Model.md) for narrative mechanics and 
 
 ## Complete surface-variable reference
 
-For the exhaustive V2 page/popup surface vocabulary, ownership, lifecycle, mutability, initialization semantics, expression resolution and V1→V2 interpretation, see [CTX and Expression Runtime Guide](CTX-and-Expression-Runtime-Guide.md). That guide is normative for deciding whether a new value is semantic CTX or private runtime bookkeeping.
+For the exhaustive V2 page/popup/embedded surface vocabulary, ownership, lifecycle, mutability, initialization semantics, expression resolution and V1→V2 interpretation, see [CTX and Expression Runtime Guide](CTX-and-Expression-Runtime-Guide.md). That guide is normative for deciding whether a new value is semantic CTX or private runtime bookkeeping.

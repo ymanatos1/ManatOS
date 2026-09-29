@@ -9,6 +9,7 @@
  */
 const componentPartials: Readonly<Record<string, string>> = {
   'information-panel': '../../../presentation/information-panel',
+  'authentication-summary': '../content/authentication-summary',
   'contextual-help': '../../../presentation/contextual-help',
   'provider-credentials': '../content/provider-credentials',
   'date-duration-range': '../content/date-duration-range',

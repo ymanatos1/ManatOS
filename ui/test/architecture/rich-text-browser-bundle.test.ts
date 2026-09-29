@@ -11,7 +11,7 @@ describe('rich-text browser dependency boundary', () => {
   it('bundles the pinned Crepe dependency locally instead of constructing a CDN module graph', async () => {
     const packageJson = JSON.parse(await source('package.json'));
     const entry = await source('browser/rich-text-crepe-entry.js');
-    const runtime = await source('public/js/sysbo/entry/rich-text-runtime.js');
+    const runtime = await source('public/js/sysbo/entry/fields/rich-text-runtime.js');
     const app = await source('src/app.ts');
 
     expect(packageJson.dependencies['@milkdown/crepe']).toBe('7.22.1');
@@ -40,7 +40,7 @@ describe('rich-text browser dependency boundary', () => {
   });
 
   it('serializes visual-editor creation and invalidates stale asynchronous instances', async () => {
-    const runtime = await source('public/js/sysbo/entry/rich-text-runtime.js');
+    const runtime = await source('public/js/sysbo/entry/fields/rich-text-runtime.js');
 
     expect(runtime).toContain('state.editorGeneration += 1');
     expect(runtime).toContain('if (state.createPromise) await state.createPromise');
@@ -50,7 +50,7 @@ describe('rich-text browser dependency boundary', () => {
   });
 
   it('shares source resize height across Visual, Markdown and Preview surfaces', async () => {
-    const runtime = await source('public/js/sysbo/entry/rich-text-runtime.js');
+    const runtime = await source('public/js/sysbo/entry/fields/rich-text-runtime.js');
     const css = await source('public/css/pages.css');
 
     expect(runtime).toContain('new ResizeObserver');

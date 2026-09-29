@@ -77,4 +77,24 @@ describe('metadata-driven entry render contract', () => {
       /SysUsers|SysPrincipals|SysExtAuthProviders|SysLicenses/,
     );
   });
+  it('uses tab content as the sole declaration of tab field membership', async () => {
+    const sharedMetadataRoot = resolve(testDirectory, '../../../shared/src/metadata');
+    const sources = await Promise.all([
+      readFile(resolve(sharedMetadataRoot, 'ui/common.ts'), 'utf8'),
+      readFile(resolve(sharedMetadataRoot, 'ui/auth/ui-users.ts'), 'utf8'),
+      readFile(resolve(sharedMetadataRoot, 'ui/auth/ui-ext-auth-providers.ts'), 'utf8'),
+      readFile(resolve(sharedMetadataRoot, 'ui/principals/ui-principals.ts'), 'utf8'),
+      readFile(resolve(sharedMetadataRoot, 'ui/licensing/ui-licenses.ts'), 'utf8'),
+      readFile(
+        resolve(sharedMetadataRoot, 'ui/platforms/protocrm/applications/ui-applications.ts'),
+        'utf8',
+      ),
+    ]);
+
+    for (const source of sources) {
+      expect(source).not.toMatch(/tab\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*\[/);
+    }
+    expect(sources.join('\n')).not.toMatch(/\bfieldsFromContent\b/);
+    expect(sources.join('\n')).toContain('Ordered `content` is the sole declaration of');
+  });
 });

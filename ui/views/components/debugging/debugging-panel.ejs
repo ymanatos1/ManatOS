@@ -31,7 +31,7 @@
   const suppliedDebuggingComponent =
     typeof debuggingComponent !== 'undefined' ? debuggingComponent : null;
   const defaultSectionTrack = { statePath: 'activeInternalTabIds.debugging' };
-  const sectionDefinitions = Array.isArray(suppliedDebuggingComponent?.options?.sections)
+  const authoredSectionDefinitions = Array.isArray(suppliedDebuggingComponent?.options?.sections)
     ? suppliedDebuggingComponent.options.sections
     : [
         /* System pages that do not supply Debugging component metadata use the
@@ -40,6 +40,9 @@
         { id: 'entity', label: 'Entity', navigationTrack: defaultSectionTrack },
         { id: 'ui', label: 'UI', navigationTrack: defaultSectionTrack },
       ];
+  const sectionDefinitions = authoredSectionDefinitions.some((section) => section?.id === 'errors')
+    ? authoredSectionDefinitions
+    : [...authoredSectionDefinitions, { id: 'errors', label: 'Errors', navigationTrack: defaultSectionTrack }];
   const sectionRows = {
     cli: [],
     entity: entityDebuggingDisplayRows || [],
@@ -75,7 +78,8 @@
         aria-selected="<%= section.id === activeDebuggingScopeId ? 'true' : 'false' %>"
         data-navigation-track-path="<%= section.navigationTrack.statePath %>"
         data-navigation-track-value="<%= section.id %>"
-      ><%= section.label %></button>
+        <%= section.id === 'errors' ? 'data-debugging-errors-tab' : '' %>
+      ><%= section.label %><% if (section.id === 'errors') { %><span class="badge rounded-pill text-bg-danger ms-1 d-none" data-debugging-errors-count></span><% } %></button>
     </li>
   <% } %>
 </ul>
@@ -104,6 +108,23 @@
               : null,
           docked: false
         }) %>
+      <% } else if (section.id === 'errors') { %>
+      <div class="table-responsive debugging-calculations-wrap">
+        <table class="table table-sm align-middle mb-0 debugging-calculations-table">
+          <thead>
+            <tr>
+              <th scope="col">Phase</th>
+              <th scope="col">Expression</th>
+              <th scope="col">Error</th>
+            </tr>
+          </thead>
+          <tbody data-debugging-expression-errors>
+            <tr data-debugging-expression-errors-empty>
+              <td colspan="3" class="text-secondary py-3">No expression errors in this browser session.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <% } else { %>
       <div class="table-responsive debugging-calculations-wrap">
         <table class="table table-sm align-middle mb-0 debugging-calculations-table">
@@ -192,7 +213,7 @@
                     <td><code class="debugging-formula" data-debug-expression><%= debugRow.formula %></code></td>
                     <td
                       class="debugging-current-value"
-                      data-debug-calculation-value
+                      <% if (debugRow.runtimeEvaluation === 'entry') { %>data-debug-calculation-value<% } %>
                     ><%= debugRow.value %></td>
                   </tr>
                 <% } %>

@@ -3,7 +3,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { AppError, SysBOUserRole, type SysBOUser } from '@manatos/shared';
+import { AppError, SysBOUserRole, sysBOUsersUIMetadata, type SysBOUser } from '@manatos/shared';
 
 import { apiClient } from '../../src/api/client.js';
 import { createSysBORoutes } from '../../src/routes/sysbo/index.js';
@@ -134,14 +134,24 @@ function mockCapabilities(capabilities: {
   update: boolean;
   delete: boolean;
 }) {
-  return vi.spyOn(apiClient, 'get').mockResolvedValue({
-    success: true,
-    message: 'Capabilities resolved.',
-    data: {
-      sysBOKey: 'sys-users',
-      scope: 'record',
-      capabilities,
-    },
+  return vi.spyOn(apiClient, 'get').mockImplementation(async (path: string) => {
+    if (path.endsWith('/$metadata-ui')) {
+      return {
+        success: true,
+        message: 'UI metadata resolved.',
+        data: { metadataUI: sysBOUsersUIMetadata },
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Capabilities resolved.',
+      data: {
+        sysBOKey: 'sys-users',
+        scope: 'record',
+        capabilities,
+      },
+    };
   });
 }
 

@@ -4,6 +4,7 @@ import {
   allManatOSObjectMetadata,
   evaluateExpression,
   operationContext,
+  normalizeMetadataFieldValues,
   type SysBOCreateInput,
   type SysBOEntity,
   type SysBOMetadata,
@@ -403,25 +404,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
 
   /** Apply metadata-declared field normalization at the authoritative API boundary. */
   protected normalizeFields(values: Record<string, unknown>): Record<string, unknown> {
-    const candidate = { ...values };
-    for (const [key, field] of Object.entries(this.metadata.fieldDefinition)) {
-      const expression = field.normalize?.expression;
-      if (!expression || !Object.prototype.hasOwnProperty.call(candidate, key)) continue;
-      const value = candidate[key];
-      if (value === null || value === undefined || value === '') continue;
-      candidate[key] = evaluateExpression(
-        expression,
-        { value },
-        { value },
-        {
-          source: 'field-normalization',
-          sourcePath: `fieldDefinition.${key}.normalize`,
-          targetPath: key,
-          purpose: 'normalize field before persistence',
-        },
-      );
-    }
-    return candidate;
+    return normalizeMetadataFieldValues(this.metadata, values);
   }
 
   /** Whether this entity declares any calculated value that must be stored. */

@@ -787,6 +787,12 @@
       return;
     }
     parent[key] = value;
+    // Child UI levels can be opened after ctx-runtime startup. Install the same
+    // canonical entry.current/original + field.dirty mirrors used by bootstrap
+    // entry surfaces before observers react to the newly attached level.
+    if (/^ctx\.ui\.level(?:\.level)*$/.test(String(path || '')) && isObject(value)) {
+      installEntryMirrors();
+    }
     emit(operation, path, oldValue, value, cause);
   };
 

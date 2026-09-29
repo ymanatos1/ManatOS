@@ -107,6 +107,8 @@
       .map(([key, action]) => ({ key, ...action }))
       .filter((action) => action.visible !== false)
       .sort((left, right) => (left.order || 0) - (right.order || 0));
+    const startRowActions = rowActions.filter((action) => action.placement === 'start');
+    const endRowActions = rowActions.filter((action) => action.placement !== 'start');
     const rowActionClass = (action) => {
       const tone = action.tone || 'secondary';
       const outline = action.emphasis === 'outline';
@@ -151,13 +153,13 @@
     <div class="table-responsive">
       <table class="table table-hover align-middle">
         <thead>
-          <%- include('../sysbo/list/list-table-header', { selectorMode: false, metadata, metadataUI, query, rowActions }) %>
+          <%- include('../sysbo/list/list-table-header', { selectorMode: false, metadata, metadataUI, query, rowActions, startRowActions, endRowActions }) %>
         </thead>
 
         <tbody>
           <% if (!items.length) { %>
             <tr>
-              <td class="empty-table-state" colspan="<%= metadataUI.list.visibleFields.length + (rowActions.length ? 1 : 0) %>">
+              <td class="empty-table-state" colspan="<%= metadataUI.list.visibleFields.length + (startRowActions.length ? 1 : 0) + (endRowActions.length ? 1 : 0) %>">
                 <i class="bi bi-search"></i>
                 <strong>No entries found</strong>
                 <span>No existing entries match the current filter. Change or clear the filters.</span>
@@ -167,6 +169,15 @@
 
           <% for (const item of items) { %>
             <tr>
+              <% if (startRowActions.length) { %>
+                <td class="text-start text-nowrap">
+                  <div class="d-inline-flex gap-1">
+                    <% for (const action of startRowActions) { %>
+                      <%- include('../sysbo/list/list-row-action', { action, item, definition, rowActionClass, rowActionHref }) %>
+                    <% } %>
+                  </div>
+                </td>
+              <% } %>
               <%- include('../sysbo/list/list-row-cells', {
                 item,
                 metadata,
@@ -179,21 +190,11 @@
                 entryRepresentation: typeof entryRepresentations !== 'undefined' ? entryRepresentations.get(String(item.id || '')) : null,
                 selectorMode: false
               }) %>
-              <% if (rowActions.length) { %>
+              <% if (endRowActions.length) { %>
                 <td class="text-end">
                   <div class="d-inline-flex gap-1">
-                    <% for (const action of rowActions) { %>
-                      <% if (action.kind === 'navigate') { %>
-                        <a
-                          class="<%= rowActionClass(action) %>"
-                          href="<%= rowActionHref(action, item) %>"
-                          title="<%= action.title || action.label %>"
-                          aria-label="<%= action.title || action.label %>"
-                        >
-                          <% if (action.icon) { %><i class="bi bi-<%= action.icon %>" aria-hidden="true"></i><% } %>
-                          <span class="<%= action.icon ? 'd-none d-xl-inline ms-1' : '' %>"><%= action.label %></span>
-                        </a>
-                      <% } %>
+                    <% for (const action of endRowActions) { %>
+                      <%- include('../sysbo/list/list-row-action', { action, item, definition, rowActionClass, rowActionHref }) %>
                     <% } %>
                   </div>
                 </td>

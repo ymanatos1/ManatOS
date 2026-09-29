@@ -4,15 +4,15 @@ This document introduces the concepts that recur throughout ManatOS. It is inten
 
 ## Company
 
-The **Company** is the top-level ManatOS product/catalog owner. It contributes company-wide identity, branding, navigation, entity availability, and platform composition. Company-level capabilities are not tied to whichever platform is currently selected.
+**Company** is the top-level **technical catalog/composition scope** in the current domain model. It contributes the configured foundation-level catalog identity/branding, navigation, entity availability, and platform composition. Company-scope capabilities are not tied to whichever platform is currently selected.
 
-The current company catalog is ManatOS Software Solutions.
+This term describes a runtime/domain concept (`ctx.company`); it does **not** state or imply that ManatOS itself is a company or has any particular legal form. The currently configured Company catalog label is `ManatOS Software Solutions`.
 
 ## Platform
 
 A **Platform** is a coherent product/domain environment hosted by ManatOS. A platform contributes its own applications, navigation, entity exposure, and platform-specific behavior while using the common ManatOS foundations.
 
-**protoCRM** is currently the concrete platform. The company model is multi-platform even though only one platform is currently configured.
+**protoCRM** is currently the concrete platform. The technical Company composition model is multi-platform even though only one platform is currently configured.
 
 ## Application
 
@@ -24,7 +24,7 @@ An **Entity** is a business-object definition known to the generic ManatOS metad
 
 ## SysBO
 
-A **SysBO** (System Business Object) is a **system-owned entity naming/category convention**, currently used for ManatOS company entities and protoCRM platform system entities. Examples include company-owned Users, Principals, Licenses and External Authentication Providers, plus the protoCRM-owned Applications entity.
+A **SysBO** (System Business Object) is a **system-owned entity naming/category convention**, currently used for foundation-level Company-scope entities and protoCRM platform system entities. Examples include Company-scope Users, Principals, Licenses and External Authentication Providers, plus the protoCRM-owned Applications entity.
 
 `SysBO` is not a synonym for every entity. Future application-defined, non-systemic entities are expected to use the same generic entity infrastructure without acquiring the `SysBO` prefix merely because they share that infrastructure.
 
@@ -84,7 +84,7 @@ CTX is runtime state; it is not itself business persistence. Mutation/lifecycle 
 
 ## UI level
 
-A **UI level** is one node in the recursive active UI chain. Pages and popups use the same recursive model:
+A **UI level** is one node in the recursive active UI chain. Page, popup and embedded hosts use the same recursive model:
 
 ```text
 ctx.ui.level
@@ -92,11 +92,15 @@ ctx.ui.level
         +-- level
 ```
 
-Opening a child selector or popup adds a deeper level; it does not change which parent level owns the parent form's fields. This ownership distinction is important for correct field mutation and expression scope.
+Opening a child popup/selector or embedded child adds a deeper level; it does not change which parent level owns the parent form's fields. Popup children deactivate their parent while active; embedded children deliberately keep their parent active. This ownership distinction is important for correct field mutation and expression scope.
 
 ## Surface
 
 A **surface** is the internal runtime object represented publicly through a UI level. “Surface” is useful when discussing runtime ownership and lifecycle; the public CTX topology is the recursive UI-level chain rather than a second parallel surface tree.
+
+## UI view
+
+A **UI view** (`uiView`) is a named presentation of the same canonical entity record, not a new entity or surface host. A stable view key such as `main`, `account`, or `quick` selects a metadata contribution; `viewType` describes its presentation/interaction family such as `full` or `quick`. Common record UI metadata is composed with the selected view, so alternative views reuse canonical entity metadata, CTX/runtime behavior, validation and persistence semantics.
 
 ## Entry
 

@@ -171,6 +171,15 @@ describe('ManatOS expression parser/evaluator', () => {
     expect(evaluateTest('$', ctx, entryFields)).toBe(ctx);
     expect(evaluateTest('#.control.entityName', ctx, entryFields)).toBe('sysExtAuthProviders');
     expect(evaluateTest('#level.control.entityName', ctx, entryFields)).toBe('sysExtAuthProviders');
+
+    const embeddedEntry = {
+      ...entry,
+      control: { ...entry.control, id: 'embedded-entry', host: 'embedded' },
+    };
+    const embeddedCtx = { ...ctx, ui: { level: { ...list, level: embeddedEntry } } };
+    expect(evaluateTest('#level.control.entityName', embeddedCtx, embeddedEntry.fields)).toBe(
+      'sysExtAuthProviders',
+    );
     expect(
       evaluateTest(
         '$.entities.(#level.control.entityName).metadata.fieldDefinition.provider.enumItems[0].value',
@@ -366,10 +375,28 @@ describe('ManatOS expression parser/evaluator', () => {
     };
 
     expect(
-      evaluateTest("mode !== 'create' && user.fields.role.value === 'Admin'", ctx, ctx.page.fields),
+      evaluateTest(
+        "mode !== 'create' && $user.fields.role.value === 'Admin'",
+        ctx,
+        ctx.page.fields,
+      ),
     ).toBe(true);
-
-    expect(evaluateTest('false && missingVariable', ctx, ctx.page.fields)).toBe(false);
+    expect(evaluateTest("$user.fields.role.value === 'Admin'", ctx, ctx.page.fields)).toBe(true);
+    expect(
+      evaluateTest(
+        '$system.client.features.enabled === true',
+        {
+          system: { client: { features: { enabled: true } } },
+          page: { system: { client: { features: { enabled: false } } } },
+        },
+        { system: { client: { features: { enabled: false } } } },
+      ),
+    ).toBe(true);
+    expect(compileExpression('$system.client.features.enabled').ast).toMatchObject({
+      kind: 'variable',
+      members: ['$', 'system', 'client', 'features', 'enabled'],
+      absolute: true,
+    });
     expect(evaluateTest('true || missingVariable', ctx, ctx.page.fields)).toBe(true);
     expect(evaluateTest('!emailVerified', ctx, ctx.page.fields)).toBe(true);
   });
@@ -412,6 +439,10 @@ describe('ManatOS expression parser/evaluator', () => {
   it('parses function calls against the hard-coded registry and evaluates nested arguments', () => {
     const ctx = testCtx();
     expect(evaluateTest('SqRoot(9)', ctx, ctx.page.fields)).toBe(3);
+    expect(evaluateTest("Capitalize('yiannis')", ctx, ctx.page.fields)).toBe('Yiannis');
+    expect(evaluateTest("Capitalize('mCdonald')", ctx, ctx.page.fields)).toBe('MCdonald');
+    expect(evaluateTest("Capitalize('')", ctx, ctx.page.fields)).toBe('');
+    expect(evaluateTest('Capitalize(null)', ctx, ctx.page.fields)).toBeNull();
     expect(evaluateTest("StrFormat('{0} {1}', firstname, lastname)", ctx, ctx.page.fields)).toBe(
       'Yiannis Manatos',
     );

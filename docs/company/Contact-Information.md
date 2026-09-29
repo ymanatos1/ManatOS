@@ -1,6 +1,6 @@
 # Contact Information
 
-Reusable contact values and Principal links belong to the ManatOS company domain. Applications and platforms may consume them without taking ownership of their semantics.
+Reusable contact values and Principal links belong to the foundation-level Company domain. Applications and platforms may consume them without taking ownership of their semantics.
 
 Email addresses, telephone numbers and postal addresses are modeled as canonical reusable value entities plus Principal link relationships. This avoids storing the same normalized value repeatedly when it is associated with multiple owners and gives relationship semantics an explicit home.
 

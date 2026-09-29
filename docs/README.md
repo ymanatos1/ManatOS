@@ -4,25 +4,27 @@ The ManatOS documentation is organized **by subject, not by audience**. Architec
 
 The repository [`README.md`](../README.md) is the self-contained technical overview: it deliberately explains every major subsystem in enough depth to stand alone. This page is the navigation layer for going deeper.
 
+Throughout the documentation, **ManatOS is a technology foundation**. `Company` refers to a technical domain/catalog scope in the implemented model, not to the legal or organizational form of ManatOS.
+
 ## Subject map
 
-| Subject | What it owns |
-| --- | --- |
-| [`overview/`](overview/) | ManatOS orientation, concepts, system map, glossary and terminology. |
-| [`system/`](system/) | Whole-system architecture/runtime, principles, configuration, administration and errors. |
-| [`context/`](context/) | CTX architecture/model, client/API ownership, mutation/events, catalogs and runtime reference. |
-| [`metadata/`](metadata/) | Canonical and client/UI metadata architecture, model, catalogs and extension. |
-| [`entities/`](entities/) | Entity model, lists, entries, fields, relationships, components, validation, selectors and hierarchies. |
-| [`expressions/`](expressions/) | Expression language/evaluator, AST ownership, functions, dependencies, events and reactivity. |
-| [`clients/`](clients/) | Portable client contracts, surfaces, navigation and current/future client implementations. |
-| [`api/`](api/) | API architecture, entity/query/command contracts, capabilities, errors and OpenAPI. |
-| [`security/`](security/) | Authentication, authorization, roles, scoping, capability projection and security guidance. |
-| [`storage/`](storage/) | Adapters, families, capabilities, strategies, schema, calculations and configuration lifecycle. |
-| [`diagnostics/`](diagnostics/) | API Traffic, request correlation, logs, API CTX, Storage CTX and troubleshooting. |
-| [`company/`](company/) | Users, Principals, organizations, contacts, licenses and external authentication providers. |
-| [`platforms/`](platforms/) | Platform/application composition, application design and protoCRM. |
-| [`development/`](development/) | Repository setup, build/run/test workflow, coding principles, extension points and documentation standards. |
-| [`diagrams/`](diagrams/) | Cross-system architecture diagrams and combined architecture PDF. |
+| Subject                        | What it owns                                                                                                                |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| [`overview/`](overview/)       | ManatOS orientation, concepts, system map, glossary and terminology.                                                        |
+| [`system/`](system/)           | Whole-system architecture/runtime, principles, configuration, administration and errors.                                    |
+| [`context/`](context/)         | CTX architecture/model, client/API ownership, mutation/events, catalogs and runtime reference.                              |
+| [`metadata/`](metadata/)       | Canonical and client/UI metadata architecture, model, catalogs and extension.                                               |
+| [`entities/`](entities/)       | Entity model, lists, entries, fields, relationships, components, validation, selectors and hierarchies.                     |
+| [`expressions/`](expressions/) | Expression language/evaluator, AST ownership, functions, dependencies, events and reactivity.                               |
+| [`clients/`](clients/)         | Portable client contracts, surfaces, navigation and current/future client implementations.                                  |
+| [`api/`](api/)                 | API architecture, entity/query/command contracts, capabilities, errors and OpenAPI.                                         |
+| [`security/`](security/)       | Authentication, authorization, roles, scoping, capability projection and security guidance.                                 |
+| [`storage/`](storage/)         | Adapters, families, capabilities, strategies, schema, calculations and configuration lifecycle.                             |
+| [`diagnostics/`](diagnostics/) | API Traffic, request correlation, logs, API CTX, Storage CTX and troubleshooting.                                           |
+| [`company/`](company/)         | Technical Company-domain scope: Users, Principals, organizations, contacts, licenses and external authentication providers. |
+| [`platforms/`](platforms/)     | Platform/application composition, application design and protoCRM.                                                          |
+| [`development/`](development/) | Repository setup, build/run/test workflow, coding principles, extension points and documentation standards.                 |
+| [`diagrams/`](diagrams/)       | Cross-system architecture diagrams and combined architecture PDF.                                                           |
 
 ## Reading routes
 

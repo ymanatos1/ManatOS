@@ -1,6 +1,6 @@
 # Platform Model
 
-A platform is a product/domain contribution inside the company context. It provides a stable identity together with platform-specific navigation, presentation, entity availability and application capabilities while reusing the common runtime, security and persistence foundations.
+A platform is a product/domain contribution inside the foundation-level Company context. It provides a stable identity together with platform-specific navigation, presentation, entity availability and application capabilities while reusing the common runtime, security and persistence foundations.
 
 ## What a platform owns
 

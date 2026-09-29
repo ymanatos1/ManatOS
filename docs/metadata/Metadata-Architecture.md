@@ -38,6 +38,12 @@ UI metadata describes framework-neutral presentation and interaction composition
 
 UI metadata does not own the persisted meaning of a field or relationship.
 
+### Named entry UI views
+
+One entity can expose multiple keyed entry UI views over the same canonical record. Common `record` UI metadata is shared; a selected view contributes only its presentation differences. The view key (`main`, `quickView`, `quick`, ...) is concrete identity, while `viewType` (`full`, `quick`, ...) describes the presentation family.
+
+View selection is independent of the UI host. Page, popup and embedded describe hosting/lifecycle; a UI view describes which record presentation is composed. See [Entity UI Views](UI-Views.md).
+
 ## Metadata flow
 
 ```text
@@ -57,7 +63,7 @@ The same canonical metadata is exposed through the API so the UI server does not
 
 ## Generic entity infrastructure versus SysBO
 
-`SysBO` is a naming/category convention for system-owned business objects belonging to ManatOS company scope or platform scope. It is **not** the name of the generic entity framework.
+`SysBO` is a naming/category convention for system-owned business objects belonging to foundation-level Company scope or platform scope. It is **not** the name of the generic entity framework.
 
 The reusable infrastructure should therefore be described as entity infrastructure, metadata-driven entity runtime, or business-object infrastructure depending context.
 
@@ -111,9 +117,9 @@ A registry should compose definitions, not become a switch statement full of pro
 
 ## Platform contributions
 
-Company and platform layers can contribute metadata-driven entities and presentation/navigation behavior. Ownership remains explicit: Users, Principals, Licenses and External Authentication Providers are company-owned; Applications is currently protoCRM platform-owned.
+Company and platform layers can contribute metadata-driven entities and presentation/navigation behavior. Ownership remains explicit: Users, Principals, Licenses and External Authentication Providers are foundation-level Company-domain entities; Applications is currently protoCRM platform-owned.
 
-Platform composition must not move company entities under protoCRM merely because protoCRM consumes their services/licensing.
+Platform composition must not move Company-domain entities under protoCRM merely because protoCRM consumes their services/licensing.
 
 ## Expressions in metadata
 

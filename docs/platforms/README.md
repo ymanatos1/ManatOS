@@ -1,6 +1,6 @@
 # Platforms and Applications
 
-Composition above the ManatOS company foundation: platform/application ownership, application model/design principles, metadata-driven application design and the current protoCRM area.
+Composition above the foundation-level Company domain: platform/application ownership, application model/design principles, metadata-driven application design and the current protoCRM area.
 
 ## Reading map
 

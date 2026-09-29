@@ -96,7 +96,7 @@ Developer-tool presentation tests protect the one-dock/multi-tab architecture, t
 
 These tests deliberately stop short of pretending to be a real browser. Playwright remains the planned complementary layer for a small number of high-value end-to-end browser workflows.
 
-Aggregate workspace coverage also verifies the atomic Commit contract: temporary `draft:*` identities are mapped to persisted ids, same-entity draft references are rewritten before persistence, owner baselines drive update/delete detection, and the resulting persisted derived hierarchy fields settle inside the same transaction. UI presentation tests separately protect browser-only Close/draft-checkpoint behavior and ensure `recordQuick`/owner child edits do not cross the API boundary.
+Aggregate workspace coverage also verifies the atomic Commit contract: temporary `draft:*` identities are mapped to persisted ids, same-entity draft references are rewritten before persistence, owner baselines drive update/delete detection, and the resulting persisted derived hierarchy fields settle inside the same transaction. UI presentation tests separately protect browser-only Close/draft-checkpoint behavior and ensure quick-UI-view/owner child edits do not cross the API boundary.
 
 ## Global API response contract
 

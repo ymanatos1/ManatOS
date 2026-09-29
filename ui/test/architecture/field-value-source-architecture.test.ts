@@ -30,9 +30,9 @@ describe('canonical field type / value-source architecture', () => {
 
   it('defines renderable calculations on canonical typed fields rather than a parallel derivedFields catalogue', async () => {
     const types = await shared('src/metadata/bo/types.ts');
-    const identity = await shared('src/metadata/bo/identity.ts');
-    const business = await shared('src/metadata/bo/business.ts');
-    const contact = await shared('src/metadata/bo/contact.ts');
+    const identity = await shared('src/metadata/bo/auth/bo-users.ts');
+    const business = await shared('src/metadata/bo/principals/bo-principals.ts');
+    const contact = await shared('src/metadata/bo/contacts/bo-addresses.ts');
 
     expect(types).toContain('calculation?: Readonly<SysBOFieldCalculationMetadata>');
     expect(types).toContain('persisted?: boolean');
@@ -71,8 +71,9 @@ describe('canonical field type / value-source architecture', () => {
     expect(formRuntime).not.toContain(
       "form.querySelectorAll('[data-field-calculation-expression]')",
     );
-    expect(formRuntime).toContain('const entryPagePath = leafPagePath();');
-    expect(formRuntime).toContain('const entryPageFieldsPath = entryPagePath');
+    expect(formRuntime).toContain('const entryPagePath = form.dataset.ctxScopePath || null;');
+    expect(formRuntime).toContain('const entryPageFieldsPath = `${entryPagePath}.fields`;');
+    expect(formRuntime).toContain("surfaceRuntime.register('reactive-entry-form', install);");
     expect(formRuntime).toContain('const pagePath = entryPagePath;');
     expect(formRuntime).not.toContain('data-ctx-calculated-field');
     expect(fieldRuntime).toContain('const setFieldValue =');
@@ -122,7 +123,7 @@ describe('canonical field type / value-source architecture', () => {
 
   it('keeps create-page representation tolerant of incomplete records and clears Person principal names', async () => {
     const supplemental = await ui('src/routes/sysbo/entry/supplemental-data.ts');
-    const business = await shared('src/metadata/bo/business.ts');
+    const business = await shared('src/metadata/bo/principals/bo-principals.ts');
 
     expect(supplemental).toContain('const entryRepresentation = isNew');
     expect(supplemental).toContain('? null');

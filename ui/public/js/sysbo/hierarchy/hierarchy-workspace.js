@@ -6,17 +6,7 @@
   if (!runtime || !(workspace instanceof HTMLElement)) return;
 
   const component = workspace.querySelector('[data-metadata-component="hierarchy-tree"]');
-  const quickHost = workspace.querySelector('[data-hierarchy-record-quick-host]');
-  const quick = quickHost?.querySelector('[data-record-quick]');
-  if (
-    !(component instanceof HTMLElement) ||
-    !(quickHost instanceof HTMLElement) ||
-    !(quick instanceof HTMLElement)
-  )
-    return;
-
-  const quickSave = quick.querySelector('[data-record-quick-commit]');
-  const quickState = quick.querySelector('[data-record-quick-state]');
+  if (!(component instanceof HTMLElement)) return;
 
   const activeUiLevelPath = () => {
     let node = runtime.value?.ui?.level;
@@ -148,13 +138,32 @@
 
   let draft = null;
   let savedDraftSignature = null;
-  let quickBaseline = null;
+  let releaseInlineInputBlock = null;
+  let releaseCommitInputBlock = null;
+  let inlineInputBlocked = false;
+
+  const blockInlineUserInput = () => {
+    if (inlineInputBlocked) return;
+    inlineInputBlocked = true;
+    releaseInlineInputBlock = window.ManatOS?.uiHost?.setUserInputBlocked?.(
+      pagePath,
+      'hierarchy-inline-edit',
+      true,
+    );
+  };
+  const releaseInlineUserInput = () => {
+    if (!inlineInputBlocked) return;
+    inlineInputBlocked = false;
+    releaseInlineInputBlock?.();
+    releaseInlineInputBlock = null;
+  };
   const memberCount = workspace.querySelector('[data-hierarchy-member-count]');
   const incompleteIndicator = workspace.querySelector('[data-hierarchy-incomplete]');
   const hierarchyName = workspace.querySelector('[data-hierarchy-name]');
   const hierarchyClose = workspace.querySelector('[data-hierarchy-close]');
   const hierarchyEditExit = workspace.querySelector('[data-hierarchy-edit-exit]');
   const hierarchyCommit = workspace.querySelector('[data-hierarchy-commit]');
+  const hierarchyDraftHelp = workspace.querySelector('[data-hierarchy-draft-help]');
   const hierarchyDraftStatus = workspace.querySelector('[data-hierarchy-draft-status]');
   const hierarchySaveDraft = workspace.querySelector('[data-hierarchy-save-draft]');
   const hierarchyClearAll = workspace.querySelector('[data-hierarchy-clear-all]');
@@ -329,8 +338,9 @@
     }
     const matchesSavedDraft =
       Boolean(savedDraftSignature) && workspaceDraftSignature(rows) === savedDraftSignature;
+    const userInputReady = window.ManatOS?.uiHost?.isUserInputReady?.(pagePath) !== false;
     if (hierarchyClose instanceof HTMLButtonElement) {
-      hierarchyClose.disabled = Boolean(draft);
+      hierarchyClose.disabled = !userInputReady;
       hierarchyClose.title = draft
         ? 'Finish or cancel the current inline edit first.'
         : matchesSavedDraft
@@ -344,7 +354,7 @@
       hierarchyEditExit.title = dirty
         ? 'Discard the current organization changes and close.'
         : 'Close this organization.';
-      hierarchyEditExit.disabled = Boolean(draft);
+      hierarchyEditExit.disabled = !userInputReady;
     }
     if (hierarchyCommit instanceof HTMLButtonElement) {
       hierarchyCommit.disabled = !state.complete || !dirty || Boolean(draft);
@@ -355,6 +365,11 @@
           : !dirty
             ? 'No changes to commit.'
             : 'Commit all organization members and relationships atomically.';
+    }
+    if (hierarchyDraftHelp instanceof HTMLElement) {
+      // Create Organization is the deliberate normal-navigation draft exception.
+      // The hint is useful only once the chart actually contains uncommitted work.
+      hierarchyDraftHelp.hidden = hierarchyMode !== 'create' || rows.length === 0;
     }
     if (hierarchyClearAll instanceof HTMLButtonElement) {
       hierarchyClearAll.disabled = !rows.length || Boolean(draft);
@@ -377,143 +392,101 @@
     setRuntimeValue(`${pagePath}.control.state.blocked`, Boolean(draft), 'hierarchy-blocked');
   };
 
-  const clearQuick = () => {
-    quick.querySelectorAll('[name]').forEach((control) => {
-      if (control instanceof HTMLInputElement && control.type === 'checkbox') {
-        control.checked = control.defaultChecked;
-      } else if (control instanceof HTMLSelectElement) {
-        const defaultIndex = [...control.options].findIndex((option) => option.defaultSelected);
-        control.selectedIndex = defaultIndex >= 0 ? defaultIndex : 0;
-        control.dispatchEvent(new Event('change', { bubbles: true }));
-      } else if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) {
-        control.value = control.defaultValue || '';
-      }
-    });
+  const finishQuickUi = () => {
+    draft = null;
+    releaseInlineUserInput();
+    delete component.dataset.hierarchyEditingId;
+    workspace.classList.remove('is-quick-editing');
+    refreshWorkspaceSummary();
   };
 
-  const quickValues = () => {
-    const result = {};
-    quick.querySelectorAll('[name]').forEach((control) => {
-      if (!(
-        control instanceof HTMLInputElement ||
-        control instanceof HTMLSelectElement ||
-        control instanceof HTMLTextAreaElement
-      ))
-        return;
-      result[control.name] =
-        control instanceof HTMLInputElement && control.type === 'checkbox'
-          ? control.checked
-          : control.value;
-    });
-    return result;
-  };
-
-  const quickIsComplete = () =>
-    [...quick.querySelectorAll('[name]')]
-      .filter(
-        (control) =>
-          control instanceof HTMLInputElement ||
-          control instanceof HTMLSelectElement ||
-          control instanceof HTMLTextAreaElement,
-      )
-      .every(
-        (control) =>
-          control.disabled ||
-          typeof control.checkValidity !== 'function' ||
-          control.checkValidity(),
-      );
-
-  const quickIsDirty = () => {
-    if (!quickBaseline) return false;
-    return JSON.stringify(quickValues()) !== JSON.stringify(quickBaseline);
-  };
-
-  const refreshQuickState = () => {
-    const dirty = quickIsDirty();
-    const complete = quickIsComplete();
-    if (quickSave instanceof HTMLButtonElement) quickSave.disabled = !(draft && dirty && complete);
-    if (quickState instanceof HTMLElement) {
-      quickState.textContent = !dirty
-        ? 'No changes'
-        : complete
-          ? 'Ready'
-          : 'Complete required fields';
-      quickState.classList.toggle('text-warning-emphasis', dirty && !complete);
-      quickState.classList.toggle('text-secondary', !dirty || complete);
-    }
-  };
-
-  const provisionalHost = document.createElement('div');
-  provisionalHost.className = 'metadata-hierarchy-provisional';
-  provisionalHost.hidden = true;
-  // Keep the quick editor outside hierarchy-tree's redraw-owned DOM. The tree
-  // freely rebuilds its content from CTX; an overlay owned by the workspace must
-  // survive those redraws while a draft record is being edited.
-  workspace.append(provisionalHost);
-
-  const provisionalFallbackLabel = () => {
-    if (!draft) return `(New ${entityLabel})`;
-    const target = draft.targetId ? find(draft.targetId) : null;
-    const targetLabel = String(resolveEntryName(target) || '').trim();
-    if (!targetLabel) return `(New ${entityLabel})`;
-    if (draft.command === 'add-child') return `(New ${targetLabel} child)`;
-    if (draft.command === 'add-sibling') return `(New ${targetLabel} sibling)`;
-    if (draft.command === 'add-parent') return `(New ${targetLabel} parent)`;
-    return `(New ${entityLabel})`;
-  };
-
-  const provisionalLabel = () => {
-    if (!draft) return provisionalFallbackLabel();
-    const preview = { ...draft.row, ...quickValues() };
-    const value = String(resolveEntryName(preview) || '').trim();
-    return value || provisionalFallbackLabel();
-  };
-
-  const refreshProvisionalLabel = () => {
-    const label = provisionalHost.querySelector('[data-hierarchy-provisional-label]');
-    if (label instanceof HTMLElement) label.textContent = provisionalLabel();
-  };
-
-  const positionQuick = () => {
+  const cancelQuick = () => {
     if (!draft) return;
-    const content = component.querySelector('[data-hierarchy-tree-content]');
-    if (!(content instanceof HTMLElement)) return;
-    if (provisionalHost.parentElement !== workspace) workspace.append(provisionalHost);
+    const cancelledId = draft.id;
+    finishQuickUi();
+    replaceEntries(
+      entries()
+        .filter((entry) => String(entry?.[idField] ?? '') !== String(cancelledId))
+        .map((entry) => ({ ...entry })),
+      'cancel-quick',
+    );
+  };
 
-    const target = draft.targetId
-      ? component.querySelector(
-          `[data-hierarchy-node-id="${CSS.escape(draft.targetId)}"] .metadata-hierarchy-node-row`,
-        )
-      : null;
-    const workspaceRect = workspace.getBoundingClientRect();
-    const contentRect = content.getBoundingClientRect();
-    const targetRect = target instanceof HTMLElement ? target.getBoundingClientRect() : null;
-    const left = targetRect
-      ? targetRect.left - workspaceRect.left + targetRect.width / 2
-      : contentRect.left - workspaceRect.left + contentRect.width / 2;
-    const top = targetRect
-      ? targetRect.bottom - workspaceRect.top + 12
-      : contentRect.top - workspaceRect.top + Math.max(28, contentRect.height / 2 - 40);
+  const acceptQuickRecord = (record) => {
+    if (!draft || !record || typeof record !== 'object') return false;
+    const active = draft;
+    const id = active.id;
+    let next = entries().map((entry) =>
+      String(entry?.[idField] ?? '') === String(id)
+        ? { ...entry, ...record, [idField]: id }
+        : { ...entry },
+    );
+    if (active.command === 'add-parent' && active.targetId) {
+      next = next.map((entry) =>
+        String(entry?.[idField] ?? '') === String(active.targetId)
+          ? { ...entry, [parentField]: id }
+          : entry,
+      );
+    }
+    finishQuickUi();
+    replaceEntries(next, 'save-quick');
+    return true;
+  };
 
-    provisionalHost.style.left = `${Math.max(16, left)}px`;
-    provisionalHost.style.top = `${Math.max(16, top)}px`;
-    const firstShow = provisionalHost.hidden || quickHost.hidden;
-    if (!provisionalHost.querySelector('[data-hierarchy-provisional-label]')) {
-      const labelNode = document.createElement('div');
-      labelNode.className = 'metadata-hierarchy-provisional-node';
-      labelNode.innerHTML = '<span data-hierarchy-provisional-label></span>';
-      provisionalHost.replaceChildren(labelNode);
-    }
-    refreshProvisionalLabel();
-    if (quickHost.parentElement !== provisionalHost) provisionalHost.append(quickHost);
-    provisionalHost.hidden = false;
-    quickHost.hidden = false;
-    if (firstShow) {
-      requestAnimationFrame(() => {
-        quick.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus();
-        refreshQuickState();
-      });
-    }
+  const quickPopupTitle = (command, current) => {
+    const targetLabel = String(resolveEntryName(current) || '').trim();
+    if (command === 'add-child' && targetLabel) return `Create ${entityLabel} under ${targetLabel}`;
+    if (command === 'add-sibling' && targetLabel) return `Create ${targetLabel} sibling`;
+    if (command === 'add-parent' && targetLabel) return `Create parent for ${targetLabel}`;
+    return `Create ${entityLabel}`;
+  };
+
+  const openQuickPopup = (activeDraft, current) => {
+    const entryOpening = window.ManatOS?.entryOpening;
+    if (!entryOpening?.open) throw new Error('Canonical entry opener is unavailable.');
+
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const ownerFields = { ...(resolveCanonical(`${pagePath}.resources.workspace`) || {}) };
+    const ownerRows = entries().map((entry) => ({ ...entry }));
+    const ownerOriginalRows = originalEntries().map((entry) => ({ ...entry }));
+    const url = `/bo/${encodeURIComponent(entityKey)}/owned-entry/${encodeURIComponent(activeDraft.id)}`;
+
+    return entryOpening.open({
+      host: 'popup',
+      target: { entityKey, url },
+      title: quickPopupTitle(activeDraft.command, current),
+      mode: 'create',
+      purpose: 'hierarchy-quick-entry',
+      uiViewKey: 'quick',
+      behavior: { recoverable: false },
+      presentation: {
+        layout: 'quick',
+        entryDensity: 'compact',
+        autoCloseOnBackdrop: true,
+        anchorToTrigger: true,
+      },
+      request: {
+        method: 'POST',
+        fields: {
+          _csrf: csrf,
+          _ownerEntryMode: 'create',
+          _ownerEntries: JSON.stringify(ownerRows),
+          _ownerEntriesOriginal: JSON.stringify(ownerOriginalRows),
+          _ownerFields: JSON.stringify(ownerFields),
+          _ownerName: String(page?.control?.name || 'organization'),
+          _ownerKind: String(page?.control?.kind || 'sysbo-hierarchy'),
+          _ownerMode: String(page?.control?.mode || 'edit'),
+          _ownerIdentityField: idField,
+          _ownerFocusedMemberId: activeDraft.id,
+        },
+      },
+      onSaved: (result) => {
+        if (!acceptQuickRecord(result?.record) && draft?.id === activeDraft.id) cancelQuick();
+      },
+      onClose: (result) => {
+        if (result?.outcome !== 'saved' && draft?.id === activeDraft.id) cancelQuick();
+      },
+    });
   };
 
   const beginQuick = (command, memberId = null) => {
@@ -541,65 +514,18 @@
       targetId: current ? String(current[idField]) : null,
       row,
     };
-    // The owner collection owns every working record, including the provisional
-    // one. Keep it in entries[] immediately, but tell the visualizer to exclude
-    // that editing id from layout until Quick Save commits it. This preserves a
-    // complete owner CTX without moving any existing nodes during inline edit.
+
+    // The provisional record belongs to the hierarchy working collection from
+    // the moment editing begins. The generic popup edits that owner-managed row;
+    // it never creates a shadow quickEntry object or persists independently.
     component.dataset.hierarchyEditingId = id;
     replaceEntries([...entries().map((entry) => ({ ...entry })), row], 'begin-quick');
-    clearQuick();
-    quickBaseline = quickValues();
     workspace.classList.add('is-quick-editing');
+    blockInlineUserInput();
     refreshWorkspaceSummary();
-    refreshQuickState();
-    requestAnimationFrame(positionQuick);
-  };
 
-  const finishQuickUi = () => {
-    draft = null;
-    quickBaseline = null;
-    delete component.dataset.hierarchyEditingId;
-    provisionalHost.hidden = true;
-    provisionalHost.replaceChildren();
-    quickHost.hidden = true;
-    workspace.append(quickHost);
-    workspace.classList.remove('is-quick-editing');
-    refreshQuickState();
-    refreshWorkspaceSummary();
-  };
-
-  const cancelQuick = () => {
-    if (!draft) return;
-    const cancelledId = draft.id;
-    finishQuickUi();
-    replaceEntries(
-      entries()
-        .filter((entry) => String(entry?.[idField] ?? '') !== String(cancelledId))
-        .map((entry) => ({ ...entry })),
-      'cancel-quick',
-    );
-  };
-
-  const saveQuick = () => {
-    if (!draft || !quickIsDirty() || !quickIsComplete()) {
-      refreshQuickState();
-      return;
-    }
-    const values = quickValues();
-    const active = draft;
-    const id = active.id;
-    let next = entries().map((entry) =>
-      String(entry?.[idField] ?? '') === String(id)
-        ? { ...active.row, ...entry, ...values, [idField]: id }
-        : { ...entry },
-    );
-    if (active.command === 'add-parent' && active.targetId) {
-      next = next.map((entry) =>
-        String(entry[idField]) === active.targetId ? { ...entry, [parentField]: id } : entry,
-      );
-    }
-    finishQuickUi();
-    replaceEntries(next, 'save-quick');
+    const opened = openQuickPopup(draft, current);
+    if (!opened) cancelQuick();
   };
 
   const metaValue = (name, fallback) =>
@@ -805,11 +731,6 @@
 
   const closeWorkspace = () => {
     if (draft) return;
-    const rows = entries();
-    const matchesSavedDraft =
-      Boolean(savedDraftSignature) && workspaceDraftSignature(rows) === savedDraftSignature;
-    const saved = matchesSavedDraft || saveWorkspaceDraft();
-    if (!saved && rows.length) return;
     window.location.assign(
       workspace.dataset.hierarchyCloseHref || `/bo/${encodeURIComponent(entityKey)}`,
     );
@@ -967,6 +888,12 @@
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     hierarchyCommit.disabled = true;
     hierarchyCommit.dataset.busy = 'true';
+    releaseCommitInputBlock = window.ManatOS?.uiHost?.setUserInputBlocked?.(
+      pagePath,
+      'hierarchy-commit',
+      true,
+    );
+    refreshWorkspaceSummary();
     try {
       const response = await fetch(`/bo/${encodeURIComponent(entityKey)}/hierarchy/commit`, {
         method: 'POST',
@@ -1002,6 +929,7 @@
       window.location.assign(
         workspace.dataset.hierarchyCloseHref || `/bo/${encodeURIComponent(entityKey)}`,
       );
+      return true;
     } catch (error) {
       hierarchyCommit.disabled = false;
       if (error?.manatosPresented !== true) {
@@ -1015,10 +943,26 @@
           { retry: () => commitWorkspace() },
         );
       }
+      return false;
     } finally {
       delete hierarchyCommit.dataset.busy;
+      releaseCommitInputBlock?.();
+      releaseCommitInputBlock = null;
+      refreshWorkspaceSummary();
     }
   };
+
+  const workspaceDismissControl = hierarchyMode === 'create' ? hierarchyClose : hierarchyEditExit;
+  const unregisterWorkspaceDismiss =
+    pagePath && workspaceDismissControl instanceof HTMLButtonElement
+      ? window.ManatOS?.popup?.runtime?.registerDismissHandler?.({ path: pagePath }, () => {
+          workspaceDismissControl.click();
+          return true;
+        })
+      : null;
+  if (typeof unregisterWorkspaceDismiss === 'function') {
+    window.addEventListener('pagehide', unregisterWorkspaceDismiss, { once: true });
+  }
 
   if (pagePath && window.ManatOS?.uiHost?.registerRecoveryAdapter) {
     window.ManatOS.uiHost.registerRecoveryAdapter(pagePath, {
@@ -1046,6 +990,33 @@
         }
         refreshWorkspaceSummary();
         return true;
+      },
+      verifyUserChanges(changes) {
+        if (!changes || changes.format !== 'hierarchy-commit-v1' || !Array.isArray(changes.entries))
+          return false;
+        if (!hierarchyModel.sameRows(entries(), changes.entries)) return false;
+        if (
+          Array.isArray(changes.entriesOriginal) &&
+          !hierarchyModel.sameRows(originalEntries(), changes.entriesOriginal)
+        )
+          return false;
+        return true;
+      },
+      cancellationPresentation() {
+        if (hierarchyMode !== 'create') return null;
+        return {
+          message:
+            'You have unsaved Create Organization changes. Keep the browser draft and continue later, or Commit them now.',
+          discardLabel: 'Keep draft & leave',
+          saveLabel: 'Commit',
+        };
+      },
+      async discardUserChanges() {
+        if (hierarchyMode !== 'create') return true;
+        return saveWorkspaceDraft();
+      },
+      async saveUserChanges() {
+        return commitWorkspace();
       },
       async prepareGentleClose() {
         replaceOriginalEntries(
@@ -1122,16 +1093,6 @@
     }
   });
 
-  quick.addEventListener('input', () => {
-    refreshQuickState();
-    if (draft) refreshProvisionalLabel();
-  });
-  quick.addEventListener('change', () => {
-    refreshQuickState();
-    if (draft) refreshProvisionalLabel();
-  });
-  quick.querySelector('[data-record-quick-cancel]')?.addEventListener('click', cancelQuick);
-  quickSave?.addEventListener('click', saveQuick);
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && draft) {
       event.preventDefault();
@@ -1141,9 +1102,7 @@
   runtime.trackSubscriber?.('*', { kind: 'hierarchy', label: 'Hierarchy workspace' });
   window.addEventListener(runtime.eventName || 'manatos:ctx-change', () => {
     refreshWorkspaceSummary();
-    if (draft) requestAnimationFrame(positionQuick);
   });
   if (draftSupported) restoreWorkspaceDraft();
   refreshWorkspaceSummary();
-  refreshQuickState();
 })();

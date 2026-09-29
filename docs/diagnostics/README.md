@@ -14,3 +14,5 @@ End-to-end observability across client and API: API Traffic, request identity, O
 This subject deliberately links to, rather than duplicates, the full detail owned by adjacent subjects: [`context/`](../context/), [`api/`](../api/), [`storage/`](../storage/), [`clients/`](../clients/).
 
 Return to the [documentation map](../README.md) or the [repository overview](../../README.md).
+
+Debugger presentation/workspace state is not semantic CTX. Some coordinates are intentionally browser-persistent, while API Traffic transient state is boot-scoped; see [Developer Tools](Developer-Tools.md) and [Diagnostics and Observability Architecture](Diagnostics-and-Observability-Architecture.md).

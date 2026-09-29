@@ -2,26 +2,63 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { sysBOExtAuthProvidersUIMetadata } from '../../../shared/src/metadata/ui/auth/ui-ext-auth-providers.js';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const source = (path: string) => readFile(resolve(testDirectory, '..', '..', path), 'utf8');
 
 describe('external authentication provider metadata-driven editor', () => {
-  it('declares provider General help and Secrets through reusable metadata components', async () => {
-    const metadata = await source('../shared/src/metadata/ui/identity.ts');
-    expect(metadata).toContain("key: 'contextual-help'");
-    expect(metadata).toContain("itemsDataKey: 'providerDefinitions'");
-    expect(metadata).toContain("component: { key: 'provider-credentials', readOnly: false }");
-    expect(metadata).toContain("contentKey: 'secretsHelp'");
-    expect(metadata).toContain('collapsible: true');
-    expect(metadata.match(/initiallyCollapsed: true/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(metadata).toContain("{ kind: 'field', field: 'callbackPath', span: 12 }");
-    expect(metadata).not.toContain("#level.fields.provider.value === 'microsoft' ? 6 : 12");
-    expect(metadata).toContain('editable: { expression: "mode === \'create\'" }');
-    expect(metadata).toContain("#level.fields.provider.value === 'microsoft'");
-    expect(metadata).not.toContain('expression: "provider.value');
-    expect(metadata).not.toContain("expression: 'provider.value");
+  it('declares provider General help and Secrets through reusable metadata components', () => {
+    const tabs = sysBOExtAuthProvidersUIMetadata.record?.tabs ?? [];
+    const general = tabs.find((tab) => tab.id === 'general');
+    const secrets = tabs.find((tab) => tab.id === 'secrets');
+    const generalContent = general?.content ?? [];
+    const secretsContent = secrets?.content ?? [];
+
+    expect(generalContent).toContainEqual(
+      expect.objectContaining({ kind: 'field', field: 'callbackPath', span: 12 }),
+    );
+
+    const generalHelp = generalContent.find(
+      (item) => item.kind === 'component' && item.component?.key === 'contextual-help',
+    );
+    expect(generalHelp?.component).toEqual(
+      expect.objectContaining({
+        readOnly: true,
+        options: expect.objectContaining({
+          itemsDataKey: 'providerDefinitions',
+          contentKey: 'generalHelp',
+          collapsible: true,
+          initiallyCollapsed: true,
+        }),
+      }),
+    );
+
+    const credentials = secretsContent.find(
+      (item) => item.kind === 'component' && item.component?.key === 'provider-credentials',
+    );
+    expect(credentials?.component).toEqual(
+      expect.objectContaining({ key: 'provider-credentials', readOnly: false }),
+    );
+
+    const secretsHelp = secretsContent.find(
+      (item) => item.kind === 'component' && item.component?.key === 'contextual-help',
+    );
+    expect(secretsHelp?.component?.options).toEqual(
+      expect.objectContaining({
+        contentKey: 'secretsHelp',
+        collapsible: true,
+        initiallyCollapsed: true,
+      }),
+    );
+
+    expect(sysBOExtAuthProvidersUIMetadata.record?.fieldOverrides?.provider?.editable).toEqual({
+      expression: "mode === 'create'",
+    });
+    expect(sysBOExtAuthProvidersUIMetadata.record?.fieldOverrides?.tenant?.visible).toEqual({
+      expression: "provider === 'microsoft'",
+    });
   });
 
   it('keeps canonical provider fields on the dispatcher and transient secrets outside entity field-components', async () => {
@@ -87,7 +124,7 @@ describe('external authentication provider metadata-driven editor', () => {
 
   it('keeps provider-specific behavior in component/runtime data rather than generic entity renderer branches', async () => {
     const runtime = await source('public/js/auth/external-provider.js');
-    const entryPolicy = await source('public/js/runtime/entry-policy-runtime.js');
+    const entryPolicy = await source('public/js/sysbo/entry/entry-policy-runtime.js');
     const renderer = await source('views/components/runtime/entity-entry.ejs');
     expect(runtime).not.toContain('data-contextual-help-key');
     expect(entryPolicy).toContain("querySelectorAll('[data-contextual-help-key]')");
@@ -109,11 +146,11 @@ describe('external authentication provider metadata-driven editor', () => {
   it('loads canonical field-component services before expression and entry-policy runtimes', async () => {
     const shell = await source('views/layout/shell.ejs');
     const fieldRuntime = shell.indexOf('/js/sysbo/entry/field-runtime.js');
-    const initializationRuntime = shell.indexOf('/js/runtime/entry-initialization-runtime.js');
+    const initializationRuntime = shell.indexOf('/js/sysbo/entry/entry-initialization-runtime.js');
     const stateRuntime = shell.indexOf('/js/sysbo/entry/state.js');
     const expressionRuntime = shell.indexOf('/js/sysbo/entry/expression-runtime.js');
     const formRuntime = shell.indexOf('/js/sysbo/entry/form-runtime.js');
-    const policyRuntime = shell.indexOf('/js/runtime/entry-policy-runtime.js');
+    const policyRuntime = shell.indexOf('/js/sysbo/entry/entry-policy-runtime.js');
 
     expect(fieldRuntime).toBeGreaterThanOrEqual(0);
     expect(initializationRuntime).toBeGreaterThan(fieldRuntime);
@@ -152,19 +189,21 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(formRuntime).not.toContain('getFieldOptions?.(control)');
     expect(formRuntime).not.toContain('let value = { value: fieldValue, option, options };');
 
-    const metadata = await source('../shared/src/metadata/bo/identity.ts');
+    const metadata = await source('../shared/src/metadata/bo/auth/bo-ext-auth-providers.ts');
     expect(metadata).toContain("FirstCtx($entity-fields.provider.enumItems, 'value')");
     expect(metadata).toContain(
       "FindCtx($entity-fields.provider.enumItems, 'value', $entry-current.provider, 'callbackPath')",
     );
-    expect(expressionRuntime).toContain("if (node.functionName === 'FirstCtx')");
-    expect(expressionRuntime).toContain("if (node.functionName === 'FindCtx')");
+    expect(expressionRuntime).toContain('const browserFunctionImplementations = Object.freeze({');
+    expect(expressionRuntime).toContain('FirstCtx(args) {');
+    expect(expressionRuntime).toContain('FindCtx(args) {');
+    expect(expressionRuntime).toContain('return executeBrowserFunction(node, args);');
     expect(expressionRuntime).toContain('runtime.resolveVariableWithPath(node');
     expect(expressionRuntime).not.toContain('runtime?.resolvePath?.(node.path, scopePath)');
     expect(renderer).toContain("debuggingStartDisplayPath: '#level.entry.current'");
     expect(runtime).not.toContain('if (createMode && !provider.value)');
 
-    const entryPolicy = await source('public/js/runtime/entry-policy-runtime.js');
+    const entryPolicy = await source('public/js/sysbo/entry/entry-policy-runtime.js');
     expect(entryPolicy).toContain('ctx.updateField(path, key, value, undefined, cause)');
     expect(entryPolicy).not.toContain('setFieldValue?.(control, value, { emit: false })');
     expect(entryPolicy).toContain('const applyCanonicalCreateDefaults = async () =>');
@@ -178,7 +217,10 @@ describe('external authentication provider metadata-driven editor', () => {
     expect(entryPolicy).not.toContain('getFieldOption?.(control)');
     expect(entryPolicy).toContain('reconcileRestrictedOptionValue(value, allowed)');
     expect(entryPolicy).toContain('await applyCanonicalCreateDefaults();');
-    expect(entryPolicy).toContain('expressions.evaluateAstOwnedAt(ast, path)');
+    expect(entryPolicy).toContain('return expressions.evaluateAstOwnedAt(ast, ownerPath);');
+    expect(entryPolicy).toContain(
+      'return await evaluateSourceOwnedAt(declaration.expression, path, fallback);',
+    );
     expect(entryPolicy).not.toContain('entryInitialization?.path ?? path');
     expect(entryPolicy).not.toContain('syncCurrentField');
     expect(entryPolicy).not.toContain('setFieldValue?.(control, value, { emit: true })');
@@ -207,7 +249,7 @@ describe('external authentication provider metadata-driven editor', () => {
   });
 
   it('keeps callback, verification and secret material server-controlled', async () => {
-    const metadata = await source('../shared/src/metadata/ui/identity.ts');
+    const metadata = await source('../shared/src/metadata/ui/auth/ui-ext-auth-providers.ts');
     const credentials = await source(
       'views/components/sysbo/entry/content/provider-credentials.ejs',
     );

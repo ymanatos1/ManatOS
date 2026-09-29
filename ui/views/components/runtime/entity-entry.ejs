@@ -2,7 +2,7 @@
   COMPONENT: V2 EntityEntry visual renderer
 
   Purpose:
-  - Renders the first host-neutral V2 metadata-driven entry surface from EntityEntryRuntime state.
+  - Renders canonical host-neutral V2 metadata-driven entry content from browser-owned CTX entry state.
 
   Inputs / metadata:
   - Canonical entity/UI metadata, factual entryRenderValues, reference data, record mode/identity and route form context.
@@ -23,6 +23,15 @@
   const isViewMode = recordMode === 'view';
   const isEntryPopupHost = typeof entryPopupHost !== 'undefined' && entryPopupHost;
   const isNew = recordMode === 'create';
+  const showEntryActions = typeof entryActionsVisible === 'undefined' || entryActionsVisible !== false;
+  const compactEntryDensity = typeof entryDensity !== 'undefined' && entryDensity === 'compact';
+  const entrySurfaceClass = [
+    'content-card',
+    compactEntryDensity ? 'entry-density-compact' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const showTabNavigation = metadataUI.record.tabNavigationVisible !== false;
   const v2EntryActions = Object.entries(metadataUI.record.entryActions || {})
     .map(([key, action]) => ({ key, ...action }))
     .sort((left, right) => Number(left?.order || 0) - Number(right?.order || 0));
@@ -32,8 +41,12 @@
     icon: metadataUI.record.entryActions?.save?.icon || 'check-circle',
     tone: metadataUI.record.entryActions?.save?.tone || 'primary',
   };
-  const v2DeleteAction = v2EntryActions.find((action) => action.kind === 'delete') || null;
-  const v2CommandActions = v2EntryActions.filter((action) => action.kind === 'command');
+  const v2DeleteAction = isViewMode
+    ? null
+    : v2EntryActions.find((action) => action.kind === 'delete') || null;
+  const v2CommandActions = isViewMode
+    ? []
+    : v2EntryActions.filter((action) => action.kind === 'command');
   const v2ActionClass = (action, fallbackTone = 'primary') =>
     `btn btn-${action?.tone || fallbackTone}`;
   const renderValues = typeof entryRenderValues !== 'undefined' && entryRenderValues
@@ -190,35 +203,20 @@
   const relatedMetadataRegistry =
     typeof relatedEntityMetadata !== 'undefined' && relatedEntityMetadata ? relatedEntityMetadata : {};
   /*
-   * SSR now projects only the static/raw source value for related rows. Any
-   * declared calculation or dynamic presentation is emitted as expression source
-   * metadata by the related-collection component and evaluated by the browser
-   * against that row's canonical V2 collection-resource CTX path.
+   * Related rows have already crossed the canonical calculated-record projector
+   * before rendering. Presentation consumes that projected row value directly;
+   * only an expression explicitly declared by the related collection is a
+   * presentation-time value calculation.
    */
-  const collectionValue = (row, _collectionKey, collection, fieldKey, field) => {
-    const relatedMetadata = relatedMetadataRegistry[collection.entityKey];
-    const canonicalCalculation = relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation;
-    const expression = field.expression || canonicalCalculation?.expression;
-    const sourceField = field.sourceField ?? fieldKey;
-    const presentation = field.presentation || {};
-    const staticTone =
-      presentation.tone && typeof presentation.tone !== 'object' ? presentation.tone : null;
-    const staticIcon =
-      presentation.icon && typeof presentation.icon !== 'object' ? presentation.icon : null;
-    return {
-      raw: expression ? undefined : row?.[sourceField],
-      tone: staticTone,
-      icon: staticIcon,
-      calculated: Boolean(expression),
-      expression,
-      sourceField,
-    };
-  };
+  const collectionValue = (row, _collectionKey, _collection, fieldKey, field) =>
+    resolveProjectedRelatedCollectionValue(row, fieldKey, field);
   const relatedReferenceLabel = (sourceKey, fieldKey, value) => {
     if (value === undefined || value === null || value === '') return '—';
     const candidates = pageCollectionResourceData?.[sourceKey]?.references?.[fieldKey] || [];
-    const match = candidates.find((candidate) => candidate?.id === value);
-    return match?.name ?? String(value);
+    const match = candidates.find(
+      (candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value),
+    );
+    return match?.__entryName ?? match?.label ?? match?.name ?? String(value);
   };
   const relatedRowHref = (collection, row) =>
     collection.rowHref
@@ -227,6 +225,7 @@
   const optionItemForField = metadataOptionItemForField;
   const enumToneClass = metadataOptionToneClass;
   const formatValue = formatMetadataValue;
+  const fieldRepresentationFor = metadataFieldRepresentation;
   const { entityDebuggingDisplayRows, uiDebuggingDisplayRows } = buildMetadataDebuggingModel({
     debuggingTabEnabled,
     metadata,
@@ -237,7 +236,6 @@
     dynamicUIValue,
     overrides,
     relatedCollections,
-    relatedMetadataRegistry,
     entryContextPath: v2LevelPath,
     entryFieldValuePath: (fieldKey) => `${v2LevelPath}.fields.${fieldKey}.value`,
   });
@@ -301,6 +299,8 @@
   const metadataComponentContext = {
     item,
     metadata,
+    entryRenderValues: renderValues,
+    referenceData: references,
     fieldLabel,
     isNew,
     isViewMode,
@@ -310,6 +310,7 @@
       providerDefinitions,
       collectionResourceData: pageCollectionResourceData,
     },
+    relatedMetadataRegistry,
     credentialTest: typeof credentialTest !== 'undefined' ? credentialTest : null,
     suggestedProvider: typeof suggestedProvider !== 'undefined' ? suggestedProvider : null,
     fieldComponentContext: v2FieldComponentContext,
@@ -337,6 +338,42 @@
       ? { entryRepresentation: entryRepresentationRuntime }
       : {}),
   });
+  const detailsColumnSpansFor = (columns) => {
+    const explicit = columns.map((column) => {
+      const resolved = dynamicUIValue(column.span ?? null, ctxFields, {
+        source: 'ui-metadata',
+        sourcePath: 'tabs.details.content.column.span',
+        targetPath: 'tabs.details.content.column.span',
+        purpose: 'resolve details column span',
+      });
+      const numeric = Number(resolved);
+      return Number.isFinite(numeric) && numeric > 0
+        ? Math.max(1, Math.min(12, Math.trunc(numeric)))
+        : null;
+    });
+    const compact = columns.map((column, index) => {
+      if (explicit[index] !== null) return false;
+      const meaningful = (column.content || []).filter((item) => item.kind !== 'spacer' && item.kind !== 'break');
+      return meaningful.length > 0 && meaningful.every(
+        (item) => item.kind === 'field' && item.representation === 'portrait',
+      );
+    });
+    const reserved = explicit.reduce((sum, span) => sum + (span || 0), 0)
+      + compact.reduce((sum, isCompact) => sum + (isCompact ? 3 : 0), 0);
+    const flexibleCount = columns.filter((_, index) => explicit[index] === null && !compact[index]).length;
+    let remaining = Math.max(flexibleCount, 12 - reserved);
+    let flexibleRemaining = flexibleCount;
+    return columns.map((_, index) => {
+      if (explicit[index] !== null) return explicit[index];
+      if (compact[index]) return 3;
+      const span = flexibleRemaining > 0
+        ? Math.max(1, Math.floor(remaining / flexibleRemaining))
+        : 1;
+      remaining -= span;
+      flexibleRemaining -= 1;
+      return span;
+    });
+  };
   const contentSpanContractFor = (content, fallback) => {
     const staticSpan = Number(content?.span);
     return {
@@ -348,7 +385,7 @@
     };
   };
 %>
-<section class="content-card" data-ui-engine="v2" data-v2-entity-entry>
+<section class="<%= entrySurfaceClass %>" data-ui-engine="v2" data-v2-entity-entry>
   <form
     class="metadata-driven-record-form manatos-entry-initializing"
     method="post"
@@ -356,6 +393,7 @@
     data-record-mode="<%= recordMode %>"
     data-entity-key="<%= definition.key %>"
     data-v2-entry-form
+    data-owner-editing="<%= ownerEditing ? 'true' : 'false' %>"
     aria-busy="true"
     data-initialization-visibility="pending"
     data-ctx-scope-path="<%= v2LevelPath %>"
@@ -367,19 +405,37 @@
       <span>Opening page…</span>
     </div>
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (typeof entryUIViewKey === 'string' && entryUIViewKey) { %>
+      <input type="hidden" name="_entryUIView" value="<%= entryUIViewKey %>">
+    <% } %>
     <% if (typeof entryPopupHost !== 'undefined' && entryPopupHost) { %>
       <%#
         Hosted entries carry the canonical popup invocation token. The shared
         popup runtime uses it to convert data-form-close-cancel into a parent-
         window popup lifecycle close rather than iframe navigation.
       %>
-      <input type="hidden" name="_entryPopup" value="1">
-      <input type="hidden" name="_entryPopupToken" value="<%= entryPopupToken || '' %>">
+      <input type="hidden" name="_entryHost" value="popup">
+      <input type="hidden" name="_entryToken" value="<%= entryPopupToken || '' %>">
+      <% if (compactEntryDensity) { %><input type="hidden" name="_entryDensity" value="compact"><% } %>
+      <% if (typeof entryRecoverable !== 'undefined' && entryRecoverable === false) { %><input type="hidden" name="_entryRecoverable" value="0"><% } %>
       <input type="hidden" name="_entryDefaults" value="<%= JSON.stringify(entryInvocationDefaults || {}) %>">
       <input type="hidden" name="_entryOverrides" value="<%= JSON.stringify(entryInvocationOverrides || {}) %>">
     <% } %>
-    <% if (!isNew && recordId) { %><input type="hidden" name="id" value="<%= recordId %>"><% } %>
+    <% if ((ownerEditing || !isNew) && recordId) { %><input type="hidden" name="id" value="<%= recordId %>"><% } %>
+    <% if (ownerEditing && ownerContext) { %>
+      <input type="hidden" name="_ownerEntries" value="<%= JSON.stringify(ownerContext.entries || []) %>">
+      <input type="hidden" name="_ownerEntriesOriginal" value="<%= JSON.stringify(ownerContext.entriesOriginal || []) %>">
+      <input type="hidden" name="_ownerFields" value="<%= JSON.stringify(ownerContext.fields || {}) %>">
+      <input type="hidden" name="_ownerName" value="<%= ownerContext.name || 'organization' %>">
+      <input type="hidden" name="_ownerKind" value="<%= ownerContext.kind || 'sysbo-hierarchy' %>">
+      <input type="hidden" name="_ownerMode" value="<%= ownerContext.mode || 'edit' %>">
+      <input type="hidden" name="_ownerIdentityField" value="<%= ownerContext.identityField || 'id' %>">
+      <input type="hidden" name="_ownerFocusedMemberId" value="<%= recordId || '' %>">
+      <input type="hidden" name="_ownerEntryMode" value="<%= recordMode %>">
+    <% } %>
 
+    <% if (showTabNavigation) { %>
+    <div>
     <%- include('../sysbo/entry/shell/entry-tabs-nav', {
       tabs: visibleTabs.map((tab) => ({
         ...tab.metadata,
@@ -391,6 +447,8 @@
       })),
       activeTabId,
     }) %>
+    </div>
+    <% } %>
 
     <% if (debuggingTabEnabled) { %>
       <%#
@@ -414,7 +472,8 @@
             data-v2-tab-static-visible="true"
             data-navigation-track-path="activeTabId"
             data-navigation-track-value="debugging"
-          ><i class="bi bi-bug me-1" aria-hidden="true"></i>Debugging</button>
+          data-debugging-host-tab
+          ><i class="bi bi-bug me-1" aria-hidden="true"></i>Debugging<span class="badge rounded-pill text-bg-danger ms-1 d-none" data-debugging-host-errors-count></span></button>
         </li>
         <div
           class="tab-pane fade entity-readonly-tab"
@@ -440,17 +499,20 @@
     <div class="tab-content entity-tab-content">
       <% for (const tabState of visibleTabs) { const tab = tabState.metadata; %>
         <%
-          const tabContents = Array.isArray(tab.content) && tab.content.length
-            ? tab.content
-            : (tab.fields || []).map((field) => ({ kind: 'field', field }));
-          const tabHasEditableFields = tabContents.some((content) => {
+          const tabContents = Array.isArray(tab.content) ? tab.content : [];
+          const flattenedTabContents = (contents) => contents.flatMap((content) =>
+            content?.kind === 'column' || content?.kind === 'inline'
+              ? flattenedTabContents(content.content || [])
+              : [content]);
+          const effectiveTabContents = flattenedTabContents(tabContents);
+          const tabHasEditableFields = effectiveTabContents.some((content) => {
             if (content?.kind !== 'field') return false;
             const key = content.field;
             if (metadataUI.record.relatedCollections?.[key]) return false;
             const field = metadata.fieldDefinition[key];
             return Boolean(field && !field.sensitive && fieldVisible(field) && fieldEditable(field));
           });
-          const tabHasInteractiveComponents = tabContents.some(
+          const tabHasInteractiveComponents = effectiveTabContents.some(
             (content) => content?.kind === 'component' && content.component?.readOnly === false,
           );
           const tabComponentInteractive =
@@ -490,6 +552,102 @@
                 spanExpression: null,
               }) %>
             </div>
+          <% } else if (tab.layout === 'details') { %>
+            <%
+              const detailColumns = (tab.content || []).filter((content) => content.kind === 'column');
+              const detailColumnSpans = detailsColumnSpansFor(detailColumns);
+            %>
+            <div class="row g-3" data-v2-entry-fields data-metadata-details-layout>
+              <% for (let columnIndex = 0; columnIndex < detailColumns.length; columnIndex += 1) { %>
+                <% const column = detailColumns[columnIndex]; %>
+                <div class="col-md-<%= detailColumnSpans[columnIndex] %>" data-metadata-details-column>
+                  <div class="row g-3">
+                    <% for (const content of column.content || []) { %>
+                      <% if (content.kind === 'break') { %><div class="w-100" aria-hidden="true"></div><% continue; } %>
+                      <% if (content.kind === 'spacer') { %><div class="col-12 metadata-details-spacer" data-metadata-layout-spacer aria-hidden="true"></div><% continue; } %>
+                      <% if (content.kind === 'inline') { %>
+                        <div class="col-12 d-flex align-items-center gap-2 flex-wrap" data-metadata-inline>
+                          <% for (const inlineContent of content.content || []) { %>
+                            <% if (inlineContent.kind === 'field') { %>
+                              <% const inlineKey = inlineContent.field; %>
+                              <% const inlineField = metadata.fieldDefinition[inlineKey]; %>
+                              <% if (!inlineField || inlineField.sensitive || !fieldVisible(inlineField)) continue; %>
+                              <div class="metadata-inline-field">
+                                <% const inlineRepresentation = fieldRepresentationFor(
+                                  inlineContent.representation || tab.representation || 'default', inlineField.type
+                                ); %>
+                                <%- include('../sysbo/entry/fields/field-representation', {
+                                  representation: inlineRepresentation, key: inlineKey, field: inlineField,
+                                  value: valueFor(inlineKey), item, definition, fieldLabel,
+                                  fieldOverride: overrides[inlineKey] || {}, referenceLabel, formatValue,
+                                  referenceValues: references, entryRepresentationFor,
+                                  displayLabel: inlineContent.label,
+                                  relatedFieldKeys: inlineContent.relatedFields || [],
+                                  relatedValues: (inlineContent.relatedFields || []).map((relatedKey) => valueFor(relatedKey))
+                                }) %>
+                              </div>
+                            <% } else if (inlineContent.kind === 'action') { %>
+                              <% const inlineAction = metadataUI.record.entryActions?.[inlineContent.action]; %>
+                              <% if (inlineAction?.kind === 'navigate' && inlineAction.href) { %>
+                                <a
+                                  class="btn btn-<%= inlineAction.emphasis === 'outline' ? 'outline-' : '' %><%= inlineAction.tone || 'primary' %> btn-sm"
+                                  href="<%= inlineAction.href %>"
+                                  data-v2-entry-action="<%= inlineContent.action %>"
+                                  hidden
+                                ><% if (inlineAction.icon) { %><i class="bi bi-<%= inlineAction.icon %> me-1"></i><% } %><%= inlineAction.label %></a>
+                              <% } %>
+                            <% } %>
+                          <% } %>
+                        </div>
+                        <% continue; %>
+                      <% } %>
+                      <% if (content.kind === 'collection') { %>
+                        <div class="col-12">
+                          <%- include('../sysbo/entry/content/related-collections', {
+                            tab: { fields: [content.collection] }, relatedCollections, pageCollectionResourceData,
+                            relatedMetadataRegistry, collectionValue, relatedRowHref, relatedReferenceLabel,
+                            optionItemForField, enumToneClass, formatValue
+                          }) %>
+                        </div>
+                        <% continue; %>
+                      <% } %>
+                      <% if (content.kind !== 'field') continue; %>
+                      <% const key = content.field; %>
+                      <% const field = metadata.fieldDefinition[key]; %>
+                      <% if (!field || field.sensitive || !fieldVisible(field)) continue; %>
+                      <% const editable = fieldEditable(field); %>
+                      <div
+                        class="col-12 <%= editable ? 'effective-field-editable' : 'effective-field-readonly' %>"
+                        data-v2-field-container="<%= key %>"
+                        data-ctx-field-container="<%= key %>"
+                      >
+                        <% const representation = fieldRepresentationFor(
+                          content.representation || tab.representation || 'default', field.type
+                        ); %>
+                        <% if (representation !== 'default') { %>
+                          <%- include('../sysbo/entry/fields/field-representation', {
+                            representation, key, field, value: valueFor(key), item, definition, fieldLabel,
+                            fieldOverride: overrides[key] || {}, referenceLabel, formatValue,
+                            referenceValues: references, entryRepresentationFor,
+                            displayLabel: content.label,
+                            relatedFieldKeys: content.relatedFields || [],
+                            relatedValues: (content.relatedFields || []).map((relatedKey) => valueFor(relatedKey))
+                          }) %>
+                        <% } else { %>
+                          <label class="form-label" for="metadata-field-<%= key %>"><%= fieldLabel(field) %>:</label>
+                          <%- include('../sysbo/entry/fields/entity-field', {
+                            key, field, value: valueFor(key), editable, fieldLabel, enumItemsFor,
+                            referenceValues: references, referenceSelectorContexts: selectorContexts,
+                            effectiveFieldContext: effectiveField(key), dateOnlyValue, datetimeLocalValue,
+                            durationParts, durationSerializedValue, definition, fieldOverride: overrides[key] || null
+                          }) %>
+                        <% } %>
+                      </div>
+                    <% } %>
+                  </div>
+                </div>
+              <% } %>
+            </div>
           <% } else if (tab.layout === 'summary') { %>
             <%- include('../sysbo/entry/content/summary', {
               tab,
@@ -515,9 +673,7 @@
             }) %>
           <% } else { %>
             <div class="row g-3" data-v2-entry-fields>
-              <% const contents = Array.isArray(tab.content) && tab.content.length
-                ? tab.content
-                : (tab.fields || []).map((field) => ({ kind: 'field', field, span: 6 })); %>
+              <% const contents = Array.isArray(tab.content) ? tab.content : []; %>
               <% for (const content of contents) { %>
                 <% if (content.kind === 'break') { %><div class="w-100" aria-hidden="true"></div><% continue; } %>
                 <% if (content.kind === 'spacer') { const spanContract = contentSpanContractFor(content, 12); %>
@@ -582,17 +738,40 @@
                     data-field-calculation-expression="<%= field.calculation.expression %>"
                     data-field-calculation-persisted="<%= field.calculation.persisted === true ? 'true' : 'false' %>"
                   <% } %>>
-                  <label class="form-label" for="metadata-field-<%= key %>">
-                    <%= fieldLabel(field) %>:<% if (fieldState(key)?.ux?.required) { %><span
-                      aria-label="required"> (*)</span><% } %>
-                  </label>
-                  <%- include('../sysbo/entry/fields/entity-field', {
-                    key, field, value: valueFor(key), editable, fieldLabel, enumItemsFor,
-                    referenceValues: references, referenceSelectorContexts: selectorContexts,
-                    effectiveFieldContext: effectiveField(key),
-                    dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue,
-                    definition, fieldOverride: overrides[key] || null
-                  }) %>
+                  <% const representation = fieldRepresentationFor(
+                    content.representation || tab.representation || 'default', field.type
+                  ); %>
+                  <% if (representation !== 'default') { %>
+                    <%- include('../sysbo/entry/fields/field-representation', {
+                      representation,
+                      key,
+                      field,
+                      value: valueFor(key),
+                      item,
+                      definition,
+                      fieldLabel,
+                      fieldOverride: overrides[key] || {},
+                      referenceLabel,
+                      formatValue,
+                      referenceValues: references,
+                      entryRepresentationFor,
+                      displayLabel: content.label,
+                      relatedFieldKeys: content.relatedFields || [],
+                      relatedValues: (content.relatedFields || []).map((relatedKey) => valueFor(relatedKey))
+                    }) %>
+                  <% } else { %>
+                    <label class="form-label" for="metadata-field-<%= key %>">
+                      <%= fieldLabel(field) %>:<% if (fieldState(key)?.ux?.required) { %><span
+                        aria-label="required"> (*)</span><% } %>
+                    </label>
+                    <%- include('../sysbo/entry/fields/entity-field', {
+                      key, field, value: valueFor(key), editable, fieldLabel, enumItemsFor,
+                      referenceValues: references, referenceSelectorContexts: selectorContexts,
+                      effectiveFieldContext: effectiveField(key),
+                      dateOnlyValue, datetimeLocalValue, durationParts, durationSerializedValue,
+                      definition, fieldOverride: overrides[key] || null
+                    }) %>
+                  <% } %>
                 </div>
               <% } %>
             </div>
@@ -601,6 +780,7 @@
       <% } %>
     </div>
 
+    <% if (showEntryActions) { %>
     <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap" data-v2-entry-actions>
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <% for (const action of v2CommandActions.filter((candidate) => candidate.placement === 'footer-leading')) { %>
@@ -634,18 +814,19 @@
         <% } %>
         <% if (isEntryPopupHost) { %>
           <button
-            class="btn btn-secondary"
+            class="btn btn-secondary<%= compactEntryDensity ? ' btn-sm' : '' %>"
             type="button"
             data-form-close-cancel
+            data-cancel-operation
           >
             <i class="bi bi-x-circle me-1"></i>
-            <span data-form-close-cancel-label>Close</span>
+            <span data-form-close-cancel-label><%= compactEntryDensity ? 'Cancel' : 'Close' %></span>
           </button>
         <% } else { %>
           <a
             class="btn btn-secondary dirty-navigation"
             href="/bo/<%= definition.key %>"
-            <%= isViewMode ? '' : 'data-form-close-cancel' %>
+            <%= isViewMode ? '' : 'data-form-close-cancel data-cancel-operation' %>
           >
             <i class="bi bi-x-circle me-1"></i>
             <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
@@ -674,14 +855,26 @@
         <% } %>
         <% if (!isViewMode) { %>
           <span data-v2-entry-action="save" hidden>
-            <%- include('../sysbo/entry/shell/save-split-action', {
-              saveAction: v2SaveAction,
-              actionClass: v2ActionClass,
-            }) %>
+            <% if (isEntryPopupHost && compactEntryDensity) { %>
+              <button
+                class="<%= v2ActionClass(v2SaveAction, 'primary') %> btn-sm"
+                type="submit"
+                name="_saveMode"
+                value="close"
+                data-form-save
+                disabled
+              ><i class="bi bi-check-circle me-1"></i><%= isNew ? 'Create' : 'Save' %></button>
+            <% } else { %>
+              <%- include('../sysbo/entry/shell/save-split-action', {
+                saveAction: v2SaveAction,
+                actionClass: v2ActionClass,
+              }) %>
+            <% } %>
           </span>
         <% } %>
       </div>
     </div>
+    <% } %>
   </form>
 </section>
 

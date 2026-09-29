@@ -46,18 +46,12 @@ describe('UI component responsibility boundaries', () => {
     }
   });
 
-  it('allows canonical compact/composite editors to embed the dispatcher without CTX field binding', async () => {
-    const quick = await readFile(
-      resolve(uiRoot, 'views/components/sysbo/hierarchy/record-quick.ejs'),
-      'utf8',
-    );
+  it('allows canonical workflow editors to embed the dispatcher without CTX field binding', async () => {
     const credentials = await readFile(
       resolve(uiRoot, 'views/components/sysbo/entry/content/provider-credentials.ejs'),
       'utf8',
     );
 
-    expect(quick).toContain("include('../entry/fields/entity-field'");
-    expect(quick).toContain('bindCtx: false');
     expect(credentials).toContain("include('../fields/entity-field'");
     expect(credentials).toContain("key: 'clientId'");
     expect(credentials).toContain('bindCtx: false');
@@ -132,7 +126,11 @@ describe('UI component responsibility boundaries', () => {
       'public/js/popups/popup-runtime.js',
       'public/js/popups/record-selector.js',
       'public/js/sysbo/entry/field-runtime.js',
+      'public/js/sysbo/entry/entry-initialization-runtime.js',
+      'public/js/sysbo/entry/entry-policy-runtime.js',
+      'public/js/sysbo/list/list-action-runtime.js',
       'public/js/sysbo/hierarchy/hierarchy-workspace.js',
+      'public/js/system/system-settings.js',
     ];
 
     for (const path of required)
@@ -146,6 +144,10 @@ describe('UI component responsibility boundaries', () => {
       'public/js/components/record-selector.js',
       'public/js/components/popup-runtime.js',
       'public/js/forms/modal-focus.js',
+      'public/js/runtime/entry-initialization-runtime.js',
+      'public/js/runtime/entry-policy-runtime.js',
+      'public/js/runtime/list-action-runtime.js',
+      'public/js/system-settings.js',
     ]) {
       await expect(access(resolve(uiRoot, obsolete))).rejects.toThrow();
     }

@@ -147,7 +147,8 @@ describe('generic existing-record selector', () => {
     expect(reference).toContain('referenceSelectorContext.referenceData');
     expect(reference).not.toContain('targetField.referenceBOKey === referenceTargetKey');
     expect(dataAccess).toContain('selectorContextForReferenceField');
-    expect(dataAccess).toContain('referenceData: await references(req, targetDefinition, { ctx })');
+    expect(dataAccess).toContain('referenceData: await references(req, targetDefinition, {');
+    expect(dataAccess).toContain('fieldKeys: selectorFieldKeys');
     expect(dataAccess).toContain('referenceCatalogueUnavailable(error)');
     expect(dataAccess).toContain("code === 'FORBIDDEN'");
     expect(dataAccess).toContain("code === 'HTTP_403'");

@@ -17,13 +17,26 @@ describe('metadata-driven entity field components', () => {
     const pictures = await source('views/components/sysbo/entry/fields/pictures-field.ejs');
     const pictureEditor = await source('views/components/sysbo/entry/fields/picture-editor.ejs');
     const richText = await source('views/components/sysbo/entry/fields/rich-text-field.ejs');
-    const richTextRuntime = await source('public/js/sysbo/entry/rich-text-runtime.js');
+    const richTextRuntime = await source('public/js/sysbo/entry/fields/rich-text-runtime.js');
     const businessUiMetadata = await readFile(
-      resolve(testDirectory, '..', '..', '..', 'shared', 'src', 'metadata', 'ui', 'business.ts'),
+      resolve(
+        testDirectory,
+        '..',
+        '..',
+        '..',
+        'shared',
+        'src',
+        'metadata',
+        'ui',
+        'platforms',
+        'protocrm',
+        'applications',
+        'ui-applications.ts',
+      ),
       'utf8',
     );
     const runtime = await source('public/js/sysbo/entry/field-runtime.js');
-    const pictureRuntime = await source('public/js/sysbo/entry/field-runtime/picture-fields.js');
+    const pictureRuntime = await source('public/js/sysbo/entry/fields/picture-fields.js');
 
     expect(renderer).toContain("field.type === 'date'");
     expect(renderer).toContain("field.type === 'datetime'");
@@ -101,7 +114,7 @@ describe('metadata-driven entity field components', () => {
     expect(renderer).not.toContain("definition.key === 'sys-licenses'");
   });
   it('keeps scalar and collection picture editing on one shared crop/runtime contract', async () => {
-    const fieldRuntime = await source('public/js/sysbo/entry/field-runtime/picture-fields.js');
+    const fieldRuntime = await source('public/js/sysbo/entry/fields/picture-fields.js');
     const picture = await source('views/components/sysbo/entry/fields/picture-field.ejs');
     const pictures = await source('views/components/sysbo/entry/fields/pictures-field.ejs');
     const pictureEditor = await source('views/components/sysbo/entry/fields/picture-editor.ejs');

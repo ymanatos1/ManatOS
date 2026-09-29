@@ -56,7 +56,8 @@ describe('SysBO V2 CTX data flow', () => {
       'utf8',
     );
 
-    expect(runtime).toContain('const leafPagePath =');
+    expect(runtime).toContain('const entryPagePath = form.dataset.ctxScopePath || null;');
+    expect(runtime).not.toContain('const leafPagePath =');
     expect(runtime).toContain('runtime.updateField(entryPagePath, key, value, undefined, cause)');
     expect(runtime).toContain('window.addEventListener(CHANGE_EVENT');
     expect(ctxRuntime).toContain('entryOriginal');
@@ -129,6 +130,7 @@ describe('SysBO V2 CTX data flow', () => {
     expect(routes).toContain('itemOverride: { ...item }');
     expect(routes).toContain('parentOwnerContext,');
     expect(ownerManaged).toContain('parentOwnerContext: {');
+    expect(ownerManaged).toContain('normalizeMetadataFieldValues(');
     expect(routes).toContain("router.post('/:key/owned/save'");
     expect(workspace).toContain("append('_ownerEntries', JSON.stringify(entries()))");
     expect(workspace).toContain('/owned-entry/');

@@ -1,10 +1,10 @@
-# ManatOS Company Domain
+# Company Domain
 
-The company domain is the ManatOS-owned business foundation shared by platforms and applications. It includes authenticated Users/accounts, Principals, organization hierarchies, reusable contact information, Licenses and external authentication-provider configuration. These concepts remain company-level even when a platform such as protoCRM consumes them.
+The **Company domain** is the foundation-level business domain shared by platforms and applications. It includes authenticated Users/accounts, Principals, organization hierarchies, reusable contact information, Licenses and external authentication-provider configuration. `Company` here is a technical scope in the ManatOS domain model; it does not describe ManatOS as a legal company. These concepts remain Company-scope even when a platform such as protoCRM consumes them.
 
 A User represents system/authentication identity; a Principal represents the richer business identity of a person, organization or other principal type. Linking them allows organization-scoped authorization without collapsing authentication and business-domain concerns into one record model.
 
-Licenses connect Principals/organizations to platform or application entitlement but remain company-owned records. External authentication providers are likewise authentication infrastructure rather than protoCRM application data.
+Licenses connect Principals/organizations to platform or application entitlement but remain foundation-level Company-domain records. External authentication providers are likewise authentication infrastructure rather than protoCRM application data.
 
 ## Reading map
 

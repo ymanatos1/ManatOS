@@ -17,8 +17,8 @@ const sharedSource = (relativePath: string) =>
 
 describe('metadata-driven Principal presentation', () => {
   it('uses canonical enum-item icons/traits and evaluator-driven Parent principal editability', async () => {
-    const canonical = await sharedSource('src/metadata/bo/business.ts');
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const canonical = await sharedSource('src/metadata/bo/principals/bo-principals.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/principals/ui-principals.ts');
     const entry = await uiSource('views/components/sysbo/entry/fields/enum-select.ejs');
     const runtime = await uiSource('public/js/sysbo/entry/form-runtime.js');
     const expressionRuntime = await uiSource('public/js/sysbo/entry/expression-runtime.js');
@@ -39,15 +39,11 @@ describe('metadata-driven Principal presentation', () => {
     expect(canonical).toMatch(
       /value: SysBOPrincipalType\.System,[\s\S]*?isContainer: false,[\s\S]*?canHaveParent: true,[\s\S]*?canBeOrganizationRoot: false,[\s\S]*?canStandAloneOrganization: true/,
     );
-    const boMetadata = await sharedSource('src/metadata/bo/business.ts');
+    const boMetadata = await sharedSource('src/metadata/bo/principals/bo-principals.ts');
     expect(boMetadata).toContain("createDefaultValue: 'Person'");
-    expect(uiMetadata).toContain(
-      "visible: { expression: '#level.fields.principalType.option != null' }",
-    );
-    expect(uiMetadata).toContain(
-      "#level.fields.principalType.option != null && #level.entry.current.principalType !== 'Person'",
-    );
-    expect(uiMetadata).toContain('#level.fields.principalType.option.canHaveParent === true');
+    expect(uiMetadata).toContain("visible: { expression: 'principalType != null' }");
+    expect(uiMetadata).toContain("principalType != null && principalType !== 'Person'");
+    expect(uiMetadata).toContain('principalType.option.canHaveParent === true');
     expect(uiMetadata).toContain('readOnlyValue: null');
     expect(canonical).toContain(
       "filterEnumItemTrait: { field: 'principalType', trait: 'isContainer' }",
@@ -85,8 +81,8 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('uses the reusable scalar picture contract for an independent Principal photo', async () => {
-    const canonical = await sharedSource('src/metadata/bo/business.ts');
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const canonical = await sharedSource('src/metadata/bo/principals/bo-principals.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/principals/ui-principals.ts');
 
     expect(canonical).toMatch(
       /photo:\s*\{[\s\S]*?type: 'picture',[\s\S]*?applicationManaged: true/,
@@ -98,7 +94,7 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('places Parent then Root principal before Name while preserving Name as the generic clickable primary field', async () => {
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/principals/ui-principals.ts');
     const list = await uiSource('views/components/runtime/entity-list.ejs');
     const rowCells = await uiSource('views/components/sysbo/list/list-row-cells.ejs');
 
@@ -122,11 +118,11 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('lays out Contact as a metadata grid so reusable contact collections can share rows', async () => {
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/principals/ui-principals.ts');
     const renderer = await uiSource('views/components/runtime/entity-entry.ejs');
     const tabContent = await uiSource('views/components/sysbo/entry/shell/entry-tab-content.ejs');
 
-    expect(uiMetadata).toContain("tab('contact', 'Contact', 20, [], {");
+    expect(uiMetadata).toContain("tab('contact', 'Contact', 20, {");
     expect(uiMetadata).toContain("layout: 'form'");
     expect(uiMetadata).toMatch(
       /sourceKey: 'emailAddresses'[\s\S]*?span: 6|span: 6[\s\S]*?sourceKey: 'emailAddresses'/,
@@ -150,7 +146,7 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('declares the reusable CTX-driven Organization visualization without Principal-specific component code', async () => {
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/principals/ui-principals.ts');
     const component = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
     const recordRenderer = await uiSource('src/routes/sysbo/entry/renderer.ts');
     const hierarchyData = await uiSource('src/routes/sysbo/hierarchy/data.ts');
@@ -164,7 +160,7 @@ describe('metadata-driven Principal presentation', () => {
     expect(uiMetadata).toContain("rootField: 'rootPrincipalId'");
     expect(uiMetadata).toContain("viewModes: 'tree,chart'");
     expect(uiMetadata).toContain("defaultView: 'chart'");
-    expect(uiMetadata).toContain("tab('licenses', 'Licenses', 800, ['licenses']");
+    expect(uiMetadata).toContain("tab('licenses', 'Licenses', 800, {");
     expect(uiMetadata).toContain("licenses: relatedLicensesCollection('principalId')");
     expect(component).toContain('options.parentField');
     expect(component).toContain('options.rootField');
@@ -223,7 +219,7 @@ describe('metadata-driven Principal presentation', () => {
   });
 
   it('declares Principal Organization as the first consumer of the generic hierarchy workspace', async () => {
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/principals/ui-principals.ts');
     const routes = await uiSource('src/routes/sysbo/index.ts');
     const hierarchyRenderer = await uiSource('src/routes/sysbo/hierarchy/renderer.ts');
     const uiHostRuntime = await uiSource('public/js/runtime/ui-host-runtime.js');
@@ -274,8 +270,8 @@ describe('metadata-driven Principal presentation', () => {
     expect(hierarchyRuntime).not.toContain('sys-principals');
   });
   it('orders Principal identity fields by type and presents Person names declaratively', async () => {
-    const canonical = await sharedSource('src/metadata/bo/business.ts');
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
+    const canonical = await sharedSource('src/metadata/bo/principals/bo-principals.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/principals/ui-principals.ts');
 
     expect(canonical).toContain("label: 'Full name'");
     expect(canonical).toContain("key: 'firstName'");

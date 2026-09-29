@@ -46,9 +46,9 @@ The API remains authoritative for collection authorization and record visibility
 
 ## Query state
 
-List state represents the user's current browse operation rather than persisted entity data. Filters, ordering, page and search terms therefore belong to the list/surface owner.
+List state represents the user's current browse operation rather than persisted entity data. The host-neutral list runtime owns a normalized query (`page`, `pageSize`, search/search-field, sort/direction, keyed filters and optional list-exception predicate), loaded/current projections, selection, loading and paging state. Page and selector hosts consume that same state machine.
 
-Where list exceptions are declared as canonical expressions, the contract is intended to travel through the API/query/storage path so future RDBMS adapters can translate safe structured predicates into physical filtering. The browser should not retrieve a forbidden/exception set and then pretend UI filtering is equivalent.
+List exceptions use a canonical compiled expression in browser runtime state. The current HTTP adapter sends only its canonical source; the API compiles that source at its trust boundary and storage receives the compiled AST. In-memory storage applies it **after authorization filtering but before ordinary filters, sorting and paging**, with `true` meaning exclude. A future RDBMS adapter can translate the same storage-neutral predicate into a parameterized physical predicate. The browser should not retrieve an exception set and then pretend post-filtering is equivalent.
 
 ## Columns and representation
 
@@ -112,3 +112,5 @@ A Principals list can show canonical Principal representation and fields, accept
 ## Extension rule
 
 If a new list feature is reusable across entities, add it to the metadata/list runtime contract and cover it with generic regression tests. Do not implement `if (entityKey === ...)` inside list infrastructure merely because the first use case came from one entity.
+
+See [Generic List and Entry Contracts](Generic-List-and-Entry-Contracts.md) for the precise runtime/query/authority contract.

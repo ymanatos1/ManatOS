@@ -24,8 +24,15 @@
    * semantics. A calculation never creates a second summary field model.
    */
 %>
+<%
+  const summaryFieldKeys = (contents) => (contents || []).flatMap((content) => {
+    if (content?.kind === 'field') return [content.field];
+    if (content?.kind === 'column' || content?.kind === 'inline') return summaryFieldKeys(content.content);
+    return [];
+  });
+%>
 <div class="account-summary-grid authentication-summary-grid" data-metadata-summary>
-  <% for (const key of tab.fields) { %>
+  <% for (const key of summaryFieldKeys(tab.content)) { %>
     <% const collection = relatedCollections[key]; %>
     <% const field = metadata.fieldDefinition[key]; %>
     <% if (collection || !field || !fieldVisible(field) || field.sensitive) continue; %>
@@ -61,7 +68,9 @@
         data-v2-summary-icon-expression="<%= iconExpression %>"
       <% } %>
     >
-      <% if (field.type === 'reference' && fieldEditable(field)) { %>
+      <% if (field.type === 'boolean') { %>
+        <span class="badge text-bg-<%= rawValue === true ? 'success' : 'secondary' %>"><%= rendered %></span>
+      <% } else if (field.type === 'reference' && fieldEditable(field)) { %>
         <%- include('../fields/reference-select', {
           key,
           field,

@@ -2,55 +2,85 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { sysBOUsersMetadata, sysBOUsersUIMetadata, tabContentKeys } from '@manatos/shared';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
-const sharedSource = (relativePath: string) =>
-  readFile(resolve(testDirectory, '..', '..', '..', 'shared', relativePath), 'utf8');
 const uiSource = (relativePath: string) =>
   readFile(resolve(testDirectory, '..', '..', relativePath), 'utf8');
 
 describe('metadata-driven SysUser presentation', () => {
-  it('places Photo with identity/state, then Description on its own full row', async () => {
-    const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
-    const usersStart = uiMetadata.indexOf('export const sysBOUsersUIMetadata');
-    const usersEnd = uiMetadata.indexOf('export const sysBOExtAuthProvidersUIMetadata', usersStart);
-    const users = uiMetadata.slice(usersStart, usersEnd);
+  it('places Photo with identity/state, then Description on its own full row', () => {
+    const general = sysBOUsersUIMetadata.record?.tabs?.find((tab) => tab.label === 'General');
+    const content = general?.content ?? [];
+    const fields = content
+      .filter(
+        (item): item is Extract<(typeof content)[number], { kind: 'field' }> =>
+          item.kind === 'field',
+      )
+      .map((item) => ({ field: item.field, span: item.span }));
 
-    expect(users).toMatch(
-      /field: 'name', span: 6[\s\S]*?field: 'enabled', span: 2[\s\S]*?field: 'photo', span: 4[\s\S]*?field: 'email', span: 6[\s\S]*?field: 'telephoneNumber', span: 6[\s\S]*?kind: 'break'[\s\S]*?field: 'description', span: 12/,
+    expect(fields.slice(0, 5)).toEqual([
+      { field: 'name', span: 6 },
+      { field: 'enabled', span: 2 },
+      { field: 'photo', span: 4 },
+      { field: 'email', span: 6 },
+      { field: 'telephoneNumber', span: 6 },
+    ]);
+    expect(fields.find((item) => item.field === 'description')).toEqual({
+      field: 'description',
+      span: 12,
+    });
+    expect(fields.findIndex((item) => item.field === 'description')).toBeLessThan(
+      fields.findIndex((item) => item.field === 'firstName'),
     );
-    expect(users.indexOf("field: 'description'")).toBeLessThan(users.indexOf("field: 'firstName'"));
   });
 
-  it('keeps create-mode password status calculations from resolving absent runtime hasPassword', async () => {
-    const canonical = await sharedSource('src/metadata/bo/identity.ts');
-    const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
-
-    expect(canonical).toContain(
+  it('keeps create-mode password status calculations from resolving absent runtime hasPassword', () => {
+    expect(sysBOUsersMetadata.fieldDefinition.localPasswordStatus?.calculation?.expression).toBe(
       "mode === 'create' ? 'Not configured' : hasPassword ? 'Configured' : 'Not configured'",
     );
-    expect(uiMetadata).toContain(
-      "mode === 'create' ? 'secondary' : hasPassword ? 'success' : 'secondary'",
-    );
-    expect(uiMetadata).toContain(
-      "mode === 'create' ? 'dash-circle' : hasPassword ? 'check-circle-fill' : 'dash-circle'",
-    );
+    expect(
+      sysBOUsersUIMetadata.record?.fieldOverrides?.localPasswordStatus?.presentation?.tone,
+    ).toEqual({
+      expression: "mode === 'create' ? 'secondary' : hasPassword ? 'success' : 'secondary'",
+    });
+    expect(
+      sysBOUsersUIMetadata.record?.fieldOverrides?.localPasswordStatus?.presentation?.icon,
+    ).toEqual({
+      expression:
+        "mode === 'create' ? 'dash-circle' : hasPassword ? 'check-circle-fill' : 'dash-circle'",
+    });
   });
-  it('places the Admin-editable Principal reference first on Authentication', async () => {
-    const canonical = await sharedSource('src/metadata/bo/identity.ts');
-    const uiMetadata = await sharedSource('src/metadata/ui/identity.ts');
 
-    expect(canonical).toContain("cardinality: 'one-to-one'");
-    expect(canonical).toContain('filterExpression: "principalType === \'Person\'"');
-    expect(uiMetadata).toMatch(
-      /'authentication'[\s\S]*?\[\s*'principalId',[\s\S]*?'emailVerificationStatus'/,
+  it('places the Admin-editable Principal reference first on Authentication', () => {
+    const principalRelationship = sysBOUsersMetadata.relationships?.principal;
+    const principalField = sysBOUsersMetadata.fieldDefinition.principalId;
+    const authentication = sysBOUsersUIMetadata.record?.tabs?.find(
+      (tab) => tab.label === 'Authentication',
     );
-    expect(uiMetadata).toContain('principalId: {');
-    expect(uiMetadata).toContain(
-      'editable: { expression: "user.permissions.userRole === \'Admin\'" }',
-    );
+
+    expect(principalRelationship?.cardinality).toBe('one-to-one');
+    expect(principalField?.referenceSelection?.filterExpression).toBe("principalType === 'Person'");
+    expect(tabContentKeys(authentication?.content).slice(0, 2)).toEqual([
+      'principalId',
+      'emailVerificationStatus',
+    ]);
+    expect(sysBOUsersUIMetadata.record?.fieldOverrides?.principalId?.editable).toEqual({
+      expression: "$user.permissions.userRole === 'Admin'",
+    });
   });
+
+  it('uses absolute root aliases when metadata intentionally targets root-owned CTX state', () => {
+    expect(sysBOUsersUIMetadata.record?.entryActions?.verifyEmail?.visible).toEqual({
+      expression:
+        '$system.client.features.allowAdminEmailVerification && ' +
+        "$user.permissions.userRole === 'Admin' && " +
+        'id !== $user.fields.id.value && ' +
+        'emailVerified !== true',
+    });
+  });
+
   it('keeps API-safe hasPassword facts available to V2 SSR diagnostics without server ctx.ui topology', async () => {
     const entry = await uiSource('views/components/runtime/entity-entry.ejs');
     expect(entry).toContain('const v2BootstrapFacts = v2Bootstrap?.entry?.facts');

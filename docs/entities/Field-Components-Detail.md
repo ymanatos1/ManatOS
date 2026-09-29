@@ -24,21 +24,21 @@ This is why two different clients can implement the same field type without chan
 
 ## Current field presentations
 
-| Canonical type | Main behavior |
-| --- | --- |
-| `guid`, `string` | text-like display/editing with canonical length/readonly/required rules |
-| `email` | text/email editing; normalization belongs to metadata/expression/API semantics |
-| `telephone` | telephone editing/display; compound contact editors may compose multiple canonical fields |
-| `boolean` | boolean interaction and display |
-| `number` | numeric candidate editing |
-| `date`, `datetime` | date/date-time interaction and canonical string/value projection |
-| `duration` | structured years/months/days editing through the dedicated duration partial |
-| `version` | version-oriented input with canonical version rules |
-| `enum` | option selector driven by enum metadata, labels/icons/tones/traits and effective allowed values |
-| `reference` | generic record selection against a target entity and declarative candidate restrictions |
-| `picture` | one-picture display/editor, including pending unsaved picture state |
-| `pictures` | multi-picture value presentation/editing |
-| `richText` | rich text editing using the client rich-text runtime while projecting the canonical content value |
+| Canonical type     | Main behavior                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| `guid`, `string`   | text-like display/editing with canonical length/readonly/required rules                           |
+| `email`            | text/email editing; normalization belongs to metadata/expression/API semantics                    |
+| `telephone`        | telephone editing/display; compound contact editors may compose multiple canonical fields         |
+| `boolean`          | boolean interaction and display                                                                   |
+| `number`           | numeric candidate editing                                                                         |
+| `date`, `datetime` | date/date-time interaction and canonical string/value projection                                  |
+| `duration`         | structured years/months/days editing through the dedicated duration partial                       |
+| `version`          | version-oriented input with canonical version rules                                               |
+| `enum`             | option selector driven by enum metadata, labels/icons/tones/traits and effective allowed values   |
+| `reference`        | generic record selection against a target entity and declarative candidate restrictions           |
+| `picture`          | one-picture display/editor, including pending unsaved picture state                               |
+| `pictures`         | multi-picture value presentation/editing                                                          |
+| `richText`         | rich text editing using the client rich-text runtime while projecting the canonical content value |
 
 The current Express/EJS implementation includes dedicated partials such as `duration-field.ejs`, `enum-select.ejs`, `reference-select.ejs`, `picture-field.ejs`, `picture-editor.ejs`, `pictures-field.ejs` and `rich-text-field.ejs`. These filenames are implementation detail; the architectural contract is the canonical field behavior above.
 
@@ -57,19 +57,20 @@ For example, the reference component consumes `referenceSelection`; it does not 
 
 ## Mutation and event behavior
 
-A normal user edit follows the shared field-state runtime:
+A normal user edit follows the shared field runtime:
 
 ```text
 user interaction
-  -> value:changing
-  -> canonical CTX field value mutation
+  -> runtime.updateField(...)
+  -> canonical fields.<key>.value mutation
+  -> manatos:ctx-change
   -> dependency/reactive work
-  -> validation/state recomputation
-  -> value:changed / field-state:changed
-  -> any affected component projection
+  -> calculated/derived field updates through the same mutation boundary
+  -> validation + aggregate form-state recomputation
+  -> affected component projection
 ```
 
-The event stream reports semantic transitions; it is not itself authoritative state. See [State, Mutation and Events](../context/State-Mutation-and-Events.md).
+`manatos:ctx-change` reports the canonical mutation after it occurs; the event is not authoritative state. Components that need to reflect programmatic changes subscribe/project from CTX rather than assuming every semantic update originated as a native DOM `change` event. See [State, Mutation and Events](../context/State-Mutation-and-Events.md).
 
 ## Calculated fields
 
@@ -142,7 +143,7 @@ When extending a component, verify at least:
 - programmatic CTX updates as well as direct DOM input;
 - validation/error presentation;
 - expression-driven readonly/visibility changes;
-- hosted page and popup use;
+- hosted page, popup and embedded use;
 - list/summary/reference display when relevant;
 - accessibility and keyboard behavior where applicable;
 - regression coverage.

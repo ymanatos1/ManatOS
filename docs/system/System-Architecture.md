@@ -11,7 +11,7 @@ ManatOS is a metadata-driven application platform. The server owns business trut
   | UI composition                                     |
   | CTX runtime                                        |
   | expression evaluation for UI decisions            |
-  | page / popup / hierarchy interaction               |
+  | page / popup / embedded interaction                |
   +-----------------------+---------------------------+
                           |
                     HTTP contracts
@@ -139,7 +139,7 @@ ctx
             +-- ...
 ```
 
-`ctx.ui.level.level...` is the single currently displayed UI chain. Pages and popups share the same recursive model. There is no second public active-surface topology.
+`ctx.ui.level.level...` is the single currently displayed UI chain. Page, popup and embedded surfaces share the same recursive model. Popup children normally deactivate their parent while active; embedded children intentionally keep their parent active. There is no second public active-surface topology.
 
 CTX is runtime state, not business persistence. Its mutation path owns events, dependency propagation and lifecycle semantics.
 
@@ -189,7 +189,7 @@ fields.<k>.value               entry.original[k]
 
 A UI-capable client owns its presentation/runtime concerns:
 
-- page/popup composition;
+- page/popup/embedded composition;
 - recursive UI-level lifecycle;
 - field interaction state;
 - dirty/valid/loading/saving presentation state;
@@ -198,6 +198,12 @@ A UI-capable client owns its presentation/runtime concerns:
 - evaluation of UI-owned declarative expressions.
 
 The server may provide declarative UI metadata. It does not construct runtime client topology or execute client presentation semantics. The current Node.js/Express TypeScript UI is one realization of this boundary; Angular, React, mobile or other clients may realize it differently without changing the system contract.
+
+## 7.1 Surface host and UI-view orthogonality
+
+The current browser implementation has one production UI-host authority that materializes the recursive `ctx.ui.level` topology. Child surfaces are opened through the same host lifecycle path with `host` selecting `popup` or `embedded`; routed root content is the page host. This is an implementation of the portable surface contract, not a reason to create separate page/popup/embedded business runtimes.
+
+Entity **UI views** are a separate dimension. A view key selects a named record presentation and `viewType` classifies that presentation (`full`, `quick`, and future families). Common record UI metadata is composed with the selected view contribution. Therefore `quick` is not a fourth surface host: a quick Principal editor can be a `quick` UI view hosted in a popup, while the same canonical record semantics remain intact.
 
 ## 8. Security boundary
 

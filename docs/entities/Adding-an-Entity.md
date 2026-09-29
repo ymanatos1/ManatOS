@@ -6,7 +6,7 @@ This guide describes how to add an entity without creating a parallel CRUD/prese
 
 Determine whether the entity is:
 
-- ManatOS company-owned;
+- foundation-level Company-domain;
 - platform-owned (for example protoCRM);
 - future application-defined.
 

@@ -100,7 +100,7 @@ function isUiLevel(value: unknown): boolean {
     : value;
   const host = control.host;
   const kind = control.kind;
-  return (host === 'page' || host === 'popup') && typeof kind === 'string';
+  return (host === 'page' || host === 'popup' || host === 'embedded') && typeof kind === 'string';
 }
 
 function selectedRelativeScope(

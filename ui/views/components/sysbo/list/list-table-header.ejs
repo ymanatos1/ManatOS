@@ -23,6 +23,8 @@
      labels into navigation. */
   const headerSelectorMode = typeof selectorMode !== 'undefined' && selectorMode === true;
   const headerRowActions = typeof rowActions !== 'undefined' && Array.isArray(rowActions) ? rowActions : [];
+  const headerStartActions = typeof startRowActions !== 'undefined' && Array.isArray(startRowActions) ? startRowActions : [];
+  const headerEndActions = typeof endRowActions !== 'undefined' && Array.isArray(endRowActions) ? endRowActions : headerRowActions;
   const sortHrefFor = (key) => `?${new URLSearchParams({
     ...query,
     sort: key,
@@ -30,6 +32,7 @@
   }).toString()}`;
 %>
 <tr>
+  <% if (!headerSelectorMode && headerStartActions.length) { %><th class="list-row-actions-start"><span class="visually-hidden">Actions</span></th><% } %>
   <% for (const key of metadataUI.list.visibleFields) { %>
     <% const field = metadata.fieldDefinition[key]; %>
     <% if (!field) continue; %>
@@ -48,5 +51,5 @@
       <% } %>
     </th>
   <% } %>
-  <% if (!headerSelectorMode && headerRowActions.length) { %><th class="text-end">Actions</th><% } %>
+  <% if (!headerSelectorMode && headerEndActions.length) { %><th class="text-end">Actions</th><% } %>
 </tr>

@@ -6,7 +6,7 @@ const page = readFileSync(
   'utf8',
 );
 const runtime = readFileSync(
-  new URL('../../public/js/system-settings.js', import.meta.url),
+  new URL('../../public/js/system/system-settings.js', import.meta.url),
   'utf8',
 );
 

@@ -91,7 +91,9 @@ A traffic entry includes the request identity and useful transport facts such as
 
 API Traffic is primarily a **transport timeline**. It answers “what did the UI ask the API to do?” and “what came back?” It is not the authoritative business-operation trace.
 
-The current client debugger can pause/clear/filter the traffic view without changing API behavior.
+The current client debugger can pause/clear/filter the traffic view without changing API behavior. The browser polls the diagnostic traffic endpoint only as a viewer concern and disposes an earlier poller before reinitialization so development navigation/hot reload cannot accumulate duplicate polling loops.
+
+Traffic **entries themselves are live diagnostic data**, not browser-persisted application state. Viewer controls and counters have explicit diagnostic lifetimes: transient selection/filter/pause state and route counts are scoped to the UI boot id in `sessionStorage`, while route visibility/catalog choices are durable `localStorage` preferences. This lets navigation preserve a useful debugging workspace without making a previous server boot's traffic counters look current.
 
 ## Structured API logging
 
@@ -257,6 +259,16 @@ A log tab contains only lines whose structured request ID matches the selected t
 Storage CTX tabs are discovered from the selected request's snapshot directory. They appear only when that request actually entered storage and corresponding snapshots exist.
 
 The debugger should prefer “no diagnostic artifact available” over manufacturing synthetic content.
+
+## Developer-workspace state versus observed state
+
+The debugger must distinguish **where the developer is looking** from **what the application currently contains**. The first category may be persisted as browser-local workspace preferences; the second remains owned by the runtime being observed.
+
+For the current CTX Viewer, persisted workspace coordinates include selected and expanded paths, scroll anchor, Properties visibility/height, debugger width, navigation history and watched path. They are stored in `localStorage`, so they survive page navigation/reload and, in the current implementation, a UI-server restart. On a new page, a path that disappeared is resolved to its nearest surviving parent. No CTX value is serialized into this workspace record.
+
+API Traffic intentionally uses a shorter boot-scoped lifetime for transient viewer state and route counters. A server/system restart changes the UI boot id, giving those values a fresh namespace. Durable route-display preferences remain browser-local.
+
+A detached Developer Tools window is also presentation state, not a second debugger runtime. The dock's live DOM/runtime instance is moved into that window and reconnects across ordinary main-page navigation. A changed UI boot id closes the detached live window so it cannot continue showing observations from the previous runtime. Geometry/detach preference can remain durable without preserving the old runtime itself.
 
 ## Development versus production
 

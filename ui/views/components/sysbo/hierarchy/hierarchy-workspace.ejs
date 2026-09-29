@@ -11,7 +11,7 @@
   - The workspace owns its nested page CTX and working entries graph; popup children use the canonical popup CTX envelope.
 
   Embeds / delegates:
-  - record-quick.ejs plus the shared popup record selector.
+  - Generic hosted entry popup plus the shared popup record selector.
 
   Runtime contract:
   - hierarchy-workspace.js owns workspace orchestration, drag/drop, placement, selector invocation, confirmation popups and transactional commit.
@@ -78,13 +78,13 @@
     data-record-mode="<%= hierarchyMode %>"
   ></div>
 
-  <div data-hierarchy-record-quick-host hidden>
-    <%- include('record-quick', { metadata, metadataUI, quickDraft: null, quickDraftMode: 'create' }) %>
-  </div>
-
   <div class="d-flex justify-content-between align-items-center gap-2 mt-4 pt-3 border-top">
     <% if (hierarchyMode === 'create') { %>
-      <div class="d-flex align-items-center gap-2">
+      <div>
+        <div class="small text-secondary mb-1" data-hierarchy-draft-help hidden>
+          You can leave this draft and continue later. Use Clear all to discard it.
+        </div>
+        <div class="d-flex align-items-center gap-2">
         <span class="small text-secondary" data-hierarchy-draft-status hidden></span>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-hierarchy-save-draft hidden>
           <i class="bi bi-floppy me-1" aria-hidden="true"></i>Save draft
@@ -98,15 +98,16 @@
         >
           <i class="bi bi-eraser me-1" aria-hidden="true"></i>Clear all
         </button>
+        </div>
       </div>
     <% } else { %>
       <span></span>
     <% } %>
     <div class="d-flex justify-content-end gap-2 ms-auto">
       <% if (hierarchyMode === 'create') { %>
-        <button type="button" class="btn btn-outline-secondary" data-hierarchy-close>Close</button>
+        <button type="button" class="btn btn-outline-secondary" data-hierarchy-close data-cancel-operation>Close</button>
       <% } else { %>
-        <button type="button" class="btn btn-outline-secondary" data-hierarchy-edit-exit>Close</button>
+        <button type="button" class="btn btn-outline-secondary" data-hierarchy-edit-exit data-cancel-operation>Close</button>
       <% } %>
       <button type="button" class="btn btn-primary" data-hierarchy-commit disabled>Commit</button>
     </div>

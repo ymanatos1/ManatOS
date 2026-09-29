@@ -11,6 +11,34 @@
  */
 (() => {
   const activePopups = [];
+  const openingMetrics = [];
+  const metricsEnabled = () => Boolean(document.getElementById('developerToolsDock'));
+  const roundedMs = (value) => Math.max(0, Math.round(Number(value || 0) * 10) / 10);
+  const publishOpeningMetric = (metric) => {
+    if (!metric) return;
+    openingMetrics.push(Object.freeze({ ...metric }));
+    if (openingMetrics.length > 100) openingMetrics.splice(0, openingMetrics.length - 100);
+    const latest = openingMetrics.at(-1);
+    window.dispatchEvent(new CustomEvent('manatos:entry-opening-measured', { detail: latest }));
+
+    // Developer-only runtime telemetry is mirrored through the UI server so the
+    // same measurement visible through ManatOS.popup.entry.measurements() is also
+    // captured by verify-run.log. This is diagnostic bookkeeping only: failure to
+    // write the log must never affect popup opening or semantic CTX state.
+    if (metricsEnabled() && latest) {
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      if (window.ManatOS?.clientDiagnostics?.send) {
+        window.ManatOS.clientDiagnostics.send({ type: 'entry-opening-measurement', ...latest });
+      } else {
+        void fetch('/bo/debug/ui-runtime/entry-opening-measurement', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ _csrf: csrf, measurement: latest }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }
+  };
 
   const open = ({
     url,
@@ -19,22 +47,58 @@
     entityKey = null,
     mode = 'view',
     invocation = {},
+    request = null,
     onSaved = null,
     onClose = null,
   } = {}) => {
     if (!url || !token) return null;
 
+    const measureOpening = metricsEnabled();
+    const requestedAt = performance.now();
+    let hostMountedAt = null;
+    let frameLoadedAt = null;
+    let spinnerShownAt = null;
+
     const runtime = window.ManatOS?.ctx;
+    const requestMethod = String(request?.method || 'GET').toUpperCase();
+    const directReadonlyRequested = mode === 'view' && requestMethod === 'GET';
+    const resourcesAtRequest = performance.getEntriesByType?.('resource')?.length ?? null;
+    const apiSequenceAtRequest = measureOpening
+      ? fetch('/bo/debug/ui-runtime/api-request-sequence', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+        })
+          .then((response) => (response.ok ? response.json() : null))
+          .then((payload) =>
+            Number.isFinite(Number(payload?.sequence)) ? Number(payload.sequence) : null,
+          )
+          .catch(() => null)
+      : Promise.resolve(null);
     const popupRuntime = window.ManatOS?.popup?.runtime;
-    const popupPlacement = popupRuntime?.preparePopupPlacement?.({ width: 1120, height: 820 }) ?? {
-      x: Math.max(8, Math.round((window.innerWidth - Math.min(1120, window.innerWidth - 48)) / 2)),
-      y: Math.max(8, Math.round((window.innerHeight - Math.min(820, window.innerHeight - 48)) / 2)),
+    const resolvedInvocation = Object.freeze({ ...invocation });
+    const compactEntry = resolvedInvocation.presentation?.entryDensity === 'compact';
+    const recoverable = resolvedInvocation.behavior?.recoverable !== false;
+    const requestedWidth = compactEntry ? 540 : 1120;
+    const requestedHeight = compactEntry ? 300 : 820;
+    const anchorToTrigger = resolvedInvocation.presentation?.anchorToTrigger === true;
+    const popupPlacement = popupRuntime?.preparePopupPlacement?.({
+      width: requestedWidth,
+      height: requestedHeight,
+      anchorToTrigger,
+    }) ?? {
+      x: Math.max(
+        8,
+        Math.round((window.innerWidth - Math.min(requestedWidth, window.innerWidth - 48)) / 2),
+      ),
+      y: Math.max(
+        8,
+        Math.round((window.innerHeight - Math.min(requestedHeight, window.innerHeight - 48)) / 2),
+      ),
       openedPopupsCounter: 0,
     };
-    const resolvedInvocation = Object.freeze({ ...invocation });
     const recoveryUrl = (() => {
       const parsed = new URL(url, window.location.origin);
-      parsed.searchParams.delete('_entryPopupToken');
+      parsed.searchParams.delete('_entryToken');
       return `${parsed.pathname}${parsed.search}${parsed.hash}`;
     })();
     const recoveryDescriptor = Object.freeze({
@@ -45,6 +109,7 @@
       entityKey,
       mode,
       invocation: { ...resolvedInvocation },
+      ...(request ? { request: { ...request, fields: { ...(request.fields || {}) } } } : {}),
     });
     let resolveReady;
     const ready = new Promise((resolve) => {
@@ -60,9 +125,10 @@
       presentation: {
         title,
         layout: resolvedInvocation.presentation?.layout || 'entry',
+        entryDensity: compactEntry ? 'compact' : 'normal',
       },
       state: { popup: { ...popupPlacement } },
-      supportsUserChanges: mode !== 'view',
+      supportsUserChanges: recoverable && mode !== 'view',
     });
     // A hosted entry popup is always a canonical child V2 surface. Do not
     // create a parallel ctx.ui...popup projection or silently fall back to the
@@ -73,6 +139,11 @@
     const backdrop = document.createElement('div');
     backdrop.className = 'manatos-popup-backdrop manatos-popup-preparing';
     backdrop.dataset.entryPopupBackdrop = '';
+    let slowOpeningTimer = window.setTimeout(() => {
+      backdrop.classList.add('manatos-popup-show-spinner');
+      if (measureOpening && spinnerShownAt == null) spinnerShownAt = performance.now();
+      slowOpeningTimer = null;
+    }, 220);
     backdrop.innerHTML = `
       <div class="card shadow-lg metadata-entry-popup manatos-popup-initializing" role="dialog" aria-modal="true" aria-busy="true">
         <div class="card-header d-flex align-items-center justify-content-between gap-3">
@@ -82,7 +153,10 @@
             <button type="button" class="btn-close" aria-label="Close" data-entry-popup-close></button>
           </div>
         </div>
-        <div class="card-body p-0"><iframe title="${String(title).replaceAll('"', '&quot;')}" data-entry-popup-frame></iframe></div>
+        <div class="card-body p-0">
+          <div data-entry-popup-direct-host hidden></div>
+          <iframe title="${String(title).replaceAll('"', '&quot;')}" data-entry-popup-frame></iframe>
+        </div>
       </div>`;
     const titleNode = backdrop.querySelector('[data-entry-popup-title]');
     if (titleNode) titleNode.textContent = title;
@@ -92,10 +166,21 @@
       return null;
     }
     frame.setAttribute('aria-hidden', 'true');
-    frame.src = url;
+    const directHost = backdrop.querySelector('[data-entry-popup-direct-host]');
+    let directActive = false;
+    let directForm = null;
+    const frameName = `manatos-entry-popup-${token}`;
+    frame.name = frameName;
+    const startRoutedHost = () => {
+      const hostedUrl = new URL(url, window.location.origin);
+      frame.hidden = false;
+      frame.src = `${hostedUrl.pathname}${hostedUrl.search}${hostedUrl.hash}`;
+    };
+    if (!directReadonlyRequested && requestMethod !== 'POST') startRoutedHost();
     const popupCard = backdrop.querySelector('.metadata-entry-popup');
     if (popupCard instanceof HTMLElement) {
       popupCard.classList.add('is-positioned');
+      popupCard.classList.toggle('is-compact-entry', compactEntry);
       popupCard.style.left = `${popupPlacement.x}px`;
       popupCard.style.top = `${popupPlacement.y}px`;
     }
@@ -106,7 +191,7 @@
     // is consistently about 25 px too short. The correction belongs to the
     // generic popup sizing model and is applied automatically on opening and
     // whenever the hosted surface changes its active tab/internal layout.
-    const POPUP_HEIGHT_ESTIMATE_CORRECTION = 25;
+    const POPUP_HEIGHT_ESTIMATE_CORRECTION = compactEntry ? 18 : 25;
 
     /*
      * Height fitting is independent from popup cascade placement. The opening
@@ -114,8 +199,9 @@
      * or shrinks around that center. Only viewport clamping may move the center.
      */
     const popupHeightLimits = () => {
-      const maximum = Math.max(280, window.innerHeight - 32);
-      const minimum = Math.min(280, maximum);
+      const requestedMinimum = 280;
+      const maximum = Math.max(requestedMinimum, window.innerHeight - 32);
+      const minimum = Math.min(requestedMinimum, maximum);
       return { minimum, maximum };
     };
 
@@ -134,7 +220,7 @@
 
       const targetHeight = clampPopupHeight(originalPopupHeight + Number(difference || 0));
       const baselineCenterY = originalPopupTop + originalPopupHeight / 2;
-      const idealTop = baselineCenterY - targetHeight / 2;
+      const idealTop = anchorToTrigger ? originalPopupTop : baselineCenterY - targetHeight / 2;
       const maximumTop = Math.max(8, window.innerHeight - targetHeight - 24);
       const targetTop = Math.max(8, Math.min(maximumTop, Math.round(idealTop)));
 
@@ -149,8 +235,9 @@
 
       let hostedContentHeight = 0;
       try {
-        const hostedDocument = frame.contentDocument;
-        if (hostedDocument && hostedWindow) {
+        const hostedDocument = directActive ? document : frame.contentDocument;
+        const hostedRoot = directActive ? directHost : hostedDocument;
+        if (hostedDocument && hostedWindow && hostedRoot) {
           /*
            * Measure the host-neutral entry form's intrinsic vertical extent.
            * formRect.top is meaningful host spacing; mirror at least one normal
@@ -158,12 +245,25 @@
            * against popup chrome. The body/iframe viewport itself is never a
            * measurement source because it stretches to the popup height.
            */
-          const entryForm = hostedDocument.querySelector('.metadata-driven-record-form');
+          const entryForm = hostedRoot.querySelector('.metadata-driven-record-form');
           if (entryForm instanceof hostedWindow.HTMLElement) {
             const formRect = entryForm.getBoundingClientRect();
-            const topInset = Math.max(0, formRect.top);
-            const bottomGutter = Math.max(24, topInset);
-            hostedContentHeight = Math.ceil(formRect.bottom + bottomGutter);
+            // Routed entries are measured in their iframe viewport, where formRect.top
+            // is already host-relative. Direct entries live in the outer document, so
+            // using the viewport coordinate here accidentally counts the popup's page Y
+            // position as content height. Normalize it to the direct host instead.
+            const hostTop =
+              directActive && directHost instanceof HTMLElement
+                ? directHost.getBoundingClientRect().top
+                : 0;
+            const topInset = Math.max(0, formRect.top - hostTop);
+            const bottomGutter = compactEntry ? Math.max(12, topInset) : Math.max(24, topInset);
+            const intrinsicFormHeight = Math.max(
+              formRect.height,
+              entryForm.scrollHeight,
+              entryForm.offsetHeight,
+            );
+            hostedContentHeight = Math.ceil(topInset + intrinsicFormHeight + bottomGutter);
           }
         }
       } catch {
@@ -207,6 +307,7 @@
     let hostedMutationObserver = null;
 
     const syncHostedPresentation = () => {
+      if (directActive) return;
       let canonicalTitle = '';
       try {
         canonicalTitle = String(
@@ -244,6 +345,8 @@
       if (hostedWindow?.document && hostedTabHandler) {
         hostedWindow.document.removeEventListener('shown.bs.tab', hostedTabHandler);
         hostedWindow.document.removeEventListener('click', hostedTabHandler);
+        directHost?.removeEventListener?.('shown.bs.tab', hostedTabHandler);
+        directHost?.removeEventListener?.('click', hostedTabHandler);
       }
       hostedMutationObserver?.disconnect();
       hostedMutationObserver = null;
@@ -252,6 +355,8 @@
     };
 
     frame.addEventListener('load', () => {
+      if (directActive) return;
+      if (measureOpening && frameLoadedAt == null) frameLoadedAt = performance.now();
       detachHostedRuntime();
       try {
         hostedWindow = frame.contentWindow;
@@ -319,7 +424,11 @@
       window.removeEventListener('message', handleMessage);
       if (preparingFallbackTimer != null) window.clearTimeout(preparingFallbackTimer);
       preparingFallbackTimer = null;
+      if (slowOpeningTimer != null) window.clearTimeout(slowOpeningTimer);
+      slowOpeningTimer = null;
       detachHostedRuntime();
+      unregisterDismiss?.();
+      unbindDismissTarget?.();
       popupRuntime.closeUiLevel(v2Surface);
       popupRuntime?.clearInspection?.(ctxButton);
       backdrop.remove();
@@ -337,13 +446,87 @@
       if (data.type === 'manatos:entry-popup-ready') {
         if (preparingFallbackTimer != null) window.clearTimeout(preparingFallbackTimer);
         preparingFallbackTimer = null;
+        if (slowOpeningTimer != null) window.clearTimeout(slowOpeningTimer);
+        slowOpeningTimer = null;
         backdrop.classList.remove('manatos-popup-preparing');
+        backdrop.classList.remove('manatos-popup-show-spinner');
         popupCard?.classList.remove('manatos-popup-initializing');
         popupCard?.setAttribute('aria-busy', 'false');
-        frame.removeAttribute('aria-hidden');
+        if (directActive) {
+          if (directHost instanceof HTMLElement) directHost.hidden = false;
+        } else {
+          frame.removeAttribute('aria-hidden');
+        }
         syncHostedPresentation();
         scheduleHostedHeightEstimate();
         resolveReady?.(true);
+        if (measureOpening) {
+          const readyAt = performance.now();
+          window.requestAnimationFrame(() => {
+            const firstVisibleAt = performance.now();
+            let hostedNavigationMs = null;
+            let hostedResourceCount = null;
+            try {
+              if (directActive) {
+                const resourceNow = performance.getEntriesByType?.('resource')?.length ?? null;
+                hostedNavigationMs = 0;
+                hostedResourceCount =
+                  resourceNow == null || resourcesAtRequest == null
+                    ? null
+                    : Math.max(0, resourceNow - resourcesAtRequest);
+              } else {
+                const hostedPerformance = frame.contentWindow?.performance;
+                const navigation = hostedPerformance?.getEntriesByType?.('navigation')?.[0];
+                hostedNavigationMs = navigation ? roundedMs(navigation.duration) : null;
+                hostedResourceCount =
+                  hostedPerformance?.getEntriesByType?.('resource')?.length ?? null;
+              }
+            } catch {
+              // Measurement must never affect the same-origin hosted entry lifecycle.
+            }
+            void (async () => {
+              let apiRequestCount = null;
+              let apiRequests = null;
+              try {
+                const startSequence = await apiSequenceAtRequest;
+                if (startSequence != null) {
+                  const response = await fetch(
+                    `/bo/debug/ui-runtime/api-request-summary?after=${encodeURIComponent(startSequence)}`,
+                    { credentials: 'same-origin', cache: 'no-store' },
+                  );
+                  const payload = response.ok ? await response.json() : null;
+                  apiRequestCount = Number.isFinite(Number(payload?.count))
+                    ? Number(payload.count)
+                    : null;
+                  apiRequests = Array.isArray(payload?.requests) ? payload.requests : null;
+                }
+              } catch {
+                // Telemetry must never affect entry opening.
+              }
+              publishOpeningMetric({
+                token,
+                entityKey,
+                mode,
+                uiViewKey: resolvedInvocation.uiViewKey || null,
+                density: compactEntry ? 'compact' : 'normal',
+                clickToHostMountedMs:
+                  hostMountedAt == null ? null : roundedMs(hostMountedAt - requestedAt),
+                clickToFrameLoadMs:
+                  frameLoadedAt == null ? null : roundedMs(frameLoadedAt - requestedAt),
+                clickToReadyMs: roundedMs(readyAt - requestedAt),
+                clickToFirstVisibleContentMs: roundedMs(firstVisibleAt - requestedAt),
+                spinnerShown: spinnerShownAt != null,
+                spinnerShownAfterMs:
+                  spinnerShownAt == null ? null : roundedMs(spinnerShownAt - requestedAt),
+                hostedNavigationMs,
+                hostedResourceCount,
+                apiRequestCount,
+                apiRequests,
+                hostStrategy: directActive ? 'direct' : 'routed',
+              });
+            })();
+          });
+        }
       } else if (data.type === 'manatos:entry-popup-saved') {
         const surfaceResult = makeSurfaceResult('saved', {
           value: data.id,
@@ -356,53 +539,217 @@
         close(makeSurfaceResult('cancelled'));
       }
     };
+    const requestHostedCancel = () => {
+      if (!recoverable || mode === 'view') return close(makeSurfaceResult('cancelled'));
+      try {
+        const hostedWindow = frame.contentWindow;
+        const cancel = frame.contentDocument?.querySelector(
+          '[data-cancel-operation], [data-form-close-cancel]',
+        );
+        if (hostedWindow && cancel instanceof hostedWindow.HTMLElement) {
+          cancel.click();
+          return makeSurfaceResult('cancel-requested');
+        }
+      } catch {
+        // If the hosted document is unavailable, closing remains the only safe fallback.
+      }
+      return close(makeSurfaceResult('cancelled'));
+    };
+
+    const unregisterDismiss = popupRuntime.registerDismissHandler?.(v2Surface, () =>
+      requestHostedCancel(),
+    );
+    const unbindDismissTarget = popupRuntime.bindDismissTarget?.(v2Surface, backdrop);
     window.addEventListener('message', handleMessage);
-    backdrop
-      .querySelector('[data-entry-popup-close]')
-      ?.addEventListener('click', () => close(makeSurfaceResult('closed')));
+    backdrop.querySelector('[data-entry-popup-close]')?.addEventListener('click', () => {
+      popupRuntime.requestDismiss?.(v2Surface, 'close-button');
+    });
     document.body.append(backdrop);
+    if (measureOpening) hostMountedAt = performance.now();
+
+    const fallbackToRoutedHost = () => {
+      directActive = false;
+      directForm = null;
+      if (directHost instanceof HTMLElement) {
+        directHost.replaceChildren();
+        directHost.hidden = true;
+      }
+      startRoutedHost();
+    };
+
+    const mountDirectReadonlyHost = async () => {
+      if (!directReadonlyRequested || !(directHost instanceof HTMLElement)) return false;
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'X-ManatOS-Entry-Host': 'direct' },
+          credentials: 'same-origin',
+        });
+        if (!response.ok) throw new Error(`Direct entry host returned HTTP ${response.status}.`);
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const bootstrapElement = parsed.getElementById('manatosUiBootstrap');
+        const renderedEntry = parsed.querySelector('[data-v2-entity-entry]');
+        if (!bootstrapElement || !(renderedEntry instanceof Element)) {
+          throw new Error('Direct entry response did not contain the canonical entry payload.');
+        }
+        const bootstrap = JSON.parse(bootstrapElement.textContent || 'null');
+        if (!bootstrap || bootstrap.readOnly !== true) {
+          throw new Error('Direct entry response is not a readonly entry surface.');
+        }
+        if (!window.ManatOS?.uiHost?.hydrateEntrySurface?.(v2Surface, bootstrap)) {
+          throw new Error('Direct entry CTX hydration was rejected.');
+        }
+
+        const imported = document.importNode(renderedEntry, true);
+        const serverScope = imported
+          .querySelector('[data-v2-entry-form]')
+          ?.getAttribute('data-ctx-scope-path');
+        if (!serverScope) throw new Error('Direct entry form has no canonical CTX scope.');
+        const rewriteScope = (element) => {
+          for (const attribute of [...element.attributes]) {
+            if (attribute.value.includes(serverScope)) {
+              element.setAttribute(
+                attribute.name,
+                attribute.value.split(serverScope).join(popupPath),
+              );
+            }
+          }
+          for (const child of element.children) rewriteScope(child);
+        };
+        rewriteScope(imported);
+
+        directActive = true;
+        directHost.replaceChildren(imported);
+        directForm = directHost.querySelector('form[data-v2-entry-form]');
+        if (!(directForm instanceof HTMLFormElement))
+          throw new Error('Direct entry form was not mounted.');
+        window.ManatOS?.entrySurfaces?.installForm?.(directForm);
+
+        // The direct readonly host lives in this window rather than the iframe.
+        // Give sizing/tab observation the same host-window contract as routed
+        // entries, and bridge its canonical Close action to the popup lifecycle.
+        hostedWindow = window;
+        hostedTabHandler = (event) => {
+          if (event.type === 'click') {
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target?.closest('[data-bs-toggle="tab"], [role="tab"]')) return;
+          }
+          scheduleHostedHeightEstimate();
+        };
+        directHost.addEventListener('shown.bs.tab', hostedTabHandler);
+        directHost.addEventListener('click', hostedTabHandler);
+        directHost.addEventListener('click', (event) => {
+          const target = event.target instanceof Element ? event.target : null;
+          if (!target?.closest('[data-form-close-cancel], [data-cancel-operation]')) return;
+          event.preventDefault();
+          requestHostedCancel();
+        });
+        if (typeof MutationObserver === 'function') {
+          hostedMutationObserver = new MutationObserver(() => scheduleHostedHeightEstimate());
+          hostedMutationObserver.observe(directForm, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ['class', 'hidden', 'aria-expanded', 'style'],
+          });
+        }
+
+        const announceReady = () =>
+          handleMessage({
+            origin: window.location.origin,
+            data: { type: 'manatos:entry-popup-ready', token },
+          });
+        const initialization = window.ManatOS?.entryInitialization?.forForm?.(directForm);
+        if (initialization?.pending === false) announceReady();
+        else
+          directForm.addEventListener('manatos:form-initialization-settled', announceReady, {
+            once: true,
+          });
+        return true;
+      } catch (error) {
+        console.warn('Direct readonly entry host failed; using routed compatibility host.', error);
+        fallbackToRoutedHost();
+        return false;
+      }
+    };
+
+    if (directReadonlyRequested) void mountDirectReadonlyHost();
+    if (requestMethod === 'POST') {
+      const requestForm = document.createElement('form');
+      requestForm.method = 'post';
+      requestForm.action = url;
+      requestForm.target = frameName;
+      requestForm.hidden = true;
+      const requestFields = { ...(request?.fields || {}) };
+      for (const [name, value] of Object.entries(requestFields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = typeof value === 'string' ? value : JSON.stringify(value ?? '');
+        requestForm.append(input);
+      }
+      document.body.append(requestForm);
+      requestForm.submit();
+      requestForm.remove();
+    }
+    if (resolvedInvocation.presentation?.autoCloseOnBackdrop === true) {
+      backdrop.addEventListener('mousedown', (event) => {
+        if (event.target === backdrop) requestHostedCancel();
+      });
+    }
     if (popupCard instanceof HTMLElement) {
       const originalRect = popupCard.getBoundingClientRect();
       originalPopupHeight = Math.round(originalRect.height);
       originalPopupTop = Math.round(originalRect.top);
     }
     scheduleHostedHeightEstimate();
-    activePopups.push({ token, close, ready, descriptor: recoveryDescriptor, frame });
+    activePopups.push({
+      token,
+      close,
+      ready,
+      descriptor: recoveryDescriptor,
+      frame,
+      recoverable: directReadonlyRequested ? false : recoverable,
+    });
     window.dispatchEvent(new CustomEvent('manatos:entry-popup-opened'));
-    return Object.freeze({ close, ready, popupPath, invocation: resolvedInvocation });
+    return Object.freeze({ token, close, ready, popupPath, invocation: resolvedInvocation });
   };
 
   const snapshotDescriptors = () =>
-    activePopups.map((entry) => {
-      let navigation = [];
-      try {
-        navigation = [
-          ...entry.frame.contentDocument.querySelectorAll(
-            '[data-navigation-track-path][data-navigation-track-value]',
-          ),
-        ]
-          .filter(
-            (element) =>
-              element.classList.contains('active') ||
-              element.getAttribute('aria-selected') === 'true',
-          )
-          .map((element) => ({
-            statePath: element.getAttribute('data-navigation-track-path'),
-            value: element.getAttribute('data-navigation-track-value'),
-          }))
-          .filter((item) => item.statePath && item.value);
-      } catch {
-        // Same-origin hosted entries are the normal contract; navigation state
-        // is optional recovery presentation data if browser access is blocked.
-      }
-      let userChanges = null;
-      try {
-        userChanges = entry.frame.contentWindow?.ManatOS?.entryRecovery?.getUserChanges?.() ?? null;
-      } catch {
-        userChanges = null;
-      }
-      return { ...entry.descriptor, navigation, userChanges };
-    });
+    activePopups
+      .filter((entry) => entry.recoverable !== false)
+      .map((entry) => {
+        let navigation = [];
+        try {
+          navigation = [
+            ...entry.frame.contentDocument.querySelectorAll(
+              '[data-navigation-track-path][data-navigation-track-value]',
+            ),
+          ]
+            .filter(
+              (element) =>
+                element.classList.contains('active') ||
+                element.getAttribute('aria-selected') === 'true',
+            )
+            .map((element) => ({
+              statePath: element.getAttribute('data-navigation-track-path'),
+              value: element.getAttribute('data-navigation-track-value'),
+            }))
+            .filter((item) => item.statePath && item.value);
+        } catch {
+          // Same-origin hosted entries are the normal contract; navigation state
+          // is optional recovery presentation data if browser access is blocked.
+        }
+        let userChanges = null;
+        try {
+          userChanges =
+            entry.frame.contentWindow?.ManatOS?.entryRecovery?.getUserChanges?.() ?? null;
+        } catch {
+          userChanges = null;
+        }
+        return { ...entry.descriptor, navigation, userChanges };
+      });
 
   const gentleCloseAll = async () => {
     while (activePopups.length) {
@@ -440,22 +787,22 @@
 
   const restoreDescriptor = async (descriptor) => {
     if (!descriptor || descriptor.type !== 'entry' || !descriptor.url) return true;
-    const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
-    const targetUrl = new URL(descriptor.url, window.location.origin);
-    targetUrl.searchParams.set('_entryPopup', '1');
-    targetUrl.searchParams.set('_entryPopupToken', token);
-    targetUrl.searchParams.set('_entryMode', descriptor.mode || 'view');
-    const restored = open({
-      token,
+    const restored = openEntry({
+      target: { entityKey: descriptor.entityKey || null, url: descriptor.url },
       title: descriptor.title || 'Entry',
-      url: `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`,
-      entityKey: descriptor.entityKey || null,
       mode: descriptor.mode || 'view',
-      invocation: descriptor.invocation || {},
+      purpose: descriptor.invocation?.purpose || 'view',
+      uiViewKey: descriptor.invocation?.uiViewKey || null,
+      presentation: descriptor.invocation?.presentation || {},
+      behavior: descriptor.invocation?.behavior || {},
+      request: descriptor.request
+        ? { ...descriptor.request, fields: { ...(descriptor.request.fields || {}) } }
+        : null,
     });
     if (!restored || (await restored.ready) !== true) {
       throw new Error(`Could not restore popup ${descriptor.title || descriptor.url}.`);
     }
+    const token = restored.token;
 
     // The popup itself has now completed its normal hosted-entry lifecycle.
     // Re-select its remembered tabs before the recovery loop opens the next
@@ -498,6 +845,38 @@
   };
 
   /*
+   * Semantic entry links and metadata list actions share one canonical opener.
+   * Callers describe intent only; correlation and HTTP transport are derived once.
+   */
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const link = target?.closest('a[data-entry-link], a[data-open-entry-popup]');
+    if (!(link instanceof HTMLAnchorElement)) return;
+    const listAction = link.matches('[data-open-entry-popup]');
+    if (!listAction && !document.body.classList.contains('entry-popup-host')) return;
+
+    event.preventDefault();
+    const entryOpening = window.ManatOS?.entryOpening;
+    if (!entryOpening?.open) return;
+    const targetUrl = new URL(link.href, window.location.origin);
+    entryOpening.open({
+      host: 'popup',
+      target: {
+        entityKey: listAction
+          ? link.dataset.entryPopupEntityKey || null
+          : link.dataset.entryLinkEntityKey || null,
+        url: `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`,
+      },
+      mode: listAction ? link.dataset.entryPopupMode || 'view' : 'view',
+      uiViewKey: listAction ? link.dataset.entryPopupUiView || null : null,
+      title:
+        link.getAttribute('aria-label') || link.title || link.textContent?.trim() || 'View entry',
+      purpose: 'view',
+      presentation: { layout: 'entry' },
+    });
+  });
+
+  /*
    * Related collections obey the owning entry's interaction mode. A collection
    * rendered by a view/readonly entry may still expose a row as navigable, but
    * that navigation must itself remain view-only. The component marks those
@@ -510,42 +889,74 @@
     if (!(link instanceof HTMLAnchorElement)) return;
 
     event.preventDefault();
-    const popup = window.ManatOS?.popup?.entry;
-    if (!popup?.open) return;
+    const entryOpening = window.ManatOS?.entryOpening;
+    if (!entryOpening?.open) return;
 
-    const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
     const targetUrl = new URL(link.href, window.location.origin);
-    targetUrl.searchParams.set('_entryPopup', '1');
-    targetUrl.searchParams.set('_entryPopupToken', token);
-    targetUrl.searchParams.set('_entryMode', 'view');
-    popup.open({
-      token,
-      title: link.dataset.relatedEntryTitle || link.textContent?.trim() || 'View entry',
-      url: `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`,
-      entityKey: link.dataset.relatedEntryEntityKey || null,
-      mode: 'view',
-      invocation: {
-        purpose: 'view',
-        presentation: { layout: 'entry' },
+    entryOpening.open({
+      host: 'popup',
+      target: {
+        entityKey: link.dataset.relatedEntryEntityKey || null,
+        url: `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`,
       },
+      title: link.dataset.relatedEntryTitle || link.textContent?.trim() || 'View entry',
+      mode: 'view',
+      purpose: 'view',
+      presentation: { layout: 'entry' },
     });
   });
 
+  const openProjectedEntry = (opening) => {
+    const adapter = window.ManatOS?.entryOpening;
+    if (!adapter?.transport) return null;
+    const projected = adapter.transport(opening);
+    return open({
+      token: opening.token,
+      title: opening.title,
+      url: projected.url,
+      entityKey: opening.target.entityKey,
+      mode: opening.mode,
+      invocation: projected.invocation,
+      request: projected.request,
+      onSaved: opening.onSaved,
+      onClose: opening.onClose,
+    });
+  };
+
+  window.ManatOS?.entryOpening?.registerHost?.('popup', openProjectedEntry);
+
+  const openEntry = (descriptor = {}) =>
+    window.ManatOS?.entryOpening?.open?.({ ...descriptor, host: 'popup' }) ?? null;
+
   let exportedOpen = open;
   if (document.body.classList.contains('entry-popup-host')) {
+    /*
+     * The hosted entry form registers its own canonical dismissal adapter from
+     * entry/state.js. The iframe remains transport only; this module only bridges
+     * an accepted Close/Cancel action back to the outer PopupHost.
+     */
+
+    /*
+     * The hosted entry owns its canonical Close/Cancel action. Once that action
+     * has passed the normal cancellation guard, bridge the accepted click to the
+     * outer PopupHost, which alone owns disposal of the popup UI level. Keeping
+     * this on the real button path makes header Close, footer Close/Cancel and
+     * Escape converge on one lifecycle instead of maintaining parallel closers.
+     */
     document.addEventListener('click', (event) => {
-      const target =
+      if (event.defaultPrevented) return;
+      const trigger =
         event.target instanceof Element ? event.target.closest('[data-form-close-cancel]') : null;
-      if (!target) return;
-      const token = document.querySelector('input[name="_entryPopupToken"]')?.value || '';
+      if (!(trigger instanceof HTMLElement) || parent === window) return;
+      const form = trigger.closest('form[data-v2-entry-form]');
+      const token = form?.querySelector('input[name="_entryToken"]')?.value || '';
       if (!token) return;
-      event.preventDefault();
       parent.postMessage({ type: 'manatos:entry-popup-cancel', token }, window.location.origin);
     });
 
     /*
      * Hosted entries delegate any child entry popup to their owning window.
-     * This keeps every popup in one DOM/SurfaceRuntime stack, so a popup opened
+     * This keeps every popup in one browser-owned UI-level stack, so a popup opened
      * from another popup becomes a true nested POPUP · ENTRY child instead of a
      * second application shell living inside the iframe.
      */
@@ -562,9 +973,15 @@
   window.ManatOS.popup = window.ManatOS.popup || {};
   window.ManatOS.popup.entry = Object.freeze({
     open: exportedOpen,
+    openEntry:
+      document.body.classList.contains('entry-popup-host') && parent !== window
+        ? (descriptor) => parent.ManatOS?.popup?.entry?.openEntry?.(descriptor)
+        : openEntry,
     snapshotDescriptors,
     gentleCloseAll,
     restoreSequentially,
     restoreDescriptor,
+    measurements: () => [...openingMetrics],
+    clearMeasurements: () => openingMetrics.splice(0),
   });
 })();

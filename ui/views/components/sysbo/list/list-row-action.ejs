@@ -1,0 +1,37 @@
+<%#
+  COMPONENT: SysBO list row action
+
+  Purpose:
+  - Renders one metadata-declared row action at either row edge.
+
+  Inputs / metadata:
+  - Action metadata, current row, entity definition, and generic action presentation helpers.
+
+  CTX contract:
+  - None; popup invocation creates its own canonical child UI level.
+
+  Embeds / delegates:
+  - Generic PopupHost behavior through data-open-entry-popup when requested.
+
+  Runtime contract:
+  - No entity-specific behavior. Metadata selects navigation versus hosted entry opening.
+%>
+<% if (action.kind === 'navigate' || action.kind === 'open-entry') { %>
+  <a
+    class="<%= rowActionClass(action) %>"
+    href="<%= rowActionHref(action, item) %>"
+    title="<%= action.title || action.label %>"
+    aria-label="<%= action.title || action.label %>"
+    <% if (action.kind === 'open-entry') { %>
+      data-open-entry-popup
+      data-entry-popup-entity-key="<%= definition.key %>"
+      data-entry-popup-mode="<%= action.mode || 'view' %>"
+      <% if (action.uiView) { %>data-entry-popup-ui-view="<%= action.uiView %>"<% } %>
+    <% } %>
+  >
+    <% if (action.icon) { %><i class="bi bi-<%= action.icon %>" aria-hidden="true"></i><% } %>
+    <% if (!action.iconOnly) { %>
+      <span class="<%= action.icon ? 'd-none d-xl-inline ms-1' : '' %>"><%= action.label %></span>
+    <% } %>
+  </a>
+<% } %>

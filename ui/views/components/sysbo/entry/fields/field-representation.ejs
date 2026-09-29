@@ -1,0 +1,137 @@
+<%#
+  COMPONENT: Semantic field representation
+
+  Purpose:
+  - Renders an alternative read-oriented representation requested by ui-view metadata.
+
+  Inputs / metadata:
+  - Canonical field metadata, effective field override/presentation, semantic representation,
+    current field value, current item, and generic entry presentation helpers.
+
+  CTX contract:
+  - Reads already-resolved entry values and exposes summary projection hooks for calculated values.
+
+  Embeds / delegates:
+  - readonly-value.ejs and entry-icons.ejs for canonical read-only/entry presentation.
+
+  Runtime contract:
+  - Metadata names the semantic representation only. This renderer derives the
+    technical markup from canonical field type/value; metadata never names a component.
+%>
+<%
+  const declaredPresentation = fieldOverride?.presentation || {};
+  const presentation = !declaredPresentation.format && field.type === 'datetime'
+    ? { ...declaredPresentation, format: 'datetime-elapsed' }
+    : !declaredPresentation.format && field.type === 'date'
+      ? { ...declaredPresentation, format: 'date' }
+      : declaredPresentation;
+  const effectiveLabel = typeof displayLabel !== 'undefined' && typeof displayLabel === 'string' && displayLabel
+    ? displayLabel
+    : fieldLabel(field);
+  const safeRelatedValues = typeof relatedValues !== 'undefined' && Array.isArray(relatedValues)
+    ? relatedValues
+    : [];
+  const rawPicture = field.type === 'picture' && value && typeof value === 'object' ? value : null;
+  const recordId = item?.id ? String(item.id) : '';
+  const pictureSrc = rawPicture && recordId
+    ? `/bo/${definition.key}/${encodeURIComponent(recordId)}/picture/${encodeURIComponent(key)}`
+      + `?revision=${encodeURIComponent(String(rawPicture.revision || ''))}`
+    : '';
+  const optionItems = [...(field.optionItems || []), ...(field.enumItems || [])];
+  const optionItem = optionItems.find((candidate) => candidate?.value === value);
+  const rendered = field.type === 'reference'
+    ? referenceLabel(key, value)
+    : (optionItem?.label || formatValue(value, presentation));
+  const toneDeclaration = presentation.tone;
+  const badgeTone = representation === 'badge'
+    ? (field.type === 'boolean'
+      ? (value === true ? 'success' : 'secondary')
+      : (optionItem?.tone || (typeof toneDeclaration === 'string' ? toneDeclaration : 'secondary')))
+    : null;
+  const iconDeclaration = presentation.icon;
+  const toneExpression = toneDeclaration
+    && typeof toneDeclaration === 'object'
+    && typeof toneDeclaration.expression === 'string'
+      ? toneDeclaration.expression
+      : null;
+  const iconExpression = iconDeclaration
+    && typeof iconDeclaration === 'object'
+    && typeof iconDeclaration.expression === 'string'
+      ? iconDeclaration.expression
+      : null;
+  const targetBOKey = representation === 'entry-link'
+    ? (field.type === 'reference' ? field.referenceBOKey : definition.key)
+    : null;
+  const targetId = representation === 'entry-link'
+    ? (field.type === 'reference' ? value : recordId)
+    : null;
+  const safeReferenceValues = typeof referenceValues !== 'undefined' && referenceValues ? referenceValues : {};
+  const targetRecord = field.type === 'reference'
+    ? (safeReferenceValues[key] || []).find(
+        (candidate) => String(candidate?.id ?? candidate?.value ?? '') === String(value),
+      )
+    : item;
+  const targetRepresentation = targetBOKey && targetRecord && typeof entryRepresentationFor === 'function'
+    ? entryRepresentationFor(targetBOKey, targetRecord)
+    : null;
+%>
+<% if (representation === 'portrait') { %>
+  <% if (pictureSrc) { %>
+    <div class="metadata-field-portrait" aria-label="<%= fieldLabel(field) %>">
+      <img src="<%= pictureSrc %>" alt="<%= fieldLabel(field) %>">
+    </div>
+  <% } %>
+<% } else { %>
+  <div class="metadata-field-summary">
+    <div class="metadata-field-summary-label" data-metadata-field-label="<%= key %>"><%= effectiveLabel %></div>
+    <div
+      class="metadata-field-summary-value"
+      data-v2-summary-presentation
+      data-v2-summary-field-key="<%= key %>"
+      data-v2-summary-representation="<%= representation %>"
+      data-v2-summary-field-type="<%= field.type %>"
+      data-v2-summary-raw-value="<%= JSON.stringify(value ?? null) %>"
+      data-v2-summary-related-fields="<%= JSON.stringify(typeof relatedFieldKeys !== 'undefined' ? relatedFieldKeys : []) %>"
+      <% if (toneExpression) { %>data-v2-summary-tone-expression="<%= toneExpression %>"<% } %>
+      <% if (iconExpression) { %>data-v2-summary-icon-expression="<%= iconExpression %>"<% } %>
+    >
+      <% if (representation === 'period') { %>
+        <% const endRendered = formatValue(safeRelatedValues[0], presentation); %>
+        <span data-v2-summary-dynamic-value><%= rendered %> – <%= endRendered %></span>
+      <% } else if (representation === 'entry-link') { %>
+        <% if (targetBOKey && targetId && rendered !== (presentation.emptyText || '—')) { %>
+          <a
+            class="metadata-reference-link"
+            href="/bo/<%= targetBOKey %>/<%= encodeURIComponent(String(targetId)) %>"
+            data-entry-link
+            data-entry-link-entity-key="<%= targetBOKey %>"
+          >
+            <% if (targetRepresentation?.icons?.length) { %>
+              <%- include('../shell/entry-icons', {
+                entryRepresentation: targetRepresentation,
+                iconGroupClass: 'metadata-entry-icons me-1'
+              }) %>
+            <% } %><%= targetRepresentation?.name || rendered %>
+          </a>
+        <% } else { %><span class="text-secondary"><%= rendered %></span><% } %>
+      <% } else if (representation === 'badge') { %>
+        <span class="badge text-bg-<%= badgeTone || 'secondary' %>" data-v2-summary-dynamic-value>
+          <% if (optionItem?.icon) { %><i class="bi bi-<%= optionItem.icon %> me-1"></i><% } %><%= rendered %>
+        </span>
+      <% } else if (toneExpression || iconExpression) { %>
+        <span data-v2-summary-dynamic-value><%= rendered %></span>
+      <% } else if (rendered === (presentation.emptyText || '—')) { %>
+        <span class="text-secondary" data-v2-summary-dynamic-value><%= rendered %></span>
+      <% } else { %>
+        <span data-v2-summary-dynamic-value>
+          <%- include('../content/readonly-value', {
+            field,
+            presentation,
+            rendered,
+            enhancedReadonlyPresentation: true,
+          }) %>
+        </span>
+      <% } %>
+    </div>
+  </div>
+<% } %>

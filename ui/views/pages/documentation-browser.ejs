@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ManatOS Documentation</title>
+  <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/documentation-browser.css">
+</head>
+<body class="documentation-browser-body">
+  <div class="documentation-browser" data-documentation-browser data-doc-resource-base="/documentation/content">
+    <header class="documentation-browser-header">
+      <div class="documentation-browser-title">
+        <i class="bi bi-book" aria-hidden="true"></i>
+        <strong>ManatOS Documentation</strong>
+      </div>
+      <div class="documentation-browser-toolbar" role="toolbar" aria-label="Documentation navigation">
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-doc-back title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-doc-forward title="Forward" aria-label="Forward"><i class="bi bi-arrow-right"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-doc-home title="Documentation home" aria-label="Documentation home"><i class="bi bi-house"></i></button>
+        <div class="documentation-browser-search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input class="form-control form-control-sm" type="search" data-doc-filter placeholder="Filter files…" aria-label="Filter documentation files">
+        </div>
+      </div>
+    </header>
+
+    <div class="documentation-browser-workspace">
+      <aside class="documentation-browser-explorer" data-doc-explorer aria-label="Documentation folders and files">
+        <div class="documentation-browser-explorer-caption">Documentation</div>
+        <div class="documentation-browser-tree" data-doc-tree role="tree"></div>
+      </aside>
+      <div class="documentation-browser-resizer" data-doc-resizer title="Drag to resize documentation explorer" aria-hidden="true"></div>
+      <main class="documentation-browser-viewer" data-doc-viewer>
+        <div class="documentation-browser-loading" data-doc-loading>Loading documentation…</div>
+        <article class="documentation-markdown d-none" data-doc-content></article>
+        <div class="documentation-resource-viewer d-none" data-doc-resource-viewer></div>
+      </main>
+    </div>
+
+    <footer class="documentation-browser-status" data-doc-status></footer>
+  </div>
+
+  <script id="documentationManifest" type="application/json"><%- JSON.stringify(documentationManifest).replace(/</g, '\\u003c') %></script>
+  <script src="/js/system/documentation-browser.js"></script>
+</body>
+</html>

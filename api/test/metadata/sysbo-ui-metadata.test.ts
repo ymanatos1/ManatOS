@@ -6,6 +6,7 @@ import {
   sysBOPrincipalsMetadata,
   sysBOUsersMetadata,
   sysBOUsersUIMetadata,
+  tabContentKeys,
 } from '@manatos/shared';
 
 import { allSysBOUIMetadata } from '../../src/metadata/sysbo-ui-registry.js';
@@ -28,7 +29,10 @@ describe('metadata-driven SysBO UI conventions', () => {
     for (const metadata of Object.values(allSysBOUIMetadata)) {
       const general = metadata.record.tabs.find((tab) => tab.id === 'general');
       expect(general, `${metadata.key} should declare General`).toBeDefined();
-      expect(general?.fields[1], `${metadata.key} should place Enabled second`).toBe('enabled');
+      expect(
+        tabContentKeys(general?.content)[1],
+        `${metadata.key} should place Enabled second`,
+      ).toBe('enabled');
 
       if (general?.content?.length) {
         const fieldContent = general.content.filter((content) => content.kind === 'field');
@@ -42,14 +46,6 @@ describe('metadata-driven SysBO UI conventions', () => {
                 : 'name',
         });
         expect(fieldContent[1]).toMatchObject({ kind: 'field', field: 'enabled' });
-      } else {
-        expect(general?.fields[0]).toBe(
-          metadata.key === 'sys-ext-auth-providers'
-            ? 'provider'
-            : metadata.key === 'sys-principals'
-              ? 'principalType'
-              : 'name',
-        );
       }
     }
   });
@@ -58,7 +54,7 @@ describe('metadata-driven SysBO UI conventions', () => {
     const user = allSysBOUIMetadata['sys-users'];
     const general = user.record.tabs.find((tab) => tab.id === 'general');
 
-    expect(general?.fields.slice(0, 6)).toEqual([
+    expect(tabContentKeys(general?.content).slice(0, 6)).toEqual([
       'name',
       'enabled',
       'photo',
@@ -66,8 +62,9 @@ describe('metadata-driven SysBO UI conventions', () => {
       'telephoneNumber',
       'description',
     ]);
-    expect(general?.fields.indexOf('description')).toBeLessThan(
-      general?.fields.indexOf('firstName') ?? -1,
+    const userGeneralFields = tabContentKeys(general?.content);
+    expect(userGeneralFields.indexOf('description')).toBeLessThan(
+      userGeneralFields.indexOf('firstName'),
     );
     expect(general?.content?.slice(0, 7)).toEqual([
       { kind: 'field', field: 'name', span: 6 },
@@ -84,7 +81,7 @@ describe('metadata-driven SysBO UI conventions', () => {
     const principal = allSysBOUIMetadata['sys-principals'];
     const general = principal.record.tabs.find((tab) => tab.id === 'general');
 
-    expect(general?.fields).toEqual([
+    expect(tabContentKeys(general?.content)).toEqual([
       'principalType',
       'enabled',
       'photo',
@@ -123,7 +120,13 @@ describe('metadata-driven SysBO UI conventions', () => {
       type: 'version',
       versionFormat: 'semver',
     });
-    expect(general?.fields).toEqual(['name', 'enabled', 'fullName', 'description', 'version']);
+    expect(tabContentKeys(general?.content)).toEqual([
+      'name',
+      'enabled',
+      'fullName',
+      'description',
+      'version',
+    ]);
     expect(general?.content).toEqual([
       { kind: 'field', field: 'name', span: 6 },
       { kind: 'field', field: 'enabled', span: 6 },
@@ -133,7 +136,7 @@ describe('metadata-driven SysBO UI conventions', () => {
     ]);
 
     const details = application.record.tabs.find((tab) => tab.id === 'details');
-    expect(details?.fields).toEqual(['details', 'pictures']);
+    expect(tabContentKeys(details?.content)).toEqual(['details', 'pictures']);
     expect(details?.content).toEqual([
       { kind: 'field', field: 'details', span: 12 },
       { kind: 'field', field: 'pictures', span: 12 },
@@ -204,11 +207,11 @@ describe('metadata-driven SysBO UI conventions', () => {
 
     const sysUser = allSysBOUIMetadata['sys-users'];
     expect(sysUser.record.entryActions?.delete?.enabled).toEqual({
-      expression: '#level.entry.current.id !== $.user.fields.id.value',
+      expression: 'id !== $user.fields.id.value',
     });
     expect(sysUser.record.entryActions?.delete?.disabledReason).toEqual({
       expression:
-        "#level.entry.current.id === $.user.fields.id.value ? 'You cannot delete your own user account.' : null",
+        "id === $user.fields.id.value ? 'You cannot delete your own user account.' : null",
     });
     expect(sysUser.record.entryActions?.verifyEmail).toMatchObject({
       kind: 'command',
@@ -282,15 +285,15 @@ describe('metadata-driven SysBO UI conventions', () => {
       order: 20,
       icon: 'box-seam',
       layout: 'form',
-      fields: [
-        'validFrom',
-        'validityDuration',
-        'validUntil',
-        'platformId',
-        'applicationId',
-        'rules',
-      ],
     });
+    expect(tabContentKeys(contents?.content)).toEqual([
+      'validFrom',
+      'validityDuration',
+      'validUntil',
+      'platformId',
+      'applicationId',
+      'rules',
+    ]);
     expect(licenses.list.filterFields).toEqual([
       'name',
       'principalId',
@@ -327,7 +330,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       component: {
         key: 'contextual-help',
         readOnly: true,
-        bindings: { selectedKey: { expression: '#level.entry.current.provider' } },
+        bindings: { selectedKey: { expression: 'provider' } },
         options: {
           itemsDataKey: 'providerDefinitions',
           itemKey: 'provider',
@@ -349,7 +352,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       component: {
         key: 'contextual-help',
         readOnly: true,
-        bindings: { selectedKey: { expression: '#level.entry.current.provider' } },
+        bindings: { selectedKey: { expression: 'provider' } },
         options: {
           itemsDataKey: 'providerDefinitions',
           itemKey: 'provider',
@@ -367,7 +370,7 @@ describe('metadata-driven SysBO UI conventions', () => {
     expect(sysBOUsersMetadata.fieldDefinition.photo?.type).toBe('picture');
     expect(sysBOUsersMetadata.fieldDefinition.photo?.applicationManaged).toBe(true);
     const general = sysBOUsersUIMetadata.record.tabs.find((tab) => tab.id === 'general');
-    expect(general?.fields).toContain('photo');
+    expect(tabContentKeys(general?.content)).toContain('photo');
     expect(
       sysBOUsersUIMetadata.record.fieldOverrides.photo?.presentation?.pictureEditor,
     ).toMatchObject({

@@ -70,17 +70,33 @@ The registry is intentional. Generic renderers use stable semantic component key
 
 ## Related collections
 
-`related-collections.ejs` is the model for multi-entry relationship presentation. It renders domain rows using canonical entry representation metadata. Entry icon/name rules are centralized rather than rebuilt by every owner entity.
+`related-collections.ejs` is the generic read-oriented relationship presentation. It renders rows using canonical related-entity metadata and entry representation; entry icon/name rules are centralized rather than rebuilt by each owner entity.
 
 ```text
 owner entry
-└── related collection component
+└── related collection presentation
     ├── related entity metadata / entry representation
-    ├── relationship data rows
+    ├── relationship resource rows
     └── canonical row presentation + navigation
 ```
 
-Current examples include User/Account external identities and Principal/Application license relationships. The owner page may differ, but the representation rule must not.
+`collection-editor.ejs` is the editable aggregate counterpart. Metadata identifies its `sourceKey` and, for structured values, semantic `identityFields`. The same descriptor discovery is used by resource loading and Save persistence, so rendering an editable collection does not create an entity-specific write path.
+
+While one collection member is being created or edited, the editor opens an **embedded child UI level** through the universal UI host. That child is a real entry-level CTX surface for the member draft; it is not another persisted transaction and it does not deactivate the parent. The collection editor remains the owner of the local child draft and closes/disposes the embedded level on Add/Update, Cancel, replacement, or editor closure.
+
+```text
+owner entry transaction
+└── collection-editor
+    ├── committed working collection
+    ├── private active-member draft
+    ├── embedded child entry UI level
+    │   └── canonical member fields / field components
+    └── aggregate contributor -> parent dirty/valid state
+```
+
+The collection contributor accounts for both changes already applied to the working collection and a dirty active member editor. Parent Save serializes the metadata-declared collection payload and reconciles it through the generic entry write path. Focus movement alone is never a persistence command.
+
+Current read-only examples include User/Account external identities and Principal/Application license relationships; editable contact collections use the collection-editor model. The owner page may differ, but representation, field and transaction rules must not.
 
 ## Existing-record selector
 
@@ -115,29 +131,37 @@ The selector owns its own canonical CTX level. Its invocation describes why/how 
 ```text
 ctx.ui
 └── ... level                     # caller surface
-    └── level                     # selector surface
-        ├── kind = "record-selector"
-        ├── invocation
-        │   ├── entityName
-        │   ├── purpose = "select"
-        │   ├── caller?
-        │   │   ├── surfaceRef
-        │   │   ├── entityName?
-        │   │   └── recordId?
-        │   ├── presentation?
-        │   ├── rules?
-        │   │   ├── values
-        │   │   ├── fields
-        │   │   ├── query
-        │   │   └── actions
-        │   └── behavior?
+    └── level                     # selector popup surface
+        ├── control
+        │   ├── host = "popup"
+        │   ├── kind = "selector"
+        │   ├── invocation
+        │   │   ├── entityName
+        │   │   ├── purpose = "select"
+        │   │   ├── caller?
+        │   │   ├── presentation?
+        │   │   ├── rules?
+        │   │   │   ├── values
+        │   │   │   ├── fields
+        │   │   │   ├── query
+        │   │   │   └── actions
+        │   │   └── behavior?
+        │   ├── presentation
+        │   ├── facts
+        │   │   ├── search
+        │   │   ├── filters
+        │   │   └── paging
+        │   └── state
         ├── list
         │   ├── originalEntries
         │   └── entries
-        ├── selector-local working state
-        ├── filters / search / paging
-        ├── selectedId / selectedIds
-        └── state
+        ├── selection
+        │   ├── current
+        │   ├── selected[]
+        │   └── facts
+        └── row
+            ├── current
+            └── facts
 ```
 
 `SurfaceInvocation` is host-neutral and contains only facts/rules the child surface needs to enforce its own behavior. It does **not** contain `targetField`, parent mutation instructions or arbitrary caller state. Those belong to the caller-side continuation registry.
@@ -155,7 +179,9 @@ The selector returns canonical selected record(s). The caller remains responsibl
 
 ## Hierarchy/workspace components
 
-Hierarchy components under `views/components/sysbo/hierarchy/` (`hierarchy-workspace`, `record-quick`) present organization/tree interactions over domain relationships. They consume metadata and records but do not redefine Principal field/reference semantics. Relationship eligibility remains in the hierarchy caller even when the generic record selector presents the candidates.
+Hierarchy components under `views/components/sysbo/hierarchy/` present organization/tree interactions over domain relationships. The hierarchy workspace owns the aggregate working graph and delegates member editing to canonical entry/field infrastructure, including the Principal `quick` UI view where a compact member editor is required. It is not a separate architectural surface or record model.
+
+Relationship eligibility remains in the hierarchy caller even when the generic record selector presents candidates. Hierarchy services may calculate or mutate the workspace graph, but they do not redefine Principal field/reference semantics or create another graph authority.
 
 ## Debugging components
 

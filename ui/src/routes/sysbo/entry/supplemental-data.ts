@@ -26,6 +26,7 @@ import {
 } from '../../../sysbo/permissions.js';
 import { createCalculatedRecordProjector } from '../../../runtime/projection/calculated-record-projector.js';
 import { entityContextName } from '../../../context/manatos-context.js';
+import type { EntryResourcePlan } from './resource-plan.js';
 
 /**
  * Build supplemental data required by the canonical metadata-driven SysBO
@@ -40,11 +41,16 @@ export async function editPageSupplementalData(
   effectiveUIMetadata?: SysBOUIMetadata,
   permissions?: UIEntityPermissions,
   ctx?: ManatOSContext,
+  resourcePlan?: EntryResourcePlan,
+  readOnlyPresentation = false,
 ) {
   const itemId = typeof item.id === 'string' ? item.id : '';
 
   const authenticationIdentities =
-    definition.key === 'sys-users' && !isNew && itemId
+    definition.key === 'sys-users' &&
+    (!resourcePlan || resourcePlan.collectionKeys.has('externalIdentities')) &&
+    !isNew &&
+    itemId
       ? await externalIdentitiesForUser(itemId)
       : [];
 
@@ -53,12 +59,19 @@ export async function editPageSupplementalData(
     item,
     isNew,
     effectiveUIMetadata,
-    { externalIdentities: authenticationIdentities },
+    !resourcePlan || resourcePlan.collectionKeys.has('externalIdentities')
+      ? { externalIdentities: authenticationIdentities }
+      : {},
     ctx,
+    resourcePlan?.collectionKeys,
+    readOnlyPresentation,
   );
 
   const deleteImpact =
-    !isNew && itemId && permissions?.delete
+    !isNew &&
+    itemId &&
+    permissions?.delete &&
+    (!resourcePlan || resourcePlan.actionKeys.has('delete'))
       ? (
           await apiClient.get<{
             targetObjectKey: string;
@@ -117,6 +130,8 @@ export async function editPageSupplementalData(
     sourceRecordId: itemId,
     sourceRecord: item,
     ctx,
+    ...(resourcePlan ? { fieldKeys: resourcePlan.referenceFieldKeys } : {}),
+    selectionOnly: readOnlyPresentation,
   });
 
   /*
@@ -125,21 +140,28 @@ export async function editPageSupplementalData(
    * presenter in the popup path: Parent/Root Principal, User, Application, etc.
    * all resolve through the same entity-aware metadata pipeline as normal lists.
    */
-  const referenceSelectorContexts = Object.fromEntries(
-    await Promise.all(
-      Object.values(definition.boMetadata.fieldDefinition)
-        .filter((field) => field.type === 'reference' && field.referenceBOKey)
-        .map(async (field) => [
-          field.key,
-          await selectorContextForReferenceField(
-            req,
-            field,
-            pageReferenceData[field.key] || [],
-            ctx,
-          ),
-        ]),
-    ),
-  );
+  const referenceSelectorContexts = readOnlyPresentation
+    ? {}
+    : Object.fromEntries(
+        await Promise.all(
+          Object.values(definition.boMetadata.fieldDefinition)
+            .filter(
+              (field) =>
+                field.type === 'reference' &&
+                field.referenceBOKey &&
+                (!resourcePlan || resourcePlan.referenceFieldKeys.has(field.key)),
+            )
+            .map(async (field) => [
+              field.key,
+              await selectorContextForReferenceField(
+                req,
+                field,
+                pageReferenceData[field.key] || [],
+                ctx,
+              ),
+            ]),
+        ),
+      );
 
   /*
    * Authorization remains owned by the canonical capability service. Reference
@@ -149,20 +171,27 @@ export async function editPageSupplementalData(
   const referenceTargetKeys = [
     ...new Set(
       Object.values(definition.boMetadata.fieldDefinition)
+        .filter((field) => !resourcePlan || resourcePlan.referenceFieldKeys.has(field.key))
         .map((field) => field.referenceBOKey)
         .filter((key): key is string => Boolean(key)),
     ),
   ];
-  const relatedEntityPermissions = Object.fromEntries(
-    await Promise.all(
-      referenceTargetKeys.map(async (targetKey) => {
-        const targetDefinition = getSysBODefinition(targetKey);
-        return [targetKey, await resolveUIEntityPermissions(req, targetDefinition)] as const;
-      }),
-    ),
-  );
+  const relatedEntityPermissions = readOnlyPresentation
+    ? {}
+    : Object.fromEntries(
+        await Promise.all(
+          referenceTargetKeys.map(async (targetKey) => {
+            const targetDefinition = getSysBODefinition(targetKey);
+            return [targetKey, await resolveUIEntityPermissions(req, targetDefinition)] as const;
+          }),
+        ),
+      );
 
-  if (definition.key === 'sys-principals' && itemId) {
+  if (
+    definition.key === 'sys-principals' &&
+    itemId &&
+    (!resourcePlan || resourcePlan.fieldKeys.has('userId'))
+  ) {
     const linkedUser = (pageReferenceData.userId || []).find(
       (candidate) => String(candidate.principalId ?? '') === itemId,
     );

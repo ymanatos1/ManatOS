@@ -106,7 +106,7 @@
   <div class="account-summary-label">Verified at</div>
   <div class="account-summary-value">
     <% if (authenticationUser.emailVerifiedAt) { %>
-      <%= new Date(authenticationUser.emailVerifiedAt).toLocaleString() %>
+      <%= formatMetadataValue(authenticationUser.emailVerifiedAt, { format: 'datetime-elapsed', emptyText: '—' }) %>
     <% } else { %>
       <span class="text-secondary">—</span>
     <% } %>

@@ -33,6 +33,7 @@
 
   const closeDetailsPanelButton = document.getElementById('closeDetailsPanel');
 
+  const documentationButton = document.getElementById('headerDocumentationButton');
   const toggleDebugPanelButton = document.getElementById('toggleDebugPanel');
   const toggleDebugDiagnosticsButton = document.getElementById('toggleDebugDiagnostics');
   const developerToolsDock = document.getElementById('developerToolsDock');
@@ -40,6 +41,19 @@
   const developerToolsCtxTabButton = document.getElementById('developerToolsCtxTab');
   const developerToolsApiTrafficTabButton = document.getElementById('developerToolsApiTrafficTab');
   const developerToolsResize = document.getElementById('ctxDebugPanelResize');
+
+  documentationButton?.addEventListener('click', () => {
+    const width = Math.max(900, Math.min(1500, Math.round(window.screen.availWidth * 0.88)));
+    const height = Math.max(650, Math.min(1100, Math.round(window.screen.availHeight * 0.88)));
+    const left = Math.max(0, Math.round((window.screen.availWidth - width) / 2));
+    const top = Math.max(0, Math.round((window.screen.availHeight - height) / 2));
+    const documentationWindow = window.open(
+      '/documentation',
+      'manatosDocumentation',
+      `popup=yes,resizable=yes,scrollbars=yes,width=${width},height=${height},left=${left},top=${top}`,
+    );
+    documentationWindow?.focus();
+  });
   let developerToolsReturnFocus = null;
 
   /**
@@ -200,6 +214,158 @@
       diagnostic?.targetPath ?? '',
     ]);
 
+  // Keep expression diagnostics independently from the floating diagnostics
+  // panel so every metadata Debugging tab can aggregate the same session errors.
+  const expressionDiagnosticHistory = new Map();
+
+  const syncExpressionDiagnostics = () => {
+    const diagnostics = [...expressionDiagnosticHistory.values()];
+    for (const body of document.querySelectorAll('[data-debugging-expression-errors]')) {
+      if (!(body instanceof HTMLElement)) continue;
+      body.replaceChildren();
+      if (!diagnostics.length) {
+        const row = document.createElement('tr');
+        row.dataset.debuggingExpressionErrorsEmpty = '';
+        const cell = document.createElement('td');
+        cell.colSpan = 3;
+        cell.className = 'text-secondary py-3';
+        cell.textContent = 'No expression errors in this browser session.';
+        row.appendChild(cell);
+        body.appendChild(row);
+        continue;
+      }
+      for (const diagnostic of diagnostics) {
+        const row = document.createElement('tr');
+        row.className = 'table-danger';
+        const phase = document.createElement('td');
+        phase.textContent = diagnostic.phase === 'parse' ? 'Parse' : 'Evaluate';
+        const expression = document.createElement('td');
+        const code = document.createElement('code');
+        code.className = 'text-danger';
+        code.textContent = String(diagnostic.expression || '(expression unavailable)');
+        expression.appendChild(code);
+        const message = document.createElement('td');
+        message.className = 'text-danger';
+        message.textContent = String(diagnostic.message || 'Expression error');
+        row.append(phase, expression, message);
+        body.appendChild(row);
+      }
+    }
+
+    for (const tab of document.querySelectorAll('[data-debugging-errors-tab]')) {
+      if (!(tab instanceof HTMLElement)) continue;
+      const count = diagnostics.length;
+      tab.classList.toggle('debugging-errors-present', count > 0);
+      tab.setAttribute('aria-label', count > 0 ? `Errors (${count})` : 'Errors');
+      const badge = tab.querySelector('[data-debugging-errors-count]');
+      if (badge instanceof HTMLElement) {
+        badge.textContent = String(count);
+        badge.classList.toggle('d-none', count === 0);
+      }
+    }
+
+    for (const tab of document.querySelectorAll('[data-debugging-host-tab]')) {
+      if (!(tab instanceof HTMLElement)) continue;
+      const count = diagnostics.length;
+      tab.classList.toggle('debugging-host-errors-present', count > 0);
+      tab.setAttribute('aria-label', count > 0 ? `Debugging (${count} errors)` : 'Debugging');
+      const badge = tab.querySelector('[data-debugging-host-errors-count]');
+      if (badge instanceof HTMLElement) {
+        badge.textContent = String(count);
+        badge.classList.toggle('d-none', count === 0);
+      }
+    }
+
+    const fieldOwnersForDiagnostic = (diagnostic) => {
+      const expression = String(diagnostic?.expression || '').trim();
+      if (!expression) return [];
+      const owners = [];
+      const entities = window.ManatOS?.ctx?.value?.entities;
+      if (!entities || typeof entities !== 'object') return owners;
+      for (const [entitySlot, entity] of Object.entries(entities)) {
+        const fields = entity?.metadata?.fieldDefinition;
+        if (!fields || typeof fields !== 'object') continue;
+        for (const [fieldKey, definition] of Object.entries(fields)) {
+          const candidates = [
+            definition?.calculation?.expression,
+            definition?.normalize?.expression,
+            definition?.visible?.expression,
+            definition?.editable?.expression,
+          ]
+            .filter((value) => typeof value === 'string')
+            .map((value) => value.trim());
+          if (!candidates.includes(expression)) continue;
+          owners.push({
+            fieldKey,
+            metadataPath: `ctx.entities.${entitySlot}.metadata.fieldDefinition.${fieldKey}`,
+          });
+        }
+      }
+      return owners;
+    };
+
+    const ownerMatchesCtxPath = (diagnostic, owner, path) => {
+      if (!path || !owner?.fieldKey) return false;
+      if (path === owner.metadataPath || path.startsWith(`${owner.metadataPath}.`)) return true;
+      const sourcePath = diagnostic?.caller?.sourcePath;
+      if (typeof sourcePath !== 'string' || !sourcePath || !path.startsWith(sourcePath))
+        return false;
+      const escapedField = owner.fieldKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`(?:^|[.\\[])(?:${escapedField})(?:$|[.\\]])`).test(path);
+    };
+
+    const ownerDiagnostics = diagnostics.map((diagnostic) => ({
+      diagnostic,
+      owners: fieldOwnersForDiagnostic(diagnostic),
+    }));
+
+    for (const source of document.querySelectorAll('[data-debug-expression]')) {
+      if (!(source instanceof HTMLElement)) continue;
+      const expression = String(source.textContent || '').trim();
+      const diagnostic = diagnostics.find((candidate) => candidate.expression === expression);
+      source.classList.toggle('text-danger', Boolean(diagnostic));
+      source.classList.toggle('fw-semibold', Boolean(diagnostic));
+      const row = source.closest('tr');
+      row?.classList.toggle('debugging-expression-owner-error', Boolean(diagnostic));
+      if (diagnostic) {
+        source.dataset.expressionError = 'true';
+        source.title = String(diagnostic.message || 'Expression error');
+      } else {
+        delete source.dataset.expressionError;
+        source.removeAttribute('title');
+      }
+    }
+
+    for (const row of document.querySelectorAll('.ctx-debug-row[data-ctx-path]')) {
+      if (!(row instanceof HTMLElement)) continue;
+      const path = row.dataset.ctxPath || '';
+      const match = ownerDiagnostics.find(({ diagnostic, owners }) =>
+        owners.some((owner) => ownerMatchesCtxPath(diagnostic, owner, path)),
+      );
+      row.classList.toggle('ctx-expression-error-owner', Boolean(match));
+      let marker = row.querySelector(':scope > [data-ctx-expression-error-indicator]');
+      if (match && !(marker instanceof HTMLElement)) {
+        marker = document.createElement('i');
+        marker.className = 'bi bi-exclamation-circle-fill ctx-expression-error-indicator';
+        marker.dataset.ctxExpressionErrorIndicator = '';
+        marker.setAttribute('aria-hidden', 'true');
+        row.appendChild(marker);
+      }
+      if (marker instanceof HTMLElement) {
+        if (match) marker.title = String(match.diagnostic.message || 'Expression error');
+        else marker.remove();
+      }
+    }
+  };
+
+  const rememberExpressionDiagnostic = (diagnostic) => {
+    if (!diagnostic || !['parse', 'evaluate'].includes(diagnostic.phase)) return;
+    expressionDiagnosticHistory.set(diagnosticKey(diagnostic), diagnostic);
+    window.ManatOS = window.ManatOS || {};
+    window.ManatOS.expressionDiagnostics = [...expressionDiagnosticHistory.values()];
+    syncExpressionDiagnostics();
+  };
+
   const ensureDebugDiagnosticPanel = () => {
     let panel = document.getElementById('debugDiagnosticPanel');
     if (panel) return panel;
@@ -235,7 +401,9 @@
   };
 
   const showDebugDiagnostic = (diagnostic) => {
-    if (!debugDiagnosticsVisible || !diagnostic) return;
+    if (!diagnostic) return;
+    rememberExpressionDiagnostic(diagnostic);
+    if (!debugDiagnosticsVisible) return;
 
     const panel = ensureDebugDiagnosticPanel();
     const key = diagnosticKey(diagnostic);
@@ -283,6 +451,24 @@
   window.addEventListener('manatos:ctx-diagnostic', (event) => {
     showDebugDiagnostic(event.detail);
   });
+
+  new MutationObserver((mutations) => {
+    if (
+      mutations.some((mutation) =>
+        [...mutation.addedNodes].some(
+          (node) =>
+            node instanceof Element &&
+            (node.matches?.(
+              '[data-debugging-expression-errors], [data-debug-expression], [data-debugging-host-tab], .ctx-debug-row[data-ctx-path]',
+            ) ||
+              node.querySelector?.(
+                '[data-debugging-expression-errors], [data-debug-expression], [data-debugging-host-tab], .ctx-debug-row[data-ctx-path]',
+              )),
+        ),
+      )
+    )
+      syncExpressionDiagnostics();
+  }).observe(document.body, { childList: true, subtree: true });
 
   /**
    * Centralized shell-state helper.
@@ -671,5 +857,284 @@
   );
   closeDeveloperToolsDockButton?.addEventListener('click', () =>
     shellState.setDeveloperToolsVisible(false),
+  );
+
+  /* -----------------------------------------------------------------------
+   * Universal interaction conventions
+   * -------------------------------------------------------------------- */
+
+  // All Bootstrap dropdowns use the viewport as their Popper boundary. This is
+  // deliberately shell-owned so field menus, navigation menus and popup menus
+  // behave consistently without each caller inventing overflow rules.
+  const applyViewportDropdownBoundary = (scope = document) => {
+    if (!(scope instanceof Document || scope instanceof Element)) return;
+    scope.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((toggle) => {
+      if (toggle instanceof HTMLElement && !toggle.hasAttribute('data-bs-boundary')) {
+        toggle.setAttribute('data-bs-boundary', 'viewport');
+      }
+    });
+  };
+  applyViewportDropdownBoundary();
+  new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (!(node instanceof Element)) continue;
+        if (node.matches('[data-bs-toggle="dropdown"]') && !node.hasAttribute('data-bs-boundary')) {
+          node.setAttribute('data-bs-boundary', 'viewport');
+        }
+        applyViewportDropdownBoundary(node);
+      }
+    }
+  }).observe(document.body, { subtree: true, childList: true });
+
+  const firstInputControl = (scope = document) => {
+    if (!(scope instanceof Document || scope instanceof Element)) return null;
+    const selector = [
+      'input:not([type="hidden"]):not([disabled]):not([readonly]):not([aria-hidden="true"])',
+      'select:not([disabled]):not([aria-hidden="true"])',
+      'textarea:not([disabled]):not([readonly]):not([aria-hidden="true"])',
+      '[contenteditable="true"]:not([aria-hidden="true"])',
+    ].join(',');
+    return [...scope.querySelectorAll(selector)].find(
+      (control) =>
+        control instanceof HTMLElement &&
+        control.getClientRects().length > 0 &&
+        !control.closest('[hidden], [aria-hidden="true"]'),
+    );
+  };
+
+  const focusFirstInput = (scope = document) => {
+    // Metadata entry forms have a stricter readiness contract and therefore use
+    // their dedicated focus runtime. This generic rule covers all other pages
+    // and Bootstrap popups.
+    if (scope instanceof Document && scope.querySelector('form.metadata-driven-record-form'))
+      return;
+    const target = firstInputControl(scope);
+    if (!(target instanceof HTMLElement)) return;
+    requestAnimationFrame(() => target.focus({ preventScroll: true }));
+  };
+
+  window.addEventListener('load', () => focusFirstInput(document), { once: true });
+  document.addEventListener('shown.bs.modal', (event) => {
+    const modal = event.target;
+    if (modal instanceof HTMLElement) focusFirstInput(modal);
+  });
+
+  const cancellationBypass = new WeakSet();
+  let pendingCancellation = null;
+  let confirmedCancellationExit = false;
+
+  const ensureSurfaceCancellationModal = () => {
+    let modal = document.getElementById('surfaceCancellationModal');
+    if (modal instanceof HTMLElement) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'surfaceCancellationModal';
+    modal.tabIndex = -1;
+    modal.setAttribute('aria-labelledby', 'surfaceCancellationModalLabel');
+    modal.setAttribute('data-bs-backdrop', 'static');
+    modal.setAttribute('data-bs-keyboard', 'false');
+    modal.dataset.popupInvocation = JSON.stringify({ behavior: { recoverable: false } });
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-warning-subtle">
+            <h5 class="modal-title" id="surfaceCancellationModalLabel">
+              <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>Unsaved changes
+            </h5>
+          </div>
+          <div class="modal-body">You have changes that have not been saved.</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-surface-cancel-action="cancel">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-outline-danger" data-surface-cancel-action="discard">
+              Discard
+            </button>
+            <button type="button" class="btn btn-primary" data-surface-cancel-action="save">
+              Save
+            </button>
+          </div>
+        </div>
+      </div>`;
+    document.body.append(modal);
+    window.ManatOS?.popup?.runtime?.registerBootstrapModal?.(modal);
+
+    modal.querySelectorAll('[data-surface-cancel-action]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const action = button.dataset.surfaceCancelAction;
+        const pending = pendingCancellation;
+        if (!pending) return;
+        const modalInstance = window.bootstrap?.Modal?.getOrCreateInstance(modal);
+
+        if (action === 'cancel') {
+          pendingCancellation = null;
+          modalInstance?.hide();
+          return;
+        }
+
+        if (action === 'discard') {
+          const discarded = await window.ManatOS?.uiHost?.discardUserChanges?.(pending.path);
+          if (discarded !== true) return;
+        }
+
+        if (action === 'save') {
+          if (!window.ManatOS?.uiHost?.canSaveUserChanges?.(pending.path)) return;
+          button.disabled = true;
+          const saved = await window.ManatOS.uiHost.saveUserChanges(pending.path);
+          button.disabled = false;
+          if (!saved) return;
+        }
+
+        pendingCancellation = null;
+        modalInstance?.hide();
+        confirmedCancellationExit = true;
+        window.setTimeout(() => {
+          confirmedCancellationExit = false;
+        }, 0);
+        window.dispatchEvent(
+          new CustomEvent('manatos:surface-cancellation-confirmed', {
+            detail: { path: pending.path, action },
+          }),
+        );
+        if (typeof pending.continue === 'function') {
+          queueMicrotask(() => pending.continue());
+          return;
+        }
+        cancellationBypass.add(pending.trigger);
+        queueMicrotask(() => pending.trigger.click());
+      });
+    });
+    return modal;
+  };
+
+  const confirmCancelOperation = (trigger, continuation = null) => {
+    if (!(trigger instanceof HTMLElement)) return false;
+    if (cancellationBypass.has(trigger)) {
+      cancellationBypass.delete(trigger);
+      return false;
+    }
+    const path = window.ManatOS?.uiHost?.currentUserChangePath?.() || null;
+    if (!path || window.ManatOS?.uiHost?.shouldConfirmCancellation?.(path) !== true) return false;
+
+    pendingCancellation = { trigger, path, continue: continuation };
+    const modal = ensureSurfaceCancellationModal();
+    const presentation = window.ManatOS?.uiHost?.cancellationPresentation?.(path) || {};
+    const body = modal.querySelector('.modal-body');
+    const discard = modal.querySelector('[data-surface-cancel-action="discard"]');
+    const save = modal.querySelector('[data-surface-cancel-action="save"]');
+    if (body instanceof HTMLElement) {
+      body.textContent = presentation.message || 'You have changes that have not been saved.';
+    }
+    if (discard instanceof HTMLButtonElement) {
+      discard.textContent = presentation.discardLabel || 'Discard';
+    }
+    if (save instanceof HTMLButtonElement) {
+      save.textContent = presentation.saveLabel || 'Save';
+    }
+    if (save instanceof HTMLButtonElement) {
+      save.disabled = window.ManatOS?.uiHost?.canSaveUserChanges?.(path) !== true;
+    }
+    window.bootstrap?.Modal?.getOrCreateInstance(modal)?.show();
+    return true;
+  };
+
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      const trigger =
+        event.target instanceof Element ? event.target.closest('[data-cancel-operation]') : null;
+      if (!(trigger instanceof HTMLElement)) return;
+      if (!confirmCancelOperation(trigger)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    },
+    true,
+  );
+
+  /*
+   * Treat ordinary same-origin navigation as cancellation of the deepest
+   * recoverable dirty surface. The same Save / Discard / Cancel transaction
+   * used by explicit Close/Cancel buttons owns the decision; page-specific
+   * workspaces do not need navigation guards of their own.
+   */
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.matches('[data-cancel-operation]')) return;
+      if (anchor.target && anchor.target !== '_self') return;
+      if (anchor.hasAttribute('download')) return;
+      if (anchor.dataset.bsToggle || anchor.dataset.bsTarget) return;
+
+      let destination;
+      try {
+        destination = new URL(anchor.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (destination.origin !== window.location.origin) return;
+      if (
+        destination.href === window.location.href ||
+        (destination.pathname === window.location.pathname &&
+          destination.search === window.location.search &&
+          destination.hash)
+      )
+        return;
+
+      if (!confirmCancelOperation(anchor, () => window.location.assign(destination.href))) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    },
+    true,
+  );
+
+  window.addEventListener('beforeunload', (event) => {
+    if (confirmedCancellationExit) return;
+    const path = window.ManatOS?.uiHost?.currentUserChangePath?.() || null;
+    if (!path || window.ManatOS?.uiHost?.shouldConfirmCancellation?.(path) !== true) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  const visibleElement = (element) =>
+    element instanceof HTMLElement && !element.hidden && element.getClientRects().length > 0;
+
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.repeat) return;
+
+      // Focus and ordinary field/dropdown presentation never change whether the
+      // owning surface accepts Escape. A genuinely local interaction may consume
+      // Escape later only when the surface dismissal request itself is rejected
+      // (for example an inline editor holding the surface input-readiness block).
+      const visibleModal = [...document.querySelectorAll('.modal.show')]
+        .filter(visibleElement)
+        .at(-1);
+      const visibleBackdrop = [...document.querySelectorAll('.manatos-popup-backdrop')]
+        .filter(visibleElement)
+        .at(-1);
+      const dismissed = window.ManatOS?.popup?.runtime?.requestDismiss?.(
+        visibleModal || visibleBackdrop || null,
+        'escape',
+      );
+      if (dismissed !== true) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    // Entry controls (including rich editors and collection controls) may own
+    // bubbling Escape for their local interaction. A hosted popup is a surface
+    // boundary, so its shell must observe Escape before those descendants can
+    // consume it. Transient menus/modals above the entry are still excluded by
+    // the state checks above.
+    true,
   );
 })();

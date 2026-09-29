@@ -140,6 +140,31 @@ export function platformCapabilityOperation() {
   };
 }
 
+export function uiContextCapabilitiesOperation() {
+  return {
+    get: {
+      summary: 'Get UI page-context capabilities',
+      description:
+        'Returns platform and entity collection capability projections together so UI page-context hydration requires one authoritative authorization round trip.',
+      tags: ['System Business Objects'],
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: 'platformId',
+          in: 'path',
+          required: true,
+          schema: { type: 'string' },
+        },
+      ],
+      responses: {
+        '200': { description: 'Combined platform and entity capability projection.' },
+        '401': failureResponse('Authentication required.'),
+        '404': failureResponse('Unknown platform.'),
+      },
+    },
+  };
+}
+
 export function entityCollectionCapabilitiesOperation() {
   return {
     get: {

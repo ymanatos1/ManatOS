@@ -10,6 +10,10 @@ describe('generic related-collection presentation', () => {
       ),
       'utf8',
     );
+    const entry = readFileSync(
+      new URL('../../views/components/runtime/entity-entry.ejs', import.meta.url),
+      'utf8',
+    );
     const entryIcons = readFileSync(
       new URL('../../views/components/sysbo/entry/shell/entry-icons.ejs', import.meta.url),
       'utf8',
@@ -27,13 +31,20 @@ describe('generic related-collection presentation', () => {
       'utf8',
     );
     const identity = readFileSync(
-      new URL('../../../shared/src/metadata/ui/identity.ts', import.meta.url),
+      new URL('../../../shared/src/metadata/ui/auth/ui-users.ts', import.meta.url),
       'utf8',
     );
-    const business = readFileSync(
-      new URL('../../../shared/src/metadata/ui/business.ts', import.meta.url),
+    const business = `${readFileSync(
+      new URL('../../../shared/src/metadata/ui/principals/ui-principals.ts', import.meta.url),
       'utf8',
-    );
+    )}
+${readFileSync(
+  new URL(
+    '../../../shared/src/metadata/ui/platforms/protocrm/applications/ui-applications.ts',
+    import.meta.url,
+  ),
+  'utf8',
+)}`;
     const common = readFileSync(
       new URL('../../../shared/src/metadata/ui/common.ts', import.meta.url),
       'utf8',
@@ -46,6 +57,10 @@ describe('generic related-collection presentation', () => {
     expect(loader).not.toContain('__entryIcons');
     expect(loader).not.toContain('closeMetadataRecordShape');
     expect(loader).toContain('const completeRelatedRows = ctx');
+    expect(loader).toContain(
+      'Caller-supplied factual rows cross the same canonical projection boundary',
+    );
+    expect(loader).toContain('createCalculatedRecordProjector(relatedMetadata, ctx');
     expect(loader).toContain('response.data.items.map(');
     expect(loader).toContain('createCalculatedRecordProjector(relatedDefinition.boMetadata, ctx');
     expect(loader).not.toContain('.filter((fieldKey) => row[fieldKey] === undefined)');
@@ -56,7 +71,9 @@ describe('generic related-collection presentation', () => {
     expect(loader).not.toContain('relatedReferenceData');
     expect(loader).toContain('collectionResourceData[sourceKey].references = referenceData;');
     expect(loader).toContain('const editableCollectionSources = collectionEditorSourceKeys');
-    expect(loader).toContain('if (!editableCollectionSources.has(sourceKey)) continue;');
+    expect(loader).toContain(
+      'if (readOnlyPresentation || !editableCollectionSources.has(sourceKey)) continue;',
+    );
 
     // Read-only related collections can still need reference catalogues for labels,
     // but they must keep their canonical query row as the CTX current row. Only an
@@ -84,8 +101,17 @@ describe('generic related-collection presentation', () => {
     expect(view).toContain('data-related-entry-entity-key');
     expect(view).toContain('_entryMode=view');
     expect(view).toContain('optionItemForField(canonicalField, renderedValue.raw)');
+    // Panel-list collections must resolve reference ids through the same canonical
+    // reference catalogue as table-list collections instead of exposing junction GUIDs.
+    expect(view.match(/canonicalField\?\.type === 'reference'/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(view).toContain(
+      'relatedReferenceLabel(collectionSourceKey, collectionFieldKey, renderedValue.raw)',
+    );
+    expect(entry).toContain('match?.__entryName ?? match?.label ?? match?.name ?? String(value)');
     expect(view).not.toContain("definition.key === 'sys-users'");
     expect(view).not.toContain("collectionField.format === 'auth-provider'");
+    expect(view).toContain("format: 'date'");
+    expect(view).toContain("format: 'datetime-elapsed'");
 
     // Current consumers all declare their related collections in metadata.
     expect(identity).toContain('externalIdentities: {');
@@ -112,7 +138,7 @@ describe('generic related-collection presentation', () => {
       'utf8',
     );
     const runtime = readFileSync(
-      new URL('../../public/js/runtime/entry-policy-runtime.js', import.meta.url),
+      new URL('../../public/js/sysbo/entry/entry-policy-runtime.js', import.meta.url),
       'utf8',
     );
     const formRuntime = readFileSync(
@@ -128,6 +154,12 @@ describe('generic related-collection presentation', () => {
       'utf8',
     );
 
+    // Canonical related-entity calculations are materialized once at the record
+    // projection boundary. Presentation may evaluate only an expression explicitly
+    // authored by the related-collection field itself.
+    expect(entry).toContain('resolveProjectedRelatedCollectionValue(row, fieldKey, field)');
+    expect(entry).not.toContain('canonicalCalculation');
+    expect(entry).not.toContain('relatedMetadata?.fieldDefinition?.[fieldKey]?.calculation');
     expect(entry).not.toContain("purpose: 'resolve V2 related collection value'");
     expect(entry).not.toContain("purpose: 'resolve V2 related collection tone'");
     expect(entry).not.toContain("purpose: 'resolve V2 related collection icon'");

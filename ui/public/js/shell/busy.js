@@ -21,6 +21,7 @@
   let requestShowTimer = null;
   let actionHandler = null;
   let manualBusyDepth = 0;
+  let busyInputRelease = null;
 
   const renderBusy = ({
     title = 'Please wait…',
@@ -39,6 +40,9 @@
     if (busyActionWrap) busyActionWrap.hidden = !actionHandler;
     if (busyAction) busyAction.textContent = actionLabel || 'Cancel';
 
+    if (!busyInputRelease) {
+      busyInputRelease = window.ManatOS?.uiHost?.setUserInputBlocked?.(null, 'global-busy', true);
+    }
     busyOverlay.classList.add('is-visible');
     busyOverlay.setAttribute('aria-hidden', 'false');
     document.body.classList.add('manatos-busy');
@@ -49,6 +53,8 @@
     busyOverlay?.classList.remove('is-visible');
     busyOverlay?.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('manatos-busy');
+    busyInputRelease?.();
+    busyInputRelease = null;
     busyBackground?.removeAttribute('inert');
     actionHandler = null;
     if (busyActionWrap) busyActionWrap.hidden = true;

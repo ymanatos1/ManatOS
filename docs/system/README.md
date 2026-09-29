@@ -11,6 +11,7 @@ Whole-system architecture and cross-cutting runtime concerns: process boundaries
 - [`Configuration-Catalog.md`](Configuration-Catalog.md) — Configuration Reference.
 - [`Administration.md`](Administration.md) — Administration.
 - [`System-and-Account-Pages.md`](System-and-Account-Pages.md) — System and Account Pages.
+- [`Documentation-Browser.md`](Documentation-Browser.md) — Repository-backed online Documentation browser.
 - [`Error-Model.md`](Error-Model.md) — Error Model.
 
 ## Related subjects

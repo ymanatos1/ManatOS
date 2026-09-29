@@ -14,6 +14,7 @@ describe('persistent per-user workspace recovery', () => {
     const popup = await source('public/js/popups/entry-popup.js');
     const popupRuntime = await source('public/js/popups/popup-runtime.js');
     const host = await source('public/js/runtime/ui-host-runtime.js');
+    const shell = await source('public/js/shell/shell.js');
 
     expect(recovery).toContain("const DB_NAME = 'manatos-workspace-recovery'");
     expect(recovery).toContain("const STORE_NAME = 'packages'");
@@ -33,8 +34,17 @@ describe('persistent per-user workspace recovery', () => {
     );
     expect(recovery).toContain("runtime.replace('ctx.user', null");
     expect(recovery).toContain('await offer(userId)');
+    expect(recovery).toContain('dismissedPackageSavedAt(userId) === recoveryPackage.savedAt');
+    expect(recovery).toContain('rememberDismissedPackage(userId, recoveryPackage.savedAt)');
+    expect(popup).toContain('resolvedInvocation.behavior?.recoverable !== false');
+    expect(popup).toMatch(/activePopups\s*\.filter\(\(entry\) => entry\.recoverable !== false\)/);
     expect(recovery).toContain('await restoreRequestedPackage(recoveryPackage)');
     expect(recovery).toContain('await removePackage(recoveryPackage.userId)');
+    expect(recovery).toContain('Your unsaved changes are restored!');
+    expect(recovery).toContain('presentRecoverySuccess();');
+    expect(recovery).toContain(
+      'modal.dataset.popupInvocation = JSON.stringify({ behavior: { recoverable: false } })',
+    );
     expect(recovery).toContain('await waitForDomQuiescence(document)');
     expect(recovery).toContain('await window.ManatOS?.uiHost?.verifyUserChanges?.(');
     expect(recovery).toContain('window.ManatOS?.errors?.present?.(structured');
@@ -45,6 +55,24 @@ describe('persistent per-user workspace recovery', () => {
     expect(host).toContain('async applyUserChanges(path, changes)');
     expect(host).toContain('async verifyUserChanges(path, changes)');
     expect(host).toContain('prepareGentleClose(path)');
+    expect(host).toContain('shouldConfirmCancellation(path = currentUserChangePath())');
+    expect(host).toContain('cancellationPresentation(path = currentUserChangePath())');
+    expect(host).toContain('async discardUserChanges(path = currentUserChangePath())');
+    expect(host).toContain('return isDirty(path) && recoverableChanges(path) != null');
+    expect(host).toContain('async saveUserChanges(path = currentUserChangePath())');
+    expect(shell).toContain("event.target.closest('[data-cancel-operation]')");
+    expect(shell).toContain('shouldConfirmCancellation?.(path) !== true');
+    expect(shell).toContain("event.target.closest('a[href]')");
+    expect(shell).toContain('window.location.assign(destination.href)');
+    expect(shell).toContain("window.addEventListener('beforeunload'");
+    expect(shell).toContain("new CustomEvent('manatos:surface-cancellation-confirmed'");
+    expect(shell).toContain('data-surface-cancel-action="discard"');
+    expect(shell).toContain('data-surface-cancel-action="save"');
+    expect(shell).toContain('cancellationPresentation?.(path)');
+    expect(shell).toContain('discardUserChanges?.(pending.path)');
+    expect(shell).toContain(
+      'modal.dataset.popupInvocation = JSON.stringify({ behavior: { recoverable: false } })',
+    );
     expect(popup).toContain('const gentleCloseAll = async () =>');
     expect(popup).toContain('const restoreDescriptor = async (descriptor) =>');
     expect(popupRuntime).toContain('gentleCloseAllRecoverableModals');
@@ -52,9 +80,23 @@ describe('persistent per-user workspace recovery', () => {
     expect(popupRuntime).toContain("document.querySelectorAll('.modal-backdrop')");
   });
 
+  it('keeps hierarchy Create/Edit working sets recoverable while transient quick-entry popups opt out', async () => {
+    const hierarchy = await source('public/js/sysbo/hierarchy/hierarchy-workspace.js');
+    expect(hierarchy).toContain("format: 'hierarchy-commit-v1'");
+    expect(hierarchy).toContain('entries: entries().map((row) => ({ ...row }))');
+    expect(hierarchy).toContain('entriesOriginal: originalEntries().map((row) => ({ ...row }))');
+    expect(hierarchy).toContain('verifyUserChanges(changes)');
+    expect(hierarchy).toContain('hierarchyModel.sameRows(entries(), changes.entries)');
+    expect(hierarchy).toContain('behavior: { recoverable: false }');
+    expect(hierarchy).toContain('async saveUserChanges()');
+    expect(hierarchy).toContain('cancellationPresentation()');
+    expect(hierarchy).toContain("discardLabel: 'Keep draft & leave'");
+    expect(hierarchy).toContain('return saveWorkspaceDraft();');
+  });
+
   it('captures only dirty fields and restores specialized fields through the component contract', async () => {
     const save = await source('public/js/sysbo/entry/save.js');
-    const fields = await source('public/js/sysbo/entry/field-runtime/picture-fields.js');
+    const fields = await source('public/js/sysbo/entry/fields/picture-fields.js');
     const host = await source('public/js/runtime/ui-host-runtime.js');
     const formRuntime = await source('public/js/sysbo/entry/form-runtime.js');
 

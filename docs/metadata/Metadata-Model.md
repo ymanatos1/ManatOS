@@ -41,3 +41,11 @@ Relationships are canonical domain metadata. They define navigation and mutation
 ## Defaults and invocation
 
 Static metadata defaults, caller defaults and invocation overrides are inputs to entry initialization. Once resolved, live field state belongs to the entry runtime. Invocation is not retained as a competing copy of field state.
+
+## Entity UI views
+
+UI metadata can declare multiple keyed `uiViews` for one canonical entity. A key such as `main`, `account` or `quick` identifies a concrete presentation; its `viewType` describes the presentation family, such as `full` or `quick`. The two are intentionally distinct.
+
+The common `record` UI definition is the reusable base. A selected view contributes presentation differences: replacement-style structures such as tabs/content can replace the common structure, while keyed field overrides, actions and related collections compose with it. Resolution creates effective metadata for one opening; it does not mutate the canonical/global UI definition.
+
+UI views are orthogonal to page/popup/embedded hosting. They change presentation of a record, not its canonical entity semantics, CTX ownership, persistence contract or authorization. See [Entity UI Views](UI-Views.md).

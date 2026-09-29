@@ -19,17 +19,25 @@ export interface SysBOUIAddActionMetadata {
   disabledReason?: SysBOUIDynamicValue<string | null>;
 }
 
-export type SysBOUIListRowActionKind = 'navigate';
+export type SysBOUIListRowActionKind = 'navigate' | 'open-entry';
 
 export interface SysBOUIListRowActionMetadata {
   kind: SysBOUIListRowActionKind;
   order?: number;
   visible?: boolean;
+  /** Optional row-edge placement; defaults to end. */
+  placement?: 'start' | 'end';
   label: string;
   icon?: SysBOUIIconKey;
   tone?: SysBOUIStatusTone;
   emphasis?: 'solid' | 'outline';
   title?: string;
+  /** Render only the icon while retaining label/title for accessibility. */
+  iconOnly?: boolean;
+  /** Named entity ui-view requested when kind is `open-entry`. */
+  uiView?: string;
+  /** Entry interaction mode requested when kind is `open-entry`. */
+  mode?: 'view' | 'edit';
 
   /**
    * Renderer-neutral navigation target. `{id}` is replaced with the current
@@ -96,7 +104,7 @@ export type SysBOUIIconKey = string;
 
 export type SysBOUIStatusTone = 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info';
 
-export type SysBOUIValueFormat = 'text' | 'name' | 'datetime' | 'datetime-elapsed';
+export type SysBOUIValueFormat = 'text' | 'name' | 'entry' | 'datetime' | 'datetime-elapsed';
 
 /**
  * A UI scalar may be static or evaluated dynamically against the caller's
@@ -133,8 +141,21 @@ export interface SysBOUIComponentMetadata {
   bindings?: Readonly<Record<string, SysBOUIDynamicValue<string | number | boolean | null>>>;
 }
 
+export type SysBOUIFieldRepresentation =
+  'default' | 'summary' | 'portrait' | 'entry-link' | 'badge' | 'period';
+
 export type SysBOUITabContentMetadata =
-  | Readonly<{ kind: 'field'; field: string; span?: SysBOUIDynamicValue<number> }>
+  | Readonly<{
+      kind: 'field';
+      field: string;
+      span?: SysBOUIDynamicValue<number>;
+      /** Semantic representation requested by this view; renderers choose the implementation. */
+      representation?: SysBOUIFieldRepresentation;
+      /** Optional semantic label override for this presentation occurrence. */
+      label?: string;
+      /** Additional canonical fields consumed by a composite field representation. */
+      relatedFields?: readonly string[];
+    }>
   | Readonly<{
       /** Force subsequent content onto the next grid row without reserving width. */
       kind: 'break';
@@ -143,6 +164,28 @@ export type SysBOUITabContentMetadata =
       /** Renderer-neutral empty grid space used only for form layout/alignment. */
       kind: 'spacer';
       span?: SysBOUIDynamicValue<number>;
+    }>
+  | Readonly<{
+      /** Vertical details-layout column. Its field membership remains recursively discoverable. */
+      kind: 'column';
+      content: readonly SysBOUITabContentMetadata[];
+      /** Optional 12-grid override; when omitted the renderer derives column width from its content. */
+      span?: SysBOUIDynamicValue<number>;
+    }>
+  | Readonly<{
+      /** Horizontal structural group; children render in declaration order with standard spacing. */
+      kind: 'inline';
+      content: readonly SysBOUITabContentMetadata[];
+    }>
+  | Readonly<{
+      /** Reference an entry action declared by the owning record metadata. */
+      kind: 'action';
+      action: string;
+    }>
+  | Readonly<{
+      /** Render one related collection declared by the owning record metadata. */
+      kind: 'collection';
+      collection: string;
     }>
   | Readonly<{
       kind: 'component';
@@ -165,13 +208,6 @@ export interface SysBOUIRecordTabMetadata {
   id: string;
   label: string;
   order: number;
-
-  /**
-   * Simple field shorthand retained for compact metadata. When `content` is
-   * present it becomes the ordered source of truth for the tab and may mix
-   * ordinary entity fields with reusable UI components.
-   */
-  fields: readonly string[];
 
   /**
    * Ordered tab content. Components are renderer-neutral declarations: the UI
@@ -198,8 +234,16 @@ export interface SysBOUIRecordTabMetadata {
    */
   visible?: SysBOUIDynamicValue<boolean>;
 
-  /** Normal editable form, compact summary, or reusable CTX-driven component. */
-  layout?: 'form' | 'summary' | 'component' | 'debug-calculations';
+  /**
+   * Structural tab layout. `form` is row-major 12-grid flow; `details` is
+   * column-major flow whose columns stack their content vertically. `summary`,
+   * `component`, and `debug-calculations` remain specialized/systemic layouts
+   * during the current migration.
+   */
+  layout?: 'form' | 'details' | 'summary' | 'component' | 'debug-calculations';
+
+  /** Default semantic representation for fields in this tab; field content may override it. */
+  representation?: SysBOUIFieldRepresentation;
 
   /**
    * Reusable metadata-driven component declaration. Concrete renderers map the
@@ -338,7 +382,7 @@ export interface SysBOUIFieldOverrideMetadata {
   presentation?: SysBOUIFieldPresentationMetadata;
 }
 
-export type SysBOUIEntryActionKind = 'delete' | 'save' | 'command';
+export type SysBOUIEntryActionKind = 'delete' | 'save' | 'command' | 'navigate';
 
 /**
  * Stable action regions understood by metadata-driven entry renderers.
@@ -386,6 +430,9 @@ export interface SysBOUIEntryActionMetadata {
    * authoritative authorization/business boundary.
    */
   command?: string;
+
+  /** Navigation target for kind='navigate'. */
+  href?: string;
 }
 
 export interface SysBOUIRelatedCollectionFieldMetadata {
@@ -399,8 +446,9 @@ export interface SysBOUIRelatedCollectionFieldMetadata {
   sourceField?: string;
 
   /**
-   * Optional UI-only calculation. Prefer a canonical related-entity calculated
-   * field when the value is reusable outside this presentation.
+   * Optional UI-only calculation for this collection presentation. Canonical
+   * related-entity calculations are materialized by the record-projection
+   * boundary before the row reaches presentation and are never re-executed here.
    */
   expression?: string;
 
@@ -472,24 +520,60 @@ export interface SysBOUIRelatedCollectionMetadata {
 }
 
 /**
- * Compact embedded record presentation. Unlike `record`, this does not define
- * a standalone page: an owning workspace/component controls its lifecycle and
- * commits Add/Update/Remove into its own working `entries[]` collection.
+ * Record-presentation contribution used by an entity-wide record definition or
+ * by one named UI view.  Every property is independently composable so the
+ * metadata model can keep genuinely common presentation in one place while a
+ * concrete view replaces or augments only what differs.
  */
-export interface SysBOUIRecordQuickMetadata {
-  content: readonly SysBOUITabContentMetadata[];
+export interface SysBOUIRecordViewMetadata {
+  /** Make the whole resolved entry view informational/read-only, independent of host. */
+  readOnly?: boolean;
+
+  /** Full/page-style tab navigation. A view that supplies tabs replaces the common tab set. */
+  tabs?: readonly SysBOUIRecordTabMetadata[];
 
   /**
-   * Optional compact-editor overrides. These intentionally reuse the normal
-   * record field-override vocabulary so an entity does not need a second field
-   * semantics model merely because the owner presents it in a small panel.
+   * Whether the entry tab strip is rendered visibly. The tabs/panes still exist
+   * when false so one-tab popup views retain the canonical entry runtime and
+   * navigation ownership without spending UI chrome on a meaningless selector.
    */
+  tabNavigationVisible?: boolean;
+
+  /** Compact/embedded linear content used by view types such as `quick`. */
+  content?: readonly SysBOUITabContentMetadata[];
+
+  /** Field presentation overrides compose by field key. */
   fieldOverrides?: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>;
+
+  /**
+   * View-specific overrides for canonical entity entry actions. A ui-view does
+   * not redefine an action; it changes only the properties that differ here.
+   */
+  actionOverrides?: Readonly<Record<string, Partial<SysBOUIEntryActionMetadata>>>;
+
+  /** Related-record blocks compose by collection key. */
+  relatedCollections?: Readonly<Record<string, SysBOUIRelatedCollectionMetadata>>;
+}
+
+/**
+ * A named presentation of one canonical entity record. `viewType` describes
+ * the interaction/presentation family (for example full or quick); the parent
+ * map key identifies the concrete view (for example main, account or quick).
+ */
+export interface SysBOUIEntryViewMetadata {
+  viewType: string;
+  label?: string;
+  record?: Readonly<SysBOUIRecordViewMetadata>;
 }
 
 export interface SysBOUIRecordMetadata {
+  /** Effective record-wide read-only policy contributed by a named uiView. */
+  readOnly?: boolean;
+
   tabs: readonly SysBOUIRecordTabMetadata[];
+  tabNavigationVisible?: boolean;
   fieldOverrides: Readonly<Record<string, SysBOUIFieldOverrideMetadata>>;
+  content?: readonly SysBOUITabContentMetadata[];
 
   /**
    * Keyed record-level commands. The Record key is the action identifier, so
@@ -498,7 +582,7 @@ export interface SysBOUIRecordMetadata {
    */
   entryActions?: Readonly<Record<string, SysBOUIEntryActionMetadata>>;
 
-  /** Read-only related-record blocks referenced by tab.fields. */
+  /** Related-record blocks referenced by tab content. */
   relatedCollections?: Readonly<Record<string, SysBOUIRelatedCollectionMetadata>>;
 }
 
@@ -529,7 +613,28 @@ export interface SysBOUIMetadata {
   /** Optional presentation of entity entries; separate from the entity icon. */
   entry?: SysBOUIEntryRepresentationMetadata;
   list: SysBOUIListMetadata;
-  /** Optional compact owner-managed editor, reusable by hierarchy and other aggregate workspaces. */
-  recordQuick?: SysBOUIRecordQuickMetadata;
+
+  /**
+   * Record presentation shared by UI views unless a selected view contributes
+   * an override.  This remains intentionally permissive: common-vs-view
+   * ownership can be refined as more real views are introduced.
+   */
   record: SysBOUIRecordMetadata;
+
+  /** Stable key of the ordinary entity-entry view. */
+  defaultUIView?: string;
+
+  /**
+   * Alternative record presentations for the same canonical entity.  The map
+   * key is stable view identity; each member declares its presentation family.
+   */
+  uiViews?: Readonly<Record<string, SysBOUIEntryViewMetadata>>;
+}
+
+/** Effective view returned by the generic composition resolver. */
+export interface ResolvedSysBOUIView {
+  key: string;
+  viewType: string;
+  label?: string;
+  metadata: SysBOUIMetadata;
 }

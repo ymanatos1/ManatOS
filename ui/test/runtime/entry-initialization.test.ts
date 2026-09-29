@@ -4,6 +4,7 @@ import { buildEntryInitializationSeed } from '../../src/routes/sysbo/entry/initi
 
 const metadata: SysBOMetadata<Record<string, unknown>> = {
   key: 'sample',
+  subsystem: 'test',
   name: 'samples',
   label: 'Sample',
   pluralLabel: 'Samples',

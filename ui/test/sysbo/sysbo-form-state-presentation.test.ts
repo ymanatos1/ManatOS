@@ -48,6 +48,8 @@ describe('generic SysBO form state presentation', () => {
     expect(entryFieldState).toContain('Metadata-driven per-field change highlighting');
     expect(entrySave).toContain('Metadata-driven in-place Save');
     expect(entryFocus).toContain('Metadata-driven entry initial focus');
+    expect(entryFocus).toContain("form.addEventListener('manatos:form-initialized'");
+    expect(entryFocus).toContain("form.addEventListener('manatos:form-state-ready'");
   });
 
   it('starts the shared Save button disabled and marks it for generic state management', async () => {
@@ -95,7 +97,7 @@ describe('generic SysBO form state presentation', () => {
     expect(source).toContain('isFieldValid: fieldValid');
     expect(sourceWithoutWhitespace(source)).toContain(
       sourceWithoutWhitespace(
-        "const hasPendingWork = () => document.documentElement.dataset.manatosSystemUnavailable !== 'true' && (state.isDirty() || state.contributorState().blocked)",
+        "const hasPendingWork = () => document.documentElement.dataset.manatosSystemUnavailable !== 'true' && (window.ManatOS?.uiHost?.shouldConfirmCancellation?.(owningEntryPagePath) === true || state.contributorState().blocked)",
       ),
     );
     expect(source).not.toContain('manatosUserDirty');
@@ -142,10 +144,15 @@ describe('generic SysBO form state presentation', () => {
     expect(source).toContain("indicatorText.textContent = 'Unsaved changes'");
     expect(source).toContain("form.addEventListener('input', scheduleUpdate)");
     expect(source).toContain("form.addEventListener('change', scheduleUpdate)");
-    expect(source).toContain('const owningEntryPagePath = (() => {');
-    expect(source).toContain('const entryPagePath = (() => {');
+    expect(source).toContain(
+      "const owningEntryPagePath = window.ManatOS?.uiHost?.surfacePath?.('entry') || null",
+    );
+    expect(source).toContain(
+      "const entryPagePath = window.ManatOS?.uiHost?.surfacePath?.('entry') || null",
+    );
     expect(source).toContain('const pagePath = entryPagePath;');
     expect(source).not.toContain('const leafPagePath = () =>');
+    expect(source).toContain('registerDismissHandler?.({ path: entryPagePath }');
   });
 
   it('keeps provider credential tools screen-local and carries an ephemeral proof into Save', async () => {
@@ -232,7 +239,7 @@ describe('generic SysBO form state presentation', () => {
       'utf8',
     );
     const entryPolicyRuntimeSource = await readFile(
-      resolve(testDirectory, '../../public/js/runtime/entry-policy-runtime.js'),
+      resolve(testDirectory, '../../public/js/sysbo/entry/entry-policy-runtime.js'),
       'utf8',
     );
     const expressionFormatSource = await readFile(
@@ -265,7 +272,10 @@ describe('generic SysBO form state presentation', () => {
     // the normalized model has no parallel UI-defined field catalogue.
     expect(debuggingModelSource).not.toContain("'UI-DEFINED FIELDS'");
     expect(debuggingModelSource).toContain("'FIELD OTHER'");
-    expect(debuggingModelSource).toContain("'RELATED ENTITY'");
+    // Foreign related-entity canonical calculations are not part of the host
+    // entry Debugging inventory; only UI expressions explicitly owned by the
+    // related-collection presentation are inventoried under UI / RELATED.
+    expect(debuggingModelSource).not.toContain("'RELATED ENTITY'");
     expect(debuggingModelSource).toContain("'UI'");
     expect(debuggingModelSource).toContain("'TABS'");
     expect(debuggingModelSource).toContain("'RELATED'");
@@ -348,7 +358,7 @@ describe('generic SysBO form state presentation', () => {
 
   it('preserves the active entity tab across reactive CTX refreshes', async () => {
     const entryPolicySource = await readFile(
-      resolve(testDirectory, '../../public/js/runtime/entry-policy-runtime.js'),
+      resolve(testDirectory, '../../public/js/sysbo/entry/entry-policy-runtime.js'),
       'utf8',
     );
     expect(entryPolicySource).toContain('if (current && !restoreRequested) return;');
@@ -377,7 +387,7 @@ describe('generic SysBO form state presentation', () => {
       'utf8',
     );
     const entryPolicySource = await readFile(
-      resolve(testDirectory, '../../public/js/runtime/entry-policy-runtime.js'),
+      resolve(testDirectory, '../../public/js/sysbo/entry/entry-policy-runtime.js'),
       'utf8',
     );
     expect(metadataSource).not.toContain('relatedExpressionScope');
@@ -433,13 +443,13 @@ describe('generic SysBO form state presentation', () => {
 
     expect(renderer).toContain('data-form-close-cancel');
     expect(renderer).toContain('data-form-close-cancel-label');
+    expect(renderer).toContain('data-cancel-operation');
     expect(forms).toContain(
       "closeCancelLabel.textContent = changed || blocked ? 'Cancel' : 'Close'",
     );
     expect(forms).toContain("changed || blocked ? 'Cancel editing' : 'Close entry'");
-    expect(forms).toContain('let node = runtime?.value?.ui?.level');
-    expect(forms).toContain("path += '.level'");
-    expect(forms).toContain('const entryPagePath = (() => {');
+    expect(forms).toContain("window.ManatOS?.uiHost?.surfacePath?.('entry')");
+    expect(forms).toContain('const entryPagePath =');
     expect(forms).toContain('const pagePath = entryPagePath');
     expect(forms).toContain('`${pagePath}.control.state.blocked`');
     expect(forms).not.toContain('state.internalEditing');
@@ -454,7 +464,7 @@ describe('generic SysBO form state presentation', () => {
       'utf8',
     );
     const initialization = await readFile(
-      resolve(testDirectory, '../../public/js/runtime/entry-initialization-runtime.js'),
+      resolve(testDirectory, '../../public/js/sysbo/entry/entry-initialization-runtime.js'),
       'utf8',
     );
     const renderer = await readFile(
@@ -499,7 +509,7 @@ describe('generic SysBO form state presentation', () => {
 
   it('keeps spinner presentation tied only to real remote initialization work', async () => {
     const initialization = await readFile(
-      resolve(testDirectory, '../../public/js/runtime/entry-initialization-runtime.js'),
+      resolve(testDirectory, '../../public/js/sysbo/entry/entry-initialization-runtime.js'),
       'utf8',
     );
     const routes = await readFile(
@@ -547,5 +557,15 @@ describe('generic SysBO form state presentation', () => {
     expect(state).toContain('const sharedState = currentSharedState()');
     expect(state).toContain("typeof sharedState.isFieldDirty === 'function'");
     expect(state).not.toContain('const sharedState = entryFormStates.get(form) ||');
+  });
+  it('routes editable entry surface dismissal through the canonical Close/Cancel transaction', async () => {
+    const source = await readFile(
+      resolve(testDirectory, '../../public/js/sysbo/entry/state.js'),
+      'utf8',
+    );
+    expect(source).toContain('runtime?.registerDismissHandler?.(');
+    expect(source).toContain('{ path: entryPagePath }');
+    expect(source).toContain('closeCancel.click();');
+    expect(source).not.toContain('closeSurface?.(entryPagePath');
   });
 });

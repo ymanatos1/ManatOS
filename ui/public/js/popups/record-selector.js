@@ -76,6 +76,7 @@
   } = {}) => {
     if (!(template instanceof HTMLTemplateElement)) return null;
     if (!Array.isArray(source)) return null;
+    const diagnosticOpeningAt = performance.now();
 
     // Only one modal record-selection context is active at a time.
     document.querySelector('[data-record-selector-backdrop]')?.remove();
@@ -246,8 +247,20 @@
     const backdrop = document.createElement('div');
     backdrop.className = 'manatos-popup-backdrop metadata-record-selector-backdrop';
     backdrop.dataset.recordSelectorBackdrop = '';
+    backdrop.dataset.manatosPopupReady = 'false';
     backdrop.append(fragment);
     document.body.append(backdrop);
+    window.requestAnimationFrame(() => {
+      window.ManatOS?.clientDiagnostics?.send?.({
+        type: 'popup-opening-measurement',
+        popupKind: 'record-selector',
+        title: selectorTitleText,
+        openToFirstVisibleContentMs: Math.max(
+          0,
+          Math.round((performance.now() - diagnosticOpeningAt) * 10) / 10,
+        ),
+      });
+    });
 
     const search = panel.querySelector('[data-selector-filter]');
     const rowsHost = panel.querySelector('[data-selector-rows]');
@@ -443,7 +456,13 @@
       popupRuntime.closeUiLevel?.(v2Surface);
     };
 
+    let unregisterDismiss = null;
+    let unbindDismissTarget = null;
     const close = () => {
+      unregisterDismiss?.();
+      unregisterDismiss = null;
+      unbindDismissTarget?.();
+      unbindDismissTarget = null;
       syncCtx(matchingRows(), 'closing');
       clearCtx();
       backdrop.remove();
@@ -649,8 +668,14 @@
       }
     });
 
-    panel.querySelector('[data-selector-close]')?.addEventListener('click', close);
-    panel.querySelector('[data-selector-cancel]')?.addEventListener('click', close);
+    unregisterDismiss = popupRuntime.registerDismissHandler?.(v2Surface, () => close());
+    unbindDismissTarget = popupRuntime.bindDismissTarget?.(v2Surface, backdrop);
+    panel.querySelector('[data-selector-close]')?.addEventListener('click', () => {
+      popupRuntime.requestDismiss?.(v2Surface, 'close-button');
+    });
+    panel.querySelector('[data-selector-cancel]')?.addEventListener('click', () => {
+      popupRuntime.requestDismiss?.(v2Surface, 'cancel-button');
+    });
     // Universal ManatOS popup rule: backdrop clicks never dismiss a popup.
     search?.addEventListener('input', () => {
       currentPage = 1;
@@ -701,6 +726,7 @@
     void primeUIRuleAsts().then(() => {
       applySelectorPresentationRules();
       render();
+      backdrop.dataset.manatosPopupReady = 'true';
       if (autofocusSearch && document.activeElement === document.body) search?.focus();
     });
 

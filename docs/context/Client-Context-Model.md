@@ -51,35 +51,37 @@ A page, an entry opened inside that page, and a selector popup opened by the ent
 
 ```text
 level
-+-- id
-+-- host              page | popup
-+-- kind              static | list | entry | selector | hierarchy | custom
-+-- mode              browse | create | edit | view | select | manage
-+-- name
-+-- path
-+-- scope
-+-- entityKey?
-+-- recordId?
-+-- invocation
-+-- presentation
-+-- state
-+-- facts?
-+-- fields?
-+-- entry?
-+-- list?
-+-- resources?
-+-- level?
++-- control
+|   +-- id
+|   +-- host              page | popup | embedded
+|   +-- kind              static | list | entry | selector | hierarchy | custom
+|   +-- mode              browse | create | edit | view | select | manage
+|   +-- name / path / scope
+|   +-- entityKey? / entityName? / recordId?
+|   +-- invocation
+|   +-- presentation
+|   +-- state
+|   +-- facts
+|   +-- supportsUserChanges
++-- fields?                entry field authority
++-- entry?                 entry record projections
++-- list?                  list/hierarchy record projection
++-- resources?             component/read-model resources
++-- selection? / row?      selector/list evaluation state when applicable
++-- level?                 active child UI level
 ```
 
 Three dimensions are intentionally independent:
 
 | Property | Supported values                                             | Meaning                                                                                  |
 | -------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `host`   | `page`, `popup`                                              | **Where** the surface is mounted. Host does not redefine its business/runtime semantics. |
+| `host`   | `page`, `popup`, `embedded`                                  | **Where** the surface is mounted. Host does not redefine its business/runtime semantics. |
 | `kind`   | `static`, `list`, `entry`, `selector`, `hierarchy`, `custom` | **What** semantic surface contract the level implements.                                 |
 | `mode`   | `browse`, `create`, `edit`, `view`, `select`, `manage`       | **How** that surface currently operates.                                                 |
 
-Examples: an entry may be `host=page, kind=entry, mode=edit`; the same entry contract can be `host=popup, kind=entry, mode=view`. A selector is normally `kind=selector, mode=select`. This separation prevents visual hosting, semantic purpose and operational behavior from becoming one overloaded flag.
+Examples: an entry may be `host=page, kind=entry, mode=edit`; the same entry contract can be `host=popup, kind=entry, mode=view`; a related-collection mini-entry can be `host=embedded, kind=entry, mode=edit`. A selector is normally `kind=selector, mode=select`. This separation prevents visual hosting, semantic purpose and operational behavior from becoming one overloaded flag.
+
+All universal members above live under `level.control`; they are not siblings of `control`. Kind-specific payload such as `fields`, `entry`, `list`, `resources`, `selection` and `row` lives beside `control`. This distinction matters when reading expressions and the CTX Viewer.
 
 ## Invocation — why the surface exists
 
@@ -87,31 +89,23 @@ Examples: an entry may be `host=page, kind=entry, mode=edit`; the same entry con
 
 ```text
 invocation
-+-- purpose?
-+-- sourceSurfaceId?
-+-- sourceEntityKey?
-+-- sourceRecordId?
-+-- targetEntityKey?
-+-- targetField?
-+-- selectionMode?       single | multiple
-+-- defaults?            { ... }
-+-- overrides?           { ... }
-+-- uiOverrides?         { ... }
-+-- parameters?          { ... }
++-- entityName?          target registry name when needed
++-- purpose             reason for opening: view | create | select...
++-- caller?              { surfaceRef, entityName?, recordId? }
++-- rules?               declarative values/fields/query/actions
++-- behavior?            recoverability/selector/lifecycle behavior
++-- ...                  purpose-specific semantic input
 ```
 
-| Member                              | Meaning / usage                                                                                                                                        |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `purpose`                           | Human/tool-readable reason for opening the surface, e.g. `open-entity-entry-page`, `open-entity-entry-popup`. Useful to generic lifecycle/policy code. |
-| `sourceSurfaceId`                   | Surface that initiated the request. Supports provenance and return routing without guessing from DOM structure.                                        |
-| `sourceEntityKey`, `sourceRecordId` | Business source of the invocation when relevant.                                                                                                       |
-| `targetEntityKey`                   | Entity the invocation intends to select/open/manage.                                                                                                   |
-| `targetField`                       | Calling field that should receive a result, especially reference selectors.                                                                            |
-| `selectionMode`                     | `single` or `multiple`; describes selector result cardinality.                                                                                         |
-| `defaults`                          | Caller-provided initial values. Defaults seed creation; they are not permanent restrictions.                                                           |
-| `overrides`                         | Invocation-specific behavioral input understood by the target contract.                                                                                |
-| `uiOverrides`                       | Invocation-specific UI restrictions/presentation input, e.g. narrowing allowed options.                                                                |
-| `parameters`                        | Extensible purpose-specific parameters that do not deserve top-level members.                                                                          |
+| Member       | Meaning / usage                                                                                                                                                              |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entityName` | Expression-safe target entity registry name when required by the surface.                                                                                                    |
+| `purpose`    | Why the level was opened. It is not a duplicate of operational `control.mode`.                                                                                               |
+| `caller`     | Stable caller reference. `surfaceRef` points to the caller level; optional entity/record identity adds provenance without copying caller state.                              |
+| `rules`      | Declarative opening constraints. Current entry rules can provide value defaults/fixed values and field restrictions; selector/list purposes may add their own rule families. |
+| `behavior`   | Purpose-specific behavior such as recoverability or selection/close behavior. It is opening policy, not changing surface state.                                              |
+
+The invocation contract is intentionally extensible by purpose. A consumer should read only members defined for the surface/purpose it handles; absence of a member is not an implicit default copied from some other surface.
 
 Example:
 
@@ -120,13 +114,12 @@ Principal entry
    |
    | opens Parent principal selector
    v
-Selector invocation
-  purpose         = "select-reference"
-  sourceEntityKey = "sys-principals"
-  sourceRecordId  = "..."
-  targetEntityKey = "sys-principals"
-  targetField     = "parentPrincipalId"
-  selectionMode   = "single"
+Selector child level
+  control.kind                         = "selector"
+  control.mode                         = "select"
+  control.invocation.purpose           = "select-reference"
+  control.invocation.caller.surfaceRef = "<parent CTX level path>"
+  control.entityKey                    = "<target entity key>"
 ```
 
 Code should **read invocation to understand the request**, then write changing runtime state to the appropriate state/field/resource contract. Do not mutate invocation to represent what subsequently happened.
@@ -180,16 +173,16 @@ state
 
 ### Lifecycle
 
-| Value          | Meaning                                                                        |
-| -------------- | ------------------------------------------------------------------------------ |
-| `creating`     | Runtime object is being constructed but is not ready for use.                  |
-| `created`      | Construction completed; not yet active.                                        |
-| `activating`   | Transitioning into the active displayed chain.                                 |
-| `active`       | Current usable surface.                                                        |
-| `deactivating` | Losing active ownership while lifecycle cleanup runs.                          |
-| `closing`      | Close operation has begun.                                                     |
-| `closed`       | No longer displayed.                                                           |
-| `disposed`     | Runtime resources/subscriptions are released; the instance must not be reused. |
+| Value          | Current browser meaning                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `created`      | Initial lifecycle value assigned when the level is materialized. A newly opened level is also `active=true`. |
+| `deactivating` | A non-embedded child is being opened, so the parent is being made inactive.                                  |
+| `active`       | Parent lifecycle value after a non-embedded child closes and the parent is reactivated.                      |
+| `closing`      | Disposal of this level has begun.                                                                            |
+| `closed`       | The level has completed its visible close transition.                                                        |
+| `disposed`     | Final lifecycle value written immediately before the level is removed from public CTX.                       |
+
+The lifecycle vocabulary is an observable state machine, not a promise that every conceivable transitional label is currently emitted. In particular, the production browser host currently creates a level directly as `created` + `active=true`; documentation must not invent `creating` or `activating` phases that the runtime does not publish. Popup children deactivate/reactivate their parent; embedded children leave their parent active.
 
 ### Operational flags
 
@@ -217,10 +210,10 @@ An entry level owns a record editing transaction. Its field-oriented and record-
                                                        entry.current.firstName
 
                  BASELINE AUTHORITY
-              entry.original.firstName
+          fields.firstName.originalValue
                        |
-                       +------ read-only mirror ----------+
-                                                   fields.firstName.originalValue
+                       +------ read-only projection ------+
+                                                      entry.original.firstName
 ```
 
 A field node commonly exposes:

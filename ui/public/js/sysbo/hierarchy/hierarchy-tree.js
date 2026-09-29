@@ -4,11 +4,11 @@
   const runtime = window.ManatOS?.ctx;
   if (!runtime?.resolve) return;
 
-  const reactivePolicy = await import('/shared-runtime/policies/reactive-runtime-policy.js');
-  const pathsOverlap = reactivePolicy.reactivePathsOverlap;
-
   const components = [...document.querySelectorAll('[data-metadata-component="hierarchy-tree"]')];
   if (!components.length) return;
+
+  const reactivePolicy = await import('/shared-runtime/policies/reactive-runtime-policy.js');
+  const pathsOverlap = reactivePolicy.reactivePathsOverlap;
 
   const componentState = new WeakMap();
 
@@ -275,7 +275,8 @@
 
     if (!rows.length || rootId == null || rootId === '') {
       empty.hidden = false;
-      empty.querySelector('[data-hierarchy-empty-add]')?.addEventListener('click', () => {
+      empty.querySelector('[data-hierarchy-empty-add]')?.addEventListener('click', (event) => {
+        event.preventDefault();
         component.dispatchEvent(
           new CustomEvent('manatos:hierarchy-command', {
             bubbles: true,
@@ -441,7 +442,7 @@
       const label = rawLabel || '(New)';
       const hasNodeValue = rawLabel.length > 0;
       const isCurrent = currentId != null && String(currentId) === id;
-      // recordQuick is an overlay owned by the workspace. Opening it must not
+      // The quick-entry popup is owned by the workspace. Opening it must not
       // change the committed tree model or suppress/reflow any existing node.
       const showNodeCommands = workspaceMode && hasNodeValue;
       const hasParent = row[parentField] != null && String(row[parentField]) !== '';
@@ -696,30 +697,22 @@
           const node = button.closest('[data-hierarchy-node-id]');
           const memberId = node?.dataset?.hierarchyNodeId || '';
           const entityKey = component.dataset.entityKey || '';
-          const popup = window.ManatOS?.popup?.entry;
+          const entryOpening = window.ManatOS?.entryOpening;
           /*
            * Hosted entry documents delegate ManatOS.popup.entry.open() to their
            * owning window. Therefore the same generic node action works for a
            * page or any nested popup level; no entity or nesting-depth branch is
            * needed here.
            */
-          if (!memberId || memberId.startsWith('draft:') || !entityKey || !popup?.open) return;
-          const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
-          const params = new URLSearchParams({
-            _entryPopup: '1',
-            _entryPopupToken: token,
-            _entryMode: 'view',
-          });
-          popup.open({
-            token,
+          if (!memberId || memberId.startsWith('draft:') || !entityKey || !entryOpening?.open)
+            return;
+          entryOpening.open({
+            host: 'popup',
+            target: { entityKey, recordId: memberId },
             title: node?.dataset?.hierarchyNodeLabel || 'View entry',
-            url: `/bo/${encodeURIComponent(entityKey)}/${encodeURIComponent(memberId)}?${params.toString()}`,
-            entityKey,
             mode: 'view',
-            invocation: {
-              purpose: 'view',
-              presentation: { layout: 'entry' },
-            },
+            purpose: 'view',
+            presentation: { layout: 'entry' },
           });
         });
       });

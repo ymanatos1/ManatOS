@@ -14,15 +14,15 @@
   - entity-field.ejs.
 
   Runtime contract:
-  - Metadata-form runtime consumes field container/expression/calculation data attributes.
+  - Metadata-form runtime consumes field container and calculation/policy data attributes.
 %>
 <%
   /*
    * FORM-FIELD WRAPPER (not a concrete field-type component).
    *
    * This layer owns how one canonical field participates in a form: outer grid
-   * placement, label/help, visibility/editability, normalization/calculation
-   * bindings and read-only submission support. It always delegates the actual
+   * placement, label/help, visibility/editability, calculation bindings and
+   * read-only submission support. It always delegates the actual
    * type-specific control to entity-field.ejs.
    *
    * Value-source semantics (direct, calculated, default, application-managed)
@@ -46,16 +46,13 @@
   <% const visibleExpression = expressionText(overrides[key]?.visible); %>
   <% const editableExpression = expressionText(overrides[key]?.editable); %>
   <% const calculation = field.calculation; %>
-  <% const normalization = field.normalize; %>
+  <% const fieldRepresentation = typeof representation === 'string' ? representation : 'default'; %>
   <div
     class="col-md-<%= span || 6 %>"
     data-ctx-field-container="<%= key %>"
     <% if (typeof spanExpression !== 'undefined' && spanExpression) { %>
       data-ui-grid-span-expression="<%= spanExpression %>"
       data-ui-grid-span-fallback="<%= span || 6 %>"
-    <% } %>
-    <% if (normalization?.expression) { %>
-      data-field-normalize-expression="<%= normalization.expression %>"
     <% } %>
     <% if (calculation?.expression) { %>
       data-field-calculation-expression="<%= calculation.expression %>"
@@ -73,26 +70,45 @@
     <% } %>
     <%= !fieldVisible(field) ? 'hidden' : '' %>
   >
-    <label
-      class="form-label" for="metadata-field-<%= key %>"
-      data-metadata-field-label="<%= key %>"><%= fieldLabel(field) %>:<% if (field.required) { %><span
-      class="metadata-field-required-marker"
-      aria-label="required"> (*)</span><% } %></label>
-    <%- include('entity-field', {
-      key,
-      field,
-      value,
-      editable,
-      fieldLabel,
-      enumItemsFor,
-      referenceValues,
-      referenceSelectorContexts: safeReferenceSelectorContexts,
-      effectiveFieldContext,
-      dateOnlyValue,
-      datetimeLocalValue,
-      durationParts,
-      durationSerializedValue
-    }) %>
+    <% if (fieldRepresentation !== 'default') { %>
+      <%- include('field-representation', {
+        representation: fieldRepresentation,
+        key,
+        field,
+        value,
+        item,
+        definition,
+        fieldLabel,
+        fieldOverride: overrides[key] || {},
+        referenceLabel,
+        formatValue,
+        referenceValues,
+        entryRepresentationFor,
+        relatedFieldKeys: typeof relatedFieldKeys !== 'undefined' ? relatedFieldKeys : [],
+        relatedValues: typeof relatedValues !== 'undefined' ? relatedValues : []
+      }) %>
+    <% } else { %>
+      <label
+        class="form-label" for="metadata-field-<%= key %>"
+        data-metadata-field-label="<%= key %>"><%= fieldLabel(field) %>:<% if (field.required) { %><span
+        class="metadata-field-required-marker"
+        aria-label="required"> (*)</span><% } %></label>
+      <%- include('entity-field', {
+        key,
+        field,
+        value,
+        editable,
+        fieldLabel,
+        enumItemsFor,
+        referenceValues,
+        referenceSelectorContexts: safeReferenceSelectorContexts,
+        effectiveFieldContext,
+        dateOnlyValue,
+        datetimeLocalValue,
+        durationParts,
+        durationSerializedValue
+      }) %>
+    <% } %>
     <% if (overrides[key]?.helpText) { %>
       <div class="form-text"><%= overrides[key].helpText %></div>
     <% } %>

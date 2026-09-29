@@ -37,6 +37,9 @@
     saving: false,
     deleting: false,
     blocked: false,
+    // Canonical surface-level gate for keyboard/pointer user input. Runtime
+    // blockers own the reasons; CTX exposes only the aggregate semantic fact.
+    userInputReady: true,
     navigation: {
       activeTabId: navigation?.activeTabId ?? null,
       activeInternalTabIds: { ...(navigation?.activeInternalTabIds || {}) },
@@ -92,7 +95,7 @@
         state: state(navigation),
         facts: facts && typeof facts === 'object' ? { ...facts } : {},
         supportsUserChanges: supportsUserChanges === true,
-        ...(entityKey ? { entityKey } : {}),
+        ...(entityKey ? { entityKey: String(entityKey) } : {}),
         ...(entityName ? { entityName } : {}),
         ...(recordId ? { recordId } : {}),
       },
@@ -295,6 +298,7 @@
       case 'browse-entity-list':
         return listSurface(bootstrap);
 
+      case 'open-account-entry':
       case 'open-entity-entry': {
         const root = listSurface({
           entityKey: bootstrap.entityKey,
@@ -353,6 +357,7 @@
               : {}),
             purpose: mode === 'create' ? 'create' : 'view',
             caller: callerReference(parent),
+            behavior: { recoverable: bootstrap.recoverable !== false },
             ...(() => {
               const rules = canonicalEntryRules(bootstrap.defaults, bootstrap.uiOverrides);
               return Object.keys(rules).length ? { rules } : {};
@@ -361,6 +366,7 @@
           presentation: {
             title: bootstrap.title || bootstrap.entityName || bootstrap.entityKey,
             ...(bootstrap.icon ? { icon: bootstrap.icon } : {}),
+            ...(bootstrap.uiView ? { uiView: { ...bootstrap.uiView } } : {}),
             layout: 'entity-entry',
           },
           navigation: bootstrap.navigation,
@@ -442,6 +448,299 @@
   ctx.ui = { level: fromBootstrap() };
   ctxElement.textContent = JSON.stringify(ctx).replace(/</g, '\\u003c');
 
+  /**
+   * Open one browser-owned UI surface under the current (or explicit) UI level.
+   * `host` is an orthogonal mounting choice: popup and embedded callers use the
+   * same opener, topology and lifecycle. Routed page roots are materialized by
+   * bootstrap through the same `surface()` model rather than a parallel child opener.
+   * Embedded children deliberately leave their parent active.
+   */
+  const uiLevelAt = (path) => {
+    const runtime = window.ManatOS?.ctx;
+    const level = path ? runtime?.get?.(path) : null;
+    return level && typeof level === 'object' ? { level, path } : null;
+  };
+
+  const uiLeaf = () => {
+    const runtime = window.ManatOS?.ctx;
+    let level = runtime?.value?.ui?.level;
+    if (!level) return null;
+    let path = 'ctx.ui.level';
+    while (level?.level) {
+      level = level.level;
+      path += '.level';
+    }
+    return { level, path };
+  };
+
+  const openSurface = ({
+    parentPath = null,
+    host = 'popup',
+    kind = 'custom',
+    mode = 'view',
+    name = kind,
+    entityKey = null,
+    entityName = null,
+    recordId = null,
+    invocation = {},
+    presentation = {},
+    state: statePatch = {},
+    entry = null,
+    resources = null,
+    supportsUserChanges = false,
+    source = 'ui-host',
+  } = {}) => {
+    const runtime = window.ManatOS?.ctx;
+    if (!runtime?.replace) return null;
+    const parent = parentPath ? uiLevelAt(parentPath) : uiLeaf();
+    if (!parent?.level?.control) return null;
+    if (!['popup', 'embedded'].includes(host)) {
+      throw new Error(`Unsupported browser child surface host: ${host}`);
+    }
+
+    const normalizedName = safeName(name, kind || host);
+    const childPath = `${parent.path}.level`;
+    if (runtime.get?.(childPath) !== undefined) {
+      throw new Error(`UI level already owns a child surface: ${parent.path}`);
+    }
+
+    const child = surface({
+      id: `${host}-${kind}-${normalizedName}-${Date.now()}`,
+      parent: parent.level,
+      host,
+      kind: String(kind || 'custom'),
+      mode: String(mode || 'view'),
+      name: normalizedName,
+      entityKey,
+      entityName,
+      recordId,
+      invocation,
+      presentation,
+      entry,
+      resources,
+      supportsUserChanges,
+      fields:
+        kind === 'entry' && entityKey
+          ? entryFields(
+              entityKey,
+              entry?.current,
+              entry?.original ?? entry?.current,
+              mode,
+              resources?.referenceData,
+            )
+          : null,
+    });
+    child.control.state = {
+      ...child.control.state,
+      ...statePatch,
+      active: true,
+      lifecycle: 'active',
+    };
+
+    if (host !== 'embedded') {
+      runtime.replace(
+        `${parent.path}.control.state`,
+        { ...parent.level.control.state, lifecycle: 'deactivating', active: false },
+        { source, action: 'deactivate-parent-surface', triggerPath: childPath },
+      );
+    }
+    runtime.replace(childPath, child, {
+      source,
+      action: `open-${host}-surface`,
+      triggerPath: childPath,
+    });
+    return Object.freeze({ id: child.control.id, host, path: childPath, parentPath: parent.path });
+  };
+
+  /**
+   * Hydrate a browser-opened entry child from the same factual bootstrap envelope
+   * used by a routed entry page. Rendering remains server-owned; CTX topology and
+   * canonical field state remain browser-owned.
+   */
+  const hydrateEntrySurface = (handle, entryBootstrap) => {
+    const runtime = window.ManatOS?.ctx;
+    if (!runtime?.replace || !handle?.path) return false;
+    const current = runtime.get?.(handle.path);
+    if (current?.control?.kind !== 'entry') return false;
+    const input = entryBootstrap && typeof entryBootstrap === 'object' ? entryBootstrap : null;
+    if (!input?.entityKey) return false;
+
+    const mode = input.isNew ? 'create' : input.readOnly ? 'view' : 'edit';
+    if (mode !== current.control.mode) return false;
+    const entityName = input.entityName || entityContextFor(input.entityKey)?.name || null;
+    const rules = canonicalEntryRules(input.defaults, input.uiOverrides);
+    const invocation = {
+      ...(current.control.invocation || {}),
+      ...(entityName ? { entityName } : {}),
+      behavior: { recoverable: input.recoverable !== false },
+      ...(Object.keys(rules).length ? { rules } : {}),
+    };
+    const presentation = {
+      ...(current.control.presentation || {}),
+      ...(input.title ? { title: input.title } : {}),
+      ...(input.icon ? { icon: input.icon } : {}),
+      ...(input.uiView ? { uiView: { ...input.uiView } } : {}),
+      layout: 'entity-entry',
+    };
+    const control = {
+      ...current.control,
+      mode,
+      entityKey: input.entityKey,
+      ...(entityName ? { entityName } : {}),
+      ...(input.recordId ? { recordId: input.recordId } : {}),
+      invocation,
+      presentation,
+      facts:
+        input.entry?.facts && typeof input.entry.facts === 'object' ? { ...input.entry.facts } : {},
+      supportsUserChanges: mode !== 'view',
+      state: {
+        ...(current.control.state || state(input.navigation)),
+        navigation: {
+          activeTabId: input.navigation?.activeTabId ?? null,
+          activeInternalTabIds: { ...(input.navigation?.activeInternalTabIds || {}) },
+        },
+      },
+    };
+    const resources = input.resources && typeof input.resources === 'object' ? input.resources : {};
+    const fields = entryFields(
+      input.entityKey,
+      input.entry?.current,
+      input.entry?.original,
+      mode,
+      resources.referenceData,
+    );
+    runtime.replace(
+      handle.path,
+      {
+        ...current,
+        control,
+        entry: { original: {}, current: {} },
+        ...(Object.keys(resources).length ? { resources } : {}),
+        fields,
+      },
+      { source: 'ui-host', action: 'hydrate-entry-surface', triggerPath: handle.path },
+    );
+    return true;
+  };
+
+  const updateChildSurface = (handle, patch, options = {}) => {
+    const runtime = window.ManatOS?.ctx;
+    if (!runtime?.replace || !handle?.path) return false;
+    const current = runtime.get?.(handle.path);
+    if (!current || typeof current !== 'object') return false;
+    runtime.replace(
+      handle.path,
+      { ...current, ...patch },
+      {
+        source: options.source || 'ui-host',
+        action: options.action || 'update-child-surface',
+        triggerPath: handle.path,
+      },
+    );
+    return true;
+  };
+
+  const announceSurfaceDisposing = (path, source = 'ui-host') => {
+    if (!path) return;
+    window.dispatchEvent(
+      new CustomEvent('manatos:ui-level-disposing', {
+        detail: Object.freeze({ path: String(path), source: String(source || 'ui-host') }),
+      }),
+    );
+  };
+
+  const closeSurface = (handle, source = 'ui-host') => {
+    const runtime = window.ManatOS?.ctx;
+    if (!runtime?.delete || !handle?.path || runtime.get?.(handle.path) === undefined) return false;
+    // Surface-owned browser runtimes must retire their subscriptions while their
+    // lexical CTX scope still exists. This prevents the disposal mutations below
+    // from re-entering evaluators whose owner is already being destroyed.
+    announceSurfaceDisposing(handle.path, source);
+    userInputBlockers.delete(String(handle.path));
+    if (runtime.replace) {
+      runtime.replace(`${handle.path}.control.state.lifecycle`, 'closing', { source });
+      runtime.replace(`${handle.path}.control.state.active`, false, { source });
+      runtime.replace(`${handle.path}.control.state.lifecycle`, 'closed', { source });
+      runtime.replace(`${handle.path}.control.state.lifecycle`, 'disposed', { source });
+    }
+    runtime.delete(handle.path, {
+      source,
+      action: `close-${handle.host || 'child'}-surface`,
+      triggerPath: handle.path,
+    });
+    if (handle.host !== 'embedded' && handle.parentPath) {
+      const parentState = runtime.get?.(`${handle.parentPath}.control.state`);
+      if (parentState && typeof parentState === 'object') {
+        runtime.replace(
+          `${handle.parentPath}.control.state`,
+          { ...parentState, lifecycle: 'active', active: true },
+          { source, action: 'reactivate-parent-surface', triggerPath: handle.parentPath },
+        );
+      }
+    }
+    return true;
+  };
+
+  /*
+   * One user-input readiness authority for every UI surface. Callers acquire
+   * named blockers while initialization/long operations are active; CTX exposes
+   * only the aggregate userInputReady flag. Buttons, X chrome and keyboard
+   * dismissal consume that same fact rather than maintaining parallel tests.
+   */
+  const userInputBlockers = new Map();
+  const surfaceTargetPath = (target = null) => {
+    if (typeof target === 'string') return target;
+    if (target?.path) return String(target.path);
+    return uiLeaf()?.path || null;
+  };
+  const publishUserInputReady = (path) => {
+    const runtime = window.ManatOS?.ctx;
+    const surface = path ? runtime?.get?.(path) : null;
+    if (!surface?.control?.state || !runtime?.replace) return false;
+    const ready = (userInputBlockers.get(path)?.size || 0) === 0;
+    if (surface.control.state.userInputReady !== ready) {
+      runtime.replace(`${path}.control.state.userInputReady`, ready, {
+        source: 'user-input-readiness',
+        action: ready ? 'input-ready' : 'input-blocked',
+      });
+    }
+    window.dispatchEvent(
+      new CustomEvent('manatos:user-input-readiness-changed', {
+        detail: Object.freeze({ path, ready }),
+      }),
+    );
+    return ready;
+  };
+  const setUserInputBlocked = (target, owner, blocked = true) => {
+    const path = surfaceTargetPath(target);
+    const key = String(owner || '').trim();
+    if (!path || !key) return () => {};
+    let blockers = userInputBlockers.get(path);
+    if (!blockers) {
+      blockers = new Map();
+      userInputBlockers.set(path, blockers);
+    }
+    if (blocked) blockers.set(key, true);
+    else blockers.delete(key);
+    if (!blockers.size) userInputBlockers.delete(path);
+    publishUserInputReady(path);
+    let released = !blocked;
+    return () => {
+      if (released) return;
+      released = true;
+      const current = userInputBlockers.get(path);
+      current?.delete(key);
+      if (current && !current.size) userInputBlockers.delete(path);
+      publishUserInputReady(path);
+    };
+  };
+  const isUserInputReady = (target = null) => {
+    const path = surfaceTargetPath(target);
+    if (!path) return false;
+    const state = window.ManatOS?.ctx?.get?.(`${path}.control.state`);
+    return Boolean(state && state.active !== false && state.userInputReady !== false);
+  };
+
   const recoveryAdapters = new Map();
 
   const registerRecoveryAdapter = (path, adapter) => {
@@ -452,12 +751,86 @@
 
   const recoveryAdapter = (path) => recoveryAdapters.get(String(path || '')) || null;
 
+  const currentUserChangePath = () => {
+    const runtime = window.ManatOS?.ctx;
+    let node = runtime?.value?.ui?.level;
+    if (!node) return null;
+    let path = 'ctx.ui.level';
+    let candidate = node?.control?.supportsUserChanges === true ? path : null;
+    while (node?.level) {
+      node = node.level;
+      path += '.level';
+      if (node?.control?.supportsUserChanges === true) candidate = path;
+    }
+    return candidate;
+  };
+
+  /** Return the deepest active CTX UI surface matching the requested kind.
+   * Nested component/hierarchy levels must not hide their owning entry surface. */
+  const surfacePath = (kind) => {
+    const wanted = String(kind || '').trim();
+    if (!wanted) return null;
+    let node = window.ManatOS?.ctx?.value?.ui?.level;
+    if (!node) return null;
+    let path = 'ctx.ui.level';
+    let match = null;
+    while (node) {
+      if (node?.control?.kind === wanted) match = path;
+      node = node.level;
+      path += '.level';
+    }
+    return match;
+  };
+
+  const isDirty = (path) =>
+    Boolean(path) && window.ManatOS?.ctx?.get?.(`${path}.control.state.dirty`) === true;
+
+  const isRecoverable = (path) => {
+    const control = path ? window.ManatOS?.ctx?.get?.(`${path}.control`) : null;
+    return (
+      Boolean(control) &&
+      control.supportsUserChanges === true &&
+      control.invocation?.behavior?.recoverable !== false
+    );
+  };
+
+  const recoverableChanges = (path) => {
+    if (!isRecoverable(path)) return null;
+    return recoveryAdapter(path)?.getUserChanges?.() ?? null;
+  };
+
   // Browser UI levels have one explicit deepest-first disposal path. Outage
   // recovery uses this before replacing the workspace so no stale public CTX
   // surfaces survive while the local unavailable page is displayed.
   window.ManatOS ||= {};
   window.ManatOS.uiHost = Object.freeze({
+    openSurface,
+    hydrateEntrySurface,
+    updateChildSurface,
+    closeSurface,
     registerRecoveryAdapter,
+    currentUserChangePath,
+    surfacePath,
+    setUserInputBlocked,
+    isUserInputReady,
+    isDirty,
+    isRecoverable,
+    recoverableChanges,
+    shouldConfirmCancellation(path = currentUserChangePath()) {
+      return isDirty(path) && recoverableChanges(path) != null;
+    },
+    cancellationPresentation(path = currentUserChangePath()) {
+      return recoveryAdapter(path)?.cancellationPresentation?.() ?? null;
+    },
+    async discardUserChanges(path = currentUserChangePath()) {
+      return (await recoveryAdapter(path)?.discardUserChanges?.()) ?? true;
+    },
+    canSaveUserChanges(path = currentUserChangePath()) {
+      return typeof recoveryAdapter(path)?.saveUserChanges === 'function';
+    },
+    async saveUserChanges(path = currentUserChangePath()) {
+      return (await recoveryAdapter(path)?.saveUserChanges?.()) === true;
+    },
     getUserChanges(path) {
       return recoveryAdapter(path)?.getUserChanges?.() ?? null;
     },
@@ -482,6 +855,7 @@
         path += '.level';
       }
       for (const levelPath of paths.reverse()) {
+        announceSurfaceDisposing(levelPath, source);
         runtime.replace(`${levelPath}.control.state.lifecycle`, 'closing', { source });
         runtime.replace(`${levelPath}.control.state.active`, false, { source });
         runtime.replace(`${levelPath}.control.state.lifecycle`, 'closed', { source });

@@ -97,6 +97,22 @@
         </li>
       </ul>
 
+      <% if (currentUser) { %>
+        <ul class="navbar-nav mb-2 mb-lg-0 horizontal-documentation-nav">
+          <li class="nav-item">
+            <button
+              class="nav-link horizontal-documentation-button"
+              id="headerDocumentationButton"
+              type="button"
+              title="Open ManatOS documentation"
+              aria-label="Open ManatOS documentation in a separate window"
+            >
+              <i class="bi bi-book" aria-hidden="true"></i>
+            </button>
+          </li>
+        </ul>
+      <% } %>
+
       <% if (app.ui?.debugTools) { %>
         <ul class="navbar-nav mb-2 mb-lg-0 horizontal-debug-nav">
           <li class="nav-item dropdown">

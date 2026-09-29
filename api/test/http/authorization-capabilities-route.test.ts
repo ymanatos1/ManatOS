@@ -78,6 +78,23 @@ describe('SysBO authorization capability API', () => {
     },
   );
 
+  it('projects platform and entity capabilities together for UI page context', async () => {
+    const context = await createTestApi();
+    await seedAdmin(context.services.users);
+    const token = await loginAdmin(context.app);
+
+    const response = await request(context.app)
+      .get(`/api/v1/authorization/context/${PROTOCRM_PLATFORM_ID}/$capabilities`)
+      .set('authorization', bearer(token));
+
+    expect(response.status).toBe(200);
+    expectQuerySuccess(response.body);
+    expect(response.body.data.platformId).toBe(PROTOCRM_PLATFORM_ID);
+    expect(response.body.data.platformCapabilities.platformAccess).toBe(true);
+    expect(response.body.data.entities['sys-users']?.read).toBe(true);
+    expect(response.body.data.entities['sys-principals']?.read).toBe(true);
+  });
+
   it('returns collection capabilities from the authoritative API policy', async () => {
     const context = await createTestApi();
     await seedAdmin(context.services.users);

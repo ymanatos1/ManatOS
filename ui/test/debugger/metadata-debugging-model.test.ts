@@ -18,7 +18,6 @@ const baseInput = () => ({
   dynamicUIValue: vi.fn((value: unknown) => value),
   overrides: {},
   relatedCollections: {},
-  relatedMetadataRegistry: {},
 });
 
 describe('metadata Debugging model', () => {
@@ -42,5 +41,35 @@ describe('metadata Debugging model', () => {
     const model = buildMetadataDebuggingModel({ ...baseInput(), debuggingTabEnabled: false });
     expect(model.entityDebuggingDisplayRows).toEqual([]);
     expect(model.uiDebuggingDisplayRows).toEqual([]);
+  });
+
+  it('keeps canonical calculations of related entities out of the host debugging inventory', () => {
+    const model = buildMetadataDebuggingModel({
+      ...baseInput(),
+      relatedCollections: {
+        licenses: {
+          entityKey: 'sys-licenses',
+          fields: {
+            validUntil: {},
+            displayValue: { expression: "name + ' / ' + status" },
+          },
+        },
+      },
+    });
+
+    const rows = [...model.entityDebuggingDisplayRows, ...model.uiDebuggingDisplayRows]
+      .filter((row: any) => row.type === 'value')
+      .map((row: any) => row.row);
+
+    expect(rows.some((row: any) => row.name === 'licenses.validUntil')).toBe(false);
+    expect(rows.some((row: any) => row.group === 'RELATED ENTITY')).toBe(false);
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        group: 'UI',
+        subgroup: 'RELATED',
+        name: 'relatedCollections.licenses.fields.displayValue.expression',
+        formula: "name + ' / ' + status",
+      }),
+    );
   });
 });

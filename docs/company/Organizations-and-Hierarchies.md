@@ -1,6 +1,6 @@
 # Organizations and Hierarchies
 
-Organization hierarchy is company-level ManatOS data built from Principal relationships; it is not owned by protoCRM.
+Organization hierarchy is foundation-level Company-domain data built from Principal relationships; it is not owned by protoCRM.
 
 Principal parent relationships form the organization structure. The hierarchy is domain data rather than a drawing-specific structure: Tree and Chart views are two presentations of the same working graph.
 

@@ -47,12 +47,12 @@ export const MANATOS_COMPANY: CompanyInfo = {
       alt: 'ManatOS Software Solutions',
     },
   },
-  entities: [
-    { sysBOKey: 'sys-users', description: 'Website/security users.' },
-    { sysBOKey: 'sys-principals', description: 'Customer/commercial identities.' },
-    { sysBOKey: 'sys-licenses', description: 'Company-managed platform licenses.' },
-    { sysBOKey: 'sys-ext-auth-providers', description: 'External authentication providers.' },
-    { sysBOKey: 'sys-configurations', description: 'Runtime application configuration.' },
+  subsystems: [
+    { key: 'auth', selected: true },
+    { key: 'contacts', selected: true },
+    { key: 'principals', selected: true },
+    { key: 'licensing', selected: true },
+    { key: 'configuration', selected: true },
   ],
   navigation: [
     {
@@ -61,7 +61,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-person-vcard',
       url: '/account',
       order: 100,
-      visible: { expression: 'user.permissions.userRole !== null' },
+      visible: { expression: '$user.permissions.userRole !== null' },
     },
     {
       id: 'administration',
@@ -71,7 +71,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       // Every authenticated role may reach at least the Users area. Child
       // contributions carry their own visibility rules so Guest does not inherit
       // unrelated administration entries.
-      visible: { expression: 'user.permissions.userRole !== null' },
+      visible: { expression: '$user.permissions.userRole !== null' },
     },
     {
       id: 'users',
@@ -101,7 +101,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       separatorBefore: true,
       visible: {
         expression:
-          "user.permissions.userRole === 'Admin' || user.permissions.userRole === 'Superuser'",
+          "$user.permissions.userRole === 'Admin' || $user.permissions.userRole === 'Superuser'",
       },
     },
     {
@@ -123,7 +123,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       order: 405,
       visible: {
         expression:
-          "user.permissions.userRole === 'Admin' || user.permissions.userRole === 'Superuser'",
+          "$user.permissions.userRole === 'Admin' || $user.permissions.userRole === 'Superuser'",
       },
     },
     {
@@ -156,7 +156,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       // divider on Preferences itself so it remains visible when Admin-only
       // Configuration is filtered out for User/Superuser roles.
       separatorBefore: true,
-      visible: { expression: 'user.permissions.userRole !== null' },
+      visible: { expression: '$user.permissions.userRole !== null' },
     },
     {
       id: 'logout',
@@ -164,7 +164,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       icon: 'bi-box-arrow-right',
       url: '/auth/logout',
       order: 1000,
-      visible: { expression: 'user.permissions.userRole !== null' },
+      visible: { expression: '$user.permissions.userRole !== null' },
     },
   ],
   defaultPlatformId: PROTOCRM_PLATFORM_ID,
@@ -188,14 +188,6 @@ export function resolvePlatform(
   }
 
   return requested ?? fallback!;
-}
-
-/** Entity keys available after composing Company + current Platform capabilities. */
-export function effectiveEntityKeys(company: CompanyInfo, platform: SysPlatform): Set<string> {
-  return new Set([
-    ...company.entities.map((entry) => entry.sysBOKey),
-    ...platform.entities.map((entry) => entry.sysBOKey),
-  ]);
 }
 
 /**

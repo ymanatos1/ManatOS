@@ -1,8 +1,9 @@
-import type { CompanyInfo, EntityContribution, SysPlatform } from '../domain/company-platform.js';
+import type { CompanyInfo, SysPlatform } from '../domain/company-platform.js';
+import type { ManatOSSubsystemContextProjection } from '../metadata/subsystems/registry.js';
 
 export interface ManatOSSysBOContext {
   key: string;
-  contribution: EntityContribution;
+  contribution: Readonly<{ sysBOKey: string }>;
 }
 
 export interface ManatOSPlatformContext extends SysPlatform {
@@ -39,6 +40,8 @@ export interface ManatOSSystemContext {
   runtime: ManatOSRuntimeContext;
   server: ManatOSServerContext;
   client: ManatOSClientContext;
+  /** Effective ManatOS + selected-platform subsystem catalogue. */
+  subsystems: Readonly<Record<string, ManatOSSubsystemContextProjection>>;
 }
 
 /**
@@ -56,6 +59,8 @@ export interface ManatOSEntityContext {
   key: string;
   /** Canonical symbolic entity name; this is also the ctx.entities property key. */
   name: string;
+  /** Owning subsystem, projected directly for CTX/debugger discovery. */
+  subsystem: string;
   metadata?: unknown;
   uiMetadata?: unknown;
 }

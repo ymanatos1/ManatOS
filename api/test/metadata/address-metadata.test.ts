@@ -9,6 +9,7 @@ describe('address metadata', () => {
   it('keeps reusable addresses internal and calculates one canonical formatted description', () => {
     expect(sysBOAddressesMetadata.exposure).toBe('internal');
     expect(sysBOAddressesMetadata.primaryField).toBe('formattedAddress');
+    expect(sysBOAddressesMetadata.entry?.name).toEqual({ field: 'formattedAddress' });
     expect(sysBOAddressesMetadata.fieldDefinition.formattedAddress?.calculation?.persisted).toBe(
       true,
     );

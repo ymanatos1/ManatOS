@@ -1,18 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { SysBOExtAuthProviderType } from '../../../shared/src/domain/entities.js';
+import { externalAuthProviderOptionItems } from '../../../shared/src/metadata/bo/common.js';
+import { sysBOExternalIdentityMetadata } from '../../../shared/src/metadata/bo/auth/bo-external-identities.js';
+import { sysBOUsersMetadata } from '../../../shared/src/metadata/bo/auth/bo-users.js';
 
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 describe('generic discrete-value option presentation', () => {
   it('supports presentation-only optionItems without turning open string fields into enums', () => {
-    const contracts = source('../../../shared/src/metadata/bo/types.ts');
-    const metadata = source('../../../shared/src/metadata/bo/identity.ts');
-    const commonMetadata = source('../../../shared/src/metadata/bo/common.ts');
+    const provider = sysBOExternalIdentityMetadata.fieldDefinition.provider;
 
-    expect(contracts).toContain('optionItems?: readonly SysBOEnumItemMetadata[]');
-    expect(commonMetadata).toContain('export const externalAuthProviderOptionItems = [');
-    expect(metadata).toContain('optionItems: externalAuthProviderOptionItems');
-    expect(metadata).toContain("type: 'string'");
+    expect(provider?.type).toBe('string');
+    expect(provider?.optionItems).toBe(externalAuthProviderOptionItems);
+    expect(externalAuthProviderOptionItems.length).toBeGreaterThan(0);
   });
 
   it('renders option labels/icons generically in lists, related collections and entry display names', () => {
@@ -33,29 +34,31 @@ describe('generic discrete-value option presentation', () => {
   });
 
   it('uses canonical option metadata instead of domain-specific value formatters', () => {
-    const contracts = source('../../../shared/src/metadata/ui/types.ts');
-    const canonical = source('../../../shared/src/metadata/bo/identity.ts');
-    const uiMetadata = source('../../../shared/src/metadata/ui/index.ts');
+    const verificationSources =
+      sysBOUsersMetadata.fieldDefinition.emailVerificationSource?.optionItems;
     const entry = source('../../views/components/runtime/entity-entry.ejs');
     const presentation = source('../../src/presentation/metadata/value-presentation.ts');
 
-    expect(canonical).toContain("{ value: 'internal', label: 'ManatOS', icon: 'shield-check' }");
-    expect(canonical).toContain('...externalAuthProviderOptionItems');
-    expect(uiMetadata).not.toContain("format: 'verification-source'");
-    expect(contracts).not.toContain("'verification-source'");
-    expect(contracts).not.toContain("'auth-provider'");
+    expect(verificationSources?.[0]).toEqual({
+      value: 'internal',
+      label: 'ManatOS',
+      icon: 'shield-check',
+    });
+    expect(verificationSources?.slice(1)).toEqual(externalAuthProviderOptionItems);
     expect(entry).not.toContain("presentation.format === 'verification-source'");
     expect(presentation).not.toContain('verification-source');
   });
 
-  it('keeps optional provider option traits structurally present for strict expression paths', async () => {
-    const commonMetadata = source('../../../shared/src/metadata/bo/common.ts');
-    for (const provider of ['Google', 'Facebook', 'GitHub']) {
-      expect(commonMetadata).toMatch(
-        new RegExp(
-          `value:\\s*SysBOExtAuthProviderType\\.${provider},[\\s\\S]*?tenant:\\s*null,[\\s\\S]*?callbackPath:`,
-        ),
-      );
+  it('keeps optional provider option traits structurally present for strict expression paths', () => {
+    for (const providerType of [
+      SysBOExtAuthProviderType.Google,
+      SysBOExtAuthProviderType.Facebook,
+      SysBOExtAuthProviderType.GitHub,
+    ]) {
+      const provider = externalAuthProviderOptionItems.find((item) => item.value === providerType);
+      expect(provider).toBeDefined();
+      expect(provider?.tenant).toBeNull();
+      expect(provider?.callbackPath).toBeTruthy();
     }
   });
 });

@@ -1,5 +1,10 @@
 import { MANATOS_COMPANY, resolvePlatform } from '../domain/company-platform.js';
 import { allManatOSObjectMetadata } from '../metadata/bo/registry.js';
+import {
+  allManatOSSubsystemMetadata,
+  effectiveObjectKeys,
+  subsystemContextCatalogue,
+} from '../metadata/subsystems/registry.js';
 import type { CompanyInfo, SysPlatform } from '../platforms/types.js';
 import type {
   ManatOSCompanyContext,
@@ -19,12 +24,12 @@ export function entityContextName(objectKey: string): string {
   return metadata.name;
 }
 
-function sysBOContext(entries: CompanyInfo['entities'] | SysPlatform['entities']) {
+function sysBOContext(keys: Iterable<string>) {
   return Object.freeze(
     Object.fromEntries(
-      entries.map((contribution) => {
-        const name = entityContextName(contribution.sysBOKey);
-        return [name, Object.freeze({ key: contribution.sysBOKey, name, contribution })];
+      [...keys].map((sysBOKey) => {
+        const name = entityContextName(sysBOKey);
+        return [name, Object.freeze({ key: sysBOKey, name, contribution: { sysBOKey } })];
       }),
     ),
   );
@@ -38,13 +43,37 @@ export function createCompanyContext(
     0,
     company.platforms.findIndex((candidate) => candidate.id === currentPlatform.id),
   );
+  const effectiveKeys = effectiveObjectKeys(company, currentPlatform);
+  const companyKeys = Object.values(allManatOSObjectMetadata)
+    .filter((metadata) => {
+      const subsystem =
+        allManatOSSubsystemMetadata[metadata.subsystem as keyof typeof allManatOSSubsystemMetadata];
+      return effectiveKeys.has(metadata.key) && subsystem?.owner.kind === 'manatos';
+    })
+    .map((metadata) => metadata.key);
   return Object.freeze({
     ...company,
-    sysBO: sysBOContext(company.entities),
+    sysBO: sysBOContext(companyKeys),
     platforms: Object.freeze(
-      company.platforms.map((platform) =>
-        Object.freeze({ ...platform, sysBO: sysBOContext(platform.entities) }),
-      ),
+      company.platforms.map((platform) => {
+        const platformKeys =
+          platform.id === currentPlatform.id
+            ? Object.values(allManatOSObjectMetadata)
+                .filter((metadata) => {
+                  const subsystem =
+                    allManatOSSubsystemMetadata[
+                      metadata.subsystem as keyof typeof allManatOSSubsystemMetadata
+                    ];
+                  return (
+                    effectiveKeys.has(metadata.key) &&
+                    subsystem?.owner.kind === 'platform' &&
+                    subsystem.owner.platformId === platform.id
+                  );
+                })
+                .map((metadata) => metadata.key)
+            : [];
+        return Object.freeze({ ...platform, sysBO: sysBOContext(platformKeys) });
+      }),
     ),
     currentPlatform: currentPlatform.id,
     currentPlatformIndex,
@@ -56,23 +85,30 @@ function contextMetadata(value: unknown, omitOwnKey = false): unknown {
   if (!value || typeof value !== 'object') return value;
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .filter(([key]) => key !== 'ast' && !(omitOwnKey && key === 'key'))
+      .filter(([key]) => key !== 'ast' && !(omitOwnKey && (key === 'key' || key === 'subsystem')))
       .map(([key, child]) => [key, contextMetadata(child)]),
   );
 }
 
 /** Complete canonical entity registry used by every ManatOS CTX host. */
-export function createEntitiesContext(): ManatOSEntitiesContext {
+export function createEntitiesContext(
+  company: CompanyInfo = MANATOS_COMPANY,
+  currentPlatform: SysPlatform = resolvePlatform(company),
+): ManatOSEntitiesContext {
+  const effectiveKeys = effectiveObjectKeys(company, currentPlatform);
   return Object.fromEntries(
-    Object.values(allManatOSObjectMetadata).map((metadata) => {
-      const name = entityContextName(metadata.key);
-      const entity: ManatOSEntityContext = {
-        key: metadata.key,
-        name,
-        metadata: contextMetadata(metadata, true),
-      };
-      return [name, entity];
-    }),
+    Object.values(allManatOSObjectMetadata)
+      .filter((metadata) => effectiveKeys.has(metadata.key))
+      .map((metadata) => {
+        const name = entityContextName(metadata.key);
+        const entity: ManatOSEntityContext = {
+          key: metadata.key,
+          name,
+          subsystem: metadata.subsystem,
+          metadata: contextMetadata(metadata, true),
+        };
+        return [name, entity];
+      }),
   );
 }
 
@@ -83,9 +119,13 @@ export interface SystemContextOptions {
   clientKind: string;
   clientVersion: string;
   clientFeatures?: Readonly<Record<string, boolean>>;
+  company?: CompanyInfo;
+  currentPlatform?: SysPlatform;
 }
 
 export function createSystemContext(options: SystemContextOptions): ManatOSSystemContext {
+  const company = options.company ?? MANATOS_COMPANY;
+  const currentPlatform = options.currentPlatform ?? resolvePlatform(company);
   const runtimeMode = options.runtimeMode ?? 'development';
   return Object.freeze({
     scope: options.scope ?? 'sys',
@@ -94,6 +134,7 @@ export function createSystemContext(options: SystemContextOptions): ManatOSSyste
       developerMode: runtimeMode !== 'production',
     }),
     server: Object.freeze({ apiBaseUrl: options.apiBaseUrl ?? '' }),
+    subsystems: subsystemContextCatalogue(company, currentPlatform),
     client: Object.freeze({
       kind: options.clientKind,
       version: options.clientVersion,

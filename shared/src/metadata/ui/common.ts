@@ -36,22 +36,49 @@ export const addressCountryOptions = systemCountryCatalog.map((country) => ({
  * Specialized workflows are expressed through reusable component keys/options/
  * bindings rather than entity-specific branches in the generic page renderer.
  */
+type TabOptions = Partial<
+  Pick<
+    SysBOUIRecordTabMetadata,
+    | 'icon'
+    | 'layout'
+    | 'representation'
+    | 'visible'
+    | 'component'
+    | 'content'
+    | 'readOnly'
+    | 'navigationTrack'
+  >
+>;
+
+/** Flatten canonical field/collection dependencies declared by ordered tab content. */
+export const tabContentKeys = (
+  content: readonly import('./types.js').SysBOUITabContentMetadata[] | undefined,
+): string[] =>
+  (content ?? []).flatMap((item) => {
+    if (item.kind === 'field') return [item.field, ...(item.relatedFields ?? [])];
+    if (item.kind === 'collection') return [item.collection];
+    if (item.kind === 'column' || item.kind === 'inline') return tabContentKeys(item.content);
+    if (item.kind === 'component') {
+      return Object.entries(item.component.options ?? {}).flatMap(([key, value]) =>
+        key.endsWith('Field') && typeof value === 'string' ? [value] : [],
+      );
+    }
+    return [];
+  });
+
+/**
+ * Declare one metadata-driven tab. Ordered `content` is the sole declaration of
+ * tab membership/order.
+ */
 export const tab = (
   id: string,
   label: string,
   order: number,
-  fields: readonly string[],
-  options: Partial<
-    Pick<
-      SysBOUIRecordTabMetadata,
-      'icon' | 'layout' | 'visible' | 'component' | 'content' | 'readOnly' | 'navigationTrack'
-    >
-  > = {},
+  options: TabOptions = {},
 ): SysBOUIRecordTabMetadata => ({
   id,
   label,
   order,
-  fields,
   navigationTrack: { statePath: 'activeTabId' },
   ...options,
 });
@@ -65,7 +92,7 @@ export const tab = (
  * any other metadata-declared tab; no template may synthesize a parallel tab.
  */
 export const debuggingTab = (): SysBOUIRecordTabMetadata =>
-  tab('debugging', 'Debugging', Number.MAX_SAFE_INTEGER, [], {
+  tab('debugging', 'Debugging', Number.MAX_SAFE_INTEGER, {
     icon: 'bug',
     layout: 'debug-calculations',
     readOnly: true,
@@ -115,20 +142,11 @@ export const effectiveRecordTabs = (
     ? [...tabs, debuggingTab()]
     : [...tabs];
 
-export const generalTab = (
-  fields: readonly string[],
-  options: Partial<Pick<SysBOUIRecordTabMetadata, 'content'>> = {},
-) =>
-  tab('general', 'General', 10, fields, {
+export const generalTab = (content: readonly import('./types.js').SysBOUITabContentMetadata[]) =>
+  tab('general', 'General', 10, {
     icon: 'info-circle',
     layout: 'form',
-    /*
-     * Keep the metadata array order authoritative all the way through the generic
-     * renderer. Most General tabs use the standard two-column flow, while an
-     * entity may supply explicit mixed content when it needs full-row fields or
-     * other generic layout primitives. The helper owns only the default.
-     */
-    content: options.content ?? fields.map((field) => ({ kind: 'field' as const, field, span: 6 })),
+    content,
   });
 
 export const standardAddAction = (label = 'Add new') =>
@@ -137,6 +155,23 @@ export const standardAddAction = (label = 'Add new') =>
     enabled: true,
     label,
   }) as const;
+
+/** Standard icon-only row action for opening an entity's declared read-only quickView. */
+export const standardQuickViewAction = (entityKey: string) => ({
+  kind: 'open-entry' as const,
+  order: 10,
+  visible: true,
+  placement: 'start' as const,
+  label: 'Quick view',
+  icon: 'eye',
+  iconOnly: true,
+  tone: 'secondary' as const,
+  emphasis: 'outline' as const,
+  title: 'Quick view',
+  href: '/bo/' + entityKey + '/{id}',
+  mode: 'view' as const,
+  uiView: 'quickView',
+});
 
 export const standardEntryActions = {
   delete: {
@@ -162,9 +197,13 @@ export const standardEntryActions = {
 } as const;
 
 export const systemTab = (): SysBOUIRecordTabMetadata =>
-  tab('system', 'System details', 900, ['id', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'], {
+  tab('system', 'System details', 900, {
     icon: 'clock-history',
     layout: 'summary',
+    content: ['id', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'].map((field) => ({
+      kind: 'field' as const,
+      field,
+    })),
   });
 
 export const systemFieldOverrides = {

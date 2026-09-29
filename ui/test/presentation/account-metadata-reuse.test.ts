@@ -2,117 +2,107 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { sysBOUsersUIMetadata, tabContentKeys } from '@manatos/shared';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const source = (path: string) => readFile(resolve(testDirectory, '..', '..', path), 'utf8');
 
-describe('Account SysUser metadata reuse', () => {
-  it('uses canonical SysUser calculated status values instead of recalculating status text', async () => {
-    const account = await source('views/pages/account.ejs');
-    const authenticationSummary = await source('views/components/auth/authentication-summary.ejs');
-    const renderPage = await source('src/presentation/page/render-page.ts');
+describe('Account V2 SysUser surface', () => {
+  it('opens Account through the canonical metadata-driven SysUser entry renderer', async () => {
+    const routes = await source('src/routes/pages/index.ts');
+    const renderer = await source('src/routes/sysbo/entry/renderer.ts');
 
-    expect(account).toContain(
-      "emailVerificationStatus: ctxUserFieldValue('emailVerificationStatus')",
-    );
-    expect(account).toContain("localPasswordStatus: ctxUserFieldValue('localPasswordStatus')");
-    expect(authenticationSummary).toContain('resolvedEmailVerificationStatus');
-    expect(authenticationSummary).toContain('resolvedLocalPasswordStatus');
-    expect(authenticationSummary).not.toContain(
-      "authenticationUser.emailVerified ? 'Verified' : 'Not verified'",
-    );
-    expect(authenticationSummary).not.toContain(
-      "authenticationUser.hasPassword ? 'Configured' : 'Not configured'",
-    );
-    expect(renderPage).toContain(
-      'const ctxUserFieldValue = (key: string): unknown => ctx?.user?.fields?.[key]?.value',
-    );
-    expect(renderPage).not.toContain('evaluateCompiledExpression(');
-    expect(renderPage).not.toContain('expressionCapabilities(');
+    expect(routes).toContain("getSysBODefinition('sys-users')");
+    expect(routes).toContain('resolveUIEntityPermissions(req, definition, user.id)');
+    expect(routes).toContain('renderMetadataDrivenRecord(');
+    expect(routes).toContain("purpose: 'open-account-entry'");
+    expect(routes).toContain("uiViewKey: 'quickView'");
+    expect(routes).toContain('showEntryActions: false');
+    expect(renderer).not.toContain('entryChromeMuted: surface.showEntryActions === false');
+    const pages = await source('public/css/pages.css');
+    expect(pages).not.toContain('.entry-chrome-muted');
+    expect(routes).not.toContain('forceReadOnly: true');
+    expect(routes).not.toContain("renderPage(\n          res,\n          'pages/account'");
   });
 
-  it('reuses canonical External Identity metadata and entry-icon presentation on Account', async () => {
-    const authenticationSummary = await source('views/components/auth/authentication-summary.ejs');
-    const entryIcons = await source('views/components/sysbo/entry/shell/entry-icons.ejs');
-    const renderPage = await source('src/presentation/page/render-page.ts');
+  it('keeps Account a distinct self-service surface while reusing canonical entry metadata/runtime', async () => {
+    const renderer = await source('src/routes/sysbo/entry/renderer.ts');
+    const hostRuntime = await source('public/js/runtime/ui-host-runtime.js');
 
-    expect(authenticationSummary).toContain(
-      "relatedCollectionMetadataFor('sys-users', 'externalIdentities')",
+    expect(renderer).toContain("purpose: surface.purpose ?? 'open-entity-entry'");
+    expect(renderer).toContain(
+      'surface.forceReadOnly || metadataUI.record.readOnly === true || invocation.mode',
     );
-    expect(authenticationSummary).toContain(
-      'metadataOptionItemForField(externalIdentityProviderField, providerKey)',
+    expect(renderer).toContain('surface.breadcrumbItems ??');
+    expect(hostRuntime).toContain("case 'open-account-entry':");
+    expect(hostRuntime).toContain("case 'open-entity-entry':");
+    const accountView = sysBOUsersUIMetadata.uiViews?.quickView;
+    expect(sysBOUsersUIMetadata.defaultUIView).toBe('main');
+    expect(accountView?.viewType).toBe('quick');
+    expect(accountView?.record?.tabs?.map((tab) => tab.label)).toEqual([
+      'General',
+      'Authentication',
+      'System details',
+    ]);
+    expect(accountView?.record?.tabs?.[0]?.layout).toBe('details');
+    expect(accountView?.record?.tabs?.[0]?.representation).toBe('summary');
+    expect(accountView?.record?.readOnly).toBe(true);
+    expect(accountView?.record?.tabs?.[0]?.component).toBeUndefined();
+    expect(tabContentKeys(accountView?.record?.tabs?.[0]?.content)).toEqual([
+      'name',
+      'email',
+      'role',
+      'fullName',
+      'firstName',
+      'lastName',
+      'description',
+      'photo',
+    ]);
+    expect(accountView?.record?.tabs?.[0]?.content?.[0]).toMatchObject({ kind: 'column' });
+    expect(accountView?.record?.tabs?.[0]?.content?.[1]).toMatchObject({ kind: 'column' });
+    expect(accountView?.record?.tabs?.[1]?.layout).toBe('details');
+    expect(accountView?.record?.tabs?.[1]?.representation).toBe('summary');
+    expect(accountView?.record?.tabs?.[1]?.component).toBeUndefined();
+    expect(tabContentKeys(accountView?.record?.tabs?.[1]?.content)).toContain(
+      'localPasswordStatus',
     );
-    expect(authenticationSummary).toContain(
-      'entryRepresentationFor(externalIdentityCollection.entityKey, identity, externalIdentityEntityIcon)',
-    );
-    expect(authenticationSummary).toContain("include('../sysbo/entry/shell/entry-icons'");
-    expect(authenticationSummary).not.toContain('<i class="bi bi-person-badge me-1"></i>');
-    expect(entryIcons).toContain('entryRepresentation?.icons');
-    expect(renderPage).toContain(
-      'const relatedCollectionMetadataFor = (ownerEntityKey: string, collectionKey: string) =>',
-    );
+    expect(tabContentKeys(accountView?.record?.tabs?.[1]?.content)).toContain('externalIdentities');
+    expect(accountView?.record?.actionOverrides?.setPassword?.visible).toMatchObject({
+      expression: 'id === $user.fields.id.value && hasPassword !== true',
+    });
+    expect(accountView?.record?.actionOverrides?.changePassword?.visible).toMatchObject({
+      expression: 'id === $user.fields.id.value && hasPassword === true',
+    });
+    expect(accountView?.record?.fieldOverrides?.role?.label).toBe('Website role');
+    expect(accountView?.record?.entryActions).toBeUndefined();
   });
-  it('shows the current User Principal on Account Authentication without duplicating relationship logic', async () => {
-    const account = await source('views/pages/account.ejs');
-    const authenticationSummary = await source('views/components/auth/authentication-summary.ejs');
+
+  it('renders Account authentication through generic details content while retaining the legacy component during migration', async () => {
+    const registry = await source('src/presentation/metadata/component-registry.ts');
+    const entry = await source('views/components/runtime/entity-entry.ejs');
+    const authentication = await source(
+      'views/components/sysbo/entry/content/authentication-summary.ejs',
+    );
+
+    expect(registry).not.toContain('account-profile-summary');
+    expect(registry).toContain("'authentication-summary': '../content/authentication-summary'");
+    expect(entry).toContain('data-metadata-inline');
+    expect(entry).toContain("content.kind === 'collection'");
+    expect(entry).toContain('data-v2-entry-action');
+    expect(entry).toContain('referenceData: references');
+    expect(authentication).toContain(
+      'componentData?.collectionResourceData?.externalIdentities?.rows',
+    );
+    expect(authentication).toContain("include('../../../auth/authentication-summary'");
+    expect(authentication).toContain('showPasswordAction: options.showPasswordAction === true');
+  });
+
+  it('returns password workflow results to the canonical Account surface', async () => {
     const routes = await source('src/routes/pages/index.ts');
 
-    expect(account).toContain('showPrincipalReference: true');
-    expect(account).toContain('accountPrincipal');
-    expect(routes).toContain('/api/v1/SysPrincipals/');
-    expect(authenticationSummary).toContain(
-      "entryRepresentationFor('sys-principals', accountPrincipal)",
-    );
-    expect(authenticationSummary).toContain('No Person Principal is linked to this account.');
-    expect(authenticationSummary).toContain('/bo/sys-principals/');
-  });
-
-  it('uses the canonical User entry representation as the Account navigation link', async () => {
-    const account = await source('views/pages/account.ejs');
-
-    expect(account).toContain("entryRepresentationFor('sys-users', accountUserDisplayRecord)");
-    expect(account).toContain('href="/bo/sys-users/');
-    expect(account).toContain("include('../components/sysbo/entry/shell/entry-icons'");
-    expect(account).not.toContain('Open user');
-  });
-  it('reuses enhanced canonical email presentation on Account', async () => {
-    const account = await readFile(resolve(testDirectory, '../../views/pages/account.ejs'), 'utf8');
-    const readonly = await readFile(
-      resolve(testDirectory, '../../views/components/sysbo/entry/content/readonly-value.ejs'),
-      'utf8',
-    );
-
-    expect(account).toContain("field: { type: 'email', readOnly: true }");
-    expect(account).toContain('enhancedReadonlyPresentation: true');
-    expect(readonly).toContain('metadata-compact-value metadata-readonly-email');
-    expect(readonly).toContain('bi bi-envelope');
-  });
-  it('reuses enhanced canonical system-value presentation on Account', async () => {
-    const account = await source('views/pages/account.ejs');
-
-    expect(account).toContain("field: { type: 'guid', readOnly: true }");
-    expect(account).toContain("presentation: { format: 'name' }");
-    expect(account.match(/enhancedReadonlyPresentation: true/g)?.length).toBeGreaterThanOrEqual(4);
-  });
-  it('shows the canonical User photo beside the Account identity summary', async () => {
-    const account = await source('views/pages/account.ejs');
-
-    expect(account).toContain('currentUser.photo');
-    expect(account).toContain('/bo/sys-users/');
-    expect(account).toContain('/picture/photo?revision=');
-    expect(account).toContain('account-summary-photo');
-  });
-  it('keeps Account fields vertically grouped beside the photo and links menu identity to the User entry', async () => {
-    const account = await source('views/pages/account.ejs');
-    const header = await source('views/components/layout/header.ejs');
-    const css = await source('public/css/ui.css');
-
-    expect(account).toContain('class="account-general-layout"');
-    expect(account).toContain('class="account-summary-grid account-general-summary"');
-    expect(css).toContain('.account-general-layout');
-    expect(css).toContain('grid-template-columns: minmax(150px, 210px) minmax(16rem, 1fr)');
-    expect(header).toContain('class="account-menu-user-link"');
-    expect(header).toContain('href="/bo/sys-users/<%= encodeURIComponent(currentUser.id) %>"');
+    expect(routes).toContain("res.redirect('/account?message=password-saved')");
+    expect(routes).toContain("res.redirect('/account?message=password-saved-email-warning')");
+    expect(routes).not.toContain("await renderPage(res, 'pages/account'");
   });
 });

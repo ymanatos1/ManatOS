@@ -299,6 +299,34 @@ export const expressionFunctions: ExpressionFunctionRegistry = Object.freeze({
   }),
 
   /* ------------------------------------------------------------------------
+   * Text values
+   * --------------------------------------------------------------------- */
+  /**
+   * Conservatively uppercase only the first Unicode character of a scalar text
+   * value while preserving every remaining character exactly as supplied.
+   * Examples: `Capitalize('yiannis')` -> `Yiannis`,
+   * `Capitalize('mCdonald')` -> `MCdonald`. Empty text remains empty and null
+   * remains null so optional canonical fields keep their nullable semantics.
+   */
+  Capitalize: checked({
+    name: 'Capitalize',
+    capability: 'pure',
+    signature: {
+      text: 'Capitalize(value: scalar)',
+      minArguments: 1,
+      maxArguments: 1,
+      argumentTypes: ['scalar'],
+    },
+    evaluate: ([value]) => {
+      if (value === null) return null;
+      const text = String(value);
+      if (!text) return text;
+      const [first = '', ...rest] = Array.from(text);
+      return `${first.toUpperCase()}${rest.join('')}`;
+    },
+  }),
+
+  /* ------------------------------------------------------------------------
    * General numeric and CTX helpers
    * --------------------------------------------------------------------- */
 

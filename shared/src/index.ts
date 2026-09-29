@@ -16,6 +16,8 @@ export * from './context/manatos-context.js';
 
 export * from './metadata/dynamic-value.js';
 
+export * from './metadata/field-normalization.js';
+
 export * from './expressions/index.js';
 
 export * from './domain/system-country-catalog.js';

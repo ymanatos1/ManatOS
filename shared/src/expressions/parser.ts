@@ -201,6 +201,12 @@ class Parser {
           ? ([...entityMembers, 'metadata', 'fieldDefinition'] satisfies ExpressionPathMember[])
           : entityMembers;
       }
+      if (/^\$[A-Za-z_][A-Za-z0-9_]*$/.test(identifier)) {
+        // `$name` is the generic absolute shorthand for `$.name`. Reserved
+        // aliases above may still expand to richer canonical paths. Unqualified
+        // `name` retains normal lexical/ancestor CTX resolution.
+        return ['$', identifier.slice(1)] satisfies ExpressionPathMember[];
+      }
       if (identifier === '$entry-current') {
         return ['entry', 'current'] satisfies ExpressionPathMember[];
       }

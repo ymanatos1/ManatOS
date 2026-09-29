@@ -6,7 +6,7 @@ This is the consolidated developer-facing reference for ManatOS V2 CTX, surfaces
 
 CTX is the observable semantic runtime model. It is not a persistence database, DOM mirror, dependency graph, AST store, callback registry or lifecycle bookkeeping bag. A value belongs in CTX when application/runtime semantics need to observe it. Private implementation state stays with the runtime that owns it.
 
-The root is `ctx`. Root facts (`system`, `company`, `entities`, `user`) coexist with one recursively projected active UI chain under `ctx.ui.level`. A page and popup are the same semantic `Surface`; `host` says where it is rendered. `kind` says what it contains and `mode` says how it operates.
+The root is `ctx`. Root facts (`system`, `company`, `entities`, `user`) coexist with one recursively projected active UI chain under `ctx.ui.level`. A page, popup and embedded child use the same semantic UI-level contract; `host` says where the level is mounted. `kind` says what it contains and `mode` says how it operates. `embedded` is not a lesser CTX object: it is a real child UI level whose parent deliberately remains active while the embedded editor is open.
 
 The authoritative UI runtime may retain a richer ownership registry internally. Public `ctx.ui` deliberately projects only the currently displayed **navigation** chain. Therefore `parentId`/`children` ownership bookkeeping is not copied into public CTX merely because the runtime needs it internally.
 
@@ -51,23 +51,24 @@ Each `ctx.ui.level` and nested `.level` has the same host-neutral shape. Univers
 
 Every level always contains these `control` children:
 
-| `control.*` node | Meaning                                                                      |
-| ---------------- | ---------------------------------------------------------------------------- |
-| `id`             | stable surface identity                                                      |
-| `host`           | `page` or `popup`                                                            |
-| `kind`           | `static`, `list`, `entry`, `selector`, `hierarchy`, `custom`                 |
-| `mode`           | `browse`, `create`, `edit`, `view`, `select`, `manage`                       |
-| `name`           | semantic surface name                                                        |
-| `path`           | canonical CTX/surfaceRef address                                             |
-| `scope`          | lexical expression scope                                                     |
-| `invocation`     | immutable caller/open constraints and behavior                               |
-| `presentation`   | effective visual semantics                                                   |
-| `state`          | observable operational state                                                 |
-| `facts`          | surface-owned semantic facts; present as an empty object when there are none |
+| `control.*` node      | Meaning                                                                      |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `id`                  | stable surface identity                                                      |
+| `host`                | `page`, `popup` or `embedded`                                                |
+| `kind`                | `static`, `list`, `entry`, `selector`, `hierarchy`, `custom`                 |
+| `mode`                | `browse`, `create`, `edit`, `view`, `select`, `manage`                       |
+| `name`                | semantic surface name                                                        |
+| `path`                | canonical CTX/surfaceRef address                                             |
+| `scope`               | lexical expression scope                                                     |
+| `invocation`          | immutable caller/open constraints and behavior                               |
+| `presentation`        | effective visual semantics                                                   |
+| `state`               | observable operational state                                                 |
+| `facts`               | surface-owned semantic facts; present as an empty object when there are none |
+| `supportsUserChanges` | whether this level participates in the generic user-change/recovery contract |
 
 ### `control.invocation`
 
-`control.invocation.entityName` identifies the target when needed. `purpose` is `select`, `view`, `create` or `inspect`; it is distinct from `control.mode`. `caller.surfaceRef` is a stable reference to the caller, never copied caller state. `rules.values`, `rules.fields`, `rules.query` and `rules.actions` carry declarative constraints. `behavior` carries child behavior such as single/multiple selection, clear/autofocus and close-after-save.
+`control.invocation` is caller/open provenance and declarative input, not mutable working state. In the current browser host, `entityName` identifies the target when needed; `purpose` describes the request (`view`, `create`, selector-specific purposes, etc.) and remains distinct from `control.mode`; `caller.surfaceRef` is a stable reference to the caller, optionally accompanied by caller entity/record identity. `rules` carries declarative value/field/query/action constraints where a surface needs them. `behavior` carries opening/lifecycle behavior such as recoverability or selector behavior. Exact members are purpose-specific: consumers must not assume that every invocation contains every possible member.
 
 ### `control.presentation`
 
@@ -75,7 +76,7 @@ Every level always contains these `control` children:
 
 ### `control.state`
 
-`control.state.lifecycle` progresses through `creating`, `created`, `activating`, `active`, `deactivating`, `closing`, `closed`, `disposed`. `active`, `dirty`, `valid`, `loading`, `saving`, `deleting` and `blocked` are observable runtime state. `control.state.navigation.activeTabId` and `activeInternalTabIds` track navigation. Popup-hosted surfaces may additionally expose `control.state.popup.x`, `.y` and `.openedPopupsCounter`.
+A newly materialized browser level starts with `control.state.lifecycle = created` and `active = true`. Opening a non-embedded child deactivates its parent (`deactivating`, `active=false`); closing a child drives that child through `closing` → `closed` → `disposed` before removal, then reactivates a non-embedded parent. An embedded child leaves its parent active. `dirty`, `valid`, `loading`, `saving`, `deleting` and `blocked` are observable operational state. `control.state.navigation.activeTabId` and `activeInternalTabIds` track navigation. Popup-hosted surfaces may additionally expose `control.state.popup.x`, `.y` and `.openedPopupsCounter`.
 
 ### `control.facts`
 
@@ -106,9 +107,9 @@ For every `fields.<key>`:
 
 ## 4. UI level lifecycle and nesting
 
-A child surface may be page-hosted or popup-hosted without changing its CTX semantics. Public nesting follows `navigationParentId`, not semantic ownership. Closing/disposal removes the child's public level and its owned transient semantic state. The parent receives a generic `SurfaceResult`; private continuation code decides what parent mutation, if any, follows.
+The root displayed level may be page-hosted; runtime-created children are currently `popup` or `embedded`. All use the same recursive `.level` topology. A popup child temporarily deactivates its parent; an embedded child intentionally leaves the parent active. Closing/disposal removes the child's public level and all transient semantic state owned by that level. Result routing/continuation remains outside the child's semantic CTX: the caller decides what parent mutation, if any, follows.
 
-Initialization is a semantic boundary. Calculations, validation and declarative tab visibility ignore reactive field/CTX events while an entry is partially initialized. `entry:initialized` establishes the deterministic first evaluation/validation/visibility pass. Implementation bookkeeping used to decide whether initialization has settled remains private runtime state rather than CTX.
+Initialization is a semantic boundary. Calculations, validation and declarative tab visibility ignore reactive field/CTX events while an entry is partially initialized. the browser's `manatos:form-initialized` boundary establishes the deterministic first evaluation/validation/visibility pass. Implementation bookkeeping used to decide whether initialization has settled remains private runtime state rather than CTX.
 
 ## 5. Expression ownership and lifecycle
 
@@ -124,17 +125,19 @@ The AST is context-neutral. Every evaluation supplies an explicit owner/scope an
 
 ## 6. Resolution and dependency identity
 
-Variable resolution is lexical: resolve the **first** identifier at the current UI scope, then parent levels, then root; after that first identifier resolves, remaining members traverse strictly downward. Explicit root references remain absolute. Arrays support numeric indexing and stable semantic `id`/`key` lookup; arbitrary keys use quoted bracket syntax.
+Variable resolution is lexical: resolve the **first** identifier at the owning UI scope, then its parent levels, then root; after that first identifier resolves, remaining members traverse strictly downward. Explicit root references remain absolute. Arrays support numeric indexing and stable semantic `id`/`key` lookup; arbitrary keys use quoted bracket syntax.
 
-Dependency discovery consumes the canonical AST, not reparsed source. A local semantic change can legitimately project to more than one dependency identity: a local path plus an owner-qualified `surface:<id>:...` path. Root CTX changes retain their absolute `ctx.*` identity. This projection lets local expressions remain concise while cross-surface dependencies remain unambiguous.
+Compilation produces a context-neutral AST. The browser entry runtime discovers dependencies by walking that cached AST and resolving each variable node through `runtime.resolveVariableWithPath(...)` at the entry path captured when the runtime starts. The resulting **canonical CTX paths** are registered as dependencies. There is no separate owner-qualified `surface:<id>` dependency namespace.
 
 ## 7. Reactive event contract
 
-Canonical field/CTX mutation emits one semantic event. Calculations, validation and declarative UX consume the shared event→dependency projection and shared overlap semantics. A consumer must not invent a second matcher for the same contract.
+Canonical CTX mutation emits `manatos:ctx-change`. Its `path` is the canonical changed path; `relatedPaths` may identify observable projections/consequences. The entry scheduler queues those paths, deduplicates them with `reactiveChangeQueueKey(...)`, and matches them to registered dependencies with the shared ancestor/descendant overlap rule.
 
-One event may match multiple dependency aliases for the same target. That does **not** mean the target executes multiple times. Calculation and validation runtimes deduplicate at the event boundary. Initial calculation similarly evaluates each registered calculation once regardless of how many dependencies it declares. Cascades remain valid because a calculated result is written through the canonical field mutation route and therefore emits the next semantic event normally.
+The same authored expression is not reparsed during invalidation. AST acquisition is cached, dependency paths are bound once for the owning entry runtime, and only matching reactive entries reevaluate. A calculated result is written through `runtime.updateField(...)`; if the value changes, that canonical write emits the next normal CTX event and downstream calculations cascade naturally.
 
-`changedPath` passed to an individual calculation/validation callback is diagnostic context: the first canonical matching path for that target. It is not a second dependency authority.
+One queue drain owns one explicit evaluation pass. Async resolver-backed function promises may be deduplicated inside that pass only; independent reactive events never share the promise map. The scheduler has a 512-execution runaway guard for accidental cycles.
+
+Entry lifecycle/coordination DOM events are not a second CTX event bus. The deterministic initial calculation/policy pass occurs at the actual `manatos:form-initialized` boundary after initialization has settled; subsequent work is driven by canonical CTX changes.
 
 ## 8. Mutation and authority rules
 
@@ -171,7 +174,7 @@ When reading older code/documentation, apply these convergence rules:
 
 ### Calculated entry field
 
-An entry owns `fields.firstName.value`, `fields.lastName.value` and calculated `fields.displayName.value`. The calculation AST depends on first/last name. During initialization those source values may change without running the calculation. At `entry:initialized`, `displayName` evaluates once. Later a user mutation of `firstName` emits one value event; even if local and owner-qualified dependency identities both match, `displayName` evaluates once and writes through canonical field mutation.
+An entry owns `fields.firstName.value`, `fields.lastName.value` and calculated `fields.displayName.value`. The calculation AST depends on first/last name. During initialization those source values may change without running the calculation. At the form-initialized boundary, `displayName` evaluates once. Later a user mutation of `firstName` emits one value event; even if local and owner-qualified dependency identities both match, `displayName` evaluates once and writes through canonical field mutation.
 
 ### Selector popup
 
@@ -179,8 +182,8 @@ An entry opens a popup-hosted selector. The selector receives purpose, caller re
 
 ### Cross-surface/root dependency
 
-A child expression may depend on an ancestor surface path or `ctx.user.permissions...`. Foreign-surface changes are represented by owner-qualified dependency identity; root changes retain `ctx.*`. The shared matcher decides invalidation. The expression is evaluated in its own explicit owner scope, not by changing a global “current context”.
+A child expression may depend on an ancestor value or `ctx.user.permissions...`. At binding time the variable node resolves to the actual canonical CTX path owned by that ancestor/root. The shared overlap policy decides invalidation. The expression is evaluated in its own explicit owner scope, not by changing a global “current context”.
 
 ## 12. Architectural review checklist
 
-Before adding a CTX node or expression feature, ask: Is this observable semantic state or merely lifecycle/implementation bookkeeping? Who owns it, when is it created/changed/disposed, and who may mutate it? Is there already a canonical authority or projection? Can a pure CTX-observable decision be metadata expression rather than hardcoded imperative policy? Does the change preserve one parser/cache model, one mutation route, one event/dependency contract and host-neutral page/popup semantics? If the answer requires a second authority, parser, matcher, mirror writer or copied invocation state, redesign the boundary first.
+Before adding a CTX node or expression feature, ask: Is this observable semantic state or merely lifecycle/implementation bookkeeping? Who owns it, when is it created/changed/disposed, and who may mutate it? Is there already a canonical authority or projection? Can a pure CTX-observable decision be metadata expression rather than hardcoded imperative policy? Does the change preserve one parser/cache model, one mutation route, one event/dependency contract and host-neutral page/popup/embedded semantics? If the answer requires a second authority, parser, matcher, mirror writer or copied invocation state, redesign the boundary first.

@@ -7,6 +7,7 @@ Canonical entity metadata and client/UI metadata: ownership, flow, fields, defau
 - [`Metadata-Architecture.md`](Metadata-Architecture.md) — Metadata Architecture.
 - [`Metadata-Model.md`](Metadata-Model.md) — Metadata Model.
 - [`Metadata-Catalog.md`](Metadata-Catalog.md) — Metadata Catalog.
+- [`UI-Views.md`](UI-Views.md) — named entity-entry presentations, view types and composition.
 - [`Adding-UI-Metadata.md`](Adding-UI-Metadata.md) — Adding UI Metadata.
 
 ## Related subjects

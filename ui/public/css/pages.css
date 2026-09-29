@@ -559,6 +559,72 @@ body.manatos-busy {
   color: var(--manatos-blue);
 }
 
+/* Compact density is a popup/host presentation choice. The entity ui-view remains
+   host-neutral; callers opt into this density through the popup invocation. */
+.metadata-entry-popup.is-compact-entry {
+  width: min(540px, calc(100vw - 2rem));
+  height: min(300px, calc(100vh - 2rem));
+}
+.metadata-entry-popup.is-compact-entry .card-header {
+  padding: 0.4rem 0.65rem;
+}
+.entry-density-compact.content-card {
+  padding: 0.2rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.entry-density-compact .entity-tab-content {
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+}
+.entry-density-compact .entity-tab-content > .tab-pane.active {
+  margin-top: 0;
+  padding: 0.15rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.entry-density-compact .row.g-3 {
+  --bs-gutter-x: 0.7rem;
+  --bs-gutter-y: 0.45rem;
+}
+/* Compact popup grids retain metadata spans even below Bootstrap's md breakpoint. */
+.entry-density-compact [data-v2-entry-fields] > .col-md-4 {
+  width: 33.33333333%;
+}
+.entry-density-compact [data-v2-entry-fields] > .col-md-6 {
+  width: 50%;
+}
+.entry-density-compact [data-v2-entry-fields] > .col-md-8 {
+  width: 66.66666667%;
+}
+.entry-density-compact [data-v2-entry-fields] > .col-md-12 {
+  width: 100%;
+}
+.entry-density-compact [data-v2-entry-actions] {
+  margin-top: 0.55rem !important;
+  gap: 0.4rem !important;
+}
+.entry-density-compact [data-v2-entry-actions] .form-state-indicator {
+  font-size: 0.76rem;
+}
+
+/* Keep interactive menus usable and visually consistent in pages and hosted popups.
+   Bootstrap/Popper owns flip/placement; CSS owns only the menu surface and scroll limits. */
+.metadata-driven-record-form .dropdown-menu,
+.modal .dropdown-menu,
+.manatos-popup-backdrop .dropdown-menu {
+  max-height: min(18rem, calc(100vh - 2rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-color: var(--bs-border-color);
+  box-shadow: 0 0.45rem 1rem rgba(15, 23, 42, 0.14);
+}
+
 .entity-tab-content {
   min-width: 0;
 }
@@ -1182,9 +1248,9 @@ button.metadata-collection-summary-item:focus-visible {
   background: var(--bs-body-bg);
 }
 
-/* V2 effective field state is resolved once by EntityEntryRuntime. Hosts and
-   concrete field-components consume that state; they do not invent their own
-   view-mode/read-only appearance. */
+/* V2 effective field state is owned by the browser entry-policy/CTX runtime.
+   Hosts and concrete field-components consume that state; they do not invent
+   their own view-mode/read-only appearance. */
 .metadata-driven-record-form .effective-field-readonly .form-control,
 .metadata-driven-record-form .effective-field-readonly .form-select,
 .metadata-driven-record-form .effective-field-readonly .metadata-reference-select-toggle {

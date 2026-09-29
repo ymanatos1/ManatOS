@@ -8,38 +8,28 @@ const ui = (path: string) => readFile(resolve(here, '..', '..', path), 'utf8');
 const repo = (path: string) => readFile(resolve(here, '..', '..', '..', path), 'utf8');
 
 describe('V2 post-cutover architecture audit', () => {
-  it('keeps developer guidance aligned with process-local expression AST ownership', async () => {
-    const gettingStarted = await repo('docs/development/Getting-Started.md');
-    const developerTools = await repo('docs/diagnostics/Developer-Tools.md');
-    const systemArchitecture = await repo('docs/system/System-Architecture.md');
+  it('keeps process-local expression AST ownership at the presentation boundary', async () => {
     const shell = await ui('views/layout/shell.ejs');
+    const expressionRuntime = await ui('public/js/sysbo/entry/expression-runtime.js');
 
-    expect(gettingStarted).toContain('the API process and UI process each compile lazily');
-    expect(gettingStarted).toContain('browser never parses grammar itself');
-    expect(gettingStarted).toContain('through the UI compile boundary');
-    expect(gettingStarted).not.toContain('server-side context construction compiles them to ASTs');
-    expect(gettingStarted).not.toContain('browser consumes the compiled representation');
-    expect(gettingStarted).not.toContain('consume server-compiled ASTs');
-    expect(developerTools).not.toContain('same canonical compiled-expression AST');
-    expect(systemArchitecture).toContain('compiled AST is process-local runtime infrastructure');
     expect(shell).not.toContain('expression-compiler-runtime.js');
+    expect(expressionRuntime).toContain("fetch('/bo/expression/compile'");
+    expect(expressionRuntime).toContain('astForSource');
+    expect(expressionRuntime).not.toContain('expressionCompiler');
   });
 
   it('keeps rich entry field state out of evaluator lexical scope', async () => {
-    const binding = await ui('src/runtime/resolvers/expression-binding.ts');
     const browser = await ui('public/js/sysbo/entry/expression-runtime.js');
 
-    expect(binding).toContain('fields: fieldNodes');
-    expect(binding).not.toContain('...fieldNodes');
-    expect(binding).toContain('...currentValues');
-    expect(binding).toContain('`#level.fields.<field>` explicitly');
     expect(browser).toContain('Normal entry expressions resolve against the real CTX');
+    expect(browser).toContain('#level.fields.<field>');
+    expect(browser).toContain('runtime.resolveVariableWithPath(node, scopePath');
   });
 
   it('reconciles in-place saves through the active entry field and baseline authorities', async () => {
     const save = await ui('public/js/sysbo/entry/save.js');
 
-    expect(save).toContain("let path = 'ctx.ui.level'");
+    expect(save).toContain("window.ManatOS?.uiHost?.surfacePath?.('entry')");
     expect(save).not.toContain('runtime.replace(currentPath');
     expect(save).toContain('runtime.replace(fieldPath, value');
     expect(save).toContain('`${pagePath}.fields.${key}.originalValue`');
@@ -52,7 +42,7 @@ describe('V2 post-cutover architecture audit', () => {
     const ctxRuntime = await ui('public/js/runtime/context-runtime.js');
     const formRuntime = await ui('public/js/sysbo/entry/form-runtime.js');
     const save = await ui('public/js/sysbo/entry/save.js');
-    const policy = await ui('public/js/runtime/entry-policy-runtime.js');
+    const policy = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
 
     expect(ctxRuntime).toContain(
       'if (match) return updateField(match[1], match[2], value, undefined, cause);',
@@ -77,14 +67,13 @@ describe('V2 post-cutover architecture audit', () => {
   });
 
   it('shares host-neutral entry field policy instead of duplicating browser and TypeScript decisions', async () => {
-    const semantic = await ui('src/runtime/state/entity-entry-runtime.ts');
-    const resolver = await ui('src/runtime/resolvers/effective-ui-metadata-resolver.ts');
-    const browser = await ui('public/js/runtime/entry-policy-runtime.js');
+    const shared = await repo('shared/src/policies/entry-field-policy.ts');
+    const browser = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
     const renderer = await ui('src/routes/sysbo/entry/renderer.ts');
 
-    expect(semantic).toContain('allowedInvocationOptionValues(metadata, override)');
-    expect(semantic).toContain('reconcileRestrictedOptionValue(field.value, allowed)');
-    expect(resolver).toContain('staticEntryFieldUx(');
+    expect(shared).toContain('export function allowedInvocationOptionValues(');
+    expect(shared).toContain('export function reconcileRestrictedOptionValue(');
+    expect(shared).toContain('export function staticEntryFieldUx(');
     expect(browser).toContain("import('/shared-runtime/policies/entry-field-policy.js')");
     expect(browser).toContain('fieldPolicy.allowedInvocationOptionValues(field, restriction)');
     expect(browser).toContain('fieldPolicy.staticEntryFieldUx(');
@@ -94,14 +83,10 @@ describe('V2 post-cutover architecture audit', () => {
   });
 
   it('shares one contributor reduction between host-neutral and browser entry adapters', async () => {
-    const semantic = await ui('src/runtime/state/entry-aggregate-state-runtime.ts');
     const browser = await ui('public/js/sysbo/entry/state.js');
     const shared = await repo('shared/src/policies/entry-aggregate-policy.ts');
 
     expect(shared).toContain('export function calculateEntryContributorAggregate(');
-    expect(semantic).toContain(
-      'calculateEntryContributorAggregate([...this.#contributors.values()])',
-    );
     expect(browser).toContain("import('/shared-runtime/policies/entry-aggregate-policy.js')");
     expect(browser).toContain('calculateEntryContributorAggregate(states)');
     expect(browser).not.toContain('states.some((value) => value.dirty === true)');
@@ -116,7 +101,6 @@ describe('V2 post-cutover architecture audit', () => {
     const debuggerHost = await ui('public/js/debugger/detached-tools.js');
     const debuggerTraffic = await ui('public/js/debugger/api-traffic.js');
     const debuggerTargets = await ui('public/js/debugger/ctx-target-views.js');
-    const gettingStarted = await repo('docs/development/Getting-Started.md');
 
     expect(connectivity).toContain('window.ManatOS.connectivity = Object.freeze');
     expect(busy).toContain('window.ManatOS.busy = Object.freeze');
@@ -144,12 +128,6 @@ describe('V2 post-cutover architecture audit', () => {
       expect(source).not.toContain('window.__manatosApiTrafficRuntime');
       expect(source).not.toContain('window.ManatOSCtxTargetViews');
     }
-
-    expect(gettingStarted).toContain('single `window.ManatOS` namespace');
-    expect(gettingStarted).toContain('do not use the namespace as a semantic state bag');
-    expect(gettingStarted).toContain(
-      'Private runtime state is retained only when it owns lifecycle',
-    );
   });
 
   it('uses one private activity service with separate request and expression channels', async () => {
@@ -235,39 +213,6 @@ describe('V2 post-cutover architecture audit', () => {
     expect(expressionRuntime).toContain('astForSource');
     expect(expressionRuntime).not.toContain('expressionCompiler');
     expect(shell).not.toContain('expression-compiler-runtime.js');
-
-    const expressionArchitecture = await readFile(
-      resolve(here, '..', '..', '..', 'docs', 'architecture', 'Expression-Architecture.md'),
-      'utf8',
-    );
-    const ctxCatalog = await readFile(
-      resolve(here, '..', '..', '..', 'docs', 'reference', 'CTX-Catalog.md'),
-      'utf8',
-    );
-    const componentsDoc = await readFile(
-      resolve(here, '..', '..', '..', 'docs', 'design', 'Components.md'),
-      'utf8',
-    );
-    const uiFlowsDoc = await readFile(
-      resolve(here, '..', '..', '..', 'docs', 'design', 'UI-Flows.md'),
-      'utf8',
-    );
-    const workingWithEntitiesDoc = await readFile(
-      resolve(here, '..', '..', '..', 'docs', 'usage', 'Working-with-Entities.md'),
-      'utf8',
-    );
-    expect(expressionArchitecture).toContain('ASTs are never CTX state');
-    expect(expressionArchitecture).toContain('/bo/expression/compile');
-    expect(expressionArchitecture).not.toContain('publishes prepared\n              AST');
-    expect(ctxCatalog).not.toContain('`.expression` / `.ast`');
-    for (const doc of [componentsDoc, uiFlowsDoc, workingWithEntitiesDoc]) {
-      expect(doc).not.toContain('callingParams');
-      expect(doc).not.toContain('precompiled expression');
-      expect(doc).not.toContain('browser evaluates the supplied AST');
-    }
-    expect(componentsDoc).toContain('SurfaceInvocation');
-    expect(uiFlowsDoc).toContain('caller-side continuation');
-    expect(workingWithEntitiesDoc).toContain('caller-side continuation');
   });
 
   it('does not expose detached or shared mutable browser evaluator scopes after Stage B CTX migration', async () => {
@@ -353,7 +298,7 @@ describe('V2 post-cutover architecture audit', () => {
 
   it('uses the canonical host-neutral invocation contract for page and popup surfaces', async () => {
     const hostRuntime = await ui('public/js/runtime/ui-host-runtime.js');
-    const entryPolicy = await ui('public/js/runtime/entry-policy-runtime.js');
+    const entryPolicy = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
 
     expect(hostRuntime).toContain("purpose: 'view'");
     expect(hostRuntime).toContain("purpose: mode === 'create' ? 'create' : 'view'");
@@ -374,7 +319,12 @@ describe('V2 post-cutover architecture audit', () => {
     expect(expressionRuntime).toContain(
       'const evaluate = (node, evaluationScopePath = null, invocation = null)',
     );
-    expect(formRuntime).toContain('operands: Object.freeze({ value: previous })');
+    expect(formRuntime).toContain('operands: Object.freeze({ value })');
+    expect(formRuntime).toContain('const normalizationAstByField = new Map()');
+    expect(formRuntime).toContain('const normalizedFieldCandidate = (key, value) =>');
+    expect(formRuntime).toContain("normalize: event.type === 'change'");
+    expect(formRuntime).not.toContain('normalizeControl');
+    expect(formRuntime).not.toContain('normalizedSubmitPass');
     expect(expressionRuntime).toContain(
       "Object.prototype.hasOwnProperty.call(invocation.operands, 'value')",
     );
@@ -399,8 +349,8 @@ describe('V2 post-cutover architecture audit', () => {
   });
 
   it('keeps entry initialization as lifecycle state, not a second working-record authority', async () => {
-    const initialization = await ui('public/js/runtime/entry-initialization-runtime.js');
-    const policy = await ui('public/js/runtime/entry-policy-runtime.js');
+    const initialization = await ui('public/js/sysbo/entry/entry-initialization-runtime.js');
+    const policy = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
     const formRuntime = await ui('public/js/sysbo/entry/form-runtime.js');
     const debuggerSource = await ui('public/js/debugger/ctx-debug.js');
 
@@ -409,10 +359,12 @@ describe('V2 post-cutover architecture audit', () => {
     expect(initialization).not.toContain('syncCurrent,');
     expect(initialization).not.toContain('${entryPath}.initialization');
     expect(initialization).not.toContain('ctx.replace(');
-    expect(policy).toContain('expressions.evaluateAstOwnedAt(ast, path)');
+    expect(policy).toContain('return expressions.evaluateAstOwnedAt(ast, ownerPath);');
+    expect(policy).toContain('if (!ast || !ownedScopeIsLive(ownerPath)) return fallback;');
     expect(policy).not.toContain('entryInitialization?.path ?? path');
     expect(formRuntime).not.toContain('entryInitialization?.syncCurrent?.()');
-    expect(initialization).toContain('window.ManatOS.entryInitialization = Object.freeze({');
+    expect(initialization).toContain('window.ManatOS.entryInitialization = Object.freeze(facade);');
+    expect(initialization).toContain("surfaceRuntime.register('entry-initialization', install);");
     expect(initialization).not.toContain('window.ManatOSEntryInitialization');
     expect(policy).toContain('window.ManatOS?.entryInitialization');
     expect(formRuntime).toContain('window.ManatOS?.entryInitialization');
@@ -421,10 +373,10 @@ describe('V2 post-cutover architecture audit', () => {
   });
 
   it('owns metadata-default evaluation at the canonical CTX field value path', async () => {
-    const entryRuntime = await ui('src/runtime/state/entity-entry-runtime.ts');
+    const policy = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
 
-    expect(entryRuntime).toContain('`${this.surface.path}.fields.${fieldKey}.value`');
-    expect(entryRuntime).not.toContain('initialization.entry.current');
+    expect(policy).toContain('`${path}.fields.${key}.value`');
+    expect(policy).not.toContain('initialization.entry.current');
   });
   it('routes retry through the popup action contract instead of a mutable window callback', async () => {
     const popupRuntime = await ui('public/js/popups/popup-runtime.js');
@@ -444,7 +396,7 @@ describe('V2 post-cutover architecture audit', () => {
   });
 
   it('reads entry entity identity from the canonical control plane after the level.control migration', async () => {
-    const policy = await ui('public/js/runtime/entry-policy-runtime.js');
+    const policy = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
     const formRuntime = await ui('public/js/sysbo/entry/form-runtime.js');
     expect(policy).toContain('surface.control?.entityKey');
     expect(policy).not.toContain('surface.entityKey');
@@ -454,12 +406,37 @@ describe('V2 post-cutover architecture audit', () => {
 
   it('projects canonical CTX field changes back into field components without DOM write duplication', async () => {
     const formRuntime = await ui('public/js/sysbo/entry/form-runtime.js');
-    const policy = await ui('public/js/runtime/entry-policy-runtime.js');
+    const policy = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
 
     expect(formRuntime).toContain('const projectFieldFromCtx = (key) =>');
     expect(formRuntime).toContain('projectCtxFieldChange(change)');
     expect(formRuntime).toContain('setFieldValue?.(control, field.value, { emit: false })');
     expect(policy).toContain('ctx.updateField(path, key, value, undefined, cause)');
     expect(policy).not.toContain('setFieldValue?.(control, value, { emit: false })');
+  });
+  it('retires surface-owned entry policy subscriptions before CTX scope disposal', async () => {
+    const host = await ui('public/js/runtime/ui-host-runtime.js');
+    const policy = await ui('public/js/sysbo/entry/entry-policy-runtime.js');
+
+    expect(host).toContain("new CustomEvent('manatos:ui-level-disposing'");
+    expect(host).toContain('announceSurfaceDisposing(handle.path, source);');
+    expect(host).toContain('announceSurfaceDisposing(levelPath, source);');
+    expect(policy).toContain('const entrySurfaceIsLive = () =>');
+    expect(policy).toContain("surfaceRuntime.register('entry-policy', install)");
+    expect(policy).toContain('const path = form.dataset.ctxScopePath || null;');
+    expect(policy).toContain('window.ManatOS?.expressionRuntimes?.whenReady?.(form)');
+    expect(policy).toContain("form.querySelectorAll('.entity-tabs [data-v2-tab-id]')");
+    expect(policy).not.toContain("document.querySelector('form[data-v2-entry-form]')");
+    expect(policy).not.toContain("document.querySelectorAll('.entity-tabs [data-v2-tab-id]')");
+    expect(policy).toContain("window.removeEventListener('manatos:ctx-change', refreshPolicy);");
+    expect(policy).toContain(
+      "window.addEventListener('manatos:ui-level-disposing', disposePolicy);",
+    );
+    expect(policy).toContain('untrackSubscriber?.();');
+    expect(policy).toContain('const ownedScopeIsLive = (ownerPath = path) =>');
+    expect(policy).toContain('if (!ast || !ownedScopeIsLive(ownerPath)) return fallback;');
+    expect(policy).toContain(
+      'evaluateSourceOwnedAt(host.dataset.v2SummaryToneExpression, path, null)',
+    );
   });
 });

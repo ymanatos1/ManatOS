@@ -3,6 +3,7 @@ import type { RequestHandler } from 'express';
 import {
   MANATOS_COMPANY,
   allManatOSObjectMetadata,
+  effectiveObjectKeys,
   resolvePlatform,
   sysBOUsersMetadata,
   type EntityCollectionAuthorizationCapabilities,
@@ -39,7 +40,30 @@ import { materializeCalculatedContextFields } from '../runtime/projection/calcul
  *
  *   res.locals.app
  */
+const contextFreeUiRuntimePaths = new Set([
+  '/bo/expression/compile',
+  '/bo/expression/evaluate-function',
+]);
+
+/**
+ * Browser expression-runtime requests are authenticated transport operations, not
+ * rendered UI surfaces. Hydrating the complete page CTX for each parse/evaluate
+ * request caused an authoritative capability projection API call per expression,
+ * multiplying entry-opening traffic without contributing any data to the response.
+ *
+ * Keep this list deliberately narrow: routes that render, mutate through CTX, or
+ * otherwise consume res.locals.ctx must continue through normal page hydration.
+ */
+export function requiresPageContext(path: string): boolean {
+  return !contextFreeUiRuntimePaths.has(path);
+}
+
 export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
+  if (!requiresPageContext(req.path)) {
+    next();
+    return;
+  }
+
   try {
     let user: SysBOUser | null = null;
 
@@ -107,21 +131,16 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     let platformCapabilities: PlatformAuthorizationCapabilities = { platformAccess: false };
     let entityCapabilities: EntityCollectionAuthorizationCapabilities = {};
     if (user) {
-      const [platformCapabilityResponse, entityCapabilityResponse] = await Promise.all([
-        apiClient.get<{
-          platformId: string;
-          capabilities: PlatformAuthorizationCapabilities;
-        }>(
-          `/api/v1/platforms/${encodeURIComponent(currentPlatform.id)}/$capabilities`,
-          apiSessionOptions(req),
-        ),
-        apiClient.get<{ entities: EntityCollectionAuthorizationCapabilities }>(
-          '/api/v1/authorization/entities/$capabilities',
-          apiSessionOptions(req),
-        ),
-      ]);
-      platformCapabilities = platformCapabilityResponse.data.capabilities;
-      entityCapabilities = entityCapabilityResponse.data.entities;
+      const capabilityResponse = await apiClient.get<{
+        platformId: string;
+        platformCapabilities: PlatformAuthorizationCapabilities;
+        entities: EntityCollectionAuthorizationCapabilities;
+      }>(
+        `/api/v1/authorization/context/${encodeURIComponent(currentPlatform.id)}/$capabilities`,
+        apiSessionOptions(req),
+      );
+      platformCapabilities = capabilityResponse.data.platformCapabilities;
+      entityCapabilities = capabilityResponse.data.entities;
     }
 
     res.locals.currentUser = user;
@@ -145,14 +164,16 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     );
 
     /*
-     * ctx.entities is the complete canonical object/entity registry, not the
-     * navigation/exposure catalogue. Internal contact objects and relationship
-     * entities therefore remain discoverable by CTX/evaluator/debugging clients
-     * even when they intentionally have no top-level Administration page.
-     * Route-owned UI metadata loaded later may enrich the matching CTX entry.
+     * ctx.entities is the complete canonical registry for the effective subsystem
+     * composition, not merely the navigation/exposure catalogue. Internal objects
+     * and relationship entities remain discoverable when their owning subsystem and
+     * declared relationship dependencies are selected. Route-owned UI metadata may
+     * enrich the matching CTX entry later.
      */
+    const effectiveObjects = effectiveObjectKeys(MANATOS_COMPANY, currentPlatform);
     for (const metadata of Object.values(allManatOSObjectMetadata)) {
-      registerContextEntity(res.locals.ctx, metadata.key, metadata);
+      if (effectiveObjects.has(metadata.key))
+        registerContextEntity(res.locals.ctx, metadata.key, metadata);
     }
 
     if (res.locals.ctx.user) {

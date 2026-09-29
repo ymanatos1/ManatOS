@@ -24,7 +24,14 @@
   table/panel visualization consistently for every entity and never branches on
   the parent SysBO key.
 %>
-<% for (const key of tab.fields) { %>
+<%
+  const tabCollectionKeys = (contents) => (contents || []).flatMap((content) => {
+    if (content?.kind === 'collection') return [content.collection];
+    if (content?.kind === 'column' || content?.kind === 'inline') return tabCollectionKeys(content.content);
+    return [];
+  });
+%>
+<% for (const key of tabCollectionKeys(tab.content)) { %>
   <% const collection = relatedCollections[key]; %>
   <% if (!collection) continue; %>
   <% const collectionSourceKey = collection.sourceKey ?? key; %>
@@ -67,8 +74,8 @@
                   <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
                   <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
                   <% const valueExpression = renderedValue.expression || null; %>
-                  <% const toneExpression = collectionField.presentation?.tone?.expression || null; %>
-                  <% const iconExpression = collectionField.presentation?.icon?.expression || null; %>
+                  <% const toneExpression = renderedValue.toneExpression || null; %>
+                  <% const iconExpression = renderedValue.iconExpression || null; %>
                   <% const dynamicRelatedValue = Boolean(
                     valueExpression || toneExpression || iconExpression
                   ); %>
@@ -130,7 +137,9 @@
                         <%= positive ? 'Enabled' : 'Disabled' %>
                       </span>
                     <% } else if (canonicalField?.type === 'date') { %>
-                      <%= formatValue(renderedValue.raw, { format: 'datetime', emptyText: '—' }) %>
+                      <%= formatValue(renderedValue.raw, { format: 'date', emptyText: '—' }) %>
+                    <% } else if (canonicalField?.type === 'datetime') { %>
+                      <%= formatValue(renderedValue.raw, { format: 'datetime-elapsed', emptyText: '—' }) %>
                     <% } else if (renderedValue.calculated && (renderedValue.tone || renderedValue.icon)) { %>
                       <span class="badge text-bg-<%= renderedValue.tone || 'secondary' %>">
                         <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
@@ -160,8 +169,8 @@
               <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
               <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
               <% const valueExpression = renderedValue.expression || null; %>
-              <% const toneExpression = collectionField.presentation?.tone?.expression || null; %>
-              <% const iconExpression = collectionField.presentation?.icon?.expression || null; %>
+              <% const toneExpression = renderedValue.toneExpression || null; %>
+              <% const iconExpression = renderedValue.iconExpression || null; %>
               <% const dynamicRelatedValue = Boolean(
                 valueExpression || toneExpression || iconExpression
               ); %>
@@ -203,9 +212,17 @@
                     <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
                     <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
                   </span>
+                <% } else if (canonicalField?.type === 'reference') { %>
+                  <%= relatedReferenceLabel(collectionSourceKey, collectionFieldKey, renderedValue.raw) %>
                 <% } else if (selectedOptionItem) { %>
                   <% if (selectedOptionItem.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
                   <%= selectedOptionItem.label || renderedValue.raw || '—' %>
+                <% } else if (canonicalField?.type === 'date') { %>
+                  <%= formatValue(renderedValue.raw, { format: 'date', emptyText: '—' }) %>
+                <% } else if (canonicalField?.type === 'datetime') { %>
+                  <%= formatValue(renderedValue.raw, { format: 'datetime-elapsed', emptyText: '—' }) %>
+                <% } else if (canonicalField?.type === 'duration') { %>
+                  <%= formatValue(renderedValue.raw, { emptyText: '—' }) %>
                 <% } else { %>
                   <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
                 <% } %>

@@ -44,7 +44,7 @@ Examples:
 
 ```text
 !enabled
-enabled && user.fields.role.value === 'Admin'
+enabled && $user.fields.role.value === 'Admin'
 flags & 4
 flags | 2
 flags ^ 1
@@ -150,7 +150,7 @@ Replaces zero-based placeholders (`{0}`, `{1}`, ...) with scalar arguments. A pl
 
 ```text
 StrFormat('{0} / {1}', name, version)
-StrFormat('Hello {0}', user.fields.name.value)
+StrFormat('Hello {0}', $user.fields.name.value)
 ```
 
 ## Expression examples
@@ -165,7 +165,7 @@ principalType.option != null && principalType.option.canHaveParent === true
 mode != 'create'
 
 # Current user / current entry comparison
-id != user.fields.id.value
+id != $user.fields.id.value
 
 # Null-safe decision using an explicit comparison
 parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')
@@ -186,7 +186,7 @@ hasClientSecret ? 'lock-fill' : 'lock'
 StrFormat('{0} / {1}', name, version)
 
 # Platform capability decision
-user.permissions.platforms.protocrm.capabilities.platformAccess === true
+$user.permissions.platforms.protocrm.capabilities.platformAccess === true
 
 # List Add visibility
 permissions.create === true

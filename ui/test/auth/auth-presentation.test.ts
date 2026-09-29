@@ -51,6 +51,7 @@ describe('authentication presentation', () => {
     expect(microsoftButtons.eq(1).is('[disabled]')).toBe(false);
     expect(microsoftButtons.eq(0).find('.bi-microsoft').length).toBe(1);
     expect(microsoftButtons.eq(1).find('.bi-microsoft').length).toBe(1);
+    expect($('[data-recovery-identity]').is('[autofocus]')).toBe(false);
   });
 
   it('uses provider metadata to render the external-link illustration and labels', async () => {

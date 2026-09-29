@@ -2052,11 +2052,6 @@ body.anonymous .workspace {
   line-height: 1;
 }
 
-.metadata-hierarchy-workspace .metadata-record-quick {
-  width: min(32rem, calc(100vw - 4rem));
-  margin-top: 0.75rem;
-  text-align: left;
-}
 .metadata-hierarchy-workspace.is-quick-editing .metadata-hierarchy-node-command,
 .metadata-hierarchy-workspace.is-quick-editing .metadata-hierarchy-node-link,
 .metadata-hierarchy-workspace.is-quick-editing .metadata-hierarchy-toggle,
@@ -2064,23 +2059,6 @@ body.anonymous .workspace {
   pointer-events: none;
   opacity: 0.55;
 }
-.metadata-hierarchy-workspace.is-quick-editing .metadata-record-quick,
-.metadata-hierarchy-workspace.is-quick-editing .metadata-record-quick * {
-  pointer-events: auto;
-  opacity: 1;
-}
-
-/* recordQuick is an embedded editor owned by the hierarchy workspace, not a
-   second full entry form. Its header makes the current short-lived operation
-   explicit while the compact body remains visually attached to the draft node. */
-.metadata-hierarchy-workspace .metadata-record-quick-title {
-  background: var(--bs-tertiary-bg);
-}
-.metadata-hierarchy-workspace [data-hierarchy-record-quick-host] {
-  width: max-content;
-  max-width: 100%;
-}
-
 /* Draft hierarchy nodes are in-memory workspace records. Their button-shaped
    node body behaves visually like a normal hierarchy link, including a clear
    hover state, but never navigates to the persisted-record route. */
@@ -2479,4 +2457,76 @@ body.anonymous .workspace {
   object-fit: cover;
   border-radius: 0.5rem;
   border: 1px solid var(--bs-border-color);
+}
+
+/* Make expression failures visible even before the Debugging > Errors pane is opened. */
+.debugging-scope-tabs .nav-link.debugging-errors-present {
+  color: var(--bs-danger);
+  border-color: rgba(var(--bs-danger-rgb), 0.55);
+  font-weight: 700;
+}
+
+.debugging-scope-tabs .nav-link.debugging-errors-present:not(.active) {
+  background: rgba(var(--bs-danger-rgb), 0.08);
+}
+
+/* Propagate expression failures to the owning Debugging surface and CTX mirrors. */
+#metadata-debugging-tab.debugging-host-errors-present {
+  color: var(--bs-danger);
+  border-color: rgba(var(--bs-danger-rgb), 0.55);
+  font-weight: 700;
+}
+
+#metadata-debugging-tab.debugging-host-errors-present:not(.active) {
+  background: rgba(var(--bs-danger-rgb), 0.08);
+}
+
+.debugging-calculations-table tr.debugging-expression-owner-error > td:first-child {
+  color: var(--bs-danger);
+  font-weight: 700;
+}
+
+.ctx-debug-row.ctx-expression-error-owner .ctx-debug-key {
+  color: var(--bs-danger);
+  font-weight: 700;
+}
+
+.ctx-expression-error-indicator {
+  color: var(--bs-danger);
+  margin-left: 0.3rem;
+  font-size: 0.78rem;
+}
+
+/* Generic semantic field representations used by metadata-driven uiViews. */
+.metadata-field-summary {
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+  gap: 0.8rem 1.25rem;
+  align-items: center;
+}
+
+.metadata-field-summary-label {
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.metadata-field-summary-value {
+  min-width: 0;
+  font-size: 0.92rem;
+}
+
+.metadata-field-portrait {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.metadata-field-portrait img {
+  display: block;
+  width: 5.25rem;
+  height: 5.25rem;
+  object-fit: cover;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.6rem;
+  background: var(--bs-tertiary-bg);
 }

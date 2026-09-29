@@ -16,8 +16,8 @@ describe('generic date-duration-range component', () => {
     );
     const fieldRenderer = await uiSource('views/components/sysbo/entry/fields/form-field.ejs');
     const runtime = await uiSource('public/js/sysbo/entry/form-runtime.js');
-    const uiMetadata = await sharedSource('src/metadata/ui/business.ts');
-    const canonicalMetadata = await sharedSource('src/metadata/bo/business.ts');
+    const uiMetadata = await sharedSource('src/metadata/ui/licensing/ui-licenses.ts');
+    const canonicalMetadata = await sharedSource('src/metadata/bo/licensing/bo-licenses.ts');
     const uiContract = await sharedSource('src/metadata/ui/types.ts');
     const shell = await uiSource('views/layout/shell.ejs');
 

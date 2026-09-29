@@ -67,12 +67,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
       },
     ],
   },
-  entities: [
-    {
-      sysBOKey: 'sys-applications',
-      description: 'Applications designed and managed by the protoCRM platform.',
-    },
-  ],
+  subsystems: [{ key: 'applications', selected: true }],
   navigation: [
     {
       id: 'app-playground',
@@ -83,7 +78,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
       requiresEntityKeys: ['sys-applications'],
       requiresEntityRead: 'sys-applications',
       visible: {
-        expression: 'user.permissions.platforms.protocrm.capabilities.platformAccess === true',
+        expression: '$user.permissions.platforms.protocrm.capabilities.platformAccess === true',
       },
     },
     {

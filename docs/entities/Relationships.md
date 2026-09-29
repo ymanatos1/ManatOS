@@ -6,6 +6,14 @@ Delete behavior lives under the relationship's keyed `policies` collection. `pol
 
 Many-to-many data should normally use an explicit canonical junction object with two many-to-one relationships. A future semantic `many-to-many` relationship can expose convenient navigation/report/designer metadata through the junction while the junction remains the physical integrity source of truth.
 
+## Integrity authority
+
+The generic API `RelationshipIntegrityService` discovers incoming references by scanning canonical relationship metadata. Delete preview reports impacts and whether execution is possible/confirmation is requested; execution recalculates and applies the canonical policy rather than trusting a browser preview.
+
+Current actions are `restrict`, `cascade`, `set-null`, `unlink` and `retain`. `retain` deliberately permits a semantic/non-destructive reference to outlive target configuration. Confirmation (`silent`, `confirm`, `inherit`) is a separate interaction policy and does not alter referential consequences.
+
+The same metadata also supports a generic orphan-repair pass: repairable historical orphans follow their relationship delete policy, while `restrict` cases remain unresolved for explicit attention.
+
 ## Examples
 
 ### Many Principals -> one parent Principal

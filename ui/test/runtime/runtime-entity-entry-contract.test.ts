@@ -13,10 +13,8 @@ describe('V2 EntityEntry canonical runtime', () => {
     const route = await uiSource('src/routes/sysbo/entry/renderer.ts');
     expect(route).not.toContain('enableV2Scenario');
     expect(route).toContain("'pages/sysbo/entry'");
-    expect(route).not.toContain('new SurfaceRuntime()');
-    expect(route).not.toContain('new EntityEntryRuntime({');
     expect(route).not.toContain('projectUiCtx(');
-    expect(route).toContain("purpose: 'open-entity-entry'");
+    expect(route).toContain("purpose: surface.purpose ?? 'open-entity-entry'");
     expect(route).toContain('current: v2ServerValues');
   });
 

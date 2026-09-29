@@ -4,7 +4,7 @@ protoCRM is the current CRM-oriented platform built on the common ManatOS applic
 
 ## Company versus platform ownership
 
-Users/Account, Principals, Licenses, External Authentication Providers, organization hierarchy and Principal contact information are company-level ManatOS concerns. They remain available to protoCRM where needed, but consuming a company entity does not transfer ownership to the platform.
+Users/Account, Principals, Licenses, External Authentication Providers, organization hierarchy and Principal contact information are foundation-level Company-domain concerns. They remain available to protoCRM where needed, but consuming a company entity does not transfer ownership to the platform.
 
 ## Platform direction
 

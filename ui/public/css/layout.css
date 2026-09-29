@@ -1161,7 +1161,7 @@ body.anonymous .workspace {
   pointer-events: none;
 }
 
-.manatos-popup-backdrop.manatos-popup-preparing::before {
+.manatos-popup-backdrop.manatos-popup-preparing.manatos-popup-show-spinner::before {
   content: '';
   position: fixed;
   top: 50%;

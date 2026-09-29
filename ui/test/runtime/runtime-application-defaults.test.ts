@@ -1,12 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { sysBOApplicationsMetadata } from '@manatos/shared';
 import { describe, expect, it } from 'vitest';
 
 describe('V2 application create defaults', () => {
   it('declares the initial semantic version in canonical entity metadata', () => {
-    const business = readFileSync(
-      new URL('../../../shared/src/metadata/bo/business.ts', import.meta.url),
-      'utf8',
-    );
-    expect(business).toContain("createDefaultValue: '0.0.1'");
+    expect(sysBOApplicationsMetadata.fieldDefinition.version?.createDefaultValue).toBe('0.0.1');
   });
 });

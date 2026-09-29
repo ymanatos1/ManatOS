@@ -212,13 +212,25 @@
       body.entry-popup-host .app-shell { display: block !important; min-height: 100vh; }
       body.entry-popup-host .workspace { width: 100% !important; max-width: none !important; }
       body.entry-popup-host .workspace-content { padding: 1rem !important; }
+      body.entry-popup-host.entry-density-compact .workspace-content {
+        padding: 0.3rem !important;
+      }
     </style>
   <% } %>
 </head>
 
 
+<%
+  const bodyClasses = [
+    currentUser ? 'authenticated' : 'anonymous',
+    typeof entryPopupHost !== 'undefined' && entryPopupHost ? 'entry-popup-host' : '',
+    typeof entryDensity !== 'undefined' && entryDensity === 'compact' ? 'entry-density-compact' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+%>
 <body
-  class="<%= currentUser ? 'authenticated' : 'anonymous' %> <%= typeof entryPopupHost !== 'undefined' && entryPopupHost ? 'entry-popup-host' : '' %>"
+  class="<%= bodyClasses %>"
   data-user-id="<%= currentUser?.id || 'anonymous' %>"
 >
   <%
@@ -545,6 +557,9 @@
 
   <script src="/js/shell/preferences.js"></script>
   <script src="/js/shell/shell.js"></script>
+  <script src="/js/runtime/entry-opening.js"></script>
+  <script>window.ManatOSDeveloperDiagnostics = <%= app.ui?.debugTools ? 'true' : 'false' %>;</script>
+  <script src="/js/runtime/client-diagnostics.js"></script>
   <script src="/js/popups/entry-popup.js"></script>
   <% if (app.ui?.debugTools && Array.isArray(ctxDiagnostics) && ctxDiagnostics.length) { %>
     <script>
@@ -588,23 +603,24 @@
     The component runtime installs synchronously; form/policy runtimes may then
     safely await their own asynchronous dependencies without a startup race.
   -->
-  <script src="/js/sysbo/entry/field-runtime/picture-fields.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/entry-surface-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/fields/picture-fields.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/field-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/sysbo/entry/rich-text-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/runtime/entry-initialization-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/fields/rich-text-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/entry-initialization-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <!-- State subscribes before async default/calculation owners start so initialization is visibly observable. -->
   <script src="/js/sysbo/entry/state.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/expression-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/form-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/runtime/entry-policy-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/runtime/list-action-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/entry/entry-policy-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/sysbo/list/list-action-runtime.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/auth/auth-form.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/auth/reauth.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/field-state.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/save.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/focus.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/configuration/form.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
-  <script src="/js/system-settings.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
+  <script src="/js/system/system-settings.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/sysbo/entry/entry-representation.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/popups/record-selector.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>
   <script src="/js/debugger/cli.js?boot=<%= typeof uiBootId !== 'undefined' ? encodeURIComponent(uiBootId) : 'unknown' %>"></script>

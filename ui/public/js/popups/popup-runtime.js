@@ -25,6 +25,27 @@
   const retryByModal = new WeakMap();
   let recoverySequence = 0;
   let activeModal = null;
+  let lastPopupTriggerRect = null;
+
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      const target =
+        event.target instanceof Element ? event.target.closest('button, a, [role="button"]') : null;
+      if (!(target instanceof HTMLElement)) return;
+      const rect = target.getBoundingClientRect();
+      if (!rect.width && !rect.height) return;
+      lastPopupTriggerRect = {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      };
+    },
+    true,
+  );
 
   const ctxRuntime = () => window.ManatOS?.ctx;
 
@@ -100,18 +121,6 @@
   };
   const popupPath = () => activePopupPath();
 
-  const surfaceState = (phase = 'active') => ({
-    lifecycle: phase,
-    active: phase === 'active',
-    dirty: false,
-    valid: true,
-    loading: false,
-    saving: false,
-    deleting: false,
-    blocked: false,
-    navigation: { activeTabId: null, activeInternalTabIds: {} },
-  });
-
   const ENTRY_POPUP_WIDTH = 1120;
   const ENTRY_POPUP_HEIGHT = 820;
   const POPUP_VIEWPORT_GUTTER = 24;
@@ -131,14 +140,26 @@
   const preparePopupPlacement = ({
     width = ENTRY_POPUP_WIDTH,
     height = ENTRY_POPUP_HEIGHT,
+    anchorRect = null,
+    anchorToTrigger = false,
   } = {}) => {
     const parent = uiLeaf();
     const viewportWidth = Math.max(1, window.innerWidth);
     const viewportHeight = Math.max(1, window.innerHeight);
-    const actualWidth = Math.min(Number(width) || ENTRY_POPUP_WIDTH, viewportWidth - 48);
+    const dockRect =
+      developerToolsDock && !developerToolsDock.classList.contains('d-none')
+        ? developerToolsDock.getBoundingClientRect()
+        : null;
+    const usableRight =
+      dockRect && dockRect.left > 0 && dockRect.left < viewportWidth
+        ? dockRect.left
+        : viewportWidth;
+    const usableWidth = Math.max(1, usableRight);
+    const actualWidth = Math.min(Number(width) || ENTRY_POPUP_WIDTH, usableWidth - 16);
     const actualHeight = Math.min(Number(height) || ENTRY_POPUP_HEIGHT, viewportHeight - 48);
-    const centeredX = Math.round((viewportWidth - actualWidth) / 2);
+    const centeredX = Math.round((usableWidth - actualWidth) / 2);
     const centeredY = Math.round((viewportHeight - actualHeight) / 2);
+    const resolvedAnchor = anchorRect || (anchorToTrigger ? lastPopupTriggerRect : null);
 
     const parentPopup =
       parent?.level?.control?.host === 'popup' &&
@@ -158,13 +179,26 @@
      * clamped by a smaller viewport. X fans out by depth; Y alternates above and
      * below the normal position. The first page-owned popup remains unshifted.
      */
-    const rawX = parentPopup ? centeredX + POPUP_CASCADE_DELTA_X * openedPopupsCounter : centeredX;
-    const rawY = parentPopup
-      ? centeredY + POPUP_CASCADE_DELTA_Y * (openedPopupsCounter % 2 === 0 ? 1 : -1)
-      : centeredY;
+    const anchored =
+      !parentPopup &&
+      resolvedAnchor &&
+      Number.isFinite(Number(resolvedAnchor.left)) &&
+      Number.isFinite(Number(resolvedAnchor.top));
+    const rawX = anchored
+      ? Number(resolvedAnchor.left) +
+        Math.max(0, Number(resolvedAnchor.width) || 0) / 2 -
+        actualWidth / 2
+      : parentPopup
+        ? centeredX + POPUP_CASCADE_DELTA_X * openedPopupsCounter
+        : centeredX;
+    const rawY = anchored
+      ? Number(resolvedAnchor.bottom ?? resolvedAnchor.top) + 8
+      : parentPopup
+        ? centeredY + POPUP_CASCADE_DELTA_Y * (openedPopupsCounter % 2 === 0 ? 1 : -1)
+        : centeredY;
 
     return Object.freeze({
-      x: clampCoordinate(rawX, 8, Math.max(8, viewportWidth - actualWidth - POPUP_VIEWPORT_GUTTER)),
+      x: clampCoordinate(rawX, 8, Math.max(8, usableRight - actualWidth - POPUP_VIEWPORT_GUTTER)),
       y: clampCoordinate(
         rawY,
         8,
@@ -179,74 +213,18 @@
    * page/list/entry chain. This keeps ctx.ui authoritative without introducing a
    * parallel popup-specific context model.
    */
-  const openUiLevel = ({
-    kind = 'custom',
-    mode = 'view',
-    name = 'popup',
-    entityKey = null,
-    invocation = {},
-    presentation = {},
-    state = {},
-    supportsUserChanges = false,
-  } = {}) => {
-    const runtime = ctxRuntime();
-    const parent = uiLeaf();
-    if (!runtime?.replace || !parent?.level || !parent?.path) return null;
+  const openUiLevel = (options = {}) =>
+    window.ManatOS?.uiHost?.openSurface?.({
+      ...options,
+      host: 'popup',
+      source: 'popup-runtime',
+    }) ?? null;
 
-    const normalizedName = String(name || 'popup').replace(/[^A-Za-z0-9_$-]/g, '-');
-    const childPath = `${parent.path}.level`;
-    const child = {
-      control: {
-        id: `popup-${kind}-${normalizedName}-${Date.now()}`,
-        host: 'popup',
-        kind: String(kind || 'custom'),
-        mode: String(mode || 'view'),
-        name: normalizedName,
-        path: `${parent.level.control.path}/popup:${normalizedName}`,
-        scope: String(parent.level.control.scope || 'sys'),
-        invocation: { ...invocation },
-        presentation: { kind: String(kind || 'custom'), ...presentation },
-        state: { ...surfaceState('active'), ...state },
-        facts: {},
-        supportsUserChanges: supportsUserChanges === true,
-        ...(entityKey ? { entityKey: String(entityKey) } : {}),
-      },
-    };
-
-    if (parent.level.control?.state && typeof parent.level.control.state === 'object') {
-      runtime.replace(
-        `${parent.path}.control.state`,
-        { ...parent.level.control.state, lifecycle: 'deactivating', active: false },
-        {
-          source: 'v2-popup-surface',
-          action: 'deactivate-parent-surface',
-          triggerPath: childPath,
-        },
-      );
-    }
-    runtime.replace(childPath, child, {
-      source: 'v2-popup-surface',
-      action: 'open-popup-surface',
-      triggerPath: childPath,
+  const updateUiLevel = (handle, patch, options = {}) =>
+    window.ManatOS?.uiHost?.updateChildSurface?.(handle, patch, {
+      source: options.source || 'popup-runtime',
+      action: options.action || 'popup-state',
     });
-    return { path: childPath, parentPath: parent.path, id: child.control.id };
-  };
-
-  const updateUiLevel = (handle, patch, options = {}) => {
-    const runtime = ctxRuntime();
-    if (!runtime?.replace || !handle?.path) return;
-    const current = runtime.get?.(handle.path);
-    if (!current || typeof current !== 'object') return;
-    runtime.replace(
-      handle.path,
-      { ...current, ...patch },
-      {
-        source: options.source || 'v2-popup-surface',
-        action: options.action || 'update-popup-surface',
-        triggerPath: handle.path,
-      },
-    );
-  };
 
   /**
    * Build the browser-side form of the canonical V2 SurfaceResult contract.
@@ -264,28 +242,79 @@
         : {}),
     });
 
+  const dismissHandlers = new Map();
+  const dismissTargetSurfaces = new WeakMap();
+
+  const registerDismissHandler = (handle, handler) => {
+    if (!handle?.path || typeof handler !== 'function') return () => {};
+    const path = String(handle.path);
+    dismissHandlers.set(path, handler);
+    return () => {
+      if (dismissHandlers.get(path) === handler) dismissHandlers.delete(path);
+    };
+  };
+
+  const bindDismissTarget = (handle, target) => {
+    if (!handle?.path || !(target instanceof HTMLElement)) return () => {};
+    dismissTargetSurfaces.set(target, handle);
+    return () => {
+      if (dismissTargetSurfaces.get(target) === handle) dismissTargetSurfaces.delete(target);
+    };
+  };
+
+  const deepestRegisteredDismissPath = () => {
+    let node = ctxRuntime()?.value?.ui?.level;
+    if (!node) return null;
+    let path = 'ctx.ui.level';
+    let candidate = dismissHandlers.has(path) ? path : null;
+    while (node?.level) {
+      node = node.level;
+      path += '.level';
+      if (dismissHandlers.has(path)) candidate = path;
+    }
+    return candidate;
+  };
+
+  const requestDismiss = (target = null, reason = 'dismiss') => {
+    let path = null;
+    if (typeof target === 'string') path = target;
+    else if (target?.path) path = String(target.path);
+    else if (target instanceof HTMLElement && dismissTargetSurfaces.has(target)) {
+      path = dismissTargetSurfaces.get(target)?.path || null;
+    } else if (target instanceof HTMLElement && target.matches('.modal')) {
+      const handle = surfaceByModal.get(target);
+      path = handle?.path || null;
+      if (!path) {
+        window.bootstrap?.Modal?.getOrCreateInstance(target)?.hide();
+        return true;
+      }
+    }
+    // With no explicit popup target, dismiss the deepest surface that actually
+    // owns a dismissal transaction. Embedded child levels (for example a
+    // hierarchy/contact editor) must never hide their owning entry surface.
+    if (!path) path = deepestRegisteredDismissPath() || uiLeaf()?.path || null;
+    if (!path) return false;
+
+    // Acceptance is surface-owned. Escape and visible dismissal chrome converge
+    // here, so neither keyboard code nor individual buttons duplicate readiness.
+    if (window.ManatOS?.uiHost?.isUserInputReady?.(path) === false) return false;
+
+    const handler = dismissHandlers.get(path);
+    if (typeof handler === 'function') return handler(String(reason || 'dismiss')) !== false;
+
+    const modal = [...document.querySelectorAll('.modal.show')]
+      .filter((candidate) => surfaceByModal.get(candidate)?.path === path)
+      .at(-1);
+    if (modal instanceof HTMLElement) {
+      window.bootstrap?.Modal?.getOrCreateInstance(modal)?.hide();
+      return true;
+    }
+    return false;
+  };
+
   const closeUiLevel = (handle) => {
-    const runtime = ctxRuntime();
-    if (!runtime?.delete || !handle?.path) return;
-    if (runtime.get?.(handle.path) !== undefined) {
-      runtime.delete(handle.path, {
-        source: 'v2-popup-surface',
-        action: 'close-popup-surface',
-        triggerPath: handle.path,
-      });
-    }
-    if (handle.parentPath && runtime.get?.(`${handle.parentPath}.control.state`) !== undefined) {
-      const parentState = runtime.get(`${handle.parentPath}.control.state`);
-      runtime.replace(
-        `${handle.parentPath}.control.state`,
-        { ...parentState, lifecycle: 'active', active: true },
-        {
-          source: 'v2-popup-surface',
-          action: 'reactivate-parent-surface',
-          triggerPath: handle.parentPath,
-        },
-      );
-    }
+    if (handle?.path) dismissHandlers.delete(String(handle.path));
+    return window.ManatOS?.uiHost?.closeSurface?.(handle, 'popup-runtime');
   };
 
   const replaceContext = (payload, options = {}) => {
@@ -593,8 +622,14 @@
     if (action.dispatchEvent(retryRequest)) history.go(0);
   });
 
-  document.querySelectorAll('.modal').forEach((modal) => {
-    if (!(modal instanceof HTMLElement)) return;
+  const dismissalReady = (target = null) =>
+    window.ManatOS?.uiHost?.isUserInputReady?.(target) === true;
+
+  const registeredModals = new WeakSet();
+
+  const registerBootstrapModal = (modal) => {
+    if (!(modal instanceof HTMLElement) || registeredModals.has(modal)) return modal;
+    registeredModals.add(modal);
 
     // Universal ManatOS popup policy: dismissal is always explicit.
     modal.dataset.bsBackdrop = 'static';
@@ -604,6 +639,7 @@
     modal.dataset.bsFocus = 'false';
 
     modal.addEventListener('show.bs.modal', (event) => {
+      modal.dataset.manatosPopupState = 'opening';
       const trigger =
         event.relatedTarget instanceof HTMLElement
           ? event.relatedTarget
@@ -623,12 +659,14 @@
     });
 
     modal.addEventListener('shown.bs.modal', () => {
+      modal.dataset.manatosPopupState = 'ready';
       activeModal = modal;
       centerModalInWorkspace(modal);
       syncModalContext(modal, 'open');
     });
 
     modal.addEventListener('hide.bs.modal', () => {
+      modal.dataset.manatosPopupState = 'closing';
       if (activeModal === modal) syncModalContext(modal, 'closing');
 
       // Bootstrap deactivates its focus handling during hide(). Move focus after
@@ -649,6 +687,7 @@
     });
 
     modal.addEventListener('hidden.bs.modal', () => {
+      modal.dataset.manatosPopupState = 'closed';
       const ctxButton = modal.querySelector('[data-popup-ctx-inspect]');
       clearInspection(ctxButton);
       ctxButton?.classList.add('d-none');
@@ -673,11 +712,19 @@
         activeModal = null;
       }
     });
-  });
+
+    return modal;
+  };
+
+  document.querySelectorAll('.modal').forEach((modal) => registerBootstrapModal(modal));
 
   const snapshotDescriptors = () =>
     [...document.querySelectorAll('.modal.show')]
-      .filter((modal) => modal instanceof HTMLElement && modal.id)
+      .filter((modal) => {
+        if (!(modal instanceof HTMLElement) || !modal.id) return false;
+        const invocation = invocationByModal.get(modal) || resolveInvocation(modal, null);
+        return invocation.behavior?.recoverable !== false;
+      })
       .map((modal) => ({
         type: 'modal',
         order: recoveryOrderByModal.get(modal) || 0,
@@ -763,6 +810,7 @@
     replaceContext,
     clearContext,
     refreshVisibleModalCenters,
+    registerBootstrapModal,
     setInspectionVisible,
     toggleInspection,
     clearInspection,
@@ -771,6 +819,10 @@
     openUiLevel,
     updateUiLevel,
     surfaceResult,
+    registerDismissHandler,
+    bindDismissTarget,
+    requestDismiss,
+    dismissalReady,
     closeUiLevel,
     nextRecoveryOrder,
     snapshotDescriptors,

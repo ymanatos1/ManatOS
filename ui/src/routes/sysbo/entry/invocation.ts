@@ -2,9 +2,13 @@ import type { Request } from 'express';
 import type { SysBOUIMetadata, SysBOUIFieldOverrideMetadata } from '@manatos/shared';
 
 export interface EntryInvocation {
+  host: 'page' | 'popup' | 'embedded';
   popup: boolean;
   token: string | null;
   mode: 'create' | 'edit' | 'view' | null;
+  uiViewKey: string | null;
+  density: 'normal' | 'compact';
+  recoverable: boolean;
   defaults: Record<string, unknown>;
   uiOverrides: Record<
     string,
@@ -29,14 +33,27 @@ function parsedObject(value: unknown): Record<string, unknown> {
 
 export function entryInvocation(req: Request): EntryInvocation {
   const source = req.method === 'GET' ? req.query : req.body;
-  const popup = String(source?._entryPopup ?? '') === '1';
-  const token = typeof source?._entryPopupToken === 'string' ? source._entryPopupToken : null;
+  const rawHost = String(source?._entryHost ?? '');
+  const host =
+    rawHost === 'popup' || rawHost === 'embedded' || rawHost === 'page'
+      ? rawHost
+      : String(source?._entryPopup ?? '') === '1'
+        ? 'popup'
+        : 'page';
+  const popup = host === 'popup';
+  const tokenSource = source?._entryToken ?? source?._entryPopupToken;
+  const token = typeof tokenSource === 'string' ? tokenSource : null;
   const rawMode = String(source?._entryMode ?? '');
   const mode = rawMode === 'create' || rawMode === 'edit' || rawMode === 'view' ? rawMode : null;
   return {
+    host,
     popup,
     token,
     mode,
+    uiViewKey:
+      typeof source?._entryUIView === 'string' && source._entryUIView ? source._entryUIView : null,
+    density: String(source?._entryDensity ?? '') === 'compact' ? 'compact' : 'normal',
+    recoverable: String(source?._entryRecoverable ?? '') !== '0',
     defaults: parsedObject(source?._entryDefaults),
     uiOverrides: parsedObject(source?._entryOverrides) as EntryInvocation['uiOverrides'],
   };

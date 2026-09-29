@@ -9,8 +9,6 @@ data/database.json.tmp
 .DS_Store
 Thumbs.db
 
-*.zip
-
 # Generated browser vendor bundles/assets.
 ui/public/vendor/
 
@@ -18,9 +16,5 @@ ui/public/vendor/
 /data/
 
 # Local source/documentation archive helpers are developer-machine conveniences.
-/ZIP_*.cmd
-/documentation.zip
-/src.zip
-/api.zip
-/shared.zip
-/ui.zip
+*.cmd
+*.zip

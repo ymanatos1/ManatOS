@@ -446,46 +446,37 @@
       }
       case 'view-entry': {
         if (!(control instanceof HTMLSelectElement) || !control.value) return;
-        const popup = window.ManatOS?.popup?.entry;
+        const entryOpening = window.ManatOS?.entryOpening;
         const ctxRuntime = window.ManatOS?.ctx;
-        if (!popup?.open || !ctxRuntime) return;
+        if (!entryOpening?.open || !ctxRuntime) return;
 
         const targetEntityKey = root?.dataset.referenceEntityKey || '';
         const fieldKey = root?.dataset.referenceFieldKey || control.dataset.ctxField;
         if (!targetEntityKey || !fieldKey) return;
 
-        const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
-        const params = new URLSearchParams({
-          _entryPopup: '1',
-          _entryPopupToken: token,
-          _entryMode: 'view',
-        });
         const targetEntityLabel =
           root?.dataset.referenceEntityLabel || root?.dataset.referenceFieldLabel || 'Entry';
         const selectedOption = control.selectedOptions?.[0];
         const selectedEntryName = String(
           selectedOption?.dataset.entryName || selectedOption?.textContent || '',
         ).trim();
-        popup.open({
-          token,
+        entryOpening.open({
+          host: 'popup',
+          target: { entityKey: targetEntityKey, recordId: control.value },
           title: selectedEntryName
             ? `View ${targetEntityLabel} - ${selectedEntryName}`
             : `View ${targetEntityLabel}`,
-          url: `/bo/${encodeURIComponent(targetEntityKey)}/${encodeURIComponent(control.value)}?${params.toString()}`,
-          entityKey: targetEntityKey,
           mode: 'view',
-          invocation: {
-            purpose: 'view',
-            presentation: { layout: 'entry' },
-          },
+          purpose: 'view',
+          presentation: { layout: 'entry' },
         });
         return;
       }
       case 'add-entry': {
         if (!(control instanceof HTMLSelectElement) || control.disabled) return;
-        const popup = window.ManatOS?.popup?.entry;
+        const entryOpening = window.ManatOS?.entryOpening;
         const ctxRuntime = window.ManatOS?.ctx;
-        if (!popup?.open || !ctxRuntime) return;
+        if (!entryOpening?.open || !ctxRuntime) return;
 
         const fieldKey = root?.dataset.referenceFieldKey || control.dataset.ctxField;
         const targetEntityKey = root?.dataset.referenceEntityKey || '';
@@ -514,51 +505,21 @@
         const currentEntry =
           resolvedEntry && typeof resolvedEntry === 'object' ? resolvedEntry : {};
 
-        const defaults = {};
-        for (const [targetField, mapping] of Object.entries(createRelated.defaults || {})) {
-          const sourceField = mapping?.sourceField;
-          if (sourceField && Object.prototype.hasOwnProperty.call(currentEntry, sourceField))
-            defaults[targetField] = currentEntry[sourceField];
-        }
-        for (const [targetField, mapping] of Object.entries(createRelated.fixedValues || {})) {
-          const sourceField = mapping?.sourceField;
-          if (sourceField && Object.prototype.hasOwnProperty.call(currentEntry, sourceField))
-            defaults[targetField] = currentEntry[sourceField];
-        }
+        const rules = window.ManatOS?.entryOpening?.composeCallerRules?.(
+          createRelated,
+          currentEntry,
+        ) || { defaults: {}, uiOverrides: {} };
 
-        const overrides = { ...(createRelated.uiOverrides || {}) };
-        for (const targetField of Object.keys(createRelated.fixedValues || {})) {
-          overrides[targetField] = {
-            ...(overrides[targetField] || {}),
-            editable: false,
-            readOnlyValue: defaults[targetField] ?? null,
-          };
-        }
-        /*
-         * allowedValues / allowedEnumItemTrait are option-domain restrictions,
-         * not route-owned defaulting rules. The browser entry-policy runtime
-         * reconciles them after canonical metadata defaults are available.
-         */
-
-        const token = globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random()}`;
-        const params = new URLSearchParams({
-          _entryPopup: '1',
-          _entryPopupToken: token,
-          _entryDefaults: JSON.stringify(defaults),
-          _entryOverrides: JSON.stringify(overrides),
-        });
         const targetEntityLabel =
           root?.dataset.referenceEntityLabel || root?.dataset.referenceFieldLabel || 'Entry';
-        popup.open({
-          token,
+        entryOpening.open({
+          host: 'popup',
+          target: { entityKey: targetEntityKey },
           title: `Add ${targetEntityLabel}`,
-          url: `/bo/${encodeURIComponent(targetEntityKey)}/new?${params.toString()}`,
-          entityKey: targetEntityKey,
           mode: 'create',
-          invocation: {
-            purpose: 'create',
-            presentation: { layout: 'entry' },
-          },
+          purpose: 'create',
+          presentation: { layout: 'entry' },
+          rules,
           onSaved: (result) => {
             const id = String(result?.value || '');
             if (!id) return;
@@ -774,17 +735,22 @@
     }
   });
 
-  // Server rendering already supplies the initial visible state. Reconcile it
-  // once through the same field-component functions so dynamically inserted or
-  // locally drafted controls also begin from the canonical native value.
-  document
-    .querySelectorAll('[data-metadata-enum-select] select[data-enum-items]')
-    .forEach((control) => {
-      if (control instanceof HTMLSelectElement) setEnumValue(control, control.value);
+  // Server rendering already supplies the initial visible state. Reconcile each
+  // entry surface through the same field-component functions when it is mounted;
+  // this is required for same-document popup/embedded surfaces inserted after boot.
+  const reconcileFieldPresentation = (root) => {
+    root
+      .querySelectorAll('[data-metadata-enum-select] select[data-enum-items]')
+      .forEach((control) => {
+        if (control instanceof HTMLSelectElement) setEnumValue(control, control.value);
+      });
+    root.querySelectorAll('[data-metadata-reference-select] select').forEach((control) => {
+      if (control instanceof HTMLSelectElement) setReferenceValue(control, control.value);
     });
-  document.querySelectorAll('[data-metadata-reference-select] select').forEach((control) => {
-    if (control instanceof HTMLSelectElement) setReferenceValue(control, control.value);
-  });
+    return true;
+  };
+  reconcileFieldPresentation(document);
+  window.ManatOS?.entrySurfaces?.register?.('field-presentation', reconcileFieldPresentation);
 
   window.ManatOS = window.ManatOS || {};
   window.ManatOS.fieldComponents = Object.freeze({

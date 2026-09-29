@@ -10,28 +10,19 @@ const entryFormStates = new WeakMap();
    * ===================================================================== */
 
   const form = document.querySelector('form[data-dirty-guard="true"]');
-  const { calculateEntryContributorAggregate } =
-    await import('/shared-runtime/policies/entry-aggregate-policy.js');
 
   if (form) {
+    const { calculateEntryContributorAggregate } =
+      await import('/shared-runtime/policies/entry-aggregate-policy.js');
     const runtime = window.ManatOS?.ctx;
-    const owningEntryPagePath = (() => {
-      let node = runtime?.value?.ui?.level;
-      if (!node) return null;
-      let path = 'ctx.ui.level';
-      while (node?.level) {
-        node = node.level;
-        path += '.level';
-      }
-      return node?.control?.kind === 'entry' ? path : null;
-    })();
+    const owningEntryPagePath = window.ManatOS?.uiHost?.surfacePath?.('entry') || null;
 
     const fieldDirty = () => {
       const page = owningEntryPagePath ? runtime?.get?.(owningEntryPagePath) : null;
       return Object.values(page?.fields || {}).some((field) => field?.dirty === true);
     };
 
-    // Browser-private aggregate contributors mirror the host-neutral V2 contract:
+    // Browser-private aggregate contributors follow the canonical V2 aggregate contract:
     // contributors expose only aggregate facts. Their underlying values/drafts stay
     // with the component that owns them and are never materialized into semantic CTX.
     const contributors = new Map();
@@ -76,11 +67,18 @@ const entryFormStates = new WeakMap();
     // turning that draft into parent-entry dirtiness.
     const hasPendingWork = () =>
       document.documentElement.dataset.manatosSystemUnavailable !== 'true' &&
-      (state.isDirty() || state.contributorState().blocked);
+      (window.ManatOS?.uiHost?.shouldConfirmCancellation?.(owningEntryPagePath) === true ||
+        state.contributorState().blocked);
 
     window.addEventListener('manatos:retry-request', (event) => {
       event.preventDefault();
       form.requestSubmit();
+    });
+
+    window.addEventListener('manatos:surface-cancellation-confirmed', () => {
+      // The shell has already resolved Save/Discard for this surface. Allow the
+      // resulting navigation/close to pass through the entry-local cancellation guard.
+      allowPageExit = true;
     });
 
     /*
@@ -98,6 +96,7 @@ const entryFormStates = new WeakMap();
 
         const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
         if (!(anchor instanceof HTMLAnchorElement)) return;
+        if (anchor.matches('[data-cancel-operation]')) return;
         if (anchor.target && anchor.target !== '_self') return;
         if (anchor.hasAttribute('download')) return;
         if (anchor.dataset.bsToggle || anchor.dataset.bsTarget) return;
@@ -365,16 +364,28 @@ document.querySelectorAll('form[data-dirty-guard="true"]').forEach((form) => {
     // Bind this form to the entry surface that owns it when the runtime boots.
     // A selector/popup may later become the deepest UI level, but child surfaces
     // must never receive the parent entry transaction's dirty/valid/blocked state.
-    const entryPagePath = (() => {
-      let node = runtime?.value?.ui?.level;
-      if (!node) return null;
-      let path = 'ctx.ui.level';
-      while (node?.level) {
-        node = node.level;
-        path += '.level';
-      }
-      return node?.control?.kind === 'entry' ? path : null;
-    })();
+    const entryPagePath = window.ManatOS?.uiHost?.surfacePath?.('entry') || null;
+
+    /*
+     * Every editable entry surface owns one canonical dismissal adapter. Escape,
+     * popup chrome and future host-level dismissal requests therefore enter the
+     * exact same Close/Cancel control path as the user clicking the footer action.
+     * The shell's cancellation transaction remains authoritative for dirty state;
+     * this adapter neither closes a host directly nor duplicates that policy.
+     *
+     * Register against the owning entry CTX path rather than the current leaf:
+     * temporary child surfaces may become the leaf while this form remains open.
+     */
+    const unregisterEntryDismiss =
+      entryPagePath && closeCancel instanceof HTMLElement
+        ? window.ManatOS?.popup?.runtime?.registerDismissHandler?.({ path: entryPagePath }, () => {
+            closeCancel.click();
+            return true;
+          })
+        : null;
+    if (typeof unregisterEntryDismiss === 'function') {
+      window.addEventListener('pagehide', unregisterEntryDismiss, { once: true });
+    }
 
     const setIndicator = ({ changed, valid, blocked, blockingCount, initializing }) => {
       if (!(indicator instanceof HTMLElement) || !(indicatorText instanceof HTMLElement)) return;
@@ -476,6 +487,12 @@ document.querySelectorAll('form[data-dirty-guard="true"]').forEach((form) => {
           'aria-label',
           changed || blocked ? 'Cancel editing' : 'Close entry',
         );
+        const inputReady = window.ManatOS?.uiHost?.isUserInputReady?.(entryPagePath) !== false;
+        if (closeCancel instanceof HTMLButtonElement) closeCancel.disabled = !inputReady;
+        else {
+          closeCancel.setAttribute('aria-disabled', String(!inputReady));
+          closeCancel.classList.toggle('disabled', !inputReady);
+        }
       }
 
       // Page state is itself CTX. Metadata/actions can therefore make live,
@@ -530,6 +547,9 @@ document.querySelectorAll('form[data-dirty-guard="true"]').forEach((form) => {
     window.ManatOS?.ctx?.trackSubscriber?.('*', { kind: 'form', label: 'Entry state' });
     window.addEventListener('manatos:ctx-change', scheduleUpdate);
     form.addEventListener('manatos:form-saved', scheduleUpdate);
+    window.addEventListener('manatos:user-input-readiness-changed', (event) => {
+      if (event.detail?.path === entryPagePath) scheduleUpdate();
+    });
 
     queueMicrotask(update);
   });

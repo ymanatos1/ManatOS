@@ -8,6 +8,7 @@ import { apiSessionOptions } from '../auth/api-session.js';
 
 import { apiPathFor } from './api-path.js';
 import type { SysBODefinition } from './types.js';
+import { memoizeRequest } from '../runtime/request-memo.js';
 
 /**
  * Canonical UI-facing capability shape consumed by metadata/page CTX.
@@ -55,9 +56,8 @@ export async function resolveUIEntityPermissions(
       ? `/api/v1/${apiPath}/${encodeURIComponent(recordId)}/$capabilities`
       : `/api/v1/${apiPath}/$capabilities`;
 
-  const response = await apiClient.get<SysBOCapabilityProjection>(
-    capabilityPath,
-    apiSessionOptions(req),
+  const response = await memoizeRequest(req, `api:get:${capabilityPath}`, () =>
+    apiClient.get<SysBOCapabilityProjection>(capabilityPath, apiSessionOptions(req)),
   );
   const capabilities = response.data.capabilities;
 

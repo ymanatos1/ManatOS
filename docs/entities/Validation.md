@@ -1,53 +1,43 @@
 # Validation
 
-Validation answers whether a candidate field/entry/aggregate state is acceptable. ManatOS deliberately separates immediate client feedback from authoritative server/domain enforcement.
+Validation answers whether a candidate field, entry or aggregate state is acceptable. ManatOS separates immediate browser feedback from authoritative API/domain/storage enforcement, and it also distinguishes **canonical metadata semantics** from the concrete enforcement mechanisms currently implemented.
 
-## Sources of validation semantics
+## Canonical declarations
 
-Canonical field metadata supplies reusable constraints such as required/nullability, length, enum domain, version grammar and reference semantics. Normalization/calculation expressions can further define canonical values. Relationship/integrity services and authorization add server-side constraints that are not safely reducible to a field control.
+Canonical field metadata can declare semantics such as required/nullability, length, enum domain, version grammar, uniqueness, reference meaning and normalization/calculation rules. These declarations describe the business object independently of a particular control or storage adapter.
 
-UI metadata may add interaction/presentation restrictions for a particular surface, but must not weaken canonical/server rules.
+UI metadata may narrow interaction for a particular view/invocation, but it must not weaken canonical or server-side rules.
 
-## Client validation
+A declaration does not by itself prove that one universal validator currently enforces that declaration at every boundary. When documenting or extending a rule, identify both its canonical metadata owner and the runtime/API/storage mechanism that enforces it.
 
-The entry/field runtime can evaluate safe deterministic rules immediately and project validation state into CTX so components and Save/dirty state can react consistently. Field components present errors; they should not each invent their own unrelated rule engine.
+## Browser validity
 
-A change can produce `validation:changed` / field-state events, but the current validation state remains owned by the runtime rather than reconstructed from event history.
+The production entry form currently derives scalar field validity from the rendered controls: controls participate through native `checkValidity()` and the field runtime/components can publish semantic errors through `setCustomValidity()`. Structured components can perform their own immediate parsing/interaction checks where the component contract requires them.
 
-## Server validation
+Field validity is then combined with private aggregate contributors by the shared entry aggregate policy. There is no separate semantic `validation:changed` event history that owns validity; current state is read from the controls/contributors when aggregate policy is evaluated.
 
-The API revalidates authoritative rules on create/update. This protects non-browser clients and prevents disabled/hidden controls from becoming a security/integrity boundary.
+Components should present validation, not create an entity-specific rule engine when the rule belongs in canonical metadata/runtime or authoritative domain logic.
 
-Server validation can include:
+## Aggregate validity and persistence blocking
 
-- canonical field constraints;
-- normalization failures;
-- relationship/reference integrity;
-- uniqueness;
-- entity/domain invariants;
-- persisted calculation/traversal errors;
-- authorization.
+Compound components can register private contributor facts with the owning form. A contributor may report `dirty`, `valid` and `blocksPersistence`. The shared policy combines contributor validity with scalar field validity and blocks Save while an active child editor or other contributor says persistence is unsafe.
+
+`blocked` is not the same as `invalid`: an unfinished embedded member editor can temporarily block parent persistence without pretending its draft is already a persisted parent-field value.
+
+## API and storage authority
+
+The API never treats browser validity as an integrity or security boundary. Current authoritative enforcement is composed from concrete mechanisms rather than one monolithic generic validator. These include canonical normalization in the generic service, metadata-defined uniqueness in repository/storage behavior, persisted calculations before commit, entity/domain service invariants, relationship integrity/delete policy, authorization, trusted command validation and storage-adapter schema semantics.
+
+Consequently, avoid claiming that every `required`, `maxLength`, enum or similar metadata declaration is already revalidated by a single generic API validation pass unless the implementation actually provides that enforcement. The architectural direction is canonical behavior across adapters/clients; the documentation must remain precise about current enforcement.
 
 ## Normalization versus validation
 
-Normalization converts an acceptable candidate into canonical form; validation determines whether it is acceptable.
+Normalization transforms a candidate into its canonical value; validation determines whether the candidate/state is acceptable. Canonical normalization expressions are evaluated by the normal expression machinery and the API applies metadata-declared normalization before persistence.
 
-For example:
+For example, contact-specific normalization can canonicalize acceptable input, while malformed structured input can be rejected by the appropriate component/domain boundary. The field component does not become the canonical owner of normalization merely because it presents the error.
 
-```text
-EmailAddress('  USER@Example.COM ')
-    -> 'user@example.com'
+## Failure behavior
 
-EmailAddress('not-an-address')
-    -> evaluation/validation error
-```
+A failed client validity check keeps the working transaction available for correction. A rejected API/domain/storage operation likewise does not promote the entry baseline. Successful persistence returns authoritative data, which becomes the new baseline.
 
-The field component does not own this rule.
-
-## Aggregate validation
-
-Compound components can contribute validity to the owning entry. A collection editor with an incomplete child row, or a hierarchy workspace violating a relationship rule, can prevent commit even though every scalar field appears locally valid.
-
-## Error presentation
-
-A client should preserve the user's working state when validation fails, focus/present meaningful errors, and distinguish validation failures from connectivity/server faults. Correcting the offending dependency should clear/recompute derived validation state through the normal mutation/reactivity path.
+See [Generic List and Entry Contracts](Generic-List-and-Entry-Contracts.md) and [Persistence, Commit, Discard and Recovery](Persistence-Commit-and-Recovery.md).

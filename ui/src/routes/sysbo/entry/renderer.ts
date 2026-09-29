@@ -5,6 +5,7 @@ import createError from 'http-errors';
 import {
   allowedInvocationOptionValues,
   AppError,
+  resolveSysBOUIView,
   type ManatOSContext,
   type SysBOUser,
 } from '@manatos/shared';
@@ -30,6 +31,7 @@ import type { SysBODefinition } from '../../../sysbo/types.js';
 import { effectiveEntryUIMetadata, entryInvocation } from './invocation.js';
 import { buildEntryInitializationSeed } from './initialization.js';
 import { loadMetadataHierarchySnapshot } from '../hierarchy/data.js';
+import { planEntryResources } from './resource-plan.js';
 
 /**
  * Render one canonical metadata-driven SysBO record page.
@@ -51,6 +53,16 @@ export async function renderMetadataDrivenRecord(
     applicationError?: AppError;
     parentOwnerContext?: Readonly<Record<string, unknown>>;
   },
+  surface: {
+    purpose?: string;
+    forceReadOnly?: boolean;
+    title?: string;
+    titleIcon?: string;
+    breadcrumbItems?: Array<{ label: string; href: string | null }>;
+    pageModel?: Record<string, unknown>;
+    uiViewKey?: string;
+    showEntryActions?: boolean;
+  } = {},
 ): Promise<void> {
   const currentUser = res.locals.currentUser as SysBOUser | null;
   // Route orchestration already resolved the authoritative API capability
@@ -58,19 +70,24 @@ export async function renderMetadataDrivenRecord(
   // inside the renderer or issue a second capability request.
   const effectivePermissions = permissions;
   const invocation = entryInvocation(req);
+  const [metadata, canonicalMetadataUI] = await Promise.all([
+    canonicalSysBOMetadata(req, definition),
+    canonicalSysBOUIMetadata(req, definition),
+  ]);
+  const resolvedUIView = resolveSysBOUIView(
+    canonicalMetadataUI,
+    surface.uiViewKey ?? invocation.uiViewKey,
+  );
+  const metadataUI = effectiveEntryUIMetadata(resolvedUIView.metadata, invocation);
   const recordMode =
-    invocation.mode === 'view'
+    surface.forceReadOnly || metadataUI.record.readOnly === true || invocation.mode === 'view'
       ? 'view'
       : record.isNew
         ? 'create'
         : effectivePermissions.update
           ? 'edit'
           : 'view';
-  const [metadata, canonicalMetadataUI] = await Promise.all([
-    canonicalSysBOMetadata(req, definition),
-    canonicalSysBOUIMetadata(req, definition),
-  ]);
-  const metadataUI = effectiveEntryUIMetadata(canonicalMetadataUI, invocation);
+  const resourcePlan = planEntryResources(metadata, metadataUI, recordMode === 'view');
 
   /* Register canonical entity knowledge before supplemental/reference projection. */
   const ctx = res.locals.ctx as ManatOSContext;
@@ -109,6 +126,8 @@ export async function renderMetadataDrivenRecord(
     metadataUI,
     effectivePermissions,
     ctx,
+    resourcePlan,
+    recordMode === 'view',
   );
 
   // Caller constraints narrow option catalogues without teaching the hosted
@@ -123,7 +142,7 @@ export async function renderMetadataDrivenRecord(
     supplemental.referenceData[fieldKey] = allowed.map((value) => ({ value, label: value }));
     /*
      * Do not synthesize a create value here. Option-domain restrictions and
-     * default reconciliation belong to EntityEntryRuntime so page and popup
+     * default reconciliation belong to the browser entry-policy runtime so page and popup
      * hosts use exactly the same V2 initialization mechanics. No route-local
      * value decision is allowed to become a second defaulting implementation.
      */
@@ -161,7 +180,9 @@ export async function renderMetadataDrivenRecord(
   if (Object.keys(collectionResources).length) {
     surfaceResources.collections = collectionResources;
   }
-  const hierarchyDescriptor = metadataHierarchyWorkspaceDescriptor(metadata, metadataUI);
+  const hierarchyDescriptor = resourcePlan.componentKeys.has('hierarchy-tree')
+    ? metadataHierarchyWorkspaceDescriptor(metadata, metadataUI)
+    : null;
   if (hierarchyDescriptor && !record.isNew && !ownerDraft) {
     const hierarchyIdentity = item[hierarchyDescriptor.idField] ?? record.recordId;
     if (hierarchyIdentity != null && String(hierarchyIdentity) !== '') {
@@ -221,13 +242,14 @@ export async function renderMetadataDrivenRecord(
       ? ` - ${supplemental.primaryDisplayValue}`
       : '';
 
+  const defaultTitle = `${modeLabel} ${metadata.label}${primaryDisplayValue}`;
   await renderPage(res, 'pages/sysbo/entry', {
-    title: `${modeLabel} ${metadata.label}${primaryDisplayValue}`,
-    titleIcon: definition.icon,
-    breadcrumbItems: [
+    title: surface.title ?? defaultTitle,
+    titleIcon: surface.titleIcon ?? definition.icon,
+    breadcrumbItems: surface.breadcrumbItems ?? [
       { label: 'ManatOS', href: '/' },
       { label: metadata.pluralLabel, href: `/bo/${encodeURIComponent(definition.key)}` },
-      { label: `${modeLabel} ${metadata.label}${primaryDisplayValue}`, href: null },
+      { label: defaultTitle, href: null },
     ],
     definition,
     metadata,
@@ -251,8 +273,12 @@ export async function renderMetadataDrivenRecord(
      */
     workspaceFrameOwner: 'content',
     entryPopupToken: invocation.token,
+    entryDensity: invocation.density,
+    entryRecoverable: invocation.recoverable,
     entryInvocationDefaults: invocation.defaults,
     entryInvocationOverrides: invocation.uiOverrides,
+    entryUIViewKey: resolvedUIView.key,
+    entryActionsVisible: surface.showEntryActions !== false,
     entryRepresentationRuntime: entryRepresentationRuntime(
       metadata,
       metadataUI,
@@ -265,7 +291,7 @@ export async function renderMetadataDrivenRecord(
         : 'cli',
     entryRenderValues: v2ServerValues,
     uiBootstrap: {
-      purpose: 'open-entity-entry',
+      purpose: surface.purpose ?? 'open-entity-entry',
       entityKey: definition.key,
       entityName: metadata.name,
       pluralName: metadata.pluralLabel,
@@ -275,8 +301,10 @@ export async function renderMetadataDrivenRecord(
       isNew: record.isNew,
       readOnly: recordMode === 'view',
       popup: invocation.popup,
+      recoverable: invocation.recoverable,
       defaults: invocation.defaults,
       uiOverrides: invocation.uiOverrides,
+      uiView: { key: resolvedUIView.key, viewType: resolvedUIView.viewType },
       parentEntries: parentItems,
       ...(record.parentOwnerContext
         ? {
@@ -299,5 +327,6 @@ export async function renderMetadataDrivenRecord(
       },
       resources: surfaceResources,
     },
+    ...(surface.pageModel ?? {}),
   });
 }

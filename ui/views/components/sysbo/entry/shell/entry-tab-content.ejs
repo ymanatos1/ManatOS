@@ -26,6 +26,35 @@
   alternate ManatOS renderers and customer-authored protoCRM applications.
 %>
 <%
+  const detailsColumnSpansFor = (columns) => {
+    const explicit = columns.map((column) => {
+      const resolved = dynamicUIValue(column.span ?? null, ctxFields, {
+        source: 'ui-metadata', sourcePath: 'tabs.details.content.column.span',
+        targetPath: 'tabs.details.content.column.span', purpose: 'resolve details column span',
+      });
+      const numeric = Number(resolved);
+      return Number.isFinite(numeric) && numeric > 0 ? Math.max(1, Math.min(12, Math.trunc(numeric))) : null;
+    });
+    const compact = columns.map((column, index) => {
+      if (explicit[index] !== null) return false;
+      const meaningful = (column.content || []).filter((item) => item.kind !== 'spacer' && item.kind !== 'break');
+      return meaningful.length > 0 && meaningful.every((item) => item.kind === 'field' && item.representation === 'portrait');
+    });
+    const reserved = explicit.reduce((sum, span) => sum + (span || 0), 0) + compact.reduce((sum, value) => sum + (value ? 3 : 0), 0);
+    const flexibleCount = columns.filter((_, index) => explicit[index] === null && !compact[index]).length;
+    let remaining = Math.max(flexibleCount, 12 - reserved);
+    let flexibleRemaining = flexibleCount;
+    return columns.map((_, index) => {
+      if (explicit[index] !== null) return explicit[index];
+      if (compact[index]) return 3;
+      const span = flexibleRemaining > 0
+        ? Math.max(1, Math.floor(remaining / flexibleRemaining))
+        : 1;
+      remaining -= span;
+      flexibleRemaining -= 1;
+      return span;
+    });
+  };
   const componentBindingContractFor = (component) => {
     const bindings = {};
     const bindingExpressions = {};
@@ -57,18 +86,21 @@
            * can be changed according to the same metadata/evaluator rule used
            * by the controls themselves.
            */
-          const tabContents = Array.isArray(tab.content) && tab.content.length
-            ? tab.content
-            : (tab.fields || []).map((field) => ({ kind: 'field', field, span: 6 }));
+          const tabContents = Array.isArray(tab.content) ? tab.content : [];
           const formLikeTab = !tab.layout || tab.layout === 'form';
-          const tabHasEditableFields = tabContents.some((content) => {
+          const flattenedTabContents = (contents) => contents.flatMap((content) =>
+            content?.kind === 'column' || content?.kind === 'inline'
+              ? flattenedTabContents(content.content || [])
+              : [content]);
+          const effectiveTabContents = flattenedTabContents(tabContents);
+          const tabHasEditableFields = effectiveTabContents.some((content) => {
             if (content?.kind !== 'field') return false;
             const key = content.field;
             if (relatedCollections[key]) return false;
             const field = metadata.fieldDefinition[key];
             return Boolean(field && fieldVisible(field) && !field.sensitive && fieldEditable(field));
           });
-          const tabHasInteractiveComponents = tabContents.some(
+          const tabHasInteractiveComponents = effectiveTabContents.some(
             (content) => content?.kind === 'component' && content.component?.readOnly === false,
           );
           const tabComponentInteractive = tab.layout === 'component' && tab.component?.readOnly === false;
@@ -94,7 +126,7 @@
               debuggingCsrfToken: csrfToken,
               debuggingComponent: tab.component
             }) %>
-          <% } else if (Array.isArray(tab.content) && tab.content.length) { %>
+          <% } else if (formLikeTab && Array.isArray(tab.content) && tab.content.length) { %>
             <!--
               Ordered mixed content is metadata-driven. The registry maps semantic
               component keys to renderer implementations; this template never
@@ -130,7 +162,13 @@
                     ...fieldComponentContext,
                     key,
                     span: resolveContentSpan(6),
-                    spanExpression: contentSpanExpression
+                    spanExpression: contentSpanExpression,
+                    representation: fieldRepresentationFor(
+                      content.representation || tab.representation || 'default',
+                      metadata.fieldDefinition[content.field]?.type,
+                    ),
+                    relatedFieldKeys: content.relatedFields || [],
+                    relatedValues: (content.relatedFields || []).map((relatedKey) => valueFor(relatedKey))
                   }) %>
                 <% } else if (content.kind === 'break') { %>
                   <!-- Generic metadata-declared row break; it carries no field/data semantics. -->
@@ -219,6 +257,32 @@
                 spanExpression: null,
               }) %>
             </div>
+          <% } else if (tab.layout === 'details') { %>
+            <% const detailColumns = (tab.content || []).filter((content) => content.kind === 'column'); %>
+            <% const detailColumnSpans = detailsColumnSpansFor(detailColumns); %>
+            <div class="row g-3" data-metadata-details-layout>
+              <% for (let columnIndex = 0; columnIndex < detailColumns.length; columnIndex += 1) { %>
+                <% const column = detailColumns[columnIndex]; %>
+                <div class="col-md-<%= detailColumnSpans[columnIndex] %>" data-metadata-details-column>
+                  <div class="row g-3">
+                    <% for (const content of column.content || []) { %>
+                      <% if (content.kind === 'break') { %><div class="w-100" aria-hidden="true"></div><% continue; } %>
+                      <% if (content.kind === 'spacer') { %><div class="col-12 metadata-details-spacer" data-metadata-layout-spacer aria-hidden="true"></div><% continue; } %>
+                      <% if (content.kind !== 'field') continue; %>
+                      <%- include('../fields/form-field', {
+                        ...fieldComponentContext, key: content.field, span: 12, spanExpression: null,
+                        representation: fieldRepresentationFor(
+                          content.representation || tab.representation || 'default',
+                          metadata.fieldDefinition[content.field]?.type,
+                        ),
+                        relatedFieldKeys: content.relatedFields || [],
+                        relatedValues: (content.relatedFields || []).map((relatedKey) => valueFor(relatedKey))
+                      }) %>
+                    <% } %>
+                  </div>
+                </div>
+              <% } %>
+            </div>
           <% } else if (tab.layout === 'summary') { %>
             <%- include('../content/summary', {
               tab,
@@ -242,12 +306,6 @@
               optionItemForField,
               enumToneClass,
             }) %>
-          <% } else { %>
-            <div class="row g-3">
-              <% for (const key of tab.fields) { %>
-                <%- include('../fields/form-field', { ...fieldComponentContext, key, span: 6 }) %>
-              <% } %>
-            </div>
           <% } %>
 
         </div>

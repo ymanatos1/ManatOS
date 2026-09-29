@@ -24,8 +24,11 @@ The documents below explain how those capabilities fit together; CTX, expression
 - [`Fields.md`](Fields.md) — every supported canonical field type, value semantics and the field-type/value-source distinction.
 - [`Field-Components-Detail.md`](Field-Components-Detail.md) — how typed fields are rendered/edited and how field components interact with CTX.
 - [`Entity-Lists.md`](Entity-Lists.md) — generic list capabilities and internal request/runtime flow.
+- [`Generic-List-and-Entry-Contracts.md`](Generic-List-and-Entry-Contracts.md) — host-neutral list/entry state, query transport, aggregate persistence readiness and enforcement boundaries.
 - [`Entity-Entries.md`](Entity-Entries.md) — generic entry/form capabilities and lifecycle.
+- [`Entry-Opening-Invocation-and-Optimization-Audit.md`](Entry-Opening-Invocation-and-Optimization-Audit.md) — current entry-opening/caller matrix, duplication audit and staged single-opener optimization baseline.
 - [`Entity-Entries-Forms-Detail.md`](Entity-Entries-Forms-Detail.md) — deeper entry state, baseline, save and composition mechanics.
+- [`Persistence-Commit-and-Recovery.md`](Persistence-Commit-and-Recovery.md) — persistence boundaries, discard semantics, Create Organization continuation drafts and abnormal outage recovery.
 - [`Components.md`](Components.md) — reusable metadata component architecture and ownership rules.
 - [`Component-Catalog.md`](Component-Catalog.md) — current component implementations and their capabilities.
 - [`Composite-Components.md`](Composite-Components.md) — compound components and aggregate state.

@@ -177,7 +177,7 @@ describe('company/platform navigation composition', () => {
           icon: 'bi-gear-wide-connected',
           url: '/platform-settings',
           order: 420,
-          visible: { expression: 'user.permissions.userRole !== null' },
+          visible: { expression: '$user.permissions.userRole !== null' },
         },
       ],
     };
@@ -201,7 +201,7 @@ describe('company/platform navigation composition', () => {
   it('keeps Apps Playground dependent on the same platform capability in both menus', () => {
     const platform = {
       ...resolvePlatform(MANATOS_COMPANY),
-      entities: [],
+      subsystems: [],
     };
 
     const navigation = navigationFor(
@@ -225,7 +225,7 @@ describe('company/platform navigation composition', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const playground = platform.navigation.find((item) => item.id === 'app-playground');
     expect(playground?.visible).toEqual({
-      expression: 'user.permissions.platforms.protocrm.capabilities.platformAccess === true',
+      expression: '$user.permissions.platforms.protocrm.capabilities.platformAccess === true',
     });
   });
 
@@ -387,7 +387,7 @@ describe('company/platform SysBO ownership', () => {
   it('removes protoCRM SysBOApplication when the selected platform does not contribute it', () => {
     const platform = {
       ...resolvePlatform(MANATOS_COMPANY),
-      entities: [],
+      subsystems: [],
     };
 
     expect(Object.keys(effectiveSysBODefinitions(MANATOS_COMPANY, platform)).sort()).toEqual([
