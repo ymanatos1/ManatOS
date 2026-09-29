@@ -1,4 +1,5 @@
 import type { SysBOFieldMetadata } from '../metadata/bo/index.js';
+import { enumItemsForField } from '../metadata/subsystems/enum-registry.js';
 import type { SysBOUIFieldOverrideMetadata } from '../metadata/ui/index.js';
 
 export interface StaticEntryFieldUx {
@@ -30,7 +31,7 @@ export function staticEntryFieldUx(
 }
 
 export function allowedInvocationOptionValues(
-  field: Pick<SysBOFieldMetadata, 'type' | 'enumItems'> | undefined,
+  field: Pick<SysBOFieldMetadata, 'type' | 'enum' | 'enumItems'> | undefined,
   restriction:
     Readonly<{ allowedValues?: readonly unknown[]; allowedEnumItemTrait?: string }> | undefined,
 ): readonly string[] | null {
@@ -38,7 +39,7 @@ export function allowedInvocationOptionValues(
   if (Array.isArray(restriction.allowedValues)) return restriction.allowedValues.map(String);
   if (typeof restriction.allowedEnumItemTrait !== 'string') return null;
   const trait = restriction.allowedEnumItemTrait;
-  return (field.enumItems ?? [])
+  return enumItemsForField(field)
     .filter((item) => item[trait] === true)
     .map((item) => String(item.value));
 }

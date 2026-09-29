@@ -1,4 +1,9 @@
-import { allSysBOMetadata, type SysBOFieldMetadata, type SysBOMetadata } from '@manatos/shared';
+import {
+  allSysBOMetadata,
+  enumValuesForField,
+  type SysBOFieldMetadata,
+  type SysBOMetadata,
+} from '@manatos/shared';
 
 const fieldSchema = (field: SysBOFieldMetadata): Record<string, unknown> => {
   switch (field.type) {
@@ -32,7 +37,7 @@ const fieldSchema = (field: SysBOFieldMetadata): Record<string, unknown> => {
         additionalProperties: false,
       };
     case 'enum':
-      return { type: 'string', enum: field.enumValues };
+      return { type: 'string', enum: enumValuesForField(field) };
     case 'picture':
       return {
         type: ['object', 'null'],

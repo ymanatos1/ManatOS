@@ -1,5 +1,7 @@
 import type { SysBOPictureValue } from '@manatos/shared';
 
+import type { TransactionFinalizationResult } from './transactions-support.js';
+
 /**
  * Result returned when the active storage adapter is explicitly flushed.
  */
@@ -21,6 +23,15 @@ export interface StorageFlushResult {
  * This interface can expand as SQL/PostgreSQL/etc. adapters are added.
  */
 export interface StorageAdapter {
+  beginTransaction(ownerId: string): Promise<string>;
+
+  commitTransaction(transactionId: string, ownerId: string): Promise<TransactionFinalizationResult>;
+
+  rollbackTransaction(
+    transactionId: string,
+    ownerId: string,
+  ): Promise<TransactionFinalizationResult>;
+
   writePicture(
     entityKey: string,
     recordId: string,

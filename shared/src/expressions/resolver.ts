@@ -111,9 +111,12 @@ function selectedRelativeScope(
   const ancestry = findAncestry(ctxRoot, currentCtxNode);
   if (!ancestry) return undefined;
   if (selector === '#') return ancestry.length >= 2 ? ancestry[ancestry.length - 2] : undefined;
-  if (selector === '#level') {
+  if (['#level', '#control', '#data', '#layout', '#state'].includes(selector)) {
     for (let index = ancestry.length - 1; index >= 0; index -= 1) {
-      if (isUiLevel(ancestry[index])) return ancestry[index];
+      if (!isUiLevel(ancestry[index])) continue;
+      const level = ancestry[index] as Record<string, unknown>;
+      if (selector === '#level') return level;
+      return level[selector.slice(1)];
     }
   }
   return undefined;
@@ -143,7 +146,7 @@ export function resolveExpressionVariable(
   const first = members.shift()!;
   if (typeof first !== 'string') return { found: false, value: undefined, owner: undefined };
 
-  if (first === '#' || first === '#level') {
+  if (['#', '#level', '#control', '#data', '#layout', '#state'].includes(first)) {
     const selected = selectedRelativeScope(first, ctxRoot, currentCtxNode);
     if (selected === undefined) return { found: false, value: undefined, owner: undefined };
     return members.length
@@ -222,7 +225,7 @@ export async function resolveExpressionVariableAsync(
   const first = members.shift()!;
   if (typeof first !== 'string') return { found: false, value: undefined, owner: undefined };
 
-  if (first === '#' || first === '#level') {
+  if (['#', '#level', '#control', '#data', '#layout', '#state'].includes(first)) {
     const selected = selectedRelativeScope(first, ctxRoot, currentCtxNode);
     if (selected === undefined) return { found: false, value: undefined, owner: undefined };
     return members.length

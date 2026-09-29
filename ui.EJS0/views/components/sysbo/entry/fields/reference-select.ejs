@@ -1,0 +1,257 @@
+<%#
+  COMPONENT: Reference select
+
+  Purpose:
+  - Presents and edits a canonical entity-entry reference and can launch the generic record selector.
+
+  Inputs / metadata:
+  - key, field, value, editable, referenceValues plus target metadata/UI and selector reference data.
+
+  CTX contract:
+  - The hidden select binds the canonical reference id through data-ctx-field; selector popup gets its own canonical popup CTX.
+
+  Embeds / delegates:
+  - field-tools-menu.ejs; popups/selectors/record-selector.ejs when record browsing is available.
+
+  Runtime contract:
+  - Reference-select runtime synchronizes choices; record-selector runtime owns popup selection/lifecycle.
+%>
+<%
+  /*
+   * Canonical related-entry selector/presenter. A reference is an entity entry,
+   * not merely an entity type, so both editable choices and read-only values
+   * render the referenced entry's resolved representation: canonical entry
+   * icon(s) followed by its canonical entry name. `None` / `Choose...` remain
+   * intentionally iconless.
+   */
+  /* SSR receives the factual reference catalogue. Canonical browser CTX
+   * fields.<key>.options owns the effective runtime selector domain and may overlay
+   * owner-workspace state after the surface is adopted. */
+  const references = referenceValues[key] || [];
+  const selectedReference = references.find(
+    (reference) => String(reference?.id ?? reference?.value ?? '') === String(value ?? ''),
+  ) || null;
+  const referencePresentation = (reference) =>
+    projectedReferenceRepresentation(reference, reference?.id ?? reference?.value ?? '');
+  const referenceName = (reference) => referencePresentation(reference).name;
+  const referenceIcons = (reference) => referencePresentation(reference).icons;
+
+  /*
+   * Existing-record selection is a generic record-browser capability, not a
+   * Principal/reference special case. The target's canonical metadata/UI list
+   * contract drives the popup; this field component only supplies invocation
+   * context and consumes the selected canonical id.
+   */
+  const directReferenceRelationship = Object.values(metadata?.relationships || {}).find(
+    (relationship) => Array.isArray(relationship?.fields) && relationship.fields.includes(key),
+  ) || null;
+  const inverseReferenceDeclaration = field?.inverseRelationship || null;
+  const inverseReferenceSourceMetadata = inverseReferenceDeclaration
+    && typeof relatedEntityMetadata !== 'undefined'
+    ? relatedEntityMetadata?.[inverseReferenceDeclaration.objectKey]
+    : null;
+  const inverseReferenceRelationship = inverseReferenceDeclaration
+    ? inverseReferenceSourceMetadata?.relationships?.[inverseReferenceDeclaration.relationship] || null
+    : null;
+  const referenceRelationship = directReferenceRelationship || inverseReferenceRelationship;
+  const referenceTargetKey = directReferenceRelationship?.references?.objectKey
+    || (inverseReferenceRelationship ? inverseReferenceDeclaration?.objectKey : '')
+    || '';
+  const referenceTargetMetadata = referenceTargetKey && typeof relatedEntityMetadata !== 'undefined'
+    ? relatedEntityMetadata[referenceTargetKey]
+    : null;
+  const referenceTargetUI = referenceTargetKey && typeof relatedEntityUIMetadata !== 'undefined'
+    ? relatedEntityUIMetadata[referenceTargetKey]
+    : null;
+  const referenceTargetListUI = referenceTargetUI || (referenceTargetMetadata ? {
+    key: referenceTargetKey,
+    list: {
+      visibleFields: [referenceTargetMetadata.primaryField],
+      filterFields: [],
+      sortableFields: [],
+      pageSize: 10,
+    },
+  } : null);
+  /*
+   * Selector reference presentation comes from the target entity's canonical
+   * reference catalogues, prepared server-side by the same generic data-access
+   * resolver used by normal SysBO lists. Never synthesize a self-reference map
+   * from this field's candidates: that loses the target entity of nested
+   * references and is exactly how raw parent/root ids leaked into popups.
+   */
+  const referenceSelectorContext =
+    typeof referenceSelectorContexts !== 'undefined' && referenceSelectorContexts?.[key]
+      ? referenceSelectorContexts[key]
+      : { referenceData: {}, excludedCandidateIds: [] };
+  const referenceSelectorReferenceData = referenceSelectorContext.referenceData || {};
+  const referenceSelectorExcludedCandidateIds = Array.isArray(referenceSelectorContext.excludedCandidateIds)
+    ? referenceSelectorContext.excludedCandidateIds
+    : [];
+  const referenceSourceEntityKey = typeof definition !== 'undefined' && definition?.key ? definition.key : '';
+  const referenceCreateRelated = referenceRelationship?.selection?.createRelated || null;
+  const referenceToolActions = [
+    ...(referenceTargetMetadata ? [{ action: 'view-entry', icon: 'eye', label: 'View selected entry', mutates: false, requiresValue: true }] : []),
+    ...(referenceTargetMetadata && typeof ownerEditing !== 'undefined' && ownerEditing ? [{
+      action: 'edit-owned-entry',
+      icon: 'pencil-square',
+      label: 'Edit selected entry',
+      mutates: false,
+      requiresValue: true,
+      authorization: { entityKey: referenceTargetKey, capability: 'update' },
+    }] : []),
+    ...(referenceTargetMetadata ? [{
+      action: 'add-entry',
+      icon: 'plus-circle',
+      label: 'Add entry…',
+      authorization: { entityKey: referenceTargetKey, capability: 'create' },
+    }] : []),
+    ...(referenceTargetMetadata ? [{ action: 'select-existing', icon: 'database-check', label: 'Select existing entry…' }] : []),
+    ...(field.required ? [] : [{ action: 'clear', icon: 'x-circle', label: 'Clear selection' }]),
+  ];
+%>
+<div
+  class="input-group metadata-field-input metadata-reference-select"
+  data-enhanced-field-input
+  data-field-component="reference"
+  data-metadata-reference-select
+  data-reference-entity-key="<%= referenceTargetKey %>"
+  data-reference-source-entity-key="<%= referenceSourceEntityKey %>"
+  data-reference-field-key="<%= key %>"
+  data-reference-field-label="<%= fieldLabel(field) %>"
+  data-reference-query-exclude="<%= JSON.stringify(referenceSelectorExcludedCandidateIds) %>"
+  data-reference-create-related="<%= JSON.stringify(referenceCreateRelated) %>"
+>
+  <div class="dropdown">
+    <button
+      class="btn metadata-field-input-menu-toggle <%= editable ? 'is-enabled' : 'is-readonly' %>"
+      type="button"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+      title="Related entry tools"
+      aria-label="Related entry tools for <%= fieldLabel(field) %>"
+    >
+      <i class="bi bi-link-45deg" aria-hidden="true"></i>
+    </button>
+
+    <%- include('field-tools-menu', {
+      key,
+      editable,
+      actions: referenceToolActions,
+      currentValue: value,
+      entityPermissions: typeof relatedEntityPermissions !== 'undefined' ? relatedEntityPermissions : {}
+    }) %>
+  </div>
+
+  <%# The native select remains the canonical form/CTX value behind the rich presenter. %>
+  <select
+    class="visually-hidden"
+    id="metadata-field-<%= key %>"
+    name="<%= key %>"
+    data-ctx-field="<%= key %>"
+    tabindex="-1"
+    aria-hidden="true"
+    <%= field.required ? 'required' : '' %>
+    <%= editable ? '' : 'disabled' %>
+  >
+    <option value=""><%= field.required ? 'Choose...' : 'None' %></option>
+    <% for (const reference of references) { %>
+      <option
+        value="<%= reference.id %>"
+        data-entry-name="<%= referenceName(reference) %>"
+        data-entry-icons="<%= JSON.stringify(referenceIcons(reference)) %>"
+        <%= String(value ?? '') === String(reference.id ?? '') ? 'selected' : '' %>
+        <%= reference.__referenceUnavailable && String(value ?? '') !== String(reference.id ?? '') ? 'disabled' : '' %>
+      ><%= referenceName(reference) %></option>
+    <% } %>
+  </select>
+
+  <%# Keep value selection and field tools as two independent dropdown hosts. %>
+  <div class="dropdown flex-grow-1 metadata-reference-value-dropdown">
+    <% if (editable) { %>
+      <button
+        type="button"
+        class="form-select metadata-reference-select-toggle text-start"
+        data-bs-toggle="dropdown"
+        data-reference-toggle
+        aria-expanded="false"
+      >
+    <% } else { %>
+      <div
+        class="form-select metadata-reference-select-toggle text-start is-readonly"
+        data-reference-toggle
+        aria-readonly="true"
+      >
+    <% } %>
+      <span data-reference-selected>
+        <% if (selectedReference) { %>
+          <% const selectedIcons = referenceIcons(selectedReference); %>
+          <% if (selectedIcons.length) { %>
+            <span class="metadata-entry-icons me-1" aria-hidden="true">
+              <% for (const [iconIndex, icon] of selectedIcons.entries()) { %>
+                <i
+                  class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"
+                ></i>
+              <% } %>
+            </span>
+          <% } %>
+          <%= referenceName(selectedReference) %>
+        <% } else { %>
+          <%= field.required ? 'Choose...' : 'None' %>
+        <% } %>
+      </span>
+    <% if (editable) { %>
+      </button>
+
+      <ul class="dropdown-menu metadata-reference-select-menu w-100" role="listbox">
+        <li>
+          <button type="button" class="dropdown-item" data-reference-choice="" role="option">
+            <%= field.required ? 'Choose...' : 'None' %>
+          </button>
+        </li>
+
+        <% for (const reference of references) { %>
+          <% const icons = referenceIcons(reference); %>
+          <li>
+            <button
+              type="button"
+              class="dropdown-item <%= String(value ?? '') === String(reference.id ?? '') ? 'active' : '' %>"
+              data-reference-choice="<%= reference.id %>"
+              role="option"
+              <%= reference.__referenceUnavailable && String(value ?? '') !== String(reference.id ?? '') ? 'disabled aria-disabled="true"' : '' %>
+              aria-selected="<%= String(value ?? '') === String(reference.id ?? '') ? 'true' : 'false' %>"
+            >
+              <% if (icons.length) { %>
+                <span class="metadata-entry-icons me-1" aria-hidden="true">
+                  <% for (const [iconIndex, icon] of icons.entries()) { %>
+                    <i
+                      class="bi bi-<%= icon %> metadata-entry-icon metadata-entry-icon-<%= iconIndex %>"
+                    ></i>
+                  <% } %>
+                </span>
+              <% } %>
+              <%= referenceName(reference) %>
+            </button>
+          </li>
+        <% } %>
+      </ul>
+    <% } else { %>
+      </div>
+    <% } %>
+  </div>
+  <% if (editable && referenceTargetMetadata && referenceTargetListUI) { %>
+    <%- include('../../../../popups/selectors/record-selector', {
+      selectorMetadata: referenceTargetMetadata,
+      selectorUIMetadata: referenceTargetListUI,
+      selectorListMetadata: referenceSelectorContext.listMetadata,
+      selectorReferenceData: referenceSelectorReferenceData,
+      selectorTemplateKey: `reference-${referenceSourceEntityKey || 'entity'}-${key}`,
+      selectorEntityKey: referenceTargetKey,
+      selectorCandidates: references,
+      selectorInitialTotal: references.length,
+      selectorQueryExclude: referenceSelectorExcludedCandidateIds,
+      selectorPageSizeOptions: Array.isArray(app?.ui?.bootstrap?.ui?.pageSizeOptions)
+        ? app.ui.bootstrap.ui.pageSizeOptions
+        : [10, 25, 50]
+    }) %>
+  <% } %>
+</div>

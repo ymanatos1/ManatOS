@@ -4,13 +4,13 @@ coverage/
 *.log
 data/logs/
 api/.env
-ui/.env
+ui.EJS0/.env
 data/database.json.tmp
 .DS_Store
 Thumbs.db
 
 # Generated browser vendor bundles/assets.
-ui/public/vendor/
+ui.EJS0/public/vendor/
 
 # Runtime/bootstrap data is created by ManatOS and must not be versioned.
 /data/
@@ -18,3 +18,6 @@ ui/public/vendor/
 # Local source/documentation archive helpers are developer-machine conveniences.
 *.cmd
 *.zip
+
+# Generated ManatOS browser application bundles.
+ui.EJS0/public/dist/

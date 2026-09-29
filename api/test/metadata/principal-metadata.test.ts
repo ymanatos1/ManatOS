@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SysBOPrincipalType,
+  enumItemsForField,
   sysBOPrincipalsMetadata,
   sysBOTelephoneNumbersMetadata,
   sysBOPrincipalTelephoneNumbersMetadata,
@@ -29,7 +30,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     });
   });
   it('declares icon, containment and parentability traits for every principal type', () => {
-    const items = sysBOPrincipalsMetadata.fieldDefinition.principalType.enumItems ?? [];
+    const items = enumItemsForField(sysBOPrincipalsMetadata.fieldDefinition.principalType);
     const byValue = new Map(items.map((item) => [item.value, item]));
 
     expect(byValue.get(SysBOPrincipalType.Person)).toMatchObject({
@@ -131,7 +132,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     );
 
     expect(system.parentId).toBe(group.id);
-    expect(system.rootPrincipalId).toBe(group.id);
+    expect(system.rootId).toBe(group.id);
 
     await expect(
       context.services.principals.create(
@@ -165,15 +166,17 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     ).rejects.toMatchObject({ code: 'PRINCIPAL_TYPE_CANNOT_CONTAIN_EXISTING_MEMBERS' });
   });
 
-  it('materializes canonical persisted calculated rootPrincipalId before commit and cascades it through the hierarchy', async () => {
-    expect(sysBOPrincipalsMetadata.fieldDefinition.rootPrincipalId).toMatchObject({
+  it('materializes canonical persisted calculated rootId before commit and cascades it through the hierarchy', async () => {
+    expect(sysBOPrincipalsMetadata.fieldDefinition.rootId).toMatchObject({
       type: 'reference',
       readOnly: true,
       nullable: true,
-      applicationManaged: true,
-      referenceBOKey: 'sys-principals',
     });
-    expect(sysBOPrincipalsMetadata.fieldDefinition.rootPrincipalId?.calculation).toMatchObject({
+    expect(sysBOPrincipalsMetadata.relationships?.root).toMatchObject({
+      fields: ['rootId'],
+      references: { objectKey: 'sys-principals', fields: ['id'] },
+    });
+    expect(sysBOPrincipalsMetadata.fieldDefinition.rootId?.calculation).toMatchObject({
       persisted: true,
       expression:
         "parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')",
@@ -189,7 +192,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       },
       SYSTEM_AUDIT_ACTOR,
     );
-    expect(root.rootPrincipalId).toBeNull();
+    expect(root.rootId).toBeNull();
 
     const team = await context.services.principals.create(
       {
@@ -200,7 +203,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       },
       SYSTEM_AUDIT_ACTOR,
     );
-    expect(team.rootPrincipalId).toBe(root.id);
+    expect(team.rootId).toBe(root.id);
 
     const member = await context.services.principals.create(
       {
@@ -211,7 +214,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       },
       SYSTEM_AUDIT_ACTOR,
     );
-    expect(member.rootPrincipalId).toBe(root.id);
+    expect(member.rootId).toBe(root.id);
 
     // Moving an ancestor to a new root must refresh materialized descendants,
     // not only the row that was directly edited.
@@ -220,10 +223,10 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       { parentId: null },
       SYSTEM_AUDIT_ACTOR,
     );
-    expect(movedTeam.rootPrincipalId).toBeNull();
+    expect(movedTeam.rootId).toBeNull();
 
     const refreshedMember = await context.services.principals.get(member.id);
-    expect(refreshedMember?.rootPrincipalId).toBe(movedTeam.id);
+    expect(refreshedMember?.rootId).toBe(movedTeam.id);
   });
 
   it('normalizes parentId to null only for principal types that cannot have a parent at the API service boundary', async () => {

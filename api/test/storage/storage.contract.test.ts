@@ -82,6 +82,125 @@ describe('storage contract', () => {
     });
   });
 
+  it('migrates persisted Principal.rootPrincipalId to rootId during startup', async () => {
+    const principalId = '33333333-3333-4333-8333-333333333333';
+    await writeFile(
+      databasePath,
+      JSON.stringify({
+        sysPrincipals: {
+          [principalId]: {
+            name: 'Legacy Root Cache',
+            principalType: 'Person',
+            parentId: null,
+            rootPrincipalId: principalId,
+            enabled: true,
+          },
+        },
+      }),
+      'utf8',
+    );
+    const legacyStore = new InMemoryDataStore(new JsonFilePersistence(databasePath));
+    await legacyStore.initialize();
+    await expect(legacyStore.sysPrincipals.getById(principalId)).resolves.toMatchObject({
+      rootId: principalId,
+    });
+    const persisted = JSON.parse(await readFile(databasePath, 'utf8'));
+    expect(persisted.sysPrincipals[principalId]).not.toHaveProperty('rootPrincipalId');
+    expect(persisted.sysPrincipals[principalId].rootId).toBe(principalId);
+  });
+
+  it('migrates legacy SysUser.principalId ownership to Principal.userId without dual persistence', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const principalId = '22222222-2222-4222-8222-222222222222';
+    await writeFile(
+      databasePath,
+      JSON.stringify({
+        sysUsers: {
+          [userId]: {
+            name: 'LegacyUser',
+            email: 'legacy@example.test',
+            emailVerified: true,
+            passwordHash: null,
+            passwordChangedAt: null,
+            role: 'User',
+            enabled: true,
+            principalId,
+          },
+        },
+        sysPrincipals: {
+          [principalId]: {
+            name: 'Legacy Person',
+            principalType: 'Person',
+            parentId: null,
+            enabled: true,
+          },
+        },
+      }),
+      'utf8',
+    );
+
+    const legacyStore = new InMemoryDataStore(new JsonFilePersistence(databasePath));
+    await legacyStore.initialize();
+
+    await expect(legacyStore.sysUsers.getById(userId)).resolves.not.toHaveProperty('principalId');
+    await expect(legacyStore.sysPrincipals.getById(principalId)).resolves.toMatchObject({ userId });
+
+    // initialize() itself must make the 18B persisted-schema migration durable.
+    // A later unrelated save must not be required to rewrite the database file.
+    const persisted = JSON.parse(await readFile(databasePath, 'utf8')) as {
+      sysUsers: Record<string, Record<string, unknown>>;
+      sysPrincipals: Record<string, Record<string, unknown>>;
+    };
+    expect(persisted.sysUsers[userId]).not.toHaveProperty('principalId');
+    expect(persisted.sysPrincipals[principalId]?.userId).toBe(userId);
+
+    // Loading and saving the already-migrated shape is idempotent.
+    const reloadedStore = new InMemoryDataStore(new JsonFilePersistence(databasePath));
+    await reloadedStore.initialize();
+    await expect(reloadedStore.sysPrincipals.getById(principalId)).resolves.toMatchObject({
+      userId,
+    });
+    await reloadedStore.save();
+    const persistedAgain = JSON.parse(await readFile(databasePath, 'utf8')) as {
+      sysUsers: Record<string, Record<string, unknown>>;
+      sysPrincipals: Record<string, Record<string, unknown>>;
+    };
+    expect(persistedAgain).toEqual(persisted);
+  });
+
+  it('rejects a legacy User.principalId whose Principal is missing instead of discarding the association', async () => {
+    const userId = '33333333-3333-4333-8333-333333333333';
+    const missingPrincipalId = '44444444-4444-4444-8444-444444444444';
+    await writeFile(
+      databasePath,
+      JSON.stringify({
+        sysUsers: {
+          [userId]: {
+            name: 'OrphanLegacyUser',
+            email: 'orphan@example.test',
+            emailVerified: true,
+            passwordHash: null,
+            passwordChangedAt: null,
+            role: 'User',
+            enabled: true,
+            principalId: missingPrincipalId,
+          },
+        },
+        sysPrincipals: {},
+      }),
+      'utf8',
+    );
+
+    const legacyStore = new InMemoryDataStore(new JsonFilePersistence(databasePath));
+    await expect(legacyStore.initialize()).rejects.toMatchObject({
+      code: 'STORAGE_ERROR',
+      cause: {
+        code: 'STORAGE_ERROR',
+        message: `Legacy identity migration conflict: User '${userId}' references missing Principal '${missingPrincipalId}'.`,
+      },
+    });
+  });
+
   it('creates GUID-keyed records and server-owned audit fields', async () => {
     const created = await applications.create(applicationInput('Demo'), SYSTEM_AUDIT_ACTOR);
 
@@ -125,7 +244,38 @@ describe('storage contract', () => {
     expect(result.idMap['draft:child']).toBeTruthy();
     const child = result.items.find((item) => item.name === 'Alice');
     expect(child?.parentId).toBe(result.idMap['draft:root']);
-    expect(child?.rootPrincipalId).toBe(result.idMap['draft:root']);
+    expect(child?.rootId).toBe(result.idMap['draft:root']);
+  });
+
+  it('aggregate commit updates only fields changed inside the owner workspace', async () => {
+    const created = await principals.create(
+      {
+        name: 'Baseline',
+        principalType: SysBOPrincipalType.Group,
+        enabled: true,
+        parentId: null,
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+    const baseline = { ...created };
+
+    // Simulate an independent actor changing a field that this long-lived
+    // workspace never touched after taking its baseline snapshot.
+    await principals.update(created.id, { name: 'Concurrent change' }, SYSTEM_AUDIT_ACTOR);
+
+    const result = await principals.commitAggregate(
+      {
+        entriesOriginal: [baseline],
+        entries: [{ ...baseline, enabled: false }],
+      },
+      SYSTEM_AUDIT_ACTOR,
+    );
+
+    expect(result.items[0]).toMatchObject({
+      id: created.id,
+      name: 'Concurrent change',
+      enabled: false,
+    });
   });
 
   it('enforces metadata-defined unique fields case-insensitively', async () => {

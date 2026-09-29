@@ -1,9 +1,12 @@
 import type {
   ResolvedSysBOUIView,
   SysBOUIEntryViewMetadata,
+  SysBOUIListMetadata,
   SysBOUIMetadata,
   SysBOUIRecordMetadata,
   SysBOUIRecordViewMetadata,
+  SysBOUIRelatedCollectionMetadata,
+  SysBOUIRelatedListViewMetadata,
 } from './types.js';
 
 export const DEFAULT_SYSBO_UI_VIEW_KEY = 'main';
@@ -117,5 +120,86 @@ export function resolveSysBOUIView(
     viewType: view.viewType,
     ...(view.label ? { label: view.label } : {}),
     metadata: effectiveMetadata,
+  };
+}
+
+export interface ResolvedSysBOUIListView {
+  key: string;
+  label: string;
+  metadata: SysBOUIListMetadata;
+}
+
+/** Resolve a keyed list uiView from entity-wide common metadata plus view overrides. */
+export function resolveSysBOUIListView(
+  metadata: Readonly<SysBOUIMetadata>,
+  requestedKey: string = DEFAULT_SYSBO_UI_VIEW_KEY,
+): ResolvedSysBOUIListView {
+  const key = String(requestedKey || DEFAULT_SYSBO_UI_VIEW_KEY);
+  const contribution = metadata.list.views[key];
+  if (!contribution) throw new Error(`Unknown list UI view '${key}' for entity '${metadata.key}'.`);
+  const effective = { ...metadata.list.common, ...contribution } as SysBOUIListMetadata;
+  return {
+    key,
+    label: contribution.label || (key === 'main' ? 'Standard' : key),
+    metadata: effective,
+  };
+}
+
+function composeRelatedListView(
+  base: Readonly<SysBOUIRelatedListViewMetadata> | undefined,
+  contribution: Readonly<Partial<SysBOUIRelatedListViewMetadata>> | undefined,
+): SysBOUIRelatedListViewMetadata | undefined {
+  if (!base && !contribution) return undefined;
+  const composed = {
+    ...(base ?? {}),
+    ...(contribution ?? {}),
+    ...((base?.fields || contribution?.fields) && {
+      fields: { ...(base?.fields ?? {}), ...(contribution?.fields ?? {}) },
+    }),
+  };
+  if (!composed.layout || !composed.fields) return undefined;
+  return composed as SysBOUIRelatedListViewMetadata;
+}
+
+/**
+ * Resolve one relationship occurrence against the UI metadata owned by the
+ * entity being presented. Entity declarations provide the reusable catalogue;
+ * relationship declarations may add/override keyed views and select a key.
+ * Direct relationship layout/field properties remain the final compatibility
+ * override while existing metadata is migrated.
+ */
+export function resolveSysBOUIRelatedCollection(
+  relationship: Readonly<SysBOUIRelatedCollectionMetadata>,
+  relatedEntityMetadata?: Readonly<SysBOUIMetadata>,
+): SysBOUIRelatedCollectionMetadata {
+  const entityViews = relatedEntityMetadata?.relatedListViews ?? {};
+  const relationshipViews = relationship.relatedListViews ?? {};
+  const effectiveViews: Record<string, SysBOUIRelatedListViewMetadata> = {};
+  for (const key of new Set([...Object.keys(entityViews), ...Object.keys(relationshipViews)])) {
+    const view = composeRelatedListView(entityViews[key], relationshipViews[key]);
+    if (view) effectiveViews[key] = view;
+  }
+  const selectedKey =
+    relationship.relatedListView ??
+    relatedEntityMetadata?.relatedListView ??
+    (effectiveViews.default ? 'default' : undefined);
+  const selected = selectedKey ? effectiveViews[selectedKey] : undefined;
+
+  return {
+    ...relationship,
+    ...(selected ?? {}),
+    ...(relationship.label ? { label: relationship.label } : {}),
+    ...(relationship.icon ? { icon: relationship.icon } : {}),
+    ...(relationship.layout ? { layout: relationship.layout } : {}),
+    ...(relationship.rowHref ? { rowHref: relationship.rowHref } : {}),
+    ...(relationship.emptyText ? { emptyText: relationship.emptyText } : {}),
+    ...(relationship.rowIcon ? { rowIcon: relationship.rowIcon } : {}),
+    ...(relationship.fields
+      ? { fields: { ...(selected?.fields ?? {}), ...relationship.fields } }
+      : selected?.fields
+        ? { fields: selected.fields }
+        : {}),
+    ...(selectedKey ? { relatedListView: selectedKey } : {}),
+    ...(Object.keys(effectiveViews).length ? { relatedListViews: effectiveViews } : {}),
   };
 }

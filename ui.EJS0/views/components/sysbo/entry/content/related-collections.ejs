@@ -1,0 +1,358 @@
+<%#
+  COMPONENT: Related collections
+
+  Purpose:
+  - Renders metadata-declared related entity collections consistently across SysBO entry pages.
+
+  Inputs / metadata:
+  - related collection metadata, related entity metadata/UI metadata, option/reference presentation helpers and row values.
+
+  CTX contract:
+  - Reads the owning entry projection; collection mutation belongs to the configured editor/action path.
+
+  Embeds / delegates:
+  - ../shell/entry-icons.ejs and collection-editor.ejs where editing is enabled.
+
+  Runtime contract:
+  - Collection action hooks delegate behavior to shared metadata collection runtimes.
+%>
+
+<%#
+  Generic metadata-driven related-collection renderer.
+
+  The owning entity supplies only collection metadata/data. This component owns
+  table/panel visualization consistently for every entity and never branches on
+  the parent SysBO key.
+%>
+<%
+  const tabCollectionKeys = (contents) => (contents || []).flatMap((content) => {
+    if (content?.kind === 'collection') return [content.collection];
+    if (content?.kind === 'column' || content?.kind === 'inline') return tabCollectionKeys(content.content);
+    return [];
+  });
+%>
+<% for (const key of tabCollectionKeys(tab.content)) { %>
+  <% const baseCollection = relatedCollections[key]; %>
+  <% if (!baseCollection) continue; %>
+  <% const availableRelatedListViews = baseCollection.relatedListViews || {}; %>
+  <% const selectedRelatedListView = baseCollection.relatedListView || (availableRelatedListViews.default ? 'default' : null); %>
+  <% const relatedListViewEntries = Object.entries(availableRelatedListViews); %>
+
+  <div
+    class="metadata-related-list-host"
+    data-related-list-host
+    data-related-list-key="<%= key %>"
+    data-collection-source-key="<%= key %>"
+    data-related-list-selected-view="<%= selectedRelatedListView || '' %>"
+  >
+    <div class="d-flex align-items-center gap-2 mt-3 mb-2 metadata-related-list-header">
+      <% if (relatedListViewEntries.length > 0) { %>
+        <div class="dropdown">
+          <button
+            class="btn metadata-field-input-menu-toggle is-enabled"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            title="Related list tools"
+            aria-label="Related list tools for <%= baseCollection.label || key %>"
+          ><i class="bi bi-tools" aria-hidden="true"></i></button>
+          <ul class="dropdown-menu dropdown-menu-start metadata-field-input-menu is-enabled">
+            <li><h6 class="dropdown-header">List view</h6></li>
+            <% for (const [viewKey, view] of relatedListViewEntries) { %>
+              <li>
+                <button
+                  class="dropdown-item d-flex align-items-center"
+                  type="button"
+                  data-related-list-view-action
+                  data-related-list-view-key="<%= viewKey %>"
+                >
+                  <i
+                    class="bi bi-check-lg me-2"
+                    data-related-list-view-check
+                    <%= viewKey === selectedRelatedListView ? '' : 'hidden' %>
+                    aria-hidden="true"
+                  ></i>
+                  <span><%= view.label || viewKey %></span>
+                </button>
+              </li>
+            <% } %>
+          </ul>
+        </div>
+      <% } %>
+      <h3 class="h6 mb-0 metadata-related-list-caption">
+        <% if (baseCollection.icon) { %><i class="bi bi-<%= baseCollection.icon %> me-1" aria-hidden="true"></i><% } %>
+        <span><%= baseCollection.label || key %></span>
+        <% if (selectedRelatedListView) { %>
+          <% const selectedViewLabel = availableRelatedListViews[selectedRelatedListView]?.label || selectedRelatedListView; %>
+          <span class="fw-normal text-body-secondary" data-related-list-view-caption> (<%= selectedViewLabel %>)</span>
+        <% } %>
+      </h3>
+    </div>
+
+    <% const renderViews = relatedListViewEntries.length > 0
+      ? relatedListViewEntries
+      : [[selectedRelatedListView || 'default', null]]; %>
+    <% for (const [renderViewKey, renderView] of renderViews) { %>
+      <% const collection = renderViewKey === selectedRelatedListView
+        ? baseCollection
+        : { ...baseCollection, ...(renderView || {}), fields: renderView?.fields || baseCollection.fields }; %>
+      <% const collectionSourceKey = collection.sourceKey ?? key; %>
+      <% const collectionResource = pageCollectionResourceData?.[collectionSourceKey]; %>
+      <% const rows = Array.isArray(collectionResource?.rows) ? collectionResource.rows : []; %>
+      <% const rowMetadata = relatedMetadataRegistry[collection.relatedEntityKey || collection.entityKey] || relatedMetadataRegistry[collection.entityKey]; %>
+      <% const relatedRowIcon = collection.rowIcon || collection.icon || null; %>
+      <% const relatedEntryIcons = (row) => {
+        const representation = entryRepresentationFor(collection.relatedEntityKey || collection.entityKey, row, relatedRowIcon);
+        return Array.isArray(representation?.icons) ? representation.icons : [];
+      }; %>
+
+      <div
+        data-related-list-view-panel="<%= renderViewKey %>"
+        <%= renderViewKey === selectedRelatedListView ? '' : 'hidden' %>
+      >
+  <div class="metadata-related-collection">
+
+    <% if (rows.length > 0 && collection.layout === 'table-list') { %>
+      <div class="table-responsive metadata-related-table-wrap">
+        <table class="table table-hover align-middle metadata-related-table mb-0">
+          <thead>
+            <tr>
+              <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
+                <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
+                <th scope="col"><%= collectionField.label || canonicalField?.label || collectionFieldKey %></th>
+              <% } %>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const [relatedRowIndex, row] of rows.entries()) { %>
+              <% const rowHref = relatedRowHref(collection, row); %>
+              <% let relatedFieldIndex = 0; %>
+              <tr
+                data-v2-related-row-index="<%= relatedRowIndex %>"
+              >
+                <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
+                  <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
+                  <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
+                  <% const valueExpression = renderedValue.expression || null; %>
+                  <% const toneExpression = renderedValue.toneExpression || null; %>
+                  <% const iconExpression = renderedValue.iconExpression || null; %>
+                  <% const dynamicRelatedValue = Boolean(
+                    valueExpression || toneExpression || iconExpression
+                  ); %>
+                  <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
+                  <td
+                    <% if (dynamicRelatedValue) { %>
+                      data-v2-related-value
+                      data-v2-related-entity-key="<%= collection.entityKey %>"
+                      data-v2-related-source-key="<%= collectionSourceKey %>"
+                      data-v2-related-field-key="<%= collectionFieldKey %>"
+                      data-v2-related-source-field="<%= renderedValue.sourceField %>"
+                      data-v2-related-field-type="<%= canonicalField?.type || 'string' %>"
+                      data-v2-related-option-items="<%= JSON.stringify([...(canonicalField?.optionItems || []), ...enumItemsForField(canonicalField)]) %>"
+                      data-v2-related-empty-text="<%= collectionField.presentation?.emptyText || '—' %>"
+                      <% if (valueExpression) { %>
+                      data-v2-related-value-expression="<%= valueExpression %>"
+                      <% } %>
+                      <% if (toneExpression) { %>
+                      data-v2-related-tone-expression="<%= toneExpression %>"
+                      <% } %>
+                      <% if (iconExpression) { %>
+                      data-v2-related-icon-expression="<%= iconExpression %>"
+                      <% } %>
+                    <% } %>
+                  >
+                    <% if (relatedFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
+                    <% if (relatedFieldIndex === 0) { %>
+                      <% const entryIcons = relatedEntryIcons(row); %>
+                      <%- include('../shell/entry-icons', {
+                        entryRepresentation: { icons: entryIcons },
+                        iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
+                      }) %>
+                    <% } %>
+                    <% if (dynamicRelatedValue) { %>
+                      <span data-v2-related-dynamic-value>
+                        <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
+                      </span>
+                    <% } else if (rowHref && relatedFieldIndex === 0) { %>
+                      <% const viewOnlyHref = `${rowHref}${String(rowHref).includes('?') ? '&' : '?'}_entryMode=view`; %>
+                      <a
+                        class="fw-semibold"
+                        href="<%= viewOnlyHref %>"
+                        data-related-entry-view-popup
+                        data-related-entry-entity-key="<%= collection.relatedEntityKey || collection.entityKey %>"
+                        data-related-entry-title="<%= renderedValue.raw ?? collection.label ?? 'View entry' %>"
+                      ><%= renderedValue.raw ?? '—' %></a>
+                    <% } else if (canonicalField?.type === 'reference') { %>
+                      <% const referenceRepresentation = relatedReferenceRepresentation(
+                        collectionSourceKey, collectionFieldKey, renderedValue.raw
+                      ); %>
+                      <%- include('../shell/entry-icons', {
+                        entryRepresentation: referenceRepresentation,
+                        iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
+                      }) %>
+                      <%= referenceRepresentation.name %>
+                    <% } else if (selectedOptionItem) { %>
+                      <% if (selectedOptionItem.icon) { %>
+                        <i
+                          class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1"
+                          aria-hidden="true"
+                        ></i>
+                      <% } %>
+                      <%= selectedOptionItem.label || renderedValue.raw || '—' %>
+                    <% } else if (canonicalField?.type === 'boolean') { %>
+                      <% const positive = Boolean(renderedValue.raw); %>
+                      <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
+                        <i class="bi <%= positive ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"></i>
+                        <%= positive ? 'Enabled' : 'Disabled' %>
+                      </span>
+                    <% } else if (canonicalField?.type === 'date') { %>
+                      <%= formatValue(renderedValue.raw, { format: 'date', emptyText: '—' }) %>
+                    <% } else if (canonicalField?.type === 'datetime') { %>
+                      <%= formatValue(renderedValue.raw, { format: 'datetime-elapsed', emptyText: '—' }) %>
+                    <% } else if (renderedValue.calculated && (renderedValue.tone || renderedValue.icon)) { %>
+                      <span class="badge text-bg-<%= renderedValue.tone || 'secondary' %>">
+                        <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
+                        <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
+                      </span>
+                    <% } else { %>
+                      <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
+                    <% } %>
+                    <% if (relatedFieldIndex === 0) { %></span><% } %>
+                  </td>
+                  <% relatedFieldIndex += 1; %>
+                <% } %>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } else if (rows.length > 0) { %>
+      <div class="authentication-identity-list">
+        <% for (const [relatedRowIndex, row] of rows.entries()) { %>
+          <%
+            const panelRowHref = relatedRowHref(collection, row);
+            const valueObjectDescriptor = !panelRowHref
+              ? {
+                  entityKey: collection.relatedEntityKey || collection.entityKey,
+                  title: `${collection.label || 'Related entry'} - ${
+                    entryRepresentationFor(
+                      collection.relatedEntityKey || collection.entityKey,
+                      row,
+                      relatedRowIcon,
+                    )?.name || 'Details'
+                  }`,
+                  record: row,
+                  fields: Object.keys(collection.fields || {}).map((fieldKey) => ({
+                    key: fieldKey,
+                    label: collection.fields?.[fieldKey]?.label || rowMetadata?.fieldDefinition?.[fieldKey]?.label || fieldKey,
+                    type: rowMetadata?.fieldDefinition?.[fieldKey]?.type || 'string',
+                    representation: collection.fields?.[fieldKey]?.representation || null,
+                  })),
+                }
+              : null;
+          %>
+          <div
+            class="authentication-identity-row"
+            data-v2-related-row-index="<%= relatedRowIndex %>"
+            style="--metadata-related-field-count: <%= Math.max(Object.keys(collection.fields || {}).length, 1) %>"
+          >
+            <% let relatedPanelFieldIndex = 0; %>
+            <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
+              <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
+              <% const renderedValue = collectionValue(row, key, collection, collectionFieldKey, collectionField); %>
+              <% const valueExpression = renderedValue.expression || null; %>
+              <% const toneExpression = renderedValue.toneExpression || null; %>
+              <% const iconExpression = renderedValue.iconExpression || null; %>
+              <% const dynamicRelatedValue = Boolean(
+                valueExpression || toneExpression || iconExpression
+              ); %>
+              <% const selectedOptionItem = optionItemForField(canonicalField, renderedValue.raw); %>
+              <%
+                const relatedRowActionable = Boolean(panelRowHref || valueObjectDescriptor);
+                const relatedPrimaryField = rowMetadata?.primaryField;
+                const relatedDisplayField = relatedPrimaryField && Object.prototype.hasOwnProperty.call(collection.fields || {}, relatedPrimaryField)
+                  ? relatedPrimaryField
+                  : Object.keys(collection.fields || {})[0];
+                const relatedEntryLinkField = relatedRowActionable && collectionFieldKey === relatedDisplayField;
+              %>
+              <div
+                class="<%= relatedPanelFieldIndex === 0 ? 'metadata-related-primary-cell' : '' %>"
+                <% if (dynamicRelatedValue) { %>
+                  data-v2-related-value
+                  data-v2-related-entity-key="<%= collection.entityKey %>"
+                  data-v2-related-source-key="<%= collectionSourceKey %>"
+                  data-v2-related-field-key="<%= collectionFieldKey %>"
+                  data-v2-related-source-field="<%= renderedValue.sourceField %>"
+                  data-v2-related-field-type="<%= canonicalField?.type || 'string' %>"
+                  data-v2-related-option-items="<%= JSON.stringify([...(canonicalField?.optionItems || []), ...enumItemsForField(canonicalField)]) %>"
+                  data-v2-related-empty-text="<%= collectionField.presentation?.emptyText || '—' %>"
+                  <% if (valueExpression) { %>
+                      data-v2-related-value-expression="<%= valueExpression %>"
+                      <% } %>
+                  <% if (toneExpression) { %>
+                      data-v2-related-tone-expression="<%= toneExpression %>"
+                      <% } %>
+                  <% if (iconExpression) { %>
+                      data-v2-related-icon-expression="<%= iconExpression %>"
+                      <% } %>
+                <% } %>
+              >
+                <% if (relatedPanelFieldIndex === 0) { %><span class="metadata-related-primary-value"><% } %>
+                <% if (relatedEntryLinkField && valueObjectDescriptor) { %>
+                  <button
+                    type="button"
+                    class="btn btn-link p-0 border-0 align-baseline metadata-related-entry-link"
+                    data-value-object-entry="<%= JSON.stringify(valueObjectDescriptor) %>"
+                  >
+                <% } else if (relatedEntryLinkField) { %><span class="metadata-related-entry-link"><% } %>
+                <% if (relatedPanelFieldIndex === 0) { %>
+                  <% const entryIcons = relatedEntryIcons(row); %>
+                  <%- include('../shell/entry-icons', {
+                    entryRepresentation: { icons: entryIcons },
+                    iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
+                  }) %>
+                <% } %>
+                <% if (dynamicRelatedValue) { %>
+                  <span data-v2-related-dynamic-value><%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %></span>
+                <% } else if (renderedValue.calculated && (renderedValue.tone || renderedValue.icon)) { %>
+                  <span class="badge text-bg-<%= renderedValue.tone || 'secondary' %>">
+                    <% if (renderedValue.icon) { %><i class="bi bi-<%= renderedValue.icon %> me-1" aria-hidden="true"></i><% } %>
+                    <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
+                  </span>
+                <% } else if (canonicalField?.type === 'reference') { %>
+                  <% const referenceRepresentation = relatedReferenceRepresentation(
+                    collectionSourceKey, collectionFieldKey, renderedValue.raw
+                  ); %>
+                  <%- include('../shell/entry-icons', {
+                    entryRepresentation: referenceRepresentation,
+                    iconGroupClass: 'metadata-entry-icons me-1 text-secondary'
+                  }) %>
+                  <%= referenceRepresentation.name %>
+                <% } else if (selectedOptionItem) { %>
+                  <% if (selectedOptionItem.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
+                  <%= selectedOptionItem.label || renderedValue.raw || '—' %>
+                <% } else if (canonicalField?.type === 'date') { %>
+                  <%= formatValue(renderedValue.raw, { format: 'date', emptyText: '—' }) %>
+                <% } else if (canonicalField?.type === 'datetime') { %>
+                  <%= formatValue(renderedValue.raw, { format: 'datetime-elapsed', emptyText: '—' }) %>
+                <% } else if (canonicalField?.type === 'duration') { %>
+                  <%= formatValue(renderedValue.raw, { emptyText: '—' }) %>
+                <% } else { %>
+                  <%= renderedValue.raw ?? collectionField.presentation?.emptyText ?? '—' %>
+                <% } %>
+                <% if (relatedEntryLinkField && valueObjectDescriptor) { %></button><% } else if (relatedEntryLinkField) { %></span><% } %>
+                <% if (relatedPanelFieldIndex === 0) { %></span><% } %>
+              </div>
+              <% relatedPanelFieldIndex += 1; %>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div class="text-secondary small py-2"><%= collection.emptyText || 'No related entries.' %></div>
+    <% } %>
+  </div>
+      </div>
+    <% } %>
+  </div>
+<% } %>

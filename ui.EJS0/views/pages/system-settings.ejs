@@ -1,0 +1,224 @@
+<%
+  const storage = storageSettings || {};
+  const configurations = Array.isArray(storage.configurations) ? storage.configurations : [];
+  const adapters = Array.isArray(storage.adapters) ? storage.adapters : [];
+  const adapterById = Object.fromEntries(adapters.map((adapter) => [adapter.id, adapter]));
+  const selectedConfigurationId = storage.selectedConfigurationId || storage.currentConfigurationId || '';
+  const runningConfigurationId = storage.runningConfigurationId || storage.currentConfigurationId || '';
+  const stageLabels = {
+    configuration: 'Configuration',
+    connection: 'Connection',
+    database: 'Database',
+    schema: 'Schema',
+    data: 'Data',
+    complete: 'Complete',
+  };
+  const statusLabels = { incomplete: 'Incomplete', ready: 'Ready', error: 'Error' };
+  const inspectionOnly = storageSettingsReadOnly === true;
+  const debugging = storage.debugging || { apiStorageContextEnabled: false, outputDirectory: '../data/logs/api/' };
+%>
+<div class="row g-4" data-system-settings data-storage-read-only="<%= inspectionOnly ? 'true' : 'false' %>" data-storage-settings='<%- JSON.stringify(storage).replace(/'/g, "&#39;") %>'>
+  <div class="col-12">
+    <section class="card shadow-sm h-100">
+      <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center gap-3">
+        <div>
+          <h2 class="h5 mb-1"><i class="bi bi-database-gear me-2"></i>Storage</h2>
+          <div class="small text-secondary">Choose, validate and prepare the business datastore ManatOS will use on a future API startup.</div>
+        </div>
+        <% if (!inspectionOnly) { %><button type="button" class="btn btn-primary btn-sm" data-storage-add>
+          <i class="bi bi-plus-lg me-1"></i>Add configuration
+        </button><% } %>
+      </div>
+      <div class="card-body">
+        <% if (inspectionOnly) { %><div class="alert alert-info py-2"><i class="bi bi-eye me-2"></i><strong>Inspection mode.</strong> Superusers can inspect storage settings and capabilities; only Administrators can change or prepare storage.</div><% } %>
+        <div class="alert alert-warning py-2 d-flex gap-2 align-items-start" role="note">
+          <i class="bi bi-arrow-repeat"></i>
+          <div><strong>Restart required.</strong> Preparing another target never changes the datastore serving the current API. A selected configuration becomes active only after API restart.</div>
+        </div>
+
+        <form class="row g-2 align-items-end mb-4" data-storage-current-form>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="col-12 col-xl-8">
+            <label class="form-label fw-semibold">Storage configuration for next API start</label>
+            <input type="hidden" name="configurationId" value="<%= selectedConfigurationId %>" data-storage-current-value>
+            <div class="dropdown" data-storage-current-picker>
+              <button class="btn btn-outline-secondary w-100 text-start d-flex align-items-center justify-content-between gap-2 storage-current-picker-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-storage-current-picker-button <%= inspectionOnly ? 'disabled' : '' %>>
+                <% const selectedItem = configurations.find((item) => item.id === selectedConfigurationId) || configurations[0]; const selectedAdapter = selectedItem ? adapterById[selectedItem.adapterId] : null; %>
+                <span class="d-flex align-items-center gap-2 min-w-0" data-storage-current-picker-content>
+                  <% if (selectedItem) { %>
+                    <strong class="text-truncate"><%= selectedItem.name %></strong>
+                    <span class="text-secondary">—</span>
+                    <img src="<%= selectedAdapter?.logoUrl || '/images/storage-adapters/json.svg' %>" alt="" width="20" height="20" class="rounded flex-shrink-0">
+                    <span class="text-truncate"><%= selectedAdapter?.name || selectedItem.adapterId %></span>
+                    <span class="text-secondary text-nowrap">— <%= statusLabels[selectedItem.status] || 'Unknown' %> (<%= stageLabels[selectedItem.stage] || 'Unknown' %>)</span>
+                  <% } else { %>
+                    <span class="text-secondary">Choose storage configuration</span>
+                  <% } %>
+                </span>
+                <i class="bi bi-chevron-down flex-shrink-0"></i>
+              </button>
+              <ul class="dropdown-menu w-100 storage-current-picker-menu" data-storage-current-picker-menu>
+                <% for (const item of configurations) { const adapter = adapterById[item.adapterId]; const eligible = adapter?.runtimeAvailable !== false && (item.status === 'ready' || item.id === runningConfigurationId || item.id === selectedConfigurationId); %>
+                  <li>
+                    <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2 <%= item.id === selectedConfigurationId ? 'active' : '' %>" data-storage-current-option="<%= item.id %>" <%= eligible ? '' : 'disabled' %>>
+                      <strong class="text-truncate"><%= item.name %></strong>
+                      <span class="opacity-75">—</span>
+                      <img src="<%= adapter?.logoUrl || '/images/storage-adapters/json.svg' %>" alt="" width="20" height="20" class="rounded flex-shrink-0">
+                      <span class="text-truncate"><%= adapter?.name || item.adapterId %></span>
+                      <span class="ms-auto small opacity-75 text-nowrap"><%= statusLabels[item.status] || 'Unknown' %> (<%= stageLabels[item.stage] || 'Unknown' %>)</span>
+                    </button>
+                  </li>
+                <% } %>
+              </ul>
+            </div>
+          </div>
+          <% if (!inspectionOnly) { %><div class="col-auto"><button type="submit" class="btn btn-outline-primary"><i class="bi bi-check2 me-1"></i>Apply selection</button></div><% } %>
+          <div class="col-12"><div class="form-text" data-storage-current-result aria-live="polite"></div></div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr><th style="width:2rem"></th><th>Name</th><th>Adapter</th><th>Status</th><th>Stage</th><th class="text-end">Actions</th></tr></thead>
+            <tbody data-storage-configurations>
+              <% for (const item of configurations) { const isRunning = item.id === runningConfigurationId; const isSelected = item.id === selectedConfigurationId && !isRunning; %>
+                <tr data-storage-configuration-id="<%= item.id %>" draggable="<%= inspectionOnly ? 'false' : 'true' %>">
+                  <td class="text-secondary text-center storage-configuration-drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></td>
+                  <td class="fw-semibold" data-storage-row-name><%= item.name %></td>
+                  <td data-storage-row-adapter><img src="<%= adapterById[item.adapterId]?.logoUrl || '/images/storage-adapters/json.svg' %>" alt="" width="22" height="22" class="me-2 rounded"><%= adapterById[item.adapterId]?.name || item.adapterId %></td>
+                  <td data-storage-row-status><% if (isRunning) { %><span class="badge text-bg-primary">Current</span><% } else if (isSelected) { %><span class="badge text-bg-info">Selected</span><% } else if (item.status === 'ready') { %><span class="badge text-bg-success">Ready</span><% } else if (item.status === 'error') { %><span class="badge text-bg-danger">Error</span><% } else if (item.status === 'incomplete') { %><span class="badge text-bg-warning">Incomplete</span><% } else { %><span class="badge text-bg-light border text-secondary">Unknown</span><% } %></td>
+                  <td data-storage-row-stage><%= stageLabels[item.stage] || '—' %></td>
+                  <td class="text-end text-nowrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-storage-configure="<%= item.id %>"><i class="bi <%= inspectionOnly ? 'bi-eye' : 'bi-sliders' %> me-1"></i><%= inspectionOnly ? 'Inspect' : 'Configure' %></button><% if (!inspectionOnly) { %>
+                    <button type="button" class="btn btn-outline-danger btn-sm ms-1" data-storage-delete="<%= item.id %>" <%= (item.id === selectedConfigurationId || item.id === runningConfigurationId) ? 'disabled title="A selected or currently running configuration cannot be deleted."' : 'title="Delete storage configuration"' %>><i class="bi bi-trash3 me-1"></i>Delete</button><% } %>
+                  </td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+
+        <section class="border rounded p-3 mt-4 bg-body-tertiary" data-storage-debugging-section>
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+              <h3 class="h6 mb-1"><i class="bi bi-bug me-2"></i>API storage CTX debugging</h3>
+              <div class="small text-secondary">Persist post-operation API/storage CTX snapshots for later inspection. Snapshot writing is implemented by the API debugging infrastructure.</div>
+            </div>
+          </div>
+          <form class="row g-3 align-items-end" data-storage-debugging-form>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="col-12 col-lg-4">
+              <div class="form-check form-switch pt-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="storageApiCtxDebugging" data-storage-debug-enabled <%= debugging.apiStorageContextEnabled ? 'checked' : '' %> <%= inspectionOnly ? 'disabled aria-readonly="true"' : '' %>>
+                <label class="form-check-label fw-semibold" for="storageApiCtxDebugging">Enable API storage CTX snapshots</label>
+              </div>
+            </div>
+            <div class="col-12 col-lg-6">
+              <label class="form-label fw-semibold" for="storageApiCtxDebugDirectory">Debug output directory</label>
+              <input class="form-control font-monospace" id="storageApiCtxDebugDirectory" value="<%= debugging.outputDirectory || '../data/logs/api/' %>" data-storage-debug-directory <%= inspectionOnly ? 'readonly aria-readonly="true"' : '' %>>
+              <div class="form-text">Default: <code>../data/logs/api/</code>. Relative paths are resolved by the API process.</div>
+            </div>
+            <% if (!inspectionOnly) { %><div class="col-12 col-lg-2 d-grid">
+              <button type="submit" class="btn btn-outline-primary" data-storage-debug-save><i class="bi bi-check2 me-1"></i>Save debugging</button>
+            </div><% } %>
+            <div class="col-12"><div class="form-text" data-storage-debug-result aria-live="polite"></div></div>
+          </form>
+        </section>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal fade" id="storageConfigurationDeleteModal" tabindex="-1" aria-hidden="true" data-popup-purpose="system-settings-storage-delete" data-surface-kind="custom">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5 mb-0"><i class="bi bi-trash3 text-danger me-2"></i>Delete storage configuration</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">Delete <strong data-storage-delete-name></strong>?</p>
+        <p class="text-secondary mb-0">This removes only the saved ManatOS storage configuration. It does not delete the target database, database file, schema, or data.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" data-storage-delete-confirm><i class="bi bi-trash3 me-1"></i>Delete configuration</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="storageConfigurationModal" tabindex="-1" aria-hidden="true" data-popup-purpose="system-settings-storage-configuration" data-surface-kind="custom">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title h5 mb-0 d-flex align-items-center gap-2" data-storage-modal-title>
+            <span data-storage-modal-title-prefix>Storage configuration</span>
+            <img class="rounded d-none" data-storage-modal-adapter-logo alt="" width="24" height="24">
+            <span data-storage-modal-title-name></span>
+          </h2>
+          <div class="small text-secondary" data-storage-modal-subtitle></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form data-storage-configuration-form novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="modal-body">
+          <ul class="nav nav-tabs mb-3 flex-nowrap storage-configuration-tabs" role="tablist" data-storage-tabs>
+            <li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" aria-selected="true" data-storage-step="configuration"><span class="me-1 d-none" data-storage-tab-status-icon></span><span data-storage-tab-label>Configuration</span></button></li>
+          </ul>
+          <section data-storage-panel="configuration">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="storageConfigurationName" data-storage-configuration-name-label>Configuration name (*)</label>
+                <input class="form-control" id="storageConfigurationName" name="name" required data-storage-configuration-name>
+                <div class="invalid-feedback" data-storage-name-feedback></div>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="storageAdapterSelect" data-storage-adapter-label>Storage adapter (*)</label>
+                <select class="form-select d-none" id="storageAdapterSelect" name="adapterId" required data-storage-adapter aria-hidden="true" tabindex="-1"></select>
+                <div class="dropdown" data-storage-adapter-picker>
+                  <button class="btn btn-outline-secondary w-100 text-start d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport" data-storage-adapter-picker-button></button>
+                  <ul class="dropdown-menu w-100" data-storage-adapter-picker-menu></ul>
+                </div>
+                <div class="form-text" data-storage-adapter-description></div>
+              </div>
+            </div>
+            <div data-storage-configuration-fields></div>
+            <div class="row g-3 mt-1 pt-3 border-top" data-storage-workflow-summary>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="storageConfigurationStage">Stage</label>
+                <select class="form-select" id="storageConfigurationStage" data-storage-workflow-stage disabled aria-readonly="true">
+                  <option value="">Unknown</option>
+                  <option value="configuration">Configuration</option>
+                  <option value="connection">Connection</option>
+                  <option value="database">Database</option>
+                  <option value="schema">Schema</option>
+                  <option value="data">Data</option>
+                  <option value="complete">Complete</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="storageConfigurationStatus">Status</label>
+                <select class="form-select" id="storageConfigurationStatus" data-storage-workflow-status disabled aria-readonly="true">
+                  <option value="">Unknown</option>
+                  <option value="incomplete">Incomplete</option>
+                  <option value="ready">Ready</option>
+                  <option value="error">Error</option>
+                </select>
+              </div>
+              <div class="col-12"><div class="form-text">Stage and Status are system-maintained. They reflect the live popup CTX while editing and the last saved values in the Storage list.</div></div>
+            </div>
+          </section>
+          <div data-storage-adapter-panels></div>
+          <div class="alert alert-info d-none mt-3 mb-0" data-storage-operation-result role="status"></div>
+          <div class="alert alert-danger d-none mt-3 mb-0" data-storage-error role="alert"></div>
+        </div>
+        <div class="modal-footer justify-content-end flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-storage-dismiss><span data-storage-dismiss-label>Cancel</span></button>
+          <button type="submit" class="btn btn-primary" data-storage-save disabled><i class="bi bi-check2 me-1"></i><span data-storage-save-label>Create</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

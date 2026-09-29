@@ -1,0 +1,127 @@
+<%#
+  COMPONENT: Entry summary
+
+  Purpose:
+  - Renders a compact metadata-driven read-only summary for entry fields and values.
+
+  Inputs / metadata:
+  - Canonical metadata/UI metadata, current entry values, option/reference presentation helpers.
+
+  CTX contract:
+  - Reads current entry values only; no CTX mutation.
+
+  Embeds / delegates:
+  - entry-icons.ejs where entry representation is shown.
+
+  Runtime contract:
+  - Pure presentation.
+%>
+
+<%
+  /*
+   * Higher-level read-only field container. Summary owns compact arrangement
+   * and decoration only; canonical fields keep their normal type/value-source
+   * semantics. A calculation never creates a second summary field model.
+   */
+%>
+<%
+  const summaryFieldKeys = (contents) => (contents || []).flatMap((content) => {
+    if (content?.kind === 'field') return [content.field];
+    if (content?.kind === 'column' || content?.kind === 'inline') return summaryFieldKeys(content.content);
+    return [];
+  });
+%>
+<div class="account-summary-grid authentication-summary-grid" data-metadata-summary>
+  <% for (const key of summaryFieldKeys(tab.content)) { %>
+    <% const collection = relatedCollections[key]; %>
+    <% const field = metadata.fieldDefinition[key]; %>
+    <% if (collection || !field || !fieldVisible(field) || field.sensitive) continue; %>
+    <% const presentation = overrides[key]?.presentation || {}; %>
+    <% const rawValue = valueFor(key); %>
+    <%# Dynamic summary presentation is interpreted by the browser against the owning V2 entry CTX. %>
+    <% const toneDeclaration = presentation.tone; %>
+    <% const iconDeclaration = presentation.icon; %>
+    <% const toneExpression = toneDeclaration
+      && typeof toneDeclaration === 'object'
+      && typeof toneDeclaration.expression === 'string'
+        ? toneDeclaration.expression
+        : null; %>
+    <% const iconExpression = iconDeclaration
+      && typeof iconDeclaration === 'object'
+      && typeof iconDeclaration.expression === 'string'
+        ? iconDeclaration.expression
+        : null; %>
+    <% const tone = toneExpression ? null : toneDeclaration; %>
+    <% const stateIcon = iconExpression ? null : iconDeclaration; %>
+    <% const rendered = field.type === 'reference'
+      ? referenceLabel(key, rawValue)
+      : formatValue(rawValue, presentation); %>
+    <div class="account-summary-label"><%= fieldLabel(field) %>:</div>
+    <div
+      class="account-summary-value"
+      data-v2-summary-presentation
+      data-v2-summary-field-key="<%= key %>"
+      data-ctx-field-container="<%= key %>"
+      <% if (toneExpression) { %>
+        data-v2-summary-tone-expression="<%= toneExpression %>"
+      <% } %>
+      <% if (iconExpression) { %>
+        data-v2-summary-icon-expression="<%= iconExpression %>"
+      <% } %>
+    >
+      <% if (field.type === 'boolean') { %>
+        <span class="badge text-bg-<%= rawValue === true ? 'success' : 'secondary' %>"><%= rendered %></span>
+      <% } else if (field.type === 'reference') { %>
+        <%#
+          A resolved ui-view owns presentation; record mode owns mutability only.
+          Keep the canonical reference component in both edit and view mode and
+          let that component render its own read-only state instead of replacing
+          it with a different summary/value presentation.
+        %>
+        <%- include('../fields/reference-select', {
+          key,
+          field,
+          value: rawValue,
+          editable: fieldEditable(field),
+          referenceValues,
+          fieldLabel
+        }) %>
+      <% } else if (
+        toneExpression || iconExpression
+      ) { %>
+        <span data-v2-summary-dynamic-value><%= rendered %></span>
+      <% } else if (stateIcon) { %>
+        <span class="status-value <%= tone === 'success' ? 'status-positive' : 'status-neutral' %>">
+          <i class="bi bi-<%= stateIcon %>" aria-hidden="true"></i>
+          <%= rendered %>
+        </span>
+      <% } else if (tone) { %>
+        <span class="badge text-bg-<%= tone %>"><%= rendered %></span>
+      <% } else if (rendered === (presentation.emptyText || '—')) { %>
+        <span class="text-secondary"><%= rendered %></span>
+      <% } else { %>
+        <%- include('readonly-value', {
+          field,
+          presentation,
+          rendered,
+          enhancedReadonlyPresentation:
+            typeof enhancedReadonlyPresentation !== 'undefined' &&
+            enhancedReadonlyPresentation === true,
+        }) %>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<%- include('related-collections', {
+  tab,
+  relatedCollections,
+  pageCollectionResourceData,
+  relatedMetadataRegistry,
+  collectionValue,
+  relatedRowHref,
+  relatedReferenceRepresentation,
+  optionItemForField,
+  enumToneClass,
+  formatValue,
+}) %>

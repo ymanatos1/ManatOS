@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import {
   sysBOApplicationsMetadata,
   sysBOConfigurationsMetadata,
@@ -39,6 +41,13 @@ import type { DatabaseState } from './types.js';
 import type { StorageAdapter, StorageFlushResult } from './storage-adapter.js';
 import { IN_MEMORY_JSON_ADAPTER_ID } from './adapters/in-memory-json/definition.js';
 import { runStorageOperation } from './execution-context.js';
+import { logExpiredTransaction } from '../logging/transaction-failure-log.js';
+import { logTransactionFinalized } from '../logging/transaction-execution-log.js';
+import {
+  TransactionsSupport,
+  type TransactionAction,
+  type TransactionFinalizationResult,
+} from './transactions-support.js';
 
 /**
  * Replaceable data-store adapter.
@@ -74,6 +83,12 @@ export class InMemoryDataStore implements StorageAdapter {
 
   constructor(private readonly persistence: JsonFilePersistence) {
     this.pictureStorage = new PictureFileStorage(persistence.pictureRootDirectory());
+    this.transactions = new TransactionsSupport({
+      onFinalized: (result) => logTransactionFinalized(result),
+      onExpired: (result) => {
+        logExpiredTransaction(result);
+      },
+    });
   }
 
   async writePicture(
@@ -219,6 +234,59 @@ export class InMemoryDataStore implements StorageAdapter {
     return map as unknown as Map<string, Record<string, unknown>> | null;
   }
 
+  private readonly transactionScope = new AsyncLocalStorage<boolean>();
+
+  private readonly explicitTransactionScope = new AsyncLocalStorage<{
+    transactionId: string;
+    ownerId: string;
+  }>();
+
+  private readonly transactions: TransactionsSupport;
+
+  async beginTransaction(ownerId: string): Promise<string> {
+    return this.transactions.begin(ownerId);
+  }
+
+  commitTransaction(
+    transactionId: string,
+    ownerId: string,
+  ): Promise<TransactionFinalizationResult> {
+    return this.transactions.commit(transactionId, ownerId);
+  }
+
+  rollbackTransaction(
+    transactionId: string,
+    ownerId: string,
+  ): Promise<TransactionFinalizationResult> {
+    return this.transactions.rollback(transactionId, ownerId);
+  }
+
+  acquireExplicitTransactionOperation(transactionId: string, ownerId: string): void {
+    this.transactions.acquireOperation(transactionId, ownerId);
+  }
+
+  releaseExplicitTransactionOperation(transactionId: string, ownerId: string): void {
+    this.transactions.releaseOperation(transactionId, ownerId);
+  }
+
+  runInExplicitTransaction<T>(transactionId: string, ownerId: string, operation: () => T): T {
+    this.transactions.assertOwned(transactionId, ownerId);
+    return this.explicitTransactionScope.run({ transactionId, ownerId }, operation);
+  }
+
+  hasExplicitTransaction(): boolean {
+    return Boolean(this.explicitTransactionScope.getStore());
+  }
+
+  registerExplicitTransactionActions(
+    description: string,
+    actions: { commit?: TransactionAction[]; rollback?: TransactionAction[] },
+  ): void {
+    const context = this.explicitTransactionScope.getStore();
+    if (!context) return;
+    this.transactions.register(context.transactionId, context.ownerId, actions, description);
+  }
+
   /**
    * Execute a mutating operation using lightweight transaction-like
    * semantics.
@@ -235,52 +303,102 @@ export class InMemoryDataStore implements StorageAdapter {
    * a replacement for real database transactions.
    */
   async executeTransaction<T>(operation: () => Promise<T>): Promise<T> {
+    // Nested service operations participate in the outer transaction. Only the
+    // outermost boundary snapshots/saves/rolls back the complete datastore.
+    if (this.transactionScope.getStore()) return operation();
+
     return runStorageOperation(IN_MEMORY_JSON_ADAPTER_ID, 'transaction', () =>
-      operationContext.run('Execute datastore transaction', async () => {
-        const snapshot = structuredClone(this.state);
+      operationContext.run('Execute datastore transaction', () =>
+        this.transactionScope.run(true, async () => {
+          const snapshot = structuredClone(this.state);
+          const explicit = this.explicitTransactionScope.getStore();
 
-        try {
-          const result = await operation();
+          let persistenceAttempted = false;
+          try {
+            const result = await operation();
 
-          await this.persistence.save(this.state);
+            persistenceAttempted = true;
+            await this.persistence.save(this.state);
 
-          return result;
-        } catch (error) {
-          /**
-           * IMPORTANT:
-           *
-           * Do not replace `this.state` or rebuild repository wrapper objects here.
-           * Long-lived domain services keep references to the repositories created
-           * during application startup. Replacing those wrappers after a rollback
-           * leaves the services pointing at detached Maps and can make an existing
-           * SysBOUser appear to disappear in a later request.
-           *
-           * Restore every collection IN PLACE instead. This preserves the identity
-           * of both the DatabaseState Maps and the repository wrappers while still
-           * returning the datastore to its pre-transaction contents.
-           */
-          restoreMap(this.state.sysUsers, snapshot.sysUsers);
-          restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
-          restoreMap(this.state.sysEmailAddresses, snapshot.sysEmailAddresses);
-          restoreMap(this.state.sysPrincipalEmailAddresses, snapshot.sysPrincipalEmailAddresses);
-          restoreMap(this.state.sysTelephoneNumbers, snapshot.sysTelephoneNumbers);
-          restoreMap(
-            this.state.sysPrincipalTelephoneNumbers,
-            snapshot.sysPrincipalTelephoneNumbers,
-          );
-          restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
-          restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
-          restoreMap(this.state.sysApplications, snapshot.sysApplications);
-          restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
-          restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
-          restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
-          restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
-          restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
+            if (explicit) {
+              this.transactions.register(
+                explicit.transactionId,
+                explicit.ownerId,
+                {
+                  rollback: [
+                    {
+                      description: 'Restore datastore snapshot',
+                      execute: async () => {
+                        this.restoreState(snapshot);
+                        await this.persistence.save(this.state);
+                      },
+                    },
+                  ],
+                },
+                'Persist datastore operation',
+              );
+            }
 
-          throw error;
-        }
-      }),
+            return result;
+          } catch (error) {
+            /**
+             * IMPORTANT:
+             *
+             * Do not replace `this.state` or rebuild repository wrapper objects here.
+             * Long-lived domain services keep references to the repositories created
+             * during application startup. Replacing those wrappers after a rollback
+             * leaves the services pointing at detached Maps and can make an existing
+             * SysBOUser appear to disappear in a later request.
+             *
+             * Restore every collection IN PLACE instead. This preserves the identity
+             * of both the DatabaseState Maps and the repository wrappers while still
+             * returning the datastore to its pre-transaction contents.
+             */
+            this.restoreState(snapshot);
+
+            if (explicit && persistenceAttempted) {
+              // The durable JSON write itself failed. Its exact on-disk outcome may
+              // be uncertain, so enlist a rollback persistence attempt even though
+              // this business step did not complete successfully. The outer Entry
+              // transaction will report a second persistence failure as a rollback
+              // failure while preserving the original write error as primary.
+              this.transactions.register(
+                explicit.transactionId,
+                explicit.ownerId,
+                {
+                  rollback: [
+                    {
+                      description: 'Re-persist restored datastore after failed JSON write',
+                      execute: () => this.persistence.save(this.state),
+                    },
+                  ],
+                },
+                'Recover failed datastore persistence',
+              );
+            }
+
+            throw error;
+          }
+        }),
+      ),
     );
+  }
+
+  private restoreState(snapshot: DatabaseState): void {
+    restoreMap(this.state.sysUsers, snapshot.sysUsers);
+    restoreMap(this.state.sysPrincipals, snapshot.sysPrincipals);
+    restoreMap(this.state.sysEmailAddresses, snapshot.sysEmailAddresses);
+    restoreMap(this.state.sysPrincipalEmailAddresses, snapshot.sysPrincipalEmailAddresses);
+    restoreMap(this.state.sysTelephoneNumbers, snapshot.sysTelephoneNumbers);
+    restoreMap(this.state.sysPrincipalTelephoneNumbers, snapshot.sysPrincipalTelephoneNumbers);
+    restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
+    restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
+    restoreMap(this.state.sysApplications, snapshot.sysApplications);
+    restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
+    restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
+    restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
+    restoreMap(this.state.sysExternalIdentities, snapshot.sysExternalIdentities);
+    restoreMap(this.state.sysUserInvitations, snapshot.sysUserInvitations);
   }
 
   /**

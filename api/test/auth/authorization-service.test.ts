@@ -80,7 +80,7 @@ describe('AuthorizationService', () => {
           enabled: true,
           principalType: SysBOPrincipalType.Person,
           parentId: ownRoot.id,
-          rootPrincipalId: ownRoot.id,
+          rootId: ownRoot.id,
         },
         SYSTEM_AUDIT_ACTOR,
       );
@@ -100,8 +100,12 @@ describe('AuthorizationService', () => {
           role,
           enabled: true,
           emailVerified: true,
-          principalId: ownPerson.id,
         },
+        SYSTEM_AUDIT_ACTOR,
+      );
+      await context.store.sysPrincipals.update(
+        ownPerson.id,
+        { userId: user.id },
         SYSTEM_AUDIT_ACTOR,
       );
       const current = subject(role, user.id, user.name);
@@ -132,7 +136,6 @@ describe('AuthorizationService', () => {
         role: SysBOUserRole.User,
         enabled: true,
         emailVerified: true,
-        principalId: null,
       },
       SYSTEM_AUDIT_ACTOR,
     );
@@ -235,13 +238,20 @@ describe('AuthorizationService', () => {
     }
   });
 
-  it('keeps Superuser generic entity administration read-only even for related records', async () => {
+  it('keeps Superuser administration read-only while preserving own-User self-service update', async () => {
     const superuser = subject(SysBOUserRole.Superuser, 'super-id', 'Superuser');
     const related = { ...entity('record'), createdBy: 'super-id', updatedBy: 'super-id' };
     for (const key of ['sys-users', 'sys-principals', 'sys-licenses']) {
       await expect(authorization.can('update', superuser, key, related)).resolves.toBe(false);
       await expect(authorization.can('delete', superuser, key, related)).resolves.toBe(false);
     }
+
+    await expect(
+      authorization.can('update', superuser, 'sys-users', entity('super-id')),
+    ).resolves.toBe(true);
+    await expect(
+      authorization.can('delete', superuser, 'sys-users', entity('super-id')),
+    ).resolves.toBe(false);
   });
 
   it('allows Admin full access to external-authentication configuration', async () => {

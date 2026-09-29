@@ -8,11 +8,13 @@ import {
   contextPointer,
   createCompanyContext,
   createEntitiesContext,
+  createEnumsContext,
   createSystemContext,
   entityContextName,
   resolvePlatform,
   type ManatOSCompanyContext,
   type ManatOSEntitiesContext,
+  type ManatOSEnumsContext,
   type ManatOSSystemContext,
   type ManatOSUserContext,
   type SysBOUserRole,
@@ -39,6 +41,7 @@ export interface ApiContextLevel {
 
 export interface ApiRootContext {
   system: ManatOSSystemContext;
+  enums: ManatOSEnumsContext;
   entities: ManatOSEntitiesContext;
   company: ManatOSCompanyContext;
   api: Record<string, ApiContextLevel>;
@@ -255,6 +258,7 @@ export function createApiRootContext(): ApiRootContext {
       clientKind: 'api',
       clientVersion: '0.1.0',
     }),
+    enums: createEnumsContext(),
     entities: createEntitiesContext(),
     company: createCompanyContext(MANATOS_COMPANY, currentPlatform),
     api: {},

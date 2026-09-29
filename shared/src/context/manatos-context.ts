@@ -63,6 +63,10 @@ export interface ManatOSEntityContext {
   subsystem: string;
   metadata?: unknown;
   uiMetadata?: unknown;
+  /** Canonical metadata-derived entry representation for browser/runtime consumers. */
+  entryRepresentation?: unknown;
+  /** Canonical UI entity icon when this entity has a UI definition. */
+  icon?: string;
 }
 export type ManatOSEntitiesContext = Record<string, ManatOSEntityContext>;
 
@@ -163,7 +167,7 @@ export interface ManatOSUserContext {
  * stable identity; `key` is accepted for metadata-style collection members.
  * Keys do not have to be expression identifiers: UUIDs and similar ids are
  * addressable through quoted bracket syntax, for example
- * `ctx.ui.level.list.entries['8c7d...']`.
+ * `ctx.ui.level.data.list.entries['8c7d...']`.
  */
 export function contextCollectionMemberKey(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null;
@@ -263,6 +267,16 @@ export function contextPathOf(ctxRoot: unknown, target: unknown): string | null 
   return visit(ctxRoot, 'ctx');
 }
 
+export interface ManatOSEnumContext {
+  key: string;
+  name: string;
+  subsystem: string;
+  label: string;
+  values: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+}
+
+export type ManatOSEnumsContext = Record<string, ManatOSEnumContext>;
+
 export interface ManatOSContext {
   /**
    * Runtime/host facts are intentionally the first root branch in DEBUG/CTX
@@ -270,6 +284,8 @@ export interface ManatOSContext {
    * beside the major semantic context branches.
    */
   system: ManatOSSystemContext;
+  /** Effective enum catalogue for the selected subsystem composition. */
+  enums: ManatOSEnumsContext;
   entities: ManatOSEntitiesContext;
   company: ManatOSCompanyContext;
   /** Null while anonymous; populated at login and absent again after logout. */

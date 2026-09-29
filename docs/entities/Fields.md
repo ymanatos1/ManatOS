@@ -38,7 +38,7 @@ Common canonical properties include:
 - references: `referenceBOKey` and `referenceSelection`;
 - specialized semantics: `durationUnits`, `versionFormat`;
 - normalization: `normalize.expression`;
-- calculation: `calculation.expression` and optional `calculation.persisted`.
+- calculation: `calculation.expression` and optional `calculation.persisted`; calculated values are runtime-only unless `persisted: true` is explicitly declared.
 
 See [Metadata Model](../metadata/Metadata-Model.md) for the canonical schema itself.
 
@@ -122,7 +122,7 @@ Rich-text and picture components therefore project changes into the same generic
 
 ## Read-only and application-managed values
 
-`readOnly` says a normal client must not offer direct editing. `generated` identifies storage/system-generated values. `applicationManaged` identifies persisted values maintained by application/domain logic rather than ordinary CRUD callers.
+`readOnly` says a normal client must not offer direct editing. `generated` identifies storage/system-generated values. `applicationManaged` identifies persisted values maintained through application/domain-owned write paths rather than ordinary field/aggregate CRUD. It is orthogonal to `readOnly`: picture fields are user-editable but application-managed because their bytes and descriptors use dedicated persistence operations. Persisted calculated fields do not need `applicationManaged`; their `calculation.persisted: true` declaration already identifies application materialization ownership.
 
 Effective UI metadata can make an otherwise editable field read-only for a specific surface. It cannot safely turn a canonically protected/sensitive field into a normal editable value.
 

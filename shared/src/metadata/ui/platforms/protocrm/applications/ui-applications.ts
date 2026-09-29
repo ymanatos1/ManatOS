@@ -62,22 +62,32 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
   // COMMON ENTITY UI — shared by all present/future uiViews unless overridden.
   // ---------------------------------------------------------------------------
   list: {
-    visibleFields: ['name', 'fullName', 'version', 'enabled'],
-    filterFields: ['name', 'fullName'],
-    sortableFields: ['name', 'fullName', 'version', 'enabled'],
-    addAction: standardAddAction(),
-    rowActions: {
-      quickView: standardQuickViewAction('sys-applications'),
-      play: {
-        kind: 'navigate',
-        order: 10,
-        visible: true,
-        label: 'Play',
-        icon: 'play-fill',
-        tone: 'primary',
-        emphasis: 'solid',
-        title: 'Open application playground',
-        href: '/bo/sys-applications/{id}/play',
+    common: {
+      visibleFields: ['name', 'fullName', 'version', 'enabled'],
+      filterFields: ['name', 'fullName'],
+      sortableFields: ['name', 'fullName', 'version', 'enabled'],
+      addAction: standardAddAction(),
+      rowActions: {
+        quickView: standardQuickViewAction('sys-applications'),
+        play: {
+          kind: 'navigate',
+          order: 10,
+          visible: true,
+          label: 'Play',
+          icon: 'play-fill',
+          tone: 'primary',
+          emphasis: 'solid',
+          title: 'Open application playground',
+          href: '/bo/sys-applications/{id}/play',
+        },
+      },
+    },
+    views: {
+      main: { label: 'Standard' },
+
+      simple: {
+        label: 'Simple',
+        visibleFields: ['name', 'version'],
       },
     },
   },

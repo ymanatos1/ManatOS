@@ -32,6 +32,7 @@ export const MANATOS_COMPANY: CompanyInfo = {
       'Turn business models, relationships, rules, permissions and application behavior into governed metadata that its runtime can execute consistently across applications.',
   },
   branding: {
+    tagline: 'ManatOS — the operational platform for ManatOS applications.',
     headerLogo: {
       darker: {
         src: '/assets/manatos-logo-middle-1.png',

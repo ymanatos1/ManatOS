@@ -46,10 +46,10 @@ const steps = [
     kind: 'build',
   },
   {
-    key: 'uiBuild',
+    key: 'uiEJS0Build',
     label: 'UI build',
     command: npmCommand,
-    args: npmArgs('run', 'build', '--workspace', 'ui'),
+    args: npmArgs('run', 'build', '--workspace', 'ui.EJS0'),
     kind: 'build',
   },
   {
@@ -60,10 +60,10 @@ const steps = [
     kind: 'test',
   },
   {
-    key: 'uiTests',
-    label: 'UI tests',
+    key: 'uiEJS0Tests',
+    label: 'UI.EJS0 tests',
     command: npmCommand,
-    args: npmArgs('run', 'test', '--workspace', 'ui'),
+    args: npmArgs('run', 'test', '--workspace', 'ui.EJS0'),
     kind: 'test',
   },
 ];
@@ -175,9 +175,9 @@ function colorResult(status, passed, total) {
 
 function printSummary(success) {
   const api = results.apiTests;
-  const ui = results.uiTests;
+  const uiEJS0 = results.uiEJS0Tests;
 
-  const numericResults = [api, ui].filter(
+  const numericResults = [api, uiEJS0].filter(
     (result) => result.passed !== null && result.total !== null,
   );
 
@@ -209,11 +209,11 @@ function printSummary(success) {
   console.log('');
   console.log(`  Shared build: ${colorStatus(results.sharedBuild.status)}`);
   console.log(`  API build:    ${colorStatus(results.apiBuild.status)}`);
-  console.log(`  UI build:     ${colorStatus(results.uiBuild.status)}`);
+  console.log(`  UI.EJS0 build: ${colorStatus(results.uiEJS0Build.status)}`);
 
   console.log('');
   console.log(`  API tests:    ${colorResult(api.status, api.passed, api.total)}`);
-  console.log(`  UI tests:     ${colorResult(ui.status, ui.passed, ui.total)}`);
+  console.log(`  UI.EJS0 tests: ${colorResult(uiEJS0.status, uiEJS0.passed, uiEJS0.total)}`);
 
   console.log('');
   console.log(`  Total tests:  ${totalText}`);

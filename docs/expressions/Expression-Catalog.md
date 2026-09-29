@@ -61,7 +61,7 @@ The registry enforces a numeric argument before evaluation.
 **Returns:** first collection member, the requested property of that member, or `null` when unavailable.
 
 ```text
-FirstCtx($entity-fields.platformId.enumItems, 'value')
+FirstCtx($enums.SysPlatform.values, 'value')
 => value of the first enum item
 
 FirstCtx(entries)

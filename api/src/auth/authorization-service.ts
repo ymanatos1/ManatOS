@@ -164,6 +164,21 @@ export class AuthorizationService {
     if (subject.role === SysBOUserRole.Admin) return true;
 
     /**
+     * A signed-in user owns the self-service update boundary for their own
+     * SysBOUser record, independently from their administrative role. This
+     * must be resolved before Superuser inspection-only policy so becoming a
+     * Superuser never removes Account/User self-service capabilities.
+     */
+    if (
+      action === 'update' &&
+      sysBOKey === 'sys-users' &&
+      record !== undefined &&
+      record.id === subject.userId
+    ) {
+      return true;
+    }
+
+    /**
      * Superuser is an inspection role for generic entity administration.
      * Read rules below still scope what can be inspected; all generic mutations
      * are denied before audit/relationship fallbacks can accidentally grant them.
@@ -278,12 +293,11 @@ export class AuthorizationService {
   }
 
   private async subjectOrganizationRootId(subject: AuthorizationSubject): Promise<string | null> {
-    const user = await this.store.sysUsers.getById(subject.userId);
-    if (!user?.principalId) return null;
-
-    const principal = await this.store.sysPrincipals.getById(user.principalId);
+    const principal = this.store.sysPrincipals
+      .values()
+      .find((item) => item.userId === subject.userId);
     if (!principal) return null;
-    return principal.rootPrincipalId ?? principal.id;
+    return principal.rootId ?? principal.id;
   }
 
   private async principalIsInSubjectOrganization(
@@ -292,8 +306,8 @@ export class AuthorizationService {
   ): Promise<boolean> {
     const rootId = await this.subjectOrganizationRootId(subject);
     if (!rootId) return false;
-    const principal = record as SysBOEntity & { rootPrincipalId?: string | null };
-    return principal.id === rootId || principal.rootPrincipalId === rootId;
+    const principal = record as SysBOEntity & { rootId?: string | null };
+    return principal.id === rootId || principal.rootId === rootId;
   }
 
   private async licenseIsInSubjectOrganization(

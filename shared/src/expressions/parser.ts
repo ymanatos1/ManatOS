@@ -218,11 +218,11 @@ class Parser {
             kind: 'dynamic-path' as const,
             expression: {
               kind: 'variable' as const,
-              path: '#level.control.entityName',
+              path: '#control.entityName',
               members: ['#level', 'control', 'entityName'],
               absolute: false,
             },
-            source: '#level.control.entityName',
+            source: '#control.entityName',
           },
         ] satisfies ExpressionPathMember[];
       }
@@ -234,11 +234,11 @@ class Parser {
             kind: 'dynamic-path' as const,
             expression: {
               kind: 'variable' as const,
-              path: '#level.control.entityName',
+              path: '#control.entityName',
               members: ['#level', 'control', 'entityName'],
               absolute: false,
             },
-            source: '#level.control.entityName',
+            source: '#control.entityName',
           },
           'metadata',
           'fieldDefinition',
@@ -254,7 +254,11 @@ class Parser {
         this.source,
       );
     }
-    if (identifier.startsWith('#') && identifier !== '#' && identifier !== '#level') {
+    if (
+      identifier.startsWith('#') &&
+      identifier !== '#' &&
+      !['#level', '#control', '#data', '#layout', '#state'].includes(identifier)
+    ) {
       throw new ExpressionParseError(
         `Unknown CTX relative selector ${identifier}`,
         first.position,

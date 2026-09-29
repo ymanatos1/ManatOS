@@ -5,14 +5,15 @@
   "workspaces": [
     "shared",
     "api",
-    "ui"
+    "ui.EJS0"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace shared\" \"npm run dev --workspace api\" \"npm run dev --workspace ui\"",
+    "dev": "node scripts/dev.mjs",
     "dev:api": "npm run dev --workspace api",
-    "dev:ui": "npm run dev --workspace ui",
-    "build": "npm run build --workspace shared && npm run build --workspace api && npm run build --workspace ui",
-    "test": "npm run test --workspace api && npm run test --workspace ui",
+    "dev:ui": "npm run dev --workspace ui.EJS0",
+    "dev:ui.EJS0": "npm run dev --workspace ui.EJS0",
+    "build": "npm run build --workspace shared && npm run build --workspace api && npm run build --workspace ui.EJS0",
+    "test": "npm run test --workspace api && npm run test --workspace ui.EJS0",
     "verify": "node scripts/verify.mjs",
     "verify-run": "node scripts/verify-run.mjs",
     "format-verify-run": "npm run format && npm run verify-run",

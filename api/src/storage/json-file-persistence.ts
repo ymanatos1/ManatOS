@@ -47,8 +47,10 @@ export class JsonFilePersistence {
           readFile(this.filePath, 'utf8'),
         );
         const raw = JSON.parse(serialized) as PersistedDatabaseState;
+        const identityMigrationChanged = migrateLegacyUserPrincipalIdentity(raw);
+        const principalRootMigrationChanged = migrateLegacyPrincipalRootField(raw);
 
-        return {
+        const state: DatabaseState = {
           sysUsers: fromPersistedRecords(raw.sysUsers),
 
           sysPrincipals: fromPersistedRecords(raw.sysPrincipals),
@@ -74,6 +76,15 @@ export class JsonFilePersistence {
 
           sysUserInvitations: fromPersistedRecords(raw.sysUserInvitations),
         };
+
+        // 18B is a persisted-schema migration, not merely a runtime normalization.
+        // Once a legacy User.principalId has been moved to Principal.userId, make
+        // the canonical shape durable immediately during startup.
+        if (identityMigrationChanged || principalRootMigrationChanged) {
+          await this.save(state);
+        }
+
+        return state;
       } catch (error) {
         /*
          * A missing database file simply means that this is the first
@@ -143,6 +154,111 @@ export class JsonFilePersistence {
       }
     });
   }
+}
+
+/** Migrate the persisted Principal hierarchy cache from rootPrincipalId to rootId. */
+function migrateLegacyPrincipalRootField(raw: PersistedDatabaseState): boolean {
+  let changed = false;
+  for (const persistedPrincipal of Object.values(raw.sysPrincipals ?? {})) {
+    const principal = persistedPrincipal as typeof persistedPrincipal & {
+      rootId?: string | null;
+      rootPrincipalId?: string | null;
+    };
+    if (Object.prototype.hasOwnProperty.call(principal, 'rootPrincipalId')) {
+      if (!Object.prototype.hasOwnProperty.call(principal, 'rootId')) {
+        principal.rootId = principal.rootPrincipalId ?? null;
+      }
+      delete principal.rootPrincipalId;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/**
+ * Migrate snapshots written while SysUser.principalId owned the optional 1:1
+ * website-account identity relationship. Principal.userId is now the sole
+ * persisted endpoint; never retain both directions in memory or on the next save.
+ */
+function migrateLegacyUserPrincipalIdentity(raw: PersistedDatabaseState): boolean {
+  const users = raw.sysUsers ?? {};
+  const principals = raw.sysPrincipals ?? {};
+  const claimedUsers = new Map<string, string>();
+
+  // Validate any already-migrated Principal.userId endpoints first. This makes
+  // repeated loads idempotent while refusing a partially corrupt relationship.
+  for (const [principalId, persistedPrincipal] of Object.entries(principals)) {
+    const principal = persistedPrincipal as typeof persistedPrincipal & { userId?: string | null };
+    if (!principal.userId) continue;
+    if (principal.principalType !== 'Person') {
+      throw new StorageAppError(
+        `Identity migration conflict: non-Person Principal '${principalId}' is linked to User '${principal.userId}'.`,
+      );
+    }
+    if (!users[principal.userId]) {
+      throw new StorageAppError(
+        `Identity migration conflict: Principal '${principalId}' references missing User '${principal.userId}'.`,
+      );
+    }
+    const previousPrincipalId = claimedUsers.get(principal.userId);
+    if (previousPrincipalId && previousPrincipalId !== principalId) {
+      throw new StorageAppError(
+        `Identity migration conflict: User '${principal.userId}' is linked to both Principals '${previousPrincipalId}' and '${principalId}'.`,
+      );
+    }
+    claimedUsers.set(principal.userId, principalId);
+  }
+
+  // Validate every legacy User.principalId before mutating the snapshot. A bad
+  // legacy link must never disappear merely because the new owner is Principal.
+  const legacyLinks: Array<{ userId: string; principalId: string }> = [];
+  for (const [userId, persistedUser] of Object.entries(users)) {
+    const legacyUser = persistedUser as typeof persistedUser & { principalId?: string | null };
+    if (!legacyUser.principalId) continue;
+    const principalId = legacyUser.principalId;
+    const persistedPrincipal = principals[principalId];
+    if (!persistedPrincipal) {
+      throw new StorageAppError(
+        `Legacy identity migration conflict: User '${userId}' references missing Principal '${principalId}'.`,
+      );
+    }
+    if (persistedPrincipal.principalType !== 'Person') {
+      throw new StorageAppError(
+        `Legacy identity migration conflict: User '${userId}' references non-Person Principal '${principalId}'.`,
+      );
+    }
+    const principal = persistedPrincipal as typeof persistedPrincipal & { userId?: string | null };
+    if (principal.userId && principal.userId !== userId) {
+      throw new StorageAppError(
+        `Legacy identity migration conflict: Principal '${principalId}' is linked to both Users '${principal.userId}' and '${userId}'.`,
+      );
+    }
+    const previousPrincipalId = claimedUsers.get(userId);
+    if (previousPrincipalId && previousPrincipalId !== principalId) {
+      throw new StorageAppError(
+        `Legacy identity migration conflict: User '${userId}' is linked to both Principals '${previousPrincipalId}' and '${principalId}'.`,
+      );
+    }
+    claimedUsers.set(userId, principalId);
+    legacyLinks.push({ userId, principalId });
+  }
+
+  for (const { userId, principalId } of legacyLinks) {
+    const principal = principals[principalId] as (typeof principals)[string] & {
+      userId?: string | null;
+    };
+    principal.userId = userId;
+  }
+  let changed = legacyLinks.length > 0;
+  for (const persistedUser of Object.values(users)) {
+    const legacyUser = persistedUser as typeof persistedUser & { principalId?: string | null };
+    if (Object.prototype.hasOwnProperty.call(legacyUser, 'principalId')) {
+      delete legacyUser.principalId;
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 /**

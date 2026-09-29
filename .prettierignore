@@ -2,4 +2,6 @@ node_modules
 dist
 coverage
 data/database.json.tmp
-ui/public/vendor
+ui.EJS0/public/vendor
+
+ui.EJS0/public/dist

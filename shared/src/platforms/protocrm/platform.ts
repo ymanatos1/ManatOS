@@ -17,7 +17,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
   shortName: 'protoCRM',
   icon: 'bi-boxes',
   description:
-    'CRM business platform for defining customer relationships, business activity and connected applications on the ManatOS Application Foundation.',
+    'CRM business platform for defining customer relationships, business activity and connected applications on the ManatOS operational platform.',
   enabled: true,
   headerImage: {
     src: '/assets/platforms/protocrm/protocrm-customer-network.png',
@@ -27,7 +27,7 @@ export const PROTOCRM_PLATFORM: SysPlatform = {
     subtitle: 'protoCRM — Customer Relationship Management on ManatOS',
     stylesheet: '/css/platforms/protocrm.css',
     intro:
-      'protoCRM is the CRM domain layer built on the ManatOS Application Foundation. It uses configurable business models, relationships and processes to shape customer-focused applications; access remains licensing-controlled, applications can be tested and explored in the Playground, and prepared for independent delivery as they mature.',
+      'protoCRM is a CRM platform and ManatOS application built on the ManatOS Application Foundation. It uses configurable business models, relationships and processes to shape customer-focused applications; access remains licensing-controlled, applications can be tested and explored in the Playground, and prepared for independent delivery as they mature.',
     features: [
       {
         id: 'customer-360',

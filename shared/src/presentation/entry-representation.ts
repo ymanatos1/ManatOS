@@ -1,3 +1,5 @@
+import { enumItemsForField } from '../metadata/subsystems/enum-registry.js';
+import { relationshipForField } from '../metadata/bo/relationships.js';
 import type {
   ManatOSEntryValueSourceMetadata,
   ManatOSObjectMetadata,
@@ -178,14 +180,16 @@ export function resolveEntryRepresentation<T>(
   const typeFieldKey = directSourceField(metadata, typeSource);
   const typeField = typeFieldKey ? metadata.fieldDefinition[typeFieldKey] : undefined;
 
-  const enumItem = typeField?.enumItems?.find((item) => String(item.value) === String(typeValue));
+  const enumItem = enumItemsForField(typeField).find(
+    (item) => String(item.value) === String(typeValue),
+  );
   const relationTypeKey = relationKeyFromExpression(typeSource);
   const relationTypeRow =
     relationTypeKey && relations[relationTypeKey] && typeof relations[relationTypeKey] === 'object'
       ? (relations[relationTypeKey] as Readonly<Record<string, unknown>>)
       : null;
   const referenceRow =
-    typeFieldKey && typeField?.type === 'reference'
+    typeFieldKey && relationshipForField(metadata, typeFieldKey)
       ? matchingReferenceRow(typeFieldKey, typeValue, options.referenceData)
       : relationTypeRow;
 
@@ -210,5 +214,45 @@ export function resolveEntryRepresentation<T>(
     ),
     status: resolveSource(metadata, entry, metadata.entry?.status, relations, 'status'),
     icons: resolvedIcons(uiMetadata?.entry?.icon, entityIcon, typeIcon),
+  };
+}
+
+/**
+ * Project canonical entry-representation metadata for browser/runtime consumers.
+ * This is the single metadata-to-runtime projection used by both route renderers
+ * and the global entity registry. Factual reference data remains caller-owned.
+ */
+export function entryRepresentationRuntime(
+  metadata: ManatOSObjectMetadata<Record<string, unknown>>,
+  metadataUI: Pick<SysBOUIMetadata, 'entry'> | null | undefined,
+  referenceData: Readonly<Record<string, unknown>> = {},
+): Readonly<Record<string, unknown>> {
+  const sourceFor = (source: NonNullable<typeof metadata.entry>['name'] | undefined) => {
+    if (!source) return null;
+    return { ...source };
+  };
+
+  return {
+    name: sourceFor(
+      metadata.entry?.name ??
+        (metadata.fieldDefinition.name ? { field: 'name' } : { field: metadata.primaryField }),
+    ),
+    type: sourceFor(
+      metadata.entry?.type ?? (metadata.fieldDefinition.type ? { field: 'type' } : undefined),
+    ),
+    description: sourceFor(metadata.entry?.description),
+    status: sourceFor(metadata.entry?.status),
+    calculations: Object.fromEntries(
+      Object.entries(metadata.fieldDefinition)
+        .filter(([, field]) => Boolean(field.calculation?.expression))
+        .map(([key, field]) => [key, { source: field.calculation!.expression }]),
+    ),
+    relationships: Object.fromEntries(
+      Object.entries(metadata.relationships ?? {})
+        .filter(([, relationship]) => relationship.fields.length === 1)
+        .map(([key, relationship]) => [key, { field: relationship.fields[0] }]),
+    ),
+    referenceData,
+    icon: metadataUI?.entry?.icon ?? { mode: metadata.entry?.type ? 'composed' : 'entity' },
   };
 }

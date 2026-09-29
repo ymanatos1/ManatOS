@@ -12,6 +12,7 @@ import {
   type SysPrincipalAddress,
   normalizeTelephoneNumber,
   evaluateExpression,
+  enumItemsForField,
   type SysPrincipalTelephoneNumber,
   type SysBOPrincipal,
   SysBOPrincipalType,
@@ -23,13 +24,13 @@ import type { AuditActor } from '../../audit/audit-service.js';
 
 function principalTypeCanHaveParent(principalType: SysBOPrincipal['principalType']): boolean {
   const field = sysBOPrincipalsMetadata.fieldDefinition.principalType!;
-  const item = field.enumItems?.find((candidate) => candidate.value === principalType);
+  const item = enumItemsForField(field).find((candidate) => candidate.value === principalType);
   return item?.canHaveParent === true;
 }
 
 function principalTypeCanContainChildren(principalType: SysBOPrincipal['principalType']): boolean {
   const field = sysBOPrincipalsMetadata.fieldDefinition.principalType!;
-  const item = field.enumItems?.find((candidate) => candidate.value === principalType);
+  const item = enumItemsForField(field).find((candidate) => candidate.value === principalType);
   return item?.isContainer === true;
 }
 
@@ -69,13 +70,12 @@ type PrincipalRelatedChanges = {
 
 function principalPayload<T extends object>(
   value: T,
-): { entity: T; relatedChanges?: PrincipalRelatedChanges; userId?: string | null } {
-  const source = value as T & { relatedChanges?: PrincipalRelatedChanges; userId?: string | null };
-  const { relatedChanges, userId, ...entity } = source;
+): { entity: T; relatedChanges?: PrincipalRelatedChanges } {
+  const source = value as T & { relatedChanges?: PrincipalRelatedChanges };
+  const { relatedChanges, ...entity } = source;
   return {
     entity: entity as T,
     ...(relatedChanges === undefined ? {} : { relatedChanges }),
-    ...(Object.prototype.hasOwnProperty.call(source, 'userId') ? { userId: userId ?? null } : {}),
   };
 }
 
@@ -110,19 +110,14 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     super(store, store.sysPrincipals, sysBOPrincipalsMetadata);
   }
 
-  /**
-   * Write the inverse Principal -> User endpoint through the canonical
-   * SysUser.principalId owner. A linked candidate may not already identify
-   * another Principal; the complete change is atomic with Principal Save.
-   */
-  private async syncUserIdentityLink(
-    principal: SysBOPrincipal,
+  /** Validate the canonical persisted Principal -> User 1:1 identity endpoint. */
+  private async validateUserIdentityLink(
+    principalId: string | undefined,
+    principalType: SysBOPrincipalType,
     requestedUserId: string | null | undefined,
     actor: AuditActor,
   ): Promise<void> {
-    if (requestedUserId === undefined && principal.principalType === SysBOPrincipalType.Person)
-      return;
-    if (principal.principalType !== SysBOPrincipalType.Person) requestedUserId = null;
+    if (requestedUserId === undefined) return;
     const actingUser = actor.userId ? await this.store.sysUsers.getById(actor.userId) : null;
     if (actor.source === 'user' && actingUser?.role !== 'Admin') {
       throw new ConflictError(
@@ -131,7 +126,7 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
         'Ask an Administrator to change this relationship.',
       );
     }
-    if (principal.principalType !== SysBOPrincipalType.Person && requestedUserId) {
+    if (principalType !== SysBOPrincipalType.Person && requestedUserId) {
       throw new ConflictError(
         'PRINCIPAL_USER_REQUIRES_PERSON',
         'Only a Person Principal can be linked to a User account.',
@@ -139,26 +134,19 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       );
     }
 
-    const current = this.store.sysUsers.values().find((user) => user.principalId === principal.id);
-    if (requestedUserId === current?.id) return;
-
     if (requestedUserId) {
       const candidate = await this.store.sysUsers.getById(requestedUserId);
       if (!candidate) throw new NotFoundError('SysBOUser', requestedUserId);
-      if (candidate.principalId && candidate.principalId !== principal.id) {
+      const existing = this.store.sysPrincipals
+        .values()
+        .find((principal) => principal.userId === requestedUserId && principal.id !== principalId);
+      if (existing) {
         throw new ConflictError(
           'PRINCIPAL_USER_ALREADY_LINKED',
-          `User '${candidate.name}' is already linked to another Principal.`,
+          `User '${candidate.name}' is already linked to Principal '${existing.name}'.`,
           'Choose an unlinked User account.',
         );
       }
-    }
-
-    if (current) {
-      await this.store.sysUsers.update(current.id, { principalId: null }, actor);
-    }
-    if (requestedUserId) {
-      await this.store.sysUsers.update(requestedUserId, { principalId: principal.id }, actor);
     }
   }
 
@@ -176,6 +164,13 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     const normalized = principalTypeCanHaveParent(initialized.principalType)
       ? initialized
       : { ...initialized, parentId: null };
+    await this.validateUserIdentityLink(
+      undefined,
+      normalized.principalType,
+      normalized.userId,
+      actor,
+    );
+    if (normalized.principalType !== SysBOPrincipalType.Person) normalized.userId = null;
 
     if (normalized.parentId) {
       const parent = await this.repository.getById(normalized.parentId);
@@ -213,7 +208,6 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
         actor,
       );
       await this.syncAddresses(persisted.id, split.relatedChanges?.addresses?.current, actor);
-      await this.syncUserIdentityLink(persisted, split.userId, actor);
       return persisted;
     });
   }
@@ -239,6 +233,10 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
     )
       ? split.entity
       : { ...split.entity, parentId: null };
+    if (effectiveType !== SysBOPrincipalType.Person) normalizedChanges.userId = null;
+    if (Object.prototype.hasOwnProperty.call(normalizedChanges, 'userId')) {
+      await this.validateUserIdentityLink(id, effectiveType, normalizedChanges.userId, actor);
+    }
 
     if (!principalTypeCanContainChildren(effectiveType)) {
       const children = await this.repository.list({
@@ -293,7 +291,6 @@ export class SysBOPrincipalService extends GenericSysBOService<SysBOPrincipal> {
       await this.syncEmailAddresses(id, split.relatedChanges?.emailAddresses?.current, actor);
       await this.syncTelephoneNumbers(id, split.relatedChanges?.telephoneNumbers?.current, actor);
       await this.syncAddresses(id, split.relatedChanges?.addresses?.current, actor);
-      await this.syncUserIdentityLink(persisted, split.userId, actor);
       return persisted;
     });
   }

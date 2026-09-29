@@ -1,0 +1,1251 @@
+/* =========================================================================
+   Adaptive application shell
+   ========================================================================= */
+
+/**
+ * The shell defaults to one column only.
+ *
+ * Optional side columns are enabled exclusively through state classes:
+ *
+ *   has-left-nav
+ *   has-details
+ *
+ * Therefore a hidden panel never leaves an empty reserved column.
+ */
+.app-shell {
+  position: relative;
+  flex: 1 0 auto;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'workspace';
+  transition: grid-template-columns 0.18s ease;
+}
+
+/* -------------------------------------------------------------------------
+ * Left navigation visible
+ * ---------------------------------------------------------------------- */
+.app-shell.has-left-nav {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr);
+
+  grid-template-areas: 'left workspace';
+}
+
+/* -------------------------------------------------------------------------
+ * Details visible
+ * ---------------------------------------------------------------------- */
+.app-shell.has-details {
+  grid-template-columns:
+    minmax(0, 1fr)
+    320px;
+
+  grid-template-areas: 'workspace details';
+}
+
+/* -------------------------------------------------------------------------
+ * Both side areas visible
+ * ---------------------------------------------------------------------- */
+.app-shell.has-left-nav.has-details {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    320px;
+
+  grid-template-areas: 'left workspace details';
+}
+
+/* -------------------------------------------------------------------------
+ * Development debugger visible
+ * ---------------------------------------------------------------------- */
+.app-shell.has-debug {
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'workspace debug';
+}
+
+.app-shell.has-left-nav.has-debug {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'left workspace debug';
+}
+
+.app-shell.has-details.has-debug {
+  grid-template-columns:
+    minmax(0, 1fr)
+    320px
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'workspace details debug';
+}
+
+.app-shell.has-left-nav.has-details.has-debug {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    320px
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'left workspace details debug';
+}
+
+/*
+ * Pre-paint debugger restoration.
+ *
+ * shell.js will replace these selectors with the normal has-debug class state
+ * as soon as the DOM is ready. Until then they prevent the workspace from
+ * briefly expanding to full width on ordinary reload/navigation.
+ */
+html[data-manatos-debug-visible='true'] .app-shell {
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'workspace debug';
+}
+
+html[data-manatos-debug-visible='true'] .app-shell.has-left-nav {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'left workspace debug';
+}
+
+html[data-manatos-debug-visible='true'] .app-shell.has-details {
+  grid-template-columns:
+    minmax(0, 1fr)
+    320px
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'workspace details debug';
+}
+
+html[data-manatos-debug-visible='true'] .app-shell.has-left-nav.has-details {
+  grid-template-columns:
+    255px
+    minmax(0, 1fr)
+    320px
+    var(--manatos-debug-width, 28vw);
+  grid-template-areas: 'left workspace details debug';
+}
+
+/* =========================================================================
+   Left navigation
+   ========================================================================= */
+
+.left-navigation {
+  grid-area: left;
+  min-width: 0;
+  background: #fff;
+  border-right: 1px solid var(--manatos-border);
+  padding: 1.1rem 0.8rem;
+  overflow-y: auto;
+}
+
+/**
+ * Header containing:
+ *
+ *   Workspace       [collapse]
+ */
+.left-navigation-header {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 0.5rem;
+
+  margin-bottom: 0.45rem;
+}
+
+.left-navigation-heading {
+  padding: 0 0.65rem;
+
+  color: var(--manatos-muted);
+
+  font-size: 0.68rem;
+
+  font-weight: 700;
+
+  letter-spacing: 0.1em;
+
+  text-transform: uppercase;
+}
+
+.navigation-collapse-button {
+  width: 30px;
+  height: 30px;
+
+  display: inline-grid;
+
+  place-items: center;
+
+  padding: 0;
+
+  border-color: var(--manatos-border);
+
+  color: var(--manatos-muted);
+}
+
+.navigation-collapse-button:hover,
+.navigation-collapse-button:focus {
+  color: var(--manatos-blue);
+
+  border-color: #b9cbe1;
+
+  background: #edf4fc;
+}
+
+/**
+ * Restore control after the complete navigation column has disappeared.
+ *
+ * It floats over the workspace edge rather than occupying another
+ * permanent grid column.
+ */
+.left-navigation-restore {
+  position: absolute;
+
+  z-index: 10;
+
+  top: 1rem;
+  left: 0.45rem;
+
+  width: 34px;
+  height: 34px;
+
+  display: grid;
+
+  place-items: center;
+
+  padding: 0;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border-color: var(--manatos-border);
+
+  box-shadow: 0 3px 10px rgba(17, 39, 73, 0.1);
+}
+
+.left-navigation-restore:hover,
+.left-navigation-restore:focus {
+  color: var(--manatos-blue);
+
+  background: #fff;
+
+  border-color: #b9cbe1;
+}
+
+/* =========================================================================
+   Workspace
+   ========================================================================= */
+
+.workspace {
+  grid-area: workspace;
+
+  min-width: 0;
+
+  /*
+   * Responsive page layouts must react to the width that is actually
+   * available to the workspace, not to the browser viewport. The shell may
+   * currently consume 255px for the left navigation and/or 320px for the
+   * Details panel, so viewport media queries alone can substantially
+   * overestimate the usable page width.
+   */
+  container-name: manatOS-workspace;
+  container-type: inline-size;
+
+  padding: 1.35rem 1.5rem 2rem;
+}
+
+body.anonymous .workspace {
+  width: 100%;
+
+  max-width: 1500px;
+
+  margin: 0 auto;
+
+  padding: 1.5rem 2rem 2.5rem;
+}
+
+/**
+ * When the left navigation is collapsed, reserve just enough visual room
+ * for the small floating restore button.
+ *
+ * This is intentionally NOT a grid column.
+ */
+body.authenticated .app-shell:not(.has-left-nav) .workspace {
+  padding-left: 3.25rem;
+}
+
+/* =========================================================================
+   Details panel
+   ========================================================================= */
+
+.details-panel {
+  grid-area: details;
+
+  min-width: 0;
+
+  background: #fff;
+
+  border-left: 1px solid var(--manatos-border);
+
+  padding: 1.25rem;
+
+  overflow-y: auto;
+}
+
+.vertical-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vertical-menu li {
+  margin: 0.1rem 0;
+}
+
+.vertical-menu a,
+.vertical-menu summary {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #344258;
+  text-decoration: none;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.vertical-menu summary {
+  list-style: none;
+}
+
+.vertical-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.vertical-menu a:hover,
+.vertical-menu summary:hover {
+  background: #edf4fc;
+  color: var(--manatos-blue);
+}
+
+.vertical-menu.level-1 {
+  padding-left: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.vertical-menu.level-1 a {
+  font-size: 0.86rem;
+}
+
+.menu-chevron {
+  font-size: 0.72rem;
+  transition: transform 0.15s ease;
+}
+
+details[open] > summary .menu-chevron {
+  transform: rotate(180deg);
+}
+
+.vertical-separator hr {
+  margin: 0.75rem 0.5rem;
+  border-color: var(--manatos-border);
+}
+
+.workspace {
+  min-width: 0;
+  padding: 1.35rem 1.5rem 2rem;
+}
+
+body.anonymous .workspace {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 2.5rem;
+}
+
+.workspace-titlebar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+.workspace-titlebar h1 {
+  margin: 0.25rem 0 0;
+  font-size: 1.65rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--manatos-muted);
+  font-size: 0.78rem;
+}
+
+.page-breadcrumb a {
+  color: var(--manatos-blue);
+  text-decoration: none;
+}
+
+.page-breadcrumb .bi {
+  font-size: 0.6rem;
+}
+
+.workspace-content {
+  min-width: 0;
+}
+
+.details-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.details-panel-heading h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+}
+
+.details-card {
+  padding: 0.9rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.55rem;
+  background: #f8fafc;
+  font-size: 0.86rem;
+}
+
+.details-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--manatos-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.content-card {
+  background: var(--manatos-surface);
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.8rem;
+  box-shadow: var(--manatos-shadow);
+  padding: 1.35rem;
+}
+
+.home-hero {
+  padding: clamp(1.5rem, 3vw, 3rem);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 3% 88%, rgba(47, 127, 215, 0.06), transparent 22%),
+    radial-gradient(circle at 97% 12%, rgba(38, 153, 89, 0.045), transparent 20%),
+    var(--manatos-surface);
+}
+
+.eyebrow {
+  color: var(--manatos-blue);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.home-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(380px, 0.92fr);
+  align-items: center;
+  gap: clamp(2rem, 4vw, 4.5rem);
+}
+
+.home-hero-copy h2 {
+  max-width: 720px;
+  margin: 0.55rem 0 1rem;
+  color: var(--manatos-navy);
+  font-size: clamp(1.85rem, 2.7vw, 2.75rem);
+  font-weight: 650;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.home-hero-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.home-hero-heading-row h2 {
+  flex: 1 1 auto;
+}
+
+.home-product-tagline {
+  max-width: 720px;
+  margin: -0.35rem 0 0.65rem;
+  color: var(--manatos-navy);
+  font-weight: 650;
+}
+
+.home-hero-lead {
+  max-width: 720px;
+  margin: 0 0 1.45rem;
+  color: var(--manatos-muted);
+  font-size: clamp(1rem, 1.25vw, 1.22rem);
+  line-height: 1.55;
+}
+
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.home-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 2rem;
+}
+
+.home-benefit {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 0.65rem;
+}
+
+.home-benefit-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f1f6fb;
+  color: var(--manatos-blue);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.home-benefit-icon > i {
+  display: block;
+  line-height: 1;
+}
+
+.home-benefit-icon .bi::before {
+  display: block;
+  line-height: 1;
+  vertical-align: 0;
+}
+
+.home-benefit-icon.is-security {
+  color: #248b54;
+  background: #edf8f1;
+}
+
+.home-benefit-icon.is-metadata {
+  color: #6651cb;
+  background: #f2effd;
+}
+
+.home-benefit strong,
+.home-benefit span {
+  display: block;
+}
+
+.home-benefit strong {
+  margin-bottom: 0.16rem;
+  color: var(--manatos-navy);
+  font-size: 0.82rem;
+}
+
+.home-benefit div > span {
+  color: var(--manatos-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.home-platform-map {
+  position: relative;
+  min-width: 0;
+  padding: clamp(1.25rem, 2.2vw, 2rem);
+  border: 1px solid #d4e2f2;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #f8fbff 0%, #f2f7fd 55%, #fbfdff 100%);
+  box-shadow: 0 16px 34px rgba(21, 66, 111, 0.08);
+}
+
+.home-platform-node {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: min(86%, 390px);
+  margin-inline: auto;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid #d4dfec;
+  border-radius: 0.78rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 7px 18px rgba(12, 56, 110, 0.07);
+}
+
+.home-platform-node-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  color: #fff;
+  background: linear-gradient(145deg, #3c8ae4, #1c68c6);
+  font-size: 1.15rem;
+}
+
+.home-platform-node-icon > i {
+  display: block;
+  line-height: 1;
+}
+
+.home-platform-node-icon .bi::before {
+  display: block;
+  line-height: 1;
+  vertical-align: 0;
+}
+
+.home-platform-app .home-platform-node-icon {
+  background: linear-gradient(145deg, #2f80ed, #1769d2);
+  color: #fff;
+  box-shadow: 0 5px 12px rgba(23, 105, 210, 0.18);
+}
+
+.home-platform-node strong,
+.home-platform-node span {
+  display: block;
+}
+
+.home-platform-node strong {
+  color: var(--manatos-navy);
+  font-size: 0.9rem;
+}
+
+.home-platform-node div > span {
+  margin-top: 0.15rem;
+  color: var(--manatos-muted);
+  font-size: 0.74rem;
+}
+
+.home-platform-services {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.home-platform-service {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 108px;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #d5e1ef;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.95);
+  text-align: center;
+  box-shadow: 0 7px 16px rgba(12, 56, 110, 0.06);
+}
+
+.home-platform-service > span {
+  height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.3rem;
+  color: var(--manatos-blue);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.home-platform-service > span > i {
+  display: block;
+  line-height: 1;
+}
+
+.home-platform-service > span .bi::before {
+  display: block;
+  line-height: 1;
+  vertical-align: 0;
+}
+
+.home-platform-service.is-auth > span,
+.home-platform-service.is-auth strong {
+  color: #258d55;
+}
+
+.home-platform-service.is-sysbo > span,
+.home-platform-service.is-sysbo strong {
+  color: #6552ce;
+}
+
+.home-platform-service strong {
+  color: var(--manatos-blue);
+  font-size: 0.78rem;
+}
+
+.home-platform-service small {
+  margin-top: 0.24rem;
+  color: var(--manatos-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.home-platform-connector {
+  position: relative;
+  z-index: 1;
+  width: 68%;
+  height: 24px;
+  margin-inline: auto;
+  opacity: 0.9;
+}
+
+/*
+ * Connectors occupy the empty space BETWEEN rows.
+ * The horizontal rail sits in the middle of that gap, while the vertical
+ * branches reach both adjacent rows without running behind either card.
+ */
+.home-platform-connector::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed #8bb7e7;
+  transform: translateY(-0.5px);
+}
+
+.home-platform-connector::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 50%;
+  border-left: 1px dashed #8bb7e7;
+  transform: translateX(-0.5px);
+}
+
+.home-platform-connector-top {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.home-platform-connector-top::after {
+  top: 0;
+  bottom: 50%;
+}
+
+.home-platform-connector-top > span,
+.home-platform-connector-bottom > span {
+  display: none;
+}
+
+.home-platform-connector-top {
+  background:
+    linear-gradient(#8bb7e7, #8bb7e7) left 50% / 1px 50% no-repeat,
+    linear-gradient(#8bb7e7, #8bb7e7) right 50% / 1px 50% no-repeat;
+}
+
+.home-platform-connector-bottom::after {
+  top: 50%;
+  bottom: 0;
+}
+
+.home-platform-connector-bottom {
+  background:
+    linear-gradient(#8bb7e7, #8bb7e7) left 0 / 1px 50% no-repeat,
+    linear-gradient(#8bb7e7, #8bb7e7) right 0 / 1px 50% no-repeat;
+}
+
+.home-platform-foundation {
+  background: linear-gradient(145deg, #f4f8ff, #edf4fc);
+}
+
+.home-platform-foundation .home-platform-node-icon {
+  color: #2e70c4;
+  background: #dceaff;
+}
+
+/*
+ * The Home hero is laid out according to the workspace width after optional
+ * shell panels have taken their space. This is the key distinction from a
+ * viewport media query: opening Details or showing the left navigation can
+ * now make the architecture panel move below the copy only when the actual
+ * remaining workspace becomes genuinely narrow. The desktop two-column
+ * composition is intentionally retained deeper into medium widths.
+ */
+@container manatOS-workspace (max-width: 899.98px) {
+  .home-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-platform-map {
+    width: min(100%, 720px);
+    margin-inline: auto;
+  }
+}
+
+@container manatOS-workspace (max-width: 767.98px) {
+  .home-benefits,
+  .home-platform-services {
+    grid-template-columns: 1fr;
+  }
+
+  .home-benefit {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .home-platform-service {
+    min-height: 0;
+  }
+
+  .home-platform-connector {
+    display: none;
+  }
+
+  .home-platform-services {
+    margin-block: 0.75rem;
+  }
+
+  .home-platform-node {
+    width: 100%;
+  }
+}
+
+/* Viewport fallbacks also keep the pages sensible outside the normal shell. */
+@media (max-width: 899.98px) {
+  .home-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-platform-map {
+    width: min(100%, 720px);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .home-benefits,
+  .home-platform-services {
+    grid-template-columns: 1fr;
+  }
+
+  .home-benefit {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .home-platform-service {
+    min-height: 0;
+  }
+
+  .home-platform-connector {
+    display: none;
+  }
+
+  .home-platform-services {
+    margin-block: 0.75rem;
+  }
+
+  .home-platform-node {
+    width: 100%;
+  }
+}
+
+.company-logo {
+  max-width: min(520px, 100%);
+  background: var(--manatos-navy);
+  padding: 0.7rem;
+  border-radius: 0.5rem;
+}
+
+.filter-panel {
+  background: #f8fafc;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.6rem;
+  padding: 0.9rem;
+}
+
+.table-responsive {
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.6rem;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.78rem 0.8rem;
+}
+
+.table thead th {
+  background: #f6f8fb;
+  color: #4a576a;
+  border-bottom-width: 1px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table-sort-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.table-sort-link:hover {
+  color: var(--manatos-blue);
+}
+
+.operation-trace {
+  max-height: 360px;
+  overflow: auto;
+  background: #111827;
+  color: #e5e7eb;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+}
+
+.password-rules .rule-ok {
+  color: #198754;
+}
+
+.modal-content {
+  border: 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 60px rgba(7, 26, 61, 0.18);
+}
+
+.modal-header,
+.modal-footer {
+  border-color: var(--manatos-border);
+}
+
+.corporate-footer {
+  min-height: 72px;
+  padding: 1rem 1.5rem;
+  background: var(--manatos-footer);
+  border-top: 1px solid var(--manatos-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  color: #5c6879;
+  font-size: 0.8rem;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.footer-brand strong {
+  color: var(--manatos-navy);
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.footer-links a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--manatos-blue);
+}
+
+@media (max-width: 991.98px) {
+  /**
+   * At tablet widths:
+   *
+   * - left navigation may remain part of the grid;
+   * - Details becomes an overlay drawer instead of reducing
+   *   the center workspace width.
+   */
+
+  .app-shell,
+  .app-shell.has-details {
+    grid-template-columns: minmax(0, 1fr);
+
+    grid-template-areas: 'workspace';
+  }
+
+  .app-shell.has-left-nav,
+  .app-shell.has-left-nav.has-details {
+    grid-template-columns:
+      220px
+      minmax(0, 1fr);
+
+    grid-template-areas: 'left workspace';
+  }
+
+  .details-panel {
+    position: fixed;
+
+    z-index: 1040;
+
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    width: min(360px, 90vw);
+
+    border-left: 1px solid var(--manatos-border);
+
+    box-shadow: -8px 0 28px rgba(7, 26, 61, 0.15);
+  }
+
+  .dropdown-submenu > .dropdown-menu {
+    position: static;
+
+    margin-left: 1rem;
+
+    border: 0;
+
+    box-shadow: none !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .top-header {
+    min-height: 64px;
+
+    padding: 0.55rem 0.85rem;
+  }
+
+  .brand-link img {
+    height: 40px;
+
+    max-width: 45vw;
+  }
+
+  /**
+   * Phone layout:
+   *
+   * Everything is one main column.
+   *
+   * If navigation is visible, it appears above the workspace rather
+   * than consuming narrow horizontal space.
+   */
+  .app-shell,
+  .app-shell.has-details {
+    grid-template-columns: minmax(0, 1fr);
+
+    grid-template-areas: 'workspace';
+  }
+
+  .app-shell.has-left-nav,
+  .app-shell.has-left-nav.has-details {
+    grid-template-columns: minmax(0, 1fr);
+
+    grid-template-areas:
+      'left'
+      'workspace';
+  }
+
+  .left-navigation {
+    border-right: 0;
+
+    border-bottom: 1px solid var(--manatos-border);
+  }
+
+  body.authenticated .app-shell:not(.has-left-nav) .workspace {
+    padding-left: 1rem;
+  }
+
+  .left-navigation-restore {
+    position: fixed;
+
+    z-index: 1035;
+
+    left: 0.6rem;
+
+    top: 132px;
+  }
+
+  .workspace,
+  body.anonymous .workspace {
+    padding: 1rem;
+  }
+
+  .workspace-titlebar {
+    align-items: center;
+  }
+
+  .workspace-titlebar h1 {
+    font-size: 1.4rem;
+  }
+
+  .corporate-footer,
+  .footer-brand,
+  .footer-links {
+    align-items: flex-start;
+  }
+
+  .corporate-footer {
+    flex-direction: column;
+  }
+
+  .footer-brand,
+  .footer-links {
+    flex-wrap: wrap;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Active workspace navigation
+   -------------------------------------------------------------------------
+   Nested pages retain the highlight of the first navigation page that owns
+   them (for example a SysUser entry continues to highlight Users).
+*/
+.vertical-menu a.is-active,
+.vertical-menu a.is-active:hover,
+.vertical-menu a.is-active:focus {
+  background: #dfeeff;
+  color: var(--manatos-blue);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--manatos-blue);
+}
+
+/* =========================================================================
+   Universal popup interaction layer
+   =========================================================================
+ * ManatOS popups are explicit interactions. Custom popup surfaces use this
+ * backdrop contract; Bootstrap modals receive the equivalent behavior from
+ * shell.js. Developer Tools remain below popup layers unless explicitly exposed
+ * for on-demand popup inspection.
+ */
+.manatos-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+/* While a hosted entry initializes, keep the already-visible owning surface in
+ * place and locked under the backdrop. The popup is laid out normally (so its
+ * geometry remains measurable) but is not revealed until the hosted entry
+ * reports canonical initialization settlement. */
+.manatos-popup-backdrop.manatos-popup-preparing .metadata-entry-popup {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.manatos-popup-backdrop.manatos-popup-preparing.manatos-popup-show-spinner::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -1.125rem 0 0 -1.125rem;
+  border: 0.24rem solid rgba(255, 255, 255, 0.55);
+  border-top-color: var(--bs-primary);
+  border-radius: 50%;
+  animation: manatos-busy-spin 0.9s linear infinite;
+}
+
+/* =========================================================================
+   Shell-owned Developer Tools dock
+   =========================================================================
+ * The original CTX-only debugger was robust because the shell owned exactly
+ * one right-hand grid item. Keep that contract: tabs never participate in the
+ * app-shell grid and therefore cannot alter the dock height or width.
+ */
+.developer-tools-dock {
+  grid-area: debug;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  max-height: calc(100vh - var(--top-header-height, 0px));
+  position: sticky;
+  top: 0;
+  /*
+   * Keep Developer Tools above ordinary shell content and nav dropdowns, but
+   * below Bootstrap/custom popup backdrops. A popup CTX action temporarily adds
+   * .is-popup-inspection to expose the dock on demand.
+   */
+  z-index: 1010;
+  /*
+   * The dock is a grid sibling of the workspace, never a source of shell
+   * height. CTX expansion can create thousands of intrinsic tree rows; size
+   * containment prevents that content from enlarging the app-shell grid track.
+   * The dock still stretches to the track chosen by the actual page content.
+   */
+  contain: size;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8fafc;
+  border-left: 1px solid var(--manatos-border);
+}
+
+.developer-tools-dock.is-popup-inspection {
+  z-index: 1200;
+}
+
+/* Shell menus must remain usable above the dock during normal (non-popup) use. */
+.horizontal-nav .dropdown-menu {
+  z-index: 1020;
+}
+
+.developer-tools-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Generic semantic owner/caller context projected into page and popup chrome. */
+.workspace-titlebar,
+.modal-header {
+  position: relative;
+}
+.surface-owner-context-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 38%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -15,10 +15,10 @@ describe('canonical relational schema projection', () => {
 
 it('keeps storage semantics adapter-neutral in the desired relational model', () => {
   const principals = desiredRdbmsSchema.find((table) => table.objectKey === 'sys-principals');
-  const rootPrincipal = principals?.columns.find((column) => column.name === 'rootPrincipalId');
+  const root = principals?.columns.find((column) => column.name === 'rootId');
   const parent = principals?.columns.find((column) => column.name === 'parentId');
 
-  expect(rootPrincipal?.calculation).toMatchObject({ persisted: true });
-  expect(rootPrincipal?.calculation?.expression).toContain('TraverseEntity');
-  expect(parent?.referenceBOKey).toBe('sys-principals');
+  expect(root?.calculation).toMatchObject({ persisted: true });
+  expect(root?.calculation?.expression).toContain('TraverseEntity');
+  expect(parent?.referencedObjectKey).toBe('sys-principals');
 });

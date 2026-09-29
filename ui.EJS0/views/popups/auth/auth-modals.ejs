@@ -1,0 +1,420 @@
+<%#
+  COMPONENT: Authentication popup family
+
+  Purpose:
+  - Defines the shared authentication and registration modal flows.
+
+  Inputs / metadata:
+  - currentUser, popupContent, provider presentation and authentication route state.
+
+  CTX contract:
+  - Shared popup runtime projects the active modal under ctx.<leaf-page>.popup.
+
+  Embeds / delegates:
+  - ../shared popup header/hero/footer/actions and authentication field partials.
+
+  Runtime contract:
+  - Bootstrap popup runtime plus authentication form runtime own lifecycle and actions.
+%>
+
+<%#
+  Authentication popup family.
+
+  These dialogs intentionally share the popup infrastructure under views/popups/shared:
+  popup-header owns the modal-level title/subtitle, rich-popup-hero owns the illustration
+  plus contentTitle/contentParagraphs, and popup-footer owns the Back-left/actions-right
+  convention. Keeping the structural chrome here declarative prevents individual auth
+  flows from drifting visually while still allowing each flow to provide its own fields.
+%>
+<% if (!currentUser) { %>
+  <%# Entry-point dialog: choose external-provider registration or local email registration. %>
+  <div
+    class="modal fade auth-primary-modal"
+    id="signUpMethodModal"
+    data-popup-purpose="auth-sign-up-method"
+    data-surface-kind="custom"
+    data-popup-presentation="rich"
+    tabindex="-1"
+    aria-labelledby="signUpMethodModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-dialog-centered auth-modal-dialog">
+      <div class="modal-content">
+        <%- include('../shared/popup-header', {
+          labelId: 'signUpMethodModalLabel',
+          icon: 'bi-person-plus',
+          modalTitle: popupContent.auth.createAccount.modalTitle,
+          modalSubtitle: popupContent.auth.createAccount.modalSubtitle
+        }) %>
+
+        <div class="modal-body auth-primary-modal-body">
+          <%- include('../shared/rich-popup-hero', {
+            illustration: { kind: 'static', name: 'register' },
+            contentTitle: popupContent.auth.createAccount.contentTitle,
+            contentParagraphs: popupContent.auth.createAccount.contentParagraphs
+          }) %>
+
+          <div class="auth-methods-grid auth-register-methods">
+            <section class="auth-method-card" aria-labelledby="registerExternalProviderHeading">
+              <div class="auth-modal-section-heading" id="registerExternalProviderHeading">
+                <i class="bi bi-globe2" aria-hidden="true"></i>
+                External provider
+              </div>
+              <p class="auth-method-description">
+                Register with an available account you already use.
+              </p>
+              <%- include('../shared/external-provider-buttons', { mode: 'register' }) %>
+            </section>
+
+            <section class="auth-method-card auth-email-method" aria-labelledby="registerEmailHeading">
+              <div class="auth-modal-section-heading" id="registerEmailHeading">
+                <i class="bi bi-envelope" aria-hidden="true"></i>
+                Your account
+              </div>
+              <p class="auth-method-description">
+                Prefer a traditional account?<br>
+                <span class="d-inline-block mt-1">
+                  Create one with your email and a password.
+                </span>
+              </p>
+
+              <button
+                class="auth-email-registration-button"
+                type="button"
+                data-bs-dismiss="modal"
+                data-bs-toggle="modal"
+                data-bs-target="#emailRegistrationModal"
+              >
+                <span class="auth-email-registration-icon" aria-hidden="true">
+                  <i class="bi bi-envelope"></i>
+                </span>
+                <span class="auth-email-registration-copy">
+                  <strong>Register with Email</strong>
+                  <small>Email and password</small>
+                </span>
+                <i class="bi bi-chevron-right auth-provider-chevron" aria-hidden="true"></i>
+              </button>
+
+              <div class="auth-method-note">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                <span>Your credentials stay and can be complemented by external providers later.</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <%# Local registration form. Password-policy UI is shared with the other password flows. %>
+  <div
+    class="modal fade auth-primary-modal auth-email-registration-modal"
+    id="emailRegistrationModal"
+    data-popup-purpose="auth-register-email"
+    data-surface-kind="custom"
+    data-popup-presentation="rich"
+    tabindex="-1"
+    aria-labelledby="emailRegistrationModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-dialog-centered auth-modal-dialog auth-email-form-dialog">
+      <form
+        class="modal-content"
+        method="post"
+        action="/auth/register/email"
+        data-busy-submit
+        data-busy-title="Creating your account…"
+        data-busy-message="Please wait while your account is created and the verification email is sent."
+        data-busy-icon="bi-person-plus"
+      >
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <%- include('../shared/popup-header', {
+          labelId: 'emailRegistrationModalLabel',
+          icon: 'bi-envelope-plus',
+          modalTitle: popupContent.auth.registerEmail.modalTitle,
+          modalSubtitle: popupContent.auth.registerEmail.modalSubtitle
+        }) %>
+
+        <div class="modal-body auth-primary-modal-body auth-email-registration-body">
+          <%- include('../shared/rich-popup-hero', {
+            introClass: 'auth-email-registration-intro',
+            illustration: { kind: 'static', name: 'register' },
+            contentTitle: popupContent.auth.registerEmail.contentTitle,
+            contentParagraphs: popupContent.auth.registerEmail.contentParagraphs
+          }) %>
+
+          <section class="auth-registration-form-card" aria-labelledby="emailRegistrationDetailsHeading">
+            <div class="auth-modal-section-heading" id="emailRegistrationDetailsHeading">
+              <i class="bi bi-person-vcard" aria-hidden="true"></i>
+              Account details
+            </div>
+
+            <div class="auth-registration-fields">
+              <div class="auth-registration-identity-column">
+                <div>
+                  <label class="form-label" for="registrationName">User name</label>
+                <input
+                  class="form-control"
+                  id="registrationName"
+                  name="name"
+                  autocomplete="username"
+                  required
+                  minlength="2"
+                >
+                </div>
+
+                <div>
+                  <label class="form-label" for="registrationEmail">Email</label>
+                <input
+                  class="form-control"
+                  id="registrationEmail"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                >
+                </div>
+              </div>
+
+              <div class="auth-registration-security-column">
+                <div>
+                  <label class="form-label" for="registrationPassword">Password</label>
+                  <input
+                    class="form-control password-policy-input"
+                    id="registrationPassword"
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    required
+                  >
+                </div>
+
+                <div>
+                  <label class="form-label" for="registrationPasswordConfirm">Confirm password</label>
+                  <input
+                    class="form-control"
+                    id="registrationPasswordConfirm"
+                    name="confirmPassword"
+                    type="password"
+                    autocomplete="new-password"
+                    required
+                    data-password-confirmation
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="auth-password-guidance">
+              <div class="auth-password-guidance-title">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                Choose a secure password
+              </div>
+              <%- include('../../components/auth/password-rules', { includeMatchRule: true }) %>
+            </div>
+          </section>
+        </div>
+
+        <%- include('../shared/popup-footer', {
+          footerClass: 'auth-step-footer',
+          leftActions: [{
+            label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary',
+            className: 'auth-back-button', dismiss: true, toggle: 'modal', target: '#signUpMethodModal'
+          }],
+          rightActions: [
+            { label: 'Cancel', variant: 'btn-outline-secondary', dismiss: true },
+            { label: 'Create account', icon: 'bi-person-plus', variant: 'btn-primary', type: 'submit', disabled: true, data: { 'password-submit': '' } }
+          ]
+        }) %>
+      </form>
+    </div>
+  </div>
+
+
+<% } %>
+
+  <%# Sign-in dialog: provider choices and local credentials coexist in one consistent shell. %>
+  <div
+    class="modal fade auth-primary-modal"
+    id="signInModal"
+    data-popup-purpose="auth-sign-in"
+    data-surface-kind="custom"
+    data-popup-presentation="rich"
+    tabindex="-1"
+    aria-labelledby="signInModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-dialog-centered auth-modal-dialog">
+      <form
+        class="modal-content"
+        method="post"
+        action="/auth/signin/local"
+      >
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <%- include('../shared/popup-header', {
+          labelId: 'signInModalLabel',
+          icon: 'bi-box-arrow-in-right',
+          modalTitle: popupContent.auth.signIn.modalTitle,
+          modalSubtitle: popupContent.auth.signIn.modalSubtitle
+        }) %>
+
+        <div class="modal-body auth-primary-modal-body">
+          <%- include('../shared/rich-popup-hero', {
+            illustration: { kind: 'static', name: 'signin' },
+            contentTitle: popupContent.auth.signIn.contentTitle,
+            contentParagraphs: popupContent.auth.signIn.contentParagraphs
+          }) %>
+
+          <div class="auth-methods-grid">
+            <section class="auth-method-card" aria-labelledby="signInExternalProviderHeading">
+              <div class="auth-modal-section-heading" id="signInExternalProviderHeading">
+                <i class="bi bi-globe2" aria-hidden="true"></i>
+                External provider
+              </div>
+              <p class="auth-method-description">
+                Use a configured provider already connected to your account.
+              </p>
+              <%- include('../shared/external-provider-buttons', { mode: 'signin' }) %>
+            </section>
+
+            <section class="auth-method-card" aria-labelledby="signInCredentialsHeading">
+              <div class="auth-modal-section-heading" id="signInCredentialsHeading">
+                <i class="bi bi-person-lock" aria-hidden="true"></i>
+                Your credentials
+              </div>
+              <p class="auth-method-description">
+                Sign in directly with your credentials.
+              </p>
+
+              <label class="form-label" for="signInIdentity">Email or user name</label>
+              <input
+                class="form-control mb-3"
+                id="signInIdentity"
+                name="identity"
+                autocomplete="username"
+                required
+              >
+
+              <label class="form-label" for="signInPassword">Password</label>
+              <input
+                class="form-control mb-2"
+                id="signInPassword"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+              >
+
+              <button
+                class="btn btn-link px-0"
+                type="button"
+                data-bs-dismiss="modal"
+                data-bs-toggle="modal"
+                data-bs-target="#passwordRequestModal"
+              >
+                Forgot or set password?
+              </button>
+            </section>
+          </div>
+        </div>
+
+        <%- include('../shared/popup-footer', {
+          leftActions: [],
+          rightActions: [
+            { label: 'Cancel', variant: 'btn-outline-secondary', dismiss: true },
+            { label: 'Sign in', icon: 'bi-box-arrow-in-right', variant: 'btn-primary', type: 'submit' }
+          ]
+        }) %>
+      </form>
+    </div>
+  </div>
+
+
+  <%#
+    Password-recovery request. The public response is intentionally privacy-neutral:
+    the UI accepts an eligible identity shape, while the server does not reveal whether
+    that identity actually maps to an account.
+  %>
+  <div
+    class="modal fade auth-primary-modal auth-password-request-modal"
+    id="passwordRequestModal"
+    data-popup-purpose="auth-password-request"
+    data-surface-kind="custom"
+    data-popup-presentation="rich"
+    tabindex="-1"
+    aria-labelledby="passwordRequestModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-dialog-centered auth-modal-dialog auth-password-request-dialog">
+      <form
+        class="modal-content"
+        method="post"
+        action="/auth/password/request"
+        data-busy-submit
+        data-busy-title="Preparing password instructions…"
+        data-busy-message="Please wait while we securely process your request."
+        data-busy-icon="bi-key"
+      >
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <%- include('../shared/popup-header', {
+          labelId: 'passwordRequestModalLabel',
+          icon: 'bi-key',
+          modalTitle: popupContent.auth.passwordRequest.modalTitle,
+          modalSubtitle: popupContent.auth.passwordRequest.modalSubtitle
+        }) %>
+
+        <div class="modal-body auth-primary-modal-body auth-password-request-body">
+          <%- include('../shared/rich-popup-hero', {
+            introClass: 'auth-entry-intro auth-password-request-intro',
+            illustration: { kind: 'static', name: 'password' },
+            contentTitle: popupContent.auth.passwordRequest.contentTitle,
+            contentParagraphs: popupContent.auth.passwordRequest.contentParagraphs
+          }) %>
+
+          <section class="auth-registration-form-card auth-password-request-card" aria-labelledby="passwordRequestDetailsHeading">
+            <div class="auth-modal-section-heading" id="passwordRequestDetailsHeading">
+              <i class="bi bi-person-lock" aria-hidden="true"></i>
+              Account identification
+            </div>
+
+            <div class="auth-password-request-field">
+              <label class="form-label" for="passwordRequestIdentity">
+                Email or user name
+              </label>
+              <input
+                class="form-control"
+                id="passwordRequestIdentity"
+                name="identity"
+                autocomplete="username"
+                required
+                data-recovery-identity
+                aria-describedby="passwordRequestIdentityHelp passwordRequestIdentityFeedback"
+              >
+              <div class="invalid-feedback" id="passwordRequestIdentityFeedback">
+                Enter a valid email address or a user name of at least 2 characters.
+              </div>
+              <div class="form-text" id="passwordRequestIdentityHelp">
+                For privacy, the confirmation message does not reveal whether an account exists.
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <%- include('../shared/popup-footer', {
+          footerClass: 'auth-step-footer',
+          leftActions: [{
+            label: 'Back', icon: 'bi-arrow-left', variant: 'btn-outline-secondary',
+            className: 'auth-back-button', dismiss: true, toggle: 'modal', target: '#signInModal'
+          }],
+          rightActions: [{
+            label: 'Send instructions', icon: 'bi-send', variant: 'btn-primary',
+            type: 'submit', disabled: true, data: { 'recovery-submit': '' }
+          }]
+        }) %>
+      </form>
+    </div>
+  </div>
+

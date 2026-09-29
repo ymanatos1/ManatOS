@@ -1,0 +1,212 @@
+<%#
+  COMPONENT: Application header
+
+  Purpose:
+  - Renders product branding, platform identity and global shell actions.
+
+  Inputs / metadata:
+  - app/company/platform/currentUser plus navigation and feature visibility values.
+
+  CTX contract:
+  - May expose CTX-driven visibility hooks for shell features; it does not own CTX mutation.
+
+  Embeds / delegates:
+  - None.
+
+  Runtime contract:
+  - shell/bootstrap runtimes own menus, navigation and global action behavior.
+%>
+
+<header class="top-header">
+  <div class="header-brand-area">
+    <a
+      href="/"
+      class="brand-link"
+      title="<%= app.company.shortName %> home"
+      aria-label="<%= app.company.shortName %> home"
+    >
+      <!--
+        Company branding is driven by the shared CompanyInfo model. The same
+        element swaps theme-specific assets before paint, avoiding duplicate
+        logo markup and keeping the darker/lighter choice centralized.
+      -->
+      <img
+        id="themeBrandLogo"
+        src="<%= app.company.branding.headerLogo.darker.src %>"
+        data-darker-src="<%= app.company.branding.headerLogo.darker.src %>"
+        data-lighter-src="<%= app.company.branding.headerLogo.lighter.src %>"
+        alt="<%= app.company.branding.headerLogo.darker.alt %>"
+        class="brand-logo1 theme-brand-logo"
+      >
+
+      <script>
+        (() => {
+          const logo = document.getElementById('themeBrandLogo');
+          const lighter = document.documentElement.dataset.uiTheme === 'lighter';
+
+          if (logo) {
+            logo.src = lighter ? logo.dataset.lighterSrc : logo.dataset.darkerSrc;
+            logo.classList.toggle('brand-logo1', !lighter);
+            logo.classList.toggle('brand-logo2', lighter);
+          }
+        })();
+      </script>
+    </a>
+
+    <!--
+      app.version is the ManatOS/UI application version, not the selected
+      platform version. Keep it adjacent to the enclosing ManatOS identity so
+      the header does not imply that the value belongs to protoCRM.
+    -->
+    <span class="version-badge d-none d-sm-inline" title="ManatOS version">
+      v<%= app.version %>
+    </span>
+
+    <!--
+      The compact platform identity is deliberately subordinate to the ManatOS
+      Company brand. It is metadata-driven and links to the selected platform;
+      the horizontal Platform navigation becomes the catalogue/menu when more
+      than one enabled platform exists.
+    -->
+    <a
+      class="current-platform-badge"
+      href="/platform/<%= encodeURIComponent(app.currentPlatform.id) %>"
+      title="Open <%= app.currentPlatform.name %>"
+      aria-label="Current platform: <%= app.currentPlatform.name %>"
+    >
+      <i class="bi <%= app.currentPlatform.icon || 'bi-boxes' %> current-platform-icon" aria-hidden="true"></i>
+      <span class="current-platform-code"><%= app.currentPlatform.shortName %></span>
+    </a>
+  </div>
+
+  <div class="header-center-actions">
+    <!--
+      Donate is always present in the DOM and its visibility is reactive.
+      The initial server snapshot avoids a flash when bootstrap is already
+      known; /runtime/ui-bootstrap + manatos:ctx-change updates it when the
+      asynchronous bootstrap response arrives after this page was rendered.
+    -->
+    <button
+      type="button"
+      id="headerDonateButton"
+      class="btn btn-sm header-donate-button<%= app.ui?.bootstrap?.ui?.donationsShow ? '' : ' d-none' %>"
+      data-ctx-visibility="ctx.system.client.uiBootstrap.ui.donationsShow"
+      disabled
+      title="Donate to ManatOS — coming soon"
+      aria-label="Donate - donations will be available soon"
+    >
+      <i class="bi bi-heart-fill me-1"></i>
+      Donate
+    </button>
+
+  </div>
+
+  <div class="header-actions">
+    <% if (!currentUser) { %>
+      <button
+        type="button"
+        class="btn btn-info btn-sm header-auth-button"
+        data-bs-toggle="modal"
+        data-bs-target="#signInModal"
+        title="Sign in"
+        aria-label="Sign in"
+      >
+        <i class="bi bi-box-arrow-in-right me-1"></i>
+        Sign in
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-success btn-sm header-auth-button"
+        data-bs-toggle="modal"
+        data-bs-target="#signUpMethodModal"
+        title="Create an account"
+        aria-label="Create an account"
+      >
+        <i class="bi bi-person-plus me-1"></i>
+        Sign up
+      </button>
+    <% } else { %>
+
+
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-light header-notifications-button"
+        title="Notifications"
+        aria-label="Notifications"
+      >
+        <i class="bi bi-bell"></i>
+      </button>
+
+      <div class="dropdown">
+        <button
+          class="btn btn-sm btn-outline-light dropdown-toggle"
+          type="button"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+          title="Open account menu"
+          aria-label="Open account menu"
+        >
+          <% if (currentUser.photo) { %>
+            <img
+              class="header-account-photo me-1"
+              src="<%= persistedScalarPictureSource('sys-users', currentUser.id, 'photo', currentUser.photo) || '' %>"
+              alt=""
+            >
+          <% } else { %>
+            <i class="bi bi-person-circle me-1"></i>
+          <% } %>
+          Account
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm account-menu">
+          <li class="px-3 pt-2 pb-1">
+            <div class="account-menu-identity">
+              <a
+                class="account-menu-user-link"
+                href="/bo/sys-users/<%= encodeURIComponent(currentUser.id) %>"
+                title="Edit account user"
+                aria-label="Edit account user <%= currentUser.name %>"
+              >
+                <% if (currentUser.photo) { %>
+                  <img
+                    class="account-menu-photo"
+                    src="<%= persistedScalarPictureSource('sys-users', currentUser.id, 'photo', currentUser.photo) || '' %>"
+                    alt=""
+                  >
+                <% } %>
+                <span class="account-menu-name"><%= currentUser.name %></span>
+              </a>
+              <span class="badge rounded-pill text-bg-light border account-role-badge"><%= currentUser.role %></span>
+            </div>
+          </li>
+
+          <li><hr class="dropdown-divider"></li>
+
+          <li>
+            <a class="dropdown-item" href="/account" title="View account details">
+              <i class="bi bi-person-vcard me-2"></i>
+              Account details
+            </a>
+          </li>
+
+          <li>
+            <a class="dropdown-item" href="/account/password" title="<%= currentUser.hasPassword ? 'Change password' : 'Set password' %>">
+              <i class="bi bi-key me-2"></i>
+              <%= currentUser.hasPassword ? 'Change password' : 'Set password' %>
+            </a>
+          </li>
+
+          <li><hr class="dropdown-divider"></li>
+
+          <li>
+            <a class="dropdown-item" href="/auth/logout" title="Sign out">
+              <i class="bi bi-box-arrow-right me-2"></i>
+              Logout
+            </a>
+          </li>
+        </ul>
+      </div>
+    <% } %>
+  </div>
+</header>

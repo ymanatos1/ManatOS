@@ -169,6 +169,8 @@ export interface SysBOPictureValue {
  * other commercial identity.
  */
 export interface SysBOUser extends SysBOEntity {
+  /** Derived writable inverse of SysBOPrincipal.userId; never persisted on the User row. */
+  principalId?: string | null;
   email: string;
   /** Optional single canonical international telephone number (for example +306944386714). */
   telephoneNumber?: string;
@@ -196,9 +198,6 @@ export interface SysBOUser extends SysBOEntity {
   firstName?: string;
   lastName?: string;
 
-  /** Optional canonical 1:1 identity link to the represented Person Principal. */
-  principalId?: string | null;
-
   description?: string;
 }
 
@@ -207,8 +206,8 @@ export interface SysBOUser extends SysBOEntity {
  *
  * A SysBOPrincipal does not authenticate directly.
  *
- * Authentication belongs to SysBOUser. A SysBOUser may identify one Person
- * Principal through its canonical optional one-to-one `principalId` reference.
+ * Authentication belongs to SysBOUser. A Person Principal may identify one
+ * website account through its canonical optional one-to-one `userId` reference.
  */
 export interface SysBOPrincipal extends SysBOEntity {
   principalType: SysBOPrincipalType;
@@ -219,6 +218,9 @@ export interface SysBOPrincipal extends SysBOEntity {
   /** Optional personal-name components used when principalType is Person. */
   firstName?: string;
   lastName?: string;
+
+  /** Optional canonical 1:1 identity link to the represented website User. */
+  userId?: string | null;
 
   /**
    * Optional parent principal.
@@ -234,7 +236,7 @@ export interface SysBOPrincipal extends SysBOEntity {
    * presentation resolves names independently. Older stored snapshots may omit
    * it until they are read/re-saved through the calculated-field pipeline.
    */
-  rootPrincipalId?: string | null;
+  rootId?: string | null;
 
   description?: string;
 }

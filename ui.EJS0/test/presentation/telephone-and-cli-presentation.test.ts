@@ -1,0 +1,162 @@
+import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { expressionFunctions, sysBOUsersMetadata } from '@manatos/shared';
+import { describe, expect, it } from 'vitest';
+
+import { sourceWithoutWhitespace } from '../support/source-contract.js';
+const testDirectory = dirname(fileURLToPath(import.meta.url));
+const uiSource = (relativePath: string) =>
+  readFile(resolve(testDirectory, '..', '..', relativePath), 'utf8');
+const sharedSource = (relativePath: string) =>
+  readFile(resolve(testDirectory, '..', '..', '..', 'shared', relativePath), 'utf8');
+
+describe('telephone field normalization and debugging CLI presentation', () => {
+  it('keeps normalization metadata-driven and uses the reusable telephone field component', async () => {
+    const uiMetadata = await sharedSource('src/metadata/ui/manatos/auth/ui-users.ts');
+    const dispatcher = await uiSource('views/components/sysbo/entry/fields/entity-field.ejs');
+    const formField = await uiSource('views/components/sysbo/entry/fields/form-field.ejs');
+    const telephone = await uiSource('views/components/sysbo/entry/fields/telephone-field.ejs');
+    const runtime = await uiSource('public/js/sysbo/entry/form-runtime.js');
+    const expressionRuntime = await uiSource('public/js/sysbo/entry/expression-runtime.js');
+    expect(sysBOUsersMetadata.fieldDefinition.telephoneNumber?.normalize?.expression).toBe(
+      'TelephoneNbr(value)',
+    );
+    expect(uiMetadata).toContain("field: 'telephoneNumber'");
+    expect(dispatcher).toContain("field.type === 'telephone'");
+    expect(formField).not.toContain('data-field-normalize-expression');
+    expect(telephone).not.toContain('TelephoneNbr');
+    expect(telephone).toContain('autocomplete="off"');
+    expect(runtime).toContain('const normalizationAstByField = new Map()');
+    expect(runtime).toContain('const source = definition?.normalize?.expression');
+    expect(runtime).toContain('normalizedFieldCandidate(key, rawValue)');
+    expect(runtime).toContain("normalize: event.type === 'change'");
+    expect(runtime).not.toContain('fieldNormalizeExpression');
+    expect(sourceWithoutWhitespace(runtime)).toContain(
+      sourceWithoutWhitespace("source: 'field-normalization'"),
+    );
+    expect(runtime).not.toContain('publish(control');
+    expect(expressionRuntime).toContain('const browserFunctionImplementations = Object.freeze({');
+    expect(expressionRuntime).toContain('Capitalize(args)');
+    expect(expressionRuntime).toContain('first.toUpperCase()');
+    expect(expressionRuntime).toContain('validateBrowserExecutionBindings(payload.ast)');
+  });
+
+  it('keeps every canonical browser-capable expression function bound in the browser executor', async () => {
+    const expressionRuntime = await uiSource('public/js/sysbo/entry/expression-runtime.js');
+    const locallyExecutable = Object.values(expressionFunctions)
+      .filter((definition) => definition.capability !== 'entityResolver')
+      .map((definition) => definition.name);
+
+    for (const functionName of locallyExecutable) {
+      expect(expressionRuntime).toContain(`${functionName}(`);
+    }
+    expect(expressionRuntime).toContain(
+      'Canonical expression function ${node.functionName} has no browser binding',
+    );
+  });
+
+  it('uses one CLI component for page and CTX-viewer instances with independent local histories', async () => {
+    const panel = await uiSource('views/components/debugging/debugging-panel.ejs');
+    const cliView = await uiSource('views/components/debugging/debugging-cli.ejs');
+    const shell = await uiSource('views/layout/shell.ejs');
+    const debuggerView = await uiSource('views/components/debugging/ctx-debug.ejs');
+    const cli = await uiSource('public/js/debugger/cli.js');
+    const routes = await uiSource('src/routes/sysbo/index.ts');
+
+    expect(panel).toContain("{ id: 'cli', label: 'CLI'");
+    expect(panel).toContain("instanceKey: 'page'");
+    expect(shell).toContain("instanceKey: 'ctx-viewer'");
+    expect(shell).toContain("startPath: 'ctx'");
+    expect(cliView).toContain('data-cli-instance-key');
+    expect(cliView).toContain('data-cli-start-path');
+    expect(cli).toContain('manatos.debug.cli.history.${instanceKey}');
+    expect(cli).toContain('const initializeCli = (root) =>');
+    expect(cli).toContain('new MutationObserver');
+    expect(cli).toContain("root.dataset.cliInitialized = 'true'");
+    expect(cli).toContain('localStorage.setItem(historyStorageKey');
+    expect(debuggerView).toContain('id="ctxDebugCli"');
+    // The shared runtime must discover the instance key from component markup;
+    // it must not know about the CTX-viewer instance by name.
+    expect(cli).toContain("const instanceKey = root.dataset.cliInstanceKey || 'page';");
+    expect(cli).not.toContain("instanceKey: 'ctx-viewer'");
+    expect(cli).toContain("'manatos:debug-cli-toggle'");
+    expect(cli).toContain('owner-page');
+    expect(cli).toContain('ownerPage !== currentPageKey');
+    expect(routes).toContain("router.post('/expression/compile'");
+    expect(routes).not.toContain("router.post('/debug/compile-expression'");
+    expect(cli).toContain("fetch('/bo/expression/compile'");
+    expect(cli).not.toContain('/bo/debug/compile-expression');
+    expect(routes).toContain("router.post('/expression/evaluate-function'");
+    expect(cli).toContain("candidate.capability === 'entityResolver'");
+    expect(routes).toContain('compileExpression(expression, {');
+    expect(cli).toContain('document.querySelector(\'meta[name="csrf-token"]\')');
+    expect(cli).toContain('server returned non-JSON');
+    expect(cli).toContain("candidate.functionName === 'FirstCtx'");
+    expect(cli).toContain('setOpen(!isOpen)');
+  });
+
+  it('behaves like a compact wrapping console with keyboard execution and prompt history', async () => {
+    const cliView = await uiSource('views/components/debugging/debugging-cli.ejs');
+    const cli = await uiSource('public/js/debugger/cli.js');
+    const css = await uiSource('public/css/debugger/ctx-debug.css');
+
+    expect(cliView).toContain('<textarea');
+    expect(cliView).not.toContain('data-cli-run');
+    expect(cliView).toContain('data-cli-history');
+    expect(cli).toContain("event.key === 'Enter' && !event.shiftKey");
+    expect(cli).toContain("input.style.height = 'auto'");
+    expect(cli).toContain('const ctxCommand = /^(\\.\\.?)');
+    expect(cli).toContain("family === '..'");
+    expect(cli).toContain("command === '?' || command === 'help'");
+    expect(cli).toContain(
+      "'$entity-fields       canonical fieldDefinition for an initialization context'",
+      "'$entry-current       scalar record currently being initialized'",
+      "'$level-entity-fields $.entities.(#control.entityName).metadata.fieldDefinition'",
+    );
+    expect(cli).toContain("'. [ls] [full]");
+    expect(cli).toContain("'.. [ls] [full]");
+    expect(cli).toContain("'cd <path>");
+    expect(cli).toContain("command === 'cd' || command.startsWith('cd ')");
+    expect(cli).toContain('resolveRelativeCtxPath');
+    expect(cli).toContain('resolveVariableWithPath');
+    expect(cli).toContain('runtime?.CtxPath');
+    expect(cli).toContain('navigator.clipboard.writeText');
+    expect(cli).toContain('CTX path not found');
+    expect(cliView).toContain('Expressions are evaluated relative to this CTX node.');
+    expect(cli).toContain('Click to open command history.');
+    expect(cli).toContain("modifier === 'ls' || modifier === 'full'");
+    expect(cli).toContain("modifiers.includes('full')");
+    expect(cli).toContain('printCtxShallow');
+    expect(cli).toContain("document.addEventListener('shown.bs.tab'");
+    expect(cli).toContain('target.matches(\'[data-v2-tab-id="debugging"]\')');
+    expect(cli).toContain("command === 'cls'");
+    expect(cli).toContain("command === 'clear'");
+    expect(css).toContain('min-height: 12rem');
+    expect(css).toContain('max-height: 36rem');
+    expect(css).toContain('white-space: pre-wrap');
+    expect(css).toContain('.debugging-cli-history-item');
+    expect(css).toContain('background: #e2e8f0');
+    expect(css).toContain('background: #cbd5e1');
+  });
+
+  it('keeps the CTX dock open across navigation and lets the CTX viewer follow shorter page heights', async () => {
+    const cli = await uiSource('public/js/debugger/cli.js');
+    const css = await uiSource('public/css/debugger/ctx-debug.css');
+    const shell = await uiSource('views/layout/shell.ejs');
+    expect(cli).toContain('manatos.debug.cli.open.${instanceKey}.${bootId}');
+    expect(cli).toContain('localStorage.setItem(openStorageKey');
+    expect(cli).toContain('localStorage.setItem(pathStorageKey');
+    expect(cli).toContain('requestedPath !== currentPath');
+    expect(cli).toContain('let restoredOpen = false');
+    expect(cli).toContain('refreshPath({ persist: false })');
+    expect(shell).toContain('dataset.manatosDebugCliOpen');
+    expect(shell).toContain('manatos.debug.cli.open.ctx-viewer.${bootId}');
+    expect(css).toContain("html[data-manatos-debug-cli-open='true'] .debugging-cli-dock.d-none");
+    expect(css).toContain('height: auto;');
+    expect(css).toContain('max-height: calc(100vh - var(--top-header-height, 0px));');
+    expect(css).not.toMatch(
+      /^\s*height:\s*calc\(100vh - var\(--top-header-height,\s*0px\)\);\s*$/m,
+    );
+  });
+});

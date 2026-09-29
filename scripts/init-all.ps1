@@ -6,7 +6,7 @@ if (Get-Command nvm -ErrorAction SilentlyContinue) {
 }
 
 if (!(Test-Path "api/.env")) { Copy-Item "api/.env.example" "api/.env" }
-if (!(Test-Path "ui/.env"))  { Copy-Item "ui/.env.example" "ui/.env" }
+if (!(Test-Path "ui.EJS0/.env"))  { Copy-Item "ui.EJS0/.env.example" "ui.EJS0/.env" }
 
 npm install
 npm run build

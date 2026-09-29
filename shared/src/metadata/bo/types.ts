@@ -91,6 +91,12 @@ export interface SysBOFieldMetadata {
   generated?: boolean;
   readOnly?: boolean;
 
+  /** False for runtime/derived fields that participate in entity semantics but have no local storage column. */
+  persistent?: boolean;
+
+  /** Writable/readable projection of the inverse endpoint of one canonical relationship. */
+  inverseRelationship?: Readonly<{ objectKey: string; relationship: string }>;
+
   /** Canonical initial value for newly created records. */
   createDefaultValue?: SysBOCreateDefaultValue;
 
@@ -107,6 +113,10 @@ export interface SysBOFieldMetadata {
   minLength?: number;
   maxLength?: number;
 
+  /** Canonical subsystem-owned enum key. */
+  enum?: string;
+
+  /** @deprecated Inline enum catalogues remain only for legacy/non-migrated fields. */
   enumValues?: readonly string[];
 
   /** Optional rich metadata for enum values (labels, icons and declarative traits). */
@@ -120,59 +130,6 @@ export interface SysBOFieldMetadata {
    * values while keeping entity-specific formatting out of generic renderers.
    */
   optionItems?: readonly SysBOEnumItemMetadata[];
-
-  referenceBOKey?: string;
-
-  /**
-   * Optional canonical candidate constraint for a reference endpoint.
-   * `filterExpression` evaluates against each target record. `uniqueThrough`
-   * describes the owning object/field whose existing 1:1 links make candidates
-   * unavailable; inverse endpoints use the same contract without a new UI component.
-   */
-  referenceSelection?: Readonly<{
-    filterExpression?: string;
-
-    /**
-     * Generic metadata-trait constraint on a target enum field. A candidate is
-     * retained only when its enum item exposes the requested trait as true.
-     * This keeps relationship policy attached to canonical enum metadata rather
-     * than duplicating concrete enum values in UI code.
-     */
-    filterEnumItemTrait?: Readonly<{ field: string; trait: string }>;
-
-    /**
-     * When true, the current source record is projected as unavailable when the
-     * reference targets the same entity type. This is a generic relationship
-     * constraint used by every reference presenter; callers must not reimplement
-     * self-reference checks in browser code.
-     */
-    excludeCurrent?: boolean;
-
-    uniqueThrough?: Readonly<{ objectKey: string; field: string }>;
-
-    /**
-     * Optional semantic context used when a reference-field caller creates a
-     * related entry. Source values are projected from the calling entry into
-     * target create defaults; target UI overrides are then resolved by the same
-     * effective-entry override layer used by every hosted entry surface.
-     */
-    createRelated?: Readonly<{
-      defaults?: Readonly<Record<string, Readonly<{ sourceField: string }>>>;
-      fixedValues?: Readonly<Record<string, Readonly<{ sourceField: string }>>>;
-      uiOverrides?: Readonly<
-        Record<
-          string,
-          Readonly<{
-            editable?: boolean;
-            visible?: boolean;
-            label?: string;
-            allowedValues?: readonly string[];
-            allowedEnumItemTrait?: string;
-          }>
-        >
-      >;
-    }>;
-  }>;
 
   /** Calendar duration units exposed by a duration field. Defaults to all units. */
   durationUnits?: readonly ('years' | 'months' | 'days')[];
@@ -192,8 +149,57 @@ export interface SysBOFieldMetadata {
   calculation?: Readonly<SysBOFieldCalculationMetadata>;
 }
 
-export type ManatOSRelationshipCardinality =
-  'one-to-one' | 'many-to-one' | 'one-to-many' | 'many-to-many';
+export type ManatOSRelationshipSelectionMetadata = Readonly<{
+  filterExpression?: string;
+
+  /**
+   * Generic metadata-trait constraint on a target enum field. A candidate is
+   * retained only when its enum item exposes the requested trait as true.
+   * This keeps relationship policy attached to canonical enum metadata rather
+   * than duplicating concrete enum values in UI code.
+   */
+  filterEnumItemTrait?: Readonly<{ field: string; trait: string }>;
+
+  /**
+   * When true, the current source record is projected as unavailable when the
+   * reference targets the same entity type. This is a generic relationship
+   * constraint used by every reference presenter; callers must not reimplement
+   * self-reference checks in browser code.
+   */
+  excludeCurrent?: boolean;
+
+  uniqueThrough?: Readonly<{ objectKey: string; field: string }>;
+
+  /**
+   * Optional semantic context used when a reference-field caller creates a
+   * related entry. Source values are projected from the calling entry into
+   * target create defaults; target UI overrides are then resolved by the same
+   * effective-entry override layer used by every hosted entry surface.
+   */
+  createRelated?: Readonly<{
+    defaults?: Readonly<Record<string, Readonly<{ sourceField: string }>>>;
+    fixedValues?: Readonly<Record<string, Readonly<{ sourceField: string }>>>;
+    uiOverrides?: Readonly<
+      Record<
+        string,
+        Readonly<{
+          editable?: boolean;
+          visible?: boolean;
+          label?: string;
+          allowedValues?: readonly string[];
+          allowedEnumItemTrait?: string;
+        }>
+      >
+    >;
+  }>;
+}>;
+
+/** Cardinality authored on the object that physically owns the FK/source fields. */
+export type ManatOSRelationshipCardinality = 'one-to-one' | 'many-to-one';
+
+/** Cardinality exposed while navigating either the authored or inverse direction. */
+export type ManatOSRelationshipNavigationCardinality =
+  ManatOSRelationshipCardinality | 'one-to-many';
 
 export type ManatOSRelationshipDeleteAction =
   'restrict' | 'cascade' | 'set-null' | 'unlink' | 'retain';
@@ -221,15 +227,21 @@ export interface ManatOSRelationshipMetadata {
     fields: readonly string[];
   };
 
-  /** Physical/navigational cardinality. N:N normally uses an explicit junction object. */
+  /**
+   * Cardinality from the FK-owning/source side. Inverse one-to-many navigation
+   * is derived by the relationship resolver rather than authored redundantly.
+   * N:N is represented through an explicit junction/association object.
+   */
   cardinality: ManatOSRelationshipCardinality;
 
-  /** Optional semantic N:N navigation backed by a canonical junction object. */
-  through?: {
-    objectKey: string;
-    sourceRelationship: string;
-    targetRelationship: string;
-  };
+  /**
+   * Optional canonical applicability predicate evaluated against the relationship-owning row.
+   * Inverse selectors use the same predicate against source-row candidates.
+   */
+  sourceFilterExpression?: string;
+
+  /** Candidate selection/create-related semantics belong to the relationship. */
+  selection?: ManatOSRelationshipSelectionMetadata;
 
   /** Keyed policy collection leaves room for future relationship policies. */
   policies?: Readonly<{

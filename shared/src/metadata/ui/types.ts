@@ -74,6 +74,8 @@ export interface SysBOUIListNoticeMetadata {
 }
 
 export interface SysBOUIListMetadata {
+  /** Human-facing keyed list-view label. */
+  label?: string;
   visibleFields: readonly string[];
   filterFields: readonly string[];
   sortableFields: readonly string[];
@@ -94,6 +96,20 @@ export interface SysBOUIListMetadata {
    * hierarchical entities can expose the same workflows declaratively.
    */
   pageActions?: Readonly<Record<string, SysBOUIListPageActionMetadata>>;
+}
+
+/**
+ * Entity-list presentation uses the same common + keyed-view composition model
+ * as entry uiViews. Common metadata is the inheritance source; every keyed view
+ * is independently resolvable and may override any list presentation property.
+ */
+export type SysBOUIListViewContribution = Readonly<Partial<SysBOUIListMetadata>>;
+
+export interface SysBOUIListViewsMetadata {
+  common: SysBOUIListMetadata;
+  views: Readonly<
+    { main: SysBOUIListViewContribution } & Record<string, SysBOUIListViewContribution>
+  >;
 }
 
 /**
@@ -453,6 +469,8 @@ export interface SysBOUIRelatedCollectionFieldMetadata {
   expression?: string;
 
   format?: SysBOUIValueFormat;
+  /** Optional scalar representation reused by related/value-object surfaces. */
+  representation?: 'badge';
   icon?: SysBOUIIconKey;
   presentation?: SysBOUIFieldPresentationMetadata;
 }
@@ -469,6 +487,21 @@ export interface SysBOUIRelatedCollectionSourceMetadata {
   pageSize?: number;
   sort?: string;
   direction?: 'asc' | 'desc';
+}
+
+/**
+ * Reusable presentation of an entity when it appears as a member of another
+ * entity's related collection. Entity UI metadata owns the generally useful
+ * catalogue; relationship metadata may later contribute/override keyed views.
+ */
+export interface SysBOUIRelatedListViewMetadata {
+  label?: string;
+  icon?: SysBOUIIconKey;
+  rowIcon?: SysBOUIIconKey;
+  layout: 'panel-list' | 'table-list';
+  rowHref?: string;
+  emptyText?: string;
+  fields: Readonly<Record<string, SysBOUIRelatedCollectionFieldMetadata>>;
 }
 
 export interface SysBOUIRelatedCollectionMetadata {
@@ -501,8 +534,23 @@ export interface SysBOUIRelatedCollectionMetadata {
    */
   source?: SysBOUIRelatedCollectionSourceMetadata;
 
-  /** Compact stacked rows or a conventional read-only table. */
-  layout: 'panel-list' | 'table-list';
+  /** Named inherited related-list view selected for this relationship occurrence. */
+  relatedListView?: string;
+
+  /**
+   * Relationship-local keyed contributions. Keys compose over the related
+   * entity's catalogue; matching keys override/extend rather than replace it.
+   */
+  relatedListViews?: Readonly<Record<string, Partial<SysBOUIRelatedListViewMetadata>>>;
+
+  /**
+   * Entity whose records are presented by this relationship. Omit when the
+   * relationship record itself is the presented entity.
+   */
+  relatedEntityKey?: string;
+
+  /** Compact stacked rows or a conventional read-only table. Legacy/direct override. */
+  layout?: 'panel-list' | 'table-list';
 
   /**
    * Optional row navigation template. `{id}` is replaced with the related row
@@ -516,7 +564,7 @@ export interface SysBOUIRelatedCollectionMetadata {
    * Keyed presentation fields. The Record key is both the UI field identity and
    * the default row source property; no redundant child `key` is required.
    */
-  fields: Readonly<Record<string, SysBOUIRelatedCollectionFieldMetadata>>;
+  fields?: Readonly<Record<string, SysBOUIRelatedCollectionFieldMetadata>>;
 }
 
 /**
@@ -612,7 +660,18 @@ export interface SysBOUIMetadata {
   key: string;
   /** Optional presentation of entity entries; separate from the entity icon. */
   entry?: SysBOUIEntryRepresentationMetadata;
-  list: SysBOUIListMetadata;
+  /** Keyed entity-list UI views. `main` is the canonical/default list presentation. */
+  list: SysBOUIListViewsMetadata;
+
+  /** Stable selected related-list representation when a relationship does not choose one. */
+  relatedListView?: string;
+
+  /**
+   * Keyed reusable representations of this entity inside related-entry lists.
+   * Relationships inherit this catalogue and may contribute/override the same
+   * keys without forcing the target entity to know its owners.
+   */
+  relatedListViews?: Readonly<Record<string, SysBOUIRelatedListViewMetadata>>;
 
   /**
    * Record presentation shared by UI views unless a selected view contributes

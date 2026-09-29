@@ -1,0 +1,333 @@
+<%#
+  COMPONENT: Hierarchy workspace
+
+  Purpose:
+  - Renders the generic metadata-driven hierarchy workspace, selector/confirmation templates and chart/tree controls.
+
+  Inputs / metadata:
+  - Hierarchy descriptor, entity/UI metadata, working entries, selector candidates/reference data and permissions.
+
+  CTX contract:
+  - The workspace owns its nested page CTX and working entries graph; popup children use the canonical popup CTX envelope.
+
+  Embeds / delegates:
+  - Generic hosted entry popup plus the shared popup record selector.
+
+  Runtime contract:
+  - hierarchy-workspace.js owns workspace orchestration, drag/drop, placement, selector invocation, confirmation popups and transactional commit.
+  - hierarchy-workspace-model.js owns pure graph semantics; hierarchy-draft-store.js owns browser draft persistence/migration.
+%>
+
+<section
+  class="content-card metadata-hierarchy-workspace"
+  data-metadata-hierarchy-workspace
+  data-hierarchy-close-href="/bo/<%= encodeURIComponent(definition.key) %>"
+  data-hierarchy-label="<%= hierarchyDescriptor.label %>"
+  data-hierarchy-empty-name="New <%= hierarchyDescriptor.label.toLowerCase() %>"
+>
+  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3" data-v2-layout-region="summary">
+    <div>
+      <div class="text-secondary small"><%= hierarchyDescriptor.label %></div>
+      <% if (focusedMember) { %>
+        <div class="fw-semibold" data-hierarchy-name data-v2-layout-component-instance="name">
+          <%= focusedRepresentation?.name || focusedMember[hierarchyDescriptor.idField] %>
+          <%= hierarchyDescriptor.label.toLowerCase() %>
+        </div>
+      <% } else { %>
+        <div class="fw-semibold" data-hierarchy-name data-v2-layout-component-instance="name">New <%= hierarchyDescriptor.label.toLowerCase() %></div>
+      <% } %>
+      <div class="text-secondary small" data-hierarchy-member-count data-v2-layout-component-instance="member-count">
+        <%= hierarchyFinalization.memberCount %>
+        <%= hierarchyFinalization.memberCount === 1 ? 'member' : 'members' %>
+      </div>
+      <div
+        class="small text-warning-emphasis mt-1"
+        data-hierarchy-incomplete
+        data-v2-layout-status="hierarchy-completion"
+        title="<%= hierarchyFinalization.reason || '' %>"
+        <%= hierarchyFinalization.complete ? ' hidden' : '' %>
+      >
+        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>Incomplete <%= hierarchyDescriptor.label.toLowerCase() %>
+      </div>
+    </div>
+
+    <!-- Structural commands live on the graph nodes themselves. Keeping them
+         spatially attached to a node removes a second, ambiguous selection UI. -->
+  </div>
+
+  <!--
+    The workspace reuses the exact hierarchy visualization component declared by
+    entity UI metadata. Only the runtime bindings differ: a standalone workspace
+    owns an entries[] working graph and a separate focusedMemberId.
+  -->
+  <div
+    data-metadata-component="<%= hierarchyDescriptor.component.key %>"
+    data-v2-layout-component-instance="hierarchy"
+    data-v2-layout-region="content"
+    data-metadata-component-options="<%= JSON.stringify({
+      ...(hierarchyDescriptor.component.options || {}),
+      dataSource: 'list.entries',
+      currentSource: 'list.entries',
+      originalSource: 'list.originalEntries',
+      focusSource: 'resources.workspace.focusedMemberId',
+      originalMemberSource: 'resources.workspace.originalMemberId',
+      recycleSource: 'resources.workspace.recycleBin',
+      transactionSource: 'resources.workspaceTransaction',
+      emptyAddLabel: `Add ${metadata.label}`,
+      emptyAddTitle: `Create ${metadata.label}`,
+      interactionMode: 'workspace',
+      entityLabel: metadata.label,
+      entityIcon: String(definition.icon || '').replace(/^bi-/, ''),
+      entryRepresentation: entryRepresentationRuntime
+    }) %>"
+    data-metadata-component-bindings="<%= JSON.stringify(hierarchyDescriptor.component.bindings || {}) %>"
+    data-entity-key="<%= definition.key %>"
+    data-record-mode="<%= hierarchyMode %>"
+  ></div>
+
+  <div class="d-flex justify-content-between align-items-center gap-2 mt-4 pt-3 border-top" data-v2-layout-actions="surface">
+    <% if (hierarchyMode === 'create') { %>
+      <div>
+        <div class="small text-secondary mb-1" data-hierarchy-draft-help hidden>
+          You can leave this draft and continue later. Use Clear all to discard it.
+        </div>
+        <div class="d-flex align-items-center gap-2">
+        <span class="small text-secondary" data-hierarchy-draft-status data-v2-layout-status="hierarchy-draft" hidden></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-hierarchy-save-draft data-v2-layout-action="save-draft" hidden>
+          <i class="bi bi-floppy me-1" aria-hidden="true"></i>Save draft
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-danger"
+          data-hierarchy-clear-all
+          data-v2-layout-action="clear-all"
+          disabled
+          title="Clear this working organization and its saved Create Organization draft"
+        >
+          <i class="bi bi-eraser me-1" aria-hidden="true"></i>Clear all
+        </button>
+        </div>
+      </div>
+    <% } else { %>
+      <span></span>
+    <% } %>
+    <div class="d-flex justify-content-end gap-2 ms-auto align-items-center">
+      <% if (hierarchyMode !== 'create') { %>
+        <button
+          type="button"
+          class="btn btn-link btn-sm p-0 text-secondary me-1 text-decoration-none"
+          data-hierarchy-state-indicator
+          data-v2-layout-status="hierarchy-dirty"
+          disabled
+          title="No unsaved changes to review"
+        >
+          <i class="bi bi-check-circle me-1" data-hierarchy-state-icon></i>
+          <span data-hierarchy-state-text>No changes</span>
+        </button>
+      <% } %>
+      <% if (hierarchyMode === 'create') { %>
+        <button type="button" class="btn btn-outline-secondary" data-hierarchy-close data-v2-layout-action="close" data-cancel-operation>Close</button>
+      <% } else { %>
+        <button type="button" class="btn btn-outline-secondary" data-hierarchy-edit-exit data-v2-layout-action="close" data-cancel-operation>Close</button>
+      <% } %>
+      <div class="btn-group" role="group" aria-label="Commit options">
+        <button type="button" class="btn btn-primary" data-hierarchy-commit data-hierarchy-commit-mode="close" data-v2-layout-action="commit" disabled>Commit</button>
+        <button
+          type="button"
+          class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+          data-bs-toggle="dropdown"
+          data-hierarchy-commit-menu-toggle
+          disabled
+          aria-expanded="false"
+        >
+          <span class="visually-hidden">Commit options</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end metadata-save-dropdown-menu">
+          <li>
+            <button class="dropdown-item" type="button" data-hierarchy-commit-option="close" disabled>
+              <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>Commit
+            </button>
+          </li>
+          <li>
+            <button class="dropdown-item" type="button" data-hierarchy-commit-option="stay" disabled>
+              <i class="bi bi-check-circle me-2" aria-hidden="true"></i>Commit and Stay
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+
+  <%- include('../../../popups/selectors/record-selector', {
+    selectorMetadata: metadata,
+    selectorUIMetadata: metadataUI,
+    selectorListMetadata,
+    selectorReferenceData: selectorReferenceData || {},
+    selectorTemplateKey: `hierarchy-${definition.key}`,
+    selectorEntityKey: definition.key,
+    selectorCandidates: Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField])
+      ? (selectorReferenceData || {})[hierarchyDescriptor.parentField]
+      : [],
+    selectorInitialTotal: Array.isArray((selectorReferenceData || {})[hierarchyDescriptor.parentField])
+      ? (selectorReferenceData || {})[hierarchyDescriptor.parentField].length
+      : 0,
+    selectorPageSizeOptions
+  }) %>
+
+  <template data-hierarchy-clear-all-confirm-template>
+    <div
+      class="modal fade metadata-hierarchy-clear-confirm"
+      tabindex="-1"
+      aria-labelledby="hierarchyClearAllConfirmTitle"
+      data-popup-purpose="hierarchy-clear-all"
+      data-surface-kind="custom"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content metadata-hierarchy-commit-confirm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="hierarchyClearAllConfirmTitle"><i class="bi bi-eraser me-2" aria-hidden="true"></i>Clear organization</h5>
+            <button type="button" class="btn-close" data-clear-all-confirm-cancel aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-3">
+              Clear all resets this Create Organization workspace to empty and removes
+              its saved browser draft. Persisted Principals are not deleted from
+              application storage/database.
+            </p>
+            <ul class="nav nav-tabs mb-3" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link active" data-clear-all-tab="summary" role="tab" aria-selected="true">Summary</button>
+              </li>
+              <li class="nav-item" role="presentation"><button type="button" class="nav-link" data-clear-all-tab="details" role="tab" aria-selected="false">Details</button></li>
+            </ul>
+            <div data-clear-all-panel="summary">
+              <div class="metadata-hierarchy-commit-summary" data-clear-all-summary></div>
+              <p class="small text-secondary mb-0 mt-3">Cancel returns to the organization chart without changing the current working data.</p>
+            </div>
+            <div data-clear-all-panel="details" hidden><div class="metadata-hierarchy-commit-details" data-clear-all-details></div></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-clear-all-confirm-cancel>Cancel</button>
+            <button type="button" class="btn btn-danger" data-clear-all-confirm-accept><i class="bi bi-eraser me-1" aria-hidden="true"></i>Clear all</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template data-hierarchy-commit-confirm-template>
+    <div
+      id="hierarchyCommitConfirmModal"
+      class="modal fade metadata-hierarchy-commit-confirm-modal"
+      tabindex="-1"
+      aria-labelledby="hierarchyCommitConfirmTitle"
+      data-popup-purpose="hierarchy-commit"
+      data-surface-kind="custom"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content metadata-hierarchy-commit-confirm">
+          <div class="modal-header d-flex align-items-center justify-content-between gap-2">
+            <strong id="hierarchyCommitConfirmTitle" data-v2-layout-caption="surface">
+              <i class="bi bi-database-check me-2" aria-hidden="true"></i>Commit changes
+            </strong>
+            <button
+              type="button"
+              class="btn-close"
+              data-commit-confirm-cancel
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body overflow-hidden" data-v2-layout-region="content">
+            <div class="d-flex gap-4 align-items-start flex-column flex-lg-row">
+              <aside
+                class="metadata-hierarchy-commit-illustration flex-shrink-0 text-center"
+                aria-hidden="true"
+              >
+                <div class="position-relative mx-auto" style="width:10rem;height:12rem">
+                  <div
+                    class="position-absolute top-0 start-0 rounded-4 border bg-body shadow-sm p-3"
+                    style="width:6.2rem"
+                  >
+                    <i class="bi bi-diagram-3-fill text-primary fs-2"></i>
+                    <div class="small fw-semibold mt-1">Workspace</div>
+                    <div class="mt-2 d-flex justify-content-center gap-1">
+                      <span class="badge bg-success-subtle text-success border">+</span>
+                      <span
+                        class="badge bg-warning-subtle text-warning-emphasis border"
+                      >
+                        <i class="bi bi-pencil"></i>
+                      </span>
+                      <span class="badge bg-danger-subtle text-danger border">−</span>
+                    </div>
+                  </div>
+                  <i
+                    class="bi bi-arrow-down-right position-absolute text-primary"
+                    style="font-size:2rem;left:5.7rem;top:4.6rem"
+                  ></i>
+                  <div
+                    class="position-absolute bottom-0 end-0 rounded-circle bg-success-subtle border border-success-subtle shadow d-flex align-items-center justify-content-center"
+                    style="width:6rem;height:6rem"
+                  >
+                    <i
+                      class="bi bi-database-check text-success"
+                      style="font-size:2.8rem"
+                    ></i>
+                  </div>
+                </div>
+                <div class="small text-body-secondary mt-2">
+                  <strong data-commit-operation-count>0</strong> planned operations
+                </div>
+              </aside>
+              <div class="flex-grow-1 min-w-0 w-100">
+                <p class="mb-3">
+                  Review the exact immutable transaction plan below. Confirm will execute
+                  this same plan.
+                </p>
+                <div data-commit-report data-v2-layout-component-instance="report"></div>
+                <% if (app.ui?.debugTools) { %>
+                  <div class="form-check mt-3">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="hierarchyCommitSimulateFailure"
+                      data-commit-simulate-failure
+                    >
+                    <label class="form-check-label small" for="hierarchyCommitSimulateFailure">
+                      Simulate transaction failure (developer)
+                    </label>
+                    <div class="form-text">
+                      Fails after the workspace storage mutations have completed, before Commit,
+                      forcing the normal transaction rollback path.
+                    </div>
+                  </div>
+                <% } %>
+                <p class="small text-secondary mb-0 mt-3">
+                  Cancel returns to the organization without changing the working data.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" data-v2-layout-actions="surface">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-commit-confirm-cancel
+              data-v2-layout-action="cancel"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              data-commit-confirm-accept
+              data-v2-layout-action="commit"
+            >
+              <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Commit
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</section>

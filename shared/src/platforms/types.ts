@@ -83,6 +83,8 @@ export interface CompanyInfo {
   shortName: string;
   description?: string;
   branding: {
+    /** Canonical product-positioning line used by public branding surfaces. */
+    tagline: string;
     headerLogo: ThemedImageRef;
     companyPageImage?: ImageRef;
   };

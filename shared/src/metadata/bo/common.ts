@@ -1,4 +1,3 @@
-import { SysBOExtAuthProviderType } from '../../domain/entities.js';
 import type { SysBOFieldMetadata } from './types.js';
 
 /**
@@ -15,38 +14,6 @@ import type { SysBOFieldMetadata } from './types.js';
  * non-null assertion `commonSysBOFields.name!`. We know statically that the property
  * exists because it is declared immediately here.
  */
-export const externalAuthProviderOptionItems = [
-  {
-    value: SysBOExtAuthProviderType.Microsoft,
-    label: 'Microsoft',
-    icon: 'microsoft',
-    tenant: 'common',
-    callbackPath: '/auth/microsoft/callback',
-  },
-  // Keep optional provider traits structurally present. CTX expressions resolve
-  // these canonical enum attributes explicitly through $entity-fields.
-  {
-    value: SysBOExtAuthProviderType.Google,
-    label: 'Google',
-    icon: 'google',
-    tenant: null,
-    callbackPath: '/auth/google/callback',
-  },
-  {
-    value: SysBOExtAuthProviderType.Facebook,
-    label: 'Facebook',
-    icon: 'facebook',
-    tenant: null,
-    callbackPath: '/auth/facebook/callback',
-  },
-  {
-    value: SysBOExtAuthProviderType.GitHub,
-    label: 'GitHub',
-    icon: 'github',
-    tenant: null,
-    callbackPath: '/auth/github/callback',
-  },
-] as const;
 
 export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
   id: {

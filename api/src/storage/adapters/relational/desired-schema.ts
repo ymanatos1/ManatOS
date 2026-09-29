@@ -1,5 +1,6 @@
 import {
   allManatOSObjectMetadata,
+  relationshipForField,
   type SysBOFieldMetadata,
   type SysBOFieldType,
 } from '@manatos/shared';
@@ -12,7 +13,7 @@ export interface RdbmsDesiredColumn {
   /** Canonical semantic uniqueness requirement; physical realization is adapter strategy. */
   unique?: boolean;
   /** Canonical referenced BO key; physical FK realization is adapter strategy. */
-  referenceBOKey?: string;
+  referencedObjectKey?: string;
   /** Persisted calculation semantics remain adapter-neutral in the desired model. */
   calculation?: Readonly<{ expression: string; persisted: true }>;
 }
@@ -42,14 +43,20 @@ export const MANATOS_RDBMS_SCHEMA_VERSION = 1;
 
 const tableName = (key: string) => `m_${key.replace(/[^A-Za-z0-9]+/g, '_')}`;
 
-function column(field: SysBOFieldMetadata): RdbmsDesiredColumn {
+function column(
+  metadata: (typeof allManatOSObjectMetadata)[keyof typeof allManatOSObjectMetadata],
+  field: SysBOFieldMetadata,
+): RdbmsDesiredColumn {
+  const relationship = relationshipForField(metadata, field.key);
   return {
     name: field.key,
     fieldType: field.type,
     required: field.required === true && field.nullable !== true,
     ...(typeof field.maxLength === 'number' ? { maxLength: field.maxLength } : {}),
     ...(field.unique === true ? { unique: true } : {}),
-    ...(field.referenceBOKey ? { referenceBOKey: field.referenceBOKey } : {}),
+    ...(relationship
+      ? { referencedObjectKey: relationship.relationship.references.objectKey }
+      : {}),
     ...(field.calculation?.persisted === true
       ? { calculation: { expression: field.calculation.expression, persisted: true as const } }
       : {}),
@@ -70,8 +77,12 @@ export const desiredRdbmsSchema: readonly RdbmsDesiredTable[] = Object.values(
     name: tableName(metadata.key),
     objectKey: metadata.key,
     columns: Object.values(metadata.fieldDefinition)
-      .filter((field) => !field.calculation || field.calculation.persisted === true)
-      .map(column)
+      .filter(
+        (field) =>
+          field.persistent !== false &&
+          (!field.calculation || field.calculation.persisted === true),
+      )
+      .map((field) => column(metadata, field))
       .sort((a, b) => a.name.localeCompare(b.name)),
   }))
   .sort((a, b) => a.name.localeCompare(b.name));

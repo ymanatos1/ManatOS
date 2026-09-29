@@ -1,0 +1,229 @@
+<%#
+  COMPONENT: Record selector
+
+  Purpose:
+  - Defines the generic existing-record selector popup surface from the same canonical list components used by browse pages.
+
+  Inputs / metadata:
+  - selector metadata/UI metadata, candidate rows/reference data, authored UI expressions and selector invocation parameters.
+
+  CTX contract:
+  - Runtime projects ctx.<leaf-page>.popup with invocation, presentation, entries/filters/selection and state.
+
+  Embeds / delegates:
+  - ../../components/sysbo/list/* shared list partials.
+
+  Runtime contract:
+  - record-selector.js owns filtering, paging, selection, popup CTX and CTX-inspection toggle behavior.
+%>
+
+<%
+  /*
+   * Generic existing-record selector surface.
+   *
+   * This is intentionally composed from the same list toolbar/filter/header/
+   * paging partials as a normal SysBO list page. The surrounding popup owns
+   * selection semantics only; list presentation stays shared.
+   */
+  const recordSelectorMetadata = selectorMetadata;
+  const recordSelectorUI = selectorUIMetadata || {
+    list: {
+      visibleFields: [recordSelectorMetadata.primaryField],
+      filterFields: [],
+      sortableFields: [],
+      pageSize: 10,
+    },
+  };
+  /* Effective list metadata is resolved server-side by the canonical shared
+   * list-uiView resolver. This component consumes that contract; it must never
+   * reach back into list.common after view selection/resolution. */
+  const recordSelectorListMetadata = selectorListMetadata || {
+    visibleFields: [recordSelectorMetadata.primaryField],
+    filterFields: [],
+    sortableFields: [],
+  };
+  const recordSelectorVisibleFields = Array.isArray(recordSelectorListMetadata.visibleFields) && recordSelectorListMetadata.visibleFields.length
+    ? recordSelectorListMetadata.visibleFields
+    : [recordSelectorMetadata.primaryField];
+  const recordSelectorFilterFields = Array.isArray(recordSelectorListMetadata.filterFields)
+    ? recordSelectorListMetadata.filterFields
+    : [];
+  const recordSelectorPageSize = Number(recordSelectorListMetadata.pageSize) > 0
+    ? Number(recordSelectorListMetadata.pageSize)
+    : Number(app?.ui?.bootstrap?.ui?.defaultPageSize || 10);
+  const recordSelectorPageSizes = Array.isArray(selectorPageSizeOptions) && selectorPageSizeOptions.length
+    ? selectorPageSizeOptions
+    : (Array.isArray(app?.ui?.bootstrap?.ui?.pageSizeOptions) ? app.ui.bootstrap.ui.pageSizeOptions : [10, 25, 50]);
+  const candidateInput = typeof selectorCandidates !== 'undefined' ? selectorCandidates : null;
+  const recordSelectorQueryExclude =
+    typeof selectorQueryExclude !== 'undefined' && Array.isArray(selectorQueryExclude)
+      ? selectorQueryExclude
+      : [];
+  const recordSelectorCandidates = Array.isArray(candidateInput) ? candidateInput : [];
+  const recordSelectorInitialTotal = Number(selectorInitialTotal || recordSelectorCandidates.length || 0);
+  const recordSelectorReferenceData = selectorReferenceData || {};
+  const recordSelectorEntityKey = selectorEntityKey || recordSelectorMetadata.key;
+  const recordSelectorTemplateKey = String(selectorTemplateKey || recordSelectorEntityKey).replace(/[^A-Za-z0-9_-]/g, '-');
+  const recordSelectorDefinition = { key: `${recordSelectorEntityKey}-${recordSelectorTemplateKey}` };
+  const recordSelectorFilterId = `metadata-record-selector-filters-${recordSelectorTemplateKey}`;
+
+  /*
+   * Selector UI policy is metadata, not caller-specific JavaScript. Expressions
+   * cross this presentation boundary as authored source only. The browser asks
+   * the UI-server expression registry for the cached AST lazily and evaluates it
+   * against the live selector CTX surface. Invocation stays canonical and contains
+   * only child-relevant semantics.
+   */
+  const selectorTitleExpression =
+    "#control.invocation.presentation.title ? #control.invocation.presentation.title : 'Select existing entry'";
+
+  const selectorContextNoteExpression = [
+    "#data.selection.current.name ?",
+    "('Selected ' + #data.selection.current.name + '.') :",
+    "(#control.invocation.behavior.selection == 'multiple'",
+    "? 'Select one or more entries to continue.' : 'Select an entry to continue.')",
+  ].join(' ');
+
+  const recordSelectorUIRules = {
+    presentationMode:
+      "#control.invocation.presentation.layout ? #control.invocation.presentation.layout : 'subtle'",
+    title: selectorTitleExpression,
+    contextNote: selectorContextNoteExpression,
+    rowClass: "#data.row.facts.alreadyInContext ? 'is-in-context' : ''",
+    showContextNote: 'true',
+    autofocusSearch: "#control.invocation.behavior.autofocus == false ? false : true",
+  };
+  const recordSelectorEnumItem = metadataOptionItemForField;
+  const recordSelectorFilterModes = Object.fromEntries(recordSelectorFilterFields.map((fieldKey) => {
+    const field = recordSelectorMetadata.fieldDefinition?.[fieldKey];
+    return [fieldKey, field?.type === 'enum' || field?.type === 'reference' || field?.type === 'boolean' ? 'exact' : 'contains'];
+  }));
+%>
+<template data-record-selector-template="<%= recordSelectorTemplateKey %>">
+  <section
+    class="metadata-record-selector card shadow"
+    role="dialog"
+    aria-modal="true"
+    data-selector-entity-key="<%= recordSelectorEntityKey %>"
+    data-selector-primary-field="<%= recordSelectorMetadata.primaryField %>"
+    data-selector-visible-fields="<%= JSON.stringify(recordSelectorVisibleFields) %>"
+    data-selector-filter-fields="<%= JSON.stringify(recordSelectorFilterFields) %>"
+    data-selector-filter-modes="<%= JSON.stringify(recordSelectorFilterModes) %>"
+    data-selector-ui-rules="<%= JSON.stringify(recordSelectorUIRules) %>"
+    data-selector-query-exclude="<%= JSON.stringify(recordSelectorQueryExclude) %>"
+  >
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+      <strong data-selector-title data-v2-layout-caption="surface">Select existing <%= recordSelectorMetadata.name %></strong>
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary d-none"
+          data-selector-ctx
+          aria-pressed="false"
+          title="Toggle this popup context in Developer Tools"
+        >
+          <i class="bi bi-bug me-1" aria-hidden="true"></i>CTX
+        </button>
+        <button type="button" class="btn-close" data-selector-close aria-label="Close"></button>
+      </div>
+    </div>
+
+    <div class="card-body d-flex flex-column gap-3">
+      <%- include('../../components/sysbo/list/list-toolbar', {
+        selectorMode: true,
+        metadataUI: recordSelectorUI,
+        totalEntries: recordSelectorInitialTotal,
+        filterFields: recordSelectorFilterFields,
+        hasActiveFilters: false,
+        activeFilterCount: 0,
+        filterCollapseId: recordSelectorFilterId,
+        query: {},
+        definition: recordSelectorDefinition,
+        searchPlaceholder: `Search ${recordSelectorMetadata.pluralLabel.toLowerCase()}`
+      }) %>
+
+      <%- include('../../components/sysbo/list/list-filters', {
+        filterFields: recordSelectorFilterFields,
+        hasActiveFilters: false,
+        filterCollapseId: recordSelectorFilterId,
+        metadata: recordSelectorMetadata,
+        query: {},
+        enumItem: recordSelectorEnumItem,
+        listReferenceValues: recordSelectorReferenceData,
+        definition: recordSelectorDefinition,
+        selectorMode: true
+      }) %>
+
+      <div class="table-responsive metadata-record-selector-list" data-v2-layout-region="list">
+        <table class="table table-hover align-middle mb-0">
+          <thead><%- include('../../components/sysbo/list/list-table-header', {
+            selectorMode: true,
+            metadata: recordSelectorMetadata,
+            metadataUI: recordSelectorUI,
+            listMetadata: recordSelectorListMetadata,
+            query: {},
+            rowActions: []
+          }) %></thead>
+          <tbody data-selector-rows></tbody>
+        </table>
+      </div>
+
+      <%- include('../../components/sysbo/list/list-paging', {
+        selectorMode: true,
+        paging: {
+          page: 1,
+          pageSize: recordSelectorPageSize,
+          total: recordSelectorInitialTotal,
+          totalPages: Math.max(1, Math.ceil(recordSelectorInitialTotal / recordSelectorPageSize))
+        },
+        pageSizeOptions: recordSelectorPageSizes,
+        filterFields: recordSelectorFilterFields,
+        query: {},
+        definition: recordSelectorDefinition
+      }) %>
+    </div>
+
+    <div class="card-footer d-flex align-items-center justify-content-between gap-3" data-v2-layout-actions="surface">
+      <div class="small text-secondary" data-selector-context-note data-v2-layout-status="selection">Select an entry to continue.</div>
+      <div class="d-flex gap-2 ms-auto">
+        <button type="button" class="btn btn-outline-secondary" data-selector-cancel data-v2-layout-action="cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" data-selector-select data-v2-layout-action="select" disabled>Select</button>
+      </div>
+    </div>
+
+    <!--
+      Candidate rows are pre-rendered through the exact same canonical list-cell
+      partial used by the V2 entity-list component. The browser runtime only chooses,
+      decorates and pages these rows; it does not own a second field presenter.
+    -->
+    <template data-selector-candidate-rows>
+      <% for (const item of recordSelectorCandidates) { %>
+        <%
+          const candidateId = String(item?.id ?? item?.value ?? '');
+          const selectorFilterValues = Object.fromEntries(recordSelectorFilterFields.map((fieldKey) => [fieldKey, item?.[fieldKey] ?? '']));
+          // Candidate rows are reference-catalogue projections, not raw entity rows.
+          // Consume them through the canonical server presentation boundary.
+          const candidateRepresentation = projectedReferenceRepresentation(item, candidateId);
+        %>
+        <tr
+          data-selector-candidate-row
+          data-candidate-id="<%= candidateId %>"
+          data-selector-filter-values="<%= JSON.stringify(selectorFilterValues) %>"
+        >
+          <%- include('../../components/sysbo/list/list-row-cells', {
+            item,
+            metadata: recordSelectorMetadata,
+            metadataUI: recordSelectorUI,
+            definition: recordSelectorDefinition,
+            visibleFields: recordSelectorVisibleFields,
+            listReferenceValues: recordSelectorReferenceData,
+            optionItem: recordSelectorEnumItem,
+            enumToneClass: metadataOptionToneClass,
+            entryRepresentation: candidateRepresentation,
+            selectorMode: true
+          }) %>
+        </tr>
+      <% } %>
+    </template>
+  </section>
+</template>

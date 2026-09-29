@@ -7,6 +7,7 @@ import {
   sysBOUsersMetadata,
   sysBOUsersUIMetadata,
   tabContentKeys,
+  enumItemsForField,
 } from '@manatos/shared';
 
 import { allSysBOUIMetadata } from '../../src/metadata/sysbo-ui-registry.js';
@@ -91,7 +92,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       'userId',
       'description',
       'parentId',
-      'rootPrincipalId',
+      'rootId',
     ]);
     expect(sysBOPrincipalsMetadata.fieldDefinition.principalType?.createDefaultValue).toBe(
       'Person',
@@ -106,7 +107,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       { kind: 'field', field: 'userId', span: 6 },
       { kind: 'field', field: 'description', span: 12 },
       { kind: 'field', field: 'parentId', span: 6 },
-      { kind: 'field', field: 'rootPrincipalId', span: 6 },
+      { kind: 'field', field: 'rootId', span: 6 },
     ]);
   });
 
@@ -114,8 +115,13 @@ describe('metadata-driven SysBO UI conventions', () => {
     const application = allSysBOUIMetadata['sys-applications'];
     const general = application.record.tabs.find((tab) => tab.id === 'general');
 
-    expect(application.list.visibleFields).toEqual(['name', 'fullName', 'version', 'enabled']);
-    expect(application.list.filterFields).toEqual(['name', 'fullName']);
+    expect(application.list.common.visibleFields).toEqual([
+      'name',
+      'fullName',
+      'version',
+      'enabled',
+    ]);
+    expect(application.list.common.filterFields).toEqual(['name', 'fullName']);
     expect(sysBOApplicationsMetadata.fieldDefinition.version).toMatchObject({
       type: 'version',
       versionFormat: 'semver',
@@ -180,7 +186,7 @@ describe('metadata-driven SysBO UI conventions', () => {
         expression:
           "mode !== 'view' && (permissions.create === true || permissions.update === true)",
       });
-      expect(metadata.list.addAction.visible).toEqual({
+      expect(metadata.list.common.addAction.visible).toEqual({
         expression: 'permissions.create === true',
       });
     }
@@ -231,9 +237,9 @@ describe('metadata-driven SysBO UI conventions', () => {
     expect(sysBOApplicationsMetadata.fieldDefinition.enabled?.createDefaultValue).toBe(true);
     expect(licenses.record.fieldOverrides.name?.label).toBe('License name');
     expect(sysBOLicensesMetadata.fieldDefinition.platformId?.createDefaultValue).toEqual({
-      expression: "FirstCtx($entity-fields.platformId.enumItems, 'value')",
+      expression: "FirstCtx($enums.SysPlatform.values, 'value')",
     });
-    expect(sysBOLicensesMetadata.fieldDefinition.platformId?.enumItems?.[0]).toMatchObject({
+    expect(enumItemsForField(sysBOLicensesMetadata.fieldDefinition.platformId)[0]).toMatchObject({
       value: expect.any(String),
       label: 'protoCRM',
     });
@@ -294,7 +300,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       'applicationId',
       'rules',
     ]);
-    expect(licenses.list.filterFields).toEqual([
+    expect(licenses.list.common.filterFields).toEqual([
       'name',
       'principalId',
       'platformId',
@@ -308,14 +314,25 @@ describe('metadata-driven SysBO UI conventions', () => {
     const applicationLicenses = applications.record.relatedCollections?.licenses;
     expect(principalLicenses).toMatchObject({
       entityKey: 'sys-licenses',
-      layout: 'table-list',
-      rowHref: '/bo/sys-licenses/{id}',
+      relatedListView: 'default',
       source: { kind: 'entity-query', filterField: 'principalId', currentField: 'id' },
+      relatedListViews: {
+        default: {
+          layout: 'table-list',
+          rowHref: '/bo/sys-licenses/{id}',
+        },
+      },
     });
     expect(applicationLicenses).toMatchObject({
       entityKey: 'sys-licenses',
-      layout: 'table-list',
+      relatedListView: 'default',
       source: { kind: 'entity-query', filterField: 'applicationId', currentField: 'id' },
+      relatedListViews: {
+        default: {
+          layout: 'table-list',
+          rowHref: '/bo/sys-licenses/{id}',
+        },
+      },
     });
   });
 

@@ -201,3 +201,15 @@ Host-specific lifecycle, filesystem access, HTTP middleware or DOM behavior shou
 - [Client and UI Architecture](../clients/Client-Architecture.md) for portable client/surface/component ownership and the current Express realization.
 - [API Architecture](../api/API-Architecture.md) for request/service contracts.
 - [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md) for correlation and snapshots.
+
+### Stage 20 host/surface opening contract
+
+The typed browser runtime now defines executable host and surface registry contracts and one canonical `UiRuntime.open()` pipeline. A request carries one invocation, canonical CTX, level identity and optional parent. The host strategy owns **placement and topology**; after the host mounts the `UiLevel`, the semantic surface owns **surface initialization**. Host and surface are therefore orthogonal dimensions rather than separate application runtimes.
+
+During the Stage 20 migration, the production compatibility host may still be observed through `UiRuntime.observe()`. That bridge is transitional. New typed opening semantics must target `UiRuntime.open()` rather than introduce another page/popup/embedded dispatcher. Direct browser-host migration and iframe removal are later Stage 20 steps.
+
+#### Direct Entry popup hosting
+
+Entity Entry popups are hosted directly in the owning browser document and `UiLevel`. The UI server still supplies the canonical host-neutral SSR Entry markup plus factual bootstrap/context resources, but it does not create a second application shell. The popup runtime hydrates the already-opened Entry surface, mounts the markup beneath that surface, and lets the re-entrant Entry installers bind to its exact CTX path.
+
+An Entry popup therefore has one semantic owner and one runtime: there is no Entry iframe, cross-window CTX attachment, event-forwarding bridge, or nested application runtime. Nested popups remain child `UiLevel`s in the same canonical runtime stack. Page/Popup/Embedded are hosting choices around the same Entry semantics.

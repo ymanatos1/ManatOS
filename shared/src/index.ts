@@ -33,3 +33,7 @@ export * from './policies/entry-aggregate-policy.js';
 
 export * from './context/context-tree-runtime.js';
 export * from './context/root-context.js';
+
+export * from './metadata/subsystems/enum-registry.js';
+export * from './metadata/subsystems/registry.js';
+export * from './metadata/subsystems/types.js';

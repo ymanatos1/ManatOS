@@ -8,6 +8,26 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./metadata/ui": {
+      "types": "./dist/metadata/ui/index.d.ts",
+      "import": "./dist/metadata/ui/index.js"
+    },
+    "./metadata/bo": {
+      "types": "./dist/metadata/bo/index.d.ts",
+      "import": "./dist/metadata/bo/index.js"
+    },
+    "./expressions": {
+      "types": "./dist/expressions/index.d.ts",
+      "import": "./dist/expressions/index.js"
+    },
+    "./presentation/entry-representation": {
+      "types": "./dist/presentation/entry-representation.d.ts",
+      "import": "./dist/presentation/entry-representation.js"
+    },
+    "./presentation/picture-value": {
+      "types": "./dist/presentation/picture-value.d.ts",
+      "import": "./dist/presentation/picture-value.js"
     }
   },
   "scripts": {

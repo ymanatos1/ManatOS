@@ -2,9 +2,7 @@ import argon2 from 'argon2';
 
 import {
   AuthenticationError,
-  ConflictError,
   NotFoundError,
-  SysBOPrincipalType,
   SysBOUserRole,
   ValidationAppError,
   operationContext,
@@ -12,8 +10,6 @@ import {
   validatePassword,
   type EmailVerificationSource,
   type SysBOUser,
-  type SysBOCreateInput,
-  type SysBOUpdateInput,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../../storage/in-memory-data-store.js';
@@ -67,55 +63,75 @@ export class SysBOUserService extends GenericSysBOService<SysBOUser> {
     super(store, store.sysUsers, sysBOUsersMetadata);
   }
 
-  /** Enforce the canonical optional 1:1 SysUser -> Person Principal identity link. */
-  private async validatePrincipalIdentityLink(
-    principalId: string | null | undefined,
-    currentUserId?: string,
-  ): Promise<void> {
-    if (!principalId) return;
-    const principal = await this.store.sysPrincipals.getById(principalId);
-    if (!principal) throw new NotFoundError('SysBOPrincipal', principalId);
-    if (principal.principalType !== SysBOPrincipalType.Person) {
-      throw new ConflictError(
-        'USER_PRINCIPAL_MUST_BE_PERSON',
-        'A User account can only be linked to a Person Principal.',
-        'Choose a Principal whose Principal type is Person.',
+  protected override async projectRuntimeFields(user: SysBOUser): Promise<SysBOUser> {
+    const linked = (
+      await this.store.sysPrincipals.list({
+        page: 1,
+        pageSize: 2,
+        direction: 'asc',
+        filters: { userId: user.id },
+      })
+    ).items;
+    if (linked.length > 1) {
+      throw new ValidationAppError(
+        `User '${user.id}' is linked to multiple Principals.`,
+        'The User-to-Principal relationship violates one-to-one cardinality.',
       );
     }
-    for (const user of this.store.sysUsers.values()) {
-      if (user.id !== currentUserId && user.principalId === principalId) {
-        throw new ConflictError(
-          'USER_PRINCIPAL_ALREADY_LINKED',
-          `Principal '${principal.name}' is already linked to User '${user.name}'.`,
+    return { ...user, principalId: linked[0]?.id ?? null };
+  }
+
+  protected override async applyNonPersistentUpdates(
+    userId: string,
+    changes: Readonly<Record<string, unknown>>,
+    actor: AuditActor,
+  ): Promise<void> {
+    if (!Object.prototype.hasOwnProperty.call(changes, 'principalId')) return;
+    const desired =
+      changes.principalId == null || changes.principalId === ''
+        ? null
+        : String(changes.principalId);
+    const linked = (
+      await this.store.sysPrincipals.list({
+        page: 1,
+        pageSize: 2,
+        direction: 'asc',
+        filters: { userId },
+      })
+    ).items;
+    if (linked.length > 1) {
+      throw new ValidationAppError(
+        `User '${userId}' is linked to multiple Principals.`,
+        'The User-to-Principal relationship violates one-to-one cardinality.',
+      );
+    }
+    if (desired) {
+      const target = await this.store.sysPrincipals.getById(desired);
+      if (!target) throw new NotFoundError('SysBOPrincipal', desired);
+      if (target.principalType !== 'Person') {
+        throw new ValidationAppError(
+          `Principal '${desired}' is not a Person.`,
+          'Only a Person Principal can be linked to a User.',
+        );
+      }
+      if (target.userId && target.userId !== userId) {
+        throw new ValidationAppError(
+          `Principal '${desired}' is already linked to another User.`,
           'Choose an unlinked Person Principal.',
         );
       }
     }
-  }
-
-  override async create(input: SysBOCreateInput<SysBOUser>, actor: AuditActor): Promise<SysBOUser> {
-    const initialized = this.applyCreateDefaults(input);
-    await this.validatePrincipalIdentityLink(initialized.principalId);
-    return super.create(initialized, actor);
-  }
-
-  override async update(
-    id: string,
-    changes: SysBOUpdateInput<SysBOUser>,
-    actor: AuditActor,
-  ): Promise<SysBOUser> {
-    if (Object.prototype.hasOwnProperty.call(changes, 'principalId')) {
-      const actingUser = actor.userId ? await this.store.sysUsers.getById(actor.userId) : null;
-      if (actor.source === 'user' && actingUser?.role !== SysBOUserRole.Admin) {
-        throw new ConflictError(
-          'USER_PRINCIPAL_ADMIN_REQUIRED',
-          'Only an Administrator can change a User identity Principal.',
-          'Ask an Administrator to change this relationship.',
-        );
+    for (const principal of linked) {
+      if (principal.id !== desired) {
+        await this.store.sysPrincipals.update(principal.id, { userId: null }, actor);
       }
-      await this.validatePrincipalIdentityLink(changes.principalId, id);
     }
-    return super.update(id, changes, actor);
+    if (desired) {
+      const target = await this.store.sysPrincipals.getById(desired);
+      if (target?.userId !== userId) {
+        await this.store.sysPrincipals.update(desired, { userId }, actor);
+      }
+    }
   }
 
   /**

@@ -212,8 +212,17 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(metadataUI.body.data.metadataUI).toMatchObject({
         key: 'sys-applications',
         list: {
-          visibleFields: ['name', 'fullName', 'version', 'enabled'],
-          filterFields: ['name', 'fullName'],
+          common: {
+            visibleFields: ['name', 'fullName', 'version', 'enabled'],
+            filterFields: ['name', 'fullName'],
+          },
+          views: {
+            main: { label: 'Standard' },
+            simple: {
+              label: 'Simple',
+              visibleFields: ['name', 'version'],
+            },
+          },
         },
       });
 

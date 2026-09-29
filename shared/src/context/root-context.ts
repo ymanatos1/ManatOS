@@ -1,14 +1,18 @@
+import { canonicalEnumItems } from '../metadata/subsystems/enum-registry.js';
 import { MANATOS_COMPANY, resolvePlatform } from '../domain/company-platform.js';
 import { allManatOSObjectMetadata } from '../metadata/bo/registry.js';
 import {
   allManatOSSubsystemMetadata,
+  effectiveEnumKeys,
   effectiveObjectKeys,
   subsystemContextCatalogue,
 } from '../metadata/subsystems/registry.js';
+import type { ManatOSSubsystemMetadata } from '../metadata/subsystems/types.js';
 import type { CompanyInfo, SysPlatform } from '../platforms/types.js';
 import type {
   ManatOSCompanyContext,
   ManatOSEntitiesContext,
+  ManatOSEnumsContext,
   ManatOSEntityContext,
   ManatOSSystemContext,
 } from './manatos-context.js';
@@ -87,6 +91,37 @@ function contextMetadata(value: unknown, omitOwnKey = false): unknown {
     Object.entries(value as Record<string, unknown>)
       .filter(([key]) => key !== 'ast' && !(omitOwnKey && (key === 'key' || key === 'subsystem')))
       .map(([key, child]) => [key, contextMetadata(child)]),
+  );
+}
+
+/** Effective canonical enum catalogue for the selected subsystem composition. */
+export function createEnumsContext(
+  company: CompanyInfo = MANATOS_COMPANY,
+  currentPlatform: SysPlatform = resolvePlatform(company),
+): ManatOSEnumsContext {
+  const effective = effectiveEnumKeys(company, currentPlatform);
+  return Object.freeze(
+    Object.fromEntries(
+      (Object.values(allManatOSSubsystemMetadata) as readonly ManatOSSubsystemMetadata[]).flatMap(
+        (subsystem) =>
+          Object.values(subsystem.enums ?? {})
+            .filter((definition) => effective.has(definition.key))
+            .map((definition) => [
+              definition.name,
+              Object.freeze({
+                key: definition.key,
+                name: definition.name,
+                subsystem: subsystem.key,
+                label: definition.label,
+                values: Object.freeze(
+                  Object.fromEntries(
+                    canonicalEnumItems(definition.key).map((value) => [String(value.value), value]),
+                  ),
+                ),
+              }),
+            ]),
+      ),
+    ),
   );
 }
 

@@ -1,9 +1,13 @@
 import {
   ConflictError,
   allManatOSObjectMetadata,
+  allManatOSRelationshipDefinitions,
+  relationshipCandidateMatches,
+  relationshipEndpointIsSet,
+  relationshipsReferencing,
+  type ResolvedRelationshipDefinition,
   type ManatOSRelationshipDeleteAction,
   type ManatOSRelationshipConfirmationPolicy,
-  type ManatOSRelationshipMetadata,
 } from '@manatos/shared';
 
 import type { InMemoryDataStore } from '../../storage/in-memory-data-store.js';
@@ -72,47 +76,43 @@ export class RelationshipIntegrityService {
     let repaired = 0;
     const unresolved: RelationshipRepairReport['unresolved'] = [];
 
-    for (const metadata of Object.values(allManatOSObjectMetadata) as ObjectMetadata[]) {
-      const source = this.store.collectionForObjectKey(metadata.key);
-      if (!source) continue;
+    for (const definition of allManatOSRelationshipDefinitions) {
+      const source = this.store.collectionForObjectKey(definition.sourceObjectKey);
+      const target = this.store.collectionForObjectKey(definition.targetObjectKey);
+      if (!source || !target) continue;
+      const targetRecords = [...target.values()];
 
-      for (const [relationshipKey, relationship] of Object.entries(metadata.relationships ?? {})) {
-        if (relationship.fields.length !== 1 || relationship.references.fields.length !== 1)
+      for (const [recordId, record] of [...source.entries()]) {
+        if (!relationshipEndpointIsSet(definition, 'forward', record)) continue;
+        const targetExists = targetRecords.some((candidate) =>
+          relationshipCandidateMatches(definition, 'forward', record, candidate),
+        );
+        if (targetExists) continue;
+
+        const policy = definition.relationship.policies?.delete ?? { action: 'restrict' as const };
+        if (policy.action === 'retain') {
+          // Semantic/non-destructive relationships may legitimately outlive
+          // their target configuration (for example an External Identity
+          // retained while its provider configuration is removed).
           continue;
-        const target = this.store.collectionForObjectKey(relationship.references.objectKey);
-        if (!target) continue;
-        const sourceField = relationship.fields[0]!;
-
-        for (const [recordId, record] of [...source.entries()]) {
-          const referencedId = record[sourceField];
-          if (referencedId === null || referencedId === undefined || referencedId === '') continue;
-          if (typeof referencedId !== 'string' || target.has(referencedId)) continue;
-
-          const policy = relationship.policies?.delete ?? { action: 'restrict' as const };
-          if (policy.action === 'retain') {
-            // Semantic/non-destructive relationships may legitimately outlive
-            // their target configuration (for example an External Identity
-            // retained while its provider configuration is removed).
-            continue;
-          }
-          if (policy.action === 'cascade' || policy.action === 'unlink') {
-            source.delete(recordId);
-            repaired += 1;
-            continue;
-          }
-          if (policy.action === 'set-null') {
-            for (const field of relationship.fields) record[field] = null;
-            repaired += 1;
-            continue;
-          }
-
-          unresolved.push({
-            objectKey: metadata.key,
-            recordId,
-            relationship: relationshipKey,
-            referencedObjectKey: relationship.references.objectKey,
-          });
         }
+        if (policy.action === 'cascade' || policy.action === 'unlink') {
+          source.delete(recordId);
+          repaired += 1;
+          continue;
+        }
+        if (policy.action === 'set-null') {
+          for (const field of definition.relationship.fields) record[field] = null;
+          repaired += 1;
+          continue;
+        }
+
+        unresolved.push({
+          objectKey: definition.sourceObjectKey,
+          recordId,
+          relationship: definition.key,
+          referencedObjectKey: definition.targetObjectKey,
+        });
       }
     }
 
@@ -126,12 +126,10 @@ export class RelationshipIntegrityService {
 
     try {
       for (const entry of this.referencesTo(targetObjectKey)) {
-        const collection = this.store.collectionForObjectKey(entry.metadata.key);
+        const collection = this.store.collectionForObjectKey(entry.sourceObjectKey);
         if (!collection) continue;
 
-        const matching = [...collection.entries()].filter(([, record]) =>
-          this.matchesTarget(record, entry.relationship, targetObjectKey, targetId),
-        );
+        const matching = this.matchingEntries(entry, targetObjectKey, targetId);
         if (matching.length === 0) continue;
 
         const policy = entry.relationship.policies?.delete ?? {
@@ -141,8 +139,8 @@ export class RelationshipIntegrityService {
         if (policy.action === 'restrict') {
           throw new ConflictError(
             'DELETE_RESTRICTED_BY_RELATIONSHIP',
-            `Delete blocked by ${entry.metadata.pluralLabel}.`,
-            `${matching.length} related ${entry.metadata.pluralLabel} reference this record through '${entry.relationshipKey}'.`,
+            `Delete blocked by ${(entry.source as ObjectMetadata).pluralLabel}.`,
+            `${matching.length} related ${(entry.source as ObjectMetadata).pluralLabel} reference this record through '${entry.key}'.`,
           );
         }
 
@@ -154,7 +152,7 @@ export class RelationshipIntegrityService {
             continue;
           }
           if (policy.action === 'cascade' || policy.action === 'unlink') {
-            this.applyRecursive(entry.metadata.key, dependentId, active);
+            this.applyRecursive(entry.sourceObjectKey, dependentId, active);
             collection.delete(dependentId);
             continue;
           }
@@ -172,11 +170,9 @@ export class RelationshipIntegrityService {
   private directImpacts(targetObjectKey: string, targetId: string): DeleteImpactItem[] {
     const result: DeleteImpactItem[] = [];
     for (const entry of this.referencesTo(targetObjectKey)) {
-      const collection = this.store.collectionForObjectKey(entry.metadata.key);
+      const collection = this.store.collectionForObjectKey(entry.sourceObjectKey);
       if (!collection) continue;
-      const count = [...collection.values()].filter((record) =>
-        this.matchesTarget(record, entry.relationship, targetObjectKey, targetId),
-      ).length;
+      const count = this.matchingEntries(entry, targetObjectKey, targetId).length;
       if (count === 0) continue;
 
       const policy = entry.relationship.policies?.delete ?? {
@@ -184,9 +180,9 @@ export class RelationshipIntegrityService {
         confirmation: 'inherit' as const,
       };
       result.push({
-        objectKey: entry.metadata.key,
-        objectName: entry.metadata.pluralLabel,
-        relationship: entry.relationshipKey,
+        objectKey: entry.sourceObjectKey,
+        objectName: (entry.source as ObjectMetadata).pluralLabel,
+        relationship: entry.key,
         count,
         action: policy.action,
         confirmation: policy.confirmation ?? 'inherit',
@@ -195,47 +191,22 @@ export class RelationshipIntegrityService {
     return result;
   }
 
-  private referencesTo(targetObjectKey: string): Array<{
-    metadata: ObjectMetadata;
-    relationshipKey: string;
-    relationship: ManatOSRelationshipMetadata;
-  }> {
-    const result: Array<{
-      metadata: ObjectMetadata;
-      relationshipKey: string;
-      relationship: ManatOSRelationshipMetadata;
-    }> = [];
-
-    for (const metadata of Object.values(allManatOSObjectMetadata) as ObjectMetadata[]) {
-      for (const [relationshipKey, relationship] of Object.entries(metadata.relationships ?? {})) {
-        if (relationship.references.objectKey === targetObjectKey) {
-          result.push({ metadata, relationshipKey, relationship });
-        }
-      }
-    }
-    return result;
+  private referencesTo(targetObjectKey: string): readonly ResolvedRelationshipDefinition[] {
+    return relationshipsReferencing(allManatOSRelationshipDefinitions, targetObjectKey);
   }
 
-  private matchesTarget(
-    record: Record<string, unknown>,
-    relationship: ManatOSRelationshipMetadata,
+  private matchingEntries(
+    definition: ResolvedRelationshipDefinition,
     targetObjectKey: string,
     targetId: string,
-  ): boolean {
-    if (
-      relationship.fields.length !== relationship.references.fields.length ||
-      relationship.fields.length === 0
-    ) {
-      return false;
-    }
+  ): Array<[string, Record<string, unknown>]> {
+    const source = this.store.collectionForObjectKey(definition.sourceObjectKey);
+    const target = this.store.collectionForObjectKey(targetObjectKey);
+    const targetRecord = target?.get(targetId);
+    if (!source || !targetRecord) return [];
 
-    const targetCollection = this.store.collectionForObjectKey(targetObjectKey);
-    const targetRecord = targetCollection?.get(targetId);
-    if (!targetRecord) return false;
-
-    return relationship.fields.every((sourceField, index) => {
-      const referencedField = relationship.references.fields[index]!;
-      return record[sourceField] === targetRecord[referencedField];
-    });
+    return [...source.entries()].filter(([, record]) =>
+      relationshipCandidateMatches(definition, 'inverse', targetRecord, record),
+    );
   }
 }

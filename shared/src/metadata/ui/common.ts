@@ -1,30 +1,4 @@
 import type { SysBOUIRecordTabMetadata } from './types.js';
-import { systemCountryCatalog } from '../../domain/system-country-catalog.js';
-
-/** Shared projections of canonical country reference data for reusable editors. */
-export const telephoneCountryOptions = (() => {
-  const byCallingCode = new Map<string, { label: string; value: string; flagSrc?: string }>();
-  for (const country of systemCountryCatalog) {
-    const existing = byCallingCode.get(country.callingCode);
-    if (existing) {
-      existing.label = `${existing.label} / ${country.name}`;
-      continue;
-    }
-    byCallingCode.set(country.callingCode, {
-      label: country.name,
-      value: country.callingCode,
-      ...(country.languageFlagSrc ? { flagSrc: country.languageFlagSrc } : {}),
-    });
-  }
-  return [...byCallingCode.values()];
-})();
-
-export const addressCountryOptions = systemCountryCatalog.map((country) => ({
-  label: country.name,
-  value: country.name,
-  ...(country.languageFlagSrc ? { flagSrc: country.languageFlagSrc } : {}),
-}));
-
 /**
  * Framework-neutral SysBO UI metadata registry used by the metadata-driven
  * administration renderer.
@@ -237,17 +211,23 @@ export const relatedLicensesCollection = (filterField: 'principalId' | 'applicat
     sort: 'name',
     direction: 'asc' as const,
   },
-  layout: 'table-list' as const,
-  rowHref: '/bo/sys-licenses/{id}',
-  emptyText: 'No related licenses.',
-  fields: {
-    name: {},
-    ...(filterField === 'principalId'
-      ? { applicationId: { label: 'Application' } }
-      : { principalId: { label: 'Customer' } }),
-    platformId: {},
-    status: {},
-    validUntil: {},
-    enabled: {},
+  relatedListView: 'default',
+  relatedListViews: {
+    default: {
+      layout: 'table-list' as const,
+      rowIcon: 'key',
+      rowHref: '/bo/sys-licenses/{id}',
+      emptyText: 'No related licenses.',
+      fields: {
+        name: {},
+        ...(filterField === 'principalId'
+          ? { applicationId: { label: 'Application' } }
+          : { principalId: { label: 'Customer' } }),
+        platformId: {},
+        status: {},
+        validUntil: {},
+        enabled: {},
+      },
+    },
   },
 });

@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import {
   allManatOSObjectMetadata,
+  createEnumsContext,
   evaluateExpression,
   operationContext,
+  relationshipForField,
   normalizeMetadataFieldValues,
   type SysBOCreateInput,
   type SysBOEntity,
@@ -64,6 +66,18 @@ export class GenericSysBOService<T extends SysBOEntity> {
     public readonly metadata: SysBOMetadata<T>,
   ) {}
 
+  acquireExplicitTransactionOperation(transactionId: string, ownerId: string): void {
+    this.store.acquireExplicitTransactionOperation(transactionId, ownerId);
+  }
+
+  releaseExplicitTransactionOperation(transactionId: string, ownerId: string): void {
+    this.store.releaseExplicitTransactionOperation(transactionId, ownerId);
+  }
+
+  runInExplicitTransaction<R>(transactionId: string, ownerId: string, operation: () => R): R {
+    return this.store.runInExplicitTransaction(transactionId, ownerId, operation);
+  }
+
   private pictureField(fieldKey: string) {
     const field = this.metadata.fieldDefinition[fieldKey];
     if (!field || field.type !== 'picture') {
@@ -104,14 +118,45 @@ export class GenericSysBOService<T extends SysBOEntity> {
     const revision = randomUUID();
     const picture: SysBOPictureValue = { contentType, size: bytes.byteLength, revision };
     await this.store.writePicture(this.metadata.key, id, fieldKey, contentType, bytes, revision);
+    const explicit = this.store.hasExplicitTransaction();
+    if (explicit) {
+      // The file write completed before the JSON mutation. Enlist its
+      // compensation immediately so reverse rollback restores JSON before
+      // removing the file that JSON may still reference.
+      this.store.registerExplicitTransactionActions(`Create new ${fieldKey} picture`, {
+        rollback: [
+          {
+            description: `Delete new ${fieldKey} picture`,
+            execute: () => this.store.deletePicture(this.metadata.key, id, fieldKey, picture),
+          },
+        ],
+      });
+    }
     try {
       const updated = await this.store.executeTransaction(() =>
         this.repository.update(id, { [fieldKey]: picture } as SysBOUpdateInput<T>, actor),
       );
-      await this.store.deletePicture(this.metadata.key, id, fieldKey, previous);
+      if (explicit) {
+        this.store.registerExplicitTransactionActions(`Replace ${fieldKey} picture`, {
+          commit: previous
+            ? [
+                {
+                  description: `Delete superseded ${fieldKey} picture`,
+                  execute: () =>
+                    this.store.deletePicture(this.metadata.key, id, fieldKey, previous),
+                },
+              ]
+            : [],
+        });
+      } else {
+        await this.store.deletePicture(this.metadata.key, id, fieldKey, previous);
+      }
       return updated;
     } catch (error) {
-      await this.store.deletePicture(this.metadata.key, id, fieldKey, picture);
+      // Once an explicit transaction has journalled the successful physical
+      // write, its outer rollback owns compensation. Standalone behavior is
+      // unchanged and still cleans the file locally.
+      if (!explicit) await this.store.deletePicture(this.metadata.key, id, fieldKey, picture);
       throw error;
     }
   }
@@ -125,7 +170,18 @@ export class GenericSysBOService<T extends SysBOEntity> {
     const updated = await this.store.executeTransaction(() =>
       this.repository.update(id, { [fieldKey]: null } as SysBOUpdateInput<T>, actor),
     );
-    await this.store.deletePicture(this.metadata.key, id, fieldKey, previous);
+    if (this.store.hasExplicitTransaction() && previous) {
+      this.store.registerExplicitTransactionActions(`Clear ${fieldKey} picture`, {
+        commit: [
+          {
+            description: `Delete cleared ${fieldKey} picture`,
+            execute: () => this.store.deletePicture(this.metadata.key, id, fieldKey, previous),
+          },
+        ],
+      });
+    } else {
+      await this.store.deletePicture(this.metadata.key, id, fieldKey, previous);
+    }
     return updated;
   }
 
@@ -230,26 +286,67 @@ export class GenericSysBOService<T extends SysBOEntity> {
           picture.revision,
         );
         written.push(picture);
+        if (this.store.hasExplicitTransaction()) {
+          this.store.registerExplicitTransactionActions(
+            `Create new ${fieldKey} picture '${picture.id ?? ''}'`,
+            {
+              rollback: [
+                {
+                  description: `Delete new ${fieldKey} picture '${picture.id ?? ''}'`,
+                  execute: () =>
+                    this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
+                },
+              ],
+            },
+          );
+        }
       }
 
       const updated = await this.store.executeTransaction(() =>
         this.repository.update(id, { [fieldKey]: next } as SysBOUpdateInput<T>, actor),
       );
 
-      await Promise.all(
-        previous.map((picture) =>
-          this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
-        ),
-      );
+      if (this.store.hasExplicitTransaction()) {
+        this.store.registerExplicitTransactionActions(`Replace ${fieldKey} pictures`, {
+          commit: previous.map((picture) => ({
+            description: `Delete superseded ${fieldKey} picture '${picture.id ?? ''}'`,
+            execute: () => this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
+          })),
+        });
+      } else {
+        await Promise.all(
+          previous.map((picture) =>
+            this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
+          ),
+        );
+      }
       return updated;
     } catch (error) {
-      await Promise.all(
-        written.map((picture) =>
-          this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
-        ),
-      );
+      if (!this.store.hasExplicitTransaction()) {
+        await Promise.all(
+          written.map((picture) =>
+            this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
+          ),
+        );
+      }
       throw error;
     }
+  }
+
+  /** Project non-persistent semantic fields after storage reads. */
+  protected async projectRuntimeFields(item: T): Promise<T> {
+    return item;
+  }
+
+  /** Apply writable non-persistent fields inside the same datastore transaction. */
+  protected async applyNonPersistentUpdates(
+    id: string,
+    changes: Readonly<Record<string, unknown>>,
+    actor: AuditActor,
+  ): Promise<void> {
+    void id;
+    void changes;
+    void actor;
   }
 
   /**
@@ -260,12 +357,16 @@ export class GenericSysBOService<T extends SysBOEntity> {
     authorizationFilter?: InMemoryListAuthorizationFilter<T>,
   ): Promise<ListResult<T>> {
     const result = await this.repository.list(query, authorizationFilter);
-    if (!this.hasPersistedCalculatedFields()) return result;
-
     return {
       ...result,
       items: await Promise.all(
-        result.items.map((item) => this.materializePersistedCalculatedFields(item)),
+        result.items.map(async (item) =>
+          this.projectRuntimeFields(
+            this.hasPersistedCalculatedFields()
+              ? await this.materializePersistedCalculatedFields(item)
+              : item,
+          ),
+        ),
       ),
     };
   }
@@ -277,9 +378,11 @@ export class GenericSysBOService<T extends SysBOEntity> {
    */
   async get(id: string): Promise<T | null> {
     const item = await this.repository.getById(id);
-    return item && this.hasPersistedCalculatedFields()
-      ? this.materializePersistedCalculatedFields(item)
+    if (!item) return null;
+    const materialized = this.hasPersistedCalculatedFields()
+      ? await this.materializePersistedCalculatedFields(item)
       : item;
+    return this.projectRuntimeFields(materialized);
   }
 
   /**
@@ -307,14 +410,20 @@ export class GenericSysBOService<T extends SysBOEntity> {
           scope.comment('createdBy', actor.userName);
 
           const initializedInput = this.applyCreateDefaults(input);
-          const normalizedInput = this.normalizeFields(
+          const normalizedAll = this.normalizeFields(
             initializedInput as unknown as Record<string, unknown>,
+          );
+          const persistentInput = Object.fromEntries(
+            Object.entries(normalizedAll).filter(
+              ([key]) => this.metadata.fieldDefinition[key]?.persistent !== false,
+            ),
           ) as SysBOCreateInput<T>;
-          const created = await this.repository.create(normalizedInput, actor, (record) =>
+          const created = await this.repository.create(persistentInput, actor, (record) =>
             this.materializePersistedCalculatedFields(record),
           );
+          await this.applyNonPersistentUpdates(created.id, normalizedAll, actor);
           await this.refreshPersistedCalculatedCollection();
-          return (await this.repository.getById(created.id)) ?? created;
+          return this.projectRuntimeFields((await this.repository.getById(created.id)) ?? created);
         },
       ),
     );
@@ -341,14 +450,23 @@ export class GenericSysBOService<T extends SysBOEntity> {
             updatedBy: actor.userName,
           });
 
-          const normalizedChanges = this.normalizeFields(
-            changes as unknown as Record<string, unknown>,
+          const normalizedAll = this.normalizeFields(changes as unknown as Record<string, unknown>);
+          const persistentChanges = Object.fromEntries(
+            Object.entries(normalizedAll).filter(
+              ([key]) => this.metadata.fieldDefinition[key]?.persistent !== false,
+            ),
           ) as SysBOUpdateInput<T>;
-          const updated = await this.repository.update(id, normalizedChanges, actor, (record) =>
-            this.materializePersistedCalculatedFields(record),
-          );
+          const updated = Object.keys(persistentChanges).length
+            ? await this.repository.update(id, persistentChanges, actor, (record) =>
+                this.materializePersistedCalculatedFields(record),
+              )
+            : ((await this.repository.getById(id)) ??
+              (() => {
+                throw new NotFoundError(this.metadata.label, id);
+              })());
+          await this.applyNonPersistentUpdates(id, normalizedAll, actor);
           await this.refreshPersistedCalculatedCollection();
-          return (await this.repository.getById(updated.id)) ?? updated;
+          return this.projectRuntimeFields((await this.repository.getById(updated.id)) ?? updated);
         },
       ),
     );
@@ -372,7 +490,7 @@ export class GenericSysBOService<T extends SysBOEntity> {
         { key: definition.key, name: definition.name, metadata: definition },
       ]),
     );
-    const root = { entities };
+    const root = { entities, enums: createEnumsContext() };
     const initialization = {
       entityName: this.metadata.name,
       entry: { current },
@@ -492,12 +610,19 @@ export class GenericSysBOService<T extends SysBOEntity> {
     const idMap: Record<string, string> = {};
 
     const sameEntityReferenceFields = Object.values(this.metadata.fieldDefinition)
-      .filter((field) => field.type === 'reference' && field.referenceBOKey === this.metadata.key)
+      .filter(
+        (field) =>
+          relationshipForField(this.metadata, field.key)?.relationship.references.objectKey ===
+          this.metadata.key,
+      )
       .map((field) => field.key);
     const editableFieldKeys = Object.values(this.metadata.fieldDefinition)
       .filter(
         (field) =>
-          field.generated !== true && field.readOnly !== true && field.applicationManaged !== true,
+          field.persistent !== false &&
+          field.generated !== true &&
+          field.readOnly !== true &&
+          field.applicationManaged !== true,
       )
       .map((field) => field.key);
 
@@ -558,8 +683,19 @@ export class GenericSysBOService<T extends SysBOEntity> {
           const nextValues = persistenceValues(row);
           const baseline = originalById.get(id);
           const baselineValues = baseline ? persistenceValues(baseline) : {};
-          if (JSON.stringify(nextValues) === JSON.stringify(baselineValues)) continue;
-          await this.repository.update(id, nextValues as SysBOUpdateInput<T>, actor, (record) =>
+          // API persistence owns a separate serialized-value delta boundary: these values are
+          // persistence payloads, not UI CTX values. Keep this comparison local to that contract.
+          const changedValues = Object.fromEntries(
+            Object.entries(nextValues).filter(
+              ([key, value]) => JSON.stringify(value) !== JSON.stringify(baselineValues[key]),
+            ),
+          );
+          if (!Object.keys(changedValues).length) continue;
+          // Owner-managed workspaces are long-lived semantic drafts. Never replay
+          // untouched baseline fields: another actor may have changed them since
+          // this workspace opened. Concurrency enforcement can later use the
+          // retained baseline audit/version fields without changing this delta contract.
+          await this.repository.update(id, changedValues as SysBOUpdateInput<T>, actor, (record) =>
             this.materializePersistedCalculatedFields(record),
           );
         }
@@ -642,13 +778,27 @@ export class GenericSysBOService<T extends SysBOEntity> {
       ),
     );
 
-    await Promise.all([
-      ...pictures.map(([fieldKey, picture]) =>
-        this.store.deletePicture(this.metadata.key, id, fieldKey, picture),
-      ),
-      ...pictureCollections.map(([fieldKey, picture]) =>
-        this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
-      ),
-    ]);
+    const pictureDeletes = [
+      ...pictures
+        .filter(([, picture]) => Boolean(picture))
+        .map(([fieldKey, picture]) => ({
+          description: `Delete ${fieldKey} picture for deleted ${this.metadata.label}`,
+          execute: () => this.store.deletePicture(this.metadata.key, id, fieldKey, picture),
+        })),
+      ...pictureCollections.map(([fieldKey, picture]) => ({
+        description: `Delete ${fieldKey} picture '${picture.id ?? ''}' for deleted ${this.metadata.label}`,
+        execute: () => this.store.deletePictureItem(this.metadata.key, id, fieldKey, picture),
+      })),
+    ];
+
+    if (this.store.hasExplicitTransaction()) {
+      // A deleted record can still be restored by the datastore rollback snapshot.
+      // Keep every physical picture intact until the enclosing transaction commits.
+      this.store.registerExplicitTransactionActions(`Delete ${this.metadata.label} pictures`, {
+        commit: pictureDeletes,
+      });
+    } else {
+      await Promise.all(pictureDeletes.map((action) => action.execute()));
+    }
   }
 }

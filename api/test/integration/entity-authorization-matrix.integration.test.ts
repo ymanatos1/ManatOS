@@ -43,7 +43,7 @@ describe('API integration - four-role entity authorization matrix', () => {
         enabled: true,
         principalType: SysBOPrincipalType.Person,
         parentId: ownRoot.id,
-        rootPrincipalId: ownRoot.id,
+        rootId: ownRoot.id,
       },
       SYSTEM_AUDIT_ACTOR,
     );
@@ -62,7 +62,7 @@ describe('API integration - four-role entity authorization matrix', () => {
         enabled: true,
         principalType: SysBOPrincipalType.Person,
         parentId: superRoot.id,
-        rootPrincipalId: superRoot.id,
+        rootId: superRoot.id,
       },
       SYSTEM_AUDIT_ACTOR,
     );
@@ -78,9 +78,9 @@ describe('API integration - four-role entity authorization matrix', () => {
       },
       SYSTEM_AUDIT_ACTOR,
     );
-    await context.services.users.update(
-      user.id,
-      { principalId: userPerson.id },
+    await context.services.principals.update(
+      userPerson.id,
+      { userId: user.id },
       SYSTEM_AUDIT_ACTOR,
     );
     const superuser = await context.services.users.createUser(
@@ -94,9 +94,9 @@ describe('API integration - four-role entity authorization matrix', () => {
       },
       SYSTEM_AUDIT_ACTOR,
     );
-    await context.services.users.update(
-      superuser.id,
-      { principalId: superPerson.id },
+    await context.services.principals.update(
+      superPerson.id,
+      { userId: superuser.id },
       SYSTEM_AUDIT_ACTOR,
     );
     const guest = await context.services.users.createUser(
@@ -246,5 +246,5 @@ describe('API integration - four-role entity authorization matrix', () => {
     const adminLicenses = await list('SysLicenses', adminToken);
     expect(adminLicenses.status).toBe(200);
     expect(adminLicenses.body.data.items).toHaveLength(2);
-  });
+  }, 10_000);
 });

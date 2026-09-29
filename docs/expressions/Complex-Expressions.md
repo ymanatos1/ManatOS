@@ -29,7 +29,7 @@ Because `TraverseEntity` is resolver-backed, API persistence can evaluate the sa
 Current UI metadata uses:
 
 ```text
-FirstCtx($entity-fields.platformId.enumItems, 'value')
+FirstCtx($enums.SysPlatform.values, 'value')
 ```
 
 Evaluation:

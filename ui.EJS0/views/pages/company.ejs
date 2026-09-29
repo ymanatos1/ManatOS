@@ -1,0 +1,53 @@
+<section class="content-card company-page">
+  <% if (app.company.branding.companyPageImage) { %>
+    <img
+      class="company-hero-image"
+      src="<%= app.company.branding.companyPageImage.src %>"
+      alt="<%= app.company.branding.companyPageImage.alt %>"
+    >
+  <% } %>
+
+  <h2 class="mt-4"><%= app.company.name %></h2>
+  <p class="company-product-tagline"><strong><%= app.company.branding.tagline %></strong></p>
+
+  <% if (app.company.description) { %>
+    <p><%= app.company.description %></p>
+  <% } %>
+
+  <section class="company-foundation mt-4" aria-labelledby="companyFoundationHeading">
+    <h3 id="companyFoundationHeading" class="h5 mb-2">ManatOS Application Foundation</h3>
+    <p class="mb-0">
+      The governed semantic runtime beneath our business platforms. It turns shared business-object
+      metadata, context, rules, permissions and application behavior into consistent application
+      experiences.
+    </p>
+  </section>
+
+  <!--
+    The catalogue is intentionally data-driven even though protoCRM is currently
+    the only platform. Adding another SysPlatform should therefore make it
+    visible here without introducing another hard-coded Company-page block.
+  -->
+  <section class="company-platforms mt-4" aria-labelledby="companyPlatformsHeading">
+    <h3 id="companyPlatformsHeading" class="h5 mb-3">Platforms</h3>
+    <div class="company-platform-catalogue">
+      <% for (const platform of app.company.platforms.filter((entry) => entry.enabled)) { %>
+        <article class="company-platform-card">
+          <a class="company-platform-card-link" href="/platform/<%= encodeURIComponent(platform.id) %>" aria-label="Open <%= platform.name %>">
+            <span class="company-platform-card-icon" aria-hidden="true"><i class="bi <%= platform.icon || 'bi-boxes' %>"></i></span>
+            <span class="company-platform-card-copy">
+              <span class="company-platform-card-title">
+                <strong><%= platform.shortName %></strong>
+                <span><%= platform.name %></span>
+              </span>
+              <% if (platform.description) { %>
+                <span class="company-platform-card-description"><%= platform.description %></span>
+              <% } %>
+            </span>
+            <i class="bi bi-arrow-right company-platform-card-arrow" aria-hidden="true"></i>
+          </a>
+        </article>
+      <% } %>
+    </div>
+  </section>
+</section>

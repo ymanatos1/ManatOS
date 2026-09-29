@@ -11,6 +11,8 @@ Implementation-neutral ManatOS client contracts plus the current web realization
 - [`Navigation.md`](Navigation.md) — Navigation.
 - [`Client-and-UI-Capabilities.md`](Client-and-UI-Capabilities.md) — Client and UI Capabilities.
 - [`Client-Implementations.md`](Client-Implementations.md) — Client Implementation Guide.
+- [`UI-Runtime-V2-Target-Architecture.md`](UI-Runtime-V2-Target-Architecture.md) — frozen target model for the typed browser runtime migration.
+- [`UI-Runtime-V2-Migration-Audit.md`](UI-Runtime-V2-Migration-Audit.md) — ownership audit, migration sequence and verification gates.
 
 ## Related subjects
 

@@ -16,6 +16,7 @@ import { authenticatedAuditActor, type AuditActor } from '../../audit/audit-serv
 
 import type { AuthorizationService } from '../../auth/authorization-service.js';
 
+import { explicitTransactionMiddleware } from '../middleware/explicit-transaction.js';
 import type { GenericSysBOService } from '../../services/sysbo/generic-service.js';
 
 import { getEffectiveSysBOUIMetadata } from '../../metadata/sysbo-ui-registry.js';
@@ -66,6 +67,8 @@ export function createSysBORouter<T extends SysBOEntity>(
   customUpdate?: (id: string, body: Record<string, unknown>, actor: AuditActor) => Promise<T>,
 ): Router {
   const router = Router();
+
+  router.use(explicitTransactionMiddleware(service));
 
   /**
    * Return the hard-coded, UI-neutral BO metadata.

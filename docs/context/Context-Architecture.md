@@ -20,6 +20,8 @@ ManatOS CTX semantics
 
 CTX is not persistence and it is not a second domain model. Semantic runtime state belongs in CTX when it needs the model's ownership, scoping, observability or lifecycle. Private implementation bookkeeping should remain private runtime state unless there is a deliberate architectural reason to expose it semantically.
 
+A UiLevel may therefore own **private runtime resources** alongside its CTX without placing those resources in CTX. Large component payloads are the first concrete case: an ordinary Entry picture component owns its pending binary while that Entry is live; when an Organization accepts an owned Entry result, the Organization UiLevel owns any pending picture/pictures binaries referenced by its semantic member rows. Those resources follow the same UiLevel lifetime across owner handoff, Create-Organization draft restoration and outage recovery, but remain outside CTX. A recovery image is only a temporary serialization of the live UiLevel state and its private resources; after restoration, the live UiLevel is again the owner.
+
 ### Client CTX
 
 The current web client uses long-lived `system`, `entities`, `company` and `user` branches plus a recursive `ui` surface chain. Lists, entries, selectors and popups use the same nesting model rather than parallel context trees.

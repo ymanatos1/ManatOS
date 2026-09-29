@@ -4,6 +4,7 @@ import swaggerUi from 'swagger-ui-express';
 
 import {
   SysBOUserRole,
+  type SysBOEntity,
   sysBOApplicationsMetadata,
   sysBOExtAuthProvidersMetadata,
   sysBOEmailAddressesMetadata,
@@ -62,6 +63,12 @@ import { createAuthorizationCapabilityRouter } from './http/routes/authorization
 import { createConfigurationRouter } from './http/routes/configuration-router.js';
 import { createExtAuthProviderAdminRouter } from './http/routes/ext-auth-provider-admin-router.js';
 import { createSystemSettingsRouter } from './http/routes/system-settings-router.js';
+import { createTransactionRouter } from './http/routes/transaction-router.js';
+import {
+  createWorkspaceCommitRouter,
+  type WorkspaceCommitCollectionAdapter,
+  type WorkspaceCommitCreateExecutor,
+} from './http/routes/workspace-commit-router.js';
 
 import type {
   SysBOExtAuthProviderService,
@@ -101,6 +108,133 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   const app = express();
 
   const authorization = new AuthorizationService(_store);
+
+  const workspaceCommitServices = new Map<string, GenericSysBOService<SysBOEntity>>([
+    [sysBOUsersMetadata.key, services.users as unknown as GenericSysBOService<SysBOEntity>],
+    [
+      sysBOPrincipalsMetadata.key,
+      services.principals as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOEmailAddressesMetadata.key,
+      new GenericSysBOService(
+        _store,
+        _store.sysEmailAddresses,
+        sysBOEmailAddressesMetadata,
+      ) as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOPrincipalEmailAddressesMetadata.key,
+      new GenericSysBOService(
+        _store,
+        _store.sysPrincipalEmailAddresses,
+        sysBOPrincipalEmailAddressesMetadata,
+      ) as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOTelephoneNumbersMetadata.key,
+      new GenericSysBOService(
+        _store,
+        _store.sysTelephoneNumbers,
+        sysBOTelephoneNumbersMetadata,
+      ) as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOPrincipalTelephoneNumbersMetadata.key,
+      new GenericSysBOService(
+        _store,
+        _store.sysPrincipalTelephoneNumbers,
+        sysBOPrincipalTelephoneNumbersMetadata,
+      ) as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOAddressesMetadata.key,
+      new GenericSysBOService(
+        _store,
+        _store.sysAddresses,
+        sysBOAddressesMetadata,
+      ) as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOPrincipalAddressesMetadata.key,
+      new GenericSysBOService(
+        _store,
+        _store.sysPrincipalAddresses,
+        sysBOPrincipalAddressesMetadata,
+      ) as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOApplicationsMetadata.key,
+      services.applications as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [sysBOLicensesMetadata.key, services.licenses as unknown as GenericSysBOService<SysBOEntity>],
+  ]);
+
+  // Entity-specific creation semantics remain pluggable while CommitPlan execution
+  // stays domain-neutral. SysUser creation must pass through the credential-aware
+  // service even when the workspace does not supply a local password.
+  const workspaceCommitCreateExecutors = new Map<string, WorkspaceCommitCreateExecutor>([
+    [
+      sysBOUsersMetadata.key,
+      async (values, actor) =>
+        services.users.createUser(
+          {
+            name: String(values.name ?? ''),
+            email: String(values.email ?? ''),
+            ...(values.telephoneNumber ? { telephoneNumber: String(values.telephoneNumber) } : {}),
+            ...(values.role ? { role: values.role as SysBOUserRole } : {}),
+            ...(values.firstName ? { firstName: String(values.firstName) } : {}),
+            ...(values.lastName ? { lastName: String(values.lastName) } : {}),
+            ...(values.description ? { description: String(values.description) } : {}),
+            ...(values.emailVerified !== undefined
+              ? { emailVerified: Boolean(values.emailVerified) }
+              : {}),
+            enabled: values.enabled !== false,
+          },
+          actor,
+        ),
+    ],
+  ]);
+
+  // Aggregate collection payloads remain generic in CommitPlan. Entity services opt in
+  // at the API persistence boundary to translate them into their canonical write contract.
+  const workspaceCommitCollectionAdapters = new Map<string, WorkspaceCommitCollectionAdapter>([
+    [
+      sysBOPrincipalsMetadata.key,
+      (collections) => {
+        const supported = new Set(['emailAddresses', 'telephoneNumbers', 'addresses']);
+        const unsupported = Object.keys(collections).filter((key) => !supported.has(key));
+        if (unsupported.length)
+          throw new Error(
+            `Principal workspace Commit does not support related collection(s): ${unsupported.join(', ')}.`,
+          );
+        return {
+          relatedChanges: Object.fromEntries(
+            Object.entries(collections).map(([key, collection]) => {
+              const current = collection.current ?? [];
+              return [
+                key,
+                {
+                  current:
+                    key === 'emailAddresses'
+                      ? current.map((item) =>
+                          typeof item === 'string'
+                            ? item
+                            : String(
+                                item && typeof item === 'object' && !Array.isArray(item)
+                                  ? ((item as Record<string, unknown>).address ?? '')
+                                  : '',
+                              ),
+                        )
+                      : current,
+                },
+              ];
+            }),
+          ),
+        };
+      },
+    ],
+  ]);
 
   /**
    * Basic security hardening.
@@ -292,6 +426,9 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   /** Anonymous-safe UI discovery/bootstrap endpoints. */
   app.use('/api/v1/public', createPublicRouter(services.configurations, services.extAuthProviders));
 
+  /** Explicit server-side storage transaction lifecycle for composite UI saves. */
+  app.use('/api/v1/transactions', requireAuthenticated, createTransactionRouter(_store));
+
   /** Capability-backed expression functions delegated to the API. */
   app.use('/api/v1/expressions', createExpressionRouter(_store, authorization));
 
@@ -299,6 +436,18 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysExtAuthProviders',
     createExtAuthProviderAdminRouter(services.extAuthProviders),
+  );
+
+  app.use(
+    '/api/v1/workspace',
+    requireAuthenticated,
+    createWorkspaceCommitRouter(
+      _store,
+      authorization,
+      workspaceCommitServices,
+      workspaceCommitCreateExecutors,
+      workspaceCommitCollectionAdapters,
+    ),
   );
 
   /**

@@ -1,5 +1,9 @@
 # ManatOS Concepts
 
+**ManatOS — the operational platform for ManatOS applications.**
+
+ManatOS provides the shared operational environment in which ManatOS platforms and applications are composed and run. The term “operational platform” distinguishes this application/runtime role from a general-purpose computer operating system.
+
 This document introduces the concepts that recur throughout ManatOS. It is intentionally compact enough to read early, while each concept links conceptually into the deeper architecture, design, application-design, and reference documentation.
 
 ## Company

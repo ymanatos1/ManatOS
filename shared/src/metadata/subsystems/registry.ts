@@ -19,6 +19,19 @@ export const allManatOSSubsystemMetadata = {
 
 export type ManatOSSubsystemKey = keyof typeof allManatOSSubsystemMetadata;
 
+function subsystemMetadataValues(): readonly ManatOSSubsystemMetadata[] {
+  return Object.values(allManatOSSubsystemMetadata) as readonly ManatOSSubsystemMetadata[];
+}
+
+export function effectiveEnumKeys(company: CompanyInfo, platform: SysPlatform): Set<string> {
+  const selected = selectedSubsystemKeys(company, platform);
+  return new Set(
+    subsystemMetadataValues()
+      .filter((subsystem) => selected.has(subsystem.key))
+      .flatMap((subsystem) => Object.keys(subsystem.enums ?? {})),
+  );
+}
+
 function isCompanySubsystem(key: string): boolean {
   const subsystem = allManatOSSubsystemMetadata[key as ManatOSSubsystemKey];
   return subsystem?.owner.kind === 'manatos';
@@ -74,10 +87,13 @@ export function effectiveEntityKeys(company: CompanyInfo, platform: SysPlatform)
   );
 }
 
-export interface ManatOSSubsystemContextProjection extends ManatOSSubsystemMetadata {
-  selected: boolean;
-  entities: readonly string[];
-}
+export type ManatOSSubsystemContextProjection = Omit<ManatOSSubsystemMetadata, 'enums'> &
+  Readonly<{
+    selected: boolean;
+    entities: readonly string[];
+    /** Canonical enum keys contributed by this subsystem. */
+    enums: readonly string[];
+  }>;
 
 /** CTX-visible catalogue: ManatOS subsystems plus the selected platform's subsystems. */
 export function subsystemContextCatalogue(
@@ -97,7 +113,7 @@ export function subsystemContextCatalogue(
 
   return Object.freeze(
     Object.fromEntries(
-      Object.values(allManatOSSubsystemMetadata)
+      subsystemMetadataValues()
         .filter((subsystem) => visibleKeys.has(subsystem.key))
         .map((subsystem) => [
           subsystem.key,
@@ -109,6 +125,7 @@ export function subsystemContextCatalogue(
                 .filter((metadata) => metadata.subsystem === subsystem.key)
                 .map((metadata) => metadata.key),
             ),
+            enums: Object.freeze(Object.keys(subsystem.enums ?? {})),
           }),
         ]),
     ),
