@@ -1,9 +1,11 @@
 /**
- * GitHub CI adapter for ManatOS. Never replaces or modifies the canonical verify script.
- * Manual partial runs are diagnostic only; this Phase 1 runner never creates deployable artifacts.
+ * GitHub CI adapter for ManatOS. Runs existing lint/build/test package scripts;
+ * deliberately excludes formatting checks. `verify-run` starts development servers,
+ * and `verify` includes Prettier, so neither is suitable for this CI policy.
+ * Phase 1 never creates deployable artifacts.
  */
 import { spawn } from 'node:child_process';
-import { appendFileSync, createWriteStream, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
@@ -33,7 +35,7 @@ const WORKSPACES = Object.freeze({
   ng1: ['shared', 'shared.UI', 'shared.UI.NG', 'ui.NG1'],
   ejs1: ['shared', 'shared.UI', 'shared.UI.EJS', 'ui.EJS1'],
 });
-const OPERATIONS = Object.freeze(['verify', 'quality', 'lint', 'format', 'build', 'test']);
+const OPERATIONS = Object.freeze(['verify', 'quality', 'lint', 'build', 'test']);
 const args = process.argv.slice(2);
 
 function getOption(name, fallback) {
@@ -55,19 +57,12 @@ function createPlan(scope, operation) {
   assertAllowed('scope', scope, Object.keys(WORKSPACES));
   assertAllowed('operation', operation, OPERATIONS);
   const workspaces = WORKSPACES[scope];
-  const quality =
+  // Quality is intentionally lint-only: never enforce formatting in CI.
+  const quality = [
     scope === 'all'
-      ? [
-          { label: 'ESLint', command: ['npm', 'run', 'lint'] },
-          { label: 'Prettier', command: ['npm', 'run', 'format:check'] },
-        ]
-      : [
-          { label: 'ESLint', command: ['npm', 'exec', '--', 'eslint', ...workspaces] },
-          {
-            label: 'Prettier',
-            command: ['npm', 'exec', '--', 'prettier', '--check', ...workspaces],
-          },
-        ];
+      ? { label: 'ESLint', command: ['npm', 'run', 'lint'] }
+      : { label: 'ESLint', command: ['npm', 'exec', '--', 'eslint', ...workspaces] },
+  ];
   const builds = workspaces.map((name) => ({
     label: `Build ${name}`,
     command: ['npm', 'run', 'build', '--workspace', name],
@@ -89,37 +84,32 @@ function createPlan(scope, operation) {
       command: ['npm', 'run', 'test', '--workspace', name],
     }));
 
-  if (operation === 'verify' && ['all', 'api', 'uis'].includes(scope)) {
-    const script = scope === 'all' ? 'verify' : `verify:family:${scope}`;
-    return [{ label: `Canonical ${scope} verification`, command: ['npm', 'run', script] }];
+  if (operation === 'quality' || operation === 'lint') return quality;
+  if (operation === 'build') {
+    // Keep the root npm build graph authoritative for full-suite executions.
+    if (scope === 'all') return [{ label: 'Complete build', command: ['npm', 'run', 'build'] }];
+    return builds;
   }
-  if (operation === 'quality') return quality;
-  if (operation === 'lint') return [quality[0]];
-  if (operation === 'format') return [quality[1]];
-  if (operation === 'build') return builds;
-  // Tests require a fresh build of their dependencies on the clean CI runner.
-  if (operation === 'test') return [...builds, ...tests];
+  if (operation === 'test') {
+    if (scope === 'all') {
+      return [
+        { label: 'Complete build', command: ['npm', 'run', 'build'] },
+        { label: 'Complete tests', command: ['npm', 'run', 'test'] },
+      ];
+    }
+    return [...builds, ...tests];
+  }
+  // Verify keeps the project's existing root npm build/test graphs authoritative.
+  // No canonical `npm run verify`, because that invokes Prettier.
+  // No `npm run verify-run`, because that additionally starts long-lived dev servers.
+  if (scope === 'all') {
+    return [
+      ...quality,
+      { label: 'Complete build', command: ['npm', 'run', 'build'] },
+      { label: 'Complete tests', command: ['npm', 'run', 'test'] },
+    ];
+  }
   return [...quality, ...builds, ...tests];
-}
-
-function getCanonicalDetails(steps) {
-  // The existing verifier owns the canonical step graph. Read its final summary
-  // without introducing another, potentially divergent implementation.
-  if (steps.length !== 1 || !steps[0].label.startsWith('Canonical ')) return [];
-  const log = stripVTControlCharacters(readFileSync(steps[0].logfile, 'utf8'));
-  const summaryIndex = log.lastIndexOf('ManatOS verification');
-  if (summaryIndex < 0) return [];
-  const details = [];
-  for (const line of log.slice(summaryIndex).split(/\r?\n/)) {
-    const match = line.match(/^\s*(.+?:?)\s{2,}(PASS|FAIL|NOT RUN)(?:\s+(\d+\/\d+))?\s*$/);
-    if (!match || match[1].trim() === 'Total tests:') continue;
-    details.push({
-      name: match[1].trim().replace(/:$/, ''),
-      status: match[2],
-      totals: match[3] || '',
-    });
-  }
-  return details;
 }
 
 function escapeMarkdown(value) {
@@ -156,29 +146,17 @@ function summarize(result) {
     `- **DevOps commit:** \`${result.devopsSha}\``,
     `- **Triggered by:** ${escapeMarkdown(result.actor)} (${escapeMarkdown(result.event)})`,
     `- **Duration:** ${formatDuration(result.durationMs)}`,
+    '- **CI formatting checks:** DISABLED (Prettier is not executed)',
     '- **Release eligibility:** NOT GRANTED (Phase 1 builds no production release artifact)',
     '',
     '| Operation | Result | Duration |',
     '|---|---|---:|',
     ...rows,
   ];
-  if (result.canonicalDetails.length) {
-    summary.push(
-      '',
-      '### Canonical verifier details',
-      '',
-      '| Check | Result | Tests |',
-      '|---|---|---:|',
-      ...result.canonicalDetails.map(
-        (entry) => `| ${escapeMarkdown(entry.name)} | ${entry.status} | ${entry.totals} |`,
-      ),
-    );
-  }
   if (failure) {
-    const canonicalFailure = result.canonicalDetails.find((entry) => entry.status === 'FAIL');
     summary.push(
       '',
-      `### First failure: ${escapeMarkdown(canonicalFailure?.name || failure.label)}`,
+      `### First failure: ${escapeMarkdown(failure.label)}`,
       `Command: \`${escapeMarkdown(failure.command.join(' '))}\``,
       `Exit: ${escapeMarkdown(failure.reason)}`,
       '',
@@ -282,7 +260,6 @@ const result = {
   status: passed ? 'PASSED' : 'FAILED',
   durationMs: Date.now() - started,
   releaseEligible: false,
-  canonicalDetails: getCanonicalDetails(completed),
   steps: completed.map(({ tail, ...step }) => ({ ...step, tail: tail || [] })),
 };
 writeFileSync(join(directory, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
