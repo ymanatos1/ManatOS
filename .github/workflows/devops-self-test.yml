@@ -1,18 +1,13 @@
 name: DevOps Configuration Self-test
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/**'
-      - 'scripts/**'
-      - 'docs/**'
 
 permissions:
   contents: read
 
 jobs:
   validate:
-    name: Validate DevOps configuration (no ManatOS checkout)
+    name: Validate DevOps configuration (no application verification)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -22,13 +17,13 @@ jobs:
         with:
           node-version: '24'
       - name: Validate JavaScript syntax
-        run: node --check scripts/devops-ci.mjs
+        run: node --check devops/scripts/devops-ci.mjs
       - name: Exercise all scope/operation plans
         run: |
           set -euo pipefail
           for scope in all api uis ng1 ejs1; do
             for operation in verify quality lint format build test; do
-              node scripts/devops-ci.mjs --scope "$scope" --operation "$operation" --plan > /dev/null
+              node devops/scripts/devops-ci.mjs --scope "$scope" --operation "$operation" --plan > /dev/null
             done
           done
           echo '## DevOps self-test: 30 combinations passed' >> "$GITHUB_STEP_SUMMARY"

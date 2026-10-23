@@ -1,6 +1,6 @@
 name: ManatOS CI
 
-# Runs independently of the ManatOS application repository.
+# Runs directly within the ManatOS repository; no separate DevOps repository required.
 # No Stablepoint connections, deployment, or release eligibility in Phase 1.
 on:
   workflow_dispatch:
@@ -17,13 +17,8 @@ on:
         type: choice
         default: verify
         options: [verify, quality, lint, format, build, test]
-      source_ref:
-        description: 'Optional ManatOS branch, tag, or commit SHA (blank uses configured default)'
-        required: false
-        type: string
-  # Optional scheduled verification; disabled unless AUTO_CI_ENABLED=true.
-  schedule:
-    - cron: '17 */6 * * *'
+  # Push automation is controlled by the AUTO_CI_ENABLED repository variable.
+  push:
 
 permissions:
   contents: read
@@ -33,7 +28,7 @@ defaults:
     shell: bash
 
 concurrency:
-  group: manatos-independent-ci-${{ github.event_name }}-${{ github.ref }}
+  group: manatos-ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -43,16 +38,12 @@ jobs:
     outputs:
       enabled: ${{ steps.policy.outputs.enabled }}
       matrix: ${{ steps.policy.outputs.matrix }}
-      source_ref: ${{ steps.policy.outputs.source_ref }}
     steps:
       - name: Apply manual selection or configured automatic policy
         id: policy
         env:
           EVENT_NAME: ${{ github.event_name }}
           MANUAL_SCOPE: ${{ inputs.scope }}
-          MANUAL_SOURCE_REF: ${{ inputs.source_ref }}
-          DEFAULT_SOURCE_REF: ${{ vars.MANATOS_SOURCE_REF }}
-          SOURCE_REPOSITORY: ${{ vars.MANATOS_SOURCE_REPOSITORY }}
           AUTO_CI_ENABLED: ${{ vars.AUTO_CI_ENABLED }}
           AUTO_CI_ALL: ${{ vars.AUTO_CI_ALL }}
           AUTO_CI_API: ${{ vars.AUTO_CI_API }}
@@ -62,19 +53,8 @@ jobs:
         run: |
           set -euo pipefail
           echo '## ManatOS CI — execution policy' >> "$GITHUB_STEP_SUMMARY"
-          if [[ -z "$SOURCE_REPOSITORY" || ! "$SOURCE_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
-            echo '::error title=Missing GitHub configuration::Set MANATOS_SOURCE_REPOSITORY to owner/repository in this DevOps repository Actions variables.'
-            echo '❌ Set MANATOS_SOURCE_REPOSITORY in Settings → Secrets and variables → Actions → Variables.' >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          source_ref="${MANUAL_SOURCE_REF:-${DEFAULT_SOURCE_REF:-main}}"
-          if [[ "$source_ref" == -* || "$source_ref" =~ [[:space:]] ]]; then
-            echo '::error title=Invalid source ref::The source ref cannot begin with a dash or contain whitespace.'
-            exit 1
-          fi
-          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
-          echo "- Source repository: \`$SOURCE_REPOSITORY\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Source ref: \`$source_ref\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Repository: \`$GITHUB_REPOSITORY\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Ref: \`$GITHUB_REF_NAME\`" >> "$GITHUB_STEP_SUMMARY"
           targets=()
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
             targets+=("${MANUAL_SCOPE:-all}")
@@ -86,7 +66,7 @@ jobs:
                 if [[ "$scope" == ALL ]]; then targets+=(all); else targets+=("${scope,,}"); fi
               fi
             done
-            echo '- Mode: scheduled automatic verification' >> "$GITHUB_STEP_SUMMARY"
+            echo '- Mode: push-triggered automatic verification' >> "$GITHUB_STEP_SUMMARY"
           fi
           if (( ${#targets[@]} == 0 )); then
             echo 'enabled=false' >> "$GITHUB_OUTPUT"
@@ -110,21 +90,11 @@ jobs:
     env:
       CI: 'true'
       FORCE_COLOR: '0'
-      MANATOS_SOURCE_REPOSITORY: ${{ vars.MANATOS_SOURCE_REPOSITORY }}
       MANATOS_CI_REPORT_DIR: '${{ github.workspace }}/ci-results/${{ matrix.scope }}'
     steps:
-      - name: Check out DevOps control sources (independent repository)
+      - name: Check out ManatOS source (includes DevOps tooling)
         uses: actions/checkout@v4
         with:
-          path: devops-tooling
-          persist-credentials: false
-
-      - name: Check out ManatOS application sources (read-only)
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ vars.MANATOS_SOURCE_REPOSITORY }}
-          ref: ${{ needs.plan.outputs.source_ref }}
-          token: ${{ secrets.MANATOS_SOURCE_READ_TOKEN || github.token }}
           path: application
           persist-credentials: false
 
@@ -139,7 +109,7 @@ jobs:
           echo "MANATOS_SOURCE_SHA=$sha" >> "$GITHUB_ENV"
           echo "## ManatOS source checkout" >> "$GITHUB_STEP_SUMMARY"
           echo "- Application SHA: \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- CI control SHA: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- DevOps configuration SHA: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
           echo '- Phase 1: verification only; no production release or deployment' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure Node from ManatOS .nvmrc
@@ -159,7 +129,7 @@ jobs:
           MANATOS_CI_SCOPE: ${{ matrix.scope }}
           MANATOS_CI_OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || 'verify' }}
         run: >-
-          node ../devops-tooling/scripts/devops-ci.mjs
+          node devops/scripts/devops-ci.mjs
           --scope "$MANATOS_CI_SCOPE"
           --operation "$MANATOS_CI_OPERATION"
 
@@ -180,7 +150,6 @@ jobs:
               echo '## ManatOS CI — setup failure'
               echo 'The verification operation did not start.'
               echo 'Inspect the first failed job step for the precise checkout, Node or npm error.'
-              echo 'For private application repositories, configure a read-only MANATOS_SOURCE_READ_TOKEN secret.'
               echo '**No verification pass or release eligibility was granted.**'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
