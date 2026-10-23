@@ -5,9 +5,10 @@
  * Phase 1 never creates deployable artifacts.
  */
 import { spawn } from 'node:child_process';
-import { appendFileSync, createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 import { stripVTControlCharacters } from 'node:util';
 
 const WORKSPACE_ORDER = Object.freeze([
@@ -127,6 +128,71 @@ function annotateError(title, message) {
   console.log(`::error title=${safe(title)}::${safe(message)}`);
 }
 
+/** Redact stdout/stderr BEFORE writing logs, job summaries, or artifact files.
+ * GitHub's masking protects its UI, not raw files captured by a subprocess.
+ * Retain enough unflushed characters to catch secrets split across chunks.
+ */
+class LogRedactor {
+  constructor(values = []) {
+    this.values = [...new Set(values.filter((v) => typeof v === 'string' && v.length > 0))]
+      .sort((a, b) => b.length - a.length);
+    this.maxLength = this.values.reduce((n, v) => Math.max(n, v.length), 0);
+    this.buffer = '';
+  }
+  process(chunk, flush = false) {
+    this.buffer += chunk;
+    if (!this.maxLength) {
+      const output = this.buffer;
+      this.buffer = '';
+      return output;
+    }
+    const cutoff = flush ? this.buffer.length : Math.max(0, this.buffer.length - this.maxLength + 1);
+    if (!cutoff) return '';
+    let cursor = 0;
+    let output = '';
+    while (cursor < cutoff) {
+      let matchedAt = Number.POSITIVE_INFINITY;
+      let matchedValue = null;
+      for (const value of this.values) {
+        const index = this.buffer.indexOf(value, cursor);
+        if (index !== -1 && (index < matchedAt || (index === matchedAt && value.length > matchedValue.length))) {
+          matchedAt = index;
+          matchedValue = value;
+        }
+      }
+      if (!matchedValue || matchedAt >= cutoff) {
+        output += this.buffer.slice(cursor, cutoff);
+        cursor = cutoff;
+      } else {
+        output += this.buffer.slice(cursor, matchedAt) + '[REDACTED]';
+        cursor = matchedAt + matchedValue.length;
+      }
+    }
+    this.buffer = this.buffer.slice(cursor);
+    return output;
+  }
+}
+function getArtifactRedactions() {
+  if (!process.env.GITHUB_ACTIONS || !process.env.RUNNER_TEMP) return [];
+  const path = join(process.env.RUNNER_TEMP, `manatos-ci-redactions-${process.env.GITHUB_RUN_ID || 'local'}.json`);
+  if (!existsSync(path)) return [];
+  const values = JSON.parse(readFileSync(path, 'utf8'));
+  if (!Array.isArray(values) || values.some((v) => typeof v !== 'string')) {
+    throw new Error('Invalid private CI log-redaction data');
+  }
+  return values;
+}
+function redactorSelfTest() {
+  const redactor = new LogRedactor(['INTERNAL-TEST-KEY', 'ABCD-1234']);
+  const output = redactor.process('prefix INTERNAL-TE') +
+    redactor.process('ST-KEY other ABC') +
+    redactor.process('D-1234 end') + redactor.process('', true);
+  if (output !== 'prefix [REDACTED] other [REDACTED] end') {
+    throw new Error('Streaming log-redaction self-test failed');
+  }
+  console.log('Log-redaction self-test passed (split chunks, multiple values).');
+}
+
 function formatDuration(ms) {
   return `${(ms / 1000).toFixed(1)}s`;
 }
@@ -169,7 +235,7 @@ function summarize(result) {
   return `${summary.join('\n')}\n`;
 }
 
-async function runStep(step, index, directory) {
+async function runStep(step, index, directory, sensitiveValues) {
   const started = Date.now();
   const logfile = join(directory, `step-${String(index + 1).padStart(2, '0')}.log`);
   const log = createWriteStream(logfile, { flags: 'w' });
@@ -177,8 +243,10 @@ async function runStep(step, index, directory) {
   let pending = '';
   let reason = 'Exit code unavailable';
   const capture = (stream, destination) => {
-    stream.on('data', (buffer) => {
-      const chunk = buffer.toString('utf8');
+    const redactor = new LogRedactor(sensitiveValues);
+    const decoder = new StringDecoder('utf8');
+    const output = (chunk) => {
+      if (!chunk) return;
       destination.write(chunk);
       log.write(chunk);
       pending += stripVTControlCharacters(chunk);
@@ -188,7 +256,9 @@ async function runStep(step, index, directory) {
         tail.push(line);
         if (tail.length > 20) tail.shift();
       }
-    });
+    };
+    stream.on('data', (buffer) => { output(redactor.process(decoder.write(buffer))); });
+    stream.on('end', () => { output(redactor.process(decoder.end(), true)); });
   };
   console.log(`\n=== ${step.label} ===`);
   const [program, ...arguments_] = step.command;
@@ -215,6 +285,11 @@ async function runStep(step, index, directory) {
   return { ...step, status, reason, durationMs: Date.now() - started, logfile, tail };
 }
 
+if (args.includes('--redactor-self-test')) {
+  redactorSelfTest();
+  process.exit(0);
+}
+
 const scope = getOption('scope', 'all');
 const operation = getOption('operation', 'verify');
 const plan = createPlan(scope, operation);
@@ -228,6 +303,7 @@ const directory = resolve(
 );
 mkdirSync(directory, { recursive: true });
 const started = Date.now();
+const sensitiveValues = getArtifactRedactions();
 const completed = [];
 let passed = true;
 for (let i = 0; i < plan.length; i += 1) {
@@ -241,7 +317,7 @@ for (let i = 0; i < plan.length; i += 1) {
     });
     continue;
   }
-  const result = await runStep(step, i, directory);
+  const result = await runStep(step, i, directory, sensitiveValues);
   completed.push(result);
   if (result.status !== 'PASSED') passed = false;
 }
