@@ -17,7 +17,12 @@ jobs:
         with:
           node-version: '24'
       - name: Validate JavaScript syntax
-        run: node --check devops/scripts/devops-ci.mjs
+        run: |
+          node --check devops/scripts/devops-ci.mjs
+          node devops/scripts/devops-ci.mjs --redactor-self-test
+          node --check devops/scripts/env-sync.mjs
+          node devops/scripts/env-sync.mjs --self-test
+          node --input-type=module -e "import { readFileSync } from 'node:fs'; const p = JSON.parse(readFileSync('devops/config/env-policy.json','utf8')); if (p.applications.length !== 4) process.exit(1);"
       - name: Exercise all scope/operation plans
         run: |
           set -euo pipefail

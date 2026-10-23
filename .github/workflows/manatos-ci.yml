@@ -93,6 +93,7 @@ jobs:
       MANATOS_CI_REPORT_DIR: '${{ github.workspace }}/ci-results/${{ matrix.scope }}'
     steps:
       - name: Check out ManatOS source (includes DevOps tooling)
+        id: source_checkout
         uses: actions/checkout@v4
         with:
           path: application
@@ -123,6 +124,20 @@ jobs:
         working-directory: application
         run: npm ci --no-audit --no-fund
 
+      # Test/verify jobs use the exact contents of the four LOCAL .env files,
+      # previously synchronized by the operator as GitHub Actions Secrets.
+      # Never print, upload, or commit these temporary files.
+      - name: Prepare private CI application configurations
+        if: github.event_name != 'workflow_dispatch' || inputs.operation == 'verify' || inputs.operation == 'test'
+        working-directory: application
+        env:
+          MANATOS_CI_API_DOTENV: ${{ secrets.MANATOS_CI_API_DOTENV }}
+          MANATOS_CI_EJS0_DOTENV: ${{ secrets.MANATOS_CI_EJS0_DOTENV }}
+          MANATOS_CI_EJS1_DOTENV: ${{ secrets.MANATOS_CI_EJS1_DOTENV }}
+          MANATOS_CI_NG1_DOTENV: ${{ secrets.MANATOS_CI_NG1_DOTENV }}
+          MANATOS_CI_SCOPE: ${{ matrix.scope }}
+        run: node devops/scripts/env-sync.mjs --restore-ci --scope "$MANATOS_CI_SCOPE"
+
       - name: Execute selected CI operation
         working-directory: application
         env:
@@ -132,6 +147,11 @@ jobs:
           node devops/scripts/devops-ci.mjs
           --scope "$MANATOS_CI_SCOPE"
           --operation "$MANATOS_CI_OPERATION"
+
+      - name: Remove temporary CI application configurations
+        if: always() && steps.source_checkout.outcome == 'success' 
+        working-directory: application
+        run: node devops/scripts/env-sync.mjs --cleanup-ci
 
       - name: Save diagnostics even when verification fails
         if: always()
