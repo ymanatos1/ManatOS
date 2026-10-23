@@ -1,54 +1,64 @@
-# Manual GitHub setup — Phase 1 (independent repository)
+# ManatOS.DevOps — Phase 1 GitHub CI Setup
 
-## A. Create the control repository (does NOT change ManatOS source)
+## Repository layout
 
-1. In GitHub, use **+ → New repository**. Name it `ManatOS.DevOps`, preferably **Private**; choose your usual owner. Initialize an empty `main` branch (README optional).
-2. Extract `ManatOS.DevOps_Standalone_Phase1.zip` locally. In the **new DevOps repository**, use **Add file → Upload files** to upload the extracted **files and directories** (not the ZIP itself), retaining `.github/workflows/`, `scripts/`, `docs/` and `README.md`.
-3. If browser upload fails to preserve `.github`, use **Add file → Create new file**, name it `.github/workflows/manatos-ci.yml` (and similarly `.github/workflows/devops-self-test.yml`), then paste the file contents.
-4. Save/commit these files **in the new DevOps repository's `main` branch only**. GitHub Actions requires committed workflow YAML files on the default branch. You do NOT have to commit anything to ManatOS's application repository now.
+DevOps is part of the **existing `ManatOS` GitHub repository**; no separate repository, access token, or Stablepoint configuration is needed.
 
-## B. Configure GitHub manually
+```text
+.github/workflows/manatos-ci.yml
+.github/workflows/devops-self-test.yml
+devops/scripts/devops-ci.mjs
+devops/SETUP.md
+```
 
-In `ManatOS.DevOps` open **Settings → Secrets and variables → Actions → Variables** and create:
+GitHub executes workflows only from the repository-root `.github/workflows/` directory. The `devops/` folder contains the CI implementation and these instructions. Do not move the workflow YAML files into `devops/`.
 
-| Name | Value | Purpose |
-|---|---|---|
-| `MANATOS_SOURCE_REPOSITORY` | `OWNER/ManatOS` (replace with the actual full GitHub repository name) | The existing application repo |
-| `MANATOS_SOURCE_REF` | `main` (or the actual default branch name) | Default application branch |
-| `AUTO_CI_ENABLED` | `false` | Automatic scheduled verification OFF initially |
-| `AUTO_CI_ALL` | `true` | When automatic mode is enabled, full CI is selected |
-| `AUTO_CI_API` | `false` | Optional additional scheduled family run |
-| `AUTO_CI_UIS` | `false` | Optional additional scheduled family run |
-| `AUTO_CI_NG1` | `false` | Optional targeted diagnostics |
-| `AUTO_CI_EJS1` | `false` | Optional targeted diagnostics |
+## Install and enable manual execution
 
-If the application repository is **private**, add a fine-grained personal access token in **Settings → Secrets and variables → Actions → Secrets**:
+1. Commit the four files above on a dedicated branch (currently `devops-phase1`), preferably through a Pull Request into `main`.
+2. Review the PR to ensure it contains **only the intended DevOps files**. The existing application's uncommitted local work is not affected.
+3. Merge the PR when ready. GitHub's **Run workflow** control requires the workflow to exist on the default branch (`main`); after merging, you can select a branch for its manual run.
+4. Go to **Actions → DevOps Configuration Self-test → Run workflow**, select `main`, and run it. The expected result is **30 scope/operation plans passed**; this test does *not* verify the application.
+5. Then go to **Actions → ManatOS CI → Run workflow**. Select `scope: all`, `operation: verify`, and the intended branch. This runs the repository's canonical `npm run verify` command, subject to the selected GitHub commit containing the required scripts.
 
-| Name | Permissions |
+The first actual CI run tests the version **committed to GitHub**, not unpublished files on your computer.
+
+## Manual CI choices
+
+| Input | Available choices |
 |---|---|
-| `MANATOS_SOURCE_READ_TOKEN` | Fine-grained PAT, **only** the application repository, **Contents: Read-only**, no extra access |
+| Scope | `all`, `api`, `uis`, `ng1`, `ejs1` |
+| Operation | `verify`, `quality`, `lint`, `format`, `build`, `test` |
 
-Create the PAT in your GitHub account **Settings → Developer settings → Personal access tokens → Fine-grained tokens**. Select the application repository, not all repositories. Treat token expiration/rotation as a normal maintenance task. For an application repository that is publicly readable, the secret is not needed. For organization repositories, approval/policy restrictions may apply. Long-term alternative: a dedicated GitHub App with installation-scoped read access.
+`all + verify` runs the canonical root verifier. `api + verify` and `uis + verify` invoke the corresponding family verifiers. Other selections provide targeted diagnostics. **Phase 1 never produces a production-deployable artifact**, even when every check passes.
 
-In **Settings → Actions → General**, allow only necessary approved actions and set default `GITHUB_TOKEN` permissions to **read-only** where possible. The workflow explicitly requests `contents: read` and does not write to the application repository.
+## Automatic push-triggered CI (initially OFF)
 
-## C. First run
+In the same ManatOS repository, open **Settings → Secrets and variables → Actions → Variables**. Create these repository variables when you want to control automatic execution:
 
-1. `ManatOS.DevOps` → **Actions → DevOps Configuration Self-test → Run workflow**. Confirm it passes (30 combinations, no application checkout).
-2. **Actions → ManatOS CI → Run workflow**; choose `all`, `verify`, leave `source_ref` blank → **Run workflow**.
-3. Open the run, follow the `plan` and `ci` jobs, and inspect the step logs and the **Summary** tab.
-4. Download `manatos-ci-...` from **Artifacts** for detailed step logs, `result.json` and `summary.md`.
+| Variable | Recommended initial value | Meaning |
+|---|---|---|
+| `AUTO_CI_ENABLED` | `false` | Master switch for push-triggered CI |
+| `AUTO_CI_ALL` | `true` | Full CI when the master switch is enabled |
+| `AUTO_CI_API` | `false` | Optional API-family run |
+| `AUTO_CI_UIS` | `false` | Optional UI-family run |
+| `AUTO_CI_NG1` | `false` | Optional NG1 diagnostic run |
+| `AUTO_CI_EJS1` | `false` | Optional EJS1 diagnostic run |
 
-**Any failure must be fixed based on the actual log; a simulated validation is not a real GitHub run.**
+No variables are required for **manual** runs. Automatic CI is disabled when `AUTO_CI_ENABLED` is absent or `false`. When enabled, the workflow runs on pushes and chooses scopes whose variables are `true`. There is **no scheduled CI** in this same-repository Phase 1 workflow.
 
-## D. Enable scheduled checks later (optional)
+> A green GitHub workflow can mean the policy check passed while verification was deliberately skipped. Always read the run summary: **SKIPPED by policy is NOT a verification pass**.
 
-Change `AUTO_CI_ENABLED` to `true` and leave `AUTO_CI_ALL=true`. This enables scheduled CI checks approximately every six hours, subject to GitHub Actions scheduling delays. Manual **Run workflow** remains available regardless of the automatic switch.
+## Results and troubleshooting
 
-**Important:** Because CI lives in a different repository, pushes to ManatOS do not automatically trigger it. Immediate source-push CI requires an integration (e.g. GitHub App or a small dispatch workflow in the source repo). We deliberately do not modify ManatOS in Phase 1. Manual runs and optional schedules work independently today.
+- **Actions → ManatOS CI → individual run**: progress, step logs and errors.
+- **Summary**: selected scope, operation, application commit and pass/fail outcome.
+- **Artifacts**: when a verification operation runs, download `manatos-ci-*` for `result.json`, `summary.md`, and captured step logs (retained 14 days).
+- If **DevOps Configuration Self-test** fails on `Cannot find module`, verify that the workflow refers to `devops/scripts/devops-ci.mjs` and that the file exists at that exact path.
+- A failed checkout, dependency install or verifier is not a production-ready result; inspect its first failing step. Rerun after correcting the source or workflow.
 
-## E. Keep a source archive under the application project's `devops/` folder
+## Phase 1 limits
 
-Use the separate `ManatOS_devops_ProjectReference_Phase1.zip` package when you are ready to include an archival copy in a later ManatOS project commit. The root `devops/` directory is documentation/history **only**: GitHub Actions runs the workflow from the separate repository's root `.github/workflows/`, NOT the nested archived copies.
-
-**Do not upload either ZIP as a single file to GitHub. Extract first.**
+- **No CD, Stablepoint connection, production release or rollback** is enabled.
+- **No separate DevOps repository** and **no source-read token** are needed.
+- The workflows are deliberately modular; production packaging, deployment, approvals and rollback belong to later DevOps phases.

@@ -1,0 +1,155 @@
+name: ManatOS CI
+
+# Runs directly within the ManatOS repository; no separate DevOps repository required.
+# No Stablepoint connections, deployment, or release eligibility in Phase 1.
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'What should be checked?'
+        required: true
+        type: choice
+        default: all
+        options: [all, api, uis, ng1, ejs1]
+      operation:
+        description: 'Select a verification operation'
+        required: true
+        type: choice
+        default: verify
+        options: [verify, quality, lint, format, build, test]
+  # Push automation is controlled by the AUTO_CI_ENABLED repository variable.
+  push:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: manatos-ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Resolve execution policy
+    runs-on: ubuntu-24.04
+    outputs:
+      enabled: ${{ steps.policy.outputs.enabled }}
+      matrix: ${{ steps.policy.outputs.matrix }}
+    steps:
+      - name: Apply manual selection or configured automatic policy
+        id: policy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_SCOPE: ${{ inputs.scope }}
+          AUTO_CI_ENABLED: ${{ vars.AUTO_CI_ENABLED }}
+          AUTO_CI_ALL: ${{ vars.AUTO_CI_ALL }}
+          AUTO_CI_API: ${{ vars.AUTO_CI_API }}
+          AUTO_CI_UIS: ${{ vars.AUTO_CI_UIS }}
+          AUTO_CI_NG1: ${{ vars.AUTO_CI_NG1 }}
+          AUTO_CI_EJS1: ${{ vars.AUTO_CI_EJS1 }}
+        run: |
+          set -euo pipefail
+          echo '## ManatOS CI — execution policy' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Repository: \`$GITHUB_REPOSITORY\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Ref: \`$GITHUB_REF_NAME\`" >> "$GITHUB_STEP_SUMMARY"
+          targets=()
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            targets+=("${MANUAL_SCOPE:-all}")
+            echo '- Mode: manually requested' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$AUTO_CI_ENABLED" == true ]]; then
+            for scope in ALL API UIS NG1 EJS1; do
+              variable="AUTO_CI_${scope}"
+              if [[ "${!variable:-false}" == true ]]; then
+                if [[ "$scope" == ALL ]]; then targets+=(all); else targets+=("${scope,,}"); fi
+              fi
+            done
+            echo '- Mode: push-triggered automatic verification' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if (( ${#targets[@]} == 0 )); then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"scope":["all"]}' >> "$GITHUB_OUTPUT"
+            echo '- Status: **SKIPPED by policy** (NOT a verification pass)' >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '%s\n' "${targets[@]}" | jq -R . | jq -sc '{scope:.}' | sed 's/^/matrix=/' >> "$GITHUB_OUTPUT"
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+            echo "- Selected scopes: ${targets[*]}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  ci:
+    name: '${{ matrix.scope }} / ${{ github.event_name == ''workflow_dispatch'' && inputs.operation || ''verify'' }}'
+    needs: plan
+    if: needs.plan.outputs.enabled == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      CI: 'true'
+      FORCE_COLOR: '0'
+      MANATOS_CI_REPORT_DIR: '${{ github.workspace }}/ci-results/${{ matrix.scope }}'
+    steps:
+      - name: Check out ManatOS source (includes DevOps tooling)
+        uses: actions/checkout@v4
+        with:
+          path: application
+          persist-credentials: false
+
+      - name: Record application revision and verify repository layout
+        working-directory: application
+        run: |
+          set -euo pipefail
+          test -f package.json || { echo '::error::Missing application/package.json'; exit 1; }
+          test -f package-lock.json || { echo '::error::Missing application/package-lock.json'; exit 1; }
+          test -f .nvmrc || { echo '::error::Missing application/.nvmrc'; exit 1; }
+          sha="$(git rev-parse HEAD)"
+          echo "MANATOS_SOURCE_SHA=$sha" >> "$GITHUB_ENV"
+          echo "## ManatOS source checkout" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Application SHA: \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- DevOps configuration SHA: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Phase 1: verification only; no production release or deployment' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure Node from ManatOS .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: application/.nvmrc
+          cache: npm
+          cache-dependency-path: application/package-lock.json
+
+      - name: Install locked dependencies
+        working-directory: application
+        run: npm ci --no-audit --no-fund
+
+      - name: Execute selected CI operation
+        working-directory: application
+        env:
+          MANATOS_CI_SCOPE: ${{ matrix.scope }}
+          MANATOS_CI_OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || 'verify' }}
+        run: >-
+          node devops/scripts/devops-ci.mjs
+          --scope "$MANATOS_CI_SCOPE"
+          --operation "$MANATOS_CI_OPERATION"
+
+      - name: Save diagnostics even when verification fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manatos-ci-${{ matrix.scope }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-results/${{ matrix.scope }}/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Explain checkout or installation failures
+        if: failure()
+        run: |
+          if [[ ! -f "$MANATOS_CI_REPORT_DIR/result.json" ]]; then
+            {
+              echo '## ManatOS CI — setup failure'
+              echo 'The verification operation did not start.'
+              echo 'Inspect the first failed job step for the precise checkout, Node or npm error.'
+              echo '**No verification pass or release eligibility was granted.**'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
