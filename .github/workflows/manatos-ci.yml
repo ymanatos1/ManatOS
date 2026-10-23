@@ -16,7 +16,7 @@ on:
         required: true
         type: choice
         default: verify
-        options: [verify, quality, lint, format, build, test]
+        options: [verify, quality, lint, build, test]
   # Push automation is controlled by the AUTO_CI_ENABLED repository variable.
   push:
 

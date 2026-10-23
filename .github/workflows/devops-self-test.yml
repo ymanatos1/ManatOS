@@ -22,9 +22,19 @@ jobs:
         run: |
           set -euo pipefail
           for scope in all api uis ng1 ejs1; do
-            for operation in verify quality lint format build test; do
+            for operation in verify quality lint build test; do
               node devops/scripts/devops-ci.mjs --scope "$scope" --operation "$operation" --plan > /dev/null
             done
           done
-          echo '## DevOps self-test: 30 combinations passed' >> "$GITHUB_STEP_SUMMARY"
+          # Reject accidental reintroduction of Prettier or long-running dev servers.
+          for scope in all api uis ng1 ejs1; do
+            for operation in verify quality lint build test; do
+              plan="$(node devops/scripts/devops-ci.mjs --scope "$scope" --operation "$operation" --plan)"
+              if echo "$plan" | grep -Ei 'prettier|format:check|verify-run|"dev"'; then
+                echo "::error::Unsafe command in CI plan: $scope / $operation"
+                exit 1
+              fi
+            done
+          done
+          echo '## DevOps self-test: 25 combinations passed' >> "$GITHUB_STEP_SUMMARY"
           echo 'No application checkout, installation, or deployment performed.' >> "$GITHUB_STEP_SUMMARY"
