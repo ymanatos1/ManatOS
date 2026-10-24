@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "status": "BUILD_CANDIDATE_NOT_DEPLOYABLE",
+  "requiredScope": "all",
+  "requiredOperation": "verify",
+  "productionWorkspaces": [
+    "shared",
+    "shared.UI",
+    "shared.UI.NG",
+    "shared.UI.EJS",
+    "api",
+    "ui.NG1",
+    "ui.EJS1"
+  ],
+  "packages": {
+    "api": [
+      "api/package.json", "api/dist",
+      "shared/package.json", "shared/dist"
+    ],
+    "ejs1": [
+      "ui.EJS1/package.json", "ui.EJS1/dist", "ui.EJS1/views", "ui.EJS1/public",
+      "shared/package.json", "shared/dist",
+      "shared.UI/package.json", "shared.UI/dist",
+      "shared.UI.EJS/package.json", "shared.UI.EJS/dist"
+    ],
+    "ng1": [
+      "ui.NG1/package.json", "ui.NG1/dist-host", "ui.NG1/dist/ui.NG1/browser",
+      "shared/package.json", "shared/dist",
+      "shared.UI/package.json", "shared.UI/dist",
+      "shared.UI.NG/package.json", "shared.UI.NG/dist"
+    ]
+  },
+  "requiredEntryPoints": {
+    "api": "api/dist/server.js",
+    "ejs1": "ui.EJS1/dist/server.js",
+    "ng1": "ui.NG1/dist-host/host/server.js"
+  },
+  "notes": "Build candidates contain compiled application and shared assets only. Runtime node_modules, Passenger integration, external documentation, and startup smoke tests remain outstanding. No artifact from this version is deployable."
+}

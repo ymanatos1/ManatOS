@@ -17,7 +17,6 @@ const WORKSPACE_ORDER = Object.freeze([
   'shared.UI.NG',
   'shared.UI.EJS',
   'api',
-  'ui.EJS0',
   'ui.NG1',
   'ui.EJS1',
 ]);
@@ -29,7 +28,6 @@ const WORKSPACES = Object.freeze({
     'shared.UI',
     'shared.UI.NG',
     'shared.UI.EJS',
-    'ui.EJS0',
     'ui.NG1',
     'ui.EJS1',
   ],
@@ -58,11 +56,9 @@ function createPlan(scope, operation) {
   assertAllowed('scope', scope, Object.keys(WORKSPACES));
   assertAllowed('operation', operation, OPERATIONS);
   const workspaces = WORKSPACES[scope];
-  // Quality is intentionally lint-only: never enforce formatting in CI.
+  // Lint only the intended production workspaces, never the legacy EJS0 project.
   const quality = [
-    scope === 'all'
-      ? { label: 'ESLint', command: ['npm', 'run', 'lint'] }
-      : { label: 'ESLint', command: ['npm', 'exec', '--', 'eslint', ...workspaces] },
+    { label: 'ESLint', command: ['npm', 'exec', '--', 'eslint', ...workspaces] },
   ];
   const builds = workspaces.map((name) => ({
     label: `Build ${name}`,
@@ -75,7 +71,6 @@ function createPlan(scope, operation) {
     'shared.UI',
     'shared.UI.NG',
     'shared.UI.EJS',
-    'ui.EJS0',
     'ui.NG1',
     'ui.EJS1',
   ]
@@ -87,30 +82,45 @@ function createPlan(scope, operation) {
 
   if (operation === 'quality' || operation === 'lint') return quality;
   if (operation === 'build') {
-    // Keep the root npm build graph authoritative for full-suite executions.
-    if (scope === 'all') return [{ label: 'Complete build', command: ['npm', 'run', 'build'] }];
     return builds;
   }
   if (operation === 'test') {
-    if (scope === 'all') {
-      return [
-        { label: 'Complete build', command: ['npm', 'run', 'build'] },
-        { label: 'Complete tests', command: ['npm', 'run', 'test'] },
-      ];
-    }
     return [...builds, ...tests];
   }
-  // Verify keeps the project's existing root npm build/test graphs authoritative.
-  // No canonical `npm run verify`, because that invokes Prettier.
-  // No `npm run verify-run`, because that additionally starts long-lived dev servers.
-  if (scope === 'all') {
-    return [
-      ...quality,
-      { label: 'Complete build', command: ['npm', 'run', 'build'] },
-      { label: 'Complete tests', command: ['npm', 'run', 'test'] },
-    ];
-  }
+  // Never call the root build/test graphs: those still include legacy EJS0.
+  // Also avoid `verify` (Prettier) and `verify-run` (long-lived servers).
   return [...quality, ...builds, ...tests];
+}
+
+/** Check that the future repository is complete; never silently fall back to old layouts. */
+function preflight(scope, root) {
+  assertAllowed('scope', scope, Object.keys(WORKSPACES));
+  const manifestPath = resolve(root, 'package.json');
+  const lockPath = resolve(root, 'package-lock.json');
+  const nodePath = resolve(root, '.nvmrc');
+  for (const path of [manifestPath, lockPath, nodePath]) {
+    if (!existsSync(path)) throw new Error(`Missing required CI source file: ${path}`);
+  }
+  const pkg = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const entries = Array.isArray(pkg.workspaces) ? pkg.workspaces : pkg.workspaces?.packages;
+  if (!Array.isArray(entries)) throw new Error('Invalid npm workspace declaration');
+  const required = WORKSPACES[scope];
+  for (const workspace of required) {
+    if (!entries.includes(workspace)) throw new Error(`Missing npm workspace declaration: ${workspace}`);
+    const path = resolve(root, workspace, 'package.json');
+    if (!existsSync(path)) throw new Error(`Missing required production workspace: ${workspace}`);
+    const content = JSON.parse(readFileSync(path, 'utf8'));
+    for (const operation of ['build', 'test']) {
+      if (typeof content.scripts?.[operation] !== 'string' || !content.scripts[operation]) {
+        throw new Error(`Missing ${operation} script in production workspace: ${workspace}`);
+      }
+    }
+  }
+  const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+  if (!Number.isInteger(lock.lockfileVersion) || lock.lockfileVersion < 2) {
+    throw new Error('Unsupported npm lockfile format');
+  }
+  console.log(`Production workspace preflight PASS: ${scope} (${required.join(', ')})`);
 }
 
 function escapeMarkdown(value) {
@@ -292,6 +302,10 @@ if (args.includes('--redactor-self-test')) {
 
 const scope = getOption('scope', 'all');
 const operation = getOption('operation', 'verify');
+if (args.includes('--preflight')) {
+  preflight(scope, resolve(getOption('root', '.')));
+  process.exit(0);
+}
 const plan = createPlan(scope, operation);
 if (args.includes('--plan')) {
   console.log(JSON.stringify({ scope, operation, steps: plan }, null, 2));
