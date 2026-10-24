@@ -17,6 +17,11 @@ on:
         type: choice
         default: verify
         options: [verify, quality, lint, build, test]
+      package_candidate:
+        description: 'Create NON-DEPLOYABLE compiled candidates after all / verify (off by default)'
+        required: false
+        type: boolean
+        default: false
   # Push automation is controlled by the AUTO_CI_ENABLED repository variable.
   push:
 
@@ -44,6 +49,8 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           MANUAL_SCOPE: ${{ inputs.scope }}
+          MANUAL_OPERATION: ${{ inputs.operation }}
+          MANUAL_PACKAGE: ${{ inputs.package_candidate }}
           AUTO_CI_ENABLED: ${{ vars.AUTO_CI_ENABLED }}
           AUTO_CI_ALL: ${{ vars.AUTO_CI_ALL }}
           AUTO_CI_API: ${{ vars.AUTO_CI_API }}
@@ -57,6 +64,10 @@ jobs:
           echo "- Ref: \`$GITHUB_REF_NAME\`" >> "$GITHUB_STEP_SUMMARY"
           targets=()
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            if [[ "${MANUAL_PACKAGE:-false}" == true && ( "${MANUAL_SCOPE:-}" != all || "${MANUAL_OPERATION:-}" != verify ) ]]; then
+              echo '::error::Build candidates require full all / verify CI; packaging refused.'
+              exit 1
+            fi
             targets+=("${MANUAL_SCOPE:-all}")
             echo '- Mode: manually requested' >> "$GITHUB_STEP_SUMMARY"
           elif [[ "$AUTO_CI_ENABLED" == true ]]; then
@@ -120,11 +131,27 @@ jobs:
           cache: npm
           cache-dependency-path: application/package-lock.json
 
+      - name: Validate complete future production workspaces
+        working-directory: application
+        env:
+          MANATOS_CI_SCOPE: ${{ matrix.scope }}
+        run: node devops/scripts/devops-ci.mjs --preflight --scope "$MANATOS_CI_SCOPE" --root .
+
       - name: Install locked dependencies
         working-directory: application
-        run: npm ci --no-audit --no-fund
+        run: |
+          # Install only the production workspaces and root build tooling.
+          # Explicit workspace selection prevents installing legacy EJS0.
+          npm ci --no-audit --no-fund --include-workspace-root \
+            --workspace shared \
+            --workspace shared.UI \
+            --workspace shared.UI.NG \
+            --workspace shared.UI.EJS \
+            --workspace api \
+            --workspace ui.NG1 \
+            --workspace ui.EJS1
 
-      # Test/verify jobs use the exact contents of the four LOCAL .env files,
+      # Test/verify jobs use the exact contents of the three LOCAL .env files,
       # previously synchronized by the operator as GitHub Actions Secrets.
       # Never print, upload, or commit these temporary files.
       - name: Prepare private CI application configurations
@@ -132,13 +159,13 @@ jobs:
         working-directory: application
         env:
           MANATOS_CI_API_DOTENV: ${{ secrets.MANATOS_CI_API_DOTENV }}
-          MANATOS_CI_EJS0_DOTENV: ${{ secrets.MANATOS_CI_EJS0_DOTENV }}
           MANATOS_CI_EJS1_DOTENV: ${{ secrets.MANATOS_CI_EJS1_DOTENV }}
           MANATOS_CI_NG1_DOTENV: ${{ secrets.MANATOS_CI_NG1_DOTENV }}
           MANATOS_CI_SCOPE: ${{ matrix.scope }}
         run: node devops/scripts/env-sync.mjs --restore-ci --scope "$MANATOS_CI_SCOPE"
 
       - name: Execute selected CI operation
+        id: ci_operation
         working-directory: application
         env:
           MANATOS_CI_SCOPE: ${{ matrix.scope }}
@@ -149,9 +176,53 @@ jobs:
           --operation "$MANATOS_CI_OPERATION"
 
       - name: Remove temporary CI application configurations
+        id: cleanup_env
         if: always() && steps.source_checkout.outcome == 'success' 
         working-directory: application
         run: node devops/scripts/env-sync.mjs --cleanup-ci
+
+      # Release packaging is an optional, explicitly gated Phase 1 enhancement.
+      # These compiled build candidates are NOT deployable: runtime npm closure
+      # and Stablepoint Passenger integration must be developed and smoke-tested.
+      - name: Package deterministic build candidates (never deployment artifacts)
+        id: release_package
+        if: >-
+          success() && matrix.scope == 'all' &&
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'verify' && inputs.package_candidate == true ||
+           github.event_name == 'push' && vars.AUTO_PACKAGE_ENABLED == 'true') &&
+          steps.ci_operation.outcome == 'success' && steps.cleanup_env.outcome == 'success'
+        working-directory: application
+        env:
+          RELEASE_ROOT: ${{ github.workspace }}/release-candidates
+        run: |
+          set -euo pipefail
+          node devops/scripts/release-package.mjs --package \
+            --source-root . --output-dir "$RELEASE_ROOT" \
+            --sha "$MANATOS_SOURCE_SHA" \
+            --ci-report "$MANATOS_CI_REPORT_DIR/result.json"
+          count=0
+          for archive in "$RELEASE_ROOT"/*.tar.gz; do
+            test -f "$archive" || { echo '::error::No release candidates created'; exit 1; }
+            node devops/scripts/release-package.mjs --verify --archive "$archive"
+            count=$((count + 1))
+          done
+          test "$count" -eq 3 || { echo '::error::Expected exactly 3 candidates'; exit 1; }
+          {
+            echo '## ManatOS build candidates — verified'
+            echo '- **Status: NON-DEPLOYABLE (no production dependencies or Stablepoint integration)**'
+            echo "- Source SHA: $MANATOS_SOURCE_SHA"
+            echo '- Components: API, EJS1, NG1; EJS0 excluded'
+            echo '- SHA-256 sidecars and per-file manifest verified'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload compiled build candidates
+        if: success() && steps.release_package.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: manatos-build-candidates-${{ github.sha }}-${{ github.run_id }}
+          path: release-candidates/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Save diagnostics even when verification fails
         if: always()
