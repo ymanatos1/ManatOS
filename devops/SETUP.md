@@ -129,3 +129,20 @@ The GitHub **DevOps Configuration Self-test** exercises packaging with synthetic
 EJS0 is excluded because it is not part of the Stablepoint production-hosting plan. The previously synchronized `MANATOS_CI_EJS0_DOTENV` secret and `MANATOS_CI_EJS0_DOTENV_KEYS` variable are unused and may be deleted manually from GitHub Actions settings once this change is accepted; the sync tool never deletes unrelated remote settings.
 
 **Source compatibility:** CI checks that the selected production workspaces exist in the GitHub checkout before running npm. An older GitHub baseline with only `shared`, `api`, and `ui` cannot pass `all`, `uis`, `ng1`, or `ejs1` verification until the newer application source is committed. This failure is intentional, not a reason to skip NG1/EJS1.
+
+## Stablepoint CD preparation — OFFLINE / READ-ONLY (current phase)
+
+The same `devops-phase1` branch may now run **Actions → ManatOS Stablepoint CD - Preparation (NO DEPLOY)**. Its manual operations are:
+
+| Operation | What actually happens |
+|---|---|
+| `self-test` | Run CD failure-injection and SSH-security tests on synthetic local fixtures; no network access |
+| `plan` | Show the anticipated deployment phases and reasons production activation is blocked |
+| `simulate` | Exercise isolated release staging, atomic current-link switching, mock Passenger restart markers, health gates and rollback; no Stablepoint connection |
+| `inspect-readonly` | Optionally inspect Stablepoint's SSH identity and basic CLI/disk capabilities without changing anything; **disabled by default** |
+
+**Mandatory safety:** `devops/config/stablepoint-policy.json` explicitly disables real deployment, production restarts, migrations, database recovery and live health-check acceptance. Build candidates created by the current CI are **not deployable** and are rejected by the CD engine. There is no `deploy`, `activate`, `--apply`, remote staging or remote rollback operation in these tools. Only API/EJS1/NG1 are in scope. The dedicated CD workflow has no push trigger; application CI is unaffected. No production changes or Stablepoint credentials are needed to run the first three operations. Run the existing **DevOps Configuration Self-test** first, then the new workflow `self-test`, `plan` and `simulate` on `devops-phase1`.
+
+**Optional live SSH inspection (only after explicit approval):** It is unavailable on `devops-phase1`: the workflow requires `main` plus `STABLEPOINT_INSPECTION_ENABLED=true`. On GitHub create and protect the `stablepoint-inspection` Environment (allow only `main`, require reviewer approval where available). Add repository **Variables** `STABLEPOINT_SSH_HOST`, `STABLEPOINT_SSH_USER`, `STABLEPOINT_SSH_PORT` (default `22` if unset). Add environment **Secrets** `STABLEPOINT_SSH_PRIVATE_KEY` and `STABLEPOINT_SSH_KNOWN_HOSTS` (a **verified, pinned** SSH known-host entry). The workflow does not fetch and blindly trust a host key. Obtain the fingerprint using a trusted provider channel first. Use a dedicated read-only SSH account/key with the least privilege available. If environment secrets are configured, ensure the workflow resolves them inside that environment. Finally set repository variable `STABLEPOINT_INSPECTION_ENABLED=true`. The inspection operation validates exact username, basic command availability, home disk headroom and presence/absence of the application root; it performs no UAPI or CloudLinux changes. Do not enter production application `.env` credentials.
+
+**Before an actual CD implementation can be enabled:** produce **DEPLOYABLE_VERIFIED** artifacts with production runtime dependency closure, verify actual Passenger application roots and startup contracts, complete smoke/readiness checks, settle session/data migrations, validate host-side locking and recoverable activation, configure approval controls, and test rollback on staging. The current CD engine simulates these transitions only. GitHub's displayed GREEN self-test is *not* authorization to deploy any current build candidate.
