@@ -9,12 +9,6 @@
       "keyIndexVariable": "MANATOS_CI_API_DOTENV_KEYS"
     },
     {
-      "id": "ejs0",
-      "file": "ui.EJS0/.env",
-      "secret": "MANATOS_CI_EJS0_DOTENV",
-      "keyIndexVariable": "MANATOS_CI_EJS0_DOTENV_KEYS"
-    },
-    {
       "id": "ejs1",
       "file": "ui.EJS1/.env",
       "secret": "MANATOS_CI_EJS1_DOTENV",
@@ -30,7 +24,6 @@
   "ciScopeApplications": {
     "all": [
       "api",
-      "ejs0",
       "ejs1",
       "ng1"
     ],
@@ -38,7 +31,6 @@
       "api"
     ],
     "uis": [
-      "ejs0",
       "ejs1",
       "ng1"
     ],
