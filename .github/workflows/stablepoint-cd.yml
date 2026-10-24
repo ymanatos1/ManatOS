@@ -1,0 +1,109 @@
+name: ManatOS Stablepoint CD - Preparation (NO DEPLOY)
+
+# Absolutely no production mutation in this workflow. All activation, rollback,
+# Passenger restarts and health checks are simulated with synthetic fixtures.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Choose a safe CD preparation operation'
+        required: true
+        type: choice
+        default: self-test
+        options: [self-test, plan, simulate, inspect-readonly]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manat-os-cd-preparation-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  offline:
+    name: 'CD preparation / ${{ inputs.operation }} (offline)'
+    if: inputs.operation != 'inspect-readonly'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check CD scripts and enforce disabled-production policy
+        run: |
+          set -euo pipefail
+          node --check devops/scripts/stablepoint-cd.mjs
+          node --check devops/scripts/stablepoint-inspect.mjs
+          node devops/scripts/stablepoint-cd.mjs --plan > cd-plan.json
+          node --input-type=module -e "import {readFileSync} from 'node:fs';const p=JSON.parse(readFileSync('cd-plan.json','utf8'));if(p.deploymentEnabled!==false||p.liveHostMutations!==false||p.releaseCandidateDeployable!==false||p.productionHealthConfigured!==false)process.exit(1);"
+      - name: Run synthetic CD and SSH safety tests
+        if: inputs.operation == 'self-test'
+        run: |
+          set -euo pipefail
+          node devops/scripts/stablepoint-cd.mjs --self-test
+          node devops/scripts/stablepoint-inspect.mjs --self-test
+          echo '## CD preparation self-test — PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Isolated staging, rollback, health, restart, security, locking and persistent-data tests passed.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- No Stablepoint connection, production release or mutation.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Explain production deployment plan (disabled)
+        if: inputs.operation == 'plan'
+        run: |
+          cat cd-plan.json
+          {
+            echo '## Stablepoint CD plan — BLOCKED for production'
+            echo '- Production services: API, EJS1, NG1; EJS0 excluded.'
+            echo '- Runtime packaging, Passenger startup and live health checks are NOT validated.'
+            echo '- Build candidates are NON-DEPLOYABLE.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Exercise local synthetic deployment
+        if: inputs.operation == 'simulate'
+        run: |
+          node devops/scripts/stablepoint-cd.mjs --simulate
+          {
+            echo '## Stablepoint CD — simulation complete'
+            echo '- Synthetic immutable releases, symlinks, Passenger restart markers and checks only.'
+            echo '- No remote connection or deployment occurred.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  read_only_inspection:
+    name: Stablepoint SSH / read-only inspection (disabled by default)
+    # The main branch and explicit repository switch are both mandatory.
+    # The 'stablepoint-inspection' GitHub Environment should also be configured
+    # with protected-branch and reviewer rules before enabling the switch.
+    if: >-
+      inputs.operation == 'inspect-readonly' &&
+      github.ref_name == 'main' &&
+      vars.STABLEPOINT_INSPECTION_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: stablepoint-inspection
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Inspect SSH capabilities without changing the server
+        env:
+          STABLEPOINT_SSH_HOST: ${{ vars.STABLEPOINT_SSH_HOST }}
+          STABLEPOINT_SSH_USER: ${{ vars.STABLEPOINT_SSH_USER }}
+          STABLEPOINT_SSH_PORT: ${{ vars.STABLEPOINT_SSH_PORT }}
+          STABLEPOINT_SSH_PRIVATE_KEY: ${{ secrets.STABLEPOINT_SSH_PRIVATE_KEY }}
+          STABLEPOINT_SSH_KNOWN_HOSTS: ${{ secrets.STABLEPOINT_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          node devops/scripts/stablepoint-cd.mjs --plan > /dev/null
+          node devops/scripts/stablepoint-inspect.mjs --inspect
+          {
+            echo '## Stablepoint read-only SSH inspection complete'
+            echo '- SSH host key was pinned; account identity and account capabilities inspected.'
+            echo '- No files uploaded, no Passenger restart and no production changes.'
+          } >> "$GITHUB_STEP_SUMMARY"

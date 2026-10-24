@@ -24,6 +24,11 @@ jobs:
           node devops/scripts/env-sync.mjs --self-test
           node --check devops/scripts/release-package.mjs
           node devops/scripts/release-package.mjs --self-test
+          node --check devops/scripts/stablepoint-cd.mjs
+          node devops/scripts/stablepoint-cd.mjs --self-test
+          node --check devops/scripts/stablepoint-inspect.mjs
+          node devops/scripts/stablepoint-inspect.mjs --self-test
+          node devops/scripts/stablepoint-cd.mjs --plan | node --input-type=module -e "let s='';for await(const c of process.stdin)s+=c;const p=JSON.parse(s);if(p.deploymentEnabled!==false||p.liveHostMutations!==false||p.releaseCandidateDeployable!==false||p.productionHealthConfigured!==false)process.exit(1);"
           node --input-type=module -e "import { readFileSync } from 'node:fs'; const p=JSON.parse(readFileSync('devops/config/env-policy.json','utf8')); if (p.applications.some(a=>a.id==='ejs0') || Object.values(p.ciScopeApplications).some(ids=>ids.includes('ejs0'))) process.exit(1);"
           node --input-type=module -e "import { readFileSync } from 'node:fs'; const p = JSON.parse(readFileSync('devops/config/env-policy.json','utf8')); if (p.applications.length !== 3) process.exit(1);"
       - name: Validate release safety policy
@@ -56,5 +61,5 @@ jobs:
               fi
             done
           done
-          echo '## DevOps self-test: 25 combinations + build-candidate fixtures passed (EJS0 excluded)' >> "$GITHUB_STEP_SUMMARY"
+          echo '## DevOps self-test: 25 CI plans + build candidate + CD safety fixtures passed (EJS0 excluded)' >> "$GITHUB_STEP_SUMMARY"
           echo 'No application checkout, installation, or deployment performed.' >> "$GITHUB_STEP_SUMMARY"
