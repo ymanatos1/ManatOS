@@ -1,4 +1,30 @@
-# ManatOS.DevOps — Phase 1 GitHub CI Setup
+# ManatOS.DevOps — Local CMD & GitHub CI Setup
+
+## Local Windows CI/CD — `devops/local/` (current development interface)
+
+Use an ordinary **Windows Command Prompt (`cmd.exe`)**, not PowerShell. Install Node.js and npm normally; GitHub CLI is **not needed** for local CI. All commands below are run from the ManatOS `src` folder containing the latest API, shared/UI, EJS1 and NG1 projects. No application commits or GitHub branch selection are required.
+
+```cmd
+node devops\local\cli.mjs help
+node devops\local\cli.mjs self-test
+node devops\local\cli.mjs status
+node devops\local\cli.mjs ci --scope all --preflight
+node devops\local\cli.mjs ci --scope all --operation verify --plan
+node devops\local\cli.mjs ci --scope all --operation verify
+node devops\local\cli.mjs package
+node devops\local\cli.mjs cd --plan
+node devops\local\cli.mjs cd --simulate
+```
+
+- Local CI uses the same shared `devops/scripts/devops-ci.mjs` engine as GitHub: **lint, builds and tests**. It does **not** run Prettier or the long-running `verify-run`, and **never includes EJS0**. `--scope` also supports `api`, `uis`, `ng1`, `ejs1`; `--operation` supports `verify`, `quality`, `lint`, `build`, `test`. Install project dependencies locally before real CI (using your normal npm workflow); neither `--plan` nor `--preflight` installs anything.
+- The CLI records a SHA-256 fingerprint of the local source (including uncommitted changes), along with the Git HEAD if available. It excludes `.env` values, build products and other private/generated files. Reports and compiled candidates are stored outside the source under `..\manatos-devops-local\`.
+- The packaging command accepts **only** a locally successful `all / verify` report and rechecks the source fingerprint; if a source file changed after verification, it refuses. To specify an older run: `node devops\local\cli.mjs package --run RUN_ID`. For archive integrity verification: `node devops\local\cli.mjs package --verify FULL_ARCHIVE_PATH`.
+- Local CI reads the existing local application `.env` files in place; it does **not** synchronize them to GitHub. Recognized secret values are masked in captured diagnostics. Review logs before sharing them externally. No `.env` files are added to candidate archives.
+- The packager is now portable Node.js USTAR/gzip, without depending on GNU `tar`, `gzip` or PowerShell. Candidate archives are always **NON-DEPLOYABLE**; no npm runtime closure, Passenger startup or production smoke test is asserted.
+- `cd --plan`, `cd --simulate` and `cd --self-test` use the **same CD simulator** as GitHub. No real staging, Passenger restart or remote rollback is permitted. Optional read-only SSH inspection (`node devops\local\cli.mjs ssh --inspect --allow-readonly`) requires separately configured `STABLEPOINT_SSH_*` environment variables and strict pinned-host verification; it never writes to the server.
+- `self-test` exercises the CI redactor, environment synchronization parser, deterministic packaging, CD recovery simulations and SSH security fixtures without deploying anything. Windows CMD execution of real application CI must still be tested on your development PC.
+
+**Safety:** This first local tool does not provide any `deploy` or `rollback` command targeting Stablepoint. We will introduce live operations only after separately verifying runtime-complete artifacts, host paths and rollback on staging.
 
 ## Repository layout
 

@@ -183,9 +183,13 @@ class LogRedactor {
   }
 }
 function getArtifactRedactions() {
-  if (!process.env.GITHUB_ACTIONS || !process.env.RUNNER_TEMP) return [];
-  const path = join(process.env.RUNNER_TEMP, `manatos-ci-redactions-${process.env.GITHUB_RUN_ID || 'local'}.json`);
-  if (!existsSync(path)) return [];
+  if (!process.env.MANATOS_CI_REDACTIONS_FILE && (!process.env.GITHUB_ACTIONS || !process.env.RUNNER_TEMP)) return [];
+  const path = process.env.MANATOS_CI_REDACTIONS_FILE ||
+    join(process.env.RUNNER_TEMP, `manatos-ci-redactions-${process.env.GITHUB_RUN_ID || 'local'}.json`);
+  if (!existsSync(path)) {
+    if (process.env.MANATOS_CI_REDACTIONS_FILE) throw new Error('Local redaction file is missing');
+    return [];
+  }
   const values = JSON.parse(readFileSync(path, 'utf8'));
   if (!Array.isArray(values) || values.some((v) => typeof v !== 'string')) {
     throw new Error('Invalid private CI log-redaction data');
@@ -218,10 +222,11 @@ function summarize(result) {
     '',
     `- **Scope:** ${result.scope}`,
     `- **Operation:** ${result.operation}`,
-    `- **Application commit:** \`${result.sha}\``,
+    `- **${result.sourceIdentityKind === 'source-snapshot-only' ? 'Local snapshot ID (not Git commit)' : 'Application commit'}:** ${result.sha}`,
     `- **DevOps commit:** \`${result.devopsSha}\``,
     `- **Triggered by:** ${escapeMarkdown(result.actor)} (${escapeMarkdown(result.event)})`,
     `- **Duration:** ${formatDuration(result.durationMs)}`,
+    ...(result.sourceFingerprint ? [`- **Local source fingerprint:** \`${result.sourceFingerprint}\` (dirty: ${result.localSourceDirty})`] : []),
     '- **CI formatting checks:** DISABLED (Prettier is not executed)',
     '- **Release eligibility:** NOT GRANTED (Phase 1 builds no production release artifact)',
     '',
@@ -273,7 +278,10 @@ async function runStep(step, index, directory, sensitiveValues) {
   console.log(`\n=== ${step.label} ===`);
   const [program, ...arguments_] = step.command;
   const exitCode = await new Promise((done) => {
-    const child = spawn(program, arguments_, { stdio: ['ignore', 'pipe', 'pipe'] });
+    // Windows npm is npm.cmd; shell resolution works from ordinary CMD.
+    // Commands are strictly constructed from fixed, allowlisted CI operations.
+    const child = spawn(program, arguments_, { stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32', windowsHide: true });
     child.on('error', (error) => {
       reason = error.message;
     });
@@ -340,6 +348,9 @@ const result = {
   scope,
   operation,
   sha: process.env.MANATOS_SOURCE_SHA || 'local',
+  sourceFingerprint: process.env.MANATOS_LOCAL_SOURCE_FINGERPRINT || null,
+  localSourceDirty: process.env.MANATOS_LOCAL_SOURCE_DIRTY === 'true',
+  sourceIdentityKind: process.env.MANATOS_LOCAL_SOURCE_IDENTITY_KIND || 'github-commit',
   devopsSha: process.env.GITHUB_SHA || 'local',
   sourceRepository: process.env.MANATOS_SOURCE_REPOSITORY || 'unspecified',
   actor: process.env.GITHUB_ACTOR || 'local',
