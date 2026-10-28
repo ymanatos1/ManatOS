@@ -1,0 +1,12 @@
+digraph ApplicationDesign {
+  graph [fontname="Arial",fontsize=11,bgcolor="white",labelloc="t",label="protoCRM: Application Design and Runtime Boundaries",pad="0.25",rankdir=TB];
+  node [fontname="Arial",fontsize=10,shape=box,style="rounded,filled",fillcolor="#f7f8fa"];
+  design [label="protoCRM\napplication catalogue + design environment",fillcolor="#fff3cd"];
+  model [label="Application definition\nentities / relationships / rules / UI Views",fillcolor="#e8f4e5"];
+  runtime [label="Shared runtime\nUIS / CTX / Expressions / API / Storage",fillcolor="#dcecff"];
+  integrated [label="Integrated test / run host",fillcolor="#e6e9ff"];
+  external [label="Compatible independent runtime host\narchitectural vision",fillcolor="#e6e9ff"];
+  security [label="Organization + License + Resource Authorization\nAPI-side enforcement",fillcolor="#fce8e6"];
+  design -> model; model -> runtime; runtime -> integrated; runtime -> external [style=dashed,label="contract"];
+  security -> runtime [label="trusted policy"];
+}

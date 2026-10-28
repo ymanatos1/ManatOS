@@ -1,0 +1,6 @@
+@if (logs().length) {
+<pre class="api-traffic-log-text" [attr.aria-label]="multilingual().CorrelatedApiLogs">
+{{ text() }}</pre>
+} @else {
+<div class="api-traffic-empty">{{ multilingual().NoCorrelatedApiLogs }}</div>
+}

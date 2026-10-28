@@ -1,0 +1,9 @@
+.storage-capability-table-scroll {
+  max-height: min(50vh, 440px);
+  overflow: auto;
+}
+.storage-capability-table-scroll th {
+  position: sticky;
+  top: 0;
+  background: var(--bs-body-bg, white);
+}

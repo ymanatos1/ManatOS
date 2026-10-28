@@ -1,0 +1,48 @@
+:host {
+  min-width: 0;
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.ctx-caption {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  font-size: 0.7rem;
+}
+
+.ctx-caption > strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.ctx-caption-root,
+.ctx-caption-selection {
+  user-select: text;
+  cursor: text;
+  white-space: nowrap;
+}
+
+.ctx-caption-root {
+  flex: 0 0 auto;
+  color: #315f91;
+}
+
+.ctx-caption-selection {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: #7a8796;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.ctx-caption-revision {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 0.6rem;
+  color: #9aa7b4;
+  font-size: 0.62rem;
+}

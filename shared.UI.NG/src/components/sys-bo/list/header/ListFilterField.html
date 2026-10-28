@@ -1,0 +1,22 @@
+<!-- ListFilterField template: one named filter input/selection and its validated field-change intent. -->
+<label data-list-layout="ListFilterField" [attr.data-list-filter-field]="filter().field">
+  {{ filter().caption }} @if (filter().options.length > 0) {
+  <select
+    [attr.data-list-filter-name]="filter().field"
+    [value]="context.level()?.data?.filters?.[filter().field] ?? ''"
+    (change)="change($event)"
+  >
+    <option value="">{{ context.language() === 'EL' ? 'Όλα' : 'All' }}</option>
+    @for (option of filter().options; track option.value) {
+    <option [value]="option.value">{{ option.label }}</option>
+    }
+  </select>
+  } @else {
+  <input
+    type="text"
+    [attr.data-list-filter-name]="filter().field"
+    [value]="context.level()?.data?.filters?.[filter().field] ?? ''"
+    (change)="change($event)"
+  />
+  }
+</label>

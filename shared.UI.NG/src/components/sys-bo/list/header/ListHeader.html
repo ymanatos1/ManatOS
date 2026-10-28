@@ -1,0 +1,17 @@
+<!-- ListHeader template: the count region and the Filter, Views, Search and Add children; each child owns its own control. -->
+<header class="manatos-list-header" data-list-layout="ListHeader">
+  <div class="manatos-list-header-main">
+    <span class="manatos-list-count"
+      ><strong data-list-count>{{ context.level()?.state?.list?.total ?? 0 }}</strong> {{
+      context.language() === 'EL' ? 'εγγραφές' : 'entries' }}</span
+    >
+    @if (context.level()?.control?.invocation?.params?.['showControls'] !== false) {
+    <div class="manatos-list-controls" data-list-controls>
+      <manatos-list-filter />
+      <manatos-list-views />
+      <manatos-list-search />
+      @if (context.level()?.state?.list?.selectionMode === 'none') { <manatos-list-add /> }
+    </div>
+    }
+  </div>
+</header>

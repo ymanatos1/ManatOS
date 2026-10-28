@@ -1,0 +1,156 @@
+.surface {
+  background: var(--manatos-surface);
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.65rem;
+  box-shadow: var(--manatos-shadow);
+  padding: 1.4rem;
+  min-height: 260px;
+}
+
+.surface h2 {
+  margin-top: 0;
+  font-size: calc(1.15rem * var(--manatos-font-scale));
+}
+
+.surface p {
+  color: var(--manatos-muted);
+}
+
+.preferences-trigger {
+  width: 100%;
+  padding: 0.65rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-status-notice {
+  position: fixed;
+  z-index: 2200;
+  right: 1rem;
+  bottom: 1rem;
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 0.55rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  box-shadow: 0 0.3rem 0.9rem rgb(0 0 0 / 16%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(
+    --bs-font-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif
+  );
+  font-size: calc(0.82rem * var(--manatos-font-scale));
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.auth-status-notice.is-danger {
+  color: var(--bs-danger-text-emphasis, #842029);
+  background: var(--bs-danger-bg-subtle, #f8d7da);
+  border-color: var(--bs-danger-border-subtle, #f1aeb5);
+}
+
+.auth-status-notice.is-warning {
+  color: var(--bs-warning-text-emphasis, #664d03);
+  background: var(--bs-warning-bg-subtle, #fff3cd);
+  border-color: var(--bs-warning-border-subtle, #ffe69c);
+}
+
+.auth-status-notice button {
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.auth-notice-retry {
+  text-decoration: underline;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.auth-notice-close {
+  padding: 0.2rem;
+}
+
+/* EJS0 system-unavailable surface, hosted in the NG1 workspace. */
+.system-unavailable {
+  margin: 1.5rem 2.5rem;
+  border: 1px solid var(--bs-danger-border-subtle, #f1aeb5);
+  border-radius: 0.375rem;
+  background: var(--manatos-surface, #fff);
+  box-shadow: 0 0.125rem 0.25rem rgb(0 0 0 / 8%);
+  color: var(--manatos-text);
+  font-family: var(--bs-font-sans-serif, system-ui, 'Segoe UI', Arial, sans-serif);
+}
+
+.system-unavailable-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 2.5rem 3rem;
+}
+
+.system-unavailable-icon {
+  flex: 0 0 auto;
+  font-size: calc(2rem * var(--manatos-font-scale));
+  color: var(--bs-danger, #dc3545);
+}
+
+.system-unavailable h1 {
+  margin: 0 0 0.5rem;
+  font-size: calc(1.4rem * var(--manatos-font-scale));
+  font-weight: 500;
+}
+
+.system-unavailable p {
+  margin: 0 0 0.5rem;
+  font-size: calc(0.96rem * var(--manatos-font-scale));
+}
+
+.system-unavailable-detail,
+.system-unavailable-retry span {
+  color: var(--manatos-muted);
+}
+
+.system-unavailable-retry {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.system-unavailable-retry button {
+  padding: 0.55rem 0.8rem;
+  color: #fff;
+  background: #0d6efd;
+  border: 1px solid #0d6efd;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.system-unavailable-retry button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+@media (max-width: 650px) {
+  .system-unavailable {
+    margin: 1rem;
+  }
+  .system-unavailable-body {
+    padding: 1.25rem;
+  }
+}

@@ -1,0 +1,10 @@
+@if (wizard(); as state) {
+<div class="storage-tab-body" data-popup-layout-id="storage-connection">
+  @if (state.stepById('connection'); as step) {
+  <manatos-storage-tab-status [wizard]="state" [popup]="popup()" [step]="step" />
+  <manatos-storage-metadata-fields [wizard]="wizard()" [step]="step" />
+  <manatos-storage-connection-operations [wizard]="wizard()" />
+  <manatos-storage-tab-status [wizard]="state" [popup]="popup()" [step]="step" [footer]="true" />
+  }
+</div>
+}

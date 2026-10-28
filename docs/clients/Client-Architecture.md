@@ -1,213 +1,91 @@
 # Client and UI Architecture
 
-## Purpose
+The client architecture is defined by **semantic contracts**, not by a particular web framework. A client consumes canonical metadata, authorized API resources and runtime facts; it composes interactive surfaces; and it renders those surfaces using its own presentation technology. The TypeScript implementation supplies a reusable **UIS framework** that realizes this separation explicitly.
 
-ManatOS defines a **client/UI capability model**, not a dependency on one web framework. A client is any presentation host that consumes ManatOS API contracts, canonical metadata, UI metadata, capability projections and runtime semantics to provide an interactive experience.
-
-The repository currently contains one concrete client implementation: the TypeScript Node.js/Express UI package with server-rendered EJS/Bootstrap presentation and a browser runtime. That implementation is important operationally, but it is **not the architectural definition of the ManatOS UI**. Future Angular, React, mobile, desktop or other clients may implement the same semantic contracts with different rendering, navigation, state-management and transport technologies.
-
-Architecture documentation therefore uses **client**, **UI-capable client**, **client runtime**, and **presentation host** for portable semantics. References to the current Express/EJS/browser implementation are explicitly implementation notes.
-
-## Portable client contract
-
-A conforming UI-capable client is built from server-owned facts and portable presentation contracts:
+## 1. Three different responsibilities
 
 ```text
-canonical entity metadata + UI metadata + capability facts + invocation/data
-                              |
-                              v
-                       client composition
-                              |
-              +---------------+---------------+
-              |               |               |
-              v               v               v
-          UI context      expressions      components
-              |               |               |
-              +---------------+---------------+
-                              |
-                              v
-                    rendered interaction
-                              |
-                              v
-                       API operations
+         canonical domain + expression/CTX contracts
+                         shared/
+                            │
+                      shared.UI/
+        surface lifecycle · actions · components
+       List/Entry · Flows · state · diagnostics
+                            │
+              ┌─────────────┴────────────┐
+              ▼                          ▼
+          shared.UI.NG               shared.UI.EJS
+              │                          │
+            ui.NG1                    ui.EJS1
+          Angular host               EJS host
+              └───────────┬──────────────┘
+                          ▼ HTTP
+                     authoritative API
 ```
 
-The portable contract is semantic rather than DOM-shaped. It defines what a page/list/entry/popup/selector/component means, how values and permissions are represented, how expressions observe context, and which server operation commits a change. It does not require HTML, EJS, Bootstrap, a browser DOM, Express sessions, React components or Angular services.
+`ui.EJS0` remains a separately implemented, mature EJS client; its presentation architecture and browser runtime are not an implicit dependency of `shared.UI`. EJS0 behavior is useful as a reference for functional requirements, not a mandate to clone its internal state model.
 
-## Authority boundary
+**Shared semantics (`shared.UI`):** Surface ownership, CTX projections, semantic component composition, List/Entry working state, typed field behavior, selection, popup invocation, Flow execution, resource ports and diagnostics.
 
-The client owns presentation and interaction; the API owns protected business truth.
+**Rendering adapters (`shared.UI.NG`, `shared.UI.EJS`):** HTML/templates/framework controls, native UI event capture, mounting and disposal, focus, menu/overlay positioning, accessibility and rendering behavior. An adapter must not replace the shared record value or authorization authority.
 
-The client may:
+**Hosts (`ui.NG1`, `ui.EJS1`):** Application bootstrap, routes, HTTP resources, server-side session boundary and technology-specific lifecycle. The host integrates with the API; it does not redefine the entity or security model.
 
-- construct navigation and surfaces from metadata and capability facts;
-- maintain transient interaction state;
-- evaluate client-owned declarative presentation expressions;
-- present lists, entries, selectors, popups and composite components;
-- show or suppress controls according to projected capabilities;
-- collect edits and invoke API commands;
-- expose diagnostics for its own runtime.
+## 2. Metadata-driven composition
 
-The client may **not**:
-
-- authorize a protected API operation merely because a control is visible;
-- redefine canonical entity/storage semantics;
-- persist business state by bypassing API/storage contracts;
-- reconstruct sensitive authorization policy from raw relationship/license inputs;
-- make UI metadata or client CTX a trusted server-side security token.
-
-Every protected API operation is independently authorized and validated by the API.
-
-## Client context model
-
-The current ManatOS client runtime uses CTX as its observable semantic context. CTX provides stable concepts for metadata expressions and diagnostics: company/system/entity facts, authenticated-user facts, permissions, UI levels, entry fields, state, resources and nested surfaces.
-
-A future client has two valid implementation choices:
-
-1. implement the ManatOS CTX/runtime contracts directly, which maximizes reuse of the shared expression/UI metadata model; or
-2. adapt another framework's state model to the same observable semantic contracts at the ManatOS boundary.
-
-Either way, the semantics must remain recognizable. A React store or Angular service must not silently change what `fields.<k>.value`, `entry.original`, permissions, invocation, or nested UI levels mean.
-
-CTX is not a requirement that all clients share one in-memory tree with the API. API CTX and client CTX are independently constructed runtime contexts.
-
-## Surface model
-
-Pages, popups and selectors are hosts for the same recursive surface concept:
+Canonical entity metadata describes fields, relationships, calculations, identifiers, defaults and validation. UI metadata selects views, components, tabs, actions, layout and presentation. UIS resolves both through generic component contracts. A view may vary the presentation of a record without changing its canonical meaning.
 
 ```text
-surface level
-  |
-  +-- child/popup/selector level
-        |
-        +-- child level
-              |
-              +-- ...
+Entity / UI metadata ─┐
+authorized resources ─┼─► List or Entry runtime ─► semantic #layout
+surface invocation ──┘              │                    │
+                           CTX #data / #state       adapter template
+                                   │                    │
+                                   └────────┬───────────┘
+                                            ▼
+                                      user interaction
 ```
 
-Opening a child adds a level owned by that invocation. Closing it disposes the child and its descendants and returns control to the parent. The semantic nesting depth is not fixed by the current web layout.
+A resource port supplies authorized data without making the shared runtime aware of Express, EJS, Angular or an API credential. The API separately validates every protected operation.
 
-A mobile client might render a child level as a new screen; a React client might render a modal/route; the current web client may render a popup. Those are presentation choices over the same ownership/lifecycle model.
+## 3. Canonical surface levels
 
-## Entry runtime
+`UiSurfaceHostRuntime` owns one child at `ctx.ui.level[.level...]` and publishes the four namespaces `#control`, `#state`, `#layout`, `#data` atomically. `#control` contains identity, semantic kind, host and invocation. `#state` contains operational UI facts; `#data` holds working records, lists and supporting resources; `#layout` is the declarative component hierarchy.
 
-An entry surface combines canonical metadata, UI metadata, API data/facts, invocation/defaults and client state.
+A root Page occupies `ctx.ui.level`; a Popup opened from that Page occupies the next `.level`; further nested popups extend the same chain. Exactly one child may occupy a particular parent slot. Disposal is child-safe and identity-checked. This is a semantic hierarchy, not a browser z-index arrangement.
 
-```text
-canonical metadata ----+
-UI metadata -----------+---> entry runtime ---> observable context ---> presentation
-API record/facts -------+
-invocation/defaults ----+
-```
+A List and an Entry can be hosted by a page or popup without duplicating their content runtime. Hosting determines placement and modal/focus behavior; `kind` determines semantic content; `mode` determines how the content is used.
 
-The canonical live scalar authority is the field value. `entry.current` is a projection/read model; `entry.original` is the baseline projection. Dirty/validation/action state derives from those authorities rather than becoming competing record stores.
+## 4. Entry semantics
 
-Create, edit and view are modes of the same semantic entry kind. A read-only client may implement only inspection while still consuming the same metadata and record contracts.
+The modern Entry runtime in `shared.UI/src/components/entry/EntryRuntime.ts` owns `#data.current` (working record) and `#data.original` (baseline). It derives `#state.fields` and `#state.entry` (including mode, permissions, dirty, valid, save readiness and load status). An adapter decodes user controls into a typed Field interaction. The Entry runtime alone applies that interaction to the working record.
 
-## List and query runtime
+This is different from EJS0's older field-node model. The common architecture defines the semantics of record editing, not the literal path layout of a retired client runtime.
 
-A list surface owns query state, returned rows, paging/filtering/sorting presentation and list actions. Authorization row scoping happens before client-visible filtering/paging. A client must never fetch an unrestricted dataset and treat local filtering as security.
+## 5. Lists, views and references
 
-Inline editing, if a client supports it, requires an explicit row/edit workspace. Merely displaying columns does not make a list the owner of entry-field state.
+The List runtime owns loaded rows, filter/search, view selection, sort, paging, selection and reference data. Component composition is explicit: header, actions, filters, columns, rows, cells and pagination have reusable semantic components. Field formatting remains per registered Field type, rather than a List-specific type switch.
 
-## Selectors and references
+Selectors reuse List behavior with selection intent, while reference fields request authorized candidate records through resource interfaces. Nested Entry creation and selection results must return to their invoking owner without relying on DOM global state. Both UI capability projections and selector constraints remain presentation/resource facts; direct API calls are authorized independently.
 
-A selector is a list-like surface opened with selection semantics. Invocation identifies source, target and restrictions. Selection returns a semantic result to its caller.
+## 6. Flows are not surfaces
 
-Reference catalogues are supporting data. Failure to read an optional/forbidden supporting catalogue must not accidentally upgrade or downgrade the primary entity permission. Clients should degrade auxiliary presentation appropriately while preserving the API's primary authorization result.
+`FlowRunner` orchestrates multi-step operations under `ctx.flow`, independently from `ctx.ui.level`. A Flow can open a Popup or wait on a semantic event, but opening that Popup does not transfer the Flow's step state into the UI tree. Authentication Flows demonstrate this division: the operation manages steps; UIS surfaces collect and present the required input.
 
-## Components and workspaces
+## 7. CTX and expressions
 
-Reusable components consume metadata and observable context rather than entity-specific globals. Component-owned read models/resources have explicit lifecycle and ownership.
+The modern client root is `system`, `company`, `runtime`, optional `flow` and dynamically created `ui`. `runtime` owns effective `subsystems`, `entities`, `enums`, `user`; `$entities`, `$enums`, `$user` alias that branch. Expressions provide declarative presentation and calculated behavior; reactive dependencies subscribe to CTX mutations. The implemented `?.` optional traversal must not be confused with `??` fallback or the conditional `? :` operator.
 
-Composite workspaces may own transactional draft state spanning several canonical fields or related entities. That ownership does not transfer persistence authority to the component; commit remains an explicit API/domain operation.
+## 8. Authorization and operation boundary
 
-## Declarative actions and presentation policy
+The client is never the authorization decision maker. `shared.UI/src/authorization/ui-authorization.ts` consumes API-derived capability projections and initializes safe runtime-user facts. A disabled or absent UI action does not provide security; the server recomputes permission for the actual resource and operation. Login/browser sessions belong to host/server boundaries, not to ordinary UI fields.
 
-Action inventory comes from metadata/runtime composition. Visibility, enabled state and disabled reasons may be declarative expressions over projected facts such as:
+## 9. Extension and verification
 
-```text
-permissions.read
-permissions.create
-permissions.update
-permissions.delete
-user.permissions.platforms.<platform>.capabilities.platformAccess
-```
+A new field type requires shared type behavior, an embedded semantic component where appropriate, the Angular/EJS presentation counterparts and source-backed tests. A new client technology consumes the same conceptual contracts without importing the EJS or Angular templates. Architecture fidelity and visual usability are complementary criteria, not alternatives.
 
-Generic client infrastructure must not rebuild server policy with role-specific branches when a canonical capability already exists.
+The documentation scope is TypeScript. Other client technologies may be mentioned as evidence of the architectural portability objective without presenting their implementations or asserting unverified parity.
 
-Role facts remain useful where the presentation itself is genuinely role-specific, but they are not substitutes for CRUD/platform capability projection.
+## Further reference
 
-## Navigation
-
-Navigation is a presentation of available capabilities and contributions, not a second authorization engine. Entity-backed navigation consumes canonical collection capabilities; platform navigation consumes platform capabilities. The API independently enforces the operation when selected.
-
-This is especially important for the four current roles: Admin, Superuser, User and Guest. Their security semantics are defined in [Authentication and Authorization](../security/Authentication-and-Authorization.md), not in client navigation code.
-
-## Diagnostics as a client capability
-
-A capable development client may expose:
-
-- its live client CTX/context state;
-- expression definition/current-value inspection;
-- dependency/subscriber information;
-- client-side operation/error context;
-- API Traffic generated by that client;
-- request/response details;
-- correlated API logs and API/storage CTX snapshots when a diagnostic transport makes them available.
-
-These are diagnostic capabilities, not requirements that every production/mobile client ship the current docked debugger. See [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md).
-
-## Transport and session strategies
-
-The current web implementation uses a UI server/BFF: browser sessions are held by the Node.js/Express UI server, API bearer credentials remain server-side, and the UI server performs API calls on behalf of the browser.
-
-That is one valid client security topology, not the only architectural topology. Another trusted client type may use a different authentication/session mechanism provided it follows the API's supported authentication contracts and does not weaken credential handling or authorization.
-
-Internal/trusted BFF endpoints are not automatically public APIs for arbitrary clients. A future client must use public contracts or introduce an explicitly designed trusted-client boundary where required.
-
-## Current TypeScript/Express realization
-
-The repository's `ui` package currently realizes the client architecture with:
-
-- Node.js/Express as presentation host/BFF;
-- EJS/Bootstrap for server-rendered shell/templates;
-- browser JavaScript/TypeScript for interactive CTX/runtime behavior;
-- website sessions and server-side API-token custody;
-- a developer-tools dock containing CTX Viewer, API Traffic and CLI;
-- optional co-located filesystem access for development diagnostics.
-
-Implementation-specific development documents may legitimately discuss EJS files, Express middleware, DOM nodes and Bootstrap controls. Those details must not be promoted into portable ManatOS architecture contracts.
-
-## Future client examples
-
-Potential clients include, without architectural preference:
-
-- an Angular web application;
-- a React web application;
-- a mobile/tablet client;
-- a desktop client;
-- a specialized operational console;
-- a read-only inspection/reporting client.
-
-They may differ in rendering and local state implementation while sharing canonical entity metadata, authorization/capability APIs, business operations, storage-neutral server semantics and—where they opt into metadata-driven UI—the same UI metadata/expression meanings.
-
-## Portability invariants
-
-1. The API/domain/storage architecture does not depend on the current Express UI implementation.
-2. Canonical entity metadata is client-neutral.
-3. UI metadata describes presentation semantics, not EJS/Bootstrap implementation code.
-4. Capability projections are the portable presentation-security facts; clients do not reconstruct server policy.
-5. Client context/runtime state is not business persistence or authorization evidence.
-6. A client may choose another framework without changing entity, authorization or storage semantics.
-7. Current web/BFF filesystem conveniences are deployment-specific and must degrade gracefully when unavailable.
-8. Implementation-specific docs may describe the current UI package precisely, but architecture docs identify those details as one realization.
-
-## Audience-specific follow-up
-
-- **System/architecture readers:** [System Architecture](../system/System-Architecture.md) and [Runtime Architecture](../system/Runtime-Architecture.md).
-- **Client implementers:** [Client Implementation Guide](Client-Implementations.md).
-- **Contract lookup:** [Client Contract Catalog](Client-Contracts.md).
-- **Users/developers using a client:** [Client and UI Capabilities](Client-and-UI-Capabilities.md).
-- **Security:** [Authentication and Authorization](../security/Authentication-and-Authorization.md).
-- **Diagnostics:** [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md).
+[UIS Architecture](UIS-Architecture.md), [UIS Component Contracts](UIS-Component-Contracts.md), [Surfaces and Levels](UI-Surfaces-and-Levels.md), [Flow Execution](Flow-Execution.md), [Entity Lists](../entities/Entity-Lists.md), [Entity Entries](../entities/Entity-Entries.md), [CTX](../context/Client-Context-Model.md) and [Authorization](../security/Authorization-Policy-Architecture.md).

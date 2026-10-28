@@ -27,7 +27,7 @@ describe('related-list view runtime', () => {
     expect(users).toContain("{ kind: 'collection', collection: 'externalIdentities' }");
     expect(users).toContain("relatedListView: 'default'");
     expect(identities).toContain('relatedListViews: {');
-    expect(identities).toContain("label: 'Default'");
-    expect(identities).toContain("label: 'Compact'");
+    expect(identities).toContain("label: '@EN.manatos.configuration.configurations.label.Default'");
+    expect(identities).toContain("label: '@EN.manatos.auth.externalIdentities.label.Compact'");
   });
 });

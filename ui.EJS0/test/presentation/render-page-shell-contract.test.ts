@@ -12,6 +12,9 @@ describe('renderPage shell contract', () => {
     expect(source).toContain('const shellApp =');
     expect(source).toContain('viewModel.app ??');
     expect(source).toContain('app: shellApp');
+    expect(source).toContain('const metadataText =');
+    expect(source).toContain('resolveMetadataText(value, language)');
+    expect(source).toContain('metadataText,');
     expect(source).toContain("debugTools: config.NODE_ENV !== 'production'");
     expect(source).toContain('navigation: Object.freeze({ horizontal: [], vertical: [] })');
   });

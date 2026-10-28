@@ -42,6 +42,20 @@ TelephoneNbr('+30', '6944386714')
 
 Invalid country code/length/shape raises an evaluation error.
 
+## `Capitalize(value)`
+
+**Signature:** `Capitalize(value: scalar)`  
+**Capability:** `pure`  
+**Returns:** `null` for null; otherwise the supplied scalar converted to text with its first Unicode character uppercased. Remaining characters are preserved exactly; this is not title casing or lowercasing.
+
+```text
+Capitalize('yiannis') => 'Yiannis'
+Capitalize('mCdonald') => 'MCdonald'
+Capitalize(null) => null
+```
+
+Use for metadata-declared normalization when capitalizing only the initial character is intentional.
+
 ## `SqRoot(value)`
 
 **Signature:** `SqRoot(value: number)`  
@@ -61,7 +75,7 @@ The registry enforces a numeric argument before evaluation.
 **Returns:** first collection member, the requested property of that member, or `null` when unavailable.
 
 ```text
-FirstCtx($enums.SysPlatform.values, 'value')
+FirstCtx($entity-fields.platformId.enumItems, 'value')
 => value of the first enum item
 
 FirstCtx(entries)
@@ -103,11 +117,11 @@ The function uses `context.now()` rather than constructing its own clock, making
 **Returns:** `YYYY-MM-DD`, or `null` for invalid inputs.
 
 ```text
-CalendarAddDuration('2024-01-31', { years: 0, months: 1, days: 0 })
-=> '2024-02-29'
+CalendarAddDuration('2024-01-31', duration)
+=> '2024-02-29'  // when duration resolves to { years: 0, months: 1, days: 0 }
 ```
 
-Year/month arithmetic is calendar-aware and clamps end-of-month rather than flattening a month to an approximate day count.
+Year/month arithmetic is calendar-aware and clamps end-of-month rather than flattening a month to an approximate day count. The argument must resolve to a structured object in the evaluator's variable/CTX scope. The UIS `duration` Field instead stores an ISO string such as `P1Y0M0D`; the evaluator function does **not** parse that string, so an explicit adapter/projection is needed if the source is an Entry duration field.
 
 ## `CalendarDurationBetween(startDate, endDate)`
 
@@ -128,11 +142,11 @@ It is the calendar-aware inverse companion to `CalendarAddDuration`.
 **Returns:** deepest active object in the canonical `ctx.ui.level.level...` chain, or `null` if no UI level exists.
 
 ```text
-CurrentUiLevel().kind
-=> 'entry'   // when an entry is the deepest active surface
+CurrentUiLevel()
+=> currentLevel  // an object; its control.kind identifies the surface kind
 ```
 
-Traversal is capped at 256 levels; exceeding that is an evaluation error.
+Traversal is capped at 256 levels; exceeding that is an evaluation error. The expression grammar does **not** permit property access after a function call (`CurrentUiLevel().control.kind` is not valid). To test the kind from within an active UIS level, evaluate `#control.kind == 'entry'` in that level's lexical scope.
 
 This function is meaningful only in an evaluator host/root that exposes the client UI CTX contract.
 

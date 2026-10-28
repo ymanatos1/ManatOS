@@ -1,0 +1,291 @@
+/* EJS1 Entry Surface: shared presentation parity with NG1; scoped to existing semantic classes. */
+.manatos-entry-page-host {
+  display: block;
+  min-width: 0;
+}
+.manatos-entry {
+  background: #fff;
+  border: 1px solid #dae3ef;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 5px 16px rgb(25 52 80 / 5%);
+}
+.manatos-entry-header {
+  min-height: 20px;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  color: #56647a;
+}
+.manatos-entry-header [role='alert'] {
+  color: #a92929;
+}
+.manatos-entry-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #dbe4ee;
+  padding: 14px 0 0;
+  margin-bottom: 20px;
+}
+.manatos-entry-tabs button {
+  cursor: pointer;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 10px 16px;
+  background: transparent;
+  color: #526176;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+.manatos-entry-tabs button[aria-selected='true'] {
+  color: #1168db;
+  border-color: #1168db;
+  font-weight: 600;
+}
+.manatos-entry-tabs button:focus-visible {
+  outline: 2px solid #4386f7;
+  outline-offset: 2px;
+}
+.manatos-entry-panel[hidden] {
+  display: none;
+}
+/* Canonical 12-column form layout follows SysBO record metadata. */
+.manatos-entry-fields {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+.manatos-entry-group {
+  min-width: 0;
+}
+.manatos-entry-break {
+  grid-column: span 12;
+  height: 0;
+}
+.manatos-entry-tab-panel {
+  min-width: 0;
+}
+.manatos-entry-tabs button {
+  border: 1px solid #d9e2ed;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+}
+.manatos-entry-tabs button[aria-selected='true'] {
+  background: #f6f9fc;
+  border-bottom-color: #287cf1;
+}
+.manatos-entry-page-host {
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+@media (max-width: 750px) {
+  .manatos-entry-fields {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px 8px;
+  }
+}
+
+manatos-entry-layout,
+manatos-form-field {
+  display: block;
+  min-width: 0;
+}
+.manatos-entry-header:empty {
+  display: none;
+}
+.manatos-surface-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #d2dce7;
+  border-radius: 5px;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  cursor: pointer;
+}
+.manatos-surface-action.is-primary {
+  background: #256ac2;
+  border-color: #256ac2;
+  color: white;
+}
+.manatos-surface-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.manatos-surface-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-top: 1px solid #dce4ee;
+}
+
+/* Explicit unimplemented metadata slots: registered, noninteractive. */
+.manatos-entry-deferred {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: #64748b;
+  border-left: 2px solid #dbe4ee;
+}
+.manatos-entry-deferred small {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.manatos-entry-header[hidden] {
+  display: none;
+}
+
+.manatos-entry-action-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.manatos-entry-change-indicator {
+  background: none;
+  border: 0;
+  color: #2564ab;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.manatos-entry-change-indicator:disabled {
+  color: #9ba5b2;
+  text-decoration: none;
+  cursor: default;
+}
+
+/* Metadata-driven, read-only Entry Summary and related collection views. */
+.manatos-entry-summary {
+  display: grid;
+  grid-template-columns: minmax(130px, 190px) minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: center;
+  max-width: 900px;
+  padding: 8px 0 16px;
+}
+.manatos-entry-summary-label {
+  color: #52617a;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+.manatos-entry-summary-value {
+  min-width: 0;
+  color: #263b55;
+  overflow-wrap: anywhere;
+}
+.manatos-entry-summary-value .bi {
+  margin-right: 6px;
+  color: #55749d;
+}
+.manatos-entry-summary-id {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #eff4fa;
+  border-radius: 5px;
+  padding: 4px 7px;
+}
+.manatos-entry-related {
+  min-width: 0;
+  border: 1px solid #dbe4ee;
+  border-radius: 9px;
+  padding: 14px;
+  background: #f6f8fc;
+}
+.manatos-entry-related-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #314765;
+}
+.manatos-entry-related-header select {
+  max-width: 180px;
+  padding: 5px 7px;
+  border: 1px solid #cad7e8;
+  border-radius: 5px;
+  background: white;
+}
+.manatos-entry-related-view {
+  color: #76879d;
+  font-size: 12px;
+}
+.manatos-entry-related-empty {
+  margin: 8px 0;
+  color: #75859a;
+}
+@media (max-width: 600px) {
+  .manatos-entry-summary {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+/* Embedded RelatedEntries composes canonical List columns/rows/cells, without a second list card. */
+.manatos-entry-related .manatos-list-embedded {
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.manatos-entry-related-views {
+  margin-left: auto;
+  position: relative;
+}
+.manatos-entry-related-view-menu {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 3px);
+  min-width: 155px;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #cad7e8;
+  border-radius: 6px;
+  box-shadow: 0 7px 20px rgb(20 50 85 / 16%);
+}
+.manatos-entry-related-view-menu[hidden] {
+  display: none;
+}
+.manatos-entry-related-view-menu button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 7px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+.manatos-entry-related-view-menu button:hover,
+.manatos-entry-related-view-menu button[aria-pressed='true'] {
+  background: #e8f2ff;
+}
+
+/* Panel views still use the canonical ListRow/ListCell components. */
+.manatos-entry-related .manatos-list-panel-layout .manatos-list-table-heading {
+  display: none;
+}
+.manatos-entry-related .manatos-list-panel-layout .manatos-list-rows {
+  display: grid;
+  gap: 8px;
+}
+.manatos-entry-related .manatos-list-panel-layout .manatos-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 8px 14px;
+  border: 1px solid #dbe4ee;
+  border-radius: 6px;
+}

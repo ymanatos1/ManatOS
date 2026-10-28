@@ -1,0 +1,39 @@
+:host {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.api-traffic-context-tab {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.api-traffic-context-caption {
+  min-width: 0;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0 0 0.35rem;
+  color: #52606d;
+  font-size: 0.66rem;
+}
+
+.api-traffic-context-caption strong,
+.api-traffic-context-caption code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-traffic-context-tree {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  border: 1px solid #dbe3ec;
+}

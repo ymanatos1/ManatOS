@@ -1,0 +1,80 @@
+<div
+  class="manatos-picture-editor-backdrop"
+  [class.has-foreground-debugger]="debuggerForeground() && debuggerDocked()"
+  [style.--popup-debugger-dock-width.px]="debuggerDockWidth()"
+  (click)="backdrop($event)"
+  (keydown)="escape($event)"
+>
+  <section
+    #dialog
+    class="manatos-picture-editor-dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="title().title"
+    tabindex="-1"
+    [style.--manatos-font-scale]="fontScale()/100"
+  >
+    <manatos-popup-title
+      [model]="title()"
+      [showCloseButton]="true"
+      [fontScalePercent]="fontScale()"
+      [debuggerAllowed]="popupOptions()?.debuggerAllowed ?? false"
+      [debuggerForeground]="debuggerForeground()"
+      [languages]="popupOptions()?.languages ?? []"
+      [currentLanguage]="popupOptions()?.currentLanguage ?? null"
+      [showLanguageSelection]="true"
+      (languageSelected)="setLanguage($event)"
+      (fontScaleChanged)="fontScale.set($event)"
+      (closeRequested)="close()"
+      (debuggerRequested)="inspect()"
+    />
+    <div class="manatos-picture-editor-content">
+      @if (count() > 1) {
+      <div
+        class="manatos-picture-editor-batch"
+        role="group"
+        [attr.aria-label]="language()==='EL' ? 'Επιλεγμένες φωτογραφίες' : 'Selected pictures'"
+      >
+        @for (file of request().files; track $index; let i = $index) {
+        <button
+          type="button"
+          [disabled]="busy()"
+          (click)="chooseBatchFile(i)"
+          [class.active]="i===index()"
+          [attr.aria-pressed]="i===index()"
+          [attr.title]="file.name"
+        >
+          <img [src]="previews()[i]" alt="" />
+          <span>{{ file.name }}</span>
+          @if (i !== index() && isPrepared(i)) { <i class="bi bi-check" aria-hidden="true"></i> }
+        </button>
+        }
+      </div>
+      } @if (imagePreparing() && !editor()?.error()) {
+      <div class="manatos-picture-editor-loading" role="status" aria-live="polite">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        {{ language() === 'EL' ? 'Προετοιμασία εικόνας…' : 'Preparing image…' }}
+      </div>
+      }
+      <manatos-picture-editor [file]="currentFile()" [policy]="policy()" [language]="language()" />
+      @if (error()) {
+      <p role="alert" class="manatos-picture-editor-error">{{ error() }}</p>
+      }
+    </div>
+    <footer class="manatos-picture-editor-actions" data-picture-editor-actions>
+      <button type="button" (click)="close()" [disabled]="busy()">
+        {{ language()==='EL' ? 'Άκυρον' : 'Cancel' }}
+      </button>
+      <button
+        type="button"
+        class="primary"
+        (click)="apply()"
+        [disabled]="busy() || !editor()?.ready()"
+      >
+        <i class="bi bi-crop" aria-hidden="true"></i>
+        {{ index()+1 < count() ? (language()==='EL' ? 'Επόμενη φωτογραφία' : 'Next picture') :
+        (language()==='EL' ? 'Χρήση φωτογραφίας' : 'Use photo') }}
+      </button>
+    </footer>
+  </section>
+</div>

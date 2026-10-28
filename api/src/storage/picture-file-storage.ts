@@ -1,7 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { operationContext, type SysBOPictureValue } from '@manatos/shared';
+import { type SysBOPictureValue } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 const extensions: Record<SysBOPictureValue['contentType'], string> = {
   'image/jpeg': 'jpg',

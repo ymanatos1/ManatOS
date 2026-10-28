@@ -1,7 +1,8 @@
+.angular
 node_modules
 dist
+dist-host
 coverage
 data/database.json.tmp
 ui.EJS0/public/vendor
-
 ui.EJS0/public/dist

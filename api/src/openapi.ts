@@ -1,5 +1,10 @@
 import { openApiSecuritySchemes, openApiTags } from './openapi/common.js';
 import {
+  nativeOAuthStartOperation,
+  nativeOAuthClaimOperation,
+  nativeOAuthCancelOperation,
+} from './openapi/native-oauth-operations.js';
+import {
   sysBOConfigurationValueOperation,
   sysBOConfigurationsOperation,
 } from './openapi/configuration-operations.js';
@@ -43,6 +48,7 @@ import {
   apiFailureSchema,
   businessObjectSchemas,
   platformAuthorizationCapabilitiesSchema,
+  uiBootstrapResponseSchema,
   sysBOAuthorizationCapabilitiesSchema,
 } from './openapi/schemas.js';
 import {
@@ -118,6 +124,27 @@ export function buildOpenApiSpec() {
       aggregateCommit: true,
     },
     {
+      path: '/api/v1/SysGuards',
+      name: 'Guard',
+      tag: 'SysBO / Panoptes Surveillance',
+      uiMetadata: true,
+      aggregateCommit: true,
+    },
+    {
+      path: '/api/v1/SysProjects',
+      name: 'Project',
+      tag: 'SysBO / Panoptes Surveillance',
+      uiMetadata: true,
+      aggregateCommit: true,
+    },
+    {
+      path: '/api/v1/SysPosts',
+      name: 'Post',
+      tag: 'SysBO / Panoptes Surveillance',
+      uiMetadata: true,
+      aggregateCommit: true,
+    },
+    {
       path: '/api/v1/SysLicenses',
       name: 'License',
       tag: 'SysBO / Licenses',
@@ -161,6 +188,7 @@ export function buildOpenApiSpec() {
       schemas: {
         ...businessObjectSchemas(),
         ApiFailure: apiFailureSchema(),
+        UiBootstrapResponse: uiBootstrapResponseSchema(),
         SysBOAuthorizationCapabilities: sysBOAuthorizationCapabilitiesSchema(),
         PlatformAuthorizationCapabilities: platformAuthorizationCapabilitiesSchema(),
       },
@@ -178,6 +206,9 @@ export function buildOpenApiSpec() {
       '/api/v1/auth/me': meOperation(),
       '/api/v1/auth/sessions': sessionsOperation(),
       '/api/v1/auth/password': passwordOperation(),
+      '/api/v1/auth/native-oauth/attempts': nativeOAuthStartOperation(),
+      '/api/v1/auth/native-oauth/attempts/{id}/claim': nativeOAuthClaimOperation(),
+      '/api/v1/auth/native-oauth/attempts/{id}': nativeOAuthCancelOperation(),
 
       '/api/v1/public/ui-bootstrap': uiBootstrapOperation(),
       '/api/v1/public/external-auth-providers': publicExternalAuthProvidersOperation(),

@@ -1,0 +1,122 @@
+:host {
+  display: inline-flex;
+}
+
+.platform-selector {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  height: 42px;
+  color: #12365d;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(18, 54, 93, 0.2);
+  border-radius: 0.42rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0 rgba(18, 54, 93, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
+.platform-selector:hover,
+.platform-selector:focus-within {
+  color: #0b2c52;
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(18, 54, 93, 0.3);
+}
+
+.platform-current,
+.platform-toggle,
+.platform-option {
+  font: inherit;
+  text-decoration: none;
+}
+
+.platform-current,
+.platform-toggle {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.platform-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.35rem 0 0.85rem;
+  font-size: calc(0.95rem * var(--manatos-font-scale));
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.platform-current.platform-none {
+  cursor: default;
+}
+
+.platform-icon {
+  font-size: calc(1rem * var(--manatos-font-scale));
+  line-height: 1;
+}
+
+.platform-toggle {
+  width: 30px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.platform-menu {
+  position: absolute;
+  z-index: 1000;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  min-width: max(100%, 10rem);
+  padding: 0.3rem;
+  border: 1px solid rgba(18, 54, 93, 0.2);
+  border-radius: 0.55rem;
+  background: #ffffff;
+  box-shadow: 0 0.35rem 0.9rem rgb(0 0 0 / 18%);
+  color: #12365d;
+}
+
+.platform-option {
+  display: grid;
+  grid-template-columns: 1rem 1.1rem 1fr;
+  gap: 0.4rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  border: 0;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: #12365d;
+  font-size: calc(0.9rem * var(--manatos-font-scale));
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.platform-option:hover {
+  background: #edf4fb;
+}
+
+.platform-option.selected {
+  background: #f3f7fb;
+  font-weight: 500;
+}
+
+.check {
+  text-align: center;
+}
+
+.platform-option-icon {
+  font-size: calc(0.95rem * var(--manatos-font-scale));
+  line-height: 1;
+}
+
+.platform-option:first-child {
+  grid-template-columns: 1rem 1fr;
+}

@@ -1,0 +1,29 @@
+<!-- One Field semantic owner. A view representation replaces only its native presentation. -->
+@if (fieldPresentation(); as field) { @if (field.visible) { @if (representation(); as display) {
+<div
+  class="manatos-entry-readonly-field"
+  [attr.data-entry-layout-id]="item().layoutId"
+  [attr.data-entry-representation]="display.kind"
+  [style.grid-column]="'span ' + item().span"
+>
+  @if (display.kind !== 'portrait') {
+  <div class="manatos-entry-readonly-label">{{ field.label }}</div>
+  }
+  <div class="manatos-entry-readonly-value" [attr.data-ctx-field-container]="field.field">
+    @if (display.kind === 'portrait' && display.imageUrl) {
+    <img class="manatos-entry-readonly-portrait" [src]="display.imageUrl" [alt]="field.label" />
+    } @else if (display.href) {
+    <a [href]="display.href">{{ display.text }}</a>
+    } @else if (display.kind !== 'portrait') {
+    <span [class.manatos-entry-readonly-badge]="display.kind === 'badge'">{{ display.text }}</span>
+    }
+  </div>
+</div>
+} @else {
+<manatos-form-field
+  [attr.data-entry-layout-id]="item().layoutId"
+  [field]="field"
+  [changed]="field.dirty"
+  [style.grid-column]="'span ' + item().span"
+/>
+} } }

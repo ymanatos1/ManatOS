@@ -1,0 +1,6 @@
+:host {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--manatos-title-border);
+  border-radius: 0.65rem 0.65rem 0 0;
+  background: var(--manatos-title-bg);
+}

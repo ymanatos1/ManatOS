@@ -578,7 +578,6 @@
             list: {
               definition: snapshot.definition,
               query: snapshot.query,
-              originalEntries: snapshot.originalEntries.map((candidate) => ({ ...candidate })),
               entries: snapshot.entries.map((candidate) => ({ ...candidate })),
               selectedIds: [...snapshot.selectedIds],
               loading: snapshot.loading,

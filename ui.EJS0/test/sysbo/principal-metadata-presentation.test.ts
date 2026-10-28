@@ -228,10 +228,12 @@ describe('metadata-driven Principal presentation', () => {
     const hierarchyRuntime = await uiSource('public/js/sysbo/hierarchy/hierarchy-tree.js');
     const hierarchyModel = await uiSource('src/presentation/metadata/hierarchy-workspace.ts');
 
-    expect(uiMetadata).toContain("label: 'Add organization'");
+    expect(uiMetadata).toContain(
+      "label: '@EN.manatos.principals.principals.label.AddOrganization'",
+    );
     expect(uiMetadata).toMatch(/addOrganization:[\s\S]*?emphasis: 'solid'/);
     expect(uiMetadata).toMatch(
-      /organization:[\s\S]*?label: 'Organization'[\s\S]*?emphasis: 'outline'/,
+      /organization:[\s\S]*?label: '@EN\.manatos\.contacts\.addresses\.label\.Organization'[\s\S]*?emphasis: 'outline'/,
     );
     expect(uiMetadata).toContain("href: '/bo/sys-principals/hierarchy/new'");
     expect(uiMetadata).toContain("href: '/bo/sys-principals/{id}/hierarchy'");
@@ -274,7 +276,7 @@ describe('metadata-driven Principal presentation', () => {
     const canonical = await sharedSource('src/metadata/bo/manatos/principals/bo-principals.ts');
     const uiMetadata = await sharedSource('src/metadata/ui/manatos/principals/ui-principals.ts');
 
-    expect(canonical).toContain("label: 'Full name'");
+    expect(canonical).toContain("label: '@EN.manatos.auth.users.label.FullName'");
     expect(canonical).toContain("key: 'firstName'");
     expect(canonical).toContain("key: 'lastName'");
     expect(canonical).not.toContain('triggeredBy');

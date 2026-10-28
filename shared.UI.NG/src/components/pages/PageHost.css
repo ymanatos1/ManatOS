@@ -1,0 +1,6 @@
+:host,
+.manatos-page-host {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+}

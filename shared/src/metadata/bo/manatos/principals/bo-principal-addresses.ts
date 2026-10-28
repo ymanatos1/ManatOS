@@ -7,8 +7,9 @@ export const sysBOPrincipalAddressesMetadata: SysBOMetadata<SysPrincipalAddress>
   name: 'sysPrincipalAddresses',
   subsystem: 'principals',
   exposure: 'internal',
-  label: 'Principal address',
-  pluralLabel: 'Principal addresses',
+  label: '@EN.manatos.principals.principalAddresses.label.PrincipalAddress' /* Principal address */,
+  pluralLabel:
+    '@EN.manatos.principals.principalAddresses.pluralLabel.PrincipalAddresses' /* Principal addresses */,
   primaryField: 'name',
   relationships: {
     principal: {
@@ -29,19 +30,20 @@ export const sysBOPrincipalAddressesMetadata: SysBOMetadata<SysPrincipalAddress>
     ...commonSysBOFields,
     name: {
       ...commonSysBOFields.name!,
-      label: 'Relationship key',
+      label:
+        '@EN.manatos.principals.principalAddresses.label.RelationshipKey' /* Relationship key */,
       readOnly: true,
     },
     principalId: {
       key: 'principalId',
-      label: 'Principal',
+      label: '@EN.manatos.auth.userInvitations.label.Principal' /* Principal */,
       type: 'reference',
       order: 20,
       required: true,
     },
     addressId: {
       key: 'addressId',
-      label: 'Address',
+      label: '@EN.manatos.contacts.addresses.label.Address' /* Address */,
       type: 'reference',
       order: 30,
       required: true,

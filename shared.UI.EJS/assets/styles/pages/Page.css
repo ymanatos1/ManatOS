@@ -1,0 +1,32 @@
+.page {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+  transition: grid-template-columns 0.18s ease;
+}
+
+.page.has-details {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.page-main {
+  min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+  .page.has-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page.has-details > .page-details {
+    position: fixed;
+    z-index: 1040;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(360px, 90vw);
+    box-shadow: -8px 0 28px rgb(7 26 61 / 15%);
+  }
+}

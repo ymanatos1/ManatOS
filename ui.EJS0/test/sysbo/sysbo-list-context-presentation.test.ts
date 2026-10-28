@@ -148,7 +148,7 @@ describe('SysBO V2 CTX data flow', () => {
 
   it('exposes a consistent listExceptions filter slot in list CTX', async () => {
     const contextSource = await readFile(
-      resolve(testDirectory, '../../src/runtime/list/entity-list-query.ts'),
+      resolve(testDirectory, '../../../shared.UI/src/components/list/data/entity-list-query.ts'),
       'utf8',
     );
     expect(contextSource).toContain('listExceptions');

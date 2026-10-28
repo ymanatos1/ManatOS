@@ -1,0 +1,286 @@
+<section class="storage-page" aria-label="System Settings">
+  <div class="card shadow-sm mb-3">
+    <header class="card-header d-flex justify-content-between align-items-center gap-2">
+      <div>
+        <h2 class="h5 mb-1">
+          <i class="bi bi-database-gear me-2"></i>
+          {{ t('Storage', 'Αποθήκευση') }}
+        </h2>
+        <small class="text-secondary">
+          {{ t( 'Configure the datastore selected for the next API startup.', 'Ρυθμίστε την
+          αποθήκευση για την επόμενη εκκίνηση του API.' ) }}
+        </small>
+      </div>
+      @if (!readOnly()) {
+      <button
+        type="button"
+        class="btn btn-primary btn-sm"
+        [disabled]="busy()"
+        (click)="open('new')"
+      >
+        <i class="bi bi-plus-lg me-1"></i>
+        {{ t('Add configuration', 'Νέα ρύθμιση') }}
+      </button>
+      }
+    </header>
+
+    <div class="card-body">
+      @if (readOnly()) {
+      <div class="alert alert-info">
+        {{ t( 'Inspection only. Only Administrators can change storage settings.', 'Μόνο οι
+        διαχειριστές μπορούν να αλλάξουν ρυθμίσεις.' ) }}
+      </div>
+      }
+      <div class="alert alert-warning">
+        <i class="bi bi-arrow-repeat me-2"></i>
+        {{ t( 'Selection takes effect only after API restart. The running datastore is not
+        switched.', 'Η αλλαγή ενεργοποιείται μόνο μετά την επανεκκίνηση του API.' ) }}
+      </div>
+
+      @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+      } @if (message()) {
+      <div class="alert alert-success" role="status">{{ message() }}</div>
+      } @if (loading()) {
+      <p role="status">{{ t('Loading storage settings…', 'Φόρτωση ρυθμίσεων…') }}</p>
+      } @if (snapshot(); as model) {
+      <!-- Selection changes only next-start configuration; it never hot-swaps storage. -->
+      <div class="row g-2 mb-3 align-items-end">
+        <div class="col-md-8">
+          <div class="form-label">
+            {{ t( 'Storage configuration for next API start', 'Αποθήκευση στην επόμενη εκκίνηση' )
+            }}
+          </div>
+          <details class="storage-rich-picker" #nextPicker>
+            <summary
+              class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between gap-2 text-start"
+              [attr.aria-label]="t('Storage configuration for next API start', 'Αποθήκευση στην επόμενη εκκίνηση')"
+              [attr.aria-disabled]="readOnly() || busy()"
+              [attr.tabindex]="readOnly() || busy() ? -1 : null"
+              (click)="readOnly() || busy() ? $event.preventDefault() : null"
+            >
+              @if (selectedConfiguration(); as active) {
+              <span class="d-flex align-items-center gap-2 min-w-0">
+                <strong class="text-truncate">{{ active.name }}</strong>
+                <span class="text-secondary">—</span>
+                <img [src]="logo(adapter(active.adapterId))" alt="" width="20" height="20" />
+                <span class="text-truncate"
+                  >{{ translate(adapter(active.adapterId)?.name ?? active.adapterId) }}</span
+                >
+                <span class="text-secondary text-nowrap small"
+                  >{{ translate(active.status) }} ({{ translate(active.stage) }})</span
+                >
+              </span>
+              } @else {
+              <span>{{ t('Choose storage configuration', 'Επιλέξτε ρύθμιση αποθήκευσης') }}</span>
+              }
+              <i class="bi bi-chevron-down ms-auto" aria-hidden="true"></i>
+            </summary>
+            <div
+              class="storage-rich-picker-menu"
+              role="group"
+              [attr.aria-label]="t('Storage configurations', 'Ρυθμίσεις αποθήκευσης')"
+            >
+              @for (item of model.configurations; track item.id) {
+              <button
+                type="button"
+                class="storage-rich-option d-flex align-items-center gap-2"
+                [class.active]="item.id === selected()"
+                [disabled]="!canSelect(item)"
+                (click)="chooseNext(item.id, nextPicker)"
+              >
+                <strong class="text-truncate">{{ item.name }}</strong><span>—</span>
+                <img [src]="logo(adapter(item.adapterId))" alt="" width="20" height="20" />
+                <span class="text-truncate"
+                  >{{ translate(adapter(item.adapterId)?.name ?? item.adapterId) }}</span
+                >
+                <span class="ms-auto small text-nowrap"
+                  >{{ translate(item.status) }} ({{ translate(item.stage) }})</span
+                >
+              </button>
+              }
+            </div>
+          </details>
+        </div>
+        @if (!readOnly()) {
+        <div class="col-md-auto">
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+            [disabled]="busy() || selected() === model.selectedConfigurationId"
+            (click)="select()"
+          >
+            {{ t('Apply selection', 'Εφαρμογή επιλογής') }}
+          </button>
+        </div>
+        }
+      </div>
+
+      @if (model.selectedConfigurationId !== model.runningConfigurationId) {
+      <div class="small text-warning-emphasis mb-3">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        {{ t( 'Restart pending: selected and running configurations differ.', 'Εκκρεμεί
+        επανεκκίνηση.' ) }}
+      </div>
+      }
+
+      <!-- Server-ordered configuration table; mutation controls are admin-only. -->
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th></th>
+              <th>{{ t('Name', 'Όνομα') }}</th>
+              <th>{{ t('Adapter', 'Προσαρμογέας') }}</th>
+              <th>{{ t('Status', 'Κατάσταση') }}</th>
+              <th>{{ t('Stage', 'Στάδιο') }}</th>
+              <th class="text-end">{{ t('Actions', 'Ενέργειες') }}</th>
+            </tr>
+          </thead>
+          <tbody data-storage-configurations>
+            @for (item of model.configurations; track item.id) {
+            <tr
+              [attr.data-storage-configuration-id]="item.id"
+              [draggable]="!readOnly() && !busy()"
+              (dragstart)="dragStart($event, item.id)"
+              (dragover)="dragOver($event)"
+              (drop)="dragDrop($event)"
+              (dragend)="dragEnd($event)"
+            >
+              <td
+                class="text-secondary text-center storage-configuration-drag-handle"
+                [attr.title]="t('Drag to reorder', 'Σύρετε για αλλαγή σειράς')"
+              >
+                @if (!readOnly()) {
+                <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+                }
+              </td>
+              <td>
+                <strong>{{ item.name }}</strong>
+              </td>
+              <td>
+                <span class="d-inline-flex align-items-center gap-2"
+                  ><img
+                    [src]="logo(adapter(item.adapterId))"
+                    alt=""
+                    width="22"
+                    height="22"
+                    class="rounded"
+                  />{{ translate(adapter(item.adapterId)?.name ?? item.adapterId) }}</span
+                >
+              </td>
+              <td><span [class]="'badge '+statusClass(item)">{{ statusLabel(item) }}</span></td>
+              <td>{{ translate(item.stage) }}</td>
+              <td class="text-end text-nowrap">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary me-1"
+                  [disabled]="busy()"
+                  (click)="open(item)"
+                >
+                  @if (readOnly()) {
+                  <i class="bi bi-eye me-1"></i>
+                  {{ t('Inspect', 'Προβολή') }} } @else {
+                  <i class="bi bi-sliders me-1" aria-hidden="true"></i>{{ t('Configure', 'Ρύθμιση')
+                  }} }
+                </button>
+                @if (!readOnly()) {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger"
+                  [disabled]="
+                          busy() ||
+                          item.id === model.selectedConfigurationId ||
+                          item.id === model.runningConfigurationId
+                        "
+                  (click)="remove(item)"
+                >
+                  <i class="bi bi-trash3 me-1" aria-hidden="true"></i>{{ t('Delete', 'Διαγραφή') }}
+                </button>
+                }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      }
+    </div>
+  </div>
+
+  @if (snapshot(); as model) {
+  <section class="card shadow-sm">
+    <header class="card-header">
+      <h3 class="h6 mb-0">
+        <i class="bi bi-bug me-2"></i>
+        {{ t('Storage diagnostics', 'Διαγνωστικά αποθήκευσης') }}
+      </h3>
+    </header>
+    <div class="card-body">
+      <label class="form-check mb-2">
+        <input
+          type="checkbox"
+          class="form-check-input"
+          role="switch"
+          [checked]="debugEnabled()"
+          [disabled]="readOnly() || busy()"
+          (change)="debugEnabled.set($any($event.target).checked)"
+        />
+        <span class="form-check-label">
+          {{ t( 'Capture API / storage context snapshots', 'Καταγραφή στιγμιοτύπων API /
+          αποθήκευσης' ) }}
+        </span>
+      </label>
+      <label for="storage-debug-path" class="form-label">
+        {{ t('Output directory', 'Φάκελος εξόδου') }}
+      </label>
+      <input
+        id="storage-debug-path"
+        type="text"
+        class="form-control font-monospace mb-2"
+        [value]="debugDirectory()"
+        [readOnly]="readOnly() || busy()"
+        (input)="debugDirectory.set($any($event.target).value)"
+      />
+      <div class="form-text mb-2">
+        {{ t('Default: ../data/logs/api/. Relative paths are resolved by the API process.',
+        'Προεπιλογή: ../data/logs/api/. Οι σχετικές διαδρομές υπολογίζονται από το API.') }}
+      </div>
+      @if (!readOnly()) {
+      <button
+        type="button"
+        class="btn btn-outline-primary btn-sm"
+        [disabled]="busy()"
+        (click)="saveDebugging()"
+      >
+        {{ t('Save diagnostics', 'Αποθήκευση διαγνωστικών') }}
+      </button>
+      }
+    </div>
+  </section>
+
+  <!-- This child owns the nested popup and its CTX lifecycle. -->
+  @if (editing(); as item) {
+  <manatos-storage-wizard-popup
+    [contextTree]="contextTree()"
+    [snapshot]="model"
+    [configuration]="item === 'new' ? null : item"
+    [readOnly]="readOnly()"
+    [language]="language()"
+    [languages]="languages()"
+    [currentLanguage]="currentLanguage()"
+    (languageSelected)="languageSelected.emit($event)"
+    [debuggerAllowed]="debuggerAllowed()"
+    [debuggerForeground]="debuggerForeground()"
+    [debuggerDocked]="debuggerDocked()"
+    [debuggerDockWidth]="debuggerDockWidth()"
+    [initialFontScalePercent]="initialFontScalePercent()"
+    (debuggerRequested)="debuggerRequested.emit($event)"
+    (flowDebuggerRequested)="flowDebuggerRequested.emit($event)"
+    (fontScaleChanged)="fontScaleChanged.emit($event)"
+    (closeRequested)="requestWizardDismissal()"
+    (dismissed)="editing.set(null)"
+    (committed)="saved()"
+  />
+  } }
+</section>

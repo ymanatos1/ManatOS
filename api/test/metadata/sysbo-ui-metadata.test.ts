@@ -20,20 +20,23 @@ describe('metadata-driven SysBO UI conventions', () => {
     for (const metadata of entries) {
       const general = metadata.record.tabs.find((tab) => tab.id === 'general');
       expect(general, `${metadata.key} should declare a General tab`).toBeDefined();
-      expect(general?.label).toBe('General');
+      // UI metadata declares a language-independent catalogue reference;
+      // presentation resolves it in the selected language.
+      expect(general?.label).toBe('@CM.AccountGeneral');
       expect(general?.icon).toBe('info-circle');
       expect(general?.layout).toBe('form');
     }
   });
 
-  it('places Enabled second in every General tab after its leading field', () => {
+  it('places Enabled second when declared in a General tab', () => {
     for (const metadata of Object.values(allSysBOUIMetadata)) {
       const general = metadata.record.tabs.find((tab) => tab.id === 'general');
       expect(general, `${metadata.key} should declare General`).toBeDefined();
-      expect(
-        tabContentKeys(general?.content)[1],
-        `${metadata.key} should place Enabled second`,
-      ).toBe('enabled');
+      const fields = tabContentKeys(general?.content);
+      // Minimal entity forms need not expose the inherited Enabled field.
+      if (!fields.includes('enabled')) continue;
+
+      expect(fields[1], `${metadata.key} should place Enabled second`).toBe('enabled');
 
       if (general?.content?.length) {
         const fieldContent = general.content.filter((content) => content.kind === 'field');
@@ -223,7 +226,7 @@ describe('metadata-driven SysBO UI conventions', () => {
       kind: 'command',
       command: 'verify-email',
       placement: 'footer-leading',
-      label: 'Verify email',
+      label: '@EN.manatos.auth.users.label.VerifyEmail',
       icon: 'envelope-check',
       tone: 'success',
       emphasis: 'outline',
@@ -235,13 +238,15 @@ describe('metadata-driven SysBO UI conventions', () => {
     const licenses = allSysBOUIMetadata['sys-licenses'];
 
     expect(sysBOApplicationsMetadata.fieldDefinition.enabled?.createDefaultValue).toBe(true);
-    expect(licenses.record.fieldOverrides.name?.label).toBe('License name');
+    expect(licenses.record.fieldOverrides.name?.label).toBe(
+      '@EN.manatos.licensing.licenses.label.LicenseName',
+    );
     expect(sysBOLicensesMetadata.fieldDefinition.platformId?.createDefaultValue).toEqual({
       expression: "FirstCtx($enums.SysPlatform.values, 'value')",
     });
     expect(enumItemsForField(sysBOLicensesMetadata.fieldDefinition.platformId)[0]).toMatchObject({
       value: expect.any(String),
-      label: 'protoCRM',
+      label: { EN: 'protoCRM', EL: 'protoCRM' },
     });
     expect(sysBOLicensesMetadata.fieldDefinition.status?.createDefaultValue).toBe('Active');
     expect(sysBOLicensesMetadata.fieldDefinition.validFrom?.createDefaultValue).toEqual({

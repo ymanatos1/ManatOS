@@ -1,0 +1,144 @@
+/*
+ * Registration-specific presentation.
+ *
+ * Common modal, hero, forms and buttons come from AuthPopup.css.
+ * These rules add only the registration method and email-tab layouts.
+ */
+
+.register-tab[hidden] {
+  display: none !important;
+}
+
+.register-email-form {
+  margin: 0;
+}
+
+.register-method-extra {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+/* Register with Email — EJS0 visual parity. */
+.auth-email-registration-button {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #1769d2;
+  border-radius: 0.65rem;
+  color: #fff;
+  background: linear-gradient(135deg, #1d78ef, #1264d5);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 7px 18px rgba(20, 100, 213, 0.16);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+.auth-email-registration-button:hover,
+.auth-email-registration-button:focus-visible {
+  color: #fff;
+  background: linear-gradient(135deg, #176fe2, #0e59c1);
+  box-shadow: 0 9px 22px rgba(20, 100, 213, 0.22);
+  transform: translateY(-1px);
+}
+
+.auth-email-registration-button:focus-visible {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+.auth-email-registration-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 1.15rem;
+}
+
+.auth-email-registration-copy {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.auth-email-registration-copy strong {
+  color: #fff;
+  font-size: calc(0.92rem * var(--manatos-font-scale));
+}
+
+.auth-email-registration-copy small {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: calc(0.73rem * var(--manatos-font-scale));
+}
+
+.auth-email-registration-button .auth-provider-chevron {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.auth-provider-chevron {
+  color: #7b90a8;
+}
+
+.auth-method-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  color: #64758a;
+  font-size: calc(0.78rem * var(--manatos-font-scale));
+  line-height: 1.45;
+}
+
+.auth-method-note .bi {
+  color: #27965a;
+}
+
+/* Email-registration tab: two field columns. */
+:host ::ng-deep .auth-email-registration-intro {
+  grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.3fr);
+  gap: 1.25rem;
+  padding-bottom: 1rem;
+}
+
+:host ::ng-deep .auth-email-registration-intro .auth-entry-illustration {
+  min-height: 112px;
+}
+
+.auth-registration-form-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d5e0ed;
+  border-radius: 0.75rem;
+  background: #fbfdff;
+}
+
+/* Common PopupActions keeps Cancel/Create account to the right. */
+.register-back {
+  margin-right: auto;
+}
+
+.sign-in-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 767.98px) {
+  :host ::ng-deep .auth-email-registration-intro {
+    grid-template-columns: 1fr;
+  }
+
+  :host ::ng-deep .auth-email-registration-intro {
+    gap: 0.65rem;
+  }
+}

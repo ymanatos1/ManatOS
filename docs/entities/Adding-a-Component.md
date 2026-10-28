@@ -53,11 +53,9 @@ invent a parallel state model merely for presentation. Derived/calculated behavi
 in canonical metadata/runtime expressions rather than being reparsed or reimplemented in
 the EJS template.
 
-Popup components use the shared popup lifecycle and the same recursive `ctx.ui.level`
-topology as pages and embedded children. A popup is a child UI level with `control.host =
-'popup'`; there is no parallel `ctx.<leaf-page>.popup` state model. Popup CTX inspection
-belongs in the header immediately before Close/X; individual popup bodies must not choose
-arbitrary CTX-button placement.
+Popup components use the shared popup lifecycle and canonical
+`ctx.<leaf-page>.popup` projection. Popup CTX inspection belongs in the header immediately
+before Close/X; individual popup bodies must not choose arbitrary CTX-button placement.
 
 The CTX action is a z-order toggle. Its first activation raises Developer Tools above the
 popup and selects the relevant CTX path; the next activation returns Developer Tools behind
@@ -115,14 +113,10 @@ Browser runtimes mirror the same responsibility boundaries where there is a dedi
 
 ```text
 public/js/
-├── runtime/
-│   └── ui-host-runtime.js
 ├── popups/
 │   ├── popup-runtime.js
 │   └── record-selector.js
 └── sysbo/
-    ├── entry/
-    │   ├── field-runtime.js
-    │   └── fields/
+    ├── entry/field-runtime.js
     └── hierarchy/
 ```

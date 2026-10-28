@@ -6,20 +6,21 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
   key: 'sys-configurations',
   name: 'sysConfigurations',
   subsystem: 'configuration',
-  label: 'Configuration',
-  pluralLabel: 'Configurations',
+  label: '@EN.manatos.configuration.configurations.label.Configuration' /* Configuration */,
+  pluralLabel:
+    '@EN.manatos.configuration.configurations.pluralLabel.Configurations' /* Configurations */,
   primaryField: 'name',
   // Canonical fields
   fieldDefinition: {
     ...commonSysBOFields,
     name: {
       ...commonSysBOFields.name!,
-      label: 'Setting',
+      label: '@EN.manatos.configuration.configurations.label.Setting' /* Setting */,
       readOnly: true,
     },
     value: {
       key: 'value',
-      label: 'Value',
+      label: '@EN.manatos.configuration.configurations.label.Value' /* Value */,
       type: 'string',
       order: 20,
 
@@ -27,7 +28,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     valueEncrypted: {
       key: 'valueEncrypted',
-      label: 'Encrypted value',
+      label: '@EN.manatos.configuration.configurations.label.EncryptedValue' /* Encrypted value */,
       type: 'string',
       order: 21,
 
@@ -37,7 +38,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     group: {
       key: 'group',
-      label: 'Group',
+      label: '@EN.manatos.configuration.configurations.label.Group' /* Group */,
       type: 'string',
       order: 30,
 
@@ -45,7 +46,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     description: {
       key: 'description',
-      label: 'Help',
+      label: '@EN.manatos.configuration.configurations.label.Help' /* Help */,
       type: 'string',
       order: 40,
 
@@ -53,7 +54,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     valueType: {
       key: 'valueType',
-      label: 'Type',
+      label: '@EN.manatos.configuration.configurations.label.Type' /* Type */,
       type: 'string',
       order: 50,
 
@@ -61,7 +62,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     allowedValues: {
       key: 'allowedValues',
-      label: 'Allowed values',
+      label: '@EN.manatos.configuration.configurations.label.AllowedValues' /* Allowed values */,
       type: 'string',
       order: 60,
 
@@ -70,7 +71,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     defaultValue: {
       key: 'defaultValue',
-      label: 'Default',
+      label: '@EN.manatos.configuration.configurations.label.Default' /* Default */,
       type: 'string',
       order: 70,
 
@@ -79,7 +80,8 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     restartRequired: {
       key: 'restartRequired',
-      label: 'Restart required',
+      label:
+        '@EN.manatos.configuration.configurations.label.RestartRequired' /* Restart required */,
       type: 'boolean',
       order: 80,
 
@@ -87,7 +89,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     editable: {
       key: 'editable',
-      label: 'Editable',
+      label: '@EN.manatos.configuration.configurations.label.Editable' /* Editable */,
       type: 'boolean',
       order: 90,
 
@@ -95,7 +97,7 @@ export const sysBOConfigurationsMetadata: SysBOMetadata<SysBOConfiguration> = {
     },
     sensitive: {
       key: 'sensitive',
-      label: 'Sensitive',
+      label: '@EN.manatos.configuration.configurations.label.Sensitive' /* Sensitive */,
       type: 'boolean',
       order: 100,
 

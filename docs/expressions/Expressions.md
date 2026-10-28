@@ -1,210 +1,134 @@
 # Expressions
 
-The expression parser is context-agnostic: variable/path syntax is validated at parse time, while CTX existence and values are resolved only when the expression is evaluated.
+Expressions are the constrained, reusable language in which metadata declares computed values, defaults, reactive predicates and other decisions. An expression specifies *what to evaluate*; its host owns the lexical context, allowed capabilities, time source, error handling and any eventual mutation. The interpreter is not JavaScript `eval` and does not authorize application operations.
 
-Current scalar literals are `string`, `number`, `boolean`, and `null`. Runtime scalar values also admit JavaScript `Date` objects so date/time-aware functions and comparisons can be added without redesigning the evaluator. Arrays and objects may be resolved through CTX paths but do not yet have general operator semantics.
+The authoritative TypeScript implementation is `shared/src/expressions/{tokenizer,parser,resolver,evaluator,types}.ts`. Registered functions and capability declarations live in `shared/src/expressions/functions/registry.ts`.
 
-## Operators
-
-ManatOS uses JavaScript-like precedence for the supported operator subset. Parentheses remain recommended whenever a business rule would otherwise be difficult to scan. Unlike JavaScript, ManatOS deliberately keeps numeric operators type-safe: arithmetic and bitwise operators require numeric operands rather than silently coercing strings/booleans.
-
-From higher to lower binding strength (with `**` above the prefix operators in the same relationship used by JavaScript):
-
-1. `**`
-2. prefix `!`, `~`, unary `+`, unary `-`
-3. `*`, `/`, `%`
-4. `+`, `-`
-5. `<<`, `>>`, `>>>`
-6. `<`, `<=`, `>`, `>=`
-7. `==`, `!=`, `===`, `!==`
-8. `&`
-9. `^`
-10. `|`
-11. `&&`
-12. `??`
-13. `||`
-14. `condition ? whenTrue : whenFalse`
-
-Supported semantics:
-
-- `+`: numeric addition when both operands are numbers. If either operand is a string, the other supported scalar is converted with `String(...)` and concatenated. Arrays/objects are intentionally rejected.
-- `-`, `*`, `/`, `%`, `**`: numeric only.
-- `!`: scalar logical NOT.
-- `&&`, `||`: lazy scalar logical operators; the right operand is evaluated only when required.
-- `??`: lazy nullish coalescing.
-- `&`, `|`, `^`: numeric bitwise AND/OR/XOR using JavaScript-compatible 32-bit integer results.
-- `~`: numeric 32-bit bitwise NOT.
-- `<<`, `>>`, `>>>`: numeric 32-bit left, signed-right, and unsigned-right shifts. Shift counts use the JavaScript 0-31 range.
-- `==`, `!=`: JavaScript-like coercive scalar equality.
-- `===`, `!==`: strict JavaScript/TypeScript equality.
-- `<`, `<=`, `>`, `>=`: JavaScript-like scalar relational comparison; valid `Date` values compare by timestamp.
-- `condition ? a : b`: lazy ternary conditional. The condition must resolve to boolean in the canonical server evaluator.
-
-Examples:
+## Language at a glance
 
 ```text
-!enabled
-enabled && $user.fields.role.value === 'Admin'
-flags & 4
-flags | 2
-flags ^ 1
-~mask
-value << 2
-value >>> 1
-1 + 2 > 2 ? 10 : 20
+Expression source
+      │
+      ▼
+  Tokenizer  ──► Parser ──► typed AST
+                               │
+         CTX root + current scope + authorized capabilities
+                               │
+                               ▼
+                        Evaluator / resolver
+                               │
+                               ▼
+                      value or typed error
 ```
 
-### CTX array addressing
+The language supports finite numeric, quoted string, boolean and `null` literals; grouped expressions; array literals; variables and CTX paths; registered function calls; unary and binary operators; and a lazy conditional operator. Object literals, user-defined functions and unrestricted JavaScript execution are not part of this language.
 
-Every CTX array remains a normal ordered array and supports zero-based numeric indexing wherever it occurs:
+## Operators and binding strength
+
+Highest to lowest (operators on separate rows have distinct binding strength where indicated):
+
+| Group | Operators | Semantics |
+|---|---|---|
+| Exponentiation | `**` | Numeric; right-associative |
+| Prefix | `!`, `~`, unary `+`, unary `-` | Scalar truthiness for `!`, numeric operands for the remaining operators |
+| Multiplication | `*`, `/`, `%` | Numeric; division and modulo reject zero denominators |
+| Addition | `+`, `-` | Number addition or supported scalar string concatenation; numeric subtraction |
+| Shifts | `<<`, `>>`, `>>>` | 32-bit bitwise shifts |
+| Relational | `<`, `<=`, `>`, `>=` | Scalar or valid date comparison |
+| Equality / membership | `==`, `!=`, `===`, `!==`, `IN` | Coercive/strict equality; strict array membership |
+| Bitwise AND | `&` | 32-bit integer AND |
+| Bitwise XOR | `^` | 32-bit integer XOR |
+| Bitwise OR | `\|` | 32-bit integer OR |
+| Logical AND | `&&` | Lazy scalar truthiness; returns the left operand when falsy, otherwise evaluates and returns the right operand |
+| Nullish fallback | `??` | Lazy fallback when left is `null` or `undefined` |
+| Logical OR | `\|\|` | Lazy scalar truthiness; returns the left operand when truthy, otherwise evaluates and returns the right operand |
+| Conditional | `test ? whenTrue : whenFalse` | Lazy conditional; **boolean condition required** |
+
+The `IN` operator is **implemented**, not reserved syntax. It requires an array on the right and returns whether a member is strictly equal to the left operand:
 
 ```text
-entry.emailAddresses[0]
-entry.emailAddresses[1].address
-entry.telephoneNumbers[1].fullNumber
+2 IN [1, 2, 3]                 // true
+'Admin' IN ['User', 'Admin']   // true
+2 IN ['2']                    // false: strict member equality
 ```
 
-When members expose a stable `id` or `key`, the same array also supports semantic keyed lookup without duplicating it into a second object:
+`IN` is case-insensitive as a keyword at tokenization (`in` and `IN` are recognized). It is **not** SQL membership: it does not run a database query or traverse a collection of objects by itself.
+
+Logical `&&` and `||` evaluate truthiness only for supported scalar values (string, number, boolean, null, undefined and valid Date). Arrays and ordinary objects are rejected as truthiness operands. Like JavaScript, these operators return operand **values**, not necessarily booleans, and skip an unnecessary right-hand branch. For example, `0 || 9` yields `9`, `5 && 'ok'` yields `'ok'`, and `'' && 99` yields `''`. Unary `!` also uses scalar truthiness. By contrast, ternary `? :` **requires an actual boolean condition** and raises an evaluation error for numeric/string conditions. Use explicit boolean comparisons for business predicates when the result must be boolean. Parentheses should make intended precedence clear.
+
+## CTX paths and lexical lookup
+
+A path begins with an absolute root (`$`), a declared alias, a relative selector, or an ordinary lexical identifier. For ordinary identifiers, only the **first member** is searched from current scope outward through its ancestors. Once the first identifier is found, subsequent members are traversed strictly downward. A later missing member does not cause the resolver to retry the path against another ancestor.
 
 ```text
-entry.emailAddresses['2b8f7232-c605-4c66-94b3-50f4c7d6a576'].address
-entry.telephoneNumbers['<telephone-number-id>'].fullNumber
+$runtime.enums.SysPlatform
+#data.current.name
+#state.fields.name
+$entities.sysUsers
+items[0].name
+items['record-id'].name
 ```
 
-Numeric indexing is positional; semantic lookup is stable across reordering. Both syntaxes use the same generic CTX resolver.
+The actual root and available aliases depend on the evaluation host. The API CTX and interactive UI CTX do not have identical root topology. `#`, `#level`, `#control`, `#data`, `#layout`, `#state` and `#flowstep` are recognized relative selectors; their meaning depends on the current semantic scope.
 
-Future candidates intentionally reserved for deliberate design include `contains`, `in`, optional/safe navigation (`?.`), richer date/time arithmetic, and general structured array/object operators.
+Array indexing is zero based; string keys can identify keyed members in supported CTX collections. Dynamic member syntax is also implemented (`object.(expression)`), where the computed segment must evaluate to a nonempty string or a nonnegative integer.
 
-## Registered functions
+## Optional traversal: `?.`
 
-All function names are case-sensitive and are registered centrally in `expressions/functions/registry.ts`. The parser validates function existence and arity from that registry; evaluation then applies the same runtime argument contract before executing the function.
-
-### `SqRoot(value: number)`
-
-Returns the numeric square root of `value`.
+**Optional path traversal is supported in both the tokenizer/parser and synchronous/asynchronous resolvers.** It is not a future feature. Its purpose is to tolerate a missing or null *receiver* without weakening mandatory traversal elsewhere.
 
 ```text
-SqRoot(81)                           -> 9
+#data.current?.managerId
+$runtime.user?.principalId
+person?.(fieldName)
 ```
 
-### `FirstCtx(collection, resultField?: string)`
-
-Returns the first member of a CTX-resolved collection, or `null` when the collection is missing/empty. If `resultField` is supplied, that property is returned from the first member. Arrays use index `0`; object maps use their first enumerable value. Ordering is therefore the caller/source collection's responsibility.
+The operator marks the **preceding path member** optional. If that receiver is `null` or absent, the path resolves to `null`; if present, traversal continues. A later mandatory member may still fail. For example:
 
 ```text
-FirstCtx(platformId.options, 'value')
-FirstCtx(customerId.options, 'id')
-FirstCtx(entries)
+person?.address.city
+person?.address?.city
 ```
 
-Typical create-default metadata:
+The first expression tolerates a missing `person` but still requires `address` when `person` exists. The second also tolerates a missing `address`. Optional traversal does **not** turn all missing names into `null` or suppress arbitrary expression errors. A mandatory unresolved name fails under the caller's evaluator/error policy.
+
+`?.` (path traversal), `??` (nullish fallback) and `? :` (conditional selection) are three distinct operators:
 
 ```text
-FirstCtx(platformId.options, 'value')
+person?.name ?? 'Unknown'
+enabled ? currentValue : previousValue
 ```
 
-This is intentionally entity-agnostic; it does not know what a Platform or Customer is.
+In this interpreter, optional traversal is a metadata expression grammar feature, not unrestricted JavaScript optional invocation. Consult [CTX Reference](../context/CTX-Reference.md) for the active host's root/scope contracts.
 
-### `CurrentDay()`
+## Synchronous versus asynchronous evaluation
 
-Returns the evaluator clock's current local calendar day at midnight in `datetime-local` form (`YYYY-MM-DDT00:00`). The function uses the evaluator-provided clock so tests and alternate hosts can remain deterministic.
+Pure calculations and CTX/clock-bound functions can be evaluated by their authorized host. Persisted-entity traversal (`TraverseEntity`) requires an explicitly granted resolver/delegate and uses the asynchronous evaluation path. An expression must not implicitly acquire datastore access merely by referring to an entity name.
+
+The registered function metadata describes argument count, argument types and required capability. The interpreter validates the signature before evaluation and emits structured failures at parse or execution boundaries. See [Expression Architecture](Expression-Architecture.md) for compilation, diagnostics, error isolation and security, and [Function Catalog](Expression-Catalog.md) for the full supported registry.
+
+## Practical interpretation
+
+| Intent | Example | Requirement |
+|---|---|---|
+| Conditional presentation | `canEdit && !busy` | Boolean-valued host facts make this result boolean |
+| Safe optional label | `person?.name ?? 'Unassigned'` | Optional receiver and fallback semantics |
+| Enum/role filter | `role IN ['Admin', 'Superuser']` | Array-literal membership |
+| Numeric rule | `quantity > 0 ? quantity * unitPrice : 0` | Numeric/boolean types |
+| Default from canonical metadata | `FirstCtx($enums.SysPlatform.values, 'value')` | Available enum scope/function capability |
+| Current-day default | `CurrentDay()` | Evaluator-provided clock |
+
+Expressions calculate and describe. They are not a substitute for server-side authorization checks, transactional storage enforcement or input validation at trust boundaries.
+
+### Operator results and evaluation boundaries
 
 ```text
-CurrentDay()                         -> 2026-08-31T00:00
+5 && 'authorized'       // 'authorized' (not true)
+0 || 20                // 20
+null ?? 'fallback'      // 'fallback'
+true ? 'yes' : 'no'    // 'yes'
 ```
 
-Typical create-default metadata:
+These examples illustrate evaluator semantics, not an authorization grant: a client expression cannot replace server policy. Structured operands are valid in operations that define their own structured semantics (for example an array on the right of `IN`) but are not generally accepted for scalar truthiness.
 
-```text
-validFrom = CurrentDay()
-```
-
-### `TraverseCtx(startId, collection, parentField, resultField?)`
-
-Follows an id-based parent chain inside a CTX collection until it reaches the terminal/root row. If `resultField` is supplied, that property is returned from the root; otherwise the root object is returned. Empty start ids return `null`. Cycles are detected explicitly and traversal is capped at 256 levels.
-
-```text
-TraverseCtx(parentId, entries, 'parentId', 'id')
-TraverseCtx(parentId, entries, 'parentId', 'name')
-```
-
-A persisted Principal root-id calculation can therefore remain completely declarative:
-
-```text
-parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')
-```
-
-### `GetTime()`
-
-Returns the evaluator clock's current Unix timestamp in milliseconds.
-
-```text
-GetTime()                            -> 1788135300000
-```
-
-Use this when a numeric timestamp is genuinely required. Prefer `CurrentDay()` when the semantic intent is a calendar-day default.
-
-### `StrFormat(format, ...values)`
-
-Replaces zero-based placeholders (`{0}`, `{1}`, ...) with scalar arguments. A placeholder whose argument is not supplied is left visible rather than silently removed.
-
-```text
-StrFormat('{0} / {1}', name, version)
-StrFormat('Hello {0}', $user.fields.name.value)
-```
-
-## Expression examples
-
-The examples below show intended metadata-style usage rather than entity-specific evaluator behavior.
-
-```text
-# Conditional editability
-principalType.option != null && principalType.option.canHaveParent === true
-
-# Conditional visibility
-mode != 'create'
-
-# Current user / current entry comparison
-id != $user.fields.id.value
-
-# Null-safe decision using an explicit comparison
-parentId == null ? null : TraverseEntity(parentId, 'sys-principals', 'parentId', 'id')
-
-# Create default from the first available CTX option
-FirstCtx(platformId.options, 'value')
-
-# Current-day default
-CurrentDay()
-
-# Presentation choice
-credentialsVerified ? 'success' : 'secondary'
-
-# Presentation icon
-hasClientSecret ? 'lock-fill' : 'lock'
-
-# String composition
-StrFormat('{0} / {1}', name, version)
-
-# Platform capability decision
-$user.permissions.platforms.protocrm.capabilities.platformAccess === true
-
-# List Add visibility
-permissions.create === true
-
-# Entry Delete visibility
-mode !== 'create' && permissions.delete === true
-
-# Entry Save visibility
-mode !== 'view' && (permissions.create === true || permissions.update === true)
-
-# Runtime constraint decision
-addConstraintReached !== true
-```
-
-## Design rules for metadata expressions
-
-Expressions should describe domain/UI relationships, not reproduce renderer logic. Prefer one-level CTX names such as `entries` when a value is intentionally made available for upward resolution. Reusable entity calculations belong in canonical business-object metadata; UI-only visibility, editability, decoration, create defaults, navigation visibility and action state belong in metadata. Prefer resolved scalar facts from CTX (`permissions.create`, platform capabilities, mode, constraint facts) over testing whole structured objects or recreating entitlement/role logic in metadata. Keep facts and policy separate: CTX should expose `addConstraintReached`, not `disableAddButton`; metadata decides how that fact affects presentation. Evaluator-backed UI decisions never replace API/domain authorization. Functions must remain entity/field agnostic so the same evaluator can serve system pages, future application pages, server-side persistence calculations, and other renderers.
-
-## Execution ownership and capabilities
-
-Expressions are execution-context independent. The current owner supplies the lexical scope and available capabilities. `TraverseCtx()` operates only on materialized context data; `TraverseEntity()` requires the canonical `entityResolver` capability and can be delegated by a browser owner when its lazy branch is actually reached. See [Expression Parsing and Evaluation Mechanics](Expression-Architecture.md).
+See [Complex Expressions](Complex-Expressions.md), [Adding Expressions](Adding-an-Expression.md) and [Events and Reactivity](Events-and-Reactivity.md).

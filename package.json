@@ -5,15 +5,22 @@
   "workspaces": [
     "shared",
     "api",
-    "ui.EJS0"
+    "ui.EJS0",
+    "shared.UI",
+    "shared.UI.EJS",
+    "ui.EJS1",
+    "shared.UI.NG",
+    "ui.NG1"
   ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:api": "npm run dev --workspace api",
-    "dev:ui": "npm run dev --workspace ui.EJS0",
+    "dev:ui": "npm run dev --workspace ui.NG1",
     "dev:ui.EJS0": "npm run dev --workspace ui.EJS0",
-    "build": "npm run build --workspace shared && npm run build --workspace api && npm run build --workspace ui.EJS0",
-    "test": "npm run test --workspace api && npm run test --workspace ui.EJS0",
+    "dev:ui.EJS1": "npm run dev --workspace ui.EJS1",
+    "dev:ui.NG1": "npm run dev --workspace ui.NG1",
+    "build": "npm run build --workspace shared && npm run build --workspace shared.UI && npm run build --workspace shared.UI.NG && npm run build --workspace shared.UI.EJS && npm run build --workspace api && npm run build --workspace ui.EJS0 && npm run build --workspace ui.NG1 && npm run build --workspace ui.EJS1",
+    "test": "npm run test --workspace shared && npm run test --workspace shared.UI && npm run test --workspace shared.UI.NG && npm run test --workspace shared.UI.EJS && npm run test --workspace api && npm run test --workspace ui.EJS0 && npm run test --workspace ui.NG1 && npm run test --workspace ui.EJS1",
     "verify": "node scripts/verify.mjs",
     "verify-run": "node scripts/verify-run.mjs",
     "format-verify-run": "npm run format && npm run verify-run",
@@ -21,7 +28,17 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "reset:data": "node scripts/reset-data.mjs",
-    "quality:check": "npm run lint && npm run format:check"
+    "quality:check": "npm run lint && npm run format:check",
+    "dev:family:api": "node scripts/dev.mjs --family api",
+    "verify:family:api": "node scripts/verify.mjs --family api",
+    "verify-run:family:api": "node scripts/verify-run.mjs --family api",
+    "format:family:api": "prettier --write shared api",
+    "format-verify-run:family:api": "npm run format:family:api && npm run verify-run:family:api",
+    "dev:family:uis": "node scripts/dev.mjs --family uis",
+    "verify:family:uis": "node scripts/verify.mjs --family uis",
+    "verify-run:family:uis": "node scripts/verify-run.mjs --family uis",
+    "format:family:uis": "prettier --write shared shared.UI shared.UI.NG shared.UI.EJS ui.EJS0 ui.NG1 ui.EJS1",
+    "format-verify-run:family:uis": "npm run format:family:uis && npm run verify-run:family:uis"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
@@ -30,7 +47,9 @@
     "eslint": "^9.34.0",
     "globals": "^16.3.0",
     "prettier": "^3.6.2",
-    "typescript-eslint": "^8.41.0"
+    "typescript-eslint": "^8.41.0",
+    "@angular/platform-browser-dynamic": "20.3.1",
+    "happy-dom": "^18.0.1"
   },
   "dependencies": {
     "nodemailer": "^9.0.5"

@@ -30,7 +30,7 @@
   const toolbarCount = Number(typeof totalEntries !== 'undefined' ? totalEntries : 0);
   const toolbarQuery = typeof query !== 'undefined' && query ? query : {};
   const toolbarSearchValue = String(toolbarQuery.search || '');
-  const toolbarSearchPlaceholder = typeof searchPlaceholder === 'string' && searchPlaceholder ? searchPlaceholder : 'Search entries';
+  const toolbarSearchPlaceholder = typeof searchPlaceholder === 'string' && searchPlaceholder ? searchPlaceholder : metadataText('@CM.SearchRecords');
 %>
 <div
   class="metadata-list-toolbar d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3"
@@ -53,7 +53,7 @@
     <% } %>
     <div class="text-secondary">
     <strong class="text-body" data-v2-list-part="count" <%= toolbarSelectorMode ? 'data-selector-count' : '' %>><%= toolbarCount %></strong>
-    <%= toolbarCount === 1 ? 'entry' : 'entries' %>
+    <%= metadataText(toolbarCount === 1 ? '@CM.EntryCountOne' : '@CM.EntryCountMany') %>
     </div>
   </div>
 
@@ -73,13 +73,21 @@
         aria-controls="<%= filterCollapseId %>"
       >
         <i class="bi bi-funnel me-1" aria-hidden="true"></i>
-        Filters
+        <%= metadataText('@CM.Filters') %>
         <% if (activeFilterCount) { %><span class="badge text-bg-primary ms-1"><%= activeFilterCount %></span><% } %>
       </button>
     <% } %>
 
     <% if (toolbarSelectorMode) { %>
-      <input class="form-control metadata-list-search" data-v2-list-part="search" type="search" placeholder="<%= toolbarSearchPlaceholder %>" data-selector-filter>
+      <input
+        class="form-control metadata-list-search"
+        data-v2-list-part="search"
+        type="search"
+        placeholder="<%= toolbarSearchPlaceholder %>"
+        title="<%= toolbarSearchPlaceholder %>"
+        aria-label="<%= toolbarSearchPlaceholder %>"
+        data-selector-filter
+      >
     <% } else { %>
       <form method="get" class="metadata-list-search-form d-flex align-items-center" role="search">
         <% for (const [key, value] of Object.entries(toolbarQuery)) { %>
@@ -93,7 +101,8 @@
           name="search"
           value="<%= toolbarSearchValue %>"
           placeholder="<%= toolbarSearchPlaceholder %>"
-          aria-label="Search entries"
+          title="<%= toolbarSearchPlaceholder %>"
+          aria-label="<%= toolbarSearchPlaceholder %>"
         >
       </form>
     <% } %>
@@ -104,13 +113,13 @@
         <a
           class="<%= action.cssClass %>"
           href="<%= action.href %>"
-          title="<%= action.title || action.label %>"
+          title="<%= metadataText(action.title || action.label) %>"
           data-v2-list-action="page:<%= action.key %>"
           data-action-href="<%= action.href %>"
-          data-action-title="<%= action.title || action.label %>"
+          data-action-title="<%= metadataText(action.title || action.label) %>"
           hidden
         >
-          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= action.label %>
+          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= metadataText(action.label) %>
         </a>
       <% } %>
 
@@ -122,7 +131,7 @@
           data-action-href="<%= clientAddAction.href %>"
           hidden
         >
-          <i class="bi bi-plus-circle me-1"></i><%= clientAddAction.label %>
+          <i class="bi bi-plus-circle me-1"></i><%= metadataText(clientAddAction.label) %>
         </a>
       <% } %>
     <% } %>

@@ -5,10 +5,12 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { resolveMetadataText } from '@manatos/shared';
 
 import { popupContent } from '../../src/presentation/popup/popup-content.js';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const metadataText = (value: string) => resolveMetadataText(value, 'EN');
 const uiSource = (relativePath: string) =>
   readFile(resolve(testDirectory, '..', '..', relativePath), 'utf8');
 const horizontalNavView = resolve(
@@ -65,6 +67,7 @@ describe('popup infrastructure presentation', () => {
 
   it('does not duplicate signed-in identity in horizontal navigation', async () => {
     const html = await ejs.renderFile(horizontalNavView, {
+      metadataText,
       currentUser: { name: 'Admin', role: 'Admin' },
       app: {
         navigation: {
@@ -86,7 +89,10 @@ describe('popup infrastructure presentation', () => {
   });
 
   it('uses the shared popup header and footer conventions for independent form popups', async () => {
-    const html = await ejs.renderFile(preferencesView, { currentUser: { id: 'user-1' } });
+    const html = await ejs.renderFile(preferencesView, {
+      currentUser: { id: 'user-1' },
+      metadataText,
+    });
     const $ = load(html);
 
     expect($('#preferencesModal .modal-header .modal-title').text()).toContain(

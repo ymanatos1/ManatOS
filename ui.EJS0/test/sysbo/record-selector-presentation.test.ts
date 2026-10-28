@@ -84,7 +84,7 @@ describe('generic existing-record selector', () => {
     expect(runtime).toContain('invocation: { ...resolvedInvocation }');
     expect(runtime).toContain('definition: snapshot.definition');
     expect(runtime).toContain('query: snapshot.query');
-    expect(runtime).toContain('originalEntries: snapshot.originalEntries.map');
+    expect(runtime).not.toContain('originalEntries: snapshot.originalEntries.map');
     expect(runtime).toContain('entries: snapshot.entries.map');
     expect(runtime).toContain('selectedIds: [...snapshot.selectedIds]');
     expect(runtime).toContain('selected: selectedCandidates().map');
@@ -130,7 +130,7 @@ describe('generic existing-record selector', () => {
     const renderPage = await uiSource('src/presentation/page/render-page.ts');
 
     expect(reference).toContain("action: 'select-existing'");
-    expect(reference).toContain('Select existing entry…');
+    expect(reference).toContain("label: '@CM.FieldToolSelect'");
     expect(reference).toContain("include('../../../../popups/selectors/record-selector'");
     expect(reference).toContain('data-reference-entity-key');
     expect(fieldRuntime).toContain("case 'select-existing'");

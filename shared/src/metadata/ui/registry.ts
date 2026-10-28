@@ -6,6 +6,9 @@ import { sysBOEmailAddressesUIMetadata } from './manatos/contacts/ui-email-addre
 import { sysBOTelephoneNumbersUIMetadata } from './manatos/contacts/ui-telephone-numbers.js';
 import { sysBOPrincipalsUIMetadata } from './manatos/principals/ui-principals.js';
 import { sysBOApplicationsUIMetadata } from './platforms/protocrm/applications/ui-applications.js';
+import { sysBOGuardsUIMetadata } from './platforms/panoptes/surveillance/ui-guards.js';
+import { sysBOProjectsUIMetadata } from './platforms/panoptes/surveillance/ui-projects.js';
+import { sysBOPostsUIMetadata } from './platforms/panoptes/surveillance/ui-posts.js';
 import { sysBOLicensesUIMetadata } from './manatos/licensing/ui-licenses.js';
 
 /**
@@ -19,6 +22,9 @@ export const allSysBOUIMetadata = {
   [sysBOUsersUIMetadata.key]: sysBOUsersUIMetadata,
   [sysBOPrincipalsUIMetadata.key]: sysBOPrincipalsUIMetadata,
   [sysBOApplicationsUIMetadata.key]: sysBOApplicationsUIMetadata,
+  [sysBOGuardsUIMetadata.key]: sysBOGuardsUIMetadata,
+  [sysBOProjectsUIMetadata.key]: sysBOProjectsUIMetadata,
+  [sysBOPostsUIMetadata.key]: sysBOPostsUIMetadata,
   [sysBOLicensesUIMetadata.key]: sysBOLicensesUIMetadata,
   [sysBOExtAuthProvidersUIMetadata.key]: sysBOExtAuthProvidersUIMetadata,
   [sysBOExternalIdentitiesUIMetadata.key]: sysBOExternalIdentitiesUIMetadata,

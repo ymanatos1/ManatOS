@@ -95,6 +95,6 @@ composite component
      └─ ordinary UI/workflow input component
 ```
 
-`date-duration-range` uses the first form because its fields remain ordinary CTX-bound entity fields. A compact hierarchy member editor using the Principal `quick` UI view uses the second pattern because the workspace owns that member draft transaction; the member editor is the canonical Principal `quick` ui-view hosted through the normal entry popup/runtime. Provider credentials deliberately use both the second and third forms: canonical `clientId` remains a canonical string field, while the plaintext secret is transient workflow state.
+`date-duration-range` uses the first form because its fields remain ordinary CTX-bound entity fields. `record-quick` uses the second because it owns a draft record transaction. Provider credentials deliberately use both the second and third forms: canonical `clientId` remains a canonical string field, while the plaintext secret is transient workflow state.
 
 This separation prevents composite components from becoming hidden alternative field systems.

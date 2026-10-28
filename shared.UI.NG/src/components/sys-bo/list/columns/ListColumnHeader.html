@@ -1,0 +1,24 @@
+<!-- ListColumnHeader template: one sortable column caption and sort action; sort eligibility comes from canonical column metadata. -->
+<div
+  class="manatos-list-column-title"
+  role="columnheader"
+  data-list-layout="ListColumnHeader"
+  [attr.data-list-column-index]="index()"
+  [attr.data-list-sort-field]="sortable() ? field() : null"
+  (click)="sort()"
+  (keydown.enter)="sort()"
+  (keydown.space)="sort(); $event.preventDefault()"
+  [attr.tabindex]="sortable() ? 0 : null"
+  [attr.aria-sort]="sortable() ? (sortState()?.sort === field() ? (sortState()?.direction === 'asc' ? 'ascending' : 'descending') : 'none') : null"
+>
+  <span data-list-column-caption>{{ caption() }}</span>
+  @if (sortable()) {
+  <i
+    class="bi manatos-list-sort-icon"
+    aria-hidden="true"
+    [class.bi-arrow-down-up]="sortState()?.sort !== field()"
+    [class.bi-arrow-up]="sortState()?.sort === field() && sortState()?.direction === 'asc'"
+    [class.bi-arrow-down]="sortState()?.sort === field() && sortState()?.direction === 'desc'"
+  ></i>
+  }
+</div>

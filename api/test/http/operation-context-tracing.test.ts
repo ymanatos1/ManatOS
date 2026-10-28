@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { AppError, operationContext } from '@manatos/shared';
+import { AppError } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 describe('API semantic error tracing', () => {
   it('keeps one request root and the complete failed semantic branch', async () => {

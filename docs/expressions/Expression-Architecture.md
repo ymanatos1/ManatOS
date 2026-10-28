@@ -4,37 +4,32 @@ This document is the programmer's reference for the ManatOS expression language:
 
 ## 1. Architectural contract
 
-The **authoring contract is expression source text** stored in canonical metadata. Parsing/compilation belongs to trusted shared/Node runtime infrastructure. Each runtime process owns one lazy, process-local AST cache keyed by the exact authored source string. The API process and UI process therefore compile independently and never exchange in-memory AST ownership. A browser does **not** re-tokenize or reparse source; when browser execution needs an AST, it asks the UI process through the single expression-compile boundary and keeps only a document-lifetime, non-semantic execution mirror keyed by source. ASTs are never CTX state, metadata state, or surface-invocation state.
+The **authoring contract is expression source text**, typically declared in metadata. The constrained language is implemented once in `shared/src/expressions/`, and its compiler and evaluator are reused by authorized TypeScript hosts. Neither expressions nor their ASTs are substitutes for CTX ownership, authorization decisions, or persistence commands.
 
 ```text
-canonical metadata / expression source
-                 |
-        +--------+------------------------------+
-        |                                       |
-        v                                       v
-   API process                             UI process
-   exact-source cache                     exact-source cache
-        |                                       |
-        v                                       v
- compileExpression()                      compileExpression()
-        |                                       |
-        v                                       v
- server/API/storage                /bo/expression/compile
- evaluate / resolve /                       |
- analyze / translate                        v
-                                      browser execution mirror
-                                      source -> AST (document lifetime)
-                                               |
-                                               v
-                                      evaluate AST against live CTX
-
-Semantic metadata / CTX / SurfaceInvocation
-                 |
-                 +---- expression source / definition identity only
-                 +---- never owns or transports AST objects
+              authored expression source
+                           │
+                           ▼
+           shared tokenizer + parser + registry
+                           │
+                           ▼
+                   compiled expression
+                AST + required capabilities
+                           │
+         ┌─────────────────┼────────────────┐
+         ▼                 ▼                ▼
+       API host       shared.UI runtime   other trusted host
+    domain/persisted    CTX reactivity    explicit scope
+       execution        and UI rules       and capabilities
+         │                 │                │
+         └─────────────────┴────────────────┘
+                           ▼
+             value / structured diagnostic
 ```
 
-This separation is intentional. Server-side and browser execution may evaluate equivalent expressions against different legitimate owners, but parsing is not duplicated in browser presentation code. Exact source may therefore be compiled once in each process that actually executes it, while the resulting AST remains private runtime infrastructure of that process. The server must not fabricate a client `ctx.ui` merely to execute UI-owned semantics, and the browser must not manufacture detached evaluator scopes, reconstruct expression inputs from the DOM, or pass ASTs between UI levels/surfaces.
+Compilation is **not limited to the Node server**. `UiReactivityRuntime` in `shared.UI/src/runtime/reactivity.ts` invokes `compileExpression()` directly, then evaluates its compiled expressions against the owning UI level in CTX. That shared runtime is consumed by the browser UIS adapters. API/server callers compile independently through the same shared implementation. Each JavaScript execution environment using the default function registry has its own process/module-local exact-source cache; this cache is an implementation optimization, not canonical state.
+
+The application must supply the legitimate execution root, current scope and capabilities. The API must not synthesize browser-only `ctx.ui` facts to authorize an operation. UI results may control presentation, but never replace authoritative API permissions or persisted calculations.
 
 ## 2. Why expressions exist
 
@@ -102,174 +97,32 @@ Higher rows bind more tightly:
 |          8 | `== != === !== IN` | equality/membership                                   |
 |          7 | `&`                | bitwise AND                                           |
 |          6 | `^`                | bitwise XOR                                           |
-|          5 | `                  | `                                                     | bitwise OR |
+|          5 | `\|`               | bitwise OR                                            |
 |          4 | `&&`               | lazy                                                  |
 |          3 | `??`               | lazy nullish coalescing                               |
-|          2 | `                  |                                                       | `          | lazy |
+|          2 | `\|\|`           | lazy logical OR                                       |
 
 The conditional operator `?:` is parsed above the binary-expression layer and supports nested conditional expressions.
 
 ### 3.4 Runtime evaluation
 
-The evaluator recursively visits the AST. Literals and arrays produce values directly; variables are resolved from the supplied execution context; operators evaluate their operands; functions are dispatched through the canonical registry. Browser entry points start from authored source/definition identity, obtain the corresponding AST from the browser execution mirror, and evaluate it against the canonical CTX owner path. That owner path is explicit per-evaluation call state and is propagated through recursive evaluation; it is never installed in shared mutable evaluator state. This matters for async capability-backed evaluation because concurrent evaluations may interleave without changing each other's lexical owner. Resolver-call de-duplication follows the same ownership rule: its promise map belongs to one explicit reactive evaluation pass and is propagated only through that pass, so independent async events cannot share remote resolver results accidentally. A cache miss is resolved through `/bo/expression/compile`, whose UI-process implementation uses the same process-global `compileExpression()` cache as other UI-server consumers. The browser never parses expression grammar itself.
+The evaluator recursively visits the AST. Literals and arrays produce values directly; variables are resolved from the supplied execution context; operators evaluate their operands; functions are dispatched through the canonical registry. `UiReactivityRuntime` compiles declared rules when creating its level-owned reactive entries, extracts dependencies from their AST nodes and evaluates with the canonical CTX root and the owning level as current scope. CTX mutations enqueue dependent entries; derived writes produce ordinary CTX notifications. A bounded evaluation budget prevents nonconvergent cycles from indefinitely rescheduling updates. Other authorized evaluator clients may compile and evaluate the shared language separately using their own legitimate roots and scopes. No AST is semantic CTX state.
 
-`&&`, `||`, `??` and `?:` preserve lazy branch semantics. An unavailable capability in a branch that is never executed therefore need not be exercised at runtime, although `requiredCapabilities` remains the static union useful for planning and diagnostics.
-
-Synchronous entry points are used when all reached functions can execute synchronously. `evaluateCompiledExpressionAsync()` / `evaluateExpressionAsync()` support asynchronous capability-backed functions such as `TraverseEntity()`.
-
-### 3.5 AST cache identity and lifecycle
-
-AST cache identity is the **exact canonical source string**. Equivalent-but-textually-different expressions (including whitespace differences) are distinct cache entries; this keeps cache semantics simple and makes authored source the stable identity. Each API/UI process starts with an empty cache on system startup and populates it lazily on first use.
-
-The AST is context-neutral. CTX ownership enters only at evaluation time through the evaluation owner/path, never by mutating or copying the AST for a surface. Consequently:
-
-- do not store AST objects beneath `ctx.*`;
-- do not add AST fields to `SurfaceInvocation`, popup/page bootstrap semantics, field metadata, or entry representation;
-- do not copy ASTs from parent to child surfaces;
-- do not create secondary per-feature compiler caches;
-- browser document caching is an execution mirror of the UI process compile service, not semantic state.
-
-The debugger follows the same rule: it may show authored source and current calculated values, but CTX inspection must not infer or render a semantic `ast` child. Explicit debugger execution may request an AST through the same compile boundary without making that AST part of CTX.
-
-## 4. Variables and CTX resolution
-
-A variable node preserves both its original path text and parsed path members. An explicit `$.*` reference is absolute; `# Expression Architecture
-
-This document is the programmer's reference for the ManatOS expression language: its portable contract, grammar, compilation pipeline, runtime execution model, CTX resolution, capabilities, diagnostics, and built-in function catalogue.
-
-## 1. Architectural contract
-
-The **authoring contract is expression source text** stored in canonical metadata. Parsing/compilation belongs to trusted shared/Node runtime infrastructure. Each runtime process owns one lazy, process-local AST cache keyed by the exact authored source string. The API process and UI process therefore compile independently and never exchange in-memory AST ownership. A browser does **not** re-tokenize or reparse source; when browser execution needs an AST, it asks the UI process through the single expression-compile boundary and keeps only a document-lifetime, non-semantic execution mirror keyed by source. ASTs are never CTX state, metadata state, or surface-invocation state.
-
-```text
-canonical metadata / expression source
-                 |
-        +--------+------------------------------+
-        |                                       |
-        v                                       v
-   API process                             UI process
-   exact-source cache                     exact-source cache
-        |                                       |
-        v                                       v
- compileExpression()                      compileExpression()
-        |                                       |
-        v                                       v
- server/API/storage                /bo/expression/compile
- evaluate / resolve /                       |
- analyze / translate                        v
-                                      browser execution mirror
-                                      source -> AST (document lifetime)
-                                               |
-                                               v
-                                      evaluate AST against live CTX
-
-Semantic metadata / CTX / SurfaceInvocation
-                 |
-                 +---- expression source / definition identity only
-                 +---- never owns or transports AST objects
-```
-
-This separation is intentional. Server-side and browser execution may evaluate equivalent expressions against different legitimate owners, but parsing is not duplicated in browser presentation code. Exact source may therefore be compiled once in each process that actually executes it, while the resulting AST remains private runtime infrastructure of that process. The server must not fabricate a client `ctx.ui` merely to execute UI-owned semantics, and the browser must not manufacture detached evaluator scopes, reconstruct expression inputs from the DOM, or pass ASTs between UI levels/surfaces.
-
-## 2. Why expressions exist
-
-Expressions move side-effect-free decisions and calculations into metadata when they depend on observable state. This allows generic renderers, validation, defaults, calculated fields and policy presentation to reuse the same declarative rule instead of introducing entity-specific imperative branches.
-
-Architectural test: **if a decision depends only on CTX-observable state and has no side effects, first evaluate whether it belongs as a declarative expression.**
-
-Expressions do not replace commands, persistence, authorization or other side-effecting domain operations.
-
-## 3. Language pipeline in detail
-
-### 3.1 Tokenization
-
-`tokenizeExpression(source)` scans source left-to-right and emits tokens with their original character position for diagnostics. Whitespace is ignored.
-
-Supported lexical forms include:
-
-- numbers: `12`, `12.5`, `.5`;
-- quoted strings with `'` or `"` and escapes such as `\\n`, `\\r`, `\\t`, escaped quotes and backslash;
-- identifiers beginning with a letter, `_` or `$`;
-- `IN` as a case-insensitive keyword operator;
-- operators documented below;
-- punctuation `(` `)` `.` `,` `[` `]` `?` `:`.
-
-Unexpected characters, malformed numbers and unterminated strings fail during parsing rather than being tolerated by the evaluator.
-
-### 3.2 Parsing and compilation
-
-`compileExpression()` performs recursive parsing and returns:
-
-```text
-CompiledExpression
-├─ source                    original source, retained for diagnostics/debugging
-├─ ast                       JSON-compatible discriminated AST
-└─ requiredCapabilities[]    static union required by reachable function nodes
-```
-
-AST node kinds are:
-
-```text
-literal       scalar literal
-array         array literal
-variable      lexical or explicit $ path
-group         parenthesized expression
-unary         + - ! ~
-binary        arithmetic/comparison/logical/bitwise/IN
-conditional   condition ? whenTrue : whenFalse
-function      registered ManatOS function call
-```
-
-Function calls are validated against the canonical shared function registry at compile time. Unknown function names and invalid arity are therefore metadata/programming errors, not late surprises in a renderer.
-
-### 3.3 Operator precedence
-
-Higher rows bind more tightly:
-
-| Precedence | Operators          | Notes                                                 |
-| ---------: | ------------------ | ----------------------------------------------------- |
-|         14 | `**`               | exponentiation; right-associative                     |
-|         13 | unary `+ - ! ~`    | exponentiation remains tighter than unary             |
-|         12 | `* / %`            | division/modulo by zero are evaluation errors         |
-|         11 | `+ -`              | `+` supports the evaluator's numeric/string semantics |
-|         10 | `<< >> >>>`        | bitwise shifts                                        |
-|          9 | `< <= > >=`        | relational comparison                                 |
-|          8 | `== != === !== IN` | equality/membership                                   |
-|          7 | `&`                | bitwise AND                                           |
-|          6 | `^`                | bitwise XOR                                           |
-|          5 | `                  | `                                                     | bitwise OR |
-|          4 | `&&`               | lazy                                                  |
-|          3 | `??`               | lazy nullish coalescing                               |
-|          2 | `                  |                                                       | `          | lazy |
-
-The conditional operator `?:` is parsed above the binary-expression layer and supports nested conditional expressions.
-
-### 3.4 Runtime evaluation
-
-The evaluator recursively visits the AST. Literals and arrays produce values directly; variables are resolved from the supplied execution context; operators evaluate their operands; functions are dispatched through the canonical registry. Browser entry points start from authored source/definition identity, obtain the corresponding AST from the browser execution mirror, and evaluate it against the canonical CTX owner path. That owner path is explicit per-evaluation call state and is propagated through recursive evaluation; it is never installed in shared mutable evaluator state. This matters for async capability-backed evaluation because concurrent evaluations may interleave without changing each other's lexical owner. Resolver-call de-duplication follows the same ownership rule: its promise map belongs to one explicit reactive evaluation pass and is propagated only through that pass, so independent async events cannot share remote resolver results accidentally. A cache miss is resolved through `/bo/expression/compile`, whose UI-process implementation uses the same process-global `compileExpression()` cache as other UI-server consumers. The browser never parses expression grammar itself.
-
-`&&`, `||`, `??` and `?:` preserve lazy branch semantics. An unavailable capability in a branch that is never executed therefore need not be exercised at runtime, although `requiredCapabilities` remains the static union useful for planning and diagnostics.
+`&&`, `||`, `??` and `?:` preserve lazy branch semantics. The logical operators use restricted scalar truthiness and return the selected **operand**, not a coerced boolean; `?:` requires a boolean condition. An unavailable capability in a branch that is never executed therefore need not be exercised at runtime, although `requiredCapabilities` remains the static union useful for planning and diagnostics.
 
 Synchronous entry points are used when all reached functions can execute synchronously. `evaluateCompiledExpressionAsync()` / `evaluateExpressionAsync()` support asynchronous capability-backed functions such as `TraverseEntity()`.
 
 ### 3.5 AST cache identity and lifecycle
 
-AST cache identity is the **exact canonical source string**. Equivalent-but-textually-different expressions (including whitespace differences) are distinct cache entries; this keeps cache semantics simple and makes authored source the stable identity. Each API/UI process starts with an empty cache on system startup and populates it lazily on first use.
+`compileExpression()` interns compiled expressions by **exact source text** in the executing JavaScript module. Custom function registries have separate registry-specific caches because their compile-time function validation can differ. Separate API, Node UI host and browser execution environments do not share one in-memory cache. Equivalent expressions containing different whitespace are distinct cache keys.
 
-The AST is context-neutral. CTX ownership enters only at evaluation time through the evaluation owner/path, never by mutating or copying the AST for a surface. Consequently:
+Compilation output is context-neutral. It must not be copied into canonical entity metadata, CTX nodes, surface invocation data or field values. The current UI reactive registry owns compiled rule references for its surface lifetime; disposing the surface releases those references and observers. The shared compiler cache is distinct from semantic surface lifecycle.
 
-- do not store AST objects beneath `ctx.*`;
-- do not add AST fields to `SurfaceInvocation`, popup/page bootstrap semantics, field metadata, or entry representation;
-- do not copy ASTs from parent to child surfaces;
-- do not create secondary per-feature compiler caches;
-- browser document caching is an execution mirror of the UI process compile service, not semantic state.
-
-The debugger follows the same rule: it may show authored source and current calculated values, but CTX inspection must not infer or render a semantic `ast` child. Explicit debugger execution may request an AST through the same compile boundary without making that AST part of CTX.
+The debugger can inspect authored source, computed results and diagnostics without treating an AST as an editable CTX child.
 
 ## 4. Variables and CTX resolution
 
-`$` denotes the CTX root. An unqualified variable is resolved lexically from the current evaluation scope according to the host's CTX rules.
-`$name` is the generic explicit absolute shorthand for `$.name`. It does not perform ancestor lookup. Therefore `$user...` means `$.user...`, `$system...` means `$.system...`, and the same rule applies to other ordinary root-owned nodes. An unqualified path such as `user...` or `system...` retains normal lexical CTX resolution and walks outward from the current level until an owning node is found. Reserved aliases such as `$entity-fields` may expand to richer canonical paths.
+A variable node preserves both its original path text and parsed path members. An explicit `$.*` reference is absolute; `$` denotes the CTX root. An unqualified variable is resolved lexically from the current evaluation scope according to the host's CTX rules.
 
 For UI evaluation, this means metadata can normally use concise field-oriented expressions while still allowing an explicit root reference when required:
 
@@ -277,11 +130,11 @@ For UI evaluation, this means metadata can normally use concise field-oriented e
 enabled
 parentId
 principalType.option.canHaveParent
-$user.permissions.userRole
-$.ui.level.control.state.dirty
+$runtime.user.permissions.userRole
+#state.entry.dirty
 ```
 
-The current UI CTX is the real browser context. UI-owned expressions execute against it; the API does not manufacture an imitation of it.
+The active UIS user projection is reached through `$runtime.user` (when the authorized host supplies it); the older `$.user` root must not be generalized to modern NG1/EJS1. The current UI CTX is the real browser context. UI-owned expressions execute against it; the API does not manufacture an imitation of it.
 
 ### CTX traversal versus entity traversal
 
@@ -460,7 +313,7 @@ Important behavioural rules:
 
 ## 9. Dependency and recalculation model
 
-Variable nodes in compiled expressions provide the source material for dependency binding. In the production browser, the owning entry runtime walks the cached AST once and resolves each variable node to a canonical CTX path using the same `resolveVariableWithPath(...)` semantics as evaluation. A canonical CTX mutation invalidates expressions whose registered paths overlap the changed path. Calculated writes use the same observable CTX mutation/event model as user-originated writes, allowing cascades to remain deterministic and inspectable.
+CTX references in compiled expressions provide dependency information. A canonical CTX mutation invalidates expressions that depend on that path. Calculated writes use the same observable CTX mutation/event model as user-originated writes, allowing cascades to remain deterministic and inspectable.
 
 Conceptually:
 
@@ -483,12 +336,6 @@ canonical CTX write
 ```
 
 A derived/read-only CTX mirror is not a second mutable authority. Dependencies may observe the canonical path and its declared related/mirror paths without introducing synchronization writes.
-
-### Production scheduler details
-
-The browser entry scheduler consumes `manatos:ctx-change`, queues the event `path` plus any `relatedPaths`, and deduplicates each `(root/event identity, changed path)` through `reactiveChangeQueueKey(...)`. Matching uses the shared `reactivePathsOverlap(...)` ancestor/descendant rule. There is no separate `value:changed`/`ctx:changed` semantic dispatcher and no `surface:<id>` dependency namespace.
-
-One queue drain owns one evaluation pass, including its resolver-promise map. A calculated write re-enters the canonical CTX mutation route. The current runaway guard stops after more than 512 reactive-entry executions.
 
 ## 10. Diagnostics and provenance
 
@@ -540,3 +387,11 @@ Do not add a function to hide entity-specific imperative logic. A reusable funct
 | `StrFormat`               | pure           | indexed text formatting                         |
 
 The function registry remains the executable source of truth. This document describes that contract for developers; when adding or changing a function, update both together.
+
+## Interpreter grammar and optional-path contracts
+
+The implemented tokenizer recognizes `?.` and `IN`, alongside `??` and the ternary `? :` operator. `?.` is path traversal, not a synonym for a general exception handler. The parser marks the **receiver** member optional; synchronous and asynchronous CTX resolvers return `null` when an optional receiver is missing or null, while mandatory members remain strict. This allows expressions such as `#data.current?.principalId ?? null` without silently accepting an unrelated misspelled mandatory path.
+
+`IN` is membership over an **array operand**; comparison uses the evaluator's strict equality. Both operators are implemented in `shared/src/expressions/{tokenizer,parser,resolver,evaluator}.ts`. The precise syntax and examples are in [Expressions](Expressions.md).
+
+The lexical resolver searches the first ordinary identifier from the current scope through ancestors, then traverses subsequent members downward only. Host-controlled capabilities distinguish pure functions, the clock, CTX and persisted-entity traversal; the expression does not authorize itself or write business state.

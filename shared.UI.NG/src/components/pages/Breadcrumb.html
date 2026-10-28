@@ -1,0 +1,17 @@
+<div class="breadcrumb-row">
+  <nav class="page-breadcrumb" [attr.aria-label]="multilingual().Breadcrumb">
+    @for (item of items(); track $index) { @if ($index > 0) {
+    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+    } @if (item.href && $index < items().length - 1) {
+    <a [href]="item.href">{{ item.label }}</a>
+    } @else {
+    <span [attr.aria-current]="$index === items().length - 1 ? 'page' : null">
+      {{ item.label }}
+    </span>
+    } }
+  </nav>
+
+  <div class="breadcrumb-actions">
+    <ng-content />
+  </div>
+</div>

@@ -2,7 +2,9 @@
 
 ## Canonical BO metadata
 
-Canonical definitions identify an entity and describe fields, relationships, calculations, entry representation and persistence semantics. Field types include `guid`, `string`, `email`, `telephone`, `boolean`, `number`, `date`, `datetime`, `duration`, `version`, `enum` and `reference`.
+Canonical definitions identify an entity and describe fields, relationships, calculations, entry representation and persistence semantics. Field types include `guid`, `string`, `email`, `telephone`, `boolean`, `number`, `date`, `datetime`, `duration`, `version`, `enum`, `reference`, `picture`, `pictures` and `richText`.
+
+The canonical type union is defined by `SysBOFieldType` in `shared/src/metadata/bo/types.ts`; each type is independent of its renderer and may have a separate configured UI component. Picture, pictures-collection and rich-text fields remain first-class metadata declarations rather than entity-specific HTML branches.
 
 A calculation augments a canonical field. Persisted calculations opt the derived value into persistence materialization; dependencies/triggers describe assisted recalculation. Relationships define navigation and mutation consequences such as cascade, unlink, set-null, restrict or retain according to the relationship contract.
 

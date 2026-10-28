@@ -6,7 +6,11 @@ import {
   SysBOUserRole,
   type SysBOEntity,
   sysBOApplicationsMetadata,
+  sysBOGuardsMetadata,
+  sysBOProjectsMetadata,
+  sysBOPostsMetadata,
   sysBOExtAuthProvidersMetadata,
+  sysBOConfigurationsMetadata,
   sysBOEmailAddressesMetadata,
   sysBOPrincipalEmailAddressesMetadata,
   sysBOTelephoneNumbersMetadata,
@@ -20,6 +24,7 @@ import {
 
 import { createSysBORouter } from './http/routes/sysbo-router.js';
 import { GenericSysBOService } from './services/sysbo/generic-service.js';
+import { serviceReferenceReader } from './services/sysbo/reference-resolution.js';
 
 import { createInternalRouter } from './http/internal/index.js';
 
@@ -30,6 +35,8 @@ import { requireInternalApiKey } from './http/middleware/internal-api-key.js';
 import { requestContextMiddleware } from './http/middleware/request-context.js';
 import { operationMiddleware } from './http/middleware/operation-middleware.js';
 import { requestLoggingMiddleware } from './http/middleware/request-logging.js';
+import { requestDiagnosticsMiddleware } from './http/middleware/request-diagnostics.js';
+import { createCorsMiddleware } from './http/middleware/cors.js';
 
 import { createServerRouter } from './http/routes/server-router.js';
 import { createSysBOUserCommandRouter } from './http/routes/sys-user-command-router.js';
@@ -50,6 +57,12 @@ import type {
 import { requireAuthenticated } from './auth/auth-middleware.js';
 import { AuthorizationService } from './auth/authorization-service.js';
 import { createAuthRouter } from './auth/router.js';
+import { NativeOAuthService } from './auth/native-oauth-service.js';
+import {
+  createNativeOAuthOperations,
+  createNativeOAuthBrowserRoutes,
+} from './http/routes/native-oauth-router.js';
+import { config } from './config.js';
 
 import { sendFailure } from './http/response.js';
 import type { IEmailService } from './email/email-service.js';
@@ -109,8 +122,18 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
 
   const authorization = new AuthorizationService(_store);
 
+  // Reuse the same generic domain services for CRUD and workspace commits.
+  const surveillanceServices = {
+    guards: new GenericSysBOService(_store, _store.sysGuards, sysBOGuardsMetadata),
+    projects: new GenericSysBOService(_store, _store.sysProjects, sysBOProjectsMetadata),
+    posts: new GenericSysBOService(_store, _store.sysPosts, sysBOPostsMetadata),
+  };
+
   const workspaceCommitServices = new Map<string, GenericSysBOService<SysBOEntity>>([
-    [sysBOUsersMetadata.key, services.users as unknown as GenericSysBOService<SysBOEntity>],
+    [
+      sysBOUsersMetadata.key,
+      services.users as unknown as unknown as GenericSysBOService<SysBOEntity>,
+    ],
     [
       sysBOPrincipalsMetadata.key,
       services.principals as unknown as GenericSysBOService<SysBOEntity>,
@@ -167,8 +190,49 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       sysBOApplicationsMetadata.key,
       services.applications as unknown as GenericSysBOService<SysBOEntity>,
     ],
+    [
+      sysBOGuardsMetadata.key,
+      surveillanceServices.guards as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOProjectsMetadata.key,
+      surveillanceServices.projects as unknown as GenericSysBOService<SysBOEntity>,
+    ],
+    [
+      sysBOPostsMetadata.key,
+      surveillanceServices.posts as unknown as GenericSysBOService<SysBOEntity>,
+    ],
     [sysBOLicensesMetadata.key, services.licenses as unknown as GenericSysBOService<SysBOEntity>],
   ]);
+
+  // All standard entity routers share the same process-local, authenticated
+  // service reader. This remains storage-neutral at the generic service boundary.
+  const referenceServices = new Map(workspaceCommitServices);
+  referenceServices.set(
+    sysBOExtAuthProvidersMetadata.key,
+    services.extAuthProviders as unknown as GenericSysBOService<SysBOEntity>,
+  );
+  referenceServices.set(
+    sysBOConfigurationsMetadata.key,
+    services.configurations as unknown as GenericSysBOService<SysBOEntity>,
+  );
+  const referenceReader = serviceReferenceReader(referenceServices);
+  const createEntityRouter = <T extends SysBOEntity>(
+    ...args: [
+      service: GenericSysBOService<T>,
+      metadata: import('@manatos/shared').SysBOMetadata<T>,
+      authorization: AuthorizationService,
+      customCreate?: (
+        body: Record<string, unknown>,
+        actor: import('./audit/audit-service.js').AuditActor,
+      ) => Promise<T>,
+      customUpdate?: (
+        id: string,
+        body: Record<string, unknown>,
+        actor: import('./audit/audit-service.js').AuditActor,
+      ) => Promise<T>,
+    ]
+  ) => createSysBORouter(args[0], args[1], args[2], args[3], args[4], referenceReader);
 
   // Entity-specific creation semantics remain pluggable while CommitPlan execution
   // stays domain-neutral. SysUser creation must pass through the credential-aware
@@ -246,6 +310,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
    * security/parser/gateway failures participate in the same semantic tree.
    */
   app.use(requestContextMiddleware);
+  app.use(requestDiagnosticsMiddleware);
 
   app.use(operationMiddleware('Apply HTTP security policy', helmet(), 'Applying request security'));
 
@@ -260,6 +325,12 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
       'Starting request diagnostics',
     ),
   );
+
+  /**
+   * Browser-origin policy belongs at the API boundary rather than individual
+   * routes. Preflight terminates here, before body parsing/authentication.
+   */
+  app.use(createCorsMiddleware());
 
   /**
    * JSON request parsing.
@@ -324,6 +395,18 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     swaggerUi.setup(openApiSpec),
   );
 
+  /** Native sign-in is an API-owned capability, independent of UI Node hosts. */
+  if (config.API_PUBLIC_BASE_URL) {
+    const nativeOAuth = new NativeOAuthService(
+      services.extAuthProviders,
+      services.externalIdentities,
+      services.users,
+      config.API_PUBLIC_BASE_URL,
+    );
+    app.use('/api/v1/auth/native-oauth', createNativeOAuthOperations(nativeOAuth));
+    app.use('/auth', createNativeOAuthBrowserRoutes(nativeOAuth, config.API_PUBLIC_BASE_URL));
+  }
+
   /**
    * Register auth.
    */
@@ -364,7 +447,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     '/api/v1/SysUsers',
     requireAuthenticated,
 
-    createSysBORouter(
+    createEntityRouter(
       services.users,
       sysBOUsersMetadata,
 
@@ -457,7 +540,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     '/api/v1/SysPrincipals',
     requireAuthenticated,
 
-    createSysBORouter(services.principals, sysBOPrincipalsMetadata, authorization),
+    createEntityRouter(services.principals, sysBOPrincipalsMetadata, authorization),
   );
 
   /** Application configuration: Superuser inspection; Admin mutation. */
@@ -469,7 +552,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysEmailAddresses',
     requireAuthenticated,
-    createSysBORouter(
+    createEntityRouter(
       new GenericSysBOService(_store, _store.sysEmailAddresses, sysBOEmailAddressesMetadata),
       sysBOEmailAddressesMetadata,
       authorization,
@@ -479,7 +562,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysPrincipalEmailAddresses',
     requireAuthenticated,
-    createSysBORouter(
+    createEntityRouter(
       new GenericSysBOService(
         _store,
         _store.sysPrincipalEmailAddresses,
@@ -493,7 +576,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysTelephoneNumbers',
     requireAuthenticated,
-    createSysBORouter(
+    createEntityRouter(
       new GenericSysBOService(_store, _store.sysTelephoneNumbers, sysBOTelephoneNumbersMetadata),
       sysBOTelephoneNumbersMetadata,
       authorization,
@@ -503,7 +586,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysPrincipalTelephoneNumbers',
     requireAuthenticated,
-    createSysBORouter(
+    createEntityRouter(
       new GenericSysBOService(
         _store,
         _store.sysPrincipalTelephoneNumbers,
@@ -517,7 +600,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysAddresses',
     requireAuthenticated,
-    createSysBORouter(
+    createEntityRouter(
       new GenericSysBOService(_store, _store.sysAddresses, sysBOAddressesMetadata),
       sysBOAddressesMetadata,
       authorization,
@@ -527,7 +610,7 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
   app.use(
     '/api/v1/SysPrincipalAddresses',
     requireAuthenticated,
-    createSysBORouter(
+    createEntityRouter(
       new GenericSysBOService(
         _store,
         _store.sysPrincipalAddresses,
@@ -542,20 +625,38 @@ export function createApp(_store: InMemoryDataStore, services: ApiServices) {
     '/api/v1/SysApplications',
     requireAuthenticated,
 
-    createSysBORouter(services.applications, sysBOApplicationsMetadata, authorization),
+    createEntityRouter(services.applications, sysBOApplicationsMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysGuards',
+    requireAuthenticated,
+    createEntityRouter(surveillanceServices.guards, sysBOGuardsMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysProjects',
+    requireAuthenticated,
+    createEntityRouter(surveillanceServices.projects, sysBOProjectsMetadata, authorization),
+  );
+
+  app.use(
+    '/api/v1/SysPosts',
+    requireAuthenticated,
+    createEntityRouter(surveillanceServices.posts, sysBOPostsMetadata, authorization),
   );
 
   app.use(
     '/api/v1/SysLicenses',
     requireAuthenticated,
 
-    createSysBORouter(services.licenses, sysBOLicensesMetadata, authorization),
+    createEntityRouter(services.licenses, sysBOLicensesMetadata, authorization),
   );
 
   app.use(
     '/api/v1/SysExtAuthProviders',
     requireAuthenticated,
-    createSysBORouter(
+    createEntityRouter(
       services.extAuthProviders,
       sysBOExtAuthProvidersMetadata,
       authorization,

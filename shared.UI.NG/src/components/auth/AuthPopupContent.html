@@ -1,0 +1,14 @@
+<!-- AuthPopupContent template: registered auth content composition and tab/section placement without hiding child templates. -->
+<div class="sign-in-body">
+  @for (item of introItems(); track item.id) {
+  <ng-container *ngComponentOutlet="renderer(item.kind); inputs: childInputs(item)" />
+  } @if (sectionItems().length > 0) {
+  <div [class.auth-methods-grid]="methods()">
+    @for (item of sectionItems(); track item.id; let column = $index) {
+    <ng-container *ngComponentOutlet="renderer(item.kind); inputs: childInputs(item, column)" />
+    }
+  </div>
+  } @for (item of tailItems(); track item.id) {
+  <ng-container *ngComponentOutlet="renderer(item.kind); inputs: childInputs(item)" />
+  }
+</div>

@@ -1,0 +1,172 @@
+<!-- One authenticated candidate catalogue and one UIS select event; no second value store. -->
+<manatos-field-control-shell [field]="field()">
+  <select
+    #nativeSelect
+    data-entry-control
+    class="manatos-reference-native"
+    [manatosNativeFieldInteraction]="field()"
+    [disabled]="!canSelect()"
+    [attr.aria-label]="field().label"
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    <option value=""></option>
+    @for (candidate of field().relatedCandidates ?? []; track candidate.id) {
+    <option
+      [value]="candidate.id"
+      [selected]="candidate.id === field().value"
+      [disabled]="candidate.unavailable"
+    >
+      {{ candidate.name }}
+    </option>
+    }
+  </select>
+  <div class="manatos-reference-quick-wrapper">
+    <div #referenceAnchor class="manatos-reference-selection-line">
+      <button
+        #trigger
+        type="button"
+        class="manatos-form-input manatos-reference-trigger"
+        [disabled]="!canSelect()"
+        [attr.aria-label]="field().label"
+        [attr.aria-expanded]="opened()"
+        (click)="open()"
+      >
+        <span data-entry-reference-icons>
+          @for (icon of relatedIcons(); track $index) {
+          <i [class]="'bi bi-' + icon" aria-hidden="true"></i> }
+        </span>
+        @if (field().relatedPhotoUrl) {
+        <img
+          data-entry-reference-photo
+          class="manatos-field-reference-photo"
+          [src]="field().relatedPhotoUrl"
+          alt=""
+          loading="lazy"
+        />
+        }
+        <span data-entry-reference-name
+          >{{ field().relatedName || (field().value ? (field().language === 'EL' ? 'Άγνωστο' :
+          'Unknown') : (field().language === 'EL' ? (field().required ? 'Επιλογή…' : 'Κανένα') :
+          (field().required ? 'Choose…' : 'None'))) }}</span
+        >
+      </button>
+      @if (historyVisible()) {
+      <button
+        type="button"
+        class="manatos-reference-history-action"
+        [disabled]="!undoReady()"
+        (click)="undo($event)"
+        [attr.title]="field().language === 'EL' ? 'Αναίρεση' : 'Undo'"
+        [attr.aria-label]="field().language === 'EL' ? 'Αναίρεση' : 'Undo'"
+      >
+        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
+        class="manatos-reference-history-action"
+        [disabled]="!redoReady()"
+        (click)="redo($event)"
+        [attr.title]="field().language === 'EL' ? 'Επανάληψη' : 'Redo'"
+        [attr.aria-label]="field().language === 'EL' ? 'Επανάληψη' : 'Redo'"
+      >
+        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+      </button>
+      }
+      <button
+        type="button"
+        class="manatos-reference-view"
+        [disabled]="!field().value || field().canViewRelated !== true"
+        [attr.title]="field().language === 'EL' ? 'Προβολή επιλεγμένης εγγραφής' : 'View selected entry'"
+        [attr.aria-label]="field().language === 'EL' ? 'Προβολή επιλεγμένης εγγραφής' : 'View selected entry'"
+        (click)="viewSelected($event)"
+      >
+        <i class="bi bi-eye" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
+        class="manatos-reference-chevron-action"
+        [disabled]="!canSelect() || selecting()"
+        [attr.aria-label]="field().language === 'EL' ? 'Επιλογή εγγραφής' : 'Select entry'"
+        [attr.aria-expanded]="opened()"
+        (click)="open()"
+      >
+        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+      </button>
+    </div>
+    @if (opened() && canSelect()) {
+    <section
+      [manatosTransientMenu]="referenceAnchor"
+      [onTransientDismiss]="dismissMenu"
+      class="manatos-reference-quick-panel"
+      role="group"
+      [attr.aria-label]="field().label"
+      (keydown)="navigate($event)"
+    >
+      <input
+        #searchBox
+        class="manatos-reference-selector-search"
+        type="search"
+        [value]="search()"
+        (input)="searchChanged($event)"
+        [attr.aria-label]="text('search') + ' ' + field().label"
+        [placeholder]="text('search')"
+      />
+      @if (field().relatedCatalogueStatus) {
+      <p role="status" class="manatos-reference-catalogue-status">{{ catalogueMessage() }}</p>
+      }
+      <div class="manatos-reference-selector-rows" role="listbox" [attr.aria-label]="field().label">
+        @for (candidate of candidates(); track candidate.id) {
+        <button
+          type="button"
+          role="option"
+          [disabled]="candidate.unavailable || selecting()"
+          [title]="candidate.unavailableReason || candidate.name"
+          [attr.aria-selected]="candidate.id === field().value"
+          (click)="choose(candidate.id)"
+        >
+          @for (icon of candidate.icons; track $index) {
+          <i [class]="'bi bi-' + icon" aria-hidden="true"></i> } @if (candidate.photoUrl) {
+          <img
+            class="manatos-field-reference-photo"
+            [src]="candidate.photoUrl"
+            alt=""
+            loading="lazy"
+          />
+          }
+          <span>{{ candidate.name }}</span>
+          @if (candidate.unavailableReason) {
+          <small class="manatos-reference-unavailable-reason"
+            >{{ candidate.unavailableReason }}</small
+          >
+          }
+        </button>
+        } @empty {
+        <p class="manatos-reference-selector-empty">{{ text('empty') }}</p>
+        }
+      </div>
+      @if (selectionError()) {
+      <p class="manatos-reference-selection-error" role="alert">{{ selectionError() }}</p>
+      }
+      <footer>
+        <button type="button" [disabled]="selecting() || !hasValue()" (click)="clear()">
+          <i class="bi bi-x-circle" aria-hidden="true"></i> {{ text('clear') }}
+        </button>
+        <button type="button" [disabled]="selecting()" (click)="add()">
+          <i class="bi bi-plus-circle" aria-hidden="true"></i> {{ field().language === 'EL' ?
+          'Προσθήκη' : 'Add new…' }}
+        </button>
+        <button
+          type="button"
+          [disabled]="selecting() || !browseReady()"
+          [attr.aria-busy]="browseChecking()"
+          (click)="browse()"
+        >
+          <i class="bi bi-list-ul" aria-hidden="true"></i> {{ field().language === 'EL' ?
+          'Αναζήτηση' : 'Browse list…' }}
+        </button>
+      </footer>
+    </section>
+    }
+  </div>
+</manatos-field-control-shell>

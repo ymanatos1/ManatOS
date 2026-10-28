@@ -1,0 +1,52 @@
+/* Body spacing is owned by the concrete tab, respecting Angular encapsulation. */
+.storage-tab-body {
+  padding: 0.8rem 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .storage-tab-body {
+    padding: 0.6rem 0.8rem;
+  }
+}
+
+.storage-rich-picker {
+  position: relative;
+}
+.storage-rich-picker > summary {
+  list-style: none;
+}
+.storage-rich-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.storage-rich-picker-menu {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 18rem;
+  overflow-y: auto;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.16);
+  padding: 0.25rem 0;
+}
+.storage-rich-option {
+  width: 100%;
+  border: 0;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: var(--bs-body-color);
+  text-align: left;
+}
+.storage-rich-option:hover,
+.storage-rich-option.active {
+  background: var(--bs-primary-bg-subtle);
+}
+.storage-picker-family {
+  padding: 0.4rem 0.75rem 0.2rem;
+  color: var(--bs-secondary-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+}

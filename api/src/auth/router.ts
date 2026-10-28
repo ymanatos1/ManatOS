@@ -1,6 +1,17 @@
-import { Router, type Request } from 'express';
+import { createHash } from 'node:crypto';
+import { Router, type Request, type Response } from 'express';
 
-import { AppError, NotFoundError, operationContext, type SysBOUser } from '@manatos/shared';
+import {
+  AppError,
+  AuthenticationError,
+  AUTH_RATE_LIMITS,
+  InMemoryRateLimiter,
+  NotFoundError,
+  type RateLimitDecision,
+  type SysBOUser,
+} from '@manatos/shared';
+
+import { operationContext, verifyAuthClientIp } from '@manatos/shared/node';
 
 import { config } from '../config.js';
 
@@ -34,10 +45,111 @@ export function createAuthRouter(users: SysBOUserService): Router {
   const router = Router();
 
   /**
+   * One limiter for this API router.
+   *
+   * Counters survive individual requests but not API restarts.
+   * The public API enforces its own security policy independently
+   * of any UI server, so callers cannot bypass it.
+   */
+  const authLimits = new InMemoryRateLimiter();
+
+  /**
+   * Use Express's client IP, not an arbitrary forwarded header.
+   *
+   * A trusted reverse proxy must be configured explicitly at the
+   * server boundary if one is introduced.
+   */
+  const clientIp = (req: Request): string => {
+    try {
+      /**
+       * Direct API calls:
+       *   Use Express's connection IP.
+       *
+       * Calls from the trusted NG1 server:
+       *   Verify the signed client-IP claim before using it.
+       *
+       * We deliberately ignore arbitrary X-Forwarded-For headers.
+       * The application's reverse-proxy trust configuration, if any,
+       * is a separate deployment concern.
+       */
+      return (
+        verifyAuthClientIp(
+          config.AUTH_DELEGATION_SECRET,
+          {
+            ip: req.get('x-manatos-auth-client-ip'),
+            time: req.get('x-manatos-auth-client-time'),
+            signature: req.get('x-manatos-auth-client-signature'),
+          },
+          req.method,
+          req.originalUrl.split('?')[0] ?? req.originalUrl,
+          req.body,
+        ) ??
+        req.ip ??
+        req.socket.remoteAddress ??
+        'unknown'
+      );
+    } catch {
+      throw new AppError(
+        'FORBIDDEN',
+        'Invalid trusted client IP delegation.',
+        'Request forbidden.',
+      );
+    }
+  };
+
+  /** All login requests from one client IP share this counter. */
+  const ipKey = (req: Request) => `api:login:ip:${clientIp(req)}`;
+
+  /**
+   * Incorrect-password attempts are tracked per identity AND IP.
+   * Store a digest of the normalized identity, not the raw email/name.
+   */
+  const failureKey = (req: Request, identity: string) => {
+    const digest = createHash('sha256').update(identity.trim().toLowerCase()).digest('hex');
+
+    return `api:login:failed:${clientIp(req)}:${digest}`;
+  };
+
+  /**
+   * Use the existing central API error handler.
+   *
+   * We only set Retry-After here; the existing AppError middleware
+   * still produces the API's standard error response document.
+   */
+  function rejectLimit(res: Response, decision: RateLimitDecision): never {
+    res.setHeader('Retry-After', String(decision.retryAfterSeconds));
+
+    throw new AppError(
+      'AUTH_RATE_LIMITED',
+      'Authentication attempt rate limit exceeded.',
+      'Too many authentication attempts. Please try again later.',
+      true,
+    );
+  }
+
+  /**
    * Public Guest registration.
    */
   router.post(
     '/register',
+
+    /**
+     * Registration is public.
+     *
+     * Count every registration request before account creation.
+     * This reduces automated account creation even when submissions
+     * contain invalid or already-used identities.
+     */
+    (req, res, next) => {
+      const decision = authLimits.record(
+        `api:register:ip:${clientIp(req)}`,
+        AUTH_RATE_LIMITS.registration,
+      );
+
+      if (!decision.allowed) rejectLimit(res, decision);
+
+      next();
+    },
 
     async (req, res) => {
       await operationContext.runRoot(
@@ -94,6 +206,22 @@ export function createAuthRouter(users: SysBOUserService): Router {
   router.post(
     '/login',
 
+    /**
+     * First protection: total login requests per IP.
+     *
+     * Count before credential verification. This prevents unlimited
+     * password spraying against different user names.
+     *
+     * Successful login requests also count toward this limit.
+     */
+    (req, res, next) => {
+      const decision = authLimits.record(ipKey(req), AUTH_RATE_LIMITS.loginByIp);
+
+      if (!decision.allowed) rejectLimit(res, decision);
+
+      next();
+    },
+
     async (req, res) => {
       await operationContext.runRoot(
         'Login SysBOUser',
@@ -108,7 +236,49 @@ export function createAuthRouter(users: SysBOUserService): Router {
             password,
           });
 
-          const user = await users.verifyLocalCredentials(identity, password);
+          /**
+           * Second protection: incorrect passwords per identity/IP.
+           *
+           * Check before expensive Argon2 password verification.
+           * Only real AuthenticationError failures are counted.
+           *
+           * Database/API errors must not incorrectly increase a user's
+           * failure count.
+           */
+          const key = failureKey(req, identity);
+
+          /**
+           * Reserve before awaiting Argon2 password verification.
+           *
+           * Without a reservation, several concurrent login requests could
+           * all pass the five-failure check before any had completed.
+           *
+           * Only incorrect credentials become recorded failures.
+           * Operational exceptions release the reservation.
+           */
+          const reservation = authLimits.reserve(key, AUTH_RATE_LIMITS.loginFailures);
+
+          if (!reservation.decision.allowed) {
+            rejectLimit(res, reservation.decision);
+          }
+
+          let user: SysBOUser;
+
+          try {
+            user = await users.verifyLocalCredentials(identity, password);
+            reservation.finish('release');
+          } catch (error) {
+            reservation.finish(error instanceof AuthenticationError ? 'failure' : 'release');
+            throw error;
+          }
+
+          /**
+           * Valid credentials clear previous incorrect attempts.
+           *
+           * Email verification requirements are checked afterward
+           * by the existing handler and remain unchanged.
+           */
+          authLimits.clear(key);
 
           /*
            * Accounts must verify their email before receiving an API

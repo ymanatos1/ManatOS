@@ -1,0 +1,108 @@
+/* One caption view selector presentation for NG1 and EJS1. */
+.manatos-entry-ui-view-selector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.manatos-entry-ui-view-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.1rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--manatos-border, #c7d5ea);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface, #fff);
+  color: var(--manatos-navy, #17365a);
+  font-family: inherit;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  font-weight: 400;
+  line-height: 1.25;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.manatos-entry-ui-view-trigger:hover {
+  background: var(--manatos-hover, #eff5fe);
+}
+.manatos-entry-ui-view-menu {
+  position: absolute;
+  z-index: 1200;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  min-width: 9rem;
+  padding: 0.25rem;
+  border: 1px solid var(--manatos-border, #c7d5ea);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface, #fff);
+  box-shadow: 0 6px 18px #0002;
+}
+.manatos-entry-ui-view-menu[hidden] {
+  display: none;
+}
+.manatos-entry-ui-view-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.65rem;
+  text-align: left;
+  border: 0;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  font-weight: 400;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.manatos-entry-ui-view-menu button:hover,
+.manatos-entry-ui-view-menu button[aria-pressed='true'] {
+  background: var(--manatos-hover, #e9f2ff);
+}
+.manatos-entry-ui-view-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.manatos-entry-ui-view-error {
+  display: block;
+  max-width: 20rem;
+  color: var(--manatos-danger, #b91c1c);
+  font-size: 0.8rem;
+}
+.manatos-entry-ui-view-error[hidden] {
+  display: none;
+}
+
+/* A view's readonly representation is one semantic Field, not another editor. */
+.manatos-entry-readonly-field {
+  min-width: 0;
+  padding: 0.4rem 0.15rem;
+}
+.manatos-entry-readonly-label {
+  font-size: 0.8rem;
+  color: var(--manatos-text-muted, #64748b);
+  margin-bottom: 0.25rem;
+}
+.manatos-entry-readonly-value {
+  min-height: 1.35rem;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.manatos-entry-readonly-value a {
+  text-decoration: underline;
+}
+.manatos-entry-readonly-badge {
+  display: inline-block;
+  border-radius: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--manatos-surface-muted, #e9edf5);
+}
+.manatos-entry-readonly-portrait {
+  display: block;
+  width: 7rem;
+  max-width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.4rem;
+}

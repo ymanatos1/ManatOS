@@ -1,3 +1,4 @@
+import { resolveMetadataText } from '@manatos/shared';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,7 +22,9 @@ describe('external authentication provider metadata-driven list presentation', (
     ]);
     expect(list?.visibleFields).not.toContain('clientId');
     expect(list?.addAction?.disableWhenAllEnumValuesExistForField).toBe('provider');
-    expect(list?.notice?.title).toBe('One configuration record per provider.');
+    expect(resolveMetadataText(list?.notice?.title ?? '', 'EN')).toBe(
+      'One configuration record per provider.',
+    );
   });
 
   it('declares a safe standard read-only Quick View without exposing credential values', () => {

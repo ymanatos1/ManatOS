@@ -1,0 +1,37 @@
+<section class="page" [class.has-details]="detailsExpanded()">
+  <div class="page-main">
+    <manatos-breadcrumb [language]="language()" [items]="presentation().breadcrumb">
+      @if (presentation().details.available) {
+      <manatos-details-toggle
+        [controlsId]="detailsId()"
+        [label]="detailsLabel()"
+        [expanded]="detailsExpanded()"
+        (toggleRequested)="toggleDetails()"
+      />
+      }
+
+      <ng-content select="[page-heading-actions]" />
+    </manatos-breadcrumb>
+
+    <manatos-page-title [model]="presentation().title">
+      <ng-content select="[page-title-actions]" />
+    </manatos-page-title>
+
+    <manatos-page-content>
+      <ng-content select="[page-content]" />
+    </manatos-page-content>
+  </div>
+
+  @if (detailsExpanded()) {
+  <manatos-page-details
+    [panelId]="detailsId()"
+    [language]="language()"
+    [title]="presentation().details.title === 'Details' ? detailsLabel() : presentation().details.title"
+    [eyebrow]="presentation().details.eyebrow"
+    [message]="presentation().details.message"
+    (closeRequested)="closeDetails()"
+  >
+    <ng-content select="[page-details]" />
+  </manatos-page-details>
+  }
+</section>

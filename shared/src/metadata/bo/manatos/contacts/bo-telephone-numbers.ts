@@ -7,20 +7,22 @@ export const sysBOTelephoneNumbersMetadata: SysBOMetadata<SysTelephoneNumber> = 
   name: 'sysTelephoneNumbers',
   subsystem: 'contacts',
   exposure: 'internal',
-  label: 'Telephone number',
-  pluralLabel: 'Telephone numbers',
+  label: '@EN.manatos.auth.users.label.TelephoneNumber' /* Telephone number */,
+  pluralLabel:
+    '@EN.manatos.contacts.telephoneNumbers.pluralLabel.TelephoneNumbers' /* Telephone numbers */,
   primaryField: 'fullNumber',
   entry: { name: { field: 'fullNumber' } },
   fieldDefinition: {
     ...commonSysBOFields,
     name: {
       ...commonSysBOFields.name!,
-      label: 'Canonical telephone key',
+      label:
+        '@EN.manatos.contacts.telephoneNumbers.label.CanonicalTelephoneKey' /* Canonical telephone key */,
       readOnly: true,
     },
     countryCode: {
       key: 'countryCode',
-      label: 'Country code',
+      label: '@EN.manatos.contacts.telephoneNumbers.label.CountryCode' /* Country code */,
       type: 'string',
       order: 20,
       required: true,
@@ -28,7 +30,7 @@ export const sysBOTelephoneNumbersMetadata: SysBOMetadata<SysTelephoneNumber> = 
     },
     number: {
       key: 'number',
-      label: 'Telephone number',
+      label: '@EN.manatos.auth.users.label.TelephoneNumber' /* Telephone number */,
       type: 'string',
       order: 30,
       required: true,
@@ -36,7 +38,7 @@ export const sysBOTelephoneNumbersMetadata: SysBOMetadata<SysTelephoneNumber> = 
     },
     fullNumber: {
       key: 'fullNumber',
-      label: 'Full number',
+      label: '@EN.manatos.contacts.telephoneNumbers.label.FullNumber' /* Full number */,
       type: 'telephone',
       order: 40,
       required: true,

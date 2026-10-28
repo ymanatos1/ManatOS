@@ -18,7 +18,7 @@ import type { SysBOFieldMetadata } from './types.js';
 export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
   id: {
     key: 'id',
-    label: 'Id',
+    label: '@EN.common.label.Id' /* Id */,
     type: 'guid',
     order: 0,
 
@@ -30,7 +30,7 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
 
   name: {
     key: 'name',
-    label: 'Name',
+    label: '@EN.common.label.Name' /* Name */,
     type: 'string',
     order: 10,
 
@@ -43,7 +43,7 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
 
   enabled: {
     key: 'enabled',
-    label: 'Enabled',
+    label: '@EN.common.label.Enabled' /* Enabled */,
     type: 'boolean',
     order: 900,
 
@@ -53,7 +53,7 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
 
   createdAt: {
     key: 'createdAt',
-    label: 'Created',
+    label: '@EN.common.label.Created' /* Created */,
     type: 'datetime',
     order: 910,
 
@@ -62,7 +62,7 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
   },
   createdBy: {
     key: 'createdBy',
-    label: 'Created by',
+    label: '@EN.common.label.CreatedBy' /* Created by */,
     type: 'string',
     order: 911,
     generated: true,
@@ -71,7 +71,7 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
 
   updatedAt: {
     key: 'updatedAt',
-    label: 'Updated',
+    label: '@EN.common.label.Updated' /* Updated */,
     type: 'datetime',
     order: 920,
 
@@ -80,7 +80,7 @@ export const commonSysBOFields: Record<string, SysBOFieldMetadata> = {
   },
   updatedBy: {
     key: 'updatedBy',
-    label: 'Updated by',
+    label: '@EN.common.label.UpdatedBy' /* Updated by */,
     type: 'string',
     order: 921,
     generated: true,

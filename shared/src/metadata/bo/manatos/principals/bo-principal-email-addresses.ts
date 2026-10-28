@@ -7,8 +7,10 @@ export const sysBOPrincipalEmailAddressesMetadata: SysBOMetadata<SysPrincipalEma
   name: 'sysPrincipalEmailAddresses',
   subsystem: 'principals',
   exposure: 'internal',
-  label: 'Principal email address',
-  pluralLabel: 'Principal email addresses',
+  label:
+    '@EN.manatos.principals.principalEmailAddresses.label.PrincipalEmailAddress' /* Principal email address */,
+  pluralLabel:
+    '@EN.manatos.principals.principalEmailAddresses.pluralLabel.PrincipalEmailAddresses' /* Principal email addresses */,
   primaryField: 'name',
   relationships: {
     principal: {
@@ -29,19 +31,20 @@ export const sysBOPrincipalEmailAddressesMetadata: SysBOMetadata<SysPrincipalEma
     ...commonSysBOFields,
     name: {
       ...commonSysBOFields.name!,
-      label: 'Relationship key',
+      label:
+        '@EN.manatos.principals.principalAddresses.label.RelationshipKey' /* Relationship key */,
       readOnly: true,
     },
     principalId: {
       key: 'principalId',
-      label: 'Principal',
+      label: '@EN.manatos.auth.userInvitations.label.Principal' /* Principal */,
       type: 'reference',
       order: 20,
       required: true,
     },
     emailAddressId: {
       key: 'emailAddressId',
-      label: 'Email address',
+      label: '@EN.manatos.contacts.emailAddresses.label.EmailAddress' /* Email address */,
       type: 'reference',
       order: 30,
       required: true,

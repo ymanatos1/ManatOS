@@ -1,354 +1,113 @@
 # Client Context Model
 
-## Purpose
+CTX provides a host-owned semantic tree for runtime facts, expression scope, observable UI state and diagnostics. A client CTX is **not** a replicated API database and is not automatically synchronized with server CTX. Values are published by their designated owners; components observe authorized projections rather than maintaining parallel copies of the same state.
 
-This document describes the **client-side realization** of the generic ManatOS CTX architecture. CTX itself is system-wide: API execution has an independently owned API CTX tree, while each interactive client builds the context required by its runtime. See [Context Architecture](Context-Architecture.md) for the host-neutral model and API topology.
+## Canonical modern client root
 
-In a client, CTX is the observable semantic address space through which metadata expressions, client runtimes, components, dependency tracking and developer tooling observe active application state. It is deliberately **not** a database and not a second domain model. Persisted business data remains owned by the API/storage layers; client CTX contains safe facts, working state and runtime contracts required by the current client experience.
-
-For an application developer, CTX answers questions such as: _Who is the current user? What entity metadata applies? Which UI surface is active? What is the live value of this field? Why was this popup opened? Is this entry dirty? Which resources has this component published?_
-
-## Root contracts
+The current EJS1/NG1 root is defined by `ManatOSRuntimeRootContext` in `shared/src/context/manatos-context.ts`:
 
 ```text
 ctx
-+-- system        safe host/runtime/client facts
-+-- entities      canonical entity + UI metadata registry
-+-- company       company/platform catalogue and capabilities
-+-- user          authenticated-user runtime projection
-|   +-- fields
-|   +-- permissions
-+-- ui            active UI surface chain
+├─ system                   host/runtime/client facts
+├─ company                  shared domain + selected platform
+├─ runtime                  effective selected composition
+│  ├─ subsystems             selected subsystem catalogue
+│  ├─ entities               canonical effective entity metadata
+│  ├─ enums                  effective enum definitions/values
+│  └─ user                   authenticated user or null
+├─ flow?                    current Flow execution (separate from UI)
+│  ├─ control                identity/status/current-step pointer
+│  └─ steps                  step-owned state
+└─ ui?                      current semantic UI chain
+   └─ level                  active Page surface
+      ├─ control
+      ├─ state
+      ├─ layout
+      ├─ data
+      └─ level?              active nested Popup surface
+         ├─ control
+         ├─ state
+         ├─ layout
+         └─ data
 ```
 
-| Root       | Purpose                                                              | Typical consumers                                   |
-| ---------- | -------------------------------------------------------------------- | --------------------------------------------------- |
-| `system`   | Safe runtime, client and feature facts.                              | feature expressions, diagnostics, connectivity UI   |
-| `entities` | Canonical metadata known to the client.                              | generic forms/lists, expression tooling, components |
-| `company`  | Company/platform structure and shared capabilities.                  | navigation, platform-aware policy and presentation  |
-| `user`     | Authenticated user's persisted projection and effective permissions. | authorization-aware UI expressions, account UI      |
-| `ui`       | The currently displayed recursive surface chain.                     | UI engine, expressions, components, debugger        |
+The `ui` root branch is created by its surface host when needed; it is not a permanent collection of all visited pages. The `flow` branch is optional and owned by FlowRunner. `$runtime`, `$entities`, `$enums` and `$user` are concise expression/viewer access paths; the last three refer to `runtime.entities`, `runtime.enums` and `runtime.user` rather than independent enumerated root branches.
 
-Root contracts have different owners. For example, editing a SysUser entry does not mutate `ctx.user`: the entry is an uncommitted UI transaction, while `ctx.user` represents the authenticated session. If the authenticated user's own record is successfully saved, the current-user/bootstrap owner refreshes `ctx.user` from the authoritative server/session projection.
+The established `ui.EJS0` client retains a separate legacy CTX topology. Its `ctx.entities`, `ctx.enums`, `ctx.user` and field-node structures are not the canonical EJS1/NG1 contract and should only be used in descriptions explicitly scoped to EJS0.
 
-## UI chain
+## Ownership and lifecycle
 
-The public UI topology is recursive and contains only the currently displayed chain:
+| Context branch | Owner | What consumers may assume |
+|---|---|---|
+| `system` | Bootstrap/host | Safe host, client and runtime facts; no secrets or arbitrary access to host internals |
+| `company` | Runtime company/platform selection | Shared catalog and current platform selection |
+| `runtime` | Effective subsystem/bootstrap projection | Readable metadata, enums and authenticated-user projection |
+| `flow` | `FlowRunner` | Active named operation and step statuses, not visual nesting |
+| `ui.level[.level...]` | `UiSurfaceHostRuntime` | Exactly one active child chain with per-surface namespaces |
+| `#layout` contributions | Embedded semantic components | Declarative component hierarchy attached under the owning level |
+| `#state`, `#data` | List, Entry, Popup or other content runtimes | Observable mutable facts, subject to that content's ownership rules |
+
+The host creates `#control`, `#state`, `#layout` and `#data` atomically, registers their semantic roles and publishes the complete level. A surface can dispose only the level it owns; an active child prevents premature parent teardown. Framework adapters may render or collect input, but cannot replace these semantic owners.
+
+## Level identity, kind and mode
+
+A surface's `control` establishes `host` (`page` or `popup`), `kind` (for example `list` or `entry`), `instanceId` and `invocation`. Hosting, semantic kind and operational mode are different dimensions. For an Entry, create/view/edit mode is projected in `#state.entry.mode`; `#control.kind` remains `entry` regardless of how it is displayed.
 
 ```text
-ctx.ui
-  +-- level                  root displayed surface
-      +-- level              active child
-          +-- level          active grandchild
-              +-- ...
+List Page  ctx.ui.level
+  └─ Entry Popup     ctx.ui.level.level
+       └─ List Popup ctx.ui.level.level.level
 ```
 
-A page, an entry opened inside that page, and a selector popup opened by the entry therefore form one navigable chain rather than unrelated global objects. Closing the deepest child exposes its immediate parent again.
+This is a semantic ownership chain, not a CSS z-index relationship. Embedded components contribute their own layout/state under a level without creating duplicate business-object state authorities.
 
-`CurrentUiLevel()` returns the deepest/current level. `TraverseUiLevels()` returns the ordered root-to-current chain. These functions should be preferred over hard-coded assumptions about nesting depth.
+## List data and state
 
-## Common UI level contract
+`shared.UI/src/components/list/ListPageRuntime.ts` defines the modern List level. Key projections include:
 
 ```text
-level
-+-- control
-|   +-- id
-|   +-- host              page | popup | embedded
-|   +-- kind              static | list | entry | selector | hierarchy | custom
-|   +-- mode              browse | create | edit | view | select | manage
-|   +-- name / path / scope
-|   +-- entityKey? / entityName? / recordId?
-|   +-- invocation
-|   +-- presentation
-|   +-- state
-|   +-- facts
-|   +-- supportsUserChanges
-+-- fields?                entry field authority
-+-- entry?                 entry record projections
-+-- list?                  list/hierarchy record projection
-+-- resources?             component/read-model resources
-+-- selection? / row?      selector/list evaluation state when applicable
-+-- level?                 active child UI level
+#state.list
+  view, page, pageSize, total, totalPages
+  sort, direction, loading, error
+  selectionMode, filtersVisible, viewsOpen
+#data
+  list[]                 loaded rows
+  filters                current query filters
+  references             resolved related-record data
+  listModel              query descriptor, selectedIds, paging
 ```
 
-Three dimensions are intentionally independent:
+The query runtime owns search/filter/sort/page transitions and asynchronous results. List and cell components are semantic views of these facts; adapter templates must not become parallel query managers.
 
-| Property | Supported values                                             | Meaning                                                                                  |
-| -------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `host`   | `page`, `popup`, `embedded`                                  | **Where** the surface is mounted. Host does not redefine its business/runtime semantics. |
-| `kind`   | `static`, `list`, `entry`, `selector`, `hierarchy`, `custom` | **What** semantic surface contract the level implements.                                 |
-| `mode`   | `browse`, `create`, `edit`, `view`, `select`, `manage`       | **How** that surface currently operates.                                                 |
+## Entry values and state
 
-Examples: an entry may be `host=page, kind=entry, mode=edit`; the same entry contract can be `host=popup, kind=entry, mode=view`; a related-collection mini-entry can be `host=embedded, kind=entry, mode=edit`. A selector is normally `kind=selector, mode=select`. This separation prevents visual hosting, semantic purpose and operational behavior from becoming one overloaded flag.
-
-All universal members above live under `level.control`; they are not siblings of `control`. Kind-specific payload such as `fields`, `entry`, `list`, `resources`, `selection` and `row` lives beside `control`. This distinction matters when reading expressions and the CTX Viewer.
-
-## Invocation — why the surface exists
-
-`invocation` is immutable-style input/provenance describing **why and how the parent/caller requested this surface**. It is not a second copy of the surface's mutable state.
+`shared.UI/src/components/entry/EntryRuntime.ts` defines Entry levels. **`#data.current` is the editable value authority; `#data.original` is the baseline.** Field-specific presentation/validation facts are projections under `#state.fields`, and overall mode/dirty/valid/loading/save flags live under `#state.entry`.
 
 ```text
-invocation
-+-- entityName?          target registry name when needed
-+-- purpose             reason for opening: view | create | select...
-+-- caller?              { surfaceRef, entityName?, recordId? }
-+-- rules?               declarative values/fields/query/actions
-+-- behavior?            recoverability/selector/lifecycle behavior
-+-- ...                  purpose-specific semantic input
+#control  host · kind=entry · entityName · instanceId · invocation
+#data
+  original      persisted baseline or null for creation
+  current       working record values
+  references    resolved reference data
+  imageVariants
+#state
+  fields        field-specific validation/presentation
+  entry         mode · activeTab · permissions · dirty · valid · saveReady
+#layout         semantic Entry / Tabs / Fields / embedded components
 ```
 
-| Member       | Meaning / usage                                                                                                                                                              |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `entityName` | Expression-safe target entity registry name when required by the surface.                                                                                                    |
-| `purpose`    | Why the level was opened. It is not a duplicate of operational `control.mode`.                                                                                               |
-| `caller`     | Stable caller reference. `surfaceRef` points to the caller level; optional entity/record identity adds provenance without copying caller state.                              |
-| `rules`      | Declarative opening constraints. Current entry rules can provide value defaults/fixed values and field restrictions; selector/list purposes may add their own rule families. |
-| `behavior`   | Purpose-specific behavior such as recoverability or selection/close behavior. It is opening policy, not changing surface state.                                              |
+A field adapter reports native input facts; its registered typed Field behavior interprets those facts; the Entry runtime applies the value to the owned `current` record and republishes derived state. The UI's dirty or permission indicator is not server-side authorization and does not commit data by itself.
 
-The invocation contract is intentionally extensible by purpose. A consumer should read only members defined for the surface/purpose it handles; absence of a member is not an implicit default copied from some other surface.
+## Expression resolution
 
-Example:
+The evaluator searches only the first ordinary identifier lexically outward, then traverses the remaining path downward. Relative selectors `#`, `#level`, `#control`, `#state`, `#layout`, `#data`, `#flowstep` refer to the appropriate semantic scopes. Absolute `$runtime` and its aliases are the preferred way to access effective global metadata and session projections.
 
-```text
-Principal entry
-   |
-   | opens Parent principal selector
-   v
-Selector child level
-  control.kind                         = "selector"
-  control.mode                         = "select"
-  control.invocation.purpose           = "select-reference"
-  control.invocation.caller.surfaceRef = "<parent CTX level path>"
-  control.entityKey                    = "<target entity key>"
-```
+The implemented `?.` operator tolerates missing/null receivers; mandatory segments remain strict. For example `#data.current?.managerId ?? null` uses optional traversal and nullish fallback as separate language operations. See [Expressions](../expressions/Expressions.md).
 
-Code should **read invocation to understand the request**, then write changing runtime state to the appropriate state/field/resource contract. Do not mutate invocation to represent what subsequently happened.
-For hosted create entries, browser policy/default handling reads `invocation.defaults` from the owning CTX level. A hidden `_entryDefaults` form value may still exist as server form/popup continuation transport, but browser logic must not reread it as an alternative semantic source.
+## API CTX is separate
 
-## Presentation — what the surface looks like
+API CTX has a different root and parallel request subtrees. It is not an identical client snapshot, and Node's operation trace is not the CTX tree. See [API Context Model](API-Context-Model.md) and [Context Architecture](Context-Architecture.md).
 
-`presentation` contains visual semantics only:
+## Related documentation
 
-```text
-presentation
-+-- kind
-+-- title?
-+-- icon?
-+-- subtitle?
-+-- layout?
-```
-
-| Member     | Meaning                                                                                                         |
-| ---------- | --------------------------------------------------------------------------------------------------------------- |
-| `kind`     | Semantic surface kind used by presentation infrastructure.                                                      |
-| `title`    | Primary user-visible caption.                                                                                   |
-| `icon`     | Icon identity understood by the presentation layer.                                                             |
-| `subtitle` | Optional secondary caption/context.                                                                             |
-| `layout`   | Layout variant such as an entity-entry or hierarchy layout. Layout is visual composition, not operational mode. |
-
-A critical invariant is that `presentation` never owns `mode`. `mode=edit` changes behavior; `layout=entity-entry` changes presentation. Keeping them separate allows the same runtime semantics to be rendered by different hosts/layouts.
-
-## State — what the surface is doing now
-
-`state` is runtime-owned observable operational state:
-
-```text
-state
-+-- lifecycle
-+-- active
-+-- dirty
-+-- valid
-+-- loading
-+-- saving
-+-- deleting
-+-- blocked
-+-- navigation
-|   +-- activeTabId
-|   +-- activeInternalTabIds
-+-- popup?                 popup-hosted levels only
-    +-- x
-    +-- y
-    +-- openedPopupsCounter
-```
-
-### Lifecycle
-
-| Value          | Current browser meaning                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| `created`      | Initial lifecycle value assigned when the level is materialized. A newly opened level is also `active=true`. |
-| `deactivating` | A non-embedded child is being opened, so the parent is being made inactive.                                  |
-| `active`       | Parent lifecycle value after a non-embedded child closes and the parent is reactivated.                      |
-| `closing`      | Disposal of this level has begun.                                                                            |
-| `closed`       | The level has completed its visible close transition.                                                        |
-| `disposed`     | Final lifecycle value written immediately before the level is removed from public CTX.                       |
-
-The lifecycle vocabulary is an observable state machine, not a promise that every conceivable transitional label is currently emitted. In particular, the production browser host currently creates a level directly as `created` + `active=true`; documentation must not invent `creating` or `activating` phases that the runtime does not publish. Popup children deactivate/reactivate their parent; embedded children leave their parent active.
-
-### Operational flags
-
-| Flag       | Meaning                                                                                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `active`   | Surface currently participates as active UI.                                                                                                                 |
-| `dirty`    | Owned transactional working state differs from its baseline. It should be derived/maintained by the owning runtime, not independently guessed by components. |
-| `valid`    | Current owned input satisfies client validation required for the operation. Server validation remains authoritative at persistence time.                     |
-| `loading`  | Surface is waiting for required data/read models.                                                                                                            |
-| `saving`   | Persistence operation is in progress.                                                                                                                        |
-| `deleting` | Delete operation is in progress.                                                                                                                             |
-| `blocked`  | Surface cannot currently proceed because an owning runtime/policy has blocked interaction.                                                                   |
-
-`navigation` records observable tab selection. It describes current navigation state after the UI changes; it is not metadata defining which tabs exist. Popup geometry is state because position/depth changes during the lifetime of a popup.
-
-## Entry, fields and single-authority values
-
-An entry level owns a record editing transaction. Its field-oriented and record-oriented views are intentionally both readable, but duplicate mutable authorities are forbidden.
-
-```text
-                  LIVE AUTHORITY
-              fields.firstName.value
-                       |
-                       +------ read-only projection ------+
-                                                       entry.current.firstName
-
-                 BASELINE AUTHORITY
-          fields.firstName.originalValue
-                       |
-                       +------ read-only projection ------+
-                                                      entry.original.firstName
-```
-
-A field node commonly exposes:
-
-```text
-fields.<fieldName>
-+-- value                 canonical mutable live scalar
-+-- originalValue         canonical baseline value
-+-- dirty                 derived change state
-+-- valid                 validation aggregate
-+-- validationIssues[]
-+-- option/options?       option/reference presentation state where applicable
-+-- ux                    field UI/presentation state
-```
-
-`entry.current` is a convenient whole-record projection of canonical field values. Consumers may read it for persistence preparation, debugging or record-oriented components, but writes target `fields.<key>.value`.
-
-`fields.<k>.originalValue` is the sole per-field baseline authority. `entry.original.<k>` is a read-only getter mirror, symmetric with `fields.<k>.value` / `entry.current.<k>`. Baseline promotion after successful persistence updates the field baseline through the canonical CTX mutation path, so both record-shaped mirrors follow without synchronization races.
-
-For enum/reference fields, `fields.<k>.options` is the canonical **effective option domain** after metadata and caller/server restrictions have been applied. `fields.<k>.option` is the decoration for the selected value. Entry selectors and policy logic consume these CTX nodes; they do not reconstruct semantic option metadata from rendered controls.
-
-## Facts — observations, not persisted fields
-
-`facts` contains API-safe runtime observations required by expressions/components but which are **not canonical persisted entity fields**. Examples include `hasPassword` or effective entity permissions supplied to an entry surface.
-
-Use a fact when the value describes the current runtime/API projection and must not accidentally become part of a persistence payload. Do not put a value in `facts` merely because it is convenient; canonical entity values belong in fields.
-
-## Lists
-
-A list level owns collection/query state rather than a single record field lifecycle:
-
-```text
-list
-+-- entries
-+-- originalEntries
-+-- ... query/paging state owned by the list runtime
-```
-
-Unlike aliases of one scalar value, `entries` and `originalEntries` may legitimately coexist when they represent working and baseline collection states. The architectural test is semantic: two values may coexist when they represent **different states**, not when they are merely two mutable copies of the same fact.
-
-## Resources — component-owned read models
-
-`resources` is the host-neutral namespace for structured read models owned by metadata components or surface infrastructure.
-
-```text
-level.resources
-+-- referenceData
-+-- collections
-+-- <component-owned resource>
-```
-
-Resources let a reusable component publish/consume supporting data without inventing entity-specific top-level CTX branches. A resource should have a clear owner and lifecycle matching its surface. It is not a substitute for canonical entity fields or general-purpose dumping ground.
-`referenceData` may therefore coexist with an entry field's `options` when it represents factual supporting records for other consumers; it must not be treated as a fallback/parallel selector catalogue for that field.
-
-## Semantic node metadata and observability
-
-CTX nodes have semantic descriptors outside application data. The debugger/runtime can therefore describe a node without inserting bookkeeping properties into the represented value:
-
-```text
-kind        semantic contract/role
- type       JavaScript/domain value type
- attributes [mutable, derived, readonly, mirror, observable, ...]
- watchable  whether the path participates in CTX observation
- subscribers
-   direct
-   dependent
-   global
-   total
-```
-
-`kind` answers _what contract is this node?_; `type` answers _what value does it contain?_; `attributes[]` describes orthogonal characteristics. `watchable=yes` is a capability, whereas subscriber counts are live telemetry showing current interest in the path.
-
-The CTX Viewer uses this same semantic information for node icons and its Properties panel. This is not debugger-only metadata: it makes runtime contracts discoverable to developers and future generic infrastructure.
-
-## Mutation, events and dependencies
-
-Canonical mutable paths change through the CTX runtime rather than arbitrary object assignment. A mutation identifies its path and cause/source, emits the CTX change event, and allows dependent expressions/components to react.
-
-```text
-canonical write
-     |
-     v
-CTX mutation pipeline
-     |
-     +--> change event
-     +--> exact/direct subscribers
-     +--> expression dependents
-     +--> broader runtime subscribers
-     +--> read-only projections observe new authority
-```
-
-A read-only mirror/projection is never a second write route. Attempting to mutate one through the generic CTX API is rejected. This invariant is central to keeping dependency behavior deterministic.
-
-## Choosing the correct CTX location
-
-When adding runtime data, ask in this order:
-
-1. **Is it a canonical entity field?** Put live entry state under `fields`.
-2. **Is it the persisted/editing baseline?** It belongs to the owning transaction's `original` state.
-3. **Is it a safe non-persisted observation?** Consider `facts`.
-4. **Is it supporting structured data owned by a component/surface?** Consider `resources`.
-5. **Does it describe why the surface was opened?** It belongs to `invocation`.
-6. **Is it visual semantics?** It belongs to `presentation`.
-7. **Is it changing operational/lifecycle state?** It belongs to `state`.
-8. **Is it really company/user/system-wide?** Only then promote it to the corresponding root contract.
-
-The guiding rule is one semantic owner and one mutable authority. Convenience views are welcome when they are read-only projections rather than competing state.
-
-## Debugging and developer usage
-
-Use the CTX Viewer to inspect the active chain and select a node. The Properties panel exposes its preferred symbolic path, semantic kind/type, attributes, watchability and live subscriber counts. For expressions, prefer CTX paths and the provided traversal functions rather than DOM state or assumptions about nesting depth.
-
-Canonical absolute `ctx...` paths remain the stable internal identity used for mutation routing, dependency keys and subscriptions. **Path representation is separate from path identity:** whenever the runtime can describe a path relative to the active execution context, it prefers a `#`-anchored notation first (`#level...`, then `#...`), and falls back to `$...` only when no `#` form can express the target. Resolver results carry this preferred notation alongside the canonical path so the same rule applies to internal diagnostics/tooling as well as visible captions and CLI prompts.
-
-When diagnosing unexpected behavior, first identify the **authority path**, then inspect its subscribers/dependents. If two paths appear to expose the same value, check their attributes: one should be the authority and the other explicitly `derived`/`readonly`/`mirror`, never two independently mutable copies.
-
-### CTX path quick reference
-
-Expression paths use a small set of explicit navigation primitives over the real CTX tree:
-
-| Form            | Meaning                                                                                                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `$`             | CTX root.                                                                                                                                                                                              |
-| `#`             | Immediate parent of the current evaluation context.                                                                                                                                                    |
-| `#level`        | Nearest ancestor that is a UI-level context.                                                                                                                                                           |
-| `.(expression)` | Dynamic path member. Evaluate the parenthesized expression and use its result as the next key/index. The result must be a non-empty string or a non-negative integer; invalid results fail explicitly. |
-
-Aliases are convenience names for real CTX paths; they do not create values or evaluator-only scopes. Current built-ins are:
-
-| Alias                  | Canonical path / meaning                                          |
-| ---------------------- | ----------------------------------------------------------------- |
-| `$entity`              | Canonical entity for the current initialization context.          |
-| `$entity-fields`       | Canonical `fieldDefinition` for that initialization scope.        |
-| `$entry-current`       | Scalar record currently being initialized.                        |
-| `$level-entity`        | `$.entities.(#level.control.entityName)`                          |
-| `$level-entity-fields` | `$.entities.(#level.control.entityName).metadata.fieldDefinition` |
-
-For example, canonical create defaults use `$entity-fields` / `$entry-current` so they are portable outside UI execution, while UI-only expressions may still use the `$level-*` aliases. Aliases always resolve to real CTX state; they never manufacture hidden evaluator scopes.
+[CTX Reference](CTX-Reference.md), [CTX Catalog](CTX-Catalog.md), [State and Events](State-Mutation-and-Events.md), [UIS Surfaces](../clients/UI-Surfaces-and-Levels.md), [Flow Execution](../clients/Flow-Execution.md).

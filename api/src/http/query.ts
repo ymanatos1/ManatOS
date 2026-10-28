@@ -1,11 +1,71 @@
 import type { Request } from 'express';
 
-import { compileExpression } from '@manatos/shared';
+import {
+  compileExpression,
+  ValidationAppError,
+  type SysBOMetadata,
+  type ExpressionNode,
+} from '@manatos/shared';
 
 import type { ListQuery } from '../storage/in-memory-repository.js';
 
 import { config } from '../config.js';
 import { runtimeNumber } from '../runtime-configuration.js';
+
+/** External query inputs are not trusted API authorization predicates. */
+function assertClientQueryableField<T>(name: string, metadata: SysBOMetadata<T>): void {
+  const field = metadata.fieldDefinition[name];
+  if (!field || field.sensitive)
+    throw new ValidationAppError(
+      'Invalid query field.',
+      'Filtering or sorting by this field is not permitted.',
+    );
+}
+
+/** Fail closed on dynamic/indirect field access in a client-controlled expression.
+ * Internal authorization expressions do NOT pass through this HTTP parser.
+ */
+function validateClientPredicate<T>(node: ExpressionNode, metadata: SysBOMetadata<T>): void {
+  switch (node.kind) {
+    case 'literal':
+      return;
+    case 'variable': {
+      if (node.absolute || node.members.length !== 1 || typeof node.members[0] !== 'string')
+        throw new ValidationAppError(
+          'Invalid list exception expression.',
+          'Indirect field access is forbidden.',
+        );
+      assertClientQueryableField(node.members[0], metadata);
+      return;
+    }
+    case 'array':
+      node.items.forEach((item) => validateClientPredicate(item, metadata));
+      return;
+    case 'group':
+      validateClientPredicate(node.expression, metadata);
+      return;
+    case 'unary':
+      validateClientPredicate(node.operand, metadata);
+      return;
+    case 'binary':
+      validateClientPredicate(node.left, metadata);
+      validateClientPredicate(node.right, metadata);
+      return;
+    case 'conditional':
+      validateClientPredicate(node.condition, metadata);
+      validateClientPredicate(node.whenTrue, metadata);
+      validateClientPredicate(node.whenFalse, metadata);
+      return;
+    case 'function':
+      if (node.capability !== 'pure')
+        throw new ValidationAppError(
+          'Invalid list exception expression.',
+          'Non-pure functions are forbidden.',
+        );
+      node.arguments.forEach((arg) => validateClientPredicate(arg, metadata));
+      return;
+  }
+}
 
 /**
  * Converts the standard SysBO HTTP query-string parameters into
@@ -23,7 +83,7 @@ import { runtimeNumber } from '../runtime-configuration.js';
  *
  * Multiple filter.* parameters use AND semantics in the repository.
  */
-export function parseListQuery(req: Request): ListQuery {
+export function parseListQuery<T>(req: Request, metadata?: SysBOMetadata<T>): ListQuery {
   /**
    * Parse a positive integer or return the supplied fallback.
    */
@@ -106,6 +166,20 @@ export function parseListQuery(req: Request): ListQuery {
   const listExceptionsSource =
     typeof req.query.listExceptions === 'string' ? req.query.listExceptions.trim() : '';
   const listExceptions = listExceptionsSource ? compileExpression(listExceptionsSource) : undefined;
+  if (metadata) {
+    if (sort) assertClientQueryableField(sort, metadata);
+    for (const name of Object.keys(filters)) assertClientQueryableField(name, metadata);
+    if (listExceptions) validateClientPredicate(listExceptions.ast, metadata);
+  } else if (
+    listExceptions &&
+    listExceptions.requiredCapabilities.some((capability) => capability !== 'pure')
+  ) {
+    // Legacy parser-only callers retain pure expressions; HTTP routes must pass metadata.
+    throw new ValidationAppError(
+      'Invalid list exception expression.',
+      'Non-pure functions are forbidden.',
+    );
+  }
 
   return {
     page,

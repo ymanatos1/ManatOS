@@ -28,4 +28,10 @@ Company
 - related records reuse generic relationship/list presentation;
 - application-specific UI should extend common composition rather than create a parallel framework.
 
-See [Platform Model](Platform-Model.md), [Application Design Principles](Application-Design-Principles.md), and [protoCRM Applications](protocrm/Applications.md) and [Company-domain Licensing](../company/Licensing.md).
+See [Platform Model](Platform-Model.md), [Application Design Principles](Application-Design-Principles.md), and [protoCRM Applications](protocrm/Applications.md) and [ManatOS Licensing](../company/Licensing.md).
+
+## Application composition through reusable contracts
+
+An application describes domain objects, views, expressions and authorized interactions under a platform. The same metadata is consumed by general entity services and UI components, while application-specific services are introduced only for behavior with genuinely distinct domain meaning. Entity fields, reusable enums and relationships should remain understandable independent of one page template.
+
+Named UI Views let an application offer different List/Entry presentations over the same entity without redefining canonical semantics. Localization applies to descriptions at presentation time. See [Named UI Views](../metadata/UI-Views.md) and [Multilingual Infrastructure](../multilingual/README.md).

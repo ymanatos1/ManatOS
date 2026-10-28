@@ -1,0 +1,35 @@
+@if (actions().length) {
+<manatos-popup-actions>
+  @for (action of actions(); track action.id) { @if (action.id === 'close' && hostKind() === 'page')
+  {
+  <a
+    class="manatos-surface-action"
+    [attr.href]="'/bo/' + entityKey()"
+    [attr.data-surface-action]="action.id"
+  >
+    <i [class]="'bi ' + action.icon" aria-hidden="true"></i>
+    {{ kind() === 'entry' && (action.id === 'close' || action.id === 'cancel') ? (dirty() ?
+    (language() === 'EL' ? 'Άκυρον' : 'Cancel') : (language() === 'EL' ? 'Κλείσιμο' : 'Close')) :
+    action.label[language()] }}
+  </a>
+  } @else {
+  <button
+    type="button"
+    class="manatos-surface-action"
+    [class.is-primary]="action.primary"
+    [attr.data-surface-action]="action.id"
+    [disabled]="
+      !action.implemented ||
+      (action.id === 'save' && !saveReady()) ||
+      (action.id === 'select' && (!selectReady() || selectionBusy()))
+    "
+    (click)="actionRequested.emit(action.id)"
+  >
+    <i [class]="'bi ' + action.icon" aria-hidden="true"></i>
+    {{ kind() === 'entry' && (action.id === 'close' || action.id === 'cancel') ? (dirty() ?
+    (language() === 'EL' ? 'Άκυρον' : 'Cancel') : (language() === 'EL' ? 'Κλείσιμο' : 'Close')) :
+    action.label[language()] }}
+  </button>
+  } }
+</manatos-popup-actions>
+}

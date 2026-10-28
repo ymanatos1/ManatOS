@@ -1,0 +1,1213 @@
+/*
+ * Semantic popup presentation for EJS1.
+ * Mirrors NG1's AuthPopup, RegisterPopup, AuthCredentials, ExternalProviders,
+ * PopupTitle and PopupActions component layout.  These rules belong to the
+ * EJS-specific adapter; CTX, Flow and authorization stay in shared.UI.
+ */
+
+.ejs-semantic-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  overflow: auto;
+  background: rgb(0 0 0 / 50%);
+}
+
+.ejs-semantic-popup {
+  box-sizing: border-box;
+  width: min(880px, calc(100vw - 2rem));
+  min-width: 0;
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  border: 1px solid #cbd8e8;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #24364d;
+  font-family: var(
+    --bs-font-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Arial,
+    sans-serif
+  );
+  box-shadow: 0 22px 58px rgba(7, 26, 61, 0.24);
+  font-size: 1em;
+}
+
+.ejs-semantic-popup.message-dialog {
+  width: min(690px, calc(100vw - 2rem));
+}
+
+.ejs-semantic-popup.error-dialog {
+  width: min(780px, calc(100vw - 2rem));
+}
+
+/* EJS0 application errors use a compact danger-tinted title. */
+.ejs-semantic-popup.error-dialog .ejs-semantic-popup-header {
+  background: #f8d7da;
+  border-bottom-color: #f1aeb5;
+}
+.ejs-semantic-popup.error-dialog .ejs-popup-title-main > .bi {
+  color: #b02a37;
+}
+
+.ejs-semantic-popup.reset-dialog {
+  width: min(790px, calc(100vw - 2rem));
+}
+
+/* NG1 PopupTitle's main/title/tools/close composition. */
+
+.ejs-semantic-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1.1rem 1.35rem;
+  border-bottom: 1px solid #d5e0ed;
+  background: #edf4fc;
+}
+
+.ejs-popup-title-main {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ejs-popup-title-main > .bi {
+  flex: none;
+  font-size: 1.35em;
+  color: #1769d2;
+}
+
+.ejs-popup-title-copy {
+  min-width: 0;
+}
+
+.ejs-popup-title-copy h2 {
+  margin: 0;
+  color: #17385c;
+  font-size: 1.15em;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ejs-popup-title-copy p {
+  margin: 0.22rem 0 0;
+  color: #64758a;
+  font-size: 0.85em;
+  line-height: 1.45;
+}
+
+.ejs-popup-title-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ejs-semantic-popup-languages,
+.ejs-semantic-popup-font-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.ejs-popup-title-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid #c5d6e9;
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #243d60;
+  font: inherit;
+  font-size: 0.83em;
+  cursor: pointer;
+}
+
+.ejs-popup-title-controls button:hover {
+  background: #e1eefa;
+}
+
+.ejs-popup-title-controls button[aria-pressed='true'] {
+  background: #d4e4f7;
+  color: #0c458a;
+  font-weight: 700;
+}
+
+.ejs-popup-title-controls .ejs-semantic-popup-x {
+  margin-left: 0.3rem;
+  color: #455b70;
+  font-size: 1.2em;
+  border: 0;
+  background: transparent;
+}
+
+.ejs-semantic-popup button:focus-visible {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+/* The debugger Host uses display: contents, so foreground stacking must
+ * apply to the dock itself. Detached docks live in a separate document. */
+body.ejs-popup-debugger-foreground .developer-tools-dock {
+  z-index: 5001;
+}
+
+/* The shared CTX overlay is drawn on <body> at z-index 2102. EJS1's modal
+ * backdrop is 5000; raise the overlay only while an EJS1 popup is open.
+ * Keep the shared highlighter and ordinary List Page stacking unchanged. */
+body:has(> .ejs-semantic-popup-backdrop) > .ctx-ui-surface-layout-highlight {
+  z-index: 5002 !important;
+}
+
+/* NG1 uses a block body, NOT a grid whose children happen to be sections. */
+
+.ejs-semantic-popup-content {
+  display: block;
+}
+
+.ejs-semantic-popup .sign-in-body {
+  padding: 1.2rem 1.35rem 1.3rem;
+}
+
+.ejs-semantic-popup .auth-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding-top: 1.15rem;
+}
+
+.ejs-semantic-popup .auth-detail-sections {
+  display: block;
+}
+
+.ejs-semantic-popup .auth-method-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #d7e1ec;
+  border-radius: 0.75rem;
+  background: #fbfcfe;
+}
+
+.ejs-semantic-popup .auth-registration-form-card,
+.ejs-semantic-popup .reset-form-card {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d5e0ed;
+  border-radius: 0.75rem;
+  background: #fbfdff;
+}
+
+.ejs-semantic-popup .auth-modal-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #24364d;
+  font-size: 0.88em;
+  font-weight: 700;
+}
+
+.ejs-semantic-popup .auth-modal-section-heading .bi {
+  color: #1769d2;
+}
+
+.ejs-semantic-popup .auth-method-description {
+  min-height: 2.3rem;
+  margin: 0.35rem 0 0.8rem;
+  color: #6d7b8b;
+  font-size: 0.79em;
+  line-height: 1.45;
+}
+
+.ejs-semantic-popup .auth-registration-form-card .auth-method-description,
+.ejs-semantic-popup .reset-form-card .auth-method-description {
+  min-height: 0;
+}
+
+.ejs-semantic-popup .auth-method-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  color: #64758a;
+  font-size: 0.78em;
+  line-height: 1.45;
+}
+
+.ejs-semantic-popup .auth-method-note .bi {
+  color: #27965a;
+}
+
+/* Static introductions are interpreted from the same EN/EL files as NG1. */
+
+.ejs-semantic-popup .auth-static-intro[aria-busy='true'] {
+  min-height: 140px;
+  opacity: 0;
+}
+
+.ejs-semantic-popup .auth-static-intro-error {
+  color: #a61b1b;
+  margin: 1rem 0;
+}
+
+.ejs-semantic-popup .auth-entry-intro {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.22fr);
+  align-items: center;
+  gap: 1.45rem;
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid #d7e1ec;
+}
+
+.ejs-semantic-popup .auth-email-registration-intro {
+  grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.3fr);
+}
+
+.ejs-semantic-popup .auth-entry-copy {
+  min-width: 0;
+  color: #35475d;
+  line-height: 1.5;
+}
+
+.ejs-semantic-popup .auth-entry-copy h3 {
+  margin: 0;
+  color: #142b4a;
+  font-size: 1.08em;
+  font-weight: 700;
+}
+
+.ejs-semantic-popup .auth-entry-copy p {
+  margin: 0.65rem 0 0;
+  color: #63758b;
+  font-size: 0.92em;
+}
+
+.ejs-semantic-popup .auth-entry-copy p + p {
+  margin-top: 0.35rem;
+}
+
+.ejs-semantic-popup .auth-entry-illustration {
+  position: relative;
+  min-height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem;
+  overflow: hidden;
+}
+
+.ejs-semantic-popup .auth-entry-illustration::before,
+.ejs-semantic-popup .auth-entry-illustration::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+}
+
+.ejs-semantic-popup .auth-entry-illustration::before {
+  width: 185px;
+  height: 92px;
+  background: #edf5ff;
+  transform: rotate(-7deg);
+}
+
+.ejs-semantic-popup .auth-entry-illustration::after {
+  width: 142px;
+  height: 72px;
+  background: #eef9f2;
+  transform: translate(42px, 21px) rotate(8deg);
+}
+
+.ejs-semantic-popup .auth-entry-action-tile,
+.ejs-semantic-popup .auth-entry-manatos-tile {
+  position: relative;
+  z-index: 2;
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border-radius: 1.1rem;
+  box-shadow: 0 9px 22px rgba(15, 53, 96, 0.16);
+}
+
+.ejs-semantic-popup .auth-entry-action-tile {
+  margin-right: -0.25rem;
+  color: #fff;
+  background: linear-gradient(145deg, #2f7fd7, #1559a6);
+  font-size: 2.25rem;
+  transform: rotate(-2deg);
+}
+
+.ejs-semantic-popup .auth-entry-manatos-tile {
+  margin-left: -0.25rem;
+  background: linear-gradient(145deg, #bce9c8, #73c78f);
+  transform: rotate(2deg);
+}
+
+.ejs-semantic-popup .auth-entry-manatos-tile img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(12, 56, 110, 0.16);
+}
+
+.ejs-semantic-popup .auth-entry-connector {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 21px;
+  transform: translateX(-50%);
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #cedceb;
+  border-radius: 50%;
+  background: #fff;
+  color: #1769d2;
+  box-shadow: 0 4px 12px rgba(12, 56, 110, 0.12);
+}
+
+.ejs-semantic-popup .auth-entry-badge {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 1px;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7e5dc;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #27965a;
+  box-shadow: 0 6px 16px rgba(7, 26, 61, 0.13);
+  font-size: 1.5rem;
+}
+
+/* Embedded NG1 AuthCredentials presentation, preserving EJS native secrets. */
+
+.ejs-semantic-popup .form-label {
+  display: inline;
+  margin: 0;
+  color: #212529;
+  font-size: 1em;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.ejs-semantic-popup .ejs-semantic-popup-field {
+  min-width: 0;
+}
+
+.ejs-semantic-popup .form-control {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #212529;
+  font: inherit;
+  line-height: 1.5;
+  appearance: none;
+}
+
+.ejs-semantic-popup .form-control:focus {
+  outline: 0;
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgb(13 110 253 / 25%);
+}
+
+.ejs-semantic-popup .identity-input {
+  margin-bottom: 1rem;
+}
+
+.ejs-semantic-popup .password-input {
+  margin-bottom: 0.5rem;
+}
+
+.ejs-semantic-popup .password-visibility-field {
+  position: relative;
+}
+
+.ejs-semantic-popup .password-visibility-field > .form-control {
+  padding-right: 2.75rem;
+}
+
+.ejs-semantic-popup .password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: #64758a;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ejs-semantic-popup .password-visibility-toggle:hover {
+  color: #1769d2;
+  background: #edf4fc;
+}
+
+.ejs-semantic-popup .password-recovery-action {
+  display: block;
+  margin-top: 0.75rem;
+  padding: 0;
+  border: 0;
+  color: #0d6efd;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ejs-semantic-popup .password-recovery-action:hover {
+  text-decoration: underline;
+}
+
+.ejs-semantic-popup .auth-password-request-field {
+  margin-top: 0.85rem;
+}
+
+.ejs-semantic-popup .auth-password-request-field .form-text {
+  margin-top: 0.5rem;
+  color: #6c757d;
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+
+.ejs-semantic-popup .auth-registration-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin-top: 0.85rem;
+}
+
+.ejs-semantic-popup .auth-registration-identity-column,
+.ejs-semantic-popup .auth-registration-security-column {
+  display: grid;
+  min-width: 0;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+.ejs-semantic-popup .is-password-reset {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.ejs-semantic-popup .is-password-reset .auth-registration-identity-column {
+  display: none;
+}
+
+.ejs-semantic-popup .is-password-reset .auth-registration-security-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ejs-semantic-popup .auth-password-guidance {
+  margin-top: 0.95rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.65rem;
+  background: #f1f6fb;
+  color: #64758a;
+}
+
+.ejs-semantic-popup .auth-password-guidance-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #35475d;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+
+.ejs-semantic-popup .auth-password-guidance-title .bi {
+  color: #27965a;
+}
+
+.ejs-semantic-popup .password-rules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem 1rem;
+  margin-top: 0.55rem;
+  font-size: 0.8em;
+}
+
+.ejs-semantic-popup .password-rules > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  color: #64758a;
+}
+
+.ejs-semantic-popup .password-rules .rule-ok {
+  color: #147a4c;
+}
+
+.ejs-semantic-popup .password-rules .rule-ok .bi {
+  color: #198754;
+}
+
+/* NG1's provider buttons and dedicated email registration option. */
+
+.ejs-semantic-popup .auth-provider-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ejs-semantic-popup .auth-provider-button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 43px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #b9c7d9;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #5c6877;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ejs-semantic-popup .auth-provider-button:hover:not(:disabled) {
+  border-color: #86b7fe;
+  background: #f5f9ff;
+}
+
+.ejs-semantic-popup .auth-provider-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ejs-semantic-popup .auth-provider-icon {
+  flex: 0 0 1.25rem;
+  font-size: 1.1em;
+}
+
+.ejs-semantic-popup .auth-provider-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.ejs-semantic-popup .auth-provider-chevron {
+  margin-left: auto;
+}
+
+.ejs-semantic-popup .auth-provider-status {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #dce2e9;
+  border-radius: 0.3rem;
+  background: #f7f8fa;
+  color: #596575;
+  font-size: 0.7em;
+  white-space: nowrap;
+}
+
+.ejs-semantic-popup .auth-provider-placeholder {
+  margin: 0;
+  padding: 0.5rem 0;
+  color: #6d7b8b;
+  font-size: 0.875em;
+}
+
+.ejs-semantic-popup .auth-email-registration-button {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 72px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #1769d2;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, #1d78ef, #1264d5);
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 7px 18px rgba(20, 100, 213, 0.16);
+}
+
+.ejs-semantic-popup .auth-email-registration-button:hover {
+  background: linear-gradient(135deg, #176fe2, #0e59c1);
+}
+
+.ejs-semantic-popup .auth-email-registration-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 0.65rem;
+  background: rgb(255 255 255 / 15%);
+  font-size: 1.15em;
+}
+
+.ejs-semantic-popup .auth-email-registration-copy {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.ejs-semantic-popup .auth-email-registration-copy strong {
+  color: #fff;
+  font-size: 0.92em;
+}
+
+.ejs-semantic-popup .auth-email-registration-copy small {
+  color: rgb(255 255 255 / 82%);
+  font-size: 0.73em;
+}
+
+/* NG1 PopupActions presentation; no page-specific button overrides. */
+
+.ejs-semantic-popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.95rem 1.35rem 1.05rem;
+  border-top: 1px solid #d5e0ed;
+  background: #fff;
+}
+
+.ejs-semantic-popup-footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #6c757d;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #6c757d;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ejs-semantic-popup-footer button:hover:not(:disabled) {
+  background: #6c757d;
+  color: #fff;
+}
+
+.ejs-semantic-popup-footer .ejs-semantic-popup-action-start {
+  margin-right: auto;
+}
+
+.ejs-semantic-popup-footer .ejs-semantic-popup-action-submit {
+  border-color: #0d6efd;
+  background: #0d6efd;
+  color: #fff;
+}
+
+.ejs-semantic-popup-footer .ejs-semantic-popup-action-submit:hover:not(:disabled) {
+  background: #0b5ed7;
+}
+
+.ejs-semantic-popup button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ejs-semantic-popup-notice:empty {
+  display: none;
+}
+
+.ejs-semantic-popup .sign-in-notice {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #b6d4fe;
+  border-radius: 0.375rem;
+  background: #cfe2ff;
+  color: #084298;
+  font-size: 0.875em;
+}
+
+/* The message surface shares the same title/actions, without the Auth method grid. */
+
+.ejs-semantic-popup-message-illustration {
+  display: block;
+  width: min(170px, 45%);
+  max-height: 170px;
+  object-fit: contain;
+  margin: 1rem auto;
+}
+
+.ejs-semantic-popup-message-content {
+  padding: 1.25rem 1.4rem 0.5rem;
+}
+
+/* Keep ErrorInfo body/text/details together; never add a hero illustration. */
+.ejs-semantic-popup.error-dialog .ejs-semantic-popup-message-content {
+  padding-bottom: 0;
+}
+.ejs-semantic-popup.error-dialog .ejs-semantic-popup-message-trace:not([hidden]) {
+  padding-top: 0.75rem;
+}
+.ejs-semantic-popup.error-dialog .ejs-semantic-popup-message-trace pre {
+  max-height: 360px;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.ejs-semantic-popup-message-trace {
+  padding: 0.5rem 1.4rem 1rem;
+}
+
+.ejs-semantic-popup-message-trace pre {
+  max-height: 28vh;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+/* NG1 AuthCredentials switches the checklist to two columns on tablets. */
+@media (max-width: 991.98px) and (min-width: 768px) {
+  .ejs-semantic-popup .password-rules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ejs-semantic-popup .auth-entry-intro,
+  .ejs-semantic-popup .auth-email-registration-intro,
+  .ejs-semantic-popup .auth-methods-grid,
+  .ejs-semantic-popup .auth-registration-fields,
+  .ejs-semantic-popup .password-rules {
+    grid-template-columns: 1fr;
+  }
+
+  .ejs-semantic-popup .auth-entry-illustration {
+    min-height: 112px;
+  }
+
+  .ejs-semantic-popup .auth-method-description {
+    min-height: 0;
+  }
+
+  .ejs-semantic-popup-header {
+    flex-wrap: wrap;
+  }
+
+  .ejs-popup-title-controls {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 600px) {
+  .ejs-semantic-popup .is-password-reset .auth-registration-security-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ejs-semantic-popup-footer button .auth-action-spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid rgb(255 255 255 / 35%);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: ejs-popup-action-spin 0.7s linear infinite;
+}
+
+@keyframes ejs-popup-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ejs-semantic-popup-footer button .auth-action-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* Shared hidden state wins over flex/grid presentation. */
+
+.ejs-semantic-popup [hidden] {
+  display: none !important;
+}
+
+/* PopupTitleTools uses NG1's compact flag selector and vertical FontScale. */
+
+.ejs-semantic-popup-languages {
+  position: relative;
+}
+
+.ejs-semantic-popup-languages > button {
+  display: inline-flex;
+  gap: 0.42rem;
+  align-items: center;
+}
+
+.ejs-semantic-popup-languages .language-flag {
+  width: 1.1rem;
+  height: auto;
+  flex: 0 0 1.1rem;
+}
+
+.ejs-semantic-popup-languages .navigation-caret {
+  font-size: 0.6em;
+}
+
+.ejs-popup-language-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  z-index: 5;
+  min-width: 11rem;
+  padding: 0.35rem 0;
+  border: 1px solid #d7e1ec;
+  border-radius: 0.4rem;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(7, 26, 61, 0.16);
+}
+
+.ejs-popup-title-controls .ejs-popup-language-menu button {
+  justify-content: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ejs-popup-title-controls .ejs-popup-language-menu button.active {
+  background: #0d6efd;
+  color: #fff;
+}
+
+.ejs-popup-title-controls .ejs-semantic-popup-font-scale {
+  display: inline-flex;
+  gap: 0.18rem;
+  padding: 0 0.28rem 0 0.42rem;
+  user-select: none;
+}
+
+.ejs-semantic-popup-font-scale .font-scale-value {
+  min-width: 2.35rem;
+  font-size: 0.72em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ejs-semantic-popup-font-scale .font-scale-controls {
+  display: flex;
+  flex-direction: column;
+  width: 0.95rem;
+  align-items: stretch;
+}
+
+.ejs-popup-title-controls .font-scale-controls button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  width: 0.95rem;
+  height: 0.72rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.65em;
+  line-height: 0.72rem;
+}
+
+.ejs-popup-title-controls .font-scale-controls .font-scale-reset {
+  height: 0.55rem;
+  font-size: 0.48em;
+}
+
+.ejs-popup-title-controls .font-scale-controls button[aria-disabled='true'] {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.ejs-popup-title-controls .ejs-semantic-popup-debugger {
+  margin-left: 0;
+}
+
+/* Recovery feedback remains registered even while not shown, as in NG1. */
+
+.ejs-semantic-popup .auth-password-request-field .invalid-feedback {
+  display: none;
+  margin-top: 0.25rem;
+  color: #dc3545;
+  font-size: 0.875em;
+}
+
+.ejs-semantic-popup .auth-password-request-field input:user-invalid ~ .invalid-feedback {
+  display: block;
+}
+
+/* Change Password: full-width form and illustrated hero, matching NG1's semantic surface. */
+.ejs-semantic-popup.change-dialog {
+  width: min(880px, calc(100vw - 2rem));
+}
+.ejs-semantic-popup.change-dialog .auth-registration-form-card {
+  width: 100%;
+  margin-top: 1rem;
+}
+.ejs-semantic-popup.change-dialog .auth-method-description {
+  min-height: 0;
+  margin-bottom: 0.45rem;
+}
+.ejs-semantic-popup.change-dialog .auth-change-password-intro {
+  grid-template-columns: minmax(200px, 0.78fr) minmax(0, 1.22fr);
+}
+/* Current password fills the first row; new/confirm share the second. */
+.ejs-semantic-popup .auth-registration-fields.is-password-change {
+  display: block;
+  margin-top: 0.35rem;
+}
+.ejs-semantic-popup .is-password-change .auth-registration-identity-column {
+  display: none;
+}
+.ejs-semantic-popup .is-password-change .auth-registration-security-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.85rem;
+}
+.ejs-semantic-popup .is-password-change .auth-registration-security-column > :first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+.ejs-semantic-popup .is-password-change .auth-registration-security-column > :nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+}
+.ejs-semantic-popup .is-password-change .auth-registration-security-column > :nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+}
+.ejs-semantic-popup .is-password-change .auth-registration-security-column > * {
+  min-width: 0;
+}
+@media (max-width: 767.98px) {
+  .ejs-semantic-popup.change-dialog .auth-change-password-intro,
+  .ejs-semantic-popup .is-password-change .auth-registration-security-column {
+    grid-template-columns: 1fr;
+  }
+  .ejs-semantic-popup .is-password-change .auth-registration-security-column > * {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+/* Universal read-only semantic change report, hosted by the standard popup Surface. */
+.ejs-change-report-frame {
+  margin: 0 18px 18px;
+  border: 1px solid #dbe4ed;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ejs-change-report-summary {
+  margin-right: auto;
+  color: #526176;
+  font-size: 0.9em;
+}
+.ejs-change-report-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+}
+.ejs-change-report-toolbar button {
+  border: 1px solid #c9d4e2;
+  border-radius: 4px;
+  background: #fff;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.ejs-change-report-tree {
+  max-height: min(50vh, 520px);
+  overflow: auto;
+  border-top: 1px solid #dbe4ed;
+}
+.ejs-change-report-node > summary::-webkit-details-marker {
+  display: none;
+}
+.ejs-change-report-node > summary::before {
+  content: '›';
+  font-size: 1.1em;
+  font-weight: 700;
+  color: #526176;
+}
+.ejs-change-report-node[open] > summary::before {
+  transform: rotate(90deg);
+}
+.ejs-change-report-node > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  cursor: pointer;
+  list-style: none;
+  border-bottom: 1px solid #e7edf3;
+}
+.ejs-change-report-count {
+  margin-left: auto;
+  border: 1px solid #d9e0e9;
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+.ejs-change-report-status {
+  color: #64748b;
+}
+.ejs-change-report-children {
+  padding-left: 14px;
+  border-left: 1px solid #e1e8ee;
+  margin-left: 14px;
+}
+.ejs-change-report-detail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #edf0f4;
+}
+.ejs-change-report-label {
+  color: #64748b;
+  min-width: 100px;
+}
+.ejs-change-report-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+.ejs-change-report-success {
+  color: #08794a;
+}
+.ejs-change-report-danger {
+  color: #b42318;
+}
+.ejs-change-report-value img {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+.manatos-entry-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+.manatos-entry-change-indicator {
+  border: 0;
+  background: transparent;
+  color: #2564ab;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.manatos-entry-change-indicator:disabled {
+  color: #9ba5b2;
+  text-decoration: none;
+  cursor: default;
+}
+
+.ejs-semantic-popup.change-report-dialog {
+  width: min(900px, calc(100vw - 2rem));
+}
+
+/* Compact shared close decision, with the same warning semantics as EJS0. */
+.ejs-semantic-popup.unsaved-dialog {
+  width: min(540px, calc(100vw - 2rem));
+}
+.ejs-semantic-popup.unsaved-dialog .ejs-semantic-popup-header {
+  background: #fff3cd;
+  border-bottom-color: #ffecb5;
+}
+.ejs-semantic-popup.unsaved-dialog .ejs-popup-title-main > .bi {
+  color: #997404;
+}
+.ejs-semantic-popup.unsaved-dialog .sign-in-body {
+  padding: 1.1rem 1.3rem 1.25rem;
+}
+.ejs-semantic-popup.unsaved-dialog .auth-method-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0;
+  color: #394b60;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+.ejs-semantic-popup.unsaved-dialog .auth-method-note .bi {
+  color: #997404;
+}
+.ejs-semantic-popup .popup-action-danger {
+  border-color: #dc3545;
+  color: #b02a37;
+}
+.ejs-semantic-popup .popup-action-danger:hover:not(:disabled) {
+  color: #fff;
+  background: #dc3545;
+}
+
+/* The List Popup Host reuses the List Page styling on any Entry route. */
+.manatos-list-popup-dialog {
+  width: min(1080px, calc(100vw - 2rem));
+}
+.manatos-list-popup-dialog .manatos-list-page-host {
+  padding: 10px 16px;
+}
+
+/* Compact decision illustration and non-primary Review changes link. */
+.ejs-semantic-popup.unsaved-dialog .auth-method-note {
+  align-items: center;
+  gap: 1.1rem;
+}
+.ejs-semantic-popup.unsaved-dialog .manatos-unsaved-illustration {
+  width: 82px;
+  height: 92px;
+  object-fit: contain;
+  flex: none;
+}
+.ejs-semantic-popup.unsaved-dialog .ejs-semantic-popup-action-start {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  text-decoration: underline;
+  box-shadow: none;
+  padding-inline: 0;
+}

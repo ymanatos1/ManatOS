@@ -1,0 +1,31 @@
+<aside
+  [id]="panelId()"
+  class="page-details"
+  [attr.aria-label]="multilingual().resolve('@CM.ContextDetails')"
+>
+  <div class="page-details-heading">
+    <div>
+      <span class="page-details-eyebrow">{{ eyebrow() }}</span>
+      <h2>{{ title() }}</h2>
+    </div>
+
+    <button
+      type="button"
+      class="page-details-close"
+      [title]="multilingual().resolve('@CM.CloseDetailsPanel')"
+      [attr.aria-label]="multilingual().resolve('@CM.CloseDetailsPanel')"
+      (click)="closeRequested.emit()"
+    >
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  @if (message()) {
+  <div class="page-details-card">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    {{ message() }}
+  </div>
+  }
+
+  <ng-content />
+</aside>

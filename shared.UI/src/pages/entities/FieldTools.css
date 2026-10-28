@@ -1,0 +1,139 @@
+/* Canonical FieldTools presentation for NG1 and EJS1.
+   The shared.UI component creates ALL markup; framework adapters only mount it.
+   This stylesheet deliberately applies to portaled menus outside Entry. */
+[data-entry-field-tools-slot],
+manatos-field-tools-menu {
+  display: contents;
+}
+.manatos-entry .manatos-typed-field {
+  min-width: 0;
+}
+/* One control frame for every FieldTools owner; the button replaces the
+   decorative leading icon, including Version's v. */
+.manatos-entry
+  .manatos-form-field-control.has-field-tools
+  .manatos-typed-field
+  .manatos-form-leading:not(.manatos-field-tool-toggle) {
+  display: none;
+}
+.manatos-entry .manatos-form-field-control .manatos-field-tools {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex: 0 0 38px;
+  width: 38px;
+  min-width: 38px;
+  height: 30px;
+  margin: 0 4px 0 0;
+  padding: 0;
+}
+.manatos-entry .manatos-form-field-control .manatos-field-tool-toggle.manatos-form-leading {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 30px;
+  min-height: 30px;
+  margin: 0 4px 0 0;
+  padding: 0;
+  border: 1px solid #d7e1ec;
+  border-radius: 4px;
+  background: #f2f7ff;
+  color: #2874c8;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+.manatos-entry
+  .manatos-form-field-control
+  .manatos-field-tool-toggle.manatos-form-leading:hover:not(:disabled),
+.manatos-entry
+  .manatos-form-field-control
+  .manatos-field-tool-toggle.manatos-form-leading:focus-visible {
+  background: #eaf3ff;
+  color: #2159a5;
+}
+.manatos-entry .manatos-form-field-control .manatos-field-tool-toggle.manatos-form-leading > i {
+  line-height: 1;
+}
+.manatos-field-tools[hidden],
+.manatos-field-tool-menu[hidden] {
+  display: none !important;
+}
+.manatos-field-tool-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: auto;
+  z-index: 25;
+  box-sizing: border-box;
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  min-width: 190px;
+  max-width: 320px;
+  padding: 4px;
+  overflow-x: hidden;
+  border: 1px solid #d7e1ec;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 4px 12px #1d365426;
+  white-space: normal;
+  color: #243951;
+}
+.manatos-field-tool-menu > button {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #243951;
+  font: inherit;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  text-align: start;
+  white-space: normal;
+  cursor: pointer;
+}
+.manatos-field-tool-menu > button:hover:not(:disabled),
+.manatos-field-tool-menu > button:focus-visible {
+  background: #eaf3ff;
+}
+.manatos-field-tool-menu > button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.manatos-field-tool-divider {
+  display: block;
+  border-top: 1px solid #e2e8f0;
+  margin: 4px 0;
+}
+.manatos-field-tool-menu[data-manatos-transient-overlay='true'] {
+  display: grid;
+}
+
+/* Effective readonly status is derived by EntryEditState, never by native input heuristics.
+   Both NG1 and EJS1 use the same semantic field class and these shared rules. */
+.manatos-form-field.is-readonly .manatos-form-field-control:not(.is-semantic) {
+  background-color: #f5f7fa;
+  border-color: #d7e1ec;
+}
+.manatos-form-field.is-readonly .manatos-form-input,
+.manatos-form-field.is-readonly .manatos-form-part,
+.manatos-form-field.is-readonly .manatos-form-value,
+.manatos-form-field.is-readonly .manatos-typed-field {
+  background-color: #f5f7fa;
+  color: #65738a;
+}
+.manatos-form-field.is-readonly .manatos-field-tool-toggle {
+  background-color: #f2f5fa;
+}

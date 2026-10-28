@@ -1,0 +1,17 @@
+<header class="surface-title">
+  <div class="surface-title-copy">
+    <h1>
+      @if (model().icon) {
+      <i class="bi {{ model().icon }} surface-title-icon" aria-hidden="true"></i>
+      } {{ model().title }}
+    </h1>
+
+    @if (model().subtitle) {
+    <p class="surface-title-subtitle">{{ model().subtitle }}</p>
+    }
+  </div>
+
+  <div class="surface-title-actions">
+    <ng-content />
+  </div>
+</header>

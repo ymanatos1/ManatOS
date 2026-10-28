@@ -7,20 +7,22 @@ export const sysBOEmailAddressesMetadata: SysBOMetadata<SysEmailAddress> = {
   name: 'sysEmailAddresses',
   subsystem: 'contacts',
   exposure: 'internal',
-  label: 'Email address',
-  pluralLabel: 'Email addresses',
+  label: '@EN.manatos.contacts.emailAddresses.label.EmailAddress' /* Email address */,
+  pluralLabel:
+    '@EN.manatos.contacts.emailAddresses.pluralLabel.EmailAddresses' /* Email addresses */,
   primaryField: 'address',
   entry: { name: { field: 'address' } },
   fieldDefinition: {
     ...commonSysBOFields,
     name: {
       ...commonSysBOFields.name!,
-      label: 'Canonical email key',
+      label:
+        '@EN.manatos.contacts.emailAddresses.label.CanonicalEmailKey' /* Canonical email key */,
       readOnly: true,
     },
     address: {
       key: 'address',
-      label: 'Email address',
+      label: '@EN.manatos.contacts.emailAddresses.label.EmailAddress' /* Email address */,
       type: 'email',
       order: 20,
       required: true,

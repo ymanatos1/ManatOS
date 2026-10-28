@@ -4,16 +4,20 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { MANATOS_COMPANY, resolvePlatform } from '@manatos/shared';
+import { MANATOS_COMPANY, resolvePlatform, resolveMetadataText } from '@manatos/shared';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const platformView = resolve(testDirectory, '../../views/pages/platform.ejs');
 const headerView = resolve(testDirectory, '../../views/components/layout/header.ejs');
+const metadataText = (value: string) => resolveMetadataText(value, 'EN');
 
 describe('platform presentation', () => {
   it('renders protoCRM from shared platform metadata rather than page literals', async () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
-    const html = await ejs.renderFile(platformView, { platform });
+    const html = await ejs.renderFile(platformView, {
+      platform,
+      metadataText,
+    });
     const $ = load(html);
 
     expect($('.platform-hero-image').attr('src')).toBe(
@@ -30,6 +34,7 @@ describe('platform presentation', () => {
   it('makes the current-platform top-header badge a platform-page link', async () => {
     const currentPlatform = resolvePlatform(MANATOS_COMPANY);
     const html = await ejs.renderFile(headerView, {
+      metadataText,
       app: { company: MANATOS_COMPANY, currentPlatform, version: '0.1.0' },
       currentUser: null,
     });
@@ -48,6 +53,7 @@ describe('platform presentation', () => {
     const baseApp = { company: MANATOS_COMPANY, currentPlatform, version: '0.1.0' };
 
     const hiddenHtml = await ejs.renderFile(headerView, {
+      metadataText,
       app: { ...baseApp, ui: { bootstrap: { ui: { donationsShow: false } } } },
       currentUser: null,
     });
@@ -56,6 +62,7 @@ describe('platform presentation', () => {
     expect(hidden$('.header-donate-button').hasClass('d-none')).toBe(true);
 
     const shownHtml = await ejs.renderFile(headerView, {
+      metadataText,
       app: { ...baseApp, ui: { bootstrap: { ui: { donationsShow: true } } } },
       currentUser: null,
     });

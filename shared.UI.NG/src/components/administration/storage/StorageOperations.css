@@ -1,0 +1,7 @@
+.storage-operation-panel {
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 1px solid var(--bs-border-color, #ddd);
+  border-radius: 0.4rem;
+  background: var(--bs-tertiary-bg, #f3f5f6);
+}

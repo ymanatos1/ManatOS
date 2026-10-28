@@ -1,0 +1,86 @@
+<div class="ctx-debug-find-row" role="search" [attr.aria-label]="multilingual().FindInCtx">
+  <div class="ctx-debug-find-input-wrap">
+    <input
+      class="ctx-find-input"
+      type="text"
+      autocomplete="off"
+      [placeholder]="multilingual().FindInCtxPlaceholder"
+      [attr.aria-label]="multilingual().CtxFindPattern"
+      [value]="searchText()"
+      (input)="changeSearch($event)"
+      (keydown)="handleKey($event)"
+    />
+    @if (history().length > 0) {
+    <details class="ctx-debug-find-history-wrap">
+      <summary
+        [title]="multilingual().RecentSearches"
+        [attr.aria-label]="multilingual().RecentCtxSearches"
+      >
+        <i class="bi bi-clock-history"></i>
+      </summary>
+      <div
+        class="ctx-debug-find-history"
+        role="listbox"
+        [attr.aria-label]="multilingual().RecentCtxSearches"
+      >
+        @for (term of history(); track term) {
+        <button type="button" role="option" [title]="term" (click)="historySelected.emit(term)">
+          {{ term }}
+        </button>
+        }
+      </div>
+    </details>
+    }
+  </div>
+  <button
+    class="debug-tool-button"
+    type="button"
+    [title]="multilingual().FindPrevious"
+    [disabled]="matchCount() === 0"
+    (click)="previous.emit()"
+  >
+    <i class="bi bi-arrow-up"></i>
+  </button>
+  <button
+    class="debug-tool-button"
+    type="button"
+    [title]="multilingual().FindNext"
+    [disabled]="matchCount() === 0"
+    (click)="next.emit()"
+  >
+    <i class="bi bi-arrow-down"></i>
+  </button>
+  <select
+    [value]="mode()"
+    [attr.aria-label]="multilingual().CtxFindTarget"
+    [title]="multilingual().FindByKeyValueOrBoth"
+    (change)="changeMode($event)"
+  >
+    <option value="key">{{ multilingual().FindByKey }}</option>
+    <option value="value">{{ multilingual().FindByValue }}</option>
+    <option value="both">{{ multilingual().FindByKeyAndValue }}</option>
+  </select>
+  <select
+    [value]="syntax()"
+    [attr.aria-label]="multilingual().CtxFindSyntax"
+    [title]="multilingual().WildcardOrRegex"
+    (change)="changeSyntax($event)"
+  >
+    <option value="wildcard">{{ multilingual().Wildcard }}</option>
+    <option value="regex">{{ multilingual().RegExpr }}</option>
+  </select>
+  <span
+    class="ctx-find-count"
+    [title]="multilingual().format('@CM.CtxFindMatchCount', { count: matchCount() })"
+    >{{ matchCount() }}</span
+  >
+  <button
+    class="btn-close-debug"
+    type="button"
+    [title]="multilingual().CloseFind"
+    [attr.aria-label]="multilingual().CloseFind"
+    (click)="closeRequested.emit()"
+  >
+    ×
+  </button>
+</div>

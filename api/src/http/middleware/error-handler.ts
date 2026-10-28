@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from 'express';
 
-import { AppError, operationContext } from '@manatos/shared';
+import { AppError } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { config } from '../../config.js';
 import { runtimeString } from '../../runtime-configuration.js';
@@ -18,8 +19,17 @@ const httpStatusByErrorCode: Record<string, number> = {
   REQUEST_ENTITY_TOO_LARGE: 413,
 
   INVALID_CREDENTIALS: 401,
+  AUTH_RATE_LIMITED: 429,
   AUTHENTICATION_REQUIRED: 401,
   INVALID_ACCESS_TOKEN: 401,
+  NATIVE_OAUTH_INVALID_REQUEST: 400,
+  NATIVE_OAUTH_PROVIDER_UNAVAILABLE: 503,
+  NATIVE_OAUTH_NOT_FOUND: 404,
+  NATIVE_OAUTH_EXPIRED: 410,
+  NATIVE_OAUTH_CANCELLED: 410,
+  NATIVE_OAUTH_REDEEMED: 409,
+  NATIVE_OAUTH_FAILED: 403,
+  NATIVE_OAUTH_BUSY: 503,
 
   FORBIDDEN: 403,
   EMAIL_NOT_VERIFIED: 403,
@@ -118,7 +128,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
 
   const logFields = {
     method: req.method,
-    path: req.originalUrl,
+    path: req.originalUrl.split('?')[0] ?? req.path,
     statusCode: httpStatus,
     errorCode: appError.code,
     retryable: appError.retryable,

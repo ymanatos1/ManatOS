@@ -25,6 +25,13 @@ describe('generic metadata value presentation', () => {
 
     expect(metadataOptionItemForField(field, 'internal')).toMatchObject({ label: 'ManatOS' });
     expect(metadataOptionItemForField(field, 'external')).toMatchObject({ label: 'External' });
+    expect(
+      metadataOptionItemForField(
+        { enumItems: [{ value: 'Active', label: { EN: 'Active', EL: 'Ενεργό' } }] },
+        'Active',
+        'EL',
+      ),
+    ).toMatchObject({ value: 'Active', label: 'Ενεργό' });
     expect(metadataOptionItemForField(field, 'missing')).toBeNull();
     expect(metadataOptionToneClass(field.enumItems[0])).toBe('text-success');
   });

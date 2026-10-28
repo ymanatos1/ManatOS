@@ -24,23 +24,23 @@ This is why two different clients can implement the same field type without chan
 
 ## Current field presentations
 
-| Canonical type     | Main behavior                                                                                     |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `guid`, `string`   | text-like display/editing with canonical length/readonly/required rules                           |
-| `email`            | text/email editing; normalization belongs to metadata/expression/API semantics                    |
-| `telephone`        | telephone editing/display; compound contact editors may compose multiple canonical fields         |
-| `boolean`          | boolean interaction and display                                                                   |
-| `number`           | numeric candidate editing                                                                         |
-| `date`, `datetime` | date/date-time interaction and canonical string/value projection                                  |
-| `duration`         | structured years/months/days editing through the dedicated duration partial                       |
-| `version`          | version-oriented input with canonical version rules                                               |
-| `enum`             | option selector driven by enum metadata, labels/icons/tones/traits and effective allowed values   |
-| `reference`        | generic record selection against a target entity and declarative candidate restrictions           |
-| `picture`          | one-picture display/editor, including pending unsaved picture state                               |
-| `pictures`         | multi-picture value presentation/editing                                                          |
-| `richText`         | rich text editing using the client rich-text runtime while projecting the canonical content value |
+| Canonical type | Main behavior |
+| --- | --- |
+| `guid`, `string` | text-like display/editing with canonical length/readonly/required rules |
+| `email` | text/email editing; normalization belongs to metadata/expression/API semantics |
+| `telephone` | telephone editing/display; compound contact editors may compose multiple canonical fields |
+| `boolean` | boolean interaction and display |
+| `number` | numeric candidate editing |
+| `date`, `datetime` | date/date-time interaction and canonical string/value projection |
+| `duration` | structured years/months/days editing through the dedicated duration partial |
+| `version` | version-oriented input with canonical version rules |
+| `enum` | option selector driven by enum metadata, labels/icons/tones/traits and effective allowed values |
+| `reference` | generic record selection against a target entity and declarative candidate restrictions |
+| `picture` | one-picture display/editor, including pending unsaved picture state |
+| `pictures` | multi-picture value presentation/editing |
+| `richText` | rich text editing using the client rich-text runtime while projecting the canonical content value |
 
-The current Express/EJS implementation includes dedicated partials such as `duration-field.ejs`, `enum-select.ejs`, `reference-select.ejs`, `picture-field.ejs`, `picture-editor.ejs`, `pictures-field.ejs` and `rich-text-field.ejs`. These filenames are implementation detail; the architectural contract is the canonical field behavior above.
+The established EJS0 implementation includes dedicated partials such as `duration-field.ejs`, `enum-select.ejs`, `reference-select.ejs`, `picture-field.ejs`, `picture-editor.ejs`, `pictures-field.ejs` and `rich-text-field.ejs`. These filenames are implementation detail; the architectural contract is the canonical field behavior above.
 
 ## Effective metadata
 
@@ -57,20 +57,44 @@ For example, the reference component consumes `referenceSelection`; it does not 
 
 ## Mutation and event behavior
 
-A normal user edit follows the shared field runtime:
+A normal user edit follows the shared field-state runtime:
 
 ```text
 user interaction
-  -> runtime.updateField(...)
-  -> canonical fields.<key>.value mutation
-  -> manatos:ctx-change
+  -> value:changing
+  -> canonical CTX field value mutation
   -> dependency/reactive work
-  -> calculated/derived field updates through the same mutation boundary
-  -> validation + aggregate form-state recomputation
-  -> affected component projection
+  -> validation/state recomputation
+  -> value:changed / field-state:changed
+  -> any affected component projection
 ```
 
-`manatos:ctx-change` reports the canonical mutation after it occurs; the event is not authoritative state. Components that need to reflect programmatic changes subscribe/project from CTX rather than assuming every semantic update originated as a native DOM `change` event. See [State, Mutation and Events](../context/State-Mutation-and-Events.md).
+The event stream reports semantic transitions; it is not itself authoritative state. See [State, Mutation and Events](../context/State-Mutation-and-Events.md).
+
+## Field Tools: semantic actions and presentation
+
+Field Tools are defined from each registered Field behavior, not from a generic menu hard-coded with every possible operation. `shared.UI/src/components/entry/EntryMetadata.ts` implements `uiEntryFieldTools()`, combining the field's declared tool capabilities with its effective read-only, required and dirty state. The separate `EntryFieldToolsEmbedded` handles validated tool intents; actions that change data return an Entry effect rather than editing native input nodes directly.
+
+```text
+field metadata + typed behavior + Entry field state
+                       │
+                       ▼
+                 uiEntryFieldTools()
+                       │
+                 enabled actions
+                       │
+          concrete NG/EJS Field Tools menu
+                       │
+                action / selected field
+                       ▼
+               embedded action handler
+                       │
+                 Entry field mutation
+```
+
+Common actions include **Copy**, **Revert** and developer-only **Inspect CTX**. Type-specific actions include **Trim**, **Clear**, **Zero**, **Today**, **Now** and **Select reference**, subject to the registered behavior and field policy. Required references do not expose Clear Selection. Revert is offered only for a dirty editable field. Reference selection delegates to a List surface and returns a canonical identity; it is not a textual input shortcut. Disabled or absent menu actions cannot bypass authoritative API enforcement.
+
+Angular's `FieldToolsMenu.ts` owns its trigger, available actions and dispatch to `EntryContext`; corresponding EJS presentation implements the same semantic intent through its adapter. Menu layering, focus and clipping protection are presentation-host responsibilities, not field-value contracts.
 
 ## Calculated fields
 
@@ -117,7 +141,7 @@ The rich-text editor has rich private editor state, but the canonical document/c
 
 ## Duration component
 
-A duration is structured rather than scalar. The component edits the enabled `years`, `months` and/or `days` units and projects the structured value back to CTX. `durationUnits` controls which units are meaningful for that field.
+A duration has **one canonical ISO-style string** value (for example `P1Y2M3D`), although its editor presents separate year, month and day controls. `DurationFieldBehavior` accepts the ISO form and `uiDurationFromParts()` combines control parts into one value; malformed/negative portions do not produce a mutation. `durationUnits` controls which parts are exposed. The expression calendar helpers accept/return a separate structured `{ years, months, days }` representation, so clients integrating those helpers must handle conversion explicitly rather than assuming the two representations are interchangeable.
 
 The `date-duration-range` composite component can coordinate a date + duration + calculated/related end date, but it does not change ownership of the three canonical fields.
 
@@ -143,9 +167,17 @@ When extending a component, verify at least:
 - programmatic CTX updates as well as direct DOM input;
 - validation/error presentation;
 - expression-driven readonly/visibility changes;
-- hosted page, popup and embedded use;
+- hosted page and popup use;
 - list/summary/reference display when relevant;
 - accessibility and keyboard behavior where applicable;
 - regression coverage.
 
 For reusable non-field UI capabilities, use the metadata component infrastructure described in [Components](Components.md) instead of overloading a field type.
+
+## UIS type behavior and embedded component ownership
+
+The shared field catalog now has two explicit implementation layers: `shared.UI/src/components/fields/types/*Behavior.ts` for type semantics and `shared.UI/src/components/entry/embedded/types/*.ts` for concrete embedded component contributions. A generic `FormField` composes known field contracts; it should not become a second implementation of every type's semantics. Angular and EJS presentation components render the contract and translate direct user events into typed intent.
+
+This separation is essential to the distinction between recognizing a type and supporting its complete editor. The existence of `PictureFieldBehavior` or `ReferenceFieldBehavior` confirms a type behavior module, but each corresponding adapter's create/edit/display path must be checked for actual capability. An image collection additionally involves thumbnail selection, staged resources and persistence status; treating it as a string input loses domain meaning.
+
+Current value and derived option labels must also be kept distinct. A `Enum` field may resolve options from a subsystem enum or inline field metadata; the shared behavior determines the available options while the stored selected value remains in the Entry working data. Localization changes option labels without changing selected identities.

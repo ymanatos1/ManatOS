@@ -1,0 +1,61 @@
+<section class="content-card company-page">
+  {{#if company.branding.companyPageImage}}
+  <img
+    class="company-hero-image"
+    src="{{ pageAsset(company.branding.companyPageImage.src) }}"
+    alt="{{ company.branding.companyPageImage.alt }}"
+  />
+  {{/if}}
+
+  <h2>{{ company.name }}</h2>
+
+  <p class="company-product-tagline">
+    <strong>{{ company.branding.tagline }}</strong>
+  </p>
+
+  {{#if company.description}}
+  <p>{{ company.description }}</p>
+  {{/if}}
+
+  <section class="company-foundation" aria-labelledby="companyFoundationHeading">
+    <h3 id="companyFoundationHeading">ManatOS Application Foundation</h3>
+    <p>
+      The governed semantic runtime beneath our business platforms. It turns shared business-object
+      metadata, context, rules, permissions and application behavior into consistent application
+      experiences.
+    </p>
+  </section>
+
+  <section class="company-platforms" aria-labelledby="companyPlatformsHeading">
+    <h3 id="companyPlatformsHeading">Platforms</h3>
+
+    <div class="company-platform-catalogue">
+      {{#each company.platforms as platform}} {{#if platform.enabled}}
+      <article class="company-platform-card">
+        <a
+          class="company-platform-card-link"
+          href="/platform/{{ urlEncode(platform.id) }}"
+          aria-label="Open {{ platform.name }}"
+        >
+          <span class="company-platform-card-icon" aria-hidden="true">
+            <i class="bi {{ platform.icon ?? 'bi-boxes' }}"></i>
+          </span>
+
+          <span class="company-platform-card-copy">
+            <span class="company-platform-card-title">
+              <strong>{{ platform.shortName }}</strong>
+              <span>{{ platform.name }}</span>
+            </span>
+
+            {{#if platform.description}}
+            <span class="company-platform-card-description"> {{ platform.description }} </span>
+            {{/if}}
+          </span>
+
+          <i class="bi bi-arrow-right company-platform-card-arrow" aria-hidden="true"></i>
+        </a>
+      </article>
+      {{/if}} {{/each}}
+    </div>
+  </section>
+</section>

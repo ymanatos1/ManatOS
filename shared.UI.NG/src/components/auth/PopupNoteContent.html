@@ -1,0 +1,11 @@
+<!-- PopupNoteContent template: a localized informational note, separated from credential input and runtime actions. -->
+<div
+  class="auth-method-note auth-popup-top-note"
+  [attr.data-popup-layout-id]="item().id"
+  role="note"
+>
+  @if (item().illustration; as image) {
+  <img class="manatos-unsaved-illustration" [src]="image" alt="" aria-hidden="true" />
+  } @else { <i [class]="'bi ' + item().icon" aria-hidden="true"></i> }
+  <span>{{ multilingual().resolve(item().text) }}</span>
+</div>

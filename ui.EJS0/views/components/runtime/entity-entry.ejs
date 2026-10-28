@@ -442,6 +442,26 @@
     autocomplete="off"
     action="/bo/<%= definition.key %>/<%= ownerEditing ? 'owned/save' : 'save' %>"
     data-record-mode="<%= recordMode %>"
+    data-form-i18n="<%= JSON.stringify({
+      newReady: metadataText('@CM.NewEntryReady'),
+      newIncomplete: metadataText('@CM.NewEntryIncomplete'),
+      noChanges: metadataText('@CM.NoChanges'),
+      unsaved: metadataText('@CM.UnsavedChanges'),
+      unsavedIncomplete: metadataText('@CM.UnsavedChangesIncomplete'),
+      editingRelated: metadataText('@CM.EditingRelatedEntry'),
+      editingRelatedMany: metadataText('@CM.EditingRelatedEntries'),
+      reviewUnsaved: metadataText('@CM.ReviewUnsavedChanges'),
+      noUnsaved: metadataText('@CM.NoUnsavedChanges'),
+      currentUnsaved: metadataText('@CM.CurrentUnsavedEntryChanges'),
+      cancel: metadataText('@CM.Cancel'),
+      close: metadataText('@CM.Close'),
+      cancelEditing: metadataText('@CM.CancelEditing'),
+      closeEntry: metadataText('@CM.CloseEntry'),
+      entryInit: metadataText('@CM.EntryInitialization'),
+      finishRelated: metadataText('@CM.FinishRelatedEditor'),
+      noChangesToSave: metadataText('@CM.NoChangesToSave'),
+      completeRequired: metadataText('@CM.CompleteRequiredFields')
+    }) %>"
     data-entity-key="<%= definition.key %>"
     data-ui-view-key="<%= typeof entryUIViewKey === 'string' ? entryUIViewKey : '' %>"
     data-ui-view-type="<%= typeof entryUIViewType === 'string' ? entryUIViewType : '' %>"
@@ -670,7 +690,7 @@
                                   href="<%= inlineAction.href %>"
                                   data-v2-entry-action="<%= inlineContent.action %>"
                                   hidden
-                                ><% if (inlineAction.icon) { %><i class="bi bi-<%= inlineAction.icon %> me-1"></i><% } %><%= inlineAction.label %></a>
+                                ><% if (inlineAction.icon) { %><i class="bi bi-<%= inlineAction.icon %> me-1"></i><% } %><%= metadataText(inlineAction.label) %></a>
                               <% } %>
                             <% } %>
                           <% } %>
@@ -710,7 +730,7 @@
                             relatedValues: (content.relatedFields || []).map((relatedKey) => valueFor(relatedKey))
                           }) %>
                         <% } else { %>
-                          <label class="form-label" for="metadata-field-<%= key %>"><%= fieldLabel(field) %>:</label>
+                          <label class="form-label" for="metadata-field-<%= key %>"><%= metadataText(fieldLabel(field)) %>:</label>
                           <%- include('../sysbo/entry/fields/entity-field', {
                             key, field, value: valueFor(key), editable, fieldLabel, enumItemsFor,
                             referenceValues: references, referenceSelectorContexts: selectorContexts,
@@ -843,7 +863,7 @@
                     }) %>
                   <% } else { %>
                     <label class="form-label" for="metadata-field-<%= key %>">
-                      <%= fieldLabel(field) %>:<% if (fieldState(key)?.ux?.required) { %><span
+                      <%= metadataText(fieldLabel(field)) %>:<% if (fieldState(key)?.ux?.required) { %><span
                         aria-label="required"> (*)</span><% } %>
                     </label>
                     <%- include('../sysbo/entry/fields/entity-field', {
@@ -872,7 +892,7 @@
               form="metadata-command-<%= action.key %>"
               data-v2-entry-action="<%= action.key %>"
               hidden
-            ><% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %><%= action.label %></button>
+            ><% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %><%= metadataText(action.label) %></button>
           <% } %>
         <% } %>
         <% if (!isNew && v2DeleteAction?.placement === 'footer-leading') { %>
@@ -883,7 +903,7 @@
             data-bs-toggle="modal"
             data-bs-target="#deleteEntryModal"
             hidden
-          ><i class="bi bi-<%= v2DeleteAction.icon || 'trash' %> me-1"></i><%= v2DeleteAction.label %></button>
+          ><i class="bi bi-<%= v2DeleteAction.icon || 'trash' %> me-1"></i><%= metadataText(v2DeleteAction.label) %></button>
         <% } %>
       </div>
       <div class="d-flex gap-2 align-items-center">
@@ -894,10 +914,10 @@
             data-form-state-indicator
             data-v2-layout-status="form-state"
             disabled
-            title="No unsaved changes to review"
+            title="<%= metadataText('@CM.NoUnsavedChanges') %>"
           >
             <i class="bi bi-check-circle me-1" data-form-state-icon></i>
-            <span data-form-state-text><%= isNew ? 'New entry · incomplete' : 'No changes' %></span>
+            <span data-form-state-text><%= metadataText(isNew ? '@CM.NewEntryIncomplete' : '@CM.NoChanges') %></span>
           </button>
         <% } %>
         <% if (isEntryPopupHost) { %>
@@ -909,7 +929,7 @@
             data-v2-layout-action="close"
           >
             <i class="bi bi-x-circle me-1"></i>
-            <span data-form-close-cancel-label><%= compactEntryDensity ? 'Cancel' : 'Close' %></span>
+            <span data-form-close-cancel-label><%= metadataText(compactEntryDensity ? '@CM.Cancel' : '@CM.Close') %></span>
           </button>
         <% } else if (ownerEditing) { %>
           <button
@@ -922,7 +942,7 @@
             data-v2-layout-action="close"
           >
             <i class="bi bi-x-circle me-1"></i>
-            <span data-form-close-cancel-label>Close</span>
+            <span data-form-close-cancel-label><%= metadataText('@CM.Close') %></span>
           </button>
         <% } else { %>
           <a
@@ -932,7 +952,7 @@
             data-v2-layout-action="close"
           >
             <i class="bi bi-x-circle me-1"></i>
-            <span data-form-close-cancel-label><%= isViewMode ? 'Back' : 'Close' %></span>
+            <span data-form-close-cancel-label><%= metadataText(isViewMode ? '@CM.Back' : '@CM.Close') %></span>
           </a>
         <% } %>
         <% for (const action of v2CommandActions.filter((candidate) => candidate.placement === 'footer-trailing')) { %>
@@ -943,7 +963,7 @@
               form="metadata-command-<%= action.key %>"
               data-v2-entry-action="<%= action.key %>"
               hidden
-            ><% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %><%= action.label %></button>
+            ><% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1"></i><% } %><%= metadataText(action.label) %></button>
           <% } %>
         <% } %>
         <% if (!isNew && v2DeleteAction?.placement === 'footer-trailing') { %>
@@ -954,7 +974,7 @@
             data-bs-toggle="modal"
             data-bs-target="#deleteEntryModal"
             hidden
-          ><i class="bi bi-<%= v2DeleteAction.icon || 'trash' %> me-1"></i><%= v2DeleteAction.label %></button>
+          ><i class="bi bi-<%= v2DeleteAction.icon || 'trash' %> me-1"></i><%= metadataText(v2DeleteAction.label) %></button>
         <% } %>
         <% if (!isViewMode) { %>
           <span data-v2-entry-action="save" data-v2-layout-action="save" hidden>

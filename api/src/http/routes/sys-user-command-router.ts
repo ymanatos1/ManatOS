@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
-import { AppError, NotFoundError, operationContext, type SysBOUser } from '@manatos/shared';
+import { AppError, NotFoundError, type SysBOUser } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { authenticatedAuditActor } from '../../audit/audit-service.js';
 import { requireAdmin } from '../../auth/auth-middleware.js';

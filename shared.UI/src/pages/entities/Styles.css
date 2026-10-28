@@ -1,0 +1,606 @@
+/* Presentation parity for the List skeleton. CTX highlighting is supplied by #layout, not dashed CSS outlines. */
+.manatos-list-page-host {
+  display: block;
+  min-width: 0;
+}
+.manatos-list {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 21px 22px;
+  background: #fff;
+  border: 1px solid #dae3ef;
+  border-radius: 12px;
+  box-shadow: 0 5px 16px rgb(25 52 80 / 5%);
+  color: #243044;
+}
+.manatos-list-header {
+  min-width: 0;
+}
+.manatos-list-header-main {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  min-height: 43px;
+}
+.manatos-list-count {
+  white-space: nowrap;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+.manatos-list-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.manatos-list-btn {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #33465f;
+  border: 1px solid #bac9da;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  cursor: pointer;
+  min-height: max(36px, calc(36px * var(--manatos-font-scale, 1)));
+}
+.manatos-list-btn:hover:not(:disabled) {
+  background: #edf4ff;
+  border-color: #85ade2;
+}
+.manatos-list-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.manatos-list-primary {
+  border-color: #146ef5;
+  background: #146ef5;
+  color: #fff;
+}
+.manatos-list-search input,
+.manatos-list-filters input,
+.manatos-list-filters select {
+  min-height: max(36px, calc(36px * var(--manatos-font-scale, 1)));
+  border-radius: 6px;
+  border: 1px solid #d2dbe7;
+  background: #fff;
+  padding: 7px 10px;
+  min-width: 210px;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  color: #243044;
+}
+.manatos-list-search input:focus-visible,
+.manatos-list-btn:focus-visible,
+.manatos-list-filters input:focus-visible,
+.manatos-list-filters select:focus-visible {
+  outline: 2px solid #4386f7;
+  outline-offset: 2px;
+}
+.manatos-list-filters {
+  margin-top: 13px;
+  padding: 12px 14px;
+  border: 1px solid #e0e8f3;
+  border-radius: 8px;
+  display: flex;
+  gap: 13px;
+  flex-wrap: wrap;
+  align-items: end;
+  background: #f8fafd;
+}
+.manatos-list-filters[hidden] {
+  display: none !important;
+}
+.manatos-list-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  color: #4a5c73;
+}
+.manatos-list-filters select {
+  min-width: 145px;
+}
+.manatos-list-filters small {
+  color: #73839b;
+  font-size: calc(11px * var(--manatos-font-scale, 1));
+}
+.manatos-list-table {
+  border: 1px solid #dae3ef;
+  border-radius: 8px;
+  overflow-x: auto;
+  min-width: 0;
+  background: #fff;
+}
+.manatos-list-table-heading,
+.manatos-list-row {
+  display: grid;
+  grid-template-columns: repeat(var(--manatos-list-column-count, 5), minmax(120px, 1fr));
+  align-items: stretch;
+  min-width: calc(var(--manatos-list-column-count, 5) * 120px);
+}
+.manatos-list-table-heading {
+  background: #f2f6fb;
+  color: #425572;
+  border-bottom: 1px solid #d8e1ed;
+}
+.manatos-list-column-title {
+  padding: 12px;
+  font-size: calc(11px * var(--manatos-font-scale, 1));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.015em;
+  min-width: 0;
+}
+.manatos-list-rows {
+  background: #fff;
+}
+.manatos-list-row {
+  border-bottom: 1px solid #e5ebf3;
+}
+.manatos-list-row:last-child {
+  border-bottom: 0;
+}
+.manatos-list-row:nth-child(even) {
+  background: #fafcff;
+}
+.manatos-list-row:hover {
+  background: #f4f8ff;
+}
+.manatos-list-cell {
+  padding: 12px;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.manatos-list-empty {
+  padding: 20px;
+  color: #7d8ca1;
+  text-align: center;
+}
+.manatos-list-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 5px 0;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  color: #536780;
+}
+.manatos-list-pagination-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.manatos-list-pagination-right select {
+  margin-left: 6px;
+  padding: 5px 20px 5px 8px;
+  border: 1px solid #d2dbe7;
+  border-radius: 5px;
+  background: #f8fafc;
+}
+@media (max-width: 850px) {
+  .manatos-list-controls {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+  .manatos-list-search input {
+    min-width: 160px;
+  }
+}
+
+/* Nested ListHeader component controls and entity-specific column counts. */
+.manatos-list-views,
+.manatos-list-filter {
+  position: relative;
+}
+.manatos-list-view-menu {
+  position: absolute;
+  top: calc(100% + 3px);
+  right: 0;
+  z-index: 20;
+  background: white;
+  border: 1px solid #dae3ef;
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 130px;
+  box-shadow: 0 4px 12px rgb(25 52 80 / 12%);
+}
+.manatos-list-view-menu[hidden] {
+  display: none !important;
+}
+.manatos-list-view-menu button {
+  display: block;
+  width: 100%;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+.manatos-list-view-menu button:hover,
+.manatos-list-view-menu button[aria-checked='true'] {
+  background: #edf4ff;
+}
+.manatos-list-filter .manatos-list-filters {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 480px;
+  z-index: 19;
+  box-shadow: 0 4px 12px rgb(25 52 80 / 12%);
+}
+
+/* Canonical framework-neutral field semantics: used by EJS1 and NG1. */
+.manatos-field-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d2dce7;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: calc(11px * var(--manatos-font-scale, 1));
+  white-space: nowrap;
+  background: #f6f8fa;
+  color: #596879;
+}
+.manatos-field-badge--success {
+  background: #ecfaf1;
+  color: #18864b;
+  border-color: #bae5ca;
+}
+.manatos-field-entry-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #1462cf;
+}
+
+.manatos-field-enum {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.manatos-field-enum .bi {
+  color: #395c83;
+}
+
+.manatos-list-column-title[data-list-sort-field] {
+  cursor: pointer;
+  user-select: none;
+}
+.manatos-list-column-title[data-list-sort-field]:focus-visible {
+  outline: 2px solid #4386f7;
+  outline-offset: -2px;
+}
+.manatos-list-sort-icon {
+  margin-inline-start: 5px;
+  opacity: 0.48;
+}
+.manatos-list-column-title[aria-sort='ascending'] .manatos-list-sort-icon,
+.manatos-list-column-title[aria-sort='descending'] .manatos-list-sort-icon {
+  opacity: 1;
+  color: #1462cf;
+}
+
+/* Reusable Entry Page/Popup skeleton; semantic layout is owned by shared.UI. */
+.manatos-entry-page-host {
+  display: block;
+  min-width: 0;
+}
+.manatos-entry {
+  background: #fff;
+  border: 1px solid #dae3ef;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 5px 16px rgb(25 52 80 / 5%);
+}
+.manatos-entry-header {
+  min-height: 20px;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  color: #56647a;
+}
+.manatos-entry-header [role='alert'] {
+  color: #a92929;
+}
+.manatos-entry-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #dbe4ee;
+  padding: 14px 0 0;
+  margin-bottom: 20px;
+}
+.manatos-entry-tabs button {
+  cursor: pointer;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 10px 16px;
+  background: transparent;
+  color: #526176;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+.manatos-entry-tabs button[aria-selected='true'] {
+  color: #1168db;
+  border-color: #1168db;
+  font-weight: 600;
+}
+.manatos-entry-tabs button:focus-visible {
+  outline: 2px solid #4386f7;
+  outline-offset: 2px;
+}
+.manatos-entry-panel[hidden] {
+  display: none;
+}
+.manatos-entry-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px 22px;
+}
+.manatos-entry-field {
+  min-width: 0;
+  border-bottom: 1px solid #edf1f6;
+  padding: 6px 0 12px;
+  word-wrap: break-word;
+}
+.manatos-entry-label {
+  display: block;
+  color: #68788c;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  margin-bottom: 7px;
+}
+.manatos-entry-field [data-entry-value] {
+  font-size: calc(14px * var(--manatos-font-scale, 1));
+  color: #203449;
+}
+
+/* EJS1 read-only Entry form adapters: canonical SysBO 12-column layout. */
+.manatos-entry .manatos-entry-fields {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+.manatos-entry .manatos-entry-group {
+  min-width: 0;
+}
+.manatos-entry .manatos-entry-break {
+  grid-column: span 12;
+  height: 0;
+}
+.manatos-entry .manatos-form-field {
+  min-width: 0;
+  position: relative;
+}
+.manatos-entry .manatos-form-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #40516a;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+}
+.manatos-entry .manatos-form-required {
+  color: #40516a;
+  margin-left: 3px;
+}
+.manatos-entry .manatos-form-field-control {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  background: #fff;
+  border: 1px solid #d7e1ec;
+  border-radius: 4px;
+  position: relative;
+}
+.manatos-entry .manatos-form-leading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 10px;
+  height: 30px;
+  background: #f2f7ff;
+  color: #2874c8;
+  border-right: 1px solid #d7e1ec;
+}
+.manatos-entry .manatos-form-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  font: inherit;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  border: 0;
+  padding: 6px 9px;
+  background: #fff;
+  color: #25344c;
+}
+.manatos-entry .manatos-form-switch {
+  display: flex;
+  align-items: center;
+  height: 31px;
+  padding: 0 10px;
+}
+.manatos-entry .manatos-form-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.manatos-entry .manatos-form-switch-track {
+  width: 25px;
+  height: 14px;
+  border-radius: 14px;
+  background: #bac9d9;
+  position: relative;
+}
+.manatos-entry .manatos-form-switch-track:after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #fff;
+}
+.manatos-entry .manatos-form-switch input:checked + .manatos-form-switch-track {
+  background: #367df2;
+}
+.manatos-entry .manatos-form-switch input:checked + .manatos-form-switch-track:after {
+  left: 13px;
+}
+.manatos-entry .manatos-form-picture,
+.manatos-entry .manatos-form-value {
+  padding: 7px 9px;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+
+.manatos-entry .manatos-entry-tabs button {
+  border: 1px solid #d9e2ed;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+}
+.manatos-entry .manatos-entry-tabs button[aria-selected='true'] {
+  border-bottom-color: #287cf1;
+  background: #f6f9fc;
+}
+
+.manatos-entry .manatos-entry-header:empty {
+  display: none;
+}
+/* Reversible baseline comparison will activate this state when Entry editing is migrated. */
+.manatos-entry .manatos-form-field.is-changed .manatos-form-field-label,
+.manatos-entry .manatos-form-field.is-changed .manatos-form-input {
+  font-weight: 700;
+}
+
+/* EJS0-style pagination shared by List Pages and popup selection Surfaces. */
+.manatos-list-page-links {
+  display: inline-flex;
+  align-items: center;
+}
+.manatos-list-page-links > button,
+.manatos-list-page-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 29px;
+  height: max(29px, calc(29px * var(--manatos-font-scale, 1)));
+  border: 1px solid #d8e0eb;
+  margin-left: -1px;
+  background: #fff;
+  color: #2865af;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+}
+.manatos-list-page-links > button:first-child {
+  margin-left: 0;
+  border-radius: 4px 0 0 4px;
+}
+.manatos-list-page-links > button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.manatos-list-page-links > button:disabled {
+  color: #9aa7b7;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+.manatos-list-page-links > button:not(:disabled) {
+  cursor: pointer;
+}
+.manatos-list-page-current {
+  background: #266fc5;
+  color: #fff;
+  border-color: #266fc5;
+  font-weight: 600;
+}
+.manatos-list-pagination [hidden] {
+  display: none !important;
+}
+.manatos-surface-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #d2dce7;
+  border-radius: 5px;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  cursor: pointer;
+}
+.manatos-surface-action.is-primary {
+  background: #256ac2;
+  border-color: #256ac2;
+  color: white;
+}
+.manatos-surface-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.manatos-surface-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-top: 1px solid #dce4ee;
+}
+
+/* Keep the pager at the trailing edge even when its leading page-count label is hidden. */
+.manatos-list-pagination-right {
+  margin-inline-start: auto;
+}
+/* A visible space between the caption and sort direction, across both renderers. */
+.manatos-list-sort-icon {
+  margin-inline-start: 10px;
+}
+
+/* Docking is presentation only: preserve toolbar DOM, CTX selectors and component owners. */
+.manatos-list-header {
+  position: relative;
+}
+.manatos-list-header:has(.manatos-list-filter.is-docked .manatos-list-filters:not([hidden])) {
+  padding-bottom: var(--manatos-list-docked-filter-height, 112px);
+}
+.manatos-list-filter.is-docked {
+  position: static;
+  flex-basis: auto;
+}
+.manatos-list-filter.is-docked .manatos-list-filters {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% - var(--manatos-list-docked-filter-height, 112px) + 8px);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 0;
+  box-shadow: none;
+  z-index: 19;
+}
+.manatos-list-controls:has(.manatos-list-filter.is-docked) {
+  flex-basis: auto;
+}
+.manatos-list-filter:not(.is-docked) .manatos-list-filter-dock {
+  transform: translateX(-7px);
+}
+
+.manatos-entry-photo-thumbnail {
+  width: 90px;
+  height: 90px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+/* Popup List row selection still uses the Page List Surface/Rows. */
+.manatos-list-selectable-row {
+  cursor: pointer;
+}
+.manatos-list-selectable-row:hover,
+.manatos-list-selectable-row:focus-visible {
+  outline: 2px solid #5b93d4;
+  outline-offset: -2px;
+  background: #eef6ff;
+}

@@ -19,7 +19,7 @@ function safePathSegment(value: string): string {
   return safe || '_';
 }
 
-function sanitizeDiagnosticValue(
+export function sanitizeDiagnosticValue(
   value: unknown,
   key?: string,
   seen = new WeakSet<object>(),
@@ -168,6 +168,35 @@ export class ApiContextSnapshotWriter implements ApiContextSnapshotCapture {
     this.pending.add(task);
     void task.finally(() => this.pending.delete(task));
   }
+}
+
+export function composeApiContextSnapshotCaptures(
+  ...captures: readonly (ApiContextSnapshotCapture | null | undefined)[]
+): ApiContextSnapshotCapture | null {
+  const active = captures.filter((capture): capture is ApiContextSnapshotCapture =>
+    Boolean(capture),
+  );
+  if (!active.length) return null;
+  return {
+    captureRequest(snapshot) {
+      for (const capture of active) {
+        try {
+          capture.captureRequest(snapshot);
+        } catch {
+          // One diagnostics sink cannot prevent another sink or CTX cleanup.
+        }
+      }
+    },
+    captureLevel(snapshot) {
+      for (const capture of active) {
+        try {
+          capture.captureLevel(snapshot);
+        } catch {
+          // One diagnostics sink cannot prevent another sink or CTX cleanup.
+        }
+      }
+    },
+  };
 }
 
 let configuredWriter: ApiContextSnapshotWriter | null = null;

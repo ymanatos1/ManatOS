@@ -7,8 +7,10 @@ export const sysBOPrincipalTelephoneNumbersMetadata: SysBOMetadata<SysPrincipalT
   name: 'sysPrincipalTelephoneNumbers',
   subsystem: 'principals',
   exposure: 'internal',
-  label: 'Principal telephone number',
-  pluralLabel: 'Principal telephone numbers',
+  label:
+    '@EN.manatos.principals.principalTelephoneNumbers.label.PrincipalTelephoneNumber' /* Principal telephone number */,
+  pluralLabel:
+    '@EN.manatos.principals.principalTelephoneNumbers.pluralLabel.PrincipalTelephoneNumbers' /* Principal telephone numbers */,
   primaryField: 'name',
   relationships: {
     principal: {
@@ -29,19 +31,20 @@ export const sysBOPrincipalTelephoneNumbersMetadata: SysBOMetadata<SysPrincipalT
     ...commonSysBOFields,
     name: {
       ...commonSysBOFields.name!,
-      label: 'Relationship key',
+      label:
+        '@EN.manatos.principals.principalAddresses.label.RelationshipKey' /* Relationship key */,
       readOnly: true,
     },
     principalId: {
       key: 'principalId',
-      label: 'Principal',
+      label: '@EN.manatos.auth.userInvitations.label.Principal' /* Principal */,
       type: 'reference',
       order: 20,
       required: true,
     },
     telephoneNumberId: {
       key: 'telephoneNumberId',
-      label: 'Telephone number',
+      label: '@EN.manatos.auth.users.label.TelephoneNumber' /* Telephone number */,
       type: 'reference',
       order: 30,
       required: true,

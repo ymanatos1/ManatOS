@@ -1,0 +1,130 @@
+:host {
+  min-width: 0;
+  min-height: 5rem;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.api-traffic-list-host {
+  min-width: 0;
+  min-height: 5rem;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.api-traffic-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: #fff;
+}
+
+.api-traffic-columns,
+.api-traffic-row {
+  display: grid;
+  grid-template-columns: 5.2rem 3.5rem minmax(7rem, 1fr) 3.3rem 4.4rem;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.api-traffic-columns {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.55rem;
+  border-top: 1px solid #dbe3ec;
+  border-bottom: 1px solid #cbd6e2;
+  background: #edf2f7;
+  color: #52606d;
+  font:
+    600 0.62rem/1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+  text-transform: uppercase;
+}
+
+.api-traffic-row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #e4eaf0;
+  padding: 0.42rem 0.55rem;
+  background: #fff;
+  color: #26384d;
+  text-align: left;
+  font:
+    0.68rem ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+  cursor: pointer;
+}
+
+.api-traffic-row:hover {
+  background: #eef5ff;
+}
+
+.api-traffic-row.is-selected {
+  background: #cfe2ff;
+  box-shadow: inset 3px 0 0 #0d6efd;
+}
+
+.api-traffic-row.is-error {
+  background: #fff3f3;
+  color: #a61e2c;
+}
+
+.api-traffic-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-traffic-method {
+  color: #315f9b;
+}
+
+.api-traffic-status,
+.api-traffic-duration {
+  text-align: right;
+}
+
+.api-traffic-list > .api-traffic-empty {
+  padding: 1rem;
+  color: #7a8795;
+  font-size: 0.72rem;
+}
+
+.api-traffic-column-heading {
+  position: relative;
+  min-width: 0;
+}
+
+.api-traffic-column-resize {
+  position: absolute;
+  z-index: 2;
+  top: -0.25rem;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  width: 0.5rem;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.api-traffic-column-resize::after {
+  content: '';
+  position: absolute;
+  top: 0.2rem;
+  bottom: 0.2rem;
+  left: 50%;
+  width: 1px;
+  background: #c4cfdb;
+}
+
+.api-traffic-column-resize:hover::after {
+  background: #0d6efd;
+}

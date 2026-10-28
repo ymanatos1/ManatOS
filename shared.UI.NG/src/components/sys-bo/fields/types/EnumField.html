@@ -1,0 +1,58 @@
+<!-- Rich enum options keep the native select as the only semantic input. -->
+<manatos-field-control-shell [field]="field()">
+  <select
+    #nativeSelect
+    [manatosNativeFieldInteraction]="field()"
+    data-entry-control
+    class="manatos-enum-native"
+    [value]="field().value ?? ''"
+    [disabled]="field().readOnly || !field().options?.length"
+    [attr.aria-label]="field().label"
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    <option value="" [selected]="field().value === null || field().value === undefined">—</option>
+    @for (option of field().options ?? []; track option.value) {
+    <option [value]="option.value" [selected]="option.value === field().value">
+      {{ option.label }}
+    </option>
+    }
+  </select>
+  <div class="manatos-enum-rich">
+    <button
+      #enumAnchor
+      type="button"
+      class="manatos-form-input manatos-enum-trigger"
+      [disabled]="field().readOnly || !field().options?.length"
+      [attr.aria-label]="field().label"
+      [attr.aria-expanded]="expanded()"
+      (click)="toggle()"
+      (keydown.escape)="close()"
+    >
+      @if (selected()?.icon) { <i [class]="iconClass(selected()?.icon)" aria-hidden="true"></i> }
+      <span>{{ selected()?.label ?? '—' }}</span>
+      <i class="bi bi-chevron-down" aria-hidden="true"></i>
+    </button>
+    @if (expanded()) {
+    <div
+      class="manatos-enum-menu"
+      role="listbox"
+      [manatosTransientMenu]="enumAnchor"
+      [onTransientDismiss]="dismissMenu"
+      [attr.aria-label]="field().label"
+    >
+      @for (option of field().options ?? []; track option.value) {
+      <button
+        type="button"
+        role="option"
+        [attr.aria-selected]="option.value === field().value"
+        (click)="choose(option.value, nativeSelect)"
+      >
+        @if (option.icon) { <i [class]="iconClass(option.icon)" aria-hidden="true"></i> }
+        <span>{{ option.label }}</span>
+      </button>
+      }
+    </div>
+    }
+  </div>
+</manatos-field-control-shell>

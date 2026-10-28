@@ -6,8 +6,8 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
   key: 'sys-licenses',
   name: 'sysLicenses',
   subsystem: 'licensing',
-  label: 'License',
-  pluralLabel: 'Licenses',
+  label: '@EN.manatos.licensing.licenses.label.License' /* License */,
+  pluralLabel: '@EN.manatos.licensing.licenses.pluralLabel.Licenses' /* Licenses */,
 
   primaryField: 'name',
 
@@ -49,7 +49,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     principalId: {
       key: 'principalId',
-      label: 'Customer',
+      label: '@EN.manatos.licensing.licenses.label.Customer' /* Customer */,
       type: 'reference',
       order: 20,
 
@@ -58,7 +58,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     platformId: {
       key: 'platformId',
-      label: 'Platform',
+      label: '@EN.manatos.licensing.licenses.label.Platform' /* Platform */,
       type: 'enum',
       order: 30,
 
@@ -71,7 +71,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     applicationId: {
       key: 'applicationId',
-      label: 'Application',
+      label: '@EN.manatos.licensing.licenses.label.Application' /* Application */,
       type: 'reference',
       order: 40,
 
@@ -80,7 +80,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     licenseKey: {
       key: 'licenseKey',
-      label: 'License key',
+      label: '@EN.manatos.licensing.licenses.label.LicenseKey' /* License key */,
       type: 'string',
       order: 50,
 
@@ -89,7 +89,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     rules: {
       key: 'rules',
-      label: 'Rules',
+      label: '@EN.manatos.licensing.licenses.label.Rules' /* Rules */,
       type: 'string',
       order: 55,
 
@@ -98,7 +98,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     status: {
       key: 'status',
-      label: 'Status',
+      label: '@EN.manatos.licensing.licenses.label.Status' /* Status */,
       type: 'enum',
       order: 60,
 
@@ -109,7 +109,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     validFrom: {
       key: 'validFrom',
-      label: 'Valid from',
+      label: '@EN.manatos.licensing.licenses.label.ValidFrom' /* Valid from */,
       type: 'date',
       order: 70,
       createDefaultValue: { expression: 'CurrentDay()' },
@@ -117,7 +117,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     validityDuration: {
       key: 'validityDuration',
-      label: 'Validity duration',
+      label: '@EN.manatos.licensing.licenses.label.ValidityDuration' /* Validity duration */,
       type: 'duration',
       order: 75,
 
@@ -131,7 +131,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     validUntil: {
       key: 'validUntil',
-      label: 'Valid until',
+      label: '@EN.manatos.licensing.licenses.label.ValidUntil' /* Valid until */,
       type: 'date',
       order: 80,
 
@@ -144,7 +144,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     quantity: {
       key: 'quantity',
-      label: 'Quantity',
+      label: '@EN.manatos.licensing.licenses.label.Quantity' /* Quantity */,
       type: 'number',
       order: 90,
 
@@ -154,7 +154,7 @@ export const sysBOLicensesMetadata: SysBOMetadata<SysBOLicense> = {
 
     description: {
       key: 'description',
-      label: 'Description',
+      label: '@EN.manatos.auth.users.label.Description' /* Description */,
       type: 'string',
       order: 100,
 

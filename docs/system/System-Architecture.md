@@ -11,7 +11,7 @@ ManatOS is a metadata-driven application platform. The server owns business trut
   | UI composition                                     |
   | CTX runtime                                        |
   | expression evaluation for UI decisions            |
-  | page / popup / embedded interaction                |
+  | page / popup / hierarchy interaction               |
   +-----------------------+---------------------------+
                           |
                     HTTP contracts
@@ -59,9 +59,9 @@ Operational endpoints such as health/readiness belong to the running service rat
 
 ## 2.1 Client implementation independence
 
-The repository currently ships a Node.js/Express TypeScript web client, but ManatOS architecture is **not coupled to Express/EJS or to a browser-only topology**. The portable boundary is API contracts + metadata + capability projections + client/runtime semantics. Future Angular, React, mobile, desktop or specialized clients may consume those contracts.
+The TypeScript repository contains the established `ui.EJS0` client and the newer UIS hosts `ui.NG1` (Angular) and `ui.EJS1` (EJS). The shared UI semantics live in `shared.UI`, with presentation adapters in `shared.UI.NG` and `shared.UI.EJS`. This is the concrete realization of the architecture's framework-independent client contract. Other technologies may implement the same semantic boundaries without making their native code part of this TypeScript reference.
 
-Architecture documents therefore describe client/UI semantics first. Implementation-specific Express/EJS details belong to the current-client development/design documentation and are identified as such.
+Architecture documents therefore describe client/UI semantics first. Concrete Angular/EJS adapter details belong to the client documentation and are identified separately from shared semantic contracts.
 
 ## 3. Metadata-driven entity model
 
@@ -123,73 +123,48 @@ Execution ownership follows semantics. The server does not evaluate UI-owned exp
 
 ## 5. CTX runtime model
 
-CTX is the observable runtime state tree available to the expression engine and diagnostics.
+CTX is an observable runtime tree, with distinct hosts for API operations and interactive UI composition. The modern UIS root is:
 
 ```text
 ctx
-+-- system
-+-- entities
-+-- company
-+-- user
-|   +-- fields
-|   +-- permissions
-+-- ui
-    +-- level
-        +-- level
-            +-- ...
+├── system
+├── company
+├── runtime
+│   ├── subsystems
+│   ├── entities
+│   ├── enums
+│   └── user
+├── flow                independent Flow execution state
+└── ui
+    └── level           owns #control #state #layout #data
+        └── level       nested child surface, when present
 ```
 
-`ctx.ui.level.level...` is the single currently displayed UI chain. Page, popup and embedded surfaces share the same recursive model. Popup children normally deactivate their parent while active; embedded children intentionally keep their parent active. There is no second public active-surface topology.
-
-CTX is runtime state, not business persistence. Its mutation path owns events, dependency propagation and lifecycle semantics.
+`$runtime` addresses the canonical runtime branch; `$entities`, `$enums` and `$user` are aliases to its members. The API uses a different tree shape with parallel `api.level-<request>` branches. EJS0's legacy browser context is distinct from the modern UIS root. See [Context Architecture](../context/Context-Architecture.md).
 
 ## 6. Entry state model
 
-An entry level owns one record's field lifecycle.
+The current UIS Entry owns the canonical editable record and its baseline:
 
 ```text
-entry level
-+-- entry
-|   +-- original          immutable baseline record
-|   +-- current           derived whole-record projection
-+-- fields
-|   +-- <field>
-|       +-- value         canonical live scalar value
-|       +-- dirty         derived from value vs baseline
-|       +-- valid
-|       +-- validationIssues[]
-|       +-- ux
-+-- facts                 non-persisted observations
-+-- state
+Entry surface level
+├── #control          invocation, command and resource boundary
+├── #data
+│   ├── current         canonical editable field values
+│   └── original        record baseline
+├── #state
+│   ├── fields          per-field validation/dirty state
+│   └── entry           derived aggregate status
+└── #layout             semantic Entry and Field components
 ```
 
-The authority rules are deliberately singular:
-
-```text
-LIVE AUTHORITY                 BASELINE AUTHORITY
-fields.<k>.value               entry.original[k]
-       |                              |
-       +------------+-----------------+
-                    |
-                    v
-          derived field dirty
-                    |
-                    v
-          derived entry.current
-                    |
-                    v
-          derived surface dirty
-```
-
-`entry.current` is a projection of live `fields.<k>.value` values, not an independently writable record. `entry.original` is likewise a projection of `fields.<k>.originalValue`; the field state owns both live and baseline scalar authority symmetrically.
-
-`facts` are API-safe observations useful to expressions but not persisted fields. They never enter persistence payloads merely because they exist in CTX.
+A field component decodes input and requests `EntryRuntime.setField()`; the Entry writes the authoritative working record. Derived state and views observe canonical changes. The baseline changes only through controlled lifecycle/reconciliation. In particular, a legacy EJS0 field-node path such as `fields.<key>.value` is not the current UIS Entry value authority. Compound editors can additionally own transaction/draft state with a defined commit boundary.
 
 ## 7. Client/UI ownership
 
 A UI-capable client owns its presentation/runtime concerns:
 
-- page/popup/embedded composition;
+- page/popup composition;
 - recursive UI-level lifecycle;
 - field interaction state;
 - dirty/valid/loading/saving presentation state;
@@ -197,13 +172,7 @@ A UI-capable client owns its presentation/runtime concerns:
 - hierarchy working state;
 - evaluation of UI-owned declarative expressions.
 
-The server may provide declarative UI metadata. It does not construct runtime client topology or execute client presentation semantics. The current Node.js/Express TypeScript UI is one realization of this boundary; Angular, React, mobile or other clients may realize it differently without changing the system contract.
-
-## 7.1 Surface host and UI-view orthogonality
-
-The current browser implementation has one production UI-host authority that materializes the recursive `ctx.ui.level` topology. Child surfaces are opened through the same host lifecycle path with `host` selecting `popup` or `embedded`; routed root content is the page host. This is an implementation of the portable surface contract, not a reason to create separate page/popup/embedded business runtimes.
-
-Entity **UI views** are a separate dimension. A view key selects a named record presentation and `viewType` classifies that presentation (`full`, `quick`, and future families). Common record UI metadata is composed with the selected view contribution. Therefore `quick` is not a fourth surface host: a quick Principal editor can be a `quick` UI view hosted in a popup, while the same canonical record semantics remain intact.
+The server may provide declarative UI metadata. It does not construct runtime client topology or execute client presentation semantics. The TypeScript repository realizes this through the shared `shared.UI` framework and Angular/EJS adapters alongside the separate established EJS0 client. Other technologies may use the same contracts without changing the API's authority.
 
 ## 8. Security boundary
 
@@ -261,7 +230,15 @@ The storage implementation is responsible for atomic persistence where the domai
 4. UI policy does not replace server authorization.
 5. The server does not fabricate client UI runtime topology.
 6. Expression source is portable; compiled AST is process-local runtime infrastructure and is never semantic CTX, metadata, or surface-invocation state.
-7. Entry live scalar authority is `fields.<key>.value`.
-8. Entry baseline authority is `fields.<k>.originalValue`; `entry.original.<k>` is a read-only mirror.
+7. Entry live scalar authority in modern UIS is `#data.current.<key>`.
+8. Entry baseline authority in modern UIS is `#data.original.<key>`; `#state.fields` derives per-field state.
 9. Transactional baseline/working pairs are retained when they represent genuinely different states.
 10. Generic metadata/runtime infrastructure is preferred over entity-specific branches.
+
+## Current TypeScript composition
+
+The npm workspaces are `shared`, `shared.UI`, `shared.UI.NG`, `shared.UI.EJS`, `api`, `ui.EJS0`, `ui.NG1` and `ui.EJS1`. `shared` provides canonical domain, metadata, expression and CTX infrastructure. `shared.UI` provides semantic UI runtime and components. The Angular and EJS adapters host those semantics in framework-specific presentation; UI applications compose the hosts. The API remains an independently deployed/operated authority.
+
+The cross-client principle is intentionally asymmetric: presentations can differ in components, windows, modal controls and native capabilities while sharing the same semantic entity and request contracts. Other technology implementations, including .NET and Kotlin, are architectural illustrations only in this TypeScript-focused reference.
+
+See [UIS Architecture](../clients/UIS-Architecture.md) and [Repository Structure](../development/Repository-Structure.md).

@@ -1,0 +1,12 @@
+digraph Authorization {
+  graph [fontname="Arial",fontsize=11,bgcolor="white",labelloc="t",label="Authorization: Role, Organization, Entitlement and Resource",pad="0.25",rankdir=TB,nodesep="0.38"];
+  node [fontname="Arial",fontsize=10,shape=box,style="rounded,filled",fillcolor="#f8fafc"];
+  user [label="Authenticated User\naccount / session / role",fillcolor="#dcecff"];
+  person [label="Person Principal\nlinked business identity",fillcolor="#e8f4e5"];
+  org [label="Organization Principal\nmembership / delegation",fillcolor="#e8f4e5"];
+  license [label="Purchased License\nplatform / application / rules / validity",fillcolor="#fff3cd"];
+  resource [label="Resource policy\nentity / operation / record / relationship",fillcolor="#fff3cd"];
+  api [label="Authoritative API authorization decision\nactual TypeScript: role + selected record checks\narchitectural model: full effective entitlement",fillcolor="#fce8e6"];
+  ux [label="UIS capability projection\nnever an enforcement decision",fillcolor="#e6e9ff"];
+  user -> person; person -> org; org -> license; user -> api [label="role facts"]; license -> api [label="entitlement facts (model)"]; resource -> api; api -> ux [label="safe projection"];
+}

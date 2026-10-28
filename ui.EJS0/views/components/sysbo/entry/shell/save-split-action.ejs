@@ -24,7 +24,7 @@
    * lifecycle choices without teaching individual entity pages about routing.
    */
 %>
-<div class="btn-group" role="group" aria-label="Save options">
+<div class="btn-group" role="group" aria-label="<%= metadataText('@CM.SaveOptions') %>">
   <button
     class="<%= actionClass(saveAction, 'primary') %>"
     type="submit"
@@ -34,7 +34,7 @@
     disabled
   >
     <% if (saveAction.icon) { %><i class="bi bi-<%= saveAction.icon %> me-1"></i><% } %>
-    Save
+    <%= metadataText(saveAction.label || '@CM.Save') %>
   </button>
   <button
     class="<%= actionClass(saveAction, 'primary') %> dropdown-toggle dropdown-toggle-split"
@@ -44,17 +44,17 @@
     data-form-save-menu-toggle
     disabled
   >
-    <span class="visually-hidden">Save options</span>
+    <span class="visually-hidden"><%= metadataText('@CM.SaveOptions') %></span>
   </button>
   <ul class="dropdown-menu dropdown-menu-end metadata-save-dropdown-menu">
     <li>
       <button class="dropdown-item" type="submit" name="_saveMode" value="close" data-form-save-option disabled>
-        <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>Save
+        <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i><%= metadataText('@CM.Save') %>
       </button>
     </li>
     <li>
       <button class="dropdown-item" type="submit" name="_saveMode" value="stay" data-form-save-option disabled>
-        <i class="bi bi-check-circle me-2" aria-hidden="true"></i>Save and Stay
+        <i class="bi bi-check-circle me-2" aria-hidden="true"></i><%= metadataText('@CM.SaveAndStay') %>
       </button>
     </li>
   </ul>

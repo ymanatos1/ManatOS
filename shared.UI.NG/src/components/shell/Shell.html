@@ -1,0 +1,52 @@
+<div class="shell">
+  <ng-content select="manatos-header" />
+  <ng-content select="manatos-primary-navigation" />
+
+  <div
+    class="shell-body"
+    [class.navigation-collapsed]="workspaceNavigationCollapsed() || !workspaceNavigationAvailable()"
+    [class.navigation-unavailable]="!workspaceNavigationAvailable()"
+  >
+    <div
+      id="workspaceNavigationRegion"
+      class="workspace-navigation-region"
+      [class.collapsed]="workspaceNavigationCollapsed() || !workspaceNavigationAvailable()"
+      [attr.aria-hidden]="workspaceNavigationCollapsed() || !workspaceNavigationAvailable()"
+    >
+      <button
+        type="button"
+        class="shell-navigation-collapse"
+        [title]="multilingual().resolve('@CM.CollapseNavigation')"
+        [attr.aria-label]="multilingual().resolve('@CM.CollapseApplicationNavigation')"
+        aria-controls="workspaceNavigationRegion"
+        [attr.aria-expanded]="!workspaceNavigationCollapsed()"
+        (click)="collapseWorkspaceNavigation()"
+      >
+        <i class="bi bi-chevron-left" aria-hidden="true"></i>
+      </button>
+
+      <ng-content select="manatos-workspace-navigation" />
+    </div>
+
+    <button
+      type="button"
+      class="shell-navigation-restore"
+      [title]="multilingual().resolve('@CM.ShowNavigation')"
+      [attr.aria-label]="multilingual().resolve('@CM.ShowApplicationNavigation')"
+      aria-controls="workspaceNavigationRegion"
+      [hidden]="!workspaceNavigationAvailable() || !workspaceNavigationCollapsed()"
+      [attr.aria-expanded]="!workspaceNavigationCollapsed()"
+      (click)="showWorkspaceNavigation()"
+    >
+      <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+    </button>
+
+    <main>
+      <ng-content select="manatos-workspace" />
+    </main>
+
+    <ng-content select="manatos-debugger" />
+  </div>
+
+  <ng-content select="manatos-footer" />
+</div>

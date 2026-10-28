@@ -1,0 +1,54 @@
+@if (popupContext(); as popup) {
+<div
+  class="sign-in-backdrop"
+  [class.has-foreground-debugger]="debuggerForeground() && debuggerDocked()"
+  [style.--popup-debugger-dock-width]="debuggerDockWidth() === null ? 'clamp(420px, 28vw, 640px)' : debuggerDockWidth() + 'px'"
+  (click)="onBackdropClick($event)"
+>
+  <section
+    #dialog
+    class="sign-in-dialog manatos-change-report-dialog"
+    [attr.data-ui-level-path]="popup.levelPath"
+    [style.--manatos-font-scale]="fontScalePercent() / 100"
+    role="dialog"
+    [attr.aria-modal]="debuggerForeground() ? null : 'true'"
+    [attr.aria-label]="title().title"
+    tabindex="-1"
+  >
+    <div class="sign-in-content">
+      <manatos-popup-title
+        [model]="title()"
+        [showCloseButton]="popup.level().control.invocation.allowXClosure"
+        [attr.data-popup-layout-id]="'popup-title'"
+        [showLanguageSelection]="definition.showLanguageSelection"
+        [languages]="languages()"
+        [currentLanguage]="currentLanguage()"
+        [flowStepPath]="popup.level().control.flow?.stepPath ?? null"
+        (languageSelected)="languageSelected.emit($event)"
+        (flowDebuggerRequested)="requestFlowDebugger($event)"
+        [fontScalePercent]="fontScalePercent()"
+        [debuggerForeground]="debuggerForeground()"
+        [debuggerAllowed]="debuggerAllowed()"
+        (debuggerRequested)="requestDebugger()"
+        (fontScaleChanged)="setFontScalePercent($event)"
+        (closeRequested)="requestXClose()"
+      />
+      @if (report(); as model) {
+      <manatos-hierarchical-report
+        data-popup-layout-id="change-report-tree"
+        [summary]="model.summary"
+        [nodes]="model.nodes"
+        [language]="reportLanguage()"
+      />
+      }
+      <manatos-auth-popup-actions
+        [popup]="popup"
+        [tab]="popup.activeTab()"
+        [language]="reportLanguage()"
+        [attr.data-popup-layout-id]="'report-actions'"
+        (actionRequested)="requestAction($event)"
+      />
+    </div>
+  </section>
+</div>
+}

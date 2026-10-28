@@ -146,6 +146,12 @@ export function tokenizeExpression(source: string): readonly ExpressionToken[] {
       continue;
     }
 
+    if (char === '?' && source[index + 1] === '.') {
+      tokens.push({ kind: 'operator', text: '?.', position: index });
+      index += 2;
+      continue;
+    }
+
     if (char === '?' && source[index + 1] === '?') {
       tokens.push({ kind: 'operator', text: '??', position: index });
       index += 2;

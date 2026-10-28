@@ -167,7 +167,10 @@ describe('ManatOS ctx tree', () => {
     expect(ctx.system.subsystems.applications?.selected).toBe(true);
     expect(ctx.system.subsystems.auth?.enums).toContain('SysBOUserRole');
     expect(ctx.system.subsystems.principals?.enums).toContain('SysBOPrincipalType');
-    expect(ctx.enums.SysBOUserRole?.values.Admin?.label).toBe('Admin');
+    expect(ctx.enums.SysBOUserRole?.values.Admin?.label).toEqual({
+      EN: 'Admin',
+      EL: 'Διαχειριστής',
+    });
     expect(ctx.enums.SysBOPrincipalType?.values.Company?.canBeOrganizationRoot).toBe(true);
     expect(ctx.enums.SysBOPrincipalType?.values.Company?.canStandAloneOrganization).toBe(false);
     expect(ctx.enums.SysBOPrincipalType?.values.Person?.canBeOrganizationRoot).toBe(false);

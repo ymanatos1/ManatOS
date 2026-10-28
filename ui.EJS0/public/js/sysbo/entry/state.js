@@ -81,6 +81,16 @@
     const closeCancel = form.querySelector('[data-form-close-cancel]');
     const closeCancelLabel = closeCancel?.querySelector('[data-form-close-cancel-label]');
     const recordMode = form.dataset.recordMode || 'edit';
+    // Presentation labels come from the server's selected-language catalogue.
+    // The browser keeps canonical CTX values and operation identifiers unchanged.
+    const labels = (() => {
+      try {
+        return JSON.parse(form.dataset.formI18n || '{}');
+      } catch {
+        return {};
+      }
+    })();
+    const localized = (key, fallback) => labels[key] || fallback;
     const abort = new AbortController();
     const signal = abort.signal;
 
@@ -101,8 +111,8 @@
       if (indicator instanceof HTMLButtonElement) {
         indicator.disabled = !changed;
         indicator.title = changed
-          ? 'Review the current unsaved entry changes.'
-          : 'No unsaved changes to review';
+          ? localized('reviewUnsaved', 'Review the current unsaved entry changes.')
+          : localized('noUnsaved', 'No unsaved changes to review');
         indicator.classList.toggle('text-decoration-none', !changed);
       }
       if (initializing) {
@@ -113,7 +123,12 @@
       if (blocked) {
         indicator.classList.add('text-warning-emphasis');
         indicatorText.textContent =
-          blockingCount > 1 ? `Editing ${blockingCount} related entries` : 'Editing related entry';
+          blockingCount > 1
+            ? localized('editingRelatedMany', 'Editing {count} related entries').replace(
+                '{count}',
+                String(blockingCount),
+              )
+            : localized('editingRelated', 'Editing related entry');
         if (indicatorIcon instanceof HTMLElement)
           indicatorIcon.className = 'bi bi-pencil-square me-1';
         return;
@@ -123,22 +138,22 @@
         indicatorText.textContent =
           recordMode === 'create'
             ? valid
-              ? 'New entry · ready'
-              : 'New entry · incomplete'
-            : 'No changes';
+              ? localized('newReady', 'New entry · ready')
+              : localized('newIncomplete', 'New entry · incomplete')
+            : localized('noChanges', 'No changes');
         if (indicatorIcon instanceof HTMLElement)
           indicatorIcon.className = 'bi bi-check-circle me-1';
         return;
       }
       if (!valid) {
         indicator.classList.add('text-warning-emphasis');
-        indicatorText.textContent = 'Unsaved changes · incomplete';
+        indicatorText.textContent = localized('unsavedIncomplete', 'Unsaved changes · incomplete');
         if (indicatorIcon instanceof HTMLElement)
           indicatorIcon.className = 'bi bi-exclamation-triangle me-1';
         return;
       }
       indicator.classList.add('text-primary');
-      indicatorText.textContent = 'Unsaved changes';
+      indicatorText.textContent = localized('unsaved', 'Unsaved changes');
       if (indicatorIcon instanceof HTMLElement)
         indicatorIcon.className = 'bi bi-pencil-square me-1';
     };
@@ -158,8 +173,8 @@
         });
         if (!report) return;
         window.ManatOS?.changeReportPopup?.show?.(report, {
-          title: 'Unsaved changes',
-          summary: report.summary || 'Current unsaved entry changes',
+          title: localized('unsaved', 'Unsaved changes'),
+          summary: report.summary || localized('currentUnsaved', 'Current unsaved entry changes'),
           presentationContext: window.ManatOS?.semanticReportPresentation?.live?.(entryPagePath),
         });
       });
@@ -190,11 +205,14 @@
       const blockingCount = Number(aggregateContributorState.blockingCount || 0);
 
       if (closeCancelLabel instanceof HTMLElement)
-        closeCancelLabel.textContent = changed || blocked ? 'Cancel' : 'Close';
+        closeCancelLabel.textContent =
+          changed || blocked ? localized('cancel', 'Cancel') : localized('close', 'Close');
       if (closeCancel instanceof HTMLElement) {
         closeCancel.setAttribute(
           'aria-label',
-          changed || blocked ? 'Cancel editing' : 'Close entry',
+          changed || blocked
+            ? localized('cancelEditing', 'Cancel editing')
+            : localized('closeEntry', 'Close entry'),
         );
         const ready = window.ManatOS?.uiHost?.isUserInputReady?.(entryPagePath) !== false;
         if (closeCancel instanceof HTMLButtonElement) closeCancel.disabled = !ready;
@@ -207,13 +225,19 @@
       }
       const saveDisabled = initializing || !aggregatePolicy.saveReady;
       const title = initializing
-        ? 'Entry initialization is still completing.'
+        ? localized('entryInit', 'Entry initialization is still completing.')
         : blocked
-          ? 'Finish or cancel the related-entry editor before saving the page.'
+          ? localized(
+              'finishRelated',
+              'Finish or cancel the related-entry editor before saving the page.',
+            )
           : !changed
-            ? 'No changes to save.'
+            ? localized('noChangesToSave', 'No changes to save.')
             : !valid
-              ? 'Complete or correct the required fields before saving.'
+              ? localized(
+                  'completeRequired',
+                  'Complete or correct the required fields before saving.',
+                )
               : '';
       saveButtons.forEach((button) => {
         button.disabled = saveDisabled;

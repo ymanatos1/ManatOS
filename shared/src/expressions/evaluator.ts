@@ -9,10 +9,12 @@ import { compileExpression } from './parser.js';
 import { resolveExpressionVariable, resolveExpressionVariableAsync } from './resolver.js';
 import type {
   CompiledExpression,
+  ExpressionBinaryOperator,
   ExpressionEvaluationCaller,
   ExpressionEvaluationOptions,
   ExpressionExecutionContext,
   ExpressionNode,
+  ExpressionUnaryOperator,
   ExpressionVariableNode,
 } from './types.js';
 
@@ -70,6 +72,7 @@ function evaluateCalculatedField(
       const value = evaluateNode(compiled.ast, {
         ...state,
         currentCtxNode: owner ?? state.currentCtxNode,
+        source: compiled.source,
         evaluationChain: nextChain,
       });
       state.memo.set(field, value);
@@ -225,6 +228,82 @@ function scalarTruthy(value: unknown, operator: string): boolean {
   return Boolean(value);
 }
 
+function evaluateUnaryOperator(operator: ExpressionUnaryOperator, raw: unknown): unknown {
+  if (operator === '!') return !scalarTruthy(raw, '!');
+  if (operator === '~') return ~bitwiseOperand(raw, '~');
+  const value = numberOperand(raw, `unary ${operator}`);
+  return operator === '-' ? -value : value;
+}
+
+function evaluateBinaryOperator(
+  operator: Exclude<ExpressionBinaryOperator, '??' | '&&' | '||'>,
+  left: unknown,
+  right: unknown,
+): unknown {
+  switch (operator) {
+    case '+':
+      return plus(left, right);
+    case '-':
+      return numberOperand(left, '-') - numberOperand(right, '-');
+    case '*':
+      return numberOperand(left, '*') * numberOperand(right, '*');
+    case '/': {
+      const divisor = numberOperand(right, '/');
+      if (divisor === 0) throw new ExpressionEvaluationError('Division by zero.');
+      return numberOperand(left, '/') / divisor;
+    }
+    case '%': {
+      const divisor = numberOperand(right, '%');
+      if (divisor === 0) throw new ExpressionEvaluationError('Modulo by zero.');
+      return numberOperand(left, '%') % divisor;
+    }
+    case '**':
+      return numberOperand(left, '**') ** numberOperand(right, '**');
+    case '==':
+      return looseEqual(left, right);
+    case '!=':
+      return !looseEqual(left, right);
+    case '===':
+      return strictEqual(left, right);
+    case '!==':
+      return !strictEqual(left, right);
+    case 'IN': {
+      if (!Array.isArray(right))
+        throw new ExpressionEvaluationError('IN requires an array on the right-hand side.');
+      return right.some((candidate) => strictEqual(left, candidate));
+    }
+    case '<':
+      return relational(left, right, '<');
+    case '<=':
+      return relational(left, right, '<=');
+    case '>':
+      return relational(left, right, '>');
+    case '>=':
+      return relational(left, right, '>=');
+    case '<<':
+      return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
+    case '>>':
+      return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
+    case '>>>':
+      return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
+    case '&':
+      return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
+    case '^':
+      return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
+    case '|':
+      return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
+  }
+}
+
+function booleanCondition(value: unknown): boolean {
+  if (typeof value !== 'boolean') {
+    throw new ExpressionEvaluationError(
+      `?: requires a boolean condition; received ${value === null ? 'null' : typeof value}.`,
+    );
+  }
+  return value;
+}
+
 function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
   switch (node.kind) {
     case 'literal':
@@ -253,10 +332,7 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
 
     case 'unary': {
       const raw = evaluateNode(node.operand, state);
-      if (node.operator === '!') return !scalarTruthy(raw, '!');
-      if (node.operator === '~') return ~bitwiseOperand(raw, '~');
-      const value = numberOperand(raw, `unary ${node.operator}`);
-      return node.operator === '-' ? -value : value;
+      return evaluateUnaryOperator(node.operator, raw);
     }
 
     case 'binary': {
@@ -275,73 +351,12 @@ function evaluateNode(node: ExpressionNode, state: EvaluationState): unknown {
       }
 
       const right = evaluateNode(node.right, state);
-      switch (node.operator) {
-        case '+':
-          return plus(left, right);
-        case '-':
-          return numberOperand(left, '-') - numberOperand(right, '-');
-        case '*':
-          return numberOperand(left, '*') * numberOperand(right, '*');
-        case '/': {
-          const divisor = numberOperand(right, '/');
-          if (divisor === 0) throw new ExpressionEvaluationError('Division by zero.');
-          return numberOperand(left, '/') / divisor;
-        }
-        case '%': {
-          const divisor = numberOperand(right, '%');
-          if (divisor === 0) throw new ExpressionEvaluationError('Modulo by zero.');
-          return numberOperand(left, '%') % divisor;
-        }
-        case '**':
-          return numberOperand(left, '**') ** numberOperand(right, '**');
-        case '==':
-          return looseEqual(left, right);
-        case '!=':
-          return !looseEqual(left, right);
-        case '===':
-          return strictEqual(left, right);
-        case '!==':
-          return !strictEqual(left, right);
-        case 'IN': {
-          if (!Array.isArray(right))
-            throw new ExpressionEvaluationError('IN requires an array on the right-hand side.');
-          return right.some((candidate) => strictEqual(left, candidate));
-        }
-        case '<':
-          return relational(left, right, '<');
-        case '<=':
-          return relational(left, right, '<=');
-        case '>':
-          return relational(left, right, '>');
-        case '>=':
-          return relational(left, right, '>=');
-        case '<<':
-          return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
-        case '>>':
-          return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
-        case '>>>':
-          return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
-        case '&':
-          return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
-        case '^':
-          return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
-        case '|':
-          return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
-        default:
-          throw new ExpressionEvaluationError(
-            `Unsupported binary operator: ${String(node.operator)}.`,
-          );
-      }
+      return evaluateBinaryOperator(node.operator, left, right);
     }
 
     case 'conditional': {
       // Ternary evaluation is lazy: only the selected branch is evaluated.
-      const condition = evaluateNode(node.condition, state);
-      if (typeof condition !== 'boolean') {
-        throw new ExpressionEvaluationError(
-          `?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`,
-        );
-      }
+      const condition = booleanCondition(evaluateNode(node.condition, state));
       return condition ? evaluateNode(node.whenTrue, state) : evaluateNode(node.whenFalse, state);
     }
 
@@ -386,7 +401,7 @@ export function evaluateCompiledExpression(
       emitExpressionDiagnostic(options.diagnosticSink, {
         phase: 'evaluate',
         message: error.message,
-        expression: compiled.source,
+        expression: error.expression ?? compiled.source,
         ...(error.variablePath ? { variablePath: error.variablePath } : {}),
         caller,
         correlationId: id,
@@ -421,9 +436,10 @@ export function evaluateExpression(
  * `&&`, `||` or satisfied `??` branch never invokes EntityResolver merely
  * because a resolver-capable function exists elsewhere in the AST.
  *
- * Browser owners normally delegate resolver-capable function nodes to the
- * trusted API and then resume evaluation locally. Server owners can provide an
- * EntityResolver directly and complete the same AST without a network hop.
+ * Owners must provide every reached capability locally or through an explicit
+ * host capability delegate. Server owners can provide an EntityResolver directly;
+ * browser owners can delegate only the reached function while transport remains
+ * outside the shared expression engine.
  */
 export async function evaluateCompiledExpressionAsync(
   compiled: CompiledExpression,
@@ -439,40 +455,85 @@ export async function evaluateCompiledExpressionAsync(
   const evaluate = async (
     node: ExpressionNode,
     scope: unknown = execution.scope,
+    source: string = compiled.source,
+    evaluationChain: readonly string[] = chain,
   ): Promise<unknown> => {
     switch (node.kind) {
       case 'literal':
         return node.value;
-      case 'array':
-        return Promise.all(node.items.map((item) => evaluate(item, scope)));
+
+      case 'array': {
+        const values: unknown[] = [];
+        for (const item of node.items) {
+          values.push(await evaluate(item, scope, source, evaluationChain));
+        }
+        return values;
+      }
+
       case 'group':
-        return evaluate(node.expression, scope);
+        return evaluate(node.expression, scope, source, evaluationChain);
+
       case 'variable': {
         const resolved = await resolveExpressionVariableAsync(node, execution.root, scope, {
-          evaluateDynamicPath: (expression) => evaluate(expression, scope),
+          evaluateDynamicPath: (expression) => evaluate(expression, scope, source, evaluationChain),
         });
+
         if (!resolved.found) {
           throw new ExpressionEvaluationError(
             `Expression variable not found: ${node.path}`,
-            compiled.source,
+            source,
             node.path,
-            chain,
+            evaluationChain,
           );
         }
+
         if (isCalculatedField(resolved.value)) {
           const field = resolved.value;
+
           if (memo.has(field)) return memo.get(field);
           if (active.has(field)) return fieldFallbackValue(field);
+
+          const fieldPath =
+            contextPathOf(execution.root, field) ?? `<calculated:${field.expression}>`;
+
+          const nextChain =
+            evaluationChain[evaluationChain.length - 1] === fieldPath
+              ? evaluationChain
+              : [...evaluationChain, fieldPath];
+
           active.add(field);
+
           try {
-            const nested = compileExpression(field.expression);
-            const value = await evaluate(nested.ast, resolved.owner ?? scope);
-            memo.set(field, value);
-            return value;
+            const nested = compileExpression(field.expression, {
+              ...(options.diagnosticSink ? { diagnosticSink: options.diagnosticSink } : {}),
+            });
+
+            try {
+              const value = await evaluate(
+                nested.ast,
+                resolved.owner ?? scope,
+                nested.source,
+                nextChain,
+              );
+              memo.set(field, value);
+              return value;
+            } catch (error) {
+              if (error instanceof ExpressionEvaluationError && !error.evaluationChain) {
+                throw new ExpressionEvaluationError(
+                  error.message,
+                  error.expression ?? nested.source,
+                  error.variablePath,
+                  nextChain,
+                );
+              }
+
+              throw error;
+            }
           } finally {
             active.delete(field);
           }
         }
+
         if (
           resolved.value &&
           typeof resolved.value === 'object' &&
@@ -480,96 +541,61 @@ export async function evaluateCompiledExpressionAsync(
         ) {
           return (resolved.value as ManatOSContextField).value;
         }
+
         return resolved.value;
       }
-      case 'unary': {
-        const raw = await evaluate(node.operand, scope);
-        if (node.operator === '!') return !scalarTruthy(raw, '!');
-        if (node.operator === '~') return ~bitwiseOperand(raw, '~');
-        const value = numberOperand(raw, `unary ${node.operator}`);
-        return node.operator === '-' ? -value : value;
-      }
+
+      case 'unary':
+        return evaluateUnaryOperator(
+          node.operator,
+          await evaluate(node.operand, scope, source, evaluationChain),
+        );
+
       case 'binary': {
-        const left = await evaluate(node.left, scope);
-        if (node.operator === '??') return left == null ? evaluate(node.right, scope) : left;
-        if (node.operator === '&&')
-          return scalarTruthy(left, '&&') ? evaluate(node.right, scope) : left;
-        if (node.operator === '||')
-          return scalarTruthy(left, '||') ? left : evaluate(node.right, scope);
-        const right = await evaluate(node.right, scope);
-        switch (node.operator) {
-          case '+':
-            return plus(left, right);
-          case '-':
-            return numberOperand(left, '-') - numberOperand(right, '-');
-          case '*':
-            return numberOperand(left, '*') * numberOperand(right, '*');
-          case '/': {
-            const divisor = numberOperand(right, '/');
-            if (divisor === 0) throw new ExpressionEvaluationError('Division by zero.');
-            return numberOperand(left, '/') / divisor;
-          }
-          case '%': {
-            const divisor = numberOperand(right, '%');
-            if (divisor === 0) throw new ExpressionEvaluationError('Modulo by zero.');
-            return numberOperand(left, '%') % divisor;
-          }
-          case '**':
-            return numberOperand(left, '**') ** numberOperand(right, '**');
-          case '==':
-            return looseEqual(left, right);
-          case '!=':
-            return !looseEqual(left, right);
-          case '===':
-            return strictEqual(left, right);
-          case '!==':
-            return !strictEqual(left, right);
-          case 'IN': {
-            if (!Array.isArray(right))
-              throw new ExpressionEvaluationError('IN requires an array on the right-hand side.');
-            return right.some((candidate) => strictEqual(left, candidate));
-          }
-          case '<':
-            return relational(left, right, '<');
-          case '<=':
-            return relational(left, right, '<=');
-          case '>':
-            return relational(left, right, '>');
-          case '>=':
-            return relational(left, right, '>=');
-          case '<<':
-            return bitwiseOperand(left, '<<') << (bitwiseOperand(right, '<<') & 31);
-          case '>>':
-            return bitwiseOperand(left, '>>') >> (bitwiseOperand(right, '>>') & 31);
-          case '>>>':
-            return (bitwiseOperand(left, '>>>') >>> (bitwiseOperand(right, '>>>') & 31)) >>> 0;
-          case '&':
-            return bitwiseOperand(left, '&') & bitwiseOperand(right, '&');
-          case '^':
-            return bitwiseOperand(left, '^') ^ bitwiseOperand(right, '^');
-          case '|':
-            return bitwiseOperand(left, '|') | bitwiseOperand(right, '|');
-          default:
-            throw new ExpressionEvaluationError(
-              `Unsupported binary operator: ${String(node.operator)}.`,
-            );
+        const left = await evaluate(node.left, scope, source, evaluationChain);
+
+        if (node.operator === '??') {
+          return left == null ? evaluate(node.right, scope, source, evaluationChain) : left;
         }
+
+        if (node.operator === '&&') {
+          return scalarTruthy(left, '&&')
+            ? evaluate(node.right, scope, source, evaluationChain)
+            : left;
+        }
+
+        if (node.operator === '||') {
+          return scalarTruthy(left, '||')
+            ? left
+            : evaluate(node.right, scope, source, evaluationChain);
+        }
+
+        const right = await evaluate(node.right, scope, source, evaluationChain);
+        return evaluateBinaryOperator(node.operator, left, right);
       }
+
       case 'conditional': {
-        const condition = await evaluate(node.condition, scope);
-        if (typeof condition !== 'boolean') {
-          throw new ExpressionEvaluationError(
-            `?: requires a boolean condition; received ${condition === null ? 'null' : typeof condition}.`,
-          );
-        }
-        return condition ? evaluate(node.whenTrue, scope) : evaluate(node.whenFalse, scope);
+        const condition = booleanCondition(
+          await evaluate(node.condition, scope, source, evaluationChain),
+        );
+
+        return condition
+          ? evaluate(node.whenTrue, scope, source, evaluationChain)
+          : evaluate(node.whenFalse, scope, source, evaluationChain);
       }
+
       case 'function': {
         const definition = expressionFunctions[node.functionName];
-        if (!definition)
+
+        if (!definition) {
           throw new ExpressionEvaluationError(`Unknown expression function ${node.functionName}.`);
+        }
+
         const args: unknown[] = [];
-        for (const argument of node.arguments) args.push(await evaluate(argument, scope));
+        for (const argument of node.arguments) {
+          args.push(await evaluate(argument, scope, source, evaluationChain));
+        }
+
         const context = {
           now: options.now ?? (() => new Date()),
           owner: execution.owner,
@@ -577,27 +603,42 @@ export async function evaluateCompiledExpressionAsync(
           scope,
           ...(execution.entityResolver ? { entityResolver: execution.entityResolver } : {}),
         };
-        if (
-          definition.capability !== 'pure' &&
-          !execution.capabilities.includes(definition.capability)
-        ) {
-          throw new ExpressionEvaluationError(
-            `${node.functionName} requires capability '${definition.capability}', unavailable to evaluation owner '${execution.owner}'.`,
-          );
+
+        const capabilityAvailableLocally =
+          definition.capability === 'pure' ||
+          execution.capabilities.includes(definition.capability);
+
+        if (!capabilityAvailableLocally) {
+          const delegate = execution.capabilityDelegate;
+          if (!delegate?.capabilities.includes(definition.capability)) {
+            throw new ExpressionEvaluationError(
+              `${node.functionName} requires capability '${definition.capability}', unavailable to evaluation owner '${execution.owner}'.`,
+            );
+          }
+
+          return delegate.evaluateFunction({
+            functionName: node.functionName,
+            capability: definition.capability,
+            args,
+          });
         }
+
         if (definition.capability === 'entityResolver') {
           if (!execution.entityResolver) {
             throw new ExpressionEvaluationError(
               `${node.functionName} requires capability 'entityResolver', but owner '${execution.owner}' supplied no EntityResolver.`,
             );
           }
+
           if (!definition.evaluateAsync) {
             throw new ExpressionEvaluationError(
               `${node.functionName} has no asynchronous entityResolver implementation.`,
             );
           }
+
           return definition.evaluateAsync(args, context);
         }
+
         return definition.evaluate(args, context);
       }
     }
@@ -610,7 +651,7 @@ export async function evaluateCompiledExpressionAsync(
       emitExpressionDiagnostic(options.diagnosticSink, {
         phase: 'evaluate',
         message: error.message,
-        expression: compiled.source,
+        expression: error.expression ?? compiled.source,
         ...(error.variablePath ? { variablePath: error.variablePath } : {}),
         caller,
         correlationId: id,
@@ -619,6 +660,7 @@ export async function evaluateCompiledExpressionAsync(
         evaluationChain: error.evaluationChain ?? chain,
       });
     }
+
     throw error;
   }
 }
@@ -630,5 +672,12 @@ export async function evaluateExpressionAsync(
   caller: ExpressionEvaluationCaller,
   options: ExpressionEvaluationOptions = {},
 ): Promise<unknown> {
-  return evaluateCompiledExpressionAsync(compileExpression(expression), execution, caller, options);
+  return evaluateCompiledExpressionAsync(
+    compileExpression(expression, {
+      ...(options.diagnosticSink ? { diagnosticSink: options.diagnosticSink } : {}),
+    }),
+    execution,
+    caller,
+    options,
+  );
 }

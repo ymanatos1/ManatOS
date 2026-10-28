@@ -3,19 +3,26 @@ import { MANATOS_COMPANY, resolvePlatform } from '../domain/company-platform.js'
 import { allManatOSObjectMetadata } from '../metadata/bo/registry.js';
 import {
   allManatOSSubsystemMetadata,
+  effectiveSubsystemContextCatalogue,
   effectiveEnumKeys,
   effectiveObjectKeys,
   subsystemContextCatalogue,
 } from '../metadata/subsystems/registry.js';
+import type { ManatOSSubsystemContextProjection } from '../metadata/subsystems/registry.js';
 import type { ManatOSSubsystemMetadata } from '../metadata/subsystems/types.js';
 import type { CompanyInfo, SysPlatform } from '../platforms/types.js';
 import type {
   ManatOSCompanyContext,
+  ManatOSEffectiveRuntimeContext,
   ManatOSEntitiesContext,
   ManatOSEnumsContext,
   ManatOSEntityContext,
+  ManatOSHostSystemContext,
+  ManatOSRuntimeCompanyContext,
   ManatOSSystemContext,
+  ManatOSUserContext,
 } from './manatos-context.js';
+import { contextPointer } from './manatos-context.js';
 
 const CONTEXT_IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
@@ -41,12 +48,12 @@ function sysBOContext(keys: Iterable<string>) {
 
 export function createCompanyContext(
   company: CompanyInfo = MANATOS_COMPANY,
-  currentPlatform: SysPlatform = resolvePlatform(company),
+  currentPlatform: SysPlatform | null = resolvePlatform(company),
 ): ManatOSCompanyContext {
-  const currentPlatformIndex = Math.max(
-    0,
-    company.platforms.findIndex((candidate) => candidate.id === currentPlatform.id),
-  );
+  const currentPlatformIndex =
+    currentPlatform === null
+      ? -1
+      : company.platforms.findIndex((candidate) => candidate.id === currentPlatform.id);
   const effectiveKeys = effectiveObjectKeys(company, currentPlatform);
   const companyKeys = Object.values(allManatOSObjectMetadata)
     .filter((metadata) => {
@@ -61,7 +68,7 @@ export function createCompanyContext(
     platforms: Object.freeze(
       company.platforms.map((platform) => {
         const platformKeys =
-          platform.id === currentPlatform.id
+          currentPlatform !== null && platform.id === currentPlatform.id
             ? Object.values(allManatOSObjectMetadata)
                 .filter((metadata) => {
                   const subsystem =
@@ -79,9 +86,39 @@ export function createCompanyContext(
         return Object.freeze({ ...platform, sysBO: sysBOContext(platformKeys) });
       }),
     ),
-    currentPlatform: currentPlatform.id,
+    currentPlatform: currentPlatform?.id ?? null,
     currentPlatformIndex,
   });
+}
+
+/** Build the stable modern Company branch without duplicating effective entity catalogues. */
+export function createRuntimeCompanyContext(
+  company: CompanyInfo = MANATOS_COMPANY,
+  currentPlatform: SysPlatform | null = resolvePlatform(company),
+): ManatOSRuntimeCompanyContext {
+  const currentPlatformIndex =
+    currentPlatform === null
+      ? -1
+      : company.platforms.findIndex((candidate) => candidate.id === currentPlatform.id);
+
+  return Object.seal({
+    ...company,
+    platforms: Object.freeze(company.platforms.map((platform) => Object.freeze({ ...platform }))),
+    currentPlatform: currentPlatform?.id ?? null,
+    currentPlatformIndex,
+  });
+}
+
+/** Update only the mutable current-platform selector of the stable modern Company branch. */
+export function selectRuntimeCompanyPlatform(
+  companyContext: ManatOSRuntimeCompanyContext,
+  currentPlatform: SysPlatform | null,
+): void {
+  companyContext.currentPlatform = currentPlatform?.id ?? null;
+  companyContext.currentPlatformIndex =
+    currentPlatform === null
+      ? -1
+      : companyContext.platforms.findIndex((candidate) => candidate.id === currentPlatform.id);
 }
 
 function contextMetadata(value: unknown, omitOwnKey = false): unknown {
@@ -97,7 +134,7 @@ function contextMetadata(value: unknown, omitOwnKey = false): unknown {
 /** Effective canonical enum catalogue for the selected subsystem composition. */
 export function createEnumsContext(
   company: CompanyInfo = MANATOS_COMPANY,
-  currentPlatform: SysPlatform = resolvePlatform(company),
+  currentPlatform: SysPlatform | null = resolvePlatform(company),
 ): ManatOSEnumsContext {
   const effective = effectiveEnumKeys(company, currentPlatform);
   return Object.freeze(
@@ -128,7 +165,7 @@ export function createEnumsContext(
 /** Complete canonical entity registry used by every ManatOS CTX host. */
 export function createEntitiesContext(
   company: CompanyInfo = MANATOS_COMPANY,
-  currentPlatform: SysPlatform = resolvePlatform(company),
+  currentPlatform: SysPlatform | null = resolvePlatform(company),
 ): ManatOSEntitiesContext {
   const effectiveKeys = effectiveObjectKeys(company, currentPlatform);
   return Object.fromEntries(
@@ -155,12 +192,10 @@ export interface SystemContextOptions {
   clientVersion: string;
   clientFeatures?: Readonly<Record<string, boolean>>;
   company?: CompanyInfo;
-  currentPlatform?: SysPlatform;
+  currentPlatform?: SysPlatform | null;
 }
 
-export function createSystemContext(options: SystemContextOptions): ManatOSSystemContext {
-  const company = options.company ?? MANATOS_COMPANY;
-  const currentPlatform = options.currentPlatform ?? resolvePlatform(company);
+export function createHostSystemContext(options: SystemContextOptions): ManatOSHostSystemContext {
   const runtimeMode = options.runtimeMode ?? 'development';
   return Object.freeze({
     scope: options.scope ?? 'sys',
@@ -169,11 +204,101 @@ export function createSystemContext(options: SystemContextOptions): ManatOSSyste
       developerMode: runtimeMode !== 'production',
     }),
     server: Object.freeze({ apiBaseUrl: options.apiBaseUrl ?? '' }),
-    subsystems: subsystemContextCatalogue(company, currentPlatform),
     client: Object.freeze({
       kind: options.clientKind,
       version: options.clientVersion,
       features: Object.freeze({ ...(options.clientFeatures ?? {}) }),
+    }),
+  });
+}
+
+export function createSystemContext(options: SystemContextOptions): ManatOSSystemContext {
+  const company = options.company ?? MANATOS_COMPANY;
+  const currentPlatform =
+    options.currentPlatform === undefined ? resolvePlatform(company) : options.currentPlatform;
+
+  return Object.freeze({
+    ...createHostSystemContext(options),
+    subsystems: subsystemContextCatalogue(company, currentPlatform),
+  });
+}
+
+export interface RuntimeSemanticProjection {
+  readonly subsystems: Readonly<Record<string, ManatOSSubsystemContextProjection>>;
+  readonly entities: ManatOSEntitiesContext;
+  readonly enums: ManatOSEnumsContext;
+}
+
+/**
+ * Immutable effective Company + Platform semantics.
+ *
+ * User/session state is layered on top separately. Hosts may cache this
+ * projection within their own runtime lifetime when appropriate; the shared
+ * factory deliberately does not share mutable CTX entity projections across
+ * independent hosts/requests.
+ */
+export function createRuntimeSemanticContext(
+  company: CompanyInfo = MANATOS_COMPANY,
+  currentPlatform: SysPlatform | null = resolvePlatform(company),
+): RuntimeSemanticProjection {
+  return Object.freeze({
+    subsystems: effectiveSubsystemContextCatalogue(company, currentPlatform),
+    entities: createEntitiesContext(company, currentPlatform),
+    enums: createEnumsContext(company, currentPlatform),
+  });
+}
+
+/** Build the canonical effective runtime branch for modern clients. */
+export function createEffectiveRuntimeContext(
+  company: CompanyInfo = MANATOS_COMPANY,
+  currentPlatform: SysPlatform | null = resolvePlatform(company),
+  user: ManatOSEffectiveRuntimeContext['user'] = null,
+  semantic: RuntimeSemanticProjection = createRuntimeSemanticContext(company, currentPlatform),
+): ManatOSEffectiveRuntimeContext {
+  return Object.freeze({
+    subsystems: semantic.subsystems,
+    entities: semantic.entities,
+    enums: semantic.enums,
+    user,
+  });
+}
+
+export interface RuntimeUserIdentity {
+  readonly id: string;
+  readonly name: string;
+  readonly role: string;
+}
+
+/**
+ * Build the expression-safe authenticated-user projection used by modern UI
+ * runtimes. Authorization policy remains API-owned; this function only shapes
+ * already-resolved identity/capability facts into CTX.
+ */
+export function createRuntimeUserContext(
+  identity: RuntimeUserIdentity,
+  platformId: string,
+  platformCapabilities: Readonly<Record<string, unknown>>,
+  scope = 'sys',
+): ManatOSUserContext {
+  return Object.freeze({
+    scope,
+    entityName: entityContextName('sys-users'),
+    mode: contextPointer('view'),
+    fields: Object.freeze({
+      id: Object.freeze({ value: identity.id }),
+      name: Object.freeze({ value: identity.name }),
+      role: Object.freeze({ value: identity.role }),
+    }),
+    permissions: Object.freeze({
+      userRole: identity.role,
+      platforms: Object.freeze({
+        [platformId]: Object.freeze({
+          capabilities: Object.freeze({
+            ...platformCapabilities,
+            platformAccess: platformCapabilities.platformAccess === true,
+          }),
+        }),
+      }),
     }),
   });
 }

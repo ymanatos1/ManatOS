@@ -4,11 +4,15 @@ import type {
   ManatOSEntryValueSourceMetadata,
   ManatOSObjectMetadata,
 } from '../metadata/bo/types.js';
-import type { SysBOUIEntryIconMetadata, SysBOUIMetadata } from '../metadata/ui/types.js';
+import type { SysBOUIMetadata } from '../metadata/ui/types.js';
+import { MANATOS_COMPANY } from '../domain/company-platform.js';
 import { evaluateExpression } from '../expressions/index.js';
+import { resolveMetadataText, type MetadataLanguage } from '../multilingual/metadata/index.js';
 
 /** Reference rows are supplied by the owner; representation resolution never performs I/O. */
 export interface EntryRepresentationResolutionOptions {
+  /** Resolve enum display captions only; no effect on stored enum codes or evaluation. */
+  language?: MetadataLanguage;
   /** Entity/page icon, deliberately separate from the icon of an individual entry. */
   entityIcon?: string | null;
   /** Reference catalogues keyed by the referencing field key. */
@@ -25,15 +29,18 @@ export interface ResolvedEntryRepresentation {
   description: string | null;
   status: unknown;
   icons: readonly string[];
+  photo: unknown;
 }
 
-/** Default entry-name source: explicit metadata, then `name`, then primaryField. */
+/** Explicit entry-name source or the entity's canonical primary field. */
 export function entryNameSource<T>(
   metadata: ManatOSObjectMetadata<T>,
 ): ManatOSEntryValueSourceMetadata {
   return (
     metadata.entry?.name ??
-    (metadata.fieldDefinition.name ? { field: 'name' } : { field: metadata.primaryField })
+    (metadata.fieldDefinition[metadata.primaryField]
+      ? { field: metadata.primaryField }
+      : { field: 'name' })
   );
 }
 
@@ -46,7 +53,8 @@ export function entryTypeSource<T>(
 
 function buildEntryScope(
   entry: Readonly<Record<string, unknown>>,
-  relations: Readonly<Record<string, unknown>> = {},
+  relations: Readonly<Record<string, unknown>>,
+  scopeDefaults: Readonly<Record<string, null>>,
 ): Record<string, unknown> {
   /*
    * Calculated fields must already have crossed the canonical record-projection
@@ -54,7 +62,7 @@ function buildEntryScope(
    * name/type/description/status interpretation; it must never run a second
    * calculated-field projection algorithm.
    */
-  return { ...entry, relations };
+  return { ...scopeDefaults, ...entry, relations };
 }
 
 function resolveSource<T>(
@@ -63,6 +71,7 @@ function resolveSource<T>(
   source: ManatOSEntryValueSourceMetadata | undefined,
   relations: Readonly<Record<string, unknown>>,
   purpose: string,
+  scopeDefaults: Readonly<Record<string, null>>,
 ): unknown {
   if (!source) return null;
 
@@ -81,7 +90,7 @@ function resolveSource<T>(
     return entry[directExpressionField];
   }
 
-  const scope = buildEntryScope(entry, relations);
+  const scope = buildEntryScope(entry, relations, scopeDefaults);
   return evaluateExpression(source.expression, scope, scope, {
     source: 'renderer',
     sourcePath: `entry.${purpose}`,
@@ -145,18 +154,64 @@ function normalizeIcon(icon: unknown): string | null {
   return value ? value.replace(/^bi-/, '') : null;
 }
 
-function resolvedIcons(
-  iconMetadata: SysBOUIEntryIconMetadata | undefined,
-  entityIcon: string | null,
-  typeIcon: string | null,
+/** A configured Entry image must be a readable, non-sensitive picture field. */
+export function entryPhotoField<T>(metadata: ManatOSObjectMetadata<T>): string | null {
+  const key = metadata.entry?.image?.field;
+  if (!key) return null;
+  const field = metadata.fieldDefinition[key];
+  return field?.type === 'picture' && !field.sensitive ? key : null;
+}
+
+/** Resolve only fields required to represent an Entry, including fallback identity.
+ * Expression dependencies are tracked against canonical field metadata; any calculated
+ * field is accompanied by its own transitive inputs. No reference traversal occurs.
+ */
+export function entryPresentationFieldKeys<T>(
+  metadata: ManatOSObjectMetadata<T>,
 ): readonly string[] {
-  const mode = iconMetadata?.mode ?? (typeIcon ? 'composed' : 'entity');
-  if (mode === 'fixed' && iconMetadata?.mode === 'fixed')
-    return [normalizeIcon(iconMetadata.icon)].filter((value): value is string => Boolean(value));
-  if (mode === 'type') return typeIcon ? [typeIcon] : [];
-  if (mode === 'composed')
-    return [entityIcon, typeIcon].filter((value): value is string => Boolean(value));
-  return entityIcon ? [entityIcon] : [];
+  const definitions = metadata.fieldDefinition;
+  const required = new Set<string>(['id']);
+  const visit = (fieldKey: string): void => {
+    const field = definitions[fieldKey];
+    if (!field || field.sensitive || required.has(fieldKey)) return;
+    required.add(fieldKey);
+    if (field.calculation?.expression) scan(field.calculation.expression);
+  };
+  const scan = (expression: string): void => {
+    for (const key of Object.keys(definitions)) {
+      // Identifier boundary: avoid substring matches (e.g. name within userName).
+      const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`(^|[^a-zA-Z0-9_$])${escaped}(?![a-zA-Z0-9_$])`).test(expression)) visit(key);
+    }
+  };
+  const add = (source: ManatOSEntryValueSourceMetadata | null | undefined): void => {
+    if (!source) return;
+    if ('field' in source) visit(source.field);
+    else scan(source.expression);
+  };
+  add(entryNameSource(metadata));
+  add(entryTypeSource(metadata));
+  add(metadata.entry?.description);
+  add(metadata.entry?.status);
+  visit(metadata.primaryField); // Fallback identity
+  // An actual entry's first usable fallback text is selected at projection time;
+  // do not ship every string field from the referenced business record.
+  const image = entryPhotoField(metadata);
+  if (image) visit(image);
+  return [...required];
+}
+
+/** The entity icon is canonical navigation metadata, not Entry presentation metadata. */
+function canonicalEntityIcon(entityKey: string): string | null {
+  const items = [
+    ...MANATOS_COMPANY.navigation,
+    ...MANATOS_COMPANY.platforms.flatMap((platform) => platform.navigation),
+  ];
+  return normalizeIcon(items.find((item) => item.entityKey === entityKey)?.icon);
+}
+
+function resolvedIcons(entityIcon: string | null, typeIcon: string | null): readonly string[] {
+  return [entityIcon, typeIcon].filter((icon): icon is string => Boolean(icon));
 }
 
 /**
@@ -164,57 +219,106 @@ function resolvedIcons(
  * Reference records and relationship projections are supplied by the current
  * owner, preserving the no-hidden-API-call component rule.
  */
+export type PreparedEntryRepresentation = (
+  entry: Readonly<Record<string, unknown>>,
+  options?: EntryRepresentationResolutionOptions,
+) => ResolvedEntryRepresentation;
+
+/** Prepare a canonical entry representation once per Field/column, not per visible row. */
+export function prepareEntryRepresentation<T>(
+  metadata: ManatOSObjectMetadata<T>,
+  uiMetadata: SysBOUIMetadata | null | undefined,
+): PreparedEntryRepresentation {
+  const nameSource = entryNameSource(metadata);
+  const typeSource = entryTypeSource(metadata);
+  const typeFieldKey = directSourceField(metadata, typeSource);
+  const typeField = typeFieldKey ? metadata.fieldDefinition[typeFieldKey] : undefined;
+  const enumItems = new Map(enumItemsForField(typeField).map((item) => [String(item.value), item]));
+  const relationTypeKey = relationKeyFromExpression(typeSource);
+  void uiMetadata; // Compatibility argument: identity and imagery come from canonical BO metadata.
+  const photoField = entryPhotoField(metadata);
+  const entityIcon = canonicalEntityIcon(metadata.key);
+  // Fallback identity comes from the first canonical, non-sensitive Text field in order.
+  const fallbackTextFields = Object.entries(metadata.fieldDefinition)
+    .filter(([, field]) => field.type === 'string' && !field.sensitive)
+    .sort((a, b) => a[1].order - b[1].order)
+    .map(([key]) => key);
+  // The evaluator requires declared variables to exist even when a record omits them.
+  // Prepare null defaults once; missing calculated fields remain uncalculated.
+  const scopeDefaults = Object.fromEntries(
+    Object.keys(metadata.fieldDefinition).map((key) => [key, null] as const),
+  );
+  const descriptionSource = metadata.entry?.description;
+  const statusSource = metadata.entry?.status;
+  // Most direct-field representations do not need relationship projection at all.
+  const needsRelations = [nameSource, typeSource, descriptionSource, statusSource].some(
+    (source) => source && 'expression' in source && source.expression.includes('relations.'),
+  );
+
+  return (entry, options = {}) => {
+    const relations =
+      options.relations ??
+      (needsRelations ? relationshipProjection(metadata, entry, options.referenceData) : {});
+    const typeValue = typeSource
+      ? resolveSource(metadata, entry, typeSource, relations, 'type', scopeDefaults)
+      : null;
+    const enumItem = enumItems.get(String(typeValue));
+    const relationTypeRow =
+      relationTypeKey &&
+      relations[relationTypeKey] &&
+      typeof relations[relationTypeKey] === 'object'
+        ? (relations[relationTypeKey] as Readonly<Record<string, unknown>>)
+        : null;
+    const referenceRow =
+      typeFieldKey && relationshipForField(metadata, typeFieldKey)
+        ? matchingReferenceRow(typeFieldKey, typeValue, options.referenceData)
+        : relationTypeRow;
+    const typeName = stringOrNull(
+      (enumItem?.label === undefined
+        ? null
+        : resolveMetadataText(enumItem.label, options.language ?? 'EN')) ??
+        referenceRow?.label ??
+        referenceRow?.name ??
+        (typeValue === null || typeValue === undefined ? null : typeValue),
+    );
+    const typeIcon = normalizeIcon(
+      enumItem?.icon ??
+        referenceRow?.__entryIcon ??
+        referenceRow?.icon ??
+        referenceRow?.__entityIcon,
+    );
+    return {
+      name:
+        stringOrNull(
+          resolveSource(metadata, entry, nameSource, relations, 'name', scopeDefaults),
+        ) ??
+        stringOrNull(entry[metadata.primaryField]) ??
+        fallbackTextFields
+          .map((key) => entry[key])
+          .find((value): value is string => typeof value === 'string' && value.trim().length > 0) ??
+        stringOrNull(entry['id']) ??
+        '',
+      typeValue,
+      typeName,
+      typeIcon,
+      description: stringOrNull(
+        resolveSource(metadata, entry, descriptionSource, relations, 'description', scopeDefaults),
+      ),
+      status: resolveSource(metadata, entry, statusSource, relations, 'status', scopeDefaults),
+      icons: resolvedIcons(normalizeIcon(options.entityIcon) ?? entityIcon, typeIcon),
+      photo: photoField ? (entry[photoField] ?? null) : null,
+    };
+  };
+}
+
+/** One-off callers retain the same semantics; reusable Fields keep a prepared resolver. */
 export function resolveEntryRepresentation<T>(
   metadata: ManatOSObjectMetadata<T>,
-  uiMetadata: Pick<SysBOUIMetadata, 'entry'> | null | undefined,
+  uiMetadata: SysBOUIMetadata | null | undefined,
   entry: Readonly<Record<string, unknown>>,
   options: EntryRepresentationResolutionOptions = {},
 ): ResolvedEntryRepresentation {
-  const relations =
-    options.relations ?? relationshipProjection(metadata, entry, options.referenceData);
-  const nameSource = entryNameSource(metadata);
-  const typeSource = entryTypeSource(metadata);
-  const typeValue = typeSource
-    ? resolveSource(metadata, entry, typeSource, relations, 'type')
-    : null;
-  const typeFieldKey = directSourceField(metadata, typeSource);
-  const typeField = typeFieldKey ? metadata.fieldDefinition[typeFieldKey] : undefined;
-
-  const enumItem = enumItemsForField(typeField).find(
-    (item) => String(item.value) === String(typeValue),
-  );
-  const relationTypeKey = relationKeyFromExpression(typeSource);
-  const relationTypeRow =
-    relationTypeKey && relations[relationTypeKey] && typeof relations[relationTypeKey] === 'object'
-      ? (relations[relationTypeKey] as Readonly<Record<string, unknown>>)
-      : null;
-  const referenceRow =
-    typeFieldKey && relationshipForField(metadata, typeFieldKey)
-      ? matchingReferenceRow(typeFieldKey, typeValue, options.referenceData)
-      : relationTypeRow;
-
-  const typeName = stringOrNull(
-    enumItem?.label ??
-      referenceRow?.label ??
-      referenceRow?.name ??
-      (typeValue === null || typeValue === undefined ? null : typeValue),
-  );
-  const typeIcon = normalizeIcon(
-    enumItem?.icon ?? referenceRow?.__entryIcon ?? referenceRow?.icon ?? referenceRow?.__entityIcon,
-  );
-  const entityIcon = normalizeIcon(options.entityIcon);
-
-  return {
-    name: stringOrNull(resolveSource(metadata, entry, nameSource, relations, 'name')) ?? '',
-    typeValue,
-    typeName,
-    typeIcon,
-    description: stringOrNull(
-      resolveSource(metadata, entry, metadata.entry?.description, relations, 'description'),
-    ),
-    status: resolveSource(metadata, entry, metadata.entry?.status, relations, 'status'),
-    icons: resolvedIcons(uiMetadata?.entry?.icon, entityIcon, typeIcon),
-  };
+  return prepareEntryRepresentation(metadata, uiMetadata)(entry, options);
 }
 
 /**
@@ -224,19 +328,18 @@ export function resolveEntryRepresentation<T>(
  */
 export function entryRepresentationRuntime(
   metadata: ManatOSObjectMetadata<Record<string, unknown>>,
-  metadataUI: Pick<SysBOUIMetadata, 'entry'> | null | undefined,
+  metadataUI: SysBOUIMetadata | null | undefined,
   referenceData: Readonly<Record<string, unknown>> = {},
 ): Readonly<Record<string, unknown>> {
+  void metadataUI;
   const sourceFor = (source: NonNullable<typeof metadata.entry>['name'] | undefined) => {
     if (!source) return null;
     return { ...source };
   };
 
   return {
-    name: sourceFor(
-      metadata.entry?.name ??
-        (metadata.fieldDefinition.name ? { field: 'name' } : { field: metadata.primaryField }),
-    ),
+    image: metadata.entry?.image ? { ...metadata.entry.image } : null,
+    name: sourceFor(entryNameSource(metadata)),
     type: sourceFor(
       metadata.entry?.type ?? (metadata.fieldDefinition.type ? { field: 'type' } : undefined),
     ),
@@ -253,6 +356,7 @@ export function entryRepresentationRuntime(
         .map(([key, relationship]) => [key, { field: relationship.fields[0] }]),
     ),
     referenceData,
-    icon: metadataUI?.entry?.icon ?? { mode: metadata.entry?.type ? 'composed' : 'entity' },
+    // Entity/type icon composition is automatic, independent of UI Entry overrides.
+    icon: { mode: metadata.entry?.type ? 'composed' : 'entity' },
   };
 }

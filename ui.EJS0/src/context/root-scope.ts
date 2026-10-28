@@ -1,5 +1,6 @@
 import type { Request } from 'express';
-import { operationContext, type SysBOApplication, type SysBOUser } from '@manatos/shared';
+import { type SysBOApplication, type SysBOUser } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 export interface RootScope {
   session: {
     id: string;

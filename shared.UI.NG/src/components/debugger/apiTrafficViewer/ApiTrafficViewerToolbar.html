@@ -1,0 +1,88 @@
+<div
+  class="debug-panel-tools api-traffic-toolbar"
+  role="toolbar"
+  [attr.aria-label]="multilingual().ApiTrafficControls"
+>
+  <span class="debug-toolbar-group">
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().select(paused(), '@CM.ResumeLiveUpdates', '@CM.PauseLiveUpdates')"
+      [class.is-active]="paused()"
+      (click)="pause.emit()"
+    >
+      <i [class]="'bi ' + (paused() ? 'bi-play-fill' : 'bi-pause-fill')"></i>
+    </button>
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().ClearApiTraffic"
+      (click)="clear.emit()"
+    >
+      <i class="bi bi-trash"></i>
+    </button>
+  </span>
+  <span class="debug-toolbar-group">
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().ShowApiErrors"
+      [class.is-active]="errorsOnly()"
+      (click)="errors.emit()"
+    >
+      <i class="bi bi-exclamation-octagon"></i>
+    </button>
+    <details class="api-traffic-route-filter-wrap">
+      <summary class="debug-tool-button" [title]="multilingual().ChooseApiCalls">
+        <i class="bi bi-filter-square"></i>
+      </summary>
+      <div class="api-traffic-route-menu">
+        <div class="api-traffic-route-menu-actions">
+          <button type="button" (click)="showAllRoutes.emit()">{{ multilingual().All }}</button>
+          <button type="button" (click)="hideAllRoutes.emit()">{{ multilingual().None }}</button>
+        </div>
+        <div class="api-traffic-route-menu-list">
+          @for (route of routes(); track route.key) {
+          <label class="api-traffic-route-option">
+            <input
+              type="checkbox"
+              [checked]="route.visible"
+              (change)="changeRoute(route, $event)"
+            />
+            <span class="api-traffic-route-call"
+              ><span class="api-traffic-route-method">{{ route.method }}</span>
+              <span class="api-traffic-route-path">{{ route.path }}</span></span
+            >
+            <span class="api-traffic-route-count" [class.is-active]="route.visible"
+              >{{ route.count }}</span
+            >
+          </label>
+          } @empty {
+          <div class="api-traffic-route-empty">{{ multilingual().NoApiRoutes }}</div>
+          }
+        </div>
+      </div>
+    </details>
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().IgnoreRouteVisibility"
+      [class.is-active]="ignoreRoutes()"
+      (click)="toggleIgnoreRoutes.emit()"
+    >
+      <i class="bi bi-eye"></i>
+    </button>
+  </span>
+  <input
+    class="api-traffic-filter"
+    type="search"
+    autocomplete="off"
+    [placeholder]="multilingual().SearchTraffic"
+    [attr.aria-label]="multilingual().SearchCapturedTraffic"
+    [value]="searchText()"
+    (input)="changeSearch($event)"
+  />
+  <span class="api-traffic-stats"
+    >{{ visibleCount() }}/{{ totalCount() }} {{ multilingual().Requests }}</span
+  >
+</div>

@@ -35,6 +35,21 @@ const installPresentation = async (
 };
 
 describe('semantic change field presentation behavior', () => {
+  it('uses EN without a browser document and reads EL changes at presentation time', async () => {
+    vi.stubGlobal('document', undefined);
+    const presentation = await installPresentation(
+      { key: 'sample', metadata: { fieldDefinition: { enabled: { type: 'boolean' } } } },
+      {},
+    );
+    expect(presentation.fieldDescriptor('sample', 'enabled', true).label).toBe('Enabled');
+
+    vi.stubGlobal('document', { cookie: 'manatos_ui_language=el' });
+    expect(presentation.fieldDescriptor('sample', 'enabled', true).label).toBe('Ενεργό');
+
+    vi.stubGlobal('document', { cookie: 'manatos_ui_language=en' });
+    expect(presentation.fieldDescriptor('sample', 'enabled', true).label).toBe('Enabled');
+  });
+
   it('keeps reference fields as entry descriptors even when they have effective options', async () => {
     const entity = {
       key: 'sample',

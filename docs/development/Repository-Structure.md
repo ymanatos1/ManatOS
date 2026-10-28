@@ -1,54 +1,69 @@
 # Repository Structure
 
+The TypeScript solution is an eight-workspace npm repository. The separation is architectural: canonical domain and expression semantics do not depend on presentation; the semantic UI runtime does not depend on a browser framework; the API independently enforces domain and authorization rules; concrete clients supply rendering and hosting.
+
 ```text
-shared/src/
-  context/       shared CTX contracts/helpers
-  domain/        company/platform and entity domain types
-  metadata/      canonical BO and UI metadata
-  expressions/   tokenizer/parser/evaluator/functions/projection
-  policies/      reusable policy semantics
-  presentation/  shared semantic presentation
-  platforms/     platform contributions
-
-api/src/
-  auth/          authentication/session-side API concerns
-  http/          response/query + middleware/routes/internal routes
-  services/
-    sysbo/        SysBO business services
-    relationships/relationship resolution/integrity
-    identity/     identity relationship services
-  openapi/       executable OpenAPI schemas and operation families
-  storage/       adapters/repositories/persistence
-  security/      secret protection
-  audit,email,health,metadata,...
-
-ui/src/
-  auth/          UI-host auth workflows/providers
-  context/       UI root context construction
-  middleware/    page/session/request boundaries
-  presentation/  metadata/page/popup presentation
-  routes/
-    sysbo/
-      entry/      metadata-driven entry rendering/write concerns
-      list/       metadata-driven list/query concerns
-      hierarchy/  hierarchy server-side data/render/write concerns
-      related/    metadata-driven related collections
-      shared/     shared SysBO route data access
-  runtime/       semantic runtime contracts/algorithms
-  platforms/     platform UI routing/access
-
-ui/public/js/
-  runtime/       browser CTX/runtime infrastructure
-  sysbo/
-    entry/        generic entry interaction plus focused field/expression services
-    hierarchy/    workspace orchestration, graph model, draft store and relationship runtime
-  popups/        popup/selector runtime
-  debugger/      CTX/API developer tools plus focused Find runtime
-  shell/         shell/connectivity/preferences
+src/
+├─ shared/             domain, metadata, CTX, expressions, multilingual, policies
+├─ api/                Express API, authentication, authorization, storage
+├─ shared.UI/          framework-independent UIS runtime and components
+├─ shared.UI.NG/       Angular presentation adapter and components
+├─ shared.UI.EJS/      EJS/browser presentation adapter and components
+├─ ui.NG1/            Angular application and Node UI host
+├─ ui.EJS1/           EJS application using the shared UIS runtime
+├─ ui.EJS0/           established EJS application and its own UI runtime
+├─ docs/               subject-organized documentation and diagrams
+├─ scripts/            orchestration, build verification, developer utilities
+└─ data/               local persisted application data
 ```
 
-The TypeScript and browser-runtime folders are organized by responsibility rather than entity. Generic behavior belongs in these shared boundaries; entity-specific branching is justified only when the domain contract itself is entity-specific.
+## Workspace responsibilities
 
-Large browser runtimes are decomposed only where a subsystem has a coherent ownership boundary. For example, picture-field behavior, entry expression execution, hierarchy graph semantics/draft persistence/relationship placement, and CTX Find are sibling services rather than second state authorities. Their orchestrators retain semantic CTX ownership and lifecycle coordination.
+| Workspace | Principal source locations | Responsibility |
+|---|---|---|
+| `shared` | `src/domain/`, `src/metadata/`, `src/context/`, `src/expressions/`, `src/multilingual/` | Canonical meaning; type contracts; CTX and expression interpreter; platform and subsystem catalogues |
+| `api` | `src/auth/`, `src/http/`, `src/services/`, `src/storage/` | Authoritative HTTP operations, identity, permissions, persistence and transactional behavior |
+| `shared.UI` | `src/runtime/`, `src/components/`, `src/flows/`, `src/popups/`, `src/pages/` | UIS state, ownership, invocation, fields, Lists, Entries, Flows, reactivity and diagnostics |
+| `shared.UI.NG` | `src/components/` | Angular components/templates bound to shared semantic components |
+| `shared.UI.EJS` | `src/components/` | Browser/EJS counterpart for shared UIS components |
+| `ui.NG1` | `src/app/`, `src/host/` | Angular shell, browser routing and Node host-side authentication integration |
+| `ui.EJS1` | `src/` and `views/` | Express/EJS host and shared UIS integration |
+| `ui.EJS0` | `src/`, `views/`, `public/` | Established metadata-driven EJS implementation, including its distinct presentation model |
 
-Tests are grouped by responsibility (`integration`, `runtime`, `metadata`, `architecture`, `security`, `presentation`, `sysbo`, etc.) rather than kept flat. Generated `dist/`, dependencies and runtime logs are not source architecture.
+The exact npm workspace names and script entry points are declared in the repository-root `package.json`. Native clients are outside this TypeScript workspace inventory. Their existence illustrates portability of the semantic contracts; the native implementations are not part of this reference.
+
+## Dependency direction
+
+```text
+                    shared
+          ┌───────────┴────────────┐
+          ▼                        ▼
+         api                   shared.UI
+                                  │
+                     ┌────────────┴───────────┐
+                     ▼                        ▼
+                 shared.UI.NG             shared.UI.EJS
+                     │                        │
+                     ▼                        ▼
+                   ui.NG1                   ui.EJS1
+
+    ui.EJS0 ─── established EJS client consuming shared/API contracts
+```
+
+The graph shows semantic dependencies, not a mandatory process-level call chain. UI hosts communicate with the API over HTTP; they do **not** import server-side authorization enforcement. The API does not depend on Angular or EJS components. `ui.EJS0` remains a separate client, not a component of the newer shared UIS host.
+
+## Notable internal boundaries
+
+- **CTX:** `shared/src/context/`; root and request-specific runtime construction belong to their respective hosts.
+- **Interpreter:** `shared/src/expressions/{tokenizer,parser,resolver,evaluator,types}.ts`; registered functions are under `functions/registry.ts`.
+- **Surface ownership:** `shared.UI/src/runtime/surface/{host-runtime,host-level-runtime,embedded-runtime,lifecycle}.ts`.
+- **List/Entry:** `shared.UI/src/components/{list,entry}/`; typed field behavior is under `components/fields/types/`.
+- **UI adapters:** `shared.UI.NG/src/components/` and `shared.UI.EJS/src/components/` expose concrete rendering and event integration.
+- **Authorization:** `api/src/auth/authorization-service.ts` and API route guards; client authorization projections are in `shared.UI/src/authorization/`.
+- **Storage:** `api/src/storage/`; registered engine definitions must not be mistaken for working backend implementations.
+
+Generated `dist/` bundles, Angular caches, Node dependencies and browser build outputs are artifacts, not additional source workspaces.
+
+## Where to continue
+
+See [System Architecture](../system/System-Architecture.md), [UIS Architecture](../clients/UIS-Architecture.md), [CTX Architecture](../context/Context-Architecture.md), [API Architecture](../api/API-Architecture.md) and [Building and Running](Building-and-Running.md).

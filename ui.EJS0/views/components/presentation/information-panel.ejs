@@ -90,8 +90,8 @@
 
     <% for (const section of infoSections) { %>
       <div class="metadata-information-panel-section <%= infoTitle || infoIntroduction || infoText || infoSteps.length ? 'mt-2' : '' %>">
-        <% if (section?.title) { %><div class="fw-semibold"><%= section.title %></div><% } %>
-        <% if (section?.text) { %><div class="mt-1"><%= section.text %></div><% } %>
+        <% if (section?.title) { %><div class="fw-semibold"><%= metadataText(section.title) %></div><% } %>
+        <% if (section?.text) { %><div class="mt-1"><%= metadataText(section.text) %></div><% } %>
         <% if (Array.isArray(section?.steps) && section.steps.length) { %>
           <ul class="mb-0 <%= section?.title || section?.text ? 'mt-1' : '' %>">
             <% for (const step of section.steps) { %><li><%= step %></li><% } %>

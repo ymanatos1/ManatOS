@@ -1,26 +1,24 @@
 # ManatOS Concepts
 
-**ManatOS — the operational platform for ManatOS applications.**
-
-ManatOS provides the shared operational environment in which ManatOS platforms and applications are composed and run. The term “operational platform” distinguishes this application/runtime role from a general-purpose computer operating system.
-
 This document introduces the concepts that recur throughout ManatOS. It is intentionally compact enough to read early, while each concept links conceptually into the deeper architecture, design, application-design, and reference documentation.
 
-## Company
+## Application foundation
 
-**Company** is the top-level **technical catalog/composition scope** in the current domain model. It contributes the configured foundation-level catalog identity/branding, navigation, entity availability, and platform composition. Company-scope capabilities are not tied to whichever platform is currently selected.
+ManatOS is the overarching **software foundation and architecture**. It composes common domain metadata, runtime services and authoritatively enforced business operations into reusable infrastructure for one or more platforms and applications. The project is not itself a Company record or a legal organization in this documentation.
 
-This term describes a runtime/domain concept (`ctx.company`); it does **not** state or imply that ManatOS itself is a company or has any particular legal form. The currently configured Company catalog label is `ManatOS Software Solutions`.
+## Shared Company domain
+
+`Company` is the established **technical domain identifier** for shared business objects and relationships: Users, Person/Organization Principals, contacts, Licenses and external identity administration. It does not define the project’s organizational status. Business identity and commercial entitlements can be reused by multiple applications without being moved into each platform's metadata.
 
 ## Platform
 
-A **Platform** is a coherent product/domain environment hosted by ManatOS. A platform contributes its own applications, navigation, entity exposure, and platform-specific behavior while using the common ManatOS foundations.
+A **platform** is a coherent application environment that contributes domain definitions, navigation, capabilities and application composition while using the common foundation. **protoCRM** is a multi-application platform for defining, designing, testing and running metadata-driven applications inside the foundation; independent hosting on a compatible runtime is an architectural realization of that model.
 
-**protoCRM** is currently the concrete platform. The technical Company composition model is multi-platform even though only one platform is currently configured.
+**Panoptes** illustrates a specialized-purpose application whose surveillance domain is currently represented through platform metadata. It is not another application-design environment.
 
 ## Application
 
-An **Application** is a platform-level business capability. Applications participate in platform composition and access/licensing semantics. They do not require a separate copy of the core runtime.
+An **application** defines its own business entities, views, relationships and rules and consumes shared UI, API, security, context, expression and persistence contracts. Application identity is distinct from both the overarching software foundation and the internal shared `Company` domain.
 
 ## Entity
 
@@ -28,7 +26,7 @@ An **Entity** is a business-object definition known to the generic ManatOS metad
 
 ## SysBO
 
-A **SysBO** (System Business Object) is a **system-owned entity naming/category convention**, currently used for foundation-level Company-scope entities and protoCRM platform system entities. Examples include Company-scope Users, Principals, Licenses and External Authentication Providers, plus the protoCRM-owned Applications entity.
+A **SysBO** (System Business Object) is a **system-owned entity naming/category convention**, currently used for shared `Company` domain entities and platform-owned system entities. Examples include company-owned Users, Principals, Licenses and External Authentication Providers, plus the protoCRM-owned Applications entity.
 
 `SysBO` is not a synonym for every entity. Future application-defined, non-systemic entities are expected to use the same generic entity infrastructure without acquiring the `SysBO` prefix merely because they share that infrastructure.
 
@@ -42,7 +40,7 @@ This distinction allows non-UI consumers to work with business objects without u
 
 ## Client
 
-A **client** is a presentation/interaction implementation that consumes ManatOS server contracts. The current repository client is Node.js/Express TypeScript + EJS/Bootstrap + browser runtime, but this is one implementation. Angular, React, mobile, desktop or other clients may implement the same capabilities without changing API/domain/storage architecture.
+A **client** is a presentation/interaction implementation that consumes ManatOS server contracts. The TypeScript repository includes the established `ui.EJS0` client and the shared UIS implementation hosted by `ui.NG1` (Angular) and `ui.EJS1` (EJS). Additional client technologies may implement the same contracts without moving API/domain/storage authority into a UI adapter.
 
 A UI-capable client may implement ManatOS UI metadata, CTX/context and expression semantics. A non-UI integration client may consume business APIs without those presentation concepts.
 
@@ -61,13 +59,16 @@ A simplified UI shape is:
 ```text
 ctx
 +-- system
-+-- entities
 +-- company
-+-- user
++-- runtime
+|   +-- subsystems
+|   +-- entities
+|   +-- enums
+|   +-- user
++-- flow (when an operation is running)
 +-- ui
-    +-- level
-        +-- level
-            +-- ...
+    +-- level (#control, #state, #layout, #data)
+        +-- level (nested child)
 ```
 
 A simplified API shape is:
@@ -88,7 +89,7 @@ CTX is runtime state; it is not itself business persistence. Mutation/lifecycle 
 
 ## UI level
 
-A **UI level** is one node in the recursive active UI chain. Page, popup and embedded hosts use the same recursive model:
+A **UI level** is one node in the recursive active UI chain. Pages and popups use the same recursive model:
 
 ```text
 ctx.ui.level
@@ -96,15 +97,11 @@ ctx.ui.level
         +-- level
 ```
 
-Opening a child popup/selector or embedded child adds a deeper level; it does not change which parent level owns the parent form's fields. Popup children deactivate their parent while active; embedded children deliberately keep their parent active. This ownership distinction is important for correct field mutation and expression scope.
+Opening a child selector or popup adds a deeper level; it does not change which parent level owns the parent form's fields. This ownership distinction is important for correct field mutation and expression scope.
 
 ## Surface
 
 A **surface** is the internal runtime object represented publicly through a UI level. “Surface” is useful when discussing runtime ownership and lifecycle; the public CTX topology is the recursive UI-level chain rather than a second parallel surface tree.
-
-## UI view
-
-A **UI view** (`uiView`) is a named presentation of the same canonical entity record, not a new entity or surface host. A stable view key such as `main`, `account`, or `quick` selects a metadata contribution; `viewType` describes its presentation/interaction family such as `full` or `quick`. Common record UI metadata is composed with the selected view, so alternative views reuse canonical entity metadata, CTX/runtime behavior, validation and persistence semantics.
 
 ## Entry
 
@@ -112,13 +109,13 @@ An **entry** is the interactive representation of one business-object record. En
 
 ## Field state
 
-For a scalar entry field, `fields.<field>.value` is the canonical live value. The field also owns its baseline (`originalValue`) and derived state such as dirtiness and validation information.
+For a modern UIS Entry, `#data.current` contains the canonical editable record, while `#data.original` is its comparison baseline. Field and aggregate validation/dirty information is derived under `#state.fields` and `#state.entry`. The Entry receives typed changes through its field-action boundary; fields do not maintain a second authoritative record.
 
-The entry-level `current` and `original` records are projections/mirrors of field authority rather than competing writable copies. This single-authority rule prevents two representations of the same value from drifting apart.
+The established EJS0 client uses a different legacy field-node representation. Its paths are relevant when describing that implementation, not as the general UIS contract.
 
 ## Original, current, and dirty
 
-**Original** means the baseline against which editing is compared. **Current** means the whole-record projection of current field values. **Dirty** indicates that live state differs from its baseline or, at aggregate level, that an owner-managed transaction contains unsaved changes.
+**Original** means the baseline against which editing is compared. **Current** means the owning Entry's working record. **Dirty** indicates that live state differs from its baseline or, at aggregate level, that an owner-managed transaction contains unsaved changes.
 
 Aggregate dirtiness is intentionally broader than scalar-field dirtiness because compound editors/workspaces can own changes that are not represented by a single scalar field.
 
@@ -199,3 +196,9 @@ An **Application Foundation** is the reusable semantic/runtime foundation on whi
 ## Next reading
 
 For system-wide relationships between these concepts, continue with [System Map](System-Map.md). For precise semantics, use [Design](../README.md) and [Reference](../README.md). For how these concepts become a concrete product, see [Application Design](../README.md) and [protoCRM](../platforms/protocrm/README.md).
+
+## A coherent example of subsystem boundaries
+
+Consider a Post in the Panoptes surveillance domain. Metadata describes its fields and relationships; a named UI View selects the desired List/Entry arrangement; UIS creates an owned surface and derived field state; CTX exposes observable current values; expressions calculate eligible presentation facts; localization resolves labels; API authorization checks the requested write; storage applies the durable operation. None of these individual layers becomes the owner of all others merely because the user sees one form.
+
+That separation is the foundation's central architectural idea: **single semantic ownership, multiple projections and independently enforced authority**. See [System Architecture](../system/System-Architecture.md), [UIS](../clients/UIS-Architecture.md) and [Panoptes](../platforms/panoptes/README.md).

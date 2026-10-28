@@ -1,0 +1,25 @@
+{
+  "name": "@manatos/shared-ui-ng",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/fesm2022/manatos-shared-ui-ng.mjs",
+  "module": "./dist/fesm2022/manatos-shared-ui-ng.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
+    "dev": "ng-packagr -p ng-package.json -c tsconfig.lib.json --watch",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@angular/common": "20.3.1",
+    "@angular/core": "20.3.1",
+    "@manatos/shared-ui": "0.1.0"
+  },
+  "devDependencies": {
+    "@angular/compiler-cli": "20.3.1",
+    "ng-packagr": "20.3.1",
+    "vitest": "^3.2.4",
+    "typescript": "~5.9.2"
+  }
+}

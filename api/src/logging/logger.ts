@@ -1,4 +1,4 @@
-import { operationContext } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { config } from '../config.js';
 import { runtimeString } from '../runtime-configuration.js';
@@ -7,6 +7,7 @@ import type { LogEntry, LogSink } from './log-sink.js';
 
 export type LogLevel = LogEntry['level'];
 export type LogFields = Record<string, unknown>;
+export type LogListener = (entry: Readonly<LogEntry>) => void;
 
 const priorities: Record<LogLevel, number> = {
   debug: 10,
@@ -69,6 +70,7 @@ function sanitizeFields(fields: LogFields): LogFields {
  * remaining destinations from receiving a log entry.
  */
 const sinks: LogSink[] = [new FileLogSink()];
+const listeners = new Set<LogListener>();
 
 function effectiveConsoleMinLevel(): LogLevel {
   const configured = runtimeString('LOG_CONSOLE_MIN_LEVEL', config.LOG_CONSOLE_MIN_LEVEL ?? '');
@@ -87,6 +89,15 @@ function write(level: LogLevel, message: string, fields: LogFields = {}): void {
     message,
     ...sanitizeFields(fields),
   };
+
+  const observedEntry = Object.freeze({ ...entry });
+  for (const listener of listeners) {
+    try {
+      listener(observedEntry);
+    } catch {
+      // Diagnostic observers cannot change logging or request behavior.
+    }
+  }
 
   if (priorities[level] >= priorities[effectiveConsoleMinLevel()]) {
     writeConsole(entry);
@@ -126,4 +137,8 @@ export const logger = {
   warn: (message: string, fields?: LogFields) => write('warn', message, fields),
   error: (message: string, fields?: LogFields) => write('error', message, fields),
   fatal: (message: string, fields?: LogFields) => write('fatal', message, fields),
+  subscribe: (listener: LogListener): (() => void) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
 };

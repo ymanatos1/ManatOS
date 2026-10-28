@@ -104,7 +104,7 @@ describe('UI Runtime V2 EntityList', () => {
     expect(runtime.snapshot.selectedIds).toEqual(['2']);
   });
 
-  it('projects each loaded record before publishing entries and originalEntries', async () => {
+  it('projects each loaded record before publishing entries without a duplicate baseline', async () => {
     const seen: EntityListQuery[] = [];
     const runtime = new EntityListRuntime<Row>({
       entityKey: 'sys-users',
@@ -119,7 +119,46 @@ describe('UI Runtime V2 EntityList', () => {
 
     await runtime.load();
     expect(runtime.snapshot.entries).toEqual([{ id: '1', name: 'YIANNIS' }]);
-    expect(runtime.snapshot.originalEntries).toEqual([{ id: '1', name: 'YIANNIS' }]);
+    expect(runtime.snapshot).not.toHaveProperty('originalEntries');
+  });
+
+  it('clears stale result data immediately on reload and preserves selection on failure', async () => {
+    const pendingControl: { reject?: (error: Error) => void } = {};
+    let second = false;
+    const runtime = new EntityListRuntime<Row>({
+      entityKey: 'sys-principals',
+      idField: 'id',
+      viewKey: 'main',
+      columns: [],
+      selectionMode: 'multiple',
+      dataSource: {
+        load: async () => {
+          if (second)
+            return new Promise<never>((_, reject) => {
+              pendingControl.reject = reject;
+            });
+          return {
+            items: [{ id: '1', name: 'One' }],
+            references: { 'sys-principals': [{ id: '2', name: 'Two' }] },
+            paging: { total: 1, page: 1, pageSize: 10, totalPages: 1 },
+          };
+        },
+      },
+      initialQuery: { page: 1, pageSize: 10, direction: 'asc', filters: {} },
+    });
+    await runtime.load();
+    runtime.select('1');
+    second = true;
+    const pending = runtime.setSearch('different');
+    expect(runtime.snapshot.entries).toEqual([]);
+    expect(runtime.snapshot.references).toEqual({});
+    expect(runtime.snapshot.paging.total).toBe(0);
+    expect(runtime.snapshot.loading).toBe(true);
+    expect(runtime.snapshot.selectedIds).toEqual(['1']);
+    pendingControl.reject?.(new Error('Offline'));
+    await expect(pending).rejects.toThrow('Offline');
+    expect(runtime.snapshot.loading).toBe(false);
+    expect(runtime.snapshot.paging.totalPages).toBe(0);
   });
 
   it('retains selection across page loads so selector hosts do not own cross-page selection state', async () => {

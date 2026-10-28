@@ -2,7 +2,6 @@ import type { Request, Response } from 'express';
 
 import {
   AppError,
-  operationContext,
   resolveEntryRepresentation,
   resolveSysBOUIView,
   type ManatOSContext,
@@ -10,6 +9,7 @@ import {
   type SysBOUIMetadata,
   type SysBOUser,
 } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { apiClient } from '../../../api/client.js';
 import { apiSessionOptions } from '../../../auth/api-session.js';

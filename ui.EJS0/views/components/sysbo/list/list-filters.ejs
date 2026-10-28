@@ -34,22 +34,23 @@
             <div class="col-xl-3 col-md-4" data-v2-list-filter-field="<%= key %>">
               <label class="form-label small" for="metadata-filter-<%= key %>">
                 <i class="bi bi-funnel me-1"></i>
-                <%= field.label %>
+                <%= metadataText(field.label) %>
               </label>
 
               <% if (field.type === 'enum') { %>
                 <select class="form-select" id="metadata-filter-<%= key %>"
                   <% if (isSelectorMode) { %>data-selector-field-filter="<%= key %>"<% } else { %>name="filter.<%= key %>"<% } %>>
-                  <option value="">All</option>
+                  <option value=""><%= metadataText('@CM.AllOptions') %></option>
                   <% for (const option of enumValuesForField(field)) { %>
                     <% const richOption = enumItem(field, option); %>
-                    <option value="<%= option %>" <%= query[`filter.${key}`] === option ? 'selected' : '' %>><%= richOption?.label || option %></option>
+                    <option value="<%= option %>"
+                      <%= query[`filter.${key}`] === option ? 'selected' : '' %>><%= richOption?.label ? metadataText(richOption.label) : option %></option>
                   <% } %>
                 </select>
               <% } else if (field.type === 'reference') { %>
                 <select class="form-select" id="metadata-filter-<%= key %>"
                   <% if (isSelectorMode) { %>data-selector-field-filter="<%= key %>"<% } else { %>name="filter.<%= key %>"<% } %>>
-                  <option value="">All</option>
+                  <option value=""><%= metadataText('@CM.AllOptions') %></option>
                   <% for (const option of listReferenceValues[key] || []) { %>
                     <option value="<%= option.id %>" <%= query[`filter.${key}`] === option.id ? 'selected' : '' %>><%= option.name ?? option.id %></option>
                   <% } %>
@@ -57,9 +58,13 @@
               <% } else if (field.type === 'boolean') { %>
                 <select class="form-select" id="metadata-filter-<%= key %>"
                   <% if (isSelectorMode) { %>data-selector-field-filter="<%= key %>"<% } else { %>name="filter.<%= key %>"<% } %>>
-                  <option value="">All</option>
-                  <option value="true" <%= query[`filter.${key}`] === 'true' ? 'selected' : '' %>>Enabled</option>
-                  <option value="false" <%= query[`filter.${key}`] === 'false' ? 'selected' : '' %>>Disabled</option>
+                  <option value=""><%= metadataText('@CM.AllOptions') %></option>
+                  <option value="true" <%= query[`filter.${key}`] === 'true' ? 'selected' : '' %>>
+                    <%= metadataText(key === 'emailVerified' ? '@CM.Verified' : '@CM.Enabled') %>
+                  </option>
+                  <option value="false" <%= query[`filter.${key}`] === 'false' ? 'selected' : '' %>>
+                    <%= metadataText(key === 'emailVerified' ? '@CM.NotVerified' : '@CM.Disabled') %>
+                  </option>
                 </select>
               <% } else { %>
                 <input class="form-control" id="metadata-filter-<%= key %>"
@@ -76,19 +81,19 @@
                 type="button"
                 data-selector-filter-apply
                 data-v2-list-filter-action="apply"
-              ><i class="bi bi-funnel me-1"></i>Filter</button>
+              ><i class="bi bi-funnel me-1"></i><%= metadataText('@CM.Filter') %></button>
               <button
                 class="btn btn-outline-secondary"
                 type="button"
                 data-selector-filter-clear
                 data-v2-list-filter-action="clear"
-              ><i class="bi bi-x-circle me-1"></i>Clear</button>
+              ><i class="bi bi-x-circle me-1"></i><%= metadataText('@CM.Clear') %></button>
             <% } else { %>
               <button
                 class="btn btn-outline-primary"
                 type="submit"
                 data-v2-list-filter-action="apply"
-              ><i class="bi bi-funnel me-1"></i>Filter</button>
+              ><i class="bi bi-funnel me-1"></i><%= metadataText('@CM.Filter') %></button>
               <a
                 class="btn btn-outline-secondary"
                 data-v2-list-filter-action="clear"
@@ -97,7 +102,7 @@
                   : '' %>"
               >
                 <i class="bi bi-x-circle me-1"></i>
-                Clear
+                <%= metadataText('@CM.Clear') %>
               </a>
             <% } %>
           </div>

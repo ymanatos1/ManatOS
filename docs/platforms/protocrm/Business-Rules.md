@@ -1,28 +1,25 @@
-# Business Rules
+# Business Rules and Application Policies
 
-protoCRM owns rules whose semantics belong to its Applications, Apps Playground and future CRM/application tooling. Foundation-level Company-domain identity, Principal hierarchy, licensing and external-authentication rules are documented under the [Company Domain](../../company/README.md) even when protoCRM consumes their results.
+An application design may contain **declarative calculations**, **interaction rules**, **workflow decisions**, **authorization policy** and **data-integrity constraints**. These are not one interchangeable rules engine. Their authority and side-effect boundaries determine where each belongs.
 
-## Representative platform rules
-
-- platform/Application availability and navigation contributions;
-- Application relationships and restrictions;
-- future application-defined entity behavior;
-- CRM-specific rules introduced by future protoCRM tools.
-
-## Placement rule
+| Rule type | Appropriate owner | Example |
+|---|---|---|
+| Canonical field meaning | Entity/field metadata | required value, allowed options |
+| Calculation / normalization | Constrained expression + authoritative caller | derived display name or canonical total |
+| Conditional UI presentation | UI View and UIS/CTX | hide an irrelevant field or enable an eligible action |
+| Process coordination | Flow and trusted operation endpoints | authentication or controlled multi-step action |
+| Relationship integrity | Canonical domain/API/storage | reject invalid reference or restricted deletion |
+| Role/record permission | API authorization | may Person update this record? |
+| Purchased product entitlement | License and policy service | can organization run this application? |
 
 ```text
-Rule depends only on observable CTX and has no side effects?
-        |
-        +-- yes --> evaluate as declarative expression/dynamic metadata
-        |
-        +-- no --> does it enforce security, persistence integrity,
-                   secrets, transactionality or external side effects?
-                         |
-                         +-- yes --> API/domain/service boundary
-                         +-- no  --> reusable runtime/component policy
+Rule concerns one view? ──────────────► UI metadata / UIS
+Rule derives a value without effects? ► constrained expression
+Rule coordinates multiple steps? ─────► Flow + trusted commands
+Rule protects data or resource access? ► authoritative API
+Rule models purchased capability? ────► License + API policy
 ```
 
-A rule should not be duplicated across those layers merely for convenience. UI policy may explain or anticipate a server restriction, but the authoritative restriction remains server-side when security or data integrity is involved.
+A rule that changes business data, accesses a secret, interprets a purchased entitlement or authorizes a mutation cannot be made trustworthy merely by moving it into a client-side expression. Conversely, duplicating the same presentation rule separately in each adapter undermines portability.
 
-For expression semantics see [Expressions](../../expressions/Expressions.md); for authorization boundaries see [Authentication and Authorization](../../security/Authentication-and-Authorization.md).
+See [Application Design and Execution](Application-Design-and-Execution.md), [Expressions](../../expressions/Expressions.md), [Authorization Policy](../../security/Authorization-Policy-Architecture.md) and [Storage Architecture](../../storage/Data-and-Storage-Architecture.md).

@@ -6,6 +6,7 @@ import { CONTACTS_SUBSYSTEM } from './manatos/contacts.js';
 import { LICENSING_SUBSYSTEM } from './manatos/licensing.js';
 import { PRINCIPALS_SUBSYSTEM } from './manatos/principals.js';
 import { PROTOCRM_APPLICATIONS_SUBSYSTEM } from './platforms/protocrm/applications.js';
+import { PANOPTES_SURVEILLANCE_SUBSYSTEM } from './platforms/panoptes/surveillance.js';
 import type { ManatOSSubsystemMetadata } from './types.js';
 
 export const allManatOSSubsystemMetadata = {
@@ -15,6 +16,7 @@ export const allManatOSSubsystemMetadata = {
   [LICENSING_SUBSYSTEM.key]: LICENSING_SUBSYSTEM,
   [CONFIGURATION_SUBSYSTEM.key]: CONFIGURATION_SUBSYSTEM,
   [PROTOCRM_APPLICATIONS_SUBSYSTEM.key]: PROTOCRM_APPLICATIONS_SUBSYSTEM,
+  [PANOPTES_SURVEILLANCE_SUBSYSTEM.key]: PANOPTES_SURVEILLANCE_SUBSYSTEM,
 } as const satisfies Readonly<Record<string, ManatOSSubsystemMetadata>>;
 
 export type ManatOSSubsystemKey = keyof typeof allManatOSSubsystemMetadata;
@@ -23,7 +25,7 @@ function subsystemMetadataValues(): readonly ManatOSSubsystemMetadata[] {
   return Object.values(allManatOSSubsystemMetadata) as readonly ManatOSSubsystemMetadata[];
 }
 
-export function effectiveEnumKeys(company: CompanyInfo, platform: SysPlatform): Set<string> {
+export function effectiveEnumKeys(company: CompanyInfo, platform: SysPlatform | null): Set<string> {
   const selected = selectedSubsystemKeys(company, platform);
   return new Set(
     subsystemMetadataValues()
@@ -42,13 +44,16 @@ function isPlatformSubsystem(key: string, platform: SysPlatform): boolean {
   return subsystem?.owner.kind === 'platform' && subsystem.owner.platformId === platform.id;
 }
 
-export function selectedSubsystemKeys(company: CompanyInfo, platform: SysPlatform): Set<string> {
+export function selectedSubsystemKeys(
+  company: CompanyInfo,
+  platform: SysPlatform | null,
+): Set<string> {
   return new Set([
     ...company.subsystems
       .filter((entry) => entry.selected && isCompanySubsystem(entry.key))
       .map((entry) => entry.key),
-    ...platform.subsystems
-      .filter((entry) => entry.selected && isPlatformSubsystem(entry.key, platform))
+    ...(platform?.subsystems ?? [])
+      .filter((entry) => entry.selected && isPlatformSubsystem(entry.key, platform!))
       .map((entry) => entry.key),
   ]);
 }
@@ -64,7 +69,10 @@ function objectRequiredSubsystems(
 }
 
 /** Effective entity/object keys are derived from canonical subsystem ownership and dependencies. */
-export function effectiveObjectKeys(company: CompanyInfo, platform: SysPlatform): Set<string> {
+export function effectiveObjectKeys(
+  company: CompanyInfo,
+  platform: SysPlatform | null,
+): Set<string> {
   const selected = selectedSubsystemKeys(company, platform);
   return new Set(
     Object.values(allManatOSObjectMetadata)
@@ -78,7 +86,10 @@ export function effectiveObjectKeys(company: CompanyInfo, platform: SysPlatform)
 }
 
 /** First-class CRUD entity keys available for the selected subsystem composition. */
-export function effectiveEntityKeys(company: CompanyInfo, platform: SysPlatform): Set<string> {
+export function effectiveEntityKeys(
+  company: CompanyInfo,
+  platform: SysPlatform | null,
+): Set<string> {
   const objects = effectiveObjectKeys(company, platform);
   return new Set(
     Object.values(allSysBOMetadata)
@@ -98,14 +109,14 @@ export type ManatOSSubsystemContextProjection = Omit<ManatOSSubsystemMetadata, '
 /** CTX-visible catalogue: ManatOS subsystems plus the selected platform's subsystems. */
 export function subsystemContextCatalogue(
   company: CompanyInfo,
-  platform: SysPlatform,
+  platform: SysPlatform | null,
 ): Readonly<Record<string, ManatOSSubsystemContextProjection>> {
   const companyKeys = new Set(
     company.subsystems.filter((entry) => isCompanySubsystem(entry.key)).map((entry) => entry.key),
   );
   const platformKeys = new Set(
-    platform.subsystems
-      .filter((entry) => isPlatformSubsystem(entry.key, platform))
+    (platform?.subsystems ?? [])
+      .filter((entry) => isPlatformSubsystem(entry.key, platform!))
       .map((entry) => entry.key),
   );
   const selected = selectedSubsystemKeys(company, platform);
@@ -128,6 +139,37 @@ export function subsystemContextCatalogue(
             enums: Object.freeze(Object.keys(subsystem.enums ?? {})),
           }),
         ]),
+    ),
+  );
+}
+
+/**
+ * Modern effective runtime subsystem projection.
+ *
+ * Unlike the legacy catalogue, each subsystem advertises only objects/enums
+ * that are actually effective for the selected composition, so runtime
+ * subsystem discovery cannot contradict `runtime.entities` / `runtime.enums`.
+ */
+export function effectiveSubsystemContextCatalogue(
+  company: CompanyInfo,
+  platform: SysPlatform | null,
+): Readonly<Record<string, ManatOSSubsystemContextProjection>> {
+  const legacy = subsystemContextCatalogue(company, platform);
+  const effectiveObjects = effectiveObjectKeys(company, platform);
+  const effectiveEnums = effectiveEnumKeys(company, platform);
+
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(legacy).map(([key, subsystem]) => [
+        key,
+        Object.freeze({
+          ...subsystem,
+          entities: Object.freeze(
+            subsystem.entities.filter((entity) => effectiveObjects.has(entity)),
+          ),
+          enums: Object.freeze(subsystem.enums.filter((enumKey) => effectiveEnums.has(enumKey))),
+        }),
+      ]),
     ),
   );
 }

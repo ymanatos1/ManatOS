@@ -1,0 +1,30 @@
+<div class="manatos-entry-ui-view-selector">
+  <button
+    type="button"
+    class="manatos-entry-ui-view-trigger"
+    [attr.aria-expanded]="open()"
+    [disabled]="busy()"
+    aria-haspopup="true"
+    (click)="toggle()"
+  >
+    <i class="bi bi-grid" aria-hidden="true"></i>
+    {{ language() === 'EL' ? 'Προβολή' : 'View' }} ({{ selectedLabel() }})
+    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+  </button>
+  @if (open()) {
+  <div class="manatos-entry-ui-view-menu" role="group">
+    @for (view of views(); track view.key) {
+    <button
+      type="button"
+      [disabled]="busy() || !view.available"
+      [attr.aria-pressed]="selected() === view.key"
+      (click)="select(view.key)"
+    >
+      {{ view.label }}
+    </button>
+    }
+  </div>
+  }
+</div>
+
+@if (error()) { <span class="manatos-entry-ui-view-error" role="alert">{{ error() }}</span> }

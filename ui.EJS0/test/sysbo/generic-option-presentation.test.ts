@@ -57,7 +57,7 @@ describe('generic discrete-value option presentation', () => {
 
     expect(verificationSources?.[0]).toEqual({
       value: 'internal',
-      label: 'ManatOS',
+      label: '@EN.manatos.auth.users.label.ManatOS',
       icon: 'shield-check',
     });
     expect(verificationSources?.slice(1)).toEqual(externalAuthProviderOptionItems);

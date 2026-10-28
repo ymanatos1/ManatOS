@@ -1,0 +1,21 @@
+<!-- Typed Field owns its reusable FieldTools child, when supported. -->
+<span data-entry-field-tools-slot></span>
+<!-- Native select is the only semantic editor; rich buttons render option icons. -->
+<select
+  data-entry-control
+  class="manatos-enum-native"
+  aria-label="Enum value"
+  tabindex="-1"
+  aria-hidden="true"
+></select>
+<div class="manatos-enum-rich">
+  <button
+    type="button"
+    class="manatos-form-input manatos-enum-trigger"
+    data-entry-enum-trigger
+    aria-expanded="false"
+  >
+    <span data-entry-enum-current></span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+  </button>
+  <div class="manatos-enum-menu" data-entry-enum-menu role="listbox" hidden></div>
+</div>

@@ -41,7 +41,11 @@ export const explicitTransactionMiddleware =
       acquired = true;
 
       const startedAt = performance.now();
-      logTransactionOperationStarted(transactionId, req.method, req.originalUrl);
+      logTransactionOperationStarted(
+        transactionId,
+        req.method,
+        req.originalUrl.split('?')[0] ?? req.path,
+      );
 
       let released = false;
       const release = () => {
@@ -50,7 +54,7 @@ export const explicitTransactionMiddleware =
         logTransactionOperationCompleted(
           transactionId,
           req.method,
-          req.originalUrl,
+          req.originalUrl.split('?')[0] ?? req.path,
           res.statusCode,
           Math.round((performance.now() - startedAt) * 100) / 100,
         );

@@ -1,0 +1,317 @@
+/* Entry-owned native picture fields and nested PictureEditor. */
+.manatos-picture-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  flex-wrap: wrap;
+  position: relative;
+}
+.manatos-picture-thumbnail {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
+  padding: 3px;
+  border: 1px solid #c9d7e7;
+  border-radius: 5px;
+  background: #f7f9fc;
+  cursor: pointer;
+}
+.manatos-picture-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 3px;
+}
+.manatos-picture-thumbnail:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.manatos-picture-thumbnail [data-entry-photo-empty] {
+  font-size: 26px;
+  color: #8393a8;
+}
+.manatos-picture-history-actions button,
+.manatos-pictures-item button {
+  border: 1px solid #cad6e5;
+  background: #fff;
+  border-radius: 4px;
+  color: #405a75;
+  cursor: pointer;
+  padding: 5px;
+}
+/* Same over-thumbnail destructive action as NG1, aligned to the 78px preview. */
+.manatos-picture-field > .manatos-picture-delete {
+  position: absolute;
+  z-index: 3;
+  top: 2px;
+  left: 57px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: #dc3545;
+  color: #fff;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.manatos-picture-field > .manatos-picture-delete:hover {
+  background: #b42330;
+}
+.manatos-picture-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.manatos-picture-history-actions button:disabled,
+.manatos-pictures-item button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.manatos-picture-help-column {
+  flex: 1;
+  min-width: min(200px, 100%);
+}
+.manatos-picture-help-column small {
+  display: block;
+  color: #526986;
+  line-height: 1.5;
+}
+.manatos-picture-thumbnail,
+.manatos-pictures-add {
+  position: relative;
+}
+.manatos-picture-thumbnail > [data-picture-loading],
+.manatos-pictures-add > [data-picture-loading] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: #f4f8ffe8;
+  color: #3073c6;
+  pointer-events: none;
+}
+.manatos-pictures-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.manatos-pictures-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.manatos-pictures-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #cbd6e4;
+  background: #f7f9fc;
+  padding: 4px;
+  border-radius: 5px;
+}
+.manatos-pictures-item img {
+  width: 78px;
+  height: 78px;
+  object-fit: cover;
+}
+.manatos-pictures-add {
+  position: relative;
+  min-width: 75px;
+  min-height: 80px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px dashed #9aafc9;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.ejs-picture-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(10, 20, 34, 0.52);
+}
+.ejs-picture-editor-dialog {
+  width: min(820px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  min-height: 280px;
+  overflow: hidden;
+  border: 1px solid #d4deeb;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 15px 55px #14253f35;
+  display: flex;
+  flex-direction: column;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+.ejs-picture-editor-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 18px;
+}
+.ejs-picture-toolbar,
+.ejs-picture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ejs-picture-toolbar {
+  margin-bottom: 9px;
+}
+.ejs-picture-toolbar button,
+.ejs-picture-actions button {
+  border: 1px solid #bfcddc;
+  background: #fff;
+  border-radius: 5px;
+  padding: 6px 12px;
+  color: #2d4059;
+  font: inherit;
+  cursor: pointer;
+}
+.ejs-picture-toolbar button.active,
+.ejs-picture-actions button.primary {
+  background: #166df0;
+  border-color: #166df0;
+  color: #fff;
+}
+.ejs-picture-toolbar button:disabled,
+.ejs-picture-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ejs-picture-editor-content canvas {
+  display: block;
+  margin: auto;
+  width: min(100%, 560px);
+  height: auto;
+  background: #f5f7fa;
+  border: 1px solid #d9e3ed;
+  border-radius: 6px;
+  touch-action: none;
+  cursor: grab;
+}
+.ejs-picture-editor-content canvas[data-picture-mode='crop'] {
+  cursor: crosshair;
+}
+.ejs-picture-editor-content canvas[data-picture-dragging='true'] {
+  cursor: grabbing;
+}
+.ejs-picture-help {
+  line-height: 1.5;
+  color: #657185;
+}
+.ejs-picture-zoom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ejs-picture-zoom input {
+  flex: 1;
+}
+.ejs-picture-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  background: #f7faffed;
+  color: #315a89;
+  font-weight: 600;
+}
+.ejs-picture-error,
+[data-picture-error] {
+  color: #a52424;
+}
+.ejs-picture-actions {
+  justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid #dce4ee;
+  flex-shrink: 0;
+}
+.ejs-picture-batch {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+  padding: 3px;
+}
+.ejs-picture-batch button {
+  display: flex;
+  flex: 0 0 138px;
+  gap: 5px;
+  align-items: center;
+  overflow: hidden;
+  padding: 5px;
+  border: 1px solid #c5d3e5;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.ejs-picture-batch button.active {
+  background: #eaf2ff;
+  border-color: #166df0;
+}
+.ejs-picture-batch img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.ejs-picture-batch span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Respect the standard EJS1 modal/debugger stack; hidden must override display:flex. */
+.ejs-picture-editor-backdrop [hidden],
+.manatos-picture-field [hidden],
+.manatos-pictures-field [hidden] {
+  display: none !important;
+}
+body:has(> .ejs-picture-editor-backdrop) > .ctx-ui-surface-layout-highlight {
+  z-index: 5002 !important;
+}
+
+/* Self-contained native loading animation; EJS1 does not depend on Bootstrap CSS. */
+.manatos-picture-launch-feedback .spinner-border,
+.ejs-picture-loading .spinner-border {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ejs-picture-spin 0.75s linear infinite;
+}
+@keyframes ejs-picture-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Editor readiness indicator is intentionally larger than the compact file-picker spinner. */
+.ejs-picture-loading .spinner-border {
+  width: 38px;
+  height: 38px;
+  border-width: 4px;
+}

@@ -89,7 +89,7 @@
     <% } else { %>
       <label
         class="form-label" for="metadata-field-<%= key %>"
-        data-metadata-field-label="<%= key %>"><%= fieldLabel(field) %>:<% if (field.required) { %><span
+        data-metadata-field-label="<%= key %>"><%= metadataText(fieldLabel(field)) %>:<% if (field.required) { %><span
         class="metadata-field-required-marker"
         aria-label="required"> (*)</span><% } %></label>
       <%- include('entity-field', {
@@ -108,7 +108,7 @@
       }) %>
     <% } %>
     <% if (overrides[key]?.helpText) { %>
-      <div class="form-text"><%= overrides[key].helpText %></div>
+      <div class="form-text"><%= metadataText(overrides[key].helpText) %></div>
     <% } %>
     <% if (!isViewMode && hasReadOnlyValue) { %>
       <input

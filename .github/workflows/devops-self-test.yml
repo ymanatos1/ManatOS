@@ -1,0 +1,65 @@
+name: DevOps Configuration Self-test
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate DevOps configuration (no application verification)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check devops/scripts/devops-ci.mjs
+          node devops/scripts/devops-ci.mjs --redactor-self-test
+          node --check devops/scripts/env-sync.mjs
+          node devops/scripts/env-sync.mjs --self-test
+          node --check devops/scripts/release-package.mjs
+          node devops/scripts/release-package.mjs --self-test
+          node --check devops/scripts/stablepoint-cd.mjs
+          node devops/scripts/stablepoint-cd.mjs --self-test
+          node --check devops/scripts/stablepoint-inspect.mjs
+          node devops/scripts/stablepoint-inspect.mjs --self-test
+          node devops/scripts/stablepoint-cd.mjs --plan | node --input-type=module -e "let s='';for await(const c of process.stdin)s+=c;const p=JSON.parse(s);if(p.deploymentEnabled!==false||p.liveHostMutations!==false||p.releaseCandidateDeployable!==false||p.productionHealthConfigured!==false)process.exit(1);"
+          node --input-type=module -e "import { readFileSync } from 'node:fs'; const p=JSON.parse(readFileSync('devops/config/env-policy.json','utf8')); if (p.applications.some(a=>a.id==='ejs0') || Object.values(p.ciScopeApplications).some(ids=>ids.includes('ejs0'))) process.exit(1);"
+          node --input-type=module -e "import { readFileSync } from 'node:fs'; const p = JSON.parse(readFileSync('devops/config/env-policy.json','utf8')); if (p.applications.length !== 3) process.exit(1);"
+      - name: Validate release safety policy
+        run: |
+          node --input-type=module -e "import {readFileSync} from 'node:fs'; const p=JSON.parse(readFileSync('devops/config/release-policy.json','utf8')); const e=['shared','shared.UI','shared.UI.NG','shared.UI.EJS','api','ui.NG1','ui.EJS1']; if (JSON.stringify(p.productionWorkspaces)!==JSON.stringify(e) || p.status!=='BUILD_CANDIDATE_NOT_DEPLOYABLE' || Object.keys(p.packages).sort().join(',')!=='api,ejs1,ng1' || p.requiredScope!=='all' || p.requiredOperation!=='verify') process.exit(1);"
+          echo '- Candidate artifacts are explicitly NON-DEPLOYABLE.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Exercise all scope/operation plans
+        run: |
+          set -euo pipefail
+          for scope in all api uis ng1 ejs1; do
+            for operation in verify quality lint build test; do
+              node devops/scripts/devops-ci.mjs --scope "$scope" --operation "$operation" --plan > /dev/null
+            done
+          done
+          # Reject accidental reintroduction of Prettier or long-running dev servers.
+          for scope in all api uis ng1 ejs1; do
+            for operation in verify quality lint build test; do
+              plan="$(node devops/scripts/devops-ci.mjs --scope "$scope" --operation "$operation" --plan)"
+              if echo "$plan" | grep -Ei 'prettier|format:check|verify-run|"dev"'; then
+                echo "::error::Unsafe command in CI plan: $scope / $operation"
+                exit 1
+              fi
+            done
+          done
+          for scope in all api uis ng1 ejs1; do
+            for operation in verify quality lint build test; do
+              if node devops/scripts/devops-ci.mjs --scope "$scope" --operation "$operation" --plan | grep -qi 'ui.EJS0'; then
+                echo "::error::Legacy EJS0 included in CI plan: $scope / $operation"
+                exit 1
+              fi
+            done
+          done
+          echo '## DevOps self-test: 25 CI plans + build candidate + CD safety fixtures passed (EJS0 excluded)' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No application checkout, installation, or deployment performed.' >> "$GITHUB_STEP_SUMMARY"

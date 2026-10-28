@@ -1,0 +1,11 @@
+<button
+  type="button"
+  class="details-toggle"
+  [class.active]="expanded()"
+  [attr.aria-controls]="controlsId()"
+  [attr.aria-expanded]="expanded()"
+  (click)="toggleRequested.emit()"
+>
+  <i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>
+  <span>{{ label() }}</span>
+</button>

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "target": "stablepoint",
+  "deploymentEnabled": false,
+  "mode": "READ_ONLY_INSPECTION_AND_LOCAL_SIMULATION",
+  "services": ["api", "ejs1", "ng1"],
+  "legacyServicesExcluded": ["ejs0"],
+  "remoteLayout": {
+    "baseRelativeToHome": "manatos",
+    "releases": "releases",
+    "services": "services",
+    "persistent": "persistent",
+    "backups": "backups",
+    "logs": "logs",
+    "journal": "deployment-history"
+  },
+  "releaseEligibility": {
+    "requiredType": "DEPLOYABLE_VERIFIED",
+    "rejectedTypes": ["BUILD_CANDIDATE_NOT_DEPLOYABLE"],
+    "runtimeDependenciesComplete": true,
+    "passengerValidated": true,
+    "startupSmokeTestPassed": true,
+    "ciGate": "PASSED",
+    "requiredScope": "all",
+    "requiredOperation": "verify"
+  },
+  "passenger": {
+    "plannedRestartMarker": "tmp/restart.txt",
+    "liveRestartEnabled": false
+  },
+  "health": {
+    "liveChecksConfigured": false,
+    "requiredServices": ["api", "ejs1", "ng1"],
+    "simulateOnly": true
+  },
+  "data": {
+    "migrationsEnabled": false,
+    "persistentPathsExcludedFromReleases": true,
+    "automaticDatabaseRestore": false
+  },
+  "github": {
+    "automaticDeploymentEnabled": false,
+    "manualProductionDeploymentEnabled": false,
+    "liveReadOnlyInspectionEnabledByDefault": false
+  }
+}

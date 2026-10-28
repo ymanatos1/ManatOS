@@ -1,0 +1,6 @@
+<!-- PopupNoticeContent template: a native status/notice region sourced from popup data, not an additional state store. -->
+@if (notice()) {
+<p class="sign-in-notice" role="alert" [attr.data-popup-layout-id]="definition().id">
+  {{ notice() }}
+</p>
+}

@@ -1,0 +1,33 @@
+/* The common Auth popup owns chrome and lifecycle; Storage owns only its dimensions. */
+.storage-dialog {
+  width: min(1060px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+}
+
+.storage-dialog .sign-in-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.storage-dialog .popup-visible-tabs {
+  margin: 0.75rem 1rem 0;
+  padding-bottom: 0.25rem;
+}
+
+.storage-dialog .register-tab {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.storage-dialog .form-control,
+.storage-dialog .form-select,
+.storage-dialog .btn {
+  font-size: inherit;
+}
+
+@media (max-width: 640px) {
+  .storage-dialog {
+    width: calc(100vw - 1rem);
+  }
+}

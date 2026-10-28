@@ -6,13 +6,15 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
   key: 'sys-principals',
   name: 'sysPrincipals',
   subsystem: 'principals',
-  label: 'Principal',
-  pluralLabel: 'Principals',
+  label: '@EN.manatos.principals.principals.label.Principal' /* Principal */,
+  labelForms: { genitive: '@EN.manatos.principals.principals.label.PrincipalGenitive' },
+  pluralLabel: '@EN.manatos.principals.principals.pluralLabel.Principals' /* Principals */,
 
   primaryField: 'name',
 
   // Entry identity / representation
   entry: {
+    image: { field: 'photo' },
     // Direct single-field identity stays explicit; calculated combinations should
     // use an expression instead of introducing concatenation-specific metadata.
     name: { field: 'name' },
@@ -80,7 +82,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
     // Identity and naming
     name: {
       ...commonSysBOFields.name!,
-      label: 'Full name',
+      label: '@EN.manatos.auth.users.label.FullName' /* Full name */,
       calculation: {
         expression:
           "principalType === 'Person' ? (firstName != null && firstName !== '' ? (lastName != null && lastName !== '' ? firstName + ' ' + lastName : firstName) : lastName != null && lastName !== '' ? lastName : '') : name",
@@ -90,7 +92,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
     firstName: {
       key: 'firstName',
-      label: 'First name',
+      label: '@EN.manatos.auth.users.label.FirstName' /* First name */,
       type: 'string',
       order: 11,
       maxLength: 100,
@@ -101,7 +103,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
     lastName: {
       key: 'lastName',
-      label: 'Last name',
+      label: '@EN.manatos.auth.users.label.LastName' /* Last name */,
       type: 'string',
       order: 12,
       maxLength: 100,
@@ -113,7 +115,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
     // Profile / classification
     photo: {
       key: 'photo',
-      label: 'Photo',
+      label: '@EN.manatos.auth.users.label.Photo' /* Photo */,
       type: 'picture',
       order: 19,
       nullable: true,
@@ -122,7 +124,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
     principalType: {
       key: 'principalType',
-      label: 'Principal type',
+      label: '@EN.manatos.principals.principals.label.PrincipalType' /* Principal type */,
       type: 'enum',
       order: 20,
 
@@ -134,7 +136,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
     // Relationships and hierarchy
     userId: {
       key: 'userId',
-      label: 'User',
+      label: '@EN.manatos.auth.externalIdentities.label.User' /* User */,
       type: 'reference',
       order: 25,
       nullable: true,
@@ -143,7 +145,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
     parentId: {
       key: 'parentId',
-      label: 'Parent principal',
+      label: '@EN.manatos.principals.principals.label.ParentPrincipal' /* Parent principal */,
       type: 'reference',
       order: 30,
 
@@ -152,7 +154,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
     rootId: {
       key: 'rootId',
-      label: 'Root principal',
+      label: '@EN.manatos.principals.principals.label.RootPrincipal' /* Root principal */,
       type: 'reference',
       order: 35,
 
@@ -167,7 +169,7 @@ export const sysBOPrincipalsMetadata: SysBOMetadata<SysBOPrincipal> = {
 
     description: {
       key: 'description',
-      label: 'Description',
+      label: '@EN.manatos.auth.users.label.Description' /* Description */,
       type: 'string',
       order: 40,
 

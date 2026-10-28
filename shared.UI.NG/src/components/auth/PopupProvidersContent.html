@@ -1,0 +1,10 @@
+<!-- PopupProvidersContent template: the external-provider child placeholder; the embedded provider component renders the methods. -->
+<manatos-external-providers
+  [purpose]="item().purpose"
+  [language]="language()"
+  [tabId]="tabId()"
+  [popup]="popup()"
+  dataPath="data.resources.runtime.externalAuthProviders"
+  [attr.data-popup-layout-id]="item().id"
+  (providerRequested)="requestProvider()($event)"
+/>

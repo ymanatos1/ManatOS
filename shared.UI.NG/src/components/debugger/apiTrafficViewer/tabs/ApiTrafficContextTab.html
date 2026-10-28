@@ -1,0 +1,21 @@
+<div class="api-traffic-context-tab">
+  <div class="api-traffic-context-caption">
+    <strong>{{ value().path }}</strong>
+    @if (value().subsystem) {
+    <span>{{ value().subsystem }}</span>
+    } @if (value().levelIds?.length) {
+    <code>{{ value().levelIds?.join(' / ') }}</code>
+    }
+  </div>
+  <div class="api-traffic-context-tree">
+    <manatos-ctx-tree
+      [language]="language()"
+      [context]="source()"
+      rootPath="ctx"
+      [expandAllInitially]="expandAllInitially()"
+      [selectedPath]="selectedPath()"
+      [revision]="0"
+      (selected)="selectedPath.set($event)"
+    />
+  </div>
+</div>

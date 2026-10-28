@@ -6,11 +6,11 @@ import {
   SysBOUserRole,
   NotFoundError,
   ValidationAppError,
-  operationContext,
   type SysBOEntity,
   type SysBOMetadata,
   type SysBOUIMetadata,
 } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { authenticatedAuditActor, type AuditActor } from '../../audit/audit-service.js';
 
@@ -22,6 +22,12 @@ import type { GenericSysBOService } from '../../services/sysbo/generic-service.j
 import { getEffectiveSysBOUIMetadata } from '../../metadata/sysbo-ui-registry.js';
 
 import { parseListQuery } from '../query.js';
+import {
+  resolveEntityReferences,
+  type ReferenceRecordReader,
+} from '../../services/sysbo/reference-resolution.js';
+import { imageVariantMap, readImageVariant } from '../../services/sysbo/image-variants.js';
+import { thumbnailPicture } from '../../services/sysbo/picture-rendition.js';
 
 import { sendCommand, sendQuery } from '../response.js';
 
@@ -65,6 +71,7 @@ export function createSysBORouter<T extends SysBOEntity>(
 
   customCreate?: (body: Record<string, unknown>, actor: AuditActor) => Promise<T>,
   customUpdate?: (id: string, body: Record<string, unknown>, actor: AuditActor) => Promise<T>,
+  referenceReader?: ReferenceRecordReader,
 ): Router {
   const router = Router();
 
@@ -113,7 +120,7 @@ export function createSysBORouter<T extends SysBOEntity>(
         await authorization.assertCan('read', subject, metadata.key);
 
         const result = await service.list(
-          parseListQuery(req),
+          parseListQuery(req, metadata),
           // Current storage is Map-backed, so authorization can filter the
           // materialized collection before client filters/paging. Future RDBMS
           // adapters should translate the same policy into database predicates.
@@ -126,11 +133,34 @@ export function createSysBORouter<T extends SysBOEntity>(
           ? getEffectiveSysBOUIMetadata(metadata)
           : undefined;
 
+        const items = result.items.map((item) => sanitize(item, metadata, true));
+        const references =
+          req.query.includeReferences === 'true' && referenceReader
+            ? await resolveEntityReferences(
+                metadata.key,
+                items,
+                subject,
+                authorization,
+                referenceReader,
+              )
+            : undefined;
+        const variant = readImageVariant(req.query.variant);
+        if (req.query.variant !== undefined && variant === null)
+          throw new ValidationAppError(
+            'Invalid image variant.',
+            'Use none, thumbnail or original.',
+          );
+        const imageVariants =
+          variant === null
+            ? undefined
+            : imageVariantMap(variant, metadata.key, items, references ?? {});
         sendQuery(res, {
+          ...(references ? { references } : {}),
+          ...(imageVariants ? { imageVariants } : {}),
           ...(includeMetadata ? { metadata } : {}),
           ...(metadataUI ? { metadataUI } : {}),
 
-          items: result.items.map((item) => sanitize(item, metadata)),
+          items,
 
           paging: {
             total: result.total,
@@ -200,9 +230,22 @@ export function createSysBORouter<T extends SysBOEntity>(
       res.sendStatus(404);
       return;
     }
+    const requestedVariant = req.query.variant ?? 'original';
+    if (requestedVariant !== 'thumbnail' && requestedVariant !== 'original')
+      throw new ValidationAppError('Invalid image variant.', 'Use thumbnail or original.');
+    const thumbnail =
+      requestedVariant === 'thumbnail'
+        ? await thumbnailPicture(
+            stored.bytes,
+            `${metadata.key}:${id}:${fieldKey}:${stored.picture.revision}`,
+          )
+        : null;
+    // A deployment without ImageMagick remains image-functional; the response
+    // explicitly labels the original fallback rather than masquerading as a thumbnail.
+    res.set('X-ManatOS-Image-Variant', thumbnail ? 'thumbnail' : 'original');
     res.set('Cache-Control', 'private, max-age=300');
-    res.type(stored.picture.contentType);
-    res.send(stored.bytes);
+    res.type(thumbnail ? 'image/webp' : stored.picture.contentType);
+    res.send(thumbnail ?? stored.bytes);
   });
 
   router.put('/:id/$picture/:field', async (req, res) => {
@@ -348,7 +391,34 @@ export function createSysBORouter<T extends SysBOEntity>(
         const subject = securityContext(req);
         await authorization.assertCan('read', subject, metadata.key, item);
 
-        sendQuery(res, sanitize(item, metadata));
+        const record = sanitize(item, metadata);
+        const references =
+          req.query.includeReferences === 'true' && referenceReader
+            ? await resolveEntityReferences(
+                metadata.key,
+                [record],
+                subject,
+                authorization,
+                referenceReader,
+              )
+            : undefined;
+        const variant = readImageVariant(req.query.variant);
+        if (req.query.variant !== undefined && variant === null)
+          throw new ValidationAppError(
+            'Invalid image variant.',
+            'Use none, thumbnail or original.',
+          );
+        const imageVariants =
+          variant === null
+            ? undefined
+            : imageVariantMap(variant, metadata.key, [record], references ?? {});
+        // Preserve the existing record shape when the option is absent. For an
+        // expanded single-entry GET the references sit beside the record fields.
+        sendQuery(res, {
+          ...record,
+          ...(references ? { references } : {}),
+          ...(imageVariants ? { imageVariants } : {}),
+        });
       },
     );
   });
@@ -620,6 +690,7 @@ export function createSysBORouter<T extends SysBOEntity>(
 function sanitize<T extends SysBOEntity>(
   item: T,
   metadata: SysBOMetadata<T>,
+  omitPictures = false,
 ): Record<string, unknown> {
   const source = item as unknown as Record<string, unknown>;
 
@@ -630,7 +701,7 @@ function sanitize<T extends SysBOEntity>(
   );
 
   for (const field of fields) {
-    if (field.sensitive) {
+    if (field.sensitive || (omitPictures && field.type === 'pictures')) {
       continue;
     }
 

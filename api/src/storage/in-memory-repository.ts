@@ -126,32 +126,22 @@ export class InMemoryRepository<T extends SysBOEntity> {
       });
     }
 
-    /*
-     * Apply ordering only when the requested field actually exists
-     * in the hard-coded BO metadata.
-     */
-    if (query.sort && this.metadata.fieldDefinition[query.sort]) {
-      const field = query.sort;
-
-      items.sort((leftItem, rightItem) => {
-        const leftValue = (leftItem as unknown as Record<string, unknown>)[field];
-
-        const rightValue = (rightItem as unknown as Record<string, unknown>)[field];
-
-        const comparison = String(leftValue ?? '').localeCompare(
-          String(rightValue ?? ''),
-
-          undefined,
-
-          {
-            numeric: true,
-            sensitivity: 'base',
-          },
-        );
-
-        return query.direction === 'asc' ? comparison : -comparison;
+    /* Sort the authorized result before pagination. Creation order is the default;
+     * every explicit sort uses id ASC to break ties consistently. */
+    const field =
+      query.sort && this.metadata.fieldDefinition[query.sort] ? query.sort : 'createdAt';
+    const compare = (left: unknown, right: unknown): number =>
+      String(left ?? '').localeCompare(String(right ?? ''), undefined, {
+        numeric: true,
+        sensitivity: 'base',
       });
-    }
+    items.sort((leftItem, rightItem) => {
+      const left = leftItem as unknown as Record<string, unknown>;
+      const right = rightItem as unknown as Record<string, unknown>;
+      const primary = compare(left[field], right[field]);
+      if (primary) return query.sort && query.direction === 'desc' ? -primary : primary;
+      return String(left.id ?? '').localeCompare(String(right.id ?? ''));
+    });
 
     const total = items.length;
 

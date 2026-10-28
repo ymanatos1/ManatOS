@@ -34,9 +34,11 @@ describe('metadata entry Save lifecycle and Principal addresses', () => {
 
     expect(renderer).toContain("include('../sysbo/entry/shell/save-split-action'");
     expect(split).toContain('value="close"\n    data-form-save');
-    expect(split).toMatch(/>\s*Save\s*<\/button>/);
-    expect(split).toContain('Save and Stay');
-    expect(split.indexOf('value="close"')).toBeLessThan(split.indexOf('Save and Stay'));
+    expect(split).toContain("metadataText(saveAction.label || '@CM.Save')");
+    expect(split).toContain("metadataText('@CM.SaveAndStay')");
+    expect(split.indexOf('value="close"')).toBeLessThan(
+      split.indexOf("metadataText('@CM.SaveAndStay')"),
+    );
     expect(split).toContain('value="stay"');
     expect(entryState).toContain(
       '[data-form-save], [data-form-save-option], [data-form-save-menu-toggle]',

@@ -136,3 +136,55 @@ export function platformAuthorizationCapabilitiesSchema() {
     properties: { platformAccess: { type: 'boolean' } },
   };
 }
+
+export function uiBootstrapResponseSchema() {
+  return {
+    type: 'object',
+    required: ['success', 'data'],
+    properties: {
+      success: { type: 'boolean', const: true },
+      data: {
+        type: 'object',
+        required: ['server', 'api', 'ui'],
+        properties: {
+          server: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['alive', 'implementationVersion'],
+            properties: {
+              alive: { type: 'boolean' },
+              implementationVersion: { type: 'string' },
+            },
+          },
+          api: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['version'],
+            properties: { version: { type: 'string' } },
+          },
+          ui: {
+            type: 'object',
+            additionalProperties: false,
+            required: [
+              'pageSizeOptions',
+              'defaultPageSize',
+              'showTechnicalErrorDetails',
+              'sessionErrorLogMaxEntries',
+              'donationsShow',
+            ],
+            properties: {
+              pageSizeOptions: {
+                type: 'array',
+                items: { type: 'integer', minimum: 1 },
+              },
+              defaultPageSize: { type: 'integer', minimum: 1 },
+              showTechnicalErrorDetails: { type: 'boolean' },
+              sessionErrorLogMaxEntries: { type: 'integer', minimum: 0 },
+              donationsShow: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+  };
+}

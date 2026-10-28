@@ -11,10 +11,10 @@ export const sysBOEmailAddressesUIMetadata: SysBOUIMetadata = {
       addAction: { ...standardAddAction('Add email address'), visible: false },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['address'],
       },
     },
@@ -35,7 +35,12 @@ export const sysBOEmailAddressesUIMetadata: SysBOUIMetadata = {
     },
   },
   defaultUIView: 'compact',
-  uiViews: { compact: { viewType: 'quick', label: 'Email address' } },
+  uiViews: {
+    compact: {
+      viewType: 'quick',
+      label: '@EN.manatos.contacts.emailAddresses.label.EmailAddress' /* Email address */,
+    },
+  },
   record: {
     tabs: [
       tab('general', 'Email address', 10, {

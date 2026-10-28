@@ -1,0 +1,22 @@
+{
+  "/_manatos/pages": {
+    "target": "http://localhost:3004",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/_manatos/documentation": {
+    "target": "http://localhost:3004",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/_manatos/auth": {
+    "target": "http://localhost:3004",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/auth/oauth": {
+    "target": "http://localhost:3004",
+    "secure": false,
+    "changeOrigin": false
+  }
+}

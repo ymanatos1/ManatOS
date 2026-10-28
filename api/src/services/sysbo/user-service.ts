@@ -5,12 +5,12 @@ import {
   NotFoundError,
   SysBOUserRole,
   ValidationAppError,
-  operationContext,
   sysBOUsersMetadata,
   validatePassword,
   type EmailVerificationSource,
   type SysBOUser,
 } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import type { InMemoryDataStore } from '../../storage/in-memory-data-store.js';
 

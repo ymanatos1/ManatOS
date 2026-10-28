@@ -4,7 +4,7 @@
 
 ManatOS diagnostics are designed around **correlation and semantic context**, not around isolated console messages. A single API request may pass through authentication, authorization, services, expressions, storage and nested operations. The diagnostic architecture gives those activities one request identity while preserving the semantic nesting of the work.
 
-Diagnostics span both **client-side runtime observability** and **server/API request observability**. The current Express/browser client exposes a rich developer debugger, but those diagnostics represent system capabilities rather than an architectural requirement that every future client use the same dock, DOM or filesystem.
+Diagnostics span both **client-side runtime observability** and **server/API request observability**. The TypeScript browser clients expose developer diagnostics, but those diagnostics represent system capabilities rather than an architectural requirement that every future client use the same dock, DOM or filesystem.
 
 The server-side development toolset combines four complementary views:
 
@@ -33,7 +33,7 @@ A useful client diagnostic model distinguishes:
 
 The CTX Viewer is therefore not an API debugger wearing a UI. It is the client-runtime observer. API Traffic is the bridge from client activity into server diagnostics.
 
-A future Angular, React or mobile client may expose these concepts through different tooling—or no production tooling at all. If it implements ManatOS CTX/UI metadata semantics, its development diagnostics should preserve the same ownership/provenance distinctions rather than exposing framework internals as if they were ManatOS semantic state.
+The current Angular and EJS integrations expose these concepts using their host-specific tools. Another client technology may present them differently—or omit production developer tooling. If it implements ManatOS CTX/UI metadata semantics, its development diagnostics should preserve the same ownership/provenance distinctions rather than exposing framework internals as if they were ManatOS semantic state.
 
 ### Client CTX versus API CTX
 
@@ -49,7 +49,7 @@ The presentation must not turn developer diagnostics into authorization or busin
 
 ## One request identity
 
-Every participating client/BFF-to-API request receives a correlation/request ID before transport. The current Express UI server creates and sends it through `x-request-id`; another client topology may originate it elsewhere. The API accepts and reuses the supplied value rather than inventing a second identity.
+Every participating client/BFF-to-API request receives a correlation/request ID before transport. The TypeScript UI-server/API bridge carries it through `x-request-id`; a different client topology may originate it elsewhere. The API accepts and reuses the supplied value rather than inventing a second identity.
 
 That same ID is used for:
 
@@ -91,9 +91,7 @@ A traffic entry includes the request identity and useful transport facts such as
 
 API Traffic is primarily a **transport timeline**. It answers “what did the UI ask the API to do?” and “what came back?” It is not the authoritative business-operation trace.
 
-The current client debugger can pause/clear/filter the traffic view without changing API behavior. The browser polls the diagnostic traffic endpoint only as a viewer concern and disposes an earlier poller before reinitialization so development navigation/hot reload cannot accumulate duplicate polling loops.
-
-Traffic **entries themselves are live diagnostic data**, not browser-persisted application state. Viewer controls and counters have explicit diagnostic lifetimes: transient selection/filter/pause state and route counts are scoped to the UI boot id in `sessionStorage`, while route visibility/catalog choices are durable `localStorage` preferences. This lets navigation preserve a useful debugging workspace without making a previous server boot's traffic counters look current.
+The current client debugger can pause/clear/filter the traffic view without changing API behavior.
 
 ## Structured API logging
 
@@ -260,16 +258,6 @@ Storage CTX tabs are discovered from the selected request's snapshot directory. 
 
 The debugger should prefer “no diagnostic artifact available” over manufacturing synthetic content.
 
-## Developer-workspace state versus observed state
-
-The debugger must distinguish **where the developer is looking** from **what the application currently contains**. The first category may be persisted as browser-local workspace preferences; the second remains owned by the runtime being observed.
-
-For the current CTX Viewer, persisted workspace coordinates include selected and expanded paths, scroll anchor, Properties visibility/height, debugger width, navigation history and watched path. They are stored in `localStorage`, so they survive page navigation/reload and, in the current implementation, a UI-server restart. On a new page, a path that disappeared is resolved to its nearest surviving parent. No CTX value is serialized into this workspace record.
-
-API Traffic intentionally uses a shorter boot-scoped lifetime for transient viewer state and route counters. A server/system restart changes the UI boot id, giving those values a fresh namespace. Durable route-display preferences remain browser-local.
-
-A detached Developer Tools window is also presentation state, not a second debugger runtime. The dock's live DOM/runtime instance is moved into that window and reconnects across ordinary main-page navigation. A changed UI boot id closes the detached live window so it cannot continue showing observations from the previous runtime. Geometry/detach preference can remain durable without preserving the old runtime itself.
-
 ## Development versus production
 
 The architectural correlation model is environment-independent, but diagnostic surfaces may differ by deployment.
@@ -304,3 +292,9 @@ Production must apply stricter retention, access-control, privacy and performanc
 - **Storage implementers:** [Data and Storage Architecture](../storage/Data-and-Storage-Architecture.md).
 - **Client implementers:** [Client Implementation Guide](../clients/Client-Implementations.md).
 - **Administrators/developer users:** [Developer Tools usage](Using-Developer-Tools.md).
+
+## Causal execution across interactive and API boundaries
+
+Trace an interaction by correlating the originating surface/action, API Traffic record, request identifier, API operation and storage work. A Flow step may provide high-level user-operation context, while a request ID identifies one network exchange. Those identities have distinct lifetimes and should not be overloaded into one global “current operation”.
+
+CTX viewer statistics and incremental redraw concern the inspected tree's presentation. Logging and storage snapshots concern host-side observability. Neither grants authority to mutate business state. See [CTX Architecture](../context/Context-Architecture.md) and [Flow Execution](../clients/Flow-Execution.md).

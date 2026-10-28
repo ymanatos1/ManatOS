@@ -72,6 +72,7 @@ export interface PublicExternalAuthProvider {
   provider: SysBOExtAuthProviderType;
   label: string;
   icon: string;
+  registered: boolean;
   enabled: boolean;
   configured: boolean;
 }
@@ -447,8 +448,9 @@ export class SysBOExtAuthProviderService extends GenericSysBOService<SysBOExtAut
         provider: definition.provider,
         label: definition.label,
         icon: definition.icon,
+        registered: Boolean(item),
         enabled,
-        configured: Boolean(enabled && item && credentialsReadyForRuntime(item)),
+        configured: Boolean(item && credentialsReadyForRuntime(item)),
       };
     });
   }

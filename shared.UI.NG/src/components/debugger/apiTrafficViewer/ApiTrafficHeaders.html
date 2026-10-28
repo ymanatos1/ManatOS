@@ -1,0 +1,14 @@
+<div class="api-traffic-header-matrix" role="table" [attr.aria-label]="multilingual().HttpHeaders">
+  <div class="api-traffic-header-matrix-heading" role="row">
+    <span role="columnheader">{{ multilingual().Name }}</span>
+    <span role="columnheader">{{ multilingual().Value }}</span>
+  </div>
+  @for (row of rows(); track row[0]) {
+  <div class="api-traffic-header-matrix-row" role="row">
+    <code role="cell">{{ row[0] }}</code>
+    <code role="cell">{{ row[1] }}</code>
+  </div>
+  } @empty {
+  <div class="api-traffic-empty">{{ multilingual().NoHeaders }}</div>
+  }
+</div>

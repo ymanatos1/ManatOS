@@ -1,0 +1,62 @@
+<section class="content-card company-page">
+  {{#if company.branding.companyPageImage}}
+  <img
+    class="company-hero-image"
+    src="{{ pageAsset(company.branding.companyPageImage.src) }}"
+    alt="{{ company.branding.companyPageImage.alt }}"
+  />
+  {{/if}}
+
+  <h2>{{ company.name }}</h2>
+
+  <p class="company-product-tagline">
+    <strong>{{ company.branding.tagline }}</strong>
+  </p>
+
+  {{#if company.description}}
+  <p>{{ company.description }}</p>
+  {{/if}}
+
+  <section class="company-foundation" aria-labelledby="companyFoundationHeading">
+    <h3 id="companyFoundationHeading">Υποδομή εφαρμογών ManatOS</h3>
+    <p>
+      Το ελεγχόμενο σημασιολογικό περιβάλλον εκτέλεσης που υποστηρίζει τις επιχειρησιακές μας
+      πλατφόρμες. Μετατρέπει τα κοινά μεταδεδομένα επιχειρησιακών αντικειμένων, το πλαίσιο
+      εκτέλεσης, τους κανόνες, τα δικαιώματα και τη συμπεριφορά εφαρμογών σε συνεπείς εμπειρίες
+      χρήσης.
+    </p>
+  </section>
+
+  <section class="company-platforms" aria-labelledby="companyPlatformsHeading">
+    <h3 id="companyPlatformsHeading">Πλατφόρμες</h3>
+
+    <div class="company-platform-catalogue">
+      {{#each company.platforms as platform}} {{#if platform.enabled}}
+      <article class="company-platform-card">
+        <a
+          class="company-platform-card-link"
+          href="/platform/{{ urlEncode(platform.id) }}"
+          aria-label="Άνοιγμα {{ platform.name }}"
+        >
+          <span class="company-platform-card-icon" aria-hidden="true">
+            <i class="bi {{ platform.icon ?? 'bi-boxes' }}"></i>
+          </span>
+
+          <span class="company-platform-card-copy">
+            <span class="company-platform-card-title">
+              <strong>{{ platform.shortName }}</strong>
+              <span>{{ platform.name }}</span>
+            </span>
+
+            {{#if platform.description}}
+            <span class="company-platform-card-description"> {{ platform.description }} </span>
+            {{/if}}
+          </span>
+
+          <i class="bi bi-arrow-right company-platform-card-arrow" aria-hidden="true"></i>
+        </a>
+      </article>
+      {{/if}} {{/each}}
+    </div>
+  </section>
+</section>

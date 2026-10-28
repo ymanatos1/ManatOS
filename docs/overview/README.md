@@ -1,6 +1,6 @@
 # Overview
 
-Orientation material: what ManatOS is, its vocabulary, conceptual model and system map. Start here when you need the broad mental model before entering a subsystem.
+Orientation material: what the foundation is, its vocabulary, conceptual model and system map. Start here when you need the broad mental model before entering a subsystem.
 
 ## Reading map
 
@@ -13,6 +13,6 @@ Orientation material: what ManatOS is, its vocabulary, conceptual model and syst
 
 ## Related subjects
 
-This subject deliberately links to, rather than duplicates, the full detail owned by adjacent subjects: [`system/`](../system/), [`metadata/`](../metadata/), [`context/`](../context/).
+This subject deliberately links to, rather than duplicates, the full detail owned by adjacent subjects: [`system/`](../system/README.md), [`metadata/`](../metadata/README.md), [`context/`](../context/README.md).
 
 Return to the [documentation map](../README.md) or the [repository overview](../../README.md).

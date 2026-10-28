@@ -7,6 +7,9 @@ export * from './manatos/auth/ui-users.js';
 export * from './manatos/auth/ui-ext-auth-providers.js';
 export * from './manatos/principals/ui-principals.js';
 export * from './platforms/protocrm/applications/ui-applications.js';
+export * from './platforms/panoptes/surveillance/ui-guards.js';
+export * from './platforms/panoptes/surveillance/ui-projects.js';
+export * from './platforms/panoptes/surveillance/ui-posts.js';
 export * from './manatos/licensing/ui-licenses.js';
 export * from './registry.js';
 

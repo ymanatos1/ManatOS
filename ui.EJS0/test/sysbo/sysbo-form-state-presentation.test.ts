@@ -125,7 +125,7 @@ describe('generic SysBO form state presentation', () => {
     const systemTabStart = apiMetadata.indexOf('const systemTab');
     const systemTabEnd = apiMetadata.indexOf('const systemFieldOverrides', systemTabStart);
     const systemTabSource = apiMetadata.slice(systemTabStart, systemTabEnd);
-    expect(systemTabSource).toContain("'System details'");
+    expect(systemTabSource).toContain("'@CM.SystemDetails'");
     expect(systemTabSource).toContain("layout: 'summary'");
     expect(systemTabSource).not.toContain("mode !== 'create'");
   });
@@ -162,7 +162,7 @@ describe('generic SysBO form state presentation', () => {
 
     // Canonical metadata declares the Debugging component, while the UI server
     // capability-gates only an inert template and the browser composes the live tab.
-    expect(commonUiMetadataSource).toContain("tab('debugging', 'Debugging'");
+    expect(commonUiMetadataSource).toContain("tab('debugging', '@CM.Debugging'");
     expect(commonUiMetadataSource).toContain("layout: 'debug-calculations'");
     expect(metadataSource).toContain('Boolean(app?.ui?.debugTools)');
     expect(metadataSource).toContain('data-v2-developer-debugging-tab-template');
@@ -349,10 +349,28 @@ describe('generic SysBO form state presentation', () => {
       resolve(testDirectory, '../../public/js/sysbo/entry/state.js'),
       'utf8',
     );
-    expect(forms).toContain(
-      "closeCancelLabel.textContent = changed || blocked ? 'Cancel' : 'Close'",
+    expect(sourceWithoutWhitespace(forms)).toContain(
+      sourceWithoutWhitespace(
+        "closeCancelLabel.textContent = changed || blocked ? localized('cancel', 'Cancel') : localized('close', 'Close')",
+      ),
     );
-    expect(forms).toContain("changed || blocked ? 'Cancel editing' : 'Close entry'");
+    expect(sourceWithoutWhitespace(forms)).toContain(
+      sourceWithoutWhitespace(
+        "changed || blocked ? localized('cancelEditing', 'Cancel editing') : localized('closeEntry', 'Close entry')",
+      ),
+    );
+    const template = await readFile(
+      resolve(testDirectory, '../../views/components/runtime/entity-entry.ejs'),
+      'utf8',
+    );
+    for (const [name, key] of [
+      ['cancel', '@CM.Cancel'],
+      ['close', '@CM.Close'],
+      ['cancelEditing', '@CM.CancelEditing'],
+      ['closeEntry', '@CM.CloseEntry'],
+    ]) {
+      expect(template).toContain(`${name}: metadataText('${key}')`);
+    }
     expect(forms).toContain('const pagePath = entryPagePath');
   });
 

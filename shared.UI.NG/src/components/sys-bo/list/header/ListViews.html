@@ -1,0 +1,35 @@
+<!-- ListViews template: view-selection menu/toggle, with allowed view keys read from canonical List metadata. -->
+<div class="manatos-list-views" data-list-layout="ListViews">
+  <button
+    #viewsAnchor
+    class="manatos-list-btn"
+    data-list-toggle-views
+    type="button"
+    (click)="toggle()"
+    [attr.aria-expanded]="context.level()?.state?.list?.viewsOpen ?? false"
+  >
+    <i class="bi bi-columns-gap" aria-hidden="true"></i> {{ context.language() === 'EL' ? 'Προβολή'
+    : 'View' }}
+  </button>
+  @if (context.level()?.state?.list?.viewsOpen) {
+  <div
+    class="manatos-list-view-menu"
+    role="menu"
+    data-list-view-menu
+    [manatosTransientMenu]="viewsAnchor"
+    [onTransientDismiss]="dismissMenu"
+  >
+    @for (view of context.views(); track view.key) {
+    <button
+      type="button"
+      role="menuitemradio"
+      [attr.data-list-view-key]="view.key"
+      [attr.aria-checked]="context.level()?.state?.list?.view === view.key"
+      (click)="select(view.key)"
+    >
+      {{ view.label }}
+    </button>
+    }
+  </div>
+  }
+</div>

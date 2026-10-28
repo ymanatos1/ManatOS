@@ -1,0 +1,17 @@
+<!-- Summary owns the EJS0-style compact, read-only audit presentation. -->
+<div
+  class="manatos-entry-summary"
+  [attr.data-entry-layout-id]="item().layoutId"
+  [style.grid-column]="'span ' + item().span"
+>
+  @for (row of rows(); track row.field) {
+  <div class="manatos-entry-summary-label">{{ row.label }}:</div>
+  <div class="manatos-entry-summary-value" [attr.data-ctx-field-container]="row.field">
+    @if (row.field === 'id') {
+    <i class="bi bi-fingerprint" aria-hidden="true"></i>
+    <code class="manatos-entry-summary-id" [title]="row.text">{{ row.text }}</code> } @else { @if
+    (row.field === 'createdBy' || row.field === 'updatedBy') {
+    <i class="bi bi-person-circle" aria-hidden="true"></i> } {{ row.text }} }
+  </div>
+  }
+</div>

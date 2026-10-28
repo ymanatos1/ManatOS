@@ -131,6 +131,20 @@ export class ApiContextRuntime {
     return path ? ((this.treeRuntime.get(path) as ApiContextLevel | undefined) ?? null) : null;
   }
 
+  /** Immutable clone of the active request root for response-time diagnostics. */
+  currentRequestSnapshot(): ApiRequestSnapshot | null {
+    const scope = this.execution.getStore();
+    if (!scope) return null;
+    const context = this.treeRuntime.get(scope.callPath) as ApiContextLevel | undefined;
+    if (!context) return null;
+    return {
+      callId: scope.callId,
+      callPath: scope.callPath,
+      levelPath: scope.callPath,
+      context: structuredClone(context),
+    };
+  }
+
   /**
    * Establish one request branch and the async execution pointer that owns it.
    * The branch remains alive until endRequest() is called by the HTTP lifecycle.

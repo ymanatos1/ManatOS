@@ -1,0 +1,110 @@
+.shell {
+  font-size: calc(1rem * var(--manatos-font-scale));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 255px minmax(0, 1fr) auto;
+}
+
+.shell-body.navigation-collapsed {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.workspace-navigation-region {
+  position: relative;
+  min-width: 0;
+  display: grid;
+}
+
+.workspace-navigation-region.collapsed {
+  display: none;
+}
+
+.shell-navigation-collapse {
+  position: absolute;
+  z-index: 10;
+  top: 0.65rem;
+  right: 0.8rem;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface);
+  color: var(--manatos-muted);
+  cursor: pointer;
+}
+
+.shell-navigation-collapse:hover,
+.shell-navigation-collapse:focus-visible {
+  color: var(--manatos-blue);
+  background: var(--manatos-navigation-hover-bg);
+}
+
+.shell-navigation-restore {
+  position: absolute;
+  z-index: 10;
+  top: 1rem;
+  left: 0.45rem;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface);
+  color: var(--manatos-muted);
+  cursor: pointer;
+}
+
+.shell-navigation-restore[hidden] {
+  display: none;
+}
+
+.shell-navigation-restore:hover,
+.shell-navigation-restore:focus-visible {
+  color: var(--manatos-blue);
+  background: var(--manatos-navigation-hover-bg);
+}
+
+.shell-body > main {
+  min-width: 0;
+  min-height: 0;
+}
+
+.shell-body.navigation-collapsed > main {
+  padding-left: 3.25rem;
+}
+
+.shell-body.navigation-unavailable > main {
+  padding-left: 0;
+}
+
+@media (max-width: 760px) {
+  .shell-body {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-navigation-region,
+  .shell-navigation-restore {
+    display: none;
+  }
+
+  .shell-body.navigation-collapsed > main {
+    padding-left: 0;
+  }
+
+  .developer-tools-dock {
+    grid-column: 1;
+  }
+}

@@ -108,11 +108,11 @@
         class="btn btn-info btn-sm header-auth-button"
         data-bs-toggle="modal"
         data-bs-target="#signInModal"
-        title="Sign in"
-        aria-label="Sign in"
+        title="<%= metadataText('@CM.SignIn') %>"
+        aria-label="<%= metadataText('@CM.SignIn') %>"
       >
         <i class="bi bi-box-arrow-in-right me-1"></i>
-        Sign in
+        <%= metadataText('@CM.SignIn') %>
       </button>
 
       <button
@@ -120,11 +120,11 @@
         class="btn btn-success btn-sm header-auth-button"
         data-bs-toggle="modal"
         data-bs-target="#signUpMethodModal"
-        title="Create an account"
-        aria-label="Create an account"
+        title="<%= metadataText('@CM.CreateAccount') %>"
+        aria-label="<%= metadataText('@CM.CreateAccount') %>"
       >
         <i class="bi bi-person-plus me-1"></i>
-        Sign up
+        <%= metadataText('@CM.SignUp') %>
       </button>
     <% } else { %>
 
@@ -132,8 +132,8 @@
       <button
         type="button"
         class="btn btn-sm btn-outline-light header-notifications-button"
-        title="Notifications"
-        aria-label="Notifications"
+        title="<%= metadataText('@CM.Notifications') %>"
+        aria-label="<%= metadataText('@CM.Notifications') %>"
       >
         <i class="bi bi-bell"></i>
       </button>
@@ -144,8 +144,8 @@
           type="button"
           data-bs-toggle="dropdown"
           aria-expanded="false"
-          title="Open account menu"
-          aria-label="Open account menu"
+          title="<%= metadataText('@CM.OpenAccountMenu') %>"
+          aria-label="<%= metadataText('@CM.OpenAccountMenu') %>"
         >
           <% if (currentUser.photo) { %>
             <img
@@ -156,7 +156,7 @@
           <% } else { %>
             <i class="bi bi-person-circle me-1"></i>
           <% } %>
-          Account
+          <%= metadataText('@CM.Account') %>
         </button>
 
         <ul class="dropdown-menu dropdown-menu-end shadow-sm account-menu">
@@ -184,25 +184,25 @@
           <li><hr class="dropdown-divider"></li>
 
           <li>
-            <a class="dropdown-item" href="/account" title="View account details">
+            <a class="dropdown-item" href="/account" title="<%= metadataText('@CM.AccountDetails') %>">
               <i class="bi bi-person-vcard me-2"></i>
-              Account details
+              <%= metadataText('@CM.AccountDetails') %>
             </a>
           </li>
 
           <li>
-            <a class="dropdown-item" href="/account/password" title="<%= currentUser.hasPassword ? 'Change password' : 'Set password' %>">
+            <a class="dropdown-item" href="/account/password" title="<%= metadataText(currentUser.hasPassword ? '@CM.ChangePassword' : '@CM.SetPassword') %>">
               <i class="bi bi-key me-2"></i>
-              <%= currentUser.hasPassword ? 'Change password' : 'Set password' %>
+              <%= metadataText(currentUser.hasPassword ? '@CM.ChangePassword' : '@CM.SetPassword') %>
             </a>
           </li>
 
           <li><hr class="dropdown-divider"></li>
 
           <li>
-            <a class="dropdown-item" href="/auth/logout" title="Sign out">
+            <a class="dropdown-item" href="/auth/logout" title="<%= metadataText('@CO.Navigation.SignOut') %>">
               <i class="bi bi-box-arrow-right me-2"></i>
-              Logout
+              <%= metadataText('@CM.Logout') %>
             </a>
           </li>
         </ul>

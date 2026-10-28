@@ -1,0 +1,31 @@
+@if (wizard().adapter()?.targetWorkflow?.schemaPreparation) {
+<div class="storage-operation-panel mt-3" data-popup-layout-id="storage-schema-operations">
+  <h3 class="h6">{{ wizard().t('ManatOS schema', 'Σχήμα ManatOS') }}</h3>
+  <div class="d-flex flex-wrap gap-2 mb-2">
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm"
+      [disabled]="wizard().readOnly() || wizard().busy() || !wizard().canOperate('schema/inspect')"
+      (click)="wizard().operation('schema/inspect')"
+    >
+      {{ wizard().t('Inspect schema', 'Έλεγχος σχήματος') }}
+    </button>
+    <button
+      type="button"
+      class="btn btn-outline-primary btn-sm"
+      [disabled]="wizard().readOnly() || wizard().busy() || !wizard().canOperate('schema/prepare')"
+      (click)="wizard().operation('schema/prepare')"
+    >
+      {{ wizard().t('Apply required changes', 'Εφαρμογή αλλαγών') }}
+    </button>
+  </div>
+  <span class="small text-secondary">{{ wizard().translate(wizard().schemaState()) }}</span>
+  @if (wizard().schemaChanges().length) {
+  <ul class="small">
+    @for (change of wizard().schemaChanges(); track change) {
+    <li>{{ change }}</li>
+    }
+  </ul>
+  }
+</div>
+}

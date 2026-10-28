@@ -1,0 +1,9 @@
+digraph Localization {
+ graph [fontname="Arial",fontsize=11,bgcolor="white",labelloc="t",label="Language-Neutral Semantics and Localized Presentation",pad="0.22",rankdir=TB];
+ node [fontname="Arial",fontsize=10,shape=box,style="rounded,filled",fillcolor="white"];
+ domain [label="Canonical entity / enum / CTX / API facts\nStable keys and values",fillcolor="#fff3cd"];
+ catalogue [label="Shared dictionaries: CO / PL / SS / EN / CM\nEN and EL text",fillcolor="#dcecff"];
+ locale [label="Selected UI language\nmetadata + content resolution",fillcolor="#e8f4e5"];
+ render [label="Presentation projection\nAngular / EJS / static content",fillcolor="#fce8e6"];
+ domain -> locale;catalogue -> locale;locale -> render;
+}

@@ -1,3 +1,4 @@
+import { resolveMetadataText } from '@manatos/shared';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,7 +41,7 @@ describe('Account V2 SysUser surface', () => {
     const accountView = sysBOUsersUIMetadata.uiViews?.quickView;
     expect(sysBOUsersUIMetadata.defaultUIView).toBe('main');
     expect(accountView?.viewType).toBe('quick');
-    expect(accountView?.record?.tabs?.map((tab) => tab.label)).toEqual([
+    expect(accountView?.record?.tabs?.map((tab) => resolveMetadataText(tab.label, 'EN'))).toEqual([
       'General',
       'Authentication',
       'System details',
@@ -74,7 +75,9 @@ describe('Account V2 SysUser surface', () => {
     expect(accountView?.record?.actionOverrides?.changePassword?.visible).toMatchObject({
       expression: 'id === $user.fields.id.value && hasPassword === true',
     });
-    expect(accountView?.record?.fieldOverrides?.role?.label).toBe('Website role');
+    expect(resolveMetadataText(accountView?.record?.fieldOverrides?.role?.label ?? '', 'EN')).toBe(
+      'Website role',
+    );
     expect(accountView?.record?.entryActions).toBeUndefined();
   });
 

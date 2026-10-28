@@ -1,0 +1,6 @@
+<!-- EntryLayout template: recursive layout-item composition through registered Angular children rather than a host switch. -->
+<div class="manatos-entry-fields" data-entry-fields>
+  @for (item of items(); track item.layoutId) {
+  <ng-container *ngComponentOutlet="renderer(item.kind); inputs: { item: item }" />
+  }
+</div>

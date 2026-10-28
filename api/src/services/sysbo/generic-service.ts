@@ -4,7 +4,6 @@ import {
   allManatOSObjectMetadata,
   createEnumsContext,
   evaluateExpression,
-  operationContext,
   relationshipForField,
   normalizeMetadataFieldValues,
   type SysBOCreateInput,
@@ -15,6 +14,7 @@ import {
   ValidationAppError,
   NotFoundError,
 } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import type { AuditActor } from '../../audit/audit-service.js';
 

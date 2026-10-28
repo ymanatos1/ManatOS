@@ -44,8 +44,8 @@
     type="button"
     data-bs-toggle="dropdown"
     aria-expanded="false"
-    title="Version field tools"
-    aria-label="Version field tools for <%= fieldLabel(field) %>"
+    title="<%= metadataText('@CM.FieldToolsVersion') %>"
+    aria-label="<%= metadataText('@CM.FieldToolsVersion') %>: <%= metadataText(fieldLabel(field)) %>"
   ><span class="metadata-field-type-glyph" aria-hidden="true">v</span></button>
 
   <div class="form-control metadata-version-editor <%= editable ? '' : 'bg-body-secondary' %>">

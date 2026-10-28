@@ -1,0 +1,24 @@
+<!-- ListPageHost template: the List Surface mounting boundary and host-owned lifecycle; the List child owns toolbar/row composition. -->
+<div
+  class="manatos-list-page-host"
+  [attr.data-ui-level-path]="listContext.levelPath()"
+  (click)="action($event)"
+>
+  <manatos-list
+    [attr.inert]="selectionBusy() ? '' : null"
+    [attr.aria-busy]="selectionBusy()"
+    (rowSelected)="selectRow($event)"
+    (rowConfirmed)="confirmRow($event)"
+  />
+  @if (hostKind() === 'popup') {
+  <manatos-surface-actions
+    kind="list"
+    [hostKind]="hostKind()"
+    [entityKey]="entityKey()"
+    [language]="language() === 'EL' ? 'EL' : 'EN'"
+    [selectReady]="selectReady()"
+    [selectionBusy]="selectionBusy()"
+    data-list-layout="Actions"
+  />
+  }
+</div>

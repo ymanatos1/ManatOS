@@ -7,8 +7,9 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
   key: 'external-identities',
   name: 'sysExternalIdentities',
   subsystem: 'auth',
-  label: 'External identity',
-  pluralLabel: 'External identities',
+  label: '@EN.manatos.auth.externalIdentities.label.ExternalIdentity' /* External identity */,
+  pluralLabel:
+    '@EN.manatos.auth.externalIdentities.pluralLabel.ExternalIdentities' /* External identities */,
   primaryField: 'provider',
   // Canonical relationships
   relationships: {
@@ -48,7 +49,8 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
     ...commonSysBOFields,
     providerEmailVerificationStatus: {
       key: 'providerEmailVerificationStatus',
-      label: 'Provider email verification',
+      label:
+        '@EN.manatos.auth.externalIdentities.label.ProviderEmailVerification' /* Provider email verification */,
       type: 'string',
       order: 61,
       readOnly: true,
@@ -58,14 +60,14 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
     },
     userId: {
       key: 'userId',
-      label: 'User',
+      label: '@EN.manatos.auth.externalIdentities.label.User' /* User */,
       type: 'reference',
       order: 20,
       required: true,
     },
     provider: {
       key: 'provider',
-      label: 'Provider',
+      label: '@EN.manatos.auth.extAuthProviders.label.Provider' /* Provider */,
       type: 'string',
       order: 30,
       required: true,
@@ -77,7 +79,7 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
     },
     providerSubject: {
       key: 'providerSubject',
-      label: 'Provider subject',
+      label: '@EN.manatos.auth.externalIdentities.label.ProviderSubject' /* Provider subject */,
       type: 'string',
       order: 40,
       required: true,
@@ -85,7 +87,7 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
     },
     email: {
       key: 'email',
-      label: 'Email',
+      label: '@EN.manatos.auth.externalIdentities.label.Email' /* Email */,
       type: 'email',
       order: 50,
       nullable: true,
@@ -93,14 +95,14 @@ export const sysBOExternalIdentityMetadata: ManatOSValueObjectMetadata<SysBOExte
     },
     emailVerified: {
       key: 'emailVerified',
-      label: 'Email verified',
+      label: '@EN.manatos.auth.externalIdentities.label.EmailVerified' /* Email verified */,
       type: 'boolean',
       order: 60,
       nullable: true,
     },
     displayName: {
       key: 'displayName',
-      label: 'Display name',
+      label: '@EN.manatos.auth.externalIdentities.label.DisplayName' /* Display name */,
       type: 'string',
       order: 70,
       nullable: true,

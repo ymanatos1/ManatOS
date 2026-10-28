@@ -29,7 +29,7 @@ Because `TraverseEntity` is resolver-backed, API persistence can evaluate the sa
 Current UI metadata uses:
 
 ```text
-FirstCtx($enums.SysPlatform.values, 'value')
+FirstCtx($entity-fields.platformId.enumItems, 'value')
 ```
 
 Evaluation:
@@ -147,10 +147,10 @@ TraverseUiLevels()
 can be combined with path access to inspect the active surface chain. For example:
 
 ```text
-CurrentUiLevel().kind == 'selector'
+#control.kind == 'list' && #control.host == 'popup'
 ```
 
-is true when the deepest surface is a selector. Such expressions are client-context-dependent and should not be placed in canonical metadata that the API must evaluate.
+tests the current lexical UIS level for a List mounted in a popup (the selector-host pattern). The evaluator grammar supports function calls and variable paths, but not postfix member access on function return values. `CurrentUiLevel()` itself returns an object; it is not followed by `.kind` in an expression. These tests depend on UI context and must not be used as server-side authorization rules.
 
 ## 10. Clock-aware expressions
 

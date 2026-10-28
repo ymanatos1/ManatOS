@@ -6,8 +6,9 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
   key: 'user-invitations',
   name: 'sysUserInvitations',
   subsystem: 'auth',
-  label: 'User invitation',
-  pluralLabel: 'User invitations',
+  label: '@EN.manatos.auth.userInvitations.label.UserInvitation' /* User invitation */,
+  pluralLabel:
+    '@EN.manatos.auth.userInvitations.pluralLabel.UserInvitations' /* User invitations */,
   primaryField: 'email',
   // Canonical relationships
   relationships: {
@@ -31,7 +32,7 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
     ...commonSysBOFields,
     email: {
       key: 'email',
-      label: 'Email',
+      label: '@EN.manatos.auth.externalIdentities.label.Email' /* Email */,
       type: 'email',
       order: 20,
 
@@ -40,7 +41,7 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
     },
     principalId: {
       key: 'principalId',
-      label: 'Principal',
+      label: '@EN.manatos.auth.userInvitations.label.Principal' /* Principal */,
       type: 'reference',
       order: 30,
 
@@ -48,7 +49,7 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
     },
     requestedRole: {
       key: 'requestedRole',
-      label: 'Requested role',
+      label: '@EN.manatos.auth.userInvitations.label.RequestedRole' /* Requested role */,
       type: 'enum',
       order: 50,
 
@@ -57,7 +58,7 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
     },
     tokenHash: {
       key: 'tokenHash',
-      label: 'Token hash',
+      label: '@EN.manatos.auth.userInvitations.label.TokenHash' /* Token hash */,
       type: 'string',
       order: 60,
 
@@ -66,7 +67,7 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
     },
     expiresAt: {
       key: 'expiresAt',
-      label: 'Expires',
+      label: '@EN.manatos.auth.userInvitations.label.Expires' /* Expires */,
       type: 'datetime',
       order: 70,
 
@@ -74,7 +75,7 @@ export const sysBOUserInvitationMetadata: ManatOSValueObjectMetadata<SysBOUserIn
     },
     usedAt: {
       key: 'usedAt',
-      label: 'Used',
+      label: '@EN.manatos.auth.userInvitations.label.Used' /* Used */,
       type: 'datetime',
       order: 80,
 

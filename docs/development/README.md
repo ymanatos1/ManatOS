@@ -14,8 +14,17 @@ This subject owns the practical repository/developer workflow that is intentiona
 
 ## Subject-specific development guides
 
-Development instructions now live beside the subsystem they extend: entity/component guides under [`entities/`](../entities/), expression extension under [`expressions/`](../expressions/), API capability extension under [`api/`](../api/), client implementation guidance under [`clients/`](../clients/), security guidance under [`security/`](../security/), storage adapters under [`storage/`](../storage/) and developer diagnostic tools under [`diagnostics/`](../diagnostics/).
+Development instructions now live beside the subsystem they extend: entity/component guides under [`entities/`](../entities/README.md), expression extension under [`expressions/`](../expressions/README.md), API capability extension under [`api/`](../api/README.md), client implementation guidance under [`clients/`](../clients/README.md), security guidance under [`security/`](../security/README.md), storage adapters under [`storage/`](../storage/README.md) and developer diagnostic tools under [`diagnostics/`](../diagnostics/README.md).
 
 The authoritative full-repository verification remains the repository workflow documented in [`Testing.md`](Testing.md).
 
 Return to the [documentation map](../README.md) or [repository overview](../../README.md).
+
+## Engineering and maintenance
+
+- [Repository Structure](Repository-Structure.md) — workspace composition and dependency direction.
+- [Building and Running](Building-and-Running.md) and [Testing](Testing.md) — supported execution and verification.
+- [Extension Points](Extension-Points.md) — choosing canonical ownership for additions.
+- [Documentation Standards](Documentation-Standards.md) — editorial/technical accuracy and viewer-compatible Markdown.
+
+The documentation is a stable architecture reference, not an engineering progress record.

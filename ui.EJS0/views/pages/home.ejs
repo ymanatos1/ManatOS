@@ -1,16 +1,17 @@
+<% const displayText = typeof metadataText === "function" ? metadataText : (value) => value; %>
 <section class="home-hero content-card">
   <div class="home-hero-grid">
     <div class="home-hero-copy">
-      <span class="eyebrow"><%= app.company.home.eyebrow %></span>
+      <span class="eyebrow"><%= displayText(app.company.home.eyebrow) %></span>
 
       <div class="home-hero-heading-row">
-        <h2><%= app.company.home.title %></h2>
+        <h2><%= displayText(app.company.home.title) %></h2>
       </div>
 
-      <p class="home-product-tagline"><%= app.company.branding.tagline %></p>
+      <p class="home-product-tagline"><%= displayText(app.company.branding.tagline) %></p>
 
       <p class="home-hero-lead">
-        <%= app.company.home.description %>
+        <%= displayText(app.company.home.description) %>
       </p>
 
       <% if (!currentUser) { %>

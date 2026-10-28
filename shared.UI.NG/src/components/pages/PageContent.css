@@ -1,0 +1,8 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.page-content {
+  min-width: 0;
+}

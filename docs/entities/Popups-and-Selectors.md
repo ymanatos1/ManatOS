@@ -70,27 +70,15 @@ Closing the deepest child:
 3. restores interaction to the immediate parent;
 4. leaves the parent's semantic state owned by the parent.
 
-This is the same recursive model used for pages and embedded children; `host` controls mounting and parent-activation behavior. Popup children deactivate their parent while active, whereas embedded children deliberately leave their parent active.
+This is the same recursive model used for pages; only `host` differs.
 
-## UI view versus popup host
+## Entry hosting and ownership
 
-A popup-hosted entry may request a named UI view, for example the Principal `quick` view. This does not create a special quick-popup runtime: `popup` is the host, `entry` is the semantic kind, and `quick` is the selected record presentation/view family. The dimensions remain orthogonal.
+**NG1/EJS1 UIS:** An Entry displayed in a popup is an ordinary Entry content runtime under a child `#level`. The popup host provides modal chrome, focus, keyboard/backdrop handling and result presentation. For example, the Angular `EntryPopupHost` composes the existing `EntryPageHost`; it does not create a duplicate Entry runtime or a second record-owner context.
 
-## Hosted entry ownership boundary
+**Established EJS0:** An older, distinct EJS implementation can host an Entry in a same-origin iframe. The iframe's own field and record lifecycle must be understood in the EJS0 context rather than used to define modern UIS ownership. Cross-window events remain host/result integration, not a general mechanism for copying semantic CTX between owners.
 
-The current Express client can host a full metadata entry inside a same-origin iframe. The iframe is a **presentation host boundary**, not permission to duplicate semantic state.
-
-The hosted entry owns its canonical live:
-
-- fields;
-- entry/current/baseline state;
-- facts;
-- validation;
-- aggregate component state.
-
-The outer popup level owns popup-host concerns such as invocation provenance, title, geometry and lifecycle. It must not deep-copy the iframe's CTX into a second outer semantic owner.
-
-Cross-window communication is limited to explicit host/result contracts such as saved/cancelled/closed and other genuinely host-level signals.
+In either design, only a successful semantic result should update the invoking reference field. Dismissing the child is not equivalent to successful creation or commit.
 
 ## Related-entry creation
 
@@ -107,10 +95,16 @@ After successful creation:
 
 Failures remain owned by the active child operation. Retrying should go through the popup/action contract rather than storing a mutable callback on `window`. Cancel/close should dispose the child without mutating the caller unless the child explicitly returned a successful semantic result.
 
-## Browser namespace
+## Browser implementation boundaries
 
-The current browser implementation exposes popup infrastructure beneath the namespaced `ManatOS.popup` surface. Generic lifecycle/placement, hosted entry and record-selector capabilities remain grouped there rather than publishing unrelated top-level globals.
+EJS0 publishes some popup functions through its namespaced browser runtime, while NG1 and EJS1 use their UIS adapters and surface-host contracts. Browser globals, iframe mechanics and component selectors are implementation details, not universal public APIs. They must not replace the declared invocation, child lifecycle and result contracts.
 
-This namespace is an implementation surface, not the architecture definition; another client can implement the same semantic popup/selector contract differently.
+See [Using Selectors and Popups](Using-Selectors-and-Popups.md), [Client Context Model](../context/Client-Context-Model.md), and [Entity Lists](Entity-Lists.md).
 
-See [Using Selectors and Popups](Using-Selectors-and-Popups.md), [Entry Opening, Invocation and Optimization Audit](Entry-Opening-Invocation-and-Optimization-Audit.md), [Client Context Model](../context/Client-Context-Model.md), and [Entity Lists](Entity-Lists.md).
+## Nested surfaces and returned identity
+
+A selector is a reusable List presented in a nested host, not a separate selector-only query engine. The invoking field supplies entity, selection and context requirements. The List consumes the standard resource/API contract and returns the selected record identity through the declared invocation/result channel. An Add-related action may similarly use an Entry surface in a popup host.
+
+The nested level occupies `ctx.ui.level.level...` and is owned by its host instance. Parent state survives child opening and closing. Cancelation returns no selection and must not silently clear a previously selected reference. Any newly created related identity remains subject to authoritative persistence and authorization semantics rather than being inferred from the modal closing successfully.
+
+See [UIS Architecture](../clients/UIS-Architecture.md) and [UI Surfaces and Levels](../clients/UI-Surfaces-and-Levels.md).

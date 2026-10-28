@@ -53,11 +53,11 @@
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
-            title="Related list tools"
-            aria-label="Related list tools for <%= baseCollection.label || key %>"
+            title="<%= metadataText('@CM.RelatedListTools') %>"
+            aria-label="<%= metadataText('@CM.RelatedListToolsFor').replace('{entity}', metadataText(baseCollection.label || key)) %>"
           ><i class="bi bi-tools" aria-hidden="true"></i></button>
           <ul class="dropdown-menu dropdown-menu-start metadata-field-input-menu is-enabled">
-            <li><h6 class="dropdown-header">List view</h6></li>
+            <li><h6 class="dropdown-header"><%= metadataText('@CM.ListView') %></h6></li>
             <% for (const [viewKey, view] of relatedListViewEntries) { %>
               <li>
                 <button
@@ -72,7 +72,7 @@
                     <%= viewKey === selectedRelatedListView ? '' : 'hidden' %>
                     aria-hidden="true"
                   ></i>
-                  <span><%= view.label || viewKey %></span>
+                  <span><%= metadataText(view.label || viewKey) %></span>
                 </button>
               </li>
             <% } %>
@@ -81,10 +81,10 @@
       <% } %>
       <h3 class="h6 mb-0 metadata-related-list-caption">
         <% if (baseCollection.icon) { %><i class="bi bi-<%= baseCollection.icon %> me-1" aria-hidden="true"></i><% } %>
-        <span><%= baseCollection.label || key %></span>
+        <span><%= metadataText(baseCollection.label || key) %></span>
         <% if (selectedRelatedListView) { %>
           <% const selectedViewLabel = availableRelatedListViews[selectedRelatedListView]?.label || selectedRelatedListView; %>
-          <span class="fw-normal text-body-secondary" data-related-list-view-caption> (<%= selectedViewLabel %>)</span>
+          <span class="fw-normal text-body-secondary" data-related-list-view-caption> (<%= metadataText(selectedViewLabel) %>)</span>
         <% } %>
       </h3>
     </div>
@@ -119,7 +119,7 @@
             <tr>
               <% for (const [collectionFieldKey, collectionField] of Object.entries(collection.fields || {})) { %>
                 <% const canonicalField = rowMetadata?.fieldDefinition?.[collectionFieldKey]; %>
-                <th scope="col"><%= collectionField.label || canonicalField?.label || collectionFieldKey %></th>
+                <th scope="col"><%= metadataText(collectionField.label || canonicalField?.label || collectionFieldKey) %></th>
               <% } %>
             </tr>
           </thead>
@@ -198,12 +198,12 @@
                           aria-hidden="true"
                         ></i>
                       <% } %>
-                      <%= selectedOptionItem.label || renderedValue.raw || '—' %>
+                      <%= selectedOptionItem.label ? metadataText(selectedOptionItem.label) : (renderedValue.raw || '—') %>
                     <% } else if (canonicalField?.type === 'boolean') { %>
                       <% const positive = Boolean(renderedValue.raw); %>
                       <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
                         <i class="bi <%= positive ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"></i>
-                        <%= positive ? 'Enabled' : 'Disabled' %>
+                        <%= metadataText(positive ? '@CM.Enabled' : '@CM.Disabled') %>
                       </span>
                     <% } else if (canonicalField?.type === 'date') { %>
                       <%= formatValue(renderedValue.raw, { format: 'date', emptyText: '—' }) %>
@@ -234,12 +234,12 @@
             const valueObjectDescriptor = !panelRowHref
               ? {
                   entityKey: collection.relatedEntityKey || collection.entityKey,
-                  title: `${collection.label || 'Related entry'} - ${
+                  title: `${metadataText(collection.label || '@CM.RelatedEntry')} - ${
                     entryRepresentationFor(
                       collection.relatedEntityKey || collection.entityKey,
                       row,
                       relatedRowIcon,
-                    )?.name || 'Details'
+                    )?.name || metadataText('@CM.Details')
                   }`,
                   record: row,
                   fields: Object.keys(collection.fields || {}).map((fieldKey) => ({
@@ -330,7 +330,7 @@
                   <%= referenceRepresentation.name %>
                 <% } else if (selectedOptionItem) { %>
                   <% if (selectedOptionItem.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= enumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
-                  <%= selectedOptionItem.label || renderedValue.raw || '—' %>
+                  <%= selectedOptionItem.label ? metadataText(selectedOptionItem.label) : (renderedValue.raw || '—') %>
                 <% } else if (canonicalField?.type === 'date') { %>
                   <%= formatValue(renderedValue.raw, { format: 'date', emptyText: '—' }) %>
                 <% } else if (canonicalField?.type === 'datetime') { %>
@@ -349,7 +349,7 @@
         <% } %>
       </div>
     <% } else { %>
-      <div class="text-secondary small py-2"><%= collection.emptyText || 'No related entries.' %></div>
+      <div class="text-secondary small py-2"><%= metadataText(collection.emptyText || '@CM.NoRelatedEntries') %></div>
     <% } %>
   </div>
       </div>

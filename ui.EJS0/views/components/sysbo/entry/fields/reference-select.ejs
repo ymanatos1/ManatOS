@@ -90,11 +90,11 @@
   const referenceSourceEntityKey = typeof definition !== 'undefined' && definition?.key ? definition.key : '';
   const referenceCreateRelated = referenceRelationship?.selection?.createRelated || null;
   const referenceToolActions = [
-    ...(referenceTargetMetadata ? [{ action: 'view-entry', icon: 'eye', label: 'View selected entry', mutates: false, requiresValue: true }] : []),
+    ...(referenceTargetMetadata ? [{ action: 'view-entry', icon: 'eye', label: '@CM.FieldToolView', mutates: false, requiresValue: true }] : []),
     ...(referenceTargetMetadata && typeof ownerEditing !== 'undefined' && ownerEditing ? [{
       action: 'edit-owned-entry',
       icon: 'pencil-square',
-      label: 'Edit selected entry',
+      label: '@CM.FieldToolEdit',
       mutates: false,
       requiresValue: true,
       authorization: { entityKey: referenceTargetKey, capability: 'update' },
@@ -102,11 +102,11 @@
     ...(referenceTargetMetadata ? [{
       action: 'add-entry',
       icon: 'plus-circle',
-      label: 'Add entry…',
+      label: '@CM.FieldToolAdd',
       authorization: { entityKey: referenceTargetKey, capability: 'create' },
     }] : []),
-    ...(referenceTargetMetadata ? [{ action: 'select-existing', icon: 'database-check', label: 'Select existing entry…' }] : []),
-    ...(field.required ? [] : [{ action: 'clear', icon: 'x-circle', label: 'Clear selection' }]),
+    ...(referenceTargetMetadata ? [{ action: 'select-existing', icon: 'database-check', label: '@CM.FieldToolSelect' }] : []),
+    ...(field.required ? [] : [{ action: 'clear', icon: 'x-circle', label: '@CM.FieldToolClearSelection' }]),
   ];
 %>
 <div
@@ -117,7 +117,7 @@
   data-reference-entity-key="<%= referenceTargetKey %>"
   data-reference-source-entity-key="<%= referenceSourceEntityKey %>"
   data-reference-field-key="<%= key %>"
-  data-reference-field-label="<%= fieldLabel(field) %>"
+  data-reference-field-label="<%= metadataText(fieldLabel(field)) %>"
   data-reference-query-exclude="<%= JSON.stringify(referenceSelectorExcludedCandidateIds) %>"
   data-reference-create-related="<%= JSON.stringify(referenceCreateRelated) %>"
 >
@@ -127,8 +127,8 @@
       type="button"
       data-bs-toggle="dropdown"
       aria-expanded="false"
-      title="Related entry tools"
-      aria-label="Related entry tools for <%= fieldLabel(field) %>"
+      title="<%= metadataText('@CM.FieldToolsReference') %>"
+      aria-label="<%= metadataText('@CM.FieldToolsReference') %>: <%= metadataText(fieldLabel(field)) %>"
     >
       <i class="bi bi-link-45deg" aria-hidden="true"></i>
     </button>
@@ -153,7 +153,7 @@
     <%= field.required ? 'required' : '' %>
     <%= editable ? '' : 'disabled' %>
   >
-    <option value=""><%= field.required ? 'Choose...' : 'None' %></option>
+    <option value=""><%= field.required ? metadataText('@CM.ChooseOption') : metadataText('@CM.NoneOption') %></option>
     <% for (const reference of references) { %>
       <option
         value="<%= reference.id %>"
@@ -196,7 +196,7 @@
           <% } %>
           <%= referenceName(selectedReference) %>
         <% } else { %>
-          <%= field.required ? 'Choose...' : 'None' %>
+          <%= field.required ? metadataText('@CM.ChooseOption') : metadataText('@CM.NoneOption') %>
         <% } %>
       </span>
     <% if (editable) { %>
@@ -205,7 +205,7 @@
       <ul class="dropdown-menu metadata-reference-select-menu w-100" role="listbox">
         <li>
           <button type="button" class="dropdown-item" data-reference-choice="" role="option">
-            <%= field.required ? 'Choose...' : 'None' %>
+            <%= field.required ? metadataText('@CM.ChooseOption') : metadataText('@CM.NoneOption') %>
           </button>
         </li>
 

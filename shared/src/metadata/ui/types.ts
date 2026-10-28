@@ -634,32 +634,8 @@ export interface SysBOUIRecordMetadata {
   relatedCollections?: Readonly<Record<string, SysBOUIRelatedCollectionMetadata>>;
 }
 
-/** Presentation of one entity instance, distinct from the entity/page icon. */
-export type SysBOUIEntryIconMetadata =
-  | Readonly<{ mode: 'entity' }>
-  | Readonly<{ mode: 'type' }>
-  | Readonly<{ mode: 'fixed'; icon: string }>
-  | Readonly<{
-      mode: 'composed';
-      entityScale?: number;
-      typeScale?: number;
-      typeEmphasis?: 'primary' | 'secondary';
-    }>;
-
-export interface SysBOUIEntryRepresentationMetadata {
-  /**
-   * Icon for individual entries in lists/visualizations. This never changes the
-   * entity/page/navigation icon owned by the routed SysBO definition.
-   */
-  icon?: SysBOUIEntryIconMetadata;
-  secondaryText?: SysBOUIDynamicValue<string>;
-  tooltip?: SysBOUIDynamicValue<string>;
-}
-
 export interface SysBOUIMetadata {
   key: string;
-  /** Optional presentation of entity entries; separate from the entity icon. */
-  entry?: SysBOUIEntryRepresentationMetadata;
   /** Keyed entity-list UI views. `main` is the canonical/default list presentation. */
   list: SysBOUIListViewsMetadata;
 

@@ -6,25 +6,25 @@ The currently supported canonical `SysBOFieldType` values are defined in `shared
 
 ## Supported field types
 
-| Type        | Canonical value / purpose                                                                         | Current generic presentation                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `guid`      | Stable identifier string, commonly generated/read-only.                                           | Text-like read-only/display field unless an explicit interaction needs otherwise.                        |
-| `string`    | General text with optional min/max length.                                                        | Text input or text display.                                                                              |
-| `email`     | Email string; can use canonical `EmailAddress(value)` normalization.                              | Email-oriented input/display semantics.                                                                  |
+| Type | Canonical value / purpose | Current generic presentation |
+| --- | --- | --- |
+| `guid` | Stable identifier string, commonly generated/read-only. | Text-like read-only/display field unless an explicit interaction needs otherwise. |
+| `string` | General text with optional min/max length. | Text input or text display. |
+| `email` | Email string; can use canonical `EmailAddress(value)` normalization. | Email-oriented input/display semantics. |
 | `telephone` | International telephone string; canonical normalization is available through `TelephoneNbr(...)`. | Telephone-oriented input/display; compound contact editors may capture country code + number separately. |
-| `boolean`   | `true`/`false`.                                                                                   | Checkbox/toggle-style editing and boolean display.                                                       |
-| `number`    | Numeric scalar.                                                                                   | Number input/display.                                                                                    |
-| `date`      | Calendar date, normally `YYYY-MM-DD`.                                                             | Date field.                                                                                              |
-| `datetime`  | Date/time value used by audit and application fields.                                             | Date/time-oriented display/editing according to effective metadata.                                      |
-| `duration`  | Structured calendar duration `{ years, months, days }`.                                           | Dedicated duration field; `durationUnits` can restrict exposed units.                                    |
-| `version`   | Version string; canonical `versionFormat: 'semver'` currently means numeric `major.minor.patch`.  | Version-aware text editing/validation.                                                                   |
-| `enum`      | One value from canonical enum metadata.                                                           | Enum selector using `enumItems`/`enumValues`, labels, icons, tones and traits.                           |
-| `reference` | Identifier of a record in another entity (`referenceBOKey`).                                      | Reference selector with metadata-defined candidate filtering and related-entry behavior.                 |
-| `picture`   | One structured picture value.                                                                     | Picture display/editor with pending-value handling.                                                      |
-| `pictures`  | Multiple structured picture values.                                                               | Multi-picture presentation/editor semantics.                                                             |
-| `richText`  | Structured rich-text/HTML-oriented content managed by the rich-text component.                    | Rich-text editor/display component.                                                                      |
+| `boolean` | `true`/`false`. | Checkbox/toggle-style editing and boolean display. |
+| `number` | Numeric scalar. | Number input/display. |
+| `date` | Calendar date, normally `YYYY-MM-DD`. | Date field. |
+| `datetime` | Date/time value used by audit and application fields. | Date/time-oriented display/editing according to effective metadata. |
+| `duration` | One ISO-style calendar duration string such as `P1Y2M3D`, or `null`. | Three year/month/day controls combine into one canonical value; `durationUnits` restricts exposed units. |
+| `version` | Version string; canonical `versionFormat: 'semver'` currently means numeric `major.minor.patch`. | Version-aware text editing/validation. |
+| `enum` | One value from canonical enum metadata. | Enum selector using `enumItems`/`enumValues`, labels, icons, tones and traits. |
+| `reference` | Identifier of a record in another entity (`referenceBOKey`). | Reference selector with metadata-defined candidate filtering and related-entry behavior. |
+| `picture` | One structured picture value. | Picture display/editor with pending-value handling. |
+| `pictures` | Multiple structured picture values. | Multi-picture presentation/editor semantics. |
+| `richText` | Structured rich-text/HTML-oriented content managed by the rich-text component. | Rich-text editor/display component. |
 
-The type vocabulary is deliberately UI-neutral. A future Angular/mobile client can render the same canonical types differently while preserving their value semantics.
+The type vocabulary is deliberately UI-neutral. An Angular or additional client can render the same canonical types differently while preserving their value semantics.
 
 ## Field metadata
 
@@ -38,7 +38,7 @@ Common canonical properties include:
 - references: `referenceBOKey` and `referenceSelection`;
 - specialized semantics: `durationUnits`, `versionFormat`;
 - normalization: `normalize.expression`;
-- calculation: `calculation.expression` and optional `calculation.persisted`; calculated values are runtime-only unless `persisted: true` is explicitly declared.
+- calculation: `calculation.expression` and optional `calculation.persisted`.
 
 See [Metadata Model](../metadata/Metadata-Model.md) for the canonical schema itself.
 
@@ -112,17 +112,17 @@ The generic reference selector consumes those declarations. It should not contai
 
 `date` and `duration` remain separate canonical values. Components such as `date-duration-range` can compose several fields to help a user maintain start/duration/end semantics while each field retains its own CTX/value ownership.
 
-The expression functions `CalendarAddDuration` and `CalendarDurationBetween` provide calendar-aware arithmetic rather than approximating months/years as fixed day counts.
+The UIS duration Field stores one ISO-style string (`P1Y2M3D`), not three independent Entry values. Its controls decode and recompose that single canonical value through `uiDurationParts()` and `uiDurationFromParts()` in the shared field behavior. The expression functions `CalendarAddDuration` and `CalendarDurationBetween` perform calendar arithmetic over a distinct **structured duration object** `{ years, months, days }`; `CalendarAddDuration` does not automatically parse the Field's ISO string. Integration must explicitly supply the function's expected object representation. These are related concepts with different wire contracts.
 
 ## Picture and rich-text fields
 
-Picture and rich-text types have specialized components because their interaction state is richer than a simple text input. Nevertheless, their **canonical current value belongs to the entry field CTX owner**. Private cropper/editor state is implementation bookkeeping and must not become a second semantic value authority.
+Picture and rich-text types have specialized components because their interaction state is richer than a simple text input. Nevertheless, their **canonical current value belongs to the owning Entry under `#data.current`**. Private cropper/editor state is implementation bookkeeping and must not become a second semantic value authority.
 
-Rich-text and picture components therefore project changes into the same generic field-state/mutation path used by other field types.
+Rich-text and picture components therefore project changes into the same Entry `setField()` mutation path used by other field types.
 
 ## Read-only and application-managed values
 
-`readOnly` says a normal client must not offer direct editing. `generated` identifies storage/system-generated values. `applicationManaged` identifies persisted values maintained through application/domain-owned write paths rather than ordinary field/aggregate CRUD. It is orthogonal to `readOnly`: picture fields are user-editable but application-managed because their bytes and descriptors use dedicated persistence operations. Persisted calculated fields do not need `applicationManaged`; their `calculation.persisted: true` declaration already identifies application materialization ownership.
+`readOnly` says a normal client must not offer direct editing. `generated` identifies storage/system-generated values. `applicationManaged` identifies persisted values maintained by application/domain logic rather than ordinary CRUD callers.
 
 Effective UI metadata can make an otherwise editable field read-only for a specific surface. It cannot safely turn a canonically protected/sensitive field into a normal editable value.
 
@@ -150,3 +150,9 @@ Adding a new canonical type is a framework-level change. It requires reviewing:
 - tests and documentation.
 
 If the requirement is only a new **value source** or a reusable combination of existing fields, prefer a calculation or component rather than creating a new canonical field type.
+
+## Reusable behavior and concrete presentation
+
+The TypeScript UIS contains common type behavior under `shared.UI/src/components/fields/types/` and concrete embedded Entry definitions under `shared.UI/src/components/entry/embedded/types/`. Text, number, enum, boolean, date, datetime, duration, telephone, email, GUID, version, reference, rich text, picture and picture collection components follow this division. The shared field registry selects behavior by canonical field type. A rendering adapter still owns the specific control and presentation affordances appropriate to that host.
+
+A value's identity, normalized representation, editability and validation derive from its metadata and current runtime context, not from its HTML control type. Pictures additionally require an explicit resource contract: a pending local image is not equivalent to a persisted binary resource. The availability of a field definition or UI placeholder does not, by itself, prove equivalent functionality across adapters.

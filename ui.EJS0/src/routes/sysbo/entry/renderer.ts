@@ -156,7 +156,9 @@ export async function renderMetadataDrivenRecord(
   const ctx = res.locals.ctx as ManatOSContext;
   registerContextEntity(ctx, definition.key, metadata, canonicalMetadataUI, definition.icon);
 
-  const modeLabel = recordMode === 'create' ? 'Add' : recordMode === 'edit' ? 'Edit' : 'View';
+  const modeLabel = res.locals.metadataText(
+    recordMode === 'create' ? '@CM.Add' : recordMode === 'edit' ? '@CM.Edit' : '@CM.View',
+  );
   const primaryField = metadata.fieldDefinition[metadata.primaryField];
 
   if (!primaryField) {
@@ -347,14 +349,18 @@ export async function renderMetadataDrivenRecord(
       ? ` - ${supplemental.primaryDisplayValue}`
       : '';
 
-  const defaultTitle = `${modeLabel} ${metadata.label}${primaryDisplayValue}`;
-  const defaultBreadcrumbLabel = `${modeLabel} ${metadata.label}`;
+  const entityLabel = res.locals.metadataText(metadata.label);
+  const defaultTitle = `${modeLabel} ${entityLabel}${primaryDisplayValue}`;
+  const defaultBreadcrumbLabel = `${modeLabel} ${entityLabel}`;
   await renderPage(res, 'pages/sysbo/entry', {
     title: surface.title ?? defaultTitle,
     titleIcon: surface.titleIcon ?? definition.icon,
     breadcrumbItems: surface.breadcrumbItems ?? [
       { label: 'ManatOS', href: '/' },
-      { label: metadata.pluralLabel, href: `/bo/${encodeURIComponent(definition.key)}` },
+      {
+        label: res.locals.metadataText(metadata.pluralLabel),
+        href: `/bo/${encodeURIComponent(definition.key)}`,
+      },
       { label: defaultBreadcrumbLabel, href: null },
     ],
     definition,

@@ -16,7 +16,14 @@ export interface ExpressionDynamicPathMember {
   source: string;
 }
 
-export type ExpressionPathMember = string | number | ExpressionDynamicPathMember;
+export interface ExpressionResolvedPathMember {
+  kind: 'resolved-path';
+  member: ExpressionPathMember;
+  optional: boolean;
+}
+
+export type ExpressionPathMember =
+  string | number | ExpressionDynamicPathMember | ExpressionResolvedPathMember;
 
 export interface ExpressionLiteralNode {
   kind: 'literal';
@@ -92,6 +99,18 @@ export interface ExpressionConditionalNode {
 
 export type ExpressionCapability = 'pure' | 'clock' | 'ctx' | 'entityResolver';
 
+export interface ExpressionDelegatedFunctionCall {
+  functionName: string;
+  capability: ExpressionCapability;
+  args: readonly unknown[];
+}
+
+/** Host-provided bridge for reached expression capabilities that are unavailable locally. */
+export interface ExpressionCapabilityDelegate {
+  readonly capabilities: readonly ExpressionCapability[];
+  evaluateFunction(call: ExpressionDelegatedFunctionCall): Promise<unknown>;
+}
+
 export interface ExpressionFunctionCallNode {
   kind: 'function';
   functionName: string;
@@ -146,6 +165,8 @@ export interface ExpressionExecutionContext {
   capabilities: readonly ExpressionCapability[];
   /** Optional canonical persistence resolver; required only when entityResolver-capable functions are actually reached. */
   entityResolver?: EntityResolver;
+  /** Optional host bridge for reached capabilities that this owner deliberately delegates. */
+  capabilityDelegate?: ExpressionCapabilityDelegate;
 }
 
 export interface ExpressionFunctionEvaluationContext {

@@ -1,0 +1,11 @@
+:host {
+  display: block;
+}
+
+.api-traffic-transaction-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3rem 4.5rem;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px dotted #e1e7ee;
+}

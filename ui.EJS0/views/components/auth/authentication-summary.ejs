@@ -67,7 +67,7 @@
 
 <div class="account-summary-grid authentication-summary-grid">
   <% if (showPrincipalReference === true) { %>
-    <div class="account-summary-label">Principal (Person)</div>
+    <div class="account-summary-label"><%= metadataText('@CM.PrincipalPerson') %></div>
     <div class="account-summary-value">
       <% if (accountPrincipal) { %>
         <a
@@ -81,18 +81,18 @@
           <%= principalDisplayName %>
         </a>
       <% } else { %>
-        <span class="text-secondary">No Person Principal is linked to this account.</span>
+        <span class="text-secondary"><%= metadataText('@CM.NoPersonPrincipalLinked') %></span>
       <% } %>
     </div>
   <% } %>
-  <div class="account-summary-label">Email verification</div>
+  <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.EmailVerification') %></div>
   <div class="account-summary-value">
     <span class="badge text-bg-<%= emailIsVerified ? 'success' : 'secondary' %>">
-      <%= resolvedEmailVerificationStatus %>
+      <%= metadataText(({ Verified: '@CM.Verified', 'Not verified': '@CM.NotVerified' })[resolvedEmailVerificationStatus] || resolvedEmailVerificationStatus) %>
     </span>
   </div>
 
-  <div class="account-summary-label">Verification source</div>
+  <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.EmailVerificationSource') %></div>
   <div class="account-summary-value">
     <% if (emailIsVerified && authenticationUser.emailVerificationSource) { %>
       <%= verificationSourceDisplayName(authenticationUser.emailVerificationSource) %>
@@ -101,7 +101,7 @@
     <% } %>
   </div>
 
-  <div class="account-summary-label">Verified at</div>
+  <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.VerifiedAt') %></div>
   <div class="account-summary-value">
     <% if (authenticationUser.emailVerifiedAt) { %>
       <%= formatMetadataValue(authenticationUser.emailVerifiedAt, { format: 'datetime-elapsed', emptyText: '—' }) %>
@@ -110,7 +110,7 @@
     <% } %>
   </div>
 
-  <div class="account-summary-label">Local password</div>
+  <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.LocalPassword') %></div>
   <div class="account-summary-value account-password-status">
     <span
       class="status-value <%= localPasswordConfigured ? 'status-positive' : 'status-neutral' %>"
@@ -118,13 +118,13 @@
       <i
         class="bi <%= localPasswordConfigured ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"
       ></i>
-      <%= resolvedLocalPasswordStatus %>
+      <%= metadataText(({ Configured: '@CM.Configured', 'Not configured': '@CM.NotConfigured' })[resolvedLocalPasswordStatus] || resolvedLocalPasswordStatus) %>
     </span>
 
     <% if (showPasswordAction === true) { %>
       <a class="btn btn-outline-primary btn-sm" href="/account/password">
         <i class="bi bi-key me-1"></i>
-        <%= localPasswordConfigured ? 'Change password' : 'Set password' %>
+        <%= metadataText(localPasswordConfigured ? '@CM.ChangePassword' : '@CM.SetPassword') %>
       </a>
     <% } %>
   </div>
@@ -133,7 +133,7 @@
 <div class="authentication-identities mt-4">
   <h3 class="h6 mb-3">
     <% if (externalIdentityCollection?.icon) { %><i class="bi bi-<%= externalIdentityCollection.icon %> me-1"></i><% } %>
-    <%= externalIdentityCollection?.label || 'External identities' %>
+    <%= metadataText(externalIdentityCollection?.label || '@EN.manatos.auth.externalIdentities.pluralLabel.ExternalIdentities') %>
   </h3>
 
   <% if (authenticationIdentities && authenticationIdentities.length > 0) { %>
@@ -147,7 +147,7 @@
             'providerEmailVerificationStatus',
           ].map((key) => ({
             key,
-            label: externalIdentityMetadata?.fieldDefinition?.[key]?.label || key,
+            label: metadataText(externalIdentityMetadata?.fieldDefinition?.[key]?.label || key),
             type: externalIdentityMetadata?.fieldDefinition?.[key]?.type || 'string',
           }));
           const identityPopupRecord = {
@@ -159,7 +159,7 @@
           const identityPopupDescriptor = {
             entityKey: externalIdentityCollection?.entityKey || 'external-identities',
             title: `External identity - ${
-              providerFor(identity.provider)?.label || identity.provider || 'Provider'
+              metadataText(providerFor(identity.provider)?.label || identity.provider || 'Provider')
             }`,
             record: identityPopupRecord,
             fields: identityPopupFields,
@@ -185,22 +185,22 @@
               type="button"
               class="btn btn-link p-0 border-0 align-baseline fw-semibold metadata-related-entry-link"
               data-value-object-entry="<%= JSON.stringify(identityPopupDescriptor) %>"
-            ><%= identityProvider?.label || identity.provider %></button>
+            ><%= metadataText(identityProvider?.label || identity.provider) %></button>
           </div>
 
           <div class="authentication-identity-email">
-            <%= identity.email || 'No email supplied' %>
+            <%= identity.email || metadataText('@CM.NoEmailSupplied') %>
           </div>
 
           <div>
             <span class="badge text-bg-<%= identity.emailVerified ? 'success' : 'secondary' %>">
-              <%= identity.emailVerified ? 'Provider email verified' : 'Provider email not verified' %>
+              <%= metadataText(identity.emailVerified ? '@CM.ProviderEmailVerified' : '@CM.ProviderEmailNotVerified') %>
             </span>
           </div>
         </div>
       <% } %>
     </div>
   <% } else { %>
-    <div class="text-secondary small">No external authentication providers are linked.</div>
+    <div class="text-secondary small"><%= metadataText('@CM.NoExternalProvidersLinked') %></div>
   <% } %>
 </div>

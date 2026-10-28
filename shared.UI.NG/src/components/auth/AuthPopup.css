@@ -1,0 +1,478 @@
+:host {
+  display: contents;
+}
+
+/* Modal positioning and backdrop */
+.sign-in-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 50%);
+  font-size: calc(1rem * var(--manatos-font-scale));
+}
+
+/*
+ * When the docked debugger is foregrounded, allocate its width
+ * so the popup toolbar and its Debugger toggle stay reachable.
+ *
+ * This class is not applied when the debugger is detached.
+ */
+.sign-in-backdrop.has-foreground-debugger {
+  padding-right: calc(var(--popup-debugger-dock-width) + 1rem);
+}
+
+.sign-in-backdrop.has-foreground-debugger .sign-in-dialog {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.sign-in-dialog {
+  width: min(880px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  border: 1px solid #cbd8e8;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #24364d;
+  /* EJS0 inherits Bootstrap’s system UI font; NG1’s root otherwise uses Arial. */
+  font-family: var(
+    --bs-font-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    'Noto Sans',
+    'Liberation Sans',
+    Arial,
+    sans-serif
+  );
+  box-shadow: 0 22px 58px rgba(7, 26, 61, 0.24);
+}
+
+/*
+ * Static introductions are loaded asynchronously.  Prevent the dialog from
+ * being painted at its smaller, pre-introduction height.  Opacity (rather
+ * than visibility/display) preserves its existing keyboard-focus lifecycle.
+ * Only the active hidden tab matters; failed loads reveal the error message.
+ */
+:host
+  ::ng-deep
+  .sign-in-dialog:has(.register-tab:not([hidden]) .auth-static-intro[aria-busy='true']) {
+  opacity: 0;
+}
+
+.sign-in-content {
+  margin: 0;
+}
+
+/* Popup body and rich introductory content */
+.sign-in-body {
+  padding: 1.2rem 1.35rem 1.3rem;
+}
+
+:host ::ng-deep .auth-entry-intro {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.22fr);
+  align-items: center;
+  gap: 1.45rem;
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid var(--manatos-border);
+}
+
+:host ::ng-deep .auth-entry-copy {
+  min-width: 0;
+  color: #35475d;
+  line-height: 1.5;
+}
+
+:host ::ng-deep .auth-entry-copy h3 {
+  margin: 0;
+  color: var(--manatos-navy);
+  font-size: calc(1.08rem * var(--manatos-font-scale));
+  font-weight: 700;
+}
+
+:host ::ng-deep .auth-entry-copy p {
+  margin: 0.65rem 0 0;
+  color: #63758b;
+  font-size: calc(0.92rem * var(--manatos-font-scale));
+}
+
+:host ::ng-deep .auth-entry-copy p + p {
+  margin-top: 0.35rem;
+}
+
+/* EJS0 sign-in illustration */
+:host ::ng-deep .auth-entry-illustration {
+  position: relative;
+  min-height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem;
+  overflow: hidden;
+}
+
+:host ::ng-deep .auth-entry-illustration::before,
+:host ::ng-deep .auth-entry-illustration::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+}
+
+:host ::ng-deep .auth-entry-illustration::before {
+  width: 185px;
+  height: 92px;
+  background: #edf5ff;
+  transform: rotate(-7deg);
+}
+
+:host ::ng-deep .auth-entry-illustration::after {
+  width: 142px;
+  height: 72px;
+  background: #eef9f2;
+  transform: translate(42px, 21px) rotate(8deg);
+}
+
+:host ::ng-deep .auth-entry-action-tile,
+:host ::ng-deep .auth-entry-manatos-tile {
+  position: relative;
+  z-index: 2;
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border-radius: 1.1rem;
+  box-shadow: 0 9px 22px rgba(15, 53, 96, 0.16);
+}
+
+:host ::ng-deep .auth-entry-action-tile {
+  margin-right: -0.25rem;
+  color: #fff;
+  background: linear-gradient(145deg, #2f7fd7, #1559a6);
+  font-size: 2.25rem;
+  transform: rotate(-2deg);
+}
+
+:host ::ng-deep .auth-entry-manatos-tile {
+  margin-left: -0.25rem;
+  background: linear-gradient(145deg, #bce9c8, #73c78f);
+  transform: rotate(2deg);
+}
+
+:host ::ng-deep .auth-entry-manatos-tile img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(12, 56, 110, 0.16);
+}
+
+:host ::ng-deep .auth-entry-connector {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 21px;
+  transform: translateX(-50%);
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #cedceb;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--manatos-blue);
+  box-shadow: 0 4px 12px rgba(12, 56, 110, 0.12);
+}
+
+:host ::ng-deep .auth-entry-badge {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 1px;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7e5dc;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #27965a;
+  box-shadow: 0 6px 16px rgba(7, 26, 61, 0.13);
+  font-size: 1.5rem;
+}
+
+/* EJS0 two-column authentication methods */
+.auth-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding-top: 1.15rem;
+}
+
+.auth-method-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #d7e1ec;
+  border-radius: 0.75rem;
+  background: #fbfcfe;
+}
+
+.auth-modal-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #24364d;
+  font-size: calc(0.88rem * var(--manatos-font-scale));
+  font-weight: 700;
+}
+
+.auth-modal-section-heading .bi {
+  color: var(--manatos-blue);
+}
+
+.auth-method-description {
+  min-height: 2.3rem;
+  margin: 0.35rem 0 0.8rem;
+  color: #6d7b8b;
+  font-size: calc(0.79rem * var(--manatos-font-scale));
+  line-height: 1.45;
+}
+
+.sign-in-notice {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #b6d4fe;
+  border-radius: 0.375rem;
+  background: #cfe2ff;
+  color: #084298;
+  font-size: calc(0.875rem * var(--manatos-font-scale));
+}
+
+.sign-in-cancel,
+.sign-in-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sign-in-cancel {
+  border-color: #6c757d;
+  background: #fff;
+  color: #6c757d;
+}
+
+.sign-in-cancel:hover {
+  background: #6c757d;
+  color: #fff;
+}
+
+.sign-in-submit {
+  border-color: #0d6efd;
+  background: #0d6efd;
+  color: #fff;
+}
+
+.sign-in-submit:hover {
+  border-color: #0a58ca;
+  background: #0b5ed7;
+}
+
+.sign-in-cancel:focus-visible,
+.sign-in-submit:focus-visible {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+  :host ::ng-deep .auth-entry-intro,
+  .auth-methods-grid {
+    grid-template-columns: 1fr;
+  }
+
+  :host ::ng-deep .auth-entry-intro {
+    gap: 0.65rem;
+  }
+
+  :host ::ng-deep .auth-entry-illustration {
+    min-height: 112px;
+  }
+
+  .auth-method-description {
+    min-height: 0;
+  }
+}
+
+.auth-static-intro-error {
+  color: #a61b1b;
+  margin: 1rem 0;
+}
+
+.auth-action-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid rgb(255 255 255 / 35%);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: auth-action-spin 0.7s linear infinite;
+}
+
+@keyframes auth-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-action-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* Message/Alert popups share the exact modal title, tools, actions and lifetime. */
+:host .sign-in-dialog.message-dialog {
+  width: min(690px, calc(100vw - 2rem));
+}
+:host .sign-in-dialog.error-dialog {
+  width: min(780px, calc(100vw - 2rem));
+}
+:host .message-dialog manatos-message-popup-content {
+  display: block;
+  padding: 1.25rem 1.4rem;
+}
+:host .error-dialog manatos-popup-title {
+  --manatos-modal-title-bg: #f8d7da;
+  --manatos-modal-title-border: #f1aeb5;
+}
+:host ::ng-deep .error-dialog .surface-title-icon {
+  color: #b02a37;
+}
+
+/* Reset Password uses the canonical Auth surface with the EJS0 full-width form. */
+:host .sign-in-dialog.reset-dialog {
+  width: min(790px, calc(100vw - 2rem));
+}
+.reset-form-card {
+  width: 100%;
+  margin-top: 1rem;
+}
+.reset-form-card .auth-method-description {
+  min-height: 0;
+  margin-bottom: 0.4rem;
+}
+
+/* Change Password: same full-width composition and illustrated introduction as Recovery. */
+:host .sign-in-dialog.change-dialog {
+  width: min(880px, calc(100vw - 2rem));
+}
+.change-password-form-card {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1rem;
+}
+.change-password-form-card .auth-method-description {
+  min-height: 0;
+  margin-bottom: 0.45rem;
+}
+:host ::ng-deep .auth-change-password-intro {
+  grid-template-columns: minmax(200px, 0.78fr) minmax(0, 1.22fr);
+}
+@media (max-width: 767.98px) {
+  :host ::ng-deep .auth-change-password-intro {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The shared Unsaved Changes decision is EJS0's compact, warning-styled
+ * dialog, not an Auth method form. PopupTitle/PopupActions remain shared. */
+:host .sign-in-dialog.unsaved-dialog {
+  width: min(540px, calc(100vw - 2rem));
+}
+:host .unsaved-dialog manatos-popup-title {
+  --manatos-modal-title-bg: #fff3cd;
+  --manatos-modal-title-border: #ffecb5;
+}
+:host ::ng-deep .unsaved-dialog .surface-title-icon {
+  color: #997404;
+}
+:host .unsaved-dialog .sign-in-body {
+  padding: 1.1rem 1.3rem 1.25rem;
+}
+.auth-popup-top-note {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin: 0;
+  color: #394b60;
+  font-size: calc(0.92rem * var(--manatos-font-scale));
+  line-height: 1.5;
+}
+.auth-popup-top-note > .bi {
+  color: #997404;
+}
+:host ::ng-deep .popup-action-danger {
+  border-color: #dc3545;
+  color: #b02a37;
+}
+:host ::ng-deep .popup-action-danger:hover:not(:disabled) {
+  color: #fff;
+  background: #dc3545;
+}
+
+/* Decision illustration uses the same contained media treatment as Message popups. */
+:host ::ng-deep .unsaved-dialog .auth-popup-top-note {
+  align-items: center;
+  gap: 1.1rem;
+}
+:host ::ng-deep .unsaved-dialog .manatos-unsaved-illustration {
+  width: 82px;
+  height: 92px;
+  object-fit: contain;
+  flex: none;
+}
+:host ::ng-deep .unsaved-dialog .register-back {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  text-decoration: underline;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+/* Review changes reuses the canonical EntryChangeStatus visual vocabulary. */
+:host ::ng-deep .unsaved-dialog .register-back {
+  background: transparent;
+  border: 0;
+  color: #1769d2;
+  text-decoration: underline;
+  font-weight: 400;
+  box-shadow: none;
+  padding: 5px 3px;
+}
+:host ::ng-deep .unsaved-dialog .register-back:hover {
+  color: #064a9c;
+}
+/* Responsive minimum space for localized popup titles/actions, without blocking small devices. */
+:host .sign-in-dialog {
+  min-width: min(440px, calc(100vw - 24px));
+  min-height: min(220px, calc(100dvh - 24px));
+}
+:host .sign-in-dialog.unsaved-dialog {
+  width: min(620px, calc(100vw - 24px));
+  min-width: min(530px, calc(100vw - 24px));
+}

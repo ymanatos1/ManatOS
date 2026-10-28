@@ -1,0 +1,50 @@
+<!-- ListFilter template: the filter toggle/docking actions and the per-field children for the current view. -->
+<div
+  class="manatos-list-filter"
+  data-list-layout="ListFilter"
+  [class.is-docked]="context.level()?.state?.list?.filtersDocked"
+>
+  <button
+    type="button"
+    class="manatos-list-btn"
+    data-list-refresh
+    [disabled]="context.level()?.state?.list?.loading"
+    [attr.title]="context.language() === 'EL' ? 'Ανανέωση' : 'Refresh'"
+    [attr.aria-label]="context.language() === 'EL' ? 'Ανανέωση λίστας' : 'Refresh list'"
+    (click)="refresh()"
+  >
+    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+    {{ context.language() === 'EL' ? 'Ανανέωση' : 'Refresh' }}
+  </button>
+  <button
+    type="button"
+    class="manatos-list-btn"
+    #filterToggle
+    data-list-toggle-filters
+    [attr.aria-expanded]="context.level()?.state?.list?.filtersVisible ?? false"
+    (click)="toggle()"
+  >
+    <i class="bi bi-funnel" aria-hidden="true"></i> {{ context.language() === 'EL' ? 'Φίλτρα' :
+    'Filters' }}
+  </button>
+  @if (context.level()?.state?.list?.filtersVisible) {
+  <div #filterPanel class="manatos-list-filters" data-list-filter-panel>
+    <button
+      type="button"
+      class="manatos-list-filter-dock"
+      data-list-filter-dock
+      [attr.aria-label]="context.level()?.state?.list?.filtersDocked ? 'Undock filters' : 'Dock filters'"
+      [attr.title]="context.level()?.state?.list?.filtersDocked ? 'Open floating filters' : 'Dock filters'"
+      (click)="changeDock()"
+    >
+      <i
+        [class]="context.level()?.state?.list?.filtersDocked ? 'bi bi-arrows-angle-contract' : 'bi bi-layout-sidebar-inset'"
+        aria-hidden="true"
+      ></i>
+    </button>
+    @for (filter of context.filterFields(); track filter.field) {
+    <manatos-list-filter-field [filter]="filter" />
+    }
+  </div>
+  }
+</div>

@@ -66,7 +66,7 @@ export const tab = (
  * any other metadata-declared tab; no template may synthesize a parallel tab.
  */
 export const debuggingTab = (): SysBOUIRecordTabMetadata =>
-  tab('debugging', 'Debugging', Number.MAX_SAFE_INTEGER, {
+  tab('debugging', '@CM.Debugging', Number.MAX_SAFE_INTEGER, {
     icon: 'bug',
     layout: 'debug-calculations',
     readOnly: true,
@@ -77,21 +77,21 @@ export const debuggingTab = (): SysBOUIRecordTabMetadata =>
         sections: [
           {
             id: 'cli',
-            label: 'CLI',
+            label: '@EN.common.label.CLI' /* CLI */,
             navigationTrack: {
               statePath: 'activeInternalTabIds.debugging',
             },
           },
           {
             id: 'entity',
-            label: 'Entity',
+            label: '@EN.common.label.Entity' /* Entity */,
             navigationTrack: {
               statePath: 'activeInternalTabIds.debugging',
             },
           },
           {
             id: 'ui',
-            label: 'UI',
+            label: '@EN.common.label.UI' /* UI */,
             navigationTrack: {
               statePath: 'activeInternalTabIds.debugging',
             },
@@ -117,13 +117,13 @@ export const effectiveRecordTabs = (
     : [...tabs];
 
 export const generalTab = (content: readonly import('./types.js').SysBOUITabContentMetadata[]) =>
-  tab('general', 'General', 10, {
+  tab('general', '@CM.AccountGeneral', 10, {
     icon: 'info-circle',
     layout: 'form',
     content,
   });
 
-export const standardAddAction = (label = 'Add new') =>
+export const standardAddAction = (label = '@CM.AddNew') =>
   ({
     visible: { expression: 'permissions.create === true' },
     enabled: true,
@@ -136,12 +136,12 @@ export const standardQuickViewAction = (entityKey: string) => ({
   order: 10,
   visible: true,
   placement: 'start' as const,
-  label: 'Quick view',
+  label: '@EN.common.label.QuickView' /* Quick view */,
   icon: 'eye',
   iconOnly: true,
   tone: 'secondary' as const,
   emphasis: 'outline' as const,
-  title: 'Quick view',
+  title: '@EN.common.label.QuickView' /* Quick view */,
   href: '/bo/' + entityKey + '/{id}',
   mode: 'view' as const,
   uiView: 'quickView',
@@ -153,7 +153,7 @@ export const standardEntryActions = {
     order: 20,
     visible: { expression: "mode !== 'create' && permissions.delete === true" },
     placement: 'footer-leading' as const,
-    label: 'Delete entry',
+    label: '@EN.common.label.DeleteEntry' /* Delete entry */,
     icon: 'trash',
     tone: 'danger' as const,
   },
@@ -164,14 +164,14 @@ export const standardEntryActions = {
       expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)",
     },
     placement: 'footer-trailing' as const,
-    label: 'Save',
+    label: '@EN.common.label.Save' /* Save */,
     icon: 'check-circle',
     tone: 'primary' as const,
   },
 } as const;
 
 export const systemTab = (): SysBOUIRecordTabMetadata =>
-  tab('system', 'System details', 900, {
+  tab('system', '@CM.SystemDetails', 900, {
     icon: 'clock-history',
     layout: 'summary',
     content: ['id', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'].map((field) => ({
@@ -199,7 +199,7 @@ export const systemFieldOverrides = {
 } as const;
 
 export const relatedLicensesCollection = (filterField: 'principalId' | 'applicationId') => ({
-  label: 'Licenses',
+  label: '@EN.manatos.licensing.licenses.pluralLabel.Licenses' /* Licenses */,
   icon: 'key',
   rowIcon: 'key',
   entityKey: 'sys-licenses',
@@ -221,8 +221,16 @@ export const relatedLicensesCollection = (filterField: 'principalId' | 'applicat
       fields: {
         name: {},
         ...(filterField === 'principalId'
-          ? { applicationId: { label: 'Application' } }
-          : { principalId: { label: 'Customer' } }),
+          ? {
+              applicationId: {
+                label: '@EN.manatos.licensing.licenses.label.Application' /* Application */,
+              },
+            }
+          : {
+              principalId: {
+                label: '@EN.manatos.licensing.licenses.label.Customer' /* Customer */,
+              },
+            }),
         platformId: {},
         status: {},
         validUntil: {},

@@ -1,0 +1,12 @@
+<!-- BooleanField: Checkbox state, not string coercion; only its native input opts into shared UIS transport. -->
+<manatos-field-control-shell [field]="field()">
+  <label class="manatos-form-switch"
+    ><input
+      [manatosNativeFieldInteraction]="field()"
+      data-entry-control
+      type="checkbox"
+      [checked]="isChecked()"
+      [disabled]="field().readOnly"
+      [attr.aria-label]="field().label" /><span class="manatos-form-switch-track"></span
+  ></label>
+</manatos-field-control-shell>

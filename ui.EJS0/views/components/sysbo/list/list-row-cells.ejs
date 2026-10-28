@@ -45,9 +45,9 @@
   const rowPrimaryRepresentation = typeof entryRepresentation !== 'undefined' && entryRepresentation
     ? entryRepresentation
     : entryRepresentationFor(definition.key, item, definition?.icon || null);
-  const composedIcon = metadataUI.entry?.icon?.mode === 'composed';
-  const entityIconScale = composedIcon ? (metadataUI.entry.icon.entityScale || .72) : .72;
-  const typeIconScale = composedIcon ? (metadataUI.entry.icon.typeScale || 1.15) : 1.15;
+  // Entity/type icons are composed automatically from canonical metadata.
+  const entityIconScale = .72;
+  const typeIconScale = 1.15;
 %>
 <% for (const key of rowVisibleFields) { %>
   <% const field = metadata.fieldDefinition[key]; %>
@@ -85,13 +85,13 @@
     <% } else if (rowOptionItem(field, item[key])) { %>
       <% const selectedOptionItem = rowOptionItem(field, item[key]); %>
       <% if (selectedOptionItem?.icon) { %><i class="bi bi-<%= selectedOptionItem.icon %> <%= rowEnumToneClass(selectedOptionItem) %> me-1" aria-hidden="true"></i><% } %>
-      <%= selectedOptionItem?.label || item[key] || '' %>
+      <%= selectedOptionItem?.label ? metadataText(selectedOptionItem.label) : (item[key] || '') %>
     <% } else if (field.type === 'duration') { %>
       <%= formatMetadataValue(item[key]) %>
     <% } else if (field.type === 'boolean') { %>
       <% const positive = Boolean(item[key]); %>
-      <% const positiveLabel = key === 'emailVerified' ? 'Verified' : (key === 'enabled' ? 'Enabled' : 'Yes'); %>
-      <% const negativeLabel = key === 'emailVerified' ? 'Not verified' : (key === 'enabled' ? 'Disabled' : 'No'); %>
+      <% const positiveLabel = metadataText(key === 'emailVerified' ? '@CM.Verified' : (key === 'enabled' ? '@CM.Enabled' : '@CM.Yes')); %>
+      <% const negativeLabel = metadataText(key === 'emailVerified' ? '@CM.NotVerified' : (key === 'enabled' ? '@CM.Disabled' : '@CM.No')); %>
       <span class="boolean-badge <%= positive ? 'boolean-true' : 'boolean-false' %>">
         <i class="bi <%= positive ? 'bi-check-circle-fill' : 'bi-dash-circle' %>"></i>
         <%= positive ? positiveLabel : negativeLabel %>

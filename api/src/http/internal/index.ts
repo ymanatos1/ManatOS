@@ -5,6 +5,8 @@ import type { ExternalIdentityService } from '../../services/index.js';
 import type { SysBOExtAuthProviderService } from '../../services/sysbo/external-auth-provider-service.js';
 import type { SysBOUserService } from '../../services/sysbo/user-service.js';
 import { createInternalAuthRouter } from './auth-router.js';
+import { PasswordRecoveryService } from '../../auth/password-recovery.js';
+import { createInternalPasswordRecoveryRouter } from './password-recovery-router.js';
 import { createInternalEmailRouter } from './email-router.js';
 import { createInternalExternalAuthProviderRouter } from './external-auth-provider-router.js';
 import { createInternalExternalIdentityRouter } from './external-identity-router.js';
@@ -29,6 +31,12 @@ export function createInternalRouter(services: InternalRouterServices) {
 
   router.use('/email', createInternalEmailRouter(services.users, services.email));
   router.use('/auth', createInternalAuthRouter(services.users));
+  router.use(
+    '/auth/password-recovery',
+    createInternalPasswordRecoveryRouter(
+      new PasswordRecoveryService(services.users, services.email),
+    ),
+  );
   router.use(createInternalExternalIdentityRouter(services.externalIdentities));
   router.use(createInternalUserAccountRouter(services.users));
   router.use(

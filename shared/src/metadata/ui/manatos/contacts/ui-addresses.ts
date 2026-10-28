@@ -3,7 +3,6 @@ import { standardAddAction, tab } from '../../common.js';
 
 export const sysBOAddressesUIMetadata: SysBOUIMetadata = {
   key: 'sys-addresses',
-  entry: { icon: { mode: 'entity' } },
   list: {
     common: {
       visibleFields: ['formattedAddress', 'city', 'country'],
@@ -12,10 +11,10 @@ export const sysBOAddressesUIMetadata: SysBOUIMetadata = {
       addAction: { ...standardAddAction('Add address'), visible: false },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['formattedAddress'],
       },
     },
@@ -36,7 +35,10 @@ export const sysBOAddressesUIMetadata: SysBOUIMetadata = {
   },
   defaultUIView: 'compact',
   uiViews: {
-    compact: { viewType: 'quick', label: 'Address' },
+    compact: {
+      viewType: 'quick',
+      label: '@EN.manatos.contacts.addresses.label.Address' /* Address */,
+    },
   },
   record: {
     tabs: [

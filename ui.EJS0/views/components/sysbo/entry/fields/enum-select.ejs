@@ -57,8 +57,8 @@
       type="button"
       data-bs-toggle="dropdown"
       aria-expanded="false"
-      title="Enumeration field tools"
-      aria-label="Enumeration field tools for <%= fieldLabel(field) %>"
+      title="<%= metadataText('@CM.FieldToolsEnum') %>"
+      aria-label="<%= metadataText('@CM.FieldToolsEnum') %>: <%= metadataText(fieldLabel(field)) %>"
     >
       <i class="bi bi-list-ul" aria-hidden="true"></i>
     </button>
@@ -66,7 +66,7 @@
     <%- include('field-tools-menu', {
       key,
       editable,
-      actions: [{ action: 'clear', icon: 'eraser', label: 'Clear value' }]
+      actions: [{ action: 'clear', icon: 'eraser', label: '@CM.FieldToolClearValue' }]
     }) %>
   </div>
 
@@ -82,13 +82,13 @@
     <%= field.required ? 'required' : '' %>
     <%= editable ? '' : 'disabled' %>
   >
-    <option value="">Choose...</option>
+    <option value=""><%= metadataText('@CM.ChooseOption') %></option>
     <% for (const option of presentationItems) { %>
       <option
         value="<%= option.value %>"
         data-enum-item="<%= JSON.stringify(option) %>"
         <%= value === option.value ? 'selected' : '' %>
-      ><%= option.label || option.value %></option>
+      ><%= option.label ? metadataText(option.label) : option.value %></option>
     <% } %>
   </select>
 
@@ -109,7 +109,7 @@
         ></i>
       <% } %>
       <span data-enum-selected-label>
-        <%= richSelected?.label || richSelected?.value || 'Choose...' %>
+        <%= richSelected?.label ? metadataText(richSelected.label) : (richSelected?.value || metadataText('@CM.ChooseOption')) %>
       </span>
     </span>
   </button>
@@ -122,7 +122,7 @@
           class="dropdown-item d-flex justify-content-between align-items-center"
           data-enum-choice=""
           role="option"
-        >Choose...</button>
+        ><%= metadataText('@CM.ChooseOption') %></button>
       </li>
 
       <% for (const option of presentationItems) { %>
@@ -137,7 +137,7 @@
             <% if (option.icon) { %>
               <i class="bi bi-<%= option.icon %> <%= enumToneClass(option) %>" aria-hidden="true"></i>
             <% } %>
-            <span><%= option.label || option.value %></span>
+            <span><%= option.label ? metadataText(option.label) : option.value %></span>
           </button>
         </li>
       <% } %>

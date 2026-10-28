@@ -1,0 +1,95 @@
+@if (visible()) {
+<div class="preferences-backdrop">
+  <section
+    class="preferences-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="preferences-title"
+  >
+    <header class="preferences-header">
+      <div>
+        <h2 id="preferences-title">{{ multilingual().WebsitePreferences }}</h2>
+        <p>{{ multilingual().PersonalizeWebsite }}</p>
+      </div>
+    </header>
+
+    <div class="preferences-body">
+      <fieldset>
+        <legend>{{ multilingual().UiTheme }}</legend>
+
+        <div class="preferences-theme-options">
+          <label class="preferences-theme-option">
+            <input
+              type="radio"
+              name="uiTheme"
+              value="lighter"
+              [checked]="previewTheme() === 'lighter'"
+              (change)="selectTheme('lighter')"
+            />
+
+            <span>
+              <strong>{{ multilingual().Lighter }}</strong>
+              <small>{{ multilingual().LighterDescription }}</small>
+            </span>
+          </label>
+
+          <label class="preferences-theme-option">
+            <input
+              type="radio"
+              name="uiTheme"
+              value="darker"
+              [checked]="previewTheme() === 'darker'"
+              (change)="selectTheme('darker')"
+            />
+
+            <span>
+              <strong>{{ multilingual().Darker }}</strong>
+              <small>{{ multilingual().DarkerDescription }}</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="preferences-theme-preview" [attr.data-preview-theme]="previewTheme()">
+          <div class="preferences-preview-caption">{{ multilingual().SelectedThemePreview }}</div>
+
+          <div class="preferences-theme-preview-grid">
+            <div class="preferences-theme-preview-swatch is-header">
+              <span>{{ multilingual().Header }}</span>
+            </div>
+
+            <div class="preferences-theme-preview-swatch is-title">
+              <span>{{ multilingual().Title }}</span>
+            </div>
+
+            <div class="preferences-theme-preview-swatch is-text">
+              <span>{{ multilingual().Text }}</span>
+            </div>
+
+            <div class="preferences-theme-preview-swatch is-date">
+              <span>{{ multilingual().Date }}</span>
+            </div>
+
+            <div class="preferences-theme-preview-swatch is-enum">
+              <span>{{ multilingual().Enum }}</span>
+            </div>
+
+            <div class="preferences-theme-preview-swatch is-reference">
+              <span>{{ multilingual().Related }}</span>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <footer class="preferences-footer">
+      <button type="button" class="secondary" (click)="cancel()">
+        {{ multilingual().Cancel }}
+      </button>
+
+      <button type="button" class="primary" (click)="savePreferences()">
+        {{ multilingual().SavePreferences }}
+      </button>
+    </footer>
+  </section>
+</div>
+}

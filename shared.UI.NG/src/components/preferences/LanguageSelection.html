@@ -1,0 +1,38 @@
+<div class="language-selection" [class.language-selection-popup]="variant() === 'popup'">
+  <button
+    type="button"
+    class="primary-navigation-tool primary-navigation-language-toggle"
+    [title]="multilingual().resolve('@CM.Language')"
+    [attr.aria-label]="multilingual().resolve('@CM.SelectLanguage')"
+    aria-haspopup="menu"
+    [attr.aria-expanded]="open()"
+    (click)="toggle($event)"
+  >
+    <img class="language-flag" [src]="languageFlag(currentLanguage())" alt="" aria-hidden="true" />
+    <span>{{ currentLanguage().code }}</span>
+    <i class="bi bi-caret-down-fill navigation-caret" aria-hidden="true"></i>
+  </button>
+
+  @if (open()) {
+  <div
+    #languageMenu
+    class="primary-navigation-menu primary-navigation-tool-menu primary-navigation-language-menu"
+    role="menu"
+    [attr.aria-label]="multilingual().resolve('@CM.Languages')"
+  >
+    @for (language of languages(); track language.id) {
+    <button
+      type="button"
+      role="menuitem"
+      [class.active]="language.id === currentLanguage().id"
+      [title]="language.nativeName"
+      [attr.aria-current]="language.id === currentLanguage().id ? 'true' : null"
+      (click)="select(language, $event)"
+    >
+      <img class="language-flag" [src]="languageFlag(language)" alt="" aria-hidden="true" />
+      <span>{{ language.code }} — {{ language.nativeName }}</span>
+    </button>
+    }
+  </div>
+  }
+</div>

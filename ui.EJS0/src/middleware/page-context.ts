@@ -5,6 +5,7 @@ import {
   allManatOSObjectMetadata,
   effectiveObjectKeys,
   resolvePlatform,
+  resolveMetadataText,
   sysBOUsersMetadata,
   type EntityCollectionAuthorizationCapabilities,
   type PlatformAuthorizationCapabilities,
@@ -199,6 +200,16 @@ export const pageContextMiddleware: RequestHandler = async (req, res, next) => {
     // Anonymous/auth-entry presentation starts from the safe local default: no providers.
     // Sign in/Register refresh current provider state on demand.
     res.locals.authProviders = [];
+    // The browser persists its selected UI language in a non-sensitive cookie so
+    // server-rendered metadata labels use the same language on each request.
+    const languageCookie = req.headers.cookie
+      ?.split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('manatos_ui_language='));
+    res.locals.language =
+      languageCookie?.slice('manatos_ui_language='.length) === 'el' ? 'EL' : 'EN';
+    res.locals.metadataText = (value: string) =>
+      resolveMetadataText(value, res.locals.language === 'EL' ? 'EL' : 'EN');
 
     res.locals.app = Object.freeze({
       version: '0.1.0',

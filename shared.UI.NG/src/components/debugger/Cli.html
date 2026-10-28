@@ -1,0 +1,97 @@
+<section class="debugging-cli debugging-cli-dock" [attr.aria-label]="caption()">
+  <div
+    class="debugging-cli-resize"
+    data-debug-vertical-resize="cli"
+    [title]="multilingual().resolve('@CM.DragResize')"
+  ></div>
+  <div class="debugging-cli-dock-heading">
+    <span><i [class]="toolbar.terminalIcon" aria-hidden="true"></i> {{ caption() }}</span>
+    <div class="debugging-cli-dock-heading-actions">
+      <manatos-font-scale
+        [percent]="fontScalePercent()"
+        [language]="language()"
+        [context]="toolbar.fontSizeSubject"
+        (percentChanged)="fontScaleChanged.emit($event)"
+      />
+      @if (canDetach()) {
+      <button
+        class="btn-close-debug debugging-cli-detach"
+        type="button"
+        [title]="multilingual().select(detached(), '@CM.AttachGlobalCli', '@CM.DetachGlobalCli')"
+        [attr.aria-label]="multilingual().select(detached(), '@CM.AttachGlobalCli', '@CM.DetachGlobalCli')"
+        (click)="detachRequested.emit()"
+      >
+        <i [class]="detached() ? toolbar.attachIcon : toolbar.detachIcon"></i>
+      </button>
+      }
+      <button
+        class="btn-close-debug"
+        type="button"
+        [title]="multilingual().resolve('@CM.CloseCli')"
+        [attr.aria-label]="multilingual().resolve('@CM.CloseCli')"
+        (click)="closeRequested.emit()"
+      >
+        ×
+      </button>
+    </div>
+  </div>
+  <div
+    class="debugging-cli-console"
+    aria-live="polite"
+    (click)="focusInputFromConsole($event)"
+    (mouseup)="copySelectedTranscript()"
+  >
+    <div #transcriptElement class="debugging-cli-transcript">
+      @for (entry of transcript(); track entry.id) {
+      <pre [class]="'debugging-cli-' + entry.kind">{{ entry.text }}</pre>
+      }
+    </div>
+    <div class="debugging-cli-input-line">
+      <div class="debugging-cli-prompt-wrap">
+        <button
+          class="debugging-cli-prompt"
+          type="button"
+          [title]="multilingual().format('@CM.ExecutionContext', { path: displayPath })"
+          [attr.aria-expanded]="historyOpen()"
+          (click)="toggleHistory()"
+        >
+          {{ displayPath }} &gt;
+        </button>
+        @if (historyOpen()) {
+        <div
+          class="debugging-cli-history"
+          role="listbox"
+          [attr.aria-label]="multilingual().resolve('@CM.CliHistory')"
+        >
+          @for (item of history().slice().reverse(); track $index) {
+          <button
+            class="debugging-cli-history-item"
+            type="button"
+            role="option"
+            (mousedown)="$event.preventDefault()"
+            (click)="insertHistory(item)"
+          >
+            {{ item }}
+          </button>
+          } @empty {
+          <div class="debugging-cli-history-empty">
+            {{ multilingual().resolve('@CM.NoCommandsYet') }}
+          </div>
+          }
+        </div>
+        }
+      </div>
+      <textarea
+        #commandInput
+        class="debugging-cli-input"
+        rows="1"
+        spellcheck="false"
+        autocomplete="off"
+        [attr.aria-label]="multilingual().resolve('@CM.DebugExpression')"
+        [value]="command()"
+        (input)="changeCommand($event)"
+        (keydown)="handleKey($event)"
+      ></textarea>
+    </div>
+  </div>
+</section>

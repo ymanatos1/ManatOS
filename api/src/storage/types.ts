@@ -1,5 +1,8 @@
 import type {
   SysBOApplication,
+  SysBOGuard,
+  SysBOProject,
+  SysBOPost,
   SysBOConfiguration,
   SysBOExternalIdentity,
   SysBOExtAuthProvider,
@@ -33,6 +36,9 @@ export interface DatabaseState {
   sysPrincipalAddresses: Map<string, SysPrincipalAddress>;
 
   sysApplications: Map<string, SysBOApplication>;
+  sysGuards: Map<string, SysBOGuard>;
+  sysProjects: Map<string, SysBOProject>;
+  sysPosts: Map<string, SysBOPost>;
 
   sysConfigurations: Map<string, SysBOConfiguration>;
 
@@ -82,6 +88,9 @@ export interface PersistedDatabaseState {
   sysPrincipalAddresses: Record<string, PersistedEntity<SysPrincipalAddress>>;
 
   sysApplications: Record<string, PersistedEntity<SysBOApplication>>;
+  sysGuards: Record<string, PersistedEntity<SysBOGuard>>;
+  sysProjects: Record<string, PersistedEntity<SysBOProject>>;
+  sysPosts: Record<string, PersistedEntity<SysBOPost>>;
 
   sysConfigurations: Record<string, PersistedEntity<SysBOConfiguration>>;
 
@@ -110,6 +119,9 @@ export const emptyDatabaseState = (): DatabaseState => ({
   sysPrincipalAddresses: new Map(),
 
   sysApplications: new Map(),
+  sysGuards: new Map(),
+  sysProjects: new Map(),
+  sysPosts: new Map(),
 
   sysConfigurations: new Map(),
 

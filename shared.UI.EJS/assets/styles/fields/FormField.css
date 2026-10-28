@@ -1,0 +1,190 @@
+/* Reusable EJS0-inspired field presentation; no mutation until Entry editing exists. */
+.manatos-form-field {
+  min-width: 0;
+  position: relative;
+}
+.manatos-form-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #40516a;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  font-weight: 400;
+}
+.manatos-form-required {
+  color: #4e5e75;
+  font-weight: 600;
+  margin-left: 3px;
+}
+.manatos-form-field.is-changed .manatos-form-field-label,
+.manatos-form-field.is-changed .manatos-form-input {
+  font-weight: 700;
+}
+.manatos-form-field-control {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  border: 1px solid #d7e1ec;
+  border-radius: 4px;
+  background: #fff;
+  position: relative;
+}
+.manatos-form-leading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 10px;
+  height: 30px;
+  color: #2874c8;
+  background: #f2f7ff;
+  border-right: 1px solid #d7e1ec;
+}
+.manatos-form-input {
+  min-width: 0;
+  width: 100%;
+  flex: 1;
+  padding: 6px 9px;
+  border: 0;
+  background: #fff;
+  color: #25344c;
+  font: inherit;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  outline: 0;
+  text-overflow: ellipsis;
+}
+.manatos-form-input:read-only {
+  cursor: default;
+}
+.manatos-form-value,
+.manatos-form-picture,
+.manatos-form-rich {
+  padding: 7px 9px;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.manatos-form-switch {
+  display: flex;
+  height: 31px;
+  align-items: center;
+  padding: 0 10px;
+}
+.manatos-form-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.manatos-form-switch-track {
+  width: 25px;
+  height: 14px;
+  border-radius: 14px;
+  background: #bac9d9;
+  position: relative;
+}
+.manatos-form-switch-track:after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #fff;
+}
+.manatos-form-switch input:checked + .manatos-form-switch-track {
+  background: #367df2;
+}
+.manatos-form-switch input:checked + .manatos-form-switch-track:after {
+  left: 13px;
+}
+
+manatos-text-field,
+manatos-boolean-field,
+manatos-select-field,
+manatos-picture-field,
+manatos-rich-text-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
+.manatos-form-parts {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 6px;
+  flex: 1;
+  min-width: 0;
+}
+.manatos-form-parts label {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  font-size: calc(10px * var(--manatos-font-scale, 1));
+  color: #58697c;
+}
+.manatos-form-part {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d7e1ec;
+  border-radius: 3px;
+  background: #f8fafc;
+  padding: 3px;
+  color: #25344c;
+  font: inherit;
+  font-size: calc(12px * var(--manatos-font-scale, 1));
+  text-align: center;
+}
+.manatos-form-version .manatos-form-part {
+  max-width: 72px;
+}
+.manatos-form-choice {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.manatos-form-chevron {
+  padding: 0 8px;
+  color: #5c7187;
+}
+.manatos-form-picture {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+/* EJS controls mount from their own HTML templates inside one typed slot. */
+.manatos-typed-field {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.manatos-form-field-control.is-semantic {
+  border: 0;
+  background: transparent;
+}
+.manatos-entry-deferred {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: #64748b;
+  border-left: 2px solid #dbe4ee;
+}
+.manatos-entry-deferred small {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+/* A semantic Boolean is a switch, not a bordered text-box. */
+.manatos-entry .manatos-form-field-control:has([data-entry-typed-field='boolean']),
+.manatos-entry .manatos-form-field-control:has([data-entry-typed-field='picture']),
+.manatos-entry .manatos-form-field-control:has([data-entry-typed-field='pictures']) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}

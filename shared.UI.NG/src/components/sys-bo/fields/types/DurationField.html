@@ -1,0 +1,39 @@
+<!-- One canonical duration edited through three parts; semantic validation/CTX commits remain shared. -->
+<manatos-field-control-shell [field]="field()">
+  <div data-entry-control class="manatos-form-parts" [attr.aria-label]="field().label">
+    <label
+      ><span>Years</span
+      ><input
+        data-duration-part="years"
+        class="manatos-form-part"
+        type="number"
+        min="0"
+        step="1"
+        [value]="parts().years"
+        [readOnly]="field().readOnly"
+        (input)="onPartInput($event)" /></label
+    ><label
+      ><span>Months</span
+      ><input
+        data-duration-part="months"
+        class="manatos-form-part"
+        type="number"
+        min="0"
+        step="1"
+        [value]="parts().months"
+        [readOnly]="field().readOnly"
+        (input)="onPartInput($event)" /></label
+    ><label
+      ><span>Days</span
+      ><input
+        data-duration-part="days"
+        class="manatos-form-part"
+        type="number"
+        min="0"
+        step="1"
+        [value]="parts().days"
+        [readOnly]="field().readOnly"
+        (input)="onPartInput($event)"
+    /></label>
+  </div>
+</manatos-field-control-shell>

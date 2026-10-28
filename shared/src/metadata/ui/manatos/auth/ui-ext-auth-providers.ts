@@ -19,15 +19,15 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
   uiViews: {
     main: {
       viewType: 'full',
-      label: 'Standard',
+      label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */,
     },
     quickView: {
       viewType: 'quick',
-      label: 'Quick view',
+      label: '@EN.common.label.QuickView' /* Quick view */,
       record: {
         readOnly: true,
         tabs: [
-          tab('general', 'General', 10, {
+          tab('general', '@CM.AccountGeneral', 10, {
             icon: 'info-circle',
             layout: 'details',
             representation: 'summary',
@@ -68,9 +68,6 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
   // ---------------------------------------------------------------------------
   // COMMON ENTITY UI — shared by all present/future uiViews unless overridden.
   // ---------------------------------------------------------------------------
-  // Entity icon remains the routed globe; entry instances use their provider
-  // type icon (Microsoft/Google/Facebook/GitHub) everywhere representations render.
-  entry: { icon: { mode: 'type' } },
   list: {
     common: {
       visibleFields: ['provider', 'enabled', 'callbackPath', 'credentialsVerified'],
@@ -80,7 +77,8 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
         ...standardAddAction('Add provider'),
         enabled: { expression: '#control.facts.addConstraintReached !== true' },
         disableWhenAllEnumValuesExistForField: 'provider',
-        disabledReason: 'All supported external authentication providers are already configured.',
+        disabledReason:
+          '@EN.ExternalAuthProviders.AllConfigured' /* All supported external authentication providers are already configured. */,
       },
       rowActions: {
         quickView: standardQuickViewAction('sys-ext-auth-providers'),
@@ -88,15 +86,16 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
       notice: {
         tone: 'info',
         icon: 'info-circle-fill',
-        title: 'One configuration record per provider.',
-        text: 'Each supported external authentication provider can have at most one configuration record. Existing provider records must be edited rather than added again.',
+        title:
+          '@EN.manatos.auth.extAuthProviders.title.OneConfigurationRecordPerProvider' /* One configuration record per provider. */,
+        text: '@EN.ExternalAuthProviders.UniqueConfiguration' /* Each supported external authentication provider can have at most one configuration record. Existing provider records must be edited rather than added again. */,
       },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['provider', 'enabled'],
       },
     },
@@ -104,7 +103,7 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
   record: {
     // Entry tabs / layout
     tabs: [
-      tab('general', 'General', 10, {
+      tab('general', '@CM.AccountGeneral', 10, {
         icon: 'info-circle',
         layout: 'form',
         content: [
@@ -198,7 +197,7 @@ export const sysBOExtAuthProvidersUIMetadata: SysBOUIMetadata = {
           'Provider-defined callback path. ManatOS combines it with PUBLIC_BASE_URL; administrators cannot override it.',
       },
       hasClientSecret: {
-        label: 'Client secret',
+        label: '@EN.manatos.auth.extAuthProviders.label.ClientSecret' /* Client secret */,
         presentation: {
           mode: 'summary',
           icon: { expression: "hasClientSecret ? 'lock-fill' : 'lock'" },

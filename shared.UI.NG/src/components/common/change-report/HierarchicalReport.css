@@ -1,0 +1,117 @@
+.manatos-change-report-frame {
+  margin: 8px 0 16px;
+  border: 1px solid #dbe4ed;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.manatos-change-report-frame.is-nested {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.manatos-change-report-frame.is-nested > .manatos-change-report-tree {
+  max-height: none;
+  overflow: visible;
+  border: 0;
+}
+.manatos-change-report-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 2px;
+}
+.manatos-change-report-controls .manatos-change-report-summary {
+  margin-right: auto;
+  color: #526176;
+  font-size: 0.9em;
+}
+.manatos-change-report-controls button {
+  border: 1px solid #c9d4e2;
+  border-radius: 4px;
+  background: white;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.manatos-change-report-tree {
+  max-height: min(50vh, 520px);
+  overflow: auto;
+  border-top: 1px solid #dbe4ed;
+}
+.manatos-change-report-node > summary::-webkit-details-marker {
+  display: none;
+}
+.manatos-change-report-node > summary::before {
+  content: '›';
+  font-size: 1.1em;
+  font-weight: 700;
+  color: #526176;
+  transition: transform 120ms ease;
+}
+.manatos-change-report-node[open] > summary::before {
+  transform: rotate(90deg);
+}
+.manatos-change-report-node summary {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 7px 9px;
+  cursor: pointer;
+  list-style: none;
+  border-bottom: 1px solid #e7edf3;
+}
+.manatos-change-report-count {
+  margin-left: auto;
+  border: 1px solid #d9e0e9;
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+.manatos-change-report-status {
+  color: #64748b;
+}
+.manatos-change-report-children {
+  padding: 0 0 0 14px;
+  border-left: 1px solid #e1e8ee;
+  margin-left: 14px;
+}
+.manatos-change-report-detail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 5px 8px;
+  border-bottom: 1px solid #edf0f4;
+}
+.manatos-change-report-label {
+  color: #64748b;
+  min-width: 100px;
+}
+.manatos-change-report-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+.manatos-change-report-success {
+  color: #08794a;
+}
+.manatos-change-report-danger {
+  color: #b42318;
+}
+.manatos-change-report-value img {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.manatos-change-report-summary {
+  padding: 12px;
+  color: #526176;
+}
+.manatos-change-report-dialog {
+  width: min(900px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}

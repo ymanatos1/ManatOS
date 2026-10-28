@@ -5,11 +5,15 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
-import { MANATOS_COMPANY } from '@manatos/shared';
+import { MANATOS_COMPANY, resolveMetadataText } from '@manatos/shared';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const homeView = resolve(testDirectory, '../../views/pages/home.ejs');
-const homeLocals = (currentUser: unknown) => ({ currentUser, app: { company: MANATOS_COMPANY } });
+const homeLocals = (currentUser: unknown) => ({
+  currentUser,
+  app: { company: MANATOS_COMPANY },
+  metadataText: (value: string) => resolveMetadataText(value, 'EN'),
+});
 
 describe('home presentation', () => {
   it('presents the platform visually without reusing ManatOS imagery', async () => {
@@ -17,7 +21,9 @@ describe('home presentation', () => {
     const $ = load(html);
 
     expect($('.home-hero-grid').length).toBe(1);
-    expect($('.home-product-tagline').text().trim()).toBe(MANATOS_COMPANY.branding.tagline);
+    expect($('.home-product-tagline').text().trim()).toBe(
+      resolveMetadataText(MANATOS_COMPANY.branding.tagline, 'EN'),
+    );
     expect($('.home-hero-copy h2').text().trim()).toBe(
       'A semantic foundation for business platforms and applications',
     );

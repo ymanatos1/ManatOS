@@ -5,16 +5,14 @@
 ManatOS is one semantic system whose authoritative server runtime is client-independent. The **current repository implementation** uses the following hosts:
 
 ```text
-shared semantic package
-       |            \
-       v             v
-   API process     UI server
-       |             |
-       +---- HTTP ---+
-                     |
-                     v
-                  browser
-                UI runtime
+shared (metadata, domain, expressions, CTX)
+   ├── API  ─────────────────────── storage
+   └── shared.UI (UIS semantics, surfaces, Flows)
+         ├── shared.UI.NG ── ui.NG1 (Angular + Node host)
+         └── shared.UI.EJS ─ ui.EJS1 (EJS + Node host)
+
+ui.EJS0 (established EJS client) ── API
+               All clients use authorized HTTP contracts
 ```
 
 `shared` is not a fourth runtime owner. It contains contracts and implementations whose semantics genuinely need to be common across hosts: domain/entity metadata, UI metadata types, expression language, policies, platform definitions, error contracts and structural CTX primitives.
@@ -37,7 +35,7 @@ The API owns authoritative business and security behavior:
 
 ### Current web presentation host / BFF
 
-The current Node.js/Express UI server owns presentation hosting and the secure browser/API bridge for the repository web client:
+The Node.js presentation hosts for NG1/EJS1, and the established EJS0 client host, own their host-specific presentation and secure browser/API bridges:
 
 - website sessions;
 - server-rendered pages and initial presentation composition;
@@ -47,7 +45,7 @@ The current Node.js/Express UI server owns presentation hosting and the secure b
 - serving browser runtime assets;
 - local-development diagnostic filesystem integration where available.
 
-This BFF must not become a second business-service layer. A future Angular/React/mobile client may use another presentation/authentication topology without changing API/domain/storage authority.
+This BFF must not become a second business-service layer. An additional client may use another presentation/authentication topology without changing API/domain/storage authority.
 
 ### Current browser client runtime
 
@@ -56,14 +54,14 @@ In the current web realization, the browser owns live interactive presentation s
 - UI CTX surfaces and levels;
 - live field state;
 - expression-driven presentation decisions;
-- entry/list/selector/component behavior hosted through the browser UI-level runtime;
+- entry/list/selector/popup/component runtimes;
 - reactive dependency/event handling;
 - developer inspection/debugger UI;
 - client-side interaction state that does not belong in business persistence.
 
 ## Independent API and client CTX
 
-The API and a CTX-capable client each have their own runtime context. The current browser client implements this directly. They share structural concepts and semantic conventions but are not synchronized copies.
+The API and a CTX-capable client each have their own runtime context. The NG1 and EJS1 clients implement this through the shared UIS framework; EJS0 uses its established separate UI implementation. They share structural concepts and semantic conventions but are not synchronized copies.
 
 The client CTX models interactive surfaces and user editing. The API CTX models request execution, user/security context and nested subsystem operations.
 
@@ -93,13 +91,9 @@ Nested operations can therefore resolve ancestor state/resources while independe
 
 ## Client surface model
 
-Client UI state is organized as explicit surfaces/levels rather than one global mutable page object. The fundamental hosts are `page`, `popup`, and `embedded`; entry/list/selector/custom describe what a hosted level presents. Every level has an owner, lifecycle and CTX path.
+Client UI state is organized as explicit surfaces/levels rather than one global mutable page object. A page, popup or selector has an owner, lifecycle and CTX path.
 
-The current browser implementation centralizes topology/lifecycle in `public/js/runtime/ui-host-runtime.js`. Popup infrastructure delegates child creation to that authority; embedded children use the same `openChildSurface` path with different parent-activation semantics. This file location is an implementation detail, while the single-host-authority rule is architectural.
-
-UI views are orthogonal to hosting. `resolveSysBOUIView()` composes common record UI metadata with a selected named view. The view key (`main`, `quickView`, `quick`, ...) identifies the concrete presentation; `viewType` (`full`, `quick`, ...) identifies its family. A view does not own a second record, CTX tree, validation model or persistence path.
-
-Entry scalar values have one canonical live authority at field level. Whole-record `current`/`original` projections are mirrors/read models rather than competing writable copies.
+In the modern UIS Entry runtime, `#data.current` is the canonical writable record and `#data.original` is its baseline. `#state.fields` and `#state.entry` are derived semantic status, not duplicate editable stores.
 
 Components and workspaces may own resources/aggregate state with explicit lifecycle rather than hiding state in arbitrary globals.
 
@@ -163,7 +157,7 @@ See [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-
 
 ## Deployment topology
 
-The current Express UI and API may be exposed by a reverse proxy as one public site even though they remain separate processes. This is a deployment of one client, not a system requirement. Business/runtime code should not rely on them sharing a working directory or filesystem.
+A TypeScript UI host and the API may be exposed by a reverse proxy as one public site even though they remain separate processes. This is a deployment of one client, not a system requirement. Business/runtime code should not rely on them sharing a working directory or filesystem.
 
 Local development may exploit co-location for convenience (for example API Traffic reading local API log/snapshot files), but that behavior must degrade gracefully when the processes are deployed separately.
 
@@ -186,7 +180,7 @@ Host-specific lifecycle, filesystem access, HTTP middleware or DOM behavior shou
 
 - API is authoritative for protected business operations.
 - A client is authoritative only for its own live interactive presentation state.
-- The current Express UI server bridges presentation and API without becoming a duplicate domain layer; other clients may use another approved topology.
+- A UI host bridges presentation and API without becoming a duplicate domain layer; other clients may use another approved topology.
 - API/UI CTX are independent trees.
 - one runtime owner exists for each mutable state concern;
 - request concurrency never depends on a global mutable current request;
@@ -198,18 +192,12 @@ Host-specific lifecycle, filesystem access, HTTP middleware or DOM behavior shou
 - [System Architecture](System-Architecture.md) for the full system decomposition.
 - [Context Architecture](../context/Context-Architecture.md) for API/UI CTX structure.
 - [Expression Architecture](../expressions/Expression-Architecture.md) for expression hosts/caching/evaluation.
-- [Client and UI Architecture](../clients/Client-Architecture.md) for portable client/surface/component ownership and the current Express realization.
+- [Client and UI Architecture](../clients/Client-Architecture.md) for portable client/surface/component ownership and the current Angular/EJS realizations.
 - [API Architecture](../api/API-Architecture.md) for request/service contracts.
 - [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md) for correlation and snapshots.
 
-### Stage 20 host/surface opening contract
+## Surface and Flow runtime alongside the API
 
-The typed browser runtime now defines executable host and surface registry contracts and one canonical `UiRuntime.open()` pipeline. A request carries one invocation, canonical CTX, level identity and optional parent. The host strategy owns **placement and topology**; after the host mounts the `UiLevel`, the semantic surface owns **surface initialization**. Host and surface are therefore orthogonal dimensions rather than separate application runtimes.
+The shared UI runtime is distinct from the Node API host. On the UI side, `UiSurfaceHostRuntime` publishes complete CTX namespaces and owns child-safe disposal, and `FlowRunner` coordinates multi-step execution under `ctx.flow`. Angular/EJS adapters own concrete DOM and host behavior. On the API side, requests own authentication/authorization and transaction work in independent execution contexts. One side's CTX must not be treated as a synchronized copy of the other.
 
-During the Stage 20 migration, the production compatibility host may still be observed through `UiRuntime.observe()`. That bridge is transitional. New typed opening semantics must target `UiRuntime.open()` rather than introduce another page/popup/embedded dispatcher. Direct browser-host migration and iframe removal are later Stage 20 steps.
-
-#### Direct Entry popup hosting
-
-Entity Entry popups are hosted directly in the owning browser document and `UiLevel`. The UI server still supplies the canonical host-neutral SSR Entry markup plus factual bootstrap/context resources, but it does not create a second application shell. The popup runtime hydrates the already-opened Entry surface, mounts the markup beneath that surface, and lets the re-entrant Entry installers bind to its exact CTX path.
-
-An Entry popup therefore has one semantic owner and one runtime: there is no Entry iframe, cross-window CTX attachment, event-forwarding bridge, or nested application runtime. Nested popups remain child `UiLevel`s in the same canonical runtime stack. Page/Popup/Embedded are hosting choices around the same Entry semantics.
+The architecture supports runtime composition without letting a presentation host acquire the API's security authority. A type-specific field may request intent, but the API validates both the submitted operation and its caller. See [CTX Architecture](../context/Context-Architecture.md) and [UIS](../clients/UIS-Architecture.md).

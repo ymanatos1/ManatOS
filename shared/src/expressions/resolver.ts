@@ -63,11 +63,23 @@ export interface ExpressionPathResolutionOptions {
   evaluateDynamicPath?: (expression: ExpressionNode) => unknown;
 }
 
+function resolution(member: ExpressionPathMember): {
+  member: ExpressionPathMember;
+  optional: boolean;
+} {
+  return typeof member === 'object' && member.kind === 'resolved-path'
+    ? { member: member.member, optional: member.optional }
+    : { member, optional: false };
+}
+
 function dynamicPathKey(
   member: ExpressionPathMember,
   options: ExpressionPathResolutionOptions,
 ): string | number {
   if (typeof member === 'string' || typeof member === 'number') return member;
+  if (member.kind !== 'dynamic-path') {
+    throw new ExpressionEvaluationError('Invalid dynamic CTX path segment.');
+  }
   const value = options.evaluateDynamicPath?.(member.expression);
   if (typeof value === 'string' && value.length > 0) return value;
   if (typeof value === 'number' && Number.isInteger(value) && value >= 0) return value;
@@ -84,12 +96,25 @@ function resolveDownward(
 ): ResolvedExpressionVariable {
   let value = start;
   let owner: unknown = undefined;
+
   for (const rawMember of members) {
-    const member = dynamicPathKey(rawMember, options);
+    const resolved = resolution(rawMember);
+    const member = dynamicPathKey(resolved.member, options);
+
     owner = value;
     value = resolveMemberForExpression(value, member);
-    if (value === undefined) return { found: false, value: undefined, owner };
+
+    if (value === undefined) {
+      return resolved.optional
+        ? { found: true, value: null, owner }
+        : { found: false, value: undefined, owner };
+    }
+
+    if (resolved.optional && value === null) {
+      return { found: true, value: null, owner };
+    }
   }
+
   return { found: true, value, owner };
 }
 
@@ -103,6 +128,29 @@ function isUiLevel(value: unknown): boolean {
   return (host === 'page' || host === 'popup' || host === 'embedded') && typeof kind === 'string';
 }
 
+function flowStepScope(root: unknown, ancestry: readonly unknown[]): unknown | undefined {
+  // Prefer the lexical step (future async/parallel execution can keep its own
+  // scope). UI-hosted events resolve the active Step via the Flow pointer.
+  for (let index = ancestry.length - 1; index >= 0; index -= 1) {
+    const candidate = ancestry[index];
+    if (!objectLike(candidate) || !objectLike(candidate['control'])) continue;
+    const control = candidate['control'] as Record<string, unknown>;
+    if (control['host'] === 'flow' && control['kind'] === 'step') return candidate;
+  }
+  if (!objectLike(root) || !objectLike(root['flow'])) return undefined;
+  const flow = root['flow'] as Record<string, unknown>;
+  const control = flow['control'];
+  if (!objectLike(control) || !objectLike(control['currentStep'])) return undefined;
+  const path = control['currentStep']['value'];
+  if (typeof path !== 'string' || !path.startsWith('ctx.flow.steps.')) return undefined;
+  let current: unknown = root;
+  for (const member of path.slice(4).split('.')) {
+    current = resolveContextMember(current, member);
+    if (current === undefined) return undefined;
+  }
+  return current;
+}
+
 function selectedRelativeScope(
   selector: string,
   ctxRoot: unknown,
@@ -111,6 +159,7 @@ function selectedRelativeScope(
   const ancestry = findAncestry(ctxRoot, currentCtxNode);
   if (!ancestry) return undefined;
   if (selector === '#') return ancestry.length >= 2 ? ancestry[ancestry.length - 2] : undefined;
+  if (selector === '#flowstep') return flowStepScope(ctxRoot, ancestry);
   if (['#level', '#control', '#data', '#layout', '#state'].includes(selector)) {
     for (let index = ancestry.length - 1; index >= 0; index -= 1) {
       if (!isUiLevel(ancestry[index])) continue;
@@ -143,12 +192,27 @@ export function resolveExpressionVariable(
       : { found: true, value: ctxRoot, owner: undefined };
   }
 
-  const first = members.shift()!;
-  if (typeof first !== 'string') return { found: false, value: undefined, owner: undefined };
+  const firstResolution = resolution(members.shift()!);
+  const first = firstResolution.member;
+  const firstOptional = firstResolution.optional;
 
-  if (['#', '#level', '#control', '#data', '#layout', '#state'].includes(first)) {
+  if (typeof first !== 'string') {
+    return { found: false, value: undefined, owner: undefined };
+  }
+
+  if (['#', '#level', '#control', '#data', '#layout', '#state', '#flowstep'].includes(first)) {
     const selected = selectedRelativeScope(first, ctxRoot, currentCtxNode);
-    if (selected === undefined) return { found: false, value: undefined, owner: undefined };
+
+    if (selected === undefined) {
+      return firstOptional
+        ? { found: true, value: null, owner: undefined }
+        : { found: false, value: undefined, owner: undefined };
+    }
+
+    if (firstOptional && selected === null) {
+      return { found: true, value: null, owner: undefined };
+    }
+
     return members.length
       ? resolveDownward(selected, members, options)
       : { found: true, value: selected, owner: undefined };
@@ -163,12 +227,19 @@ export function resolveExpressionVariable(
     const scope = ancestry[index];
     const firstValue = resolveContextMember(scope, first);
     if (firstValue === undefined) continue;
+
+    if (firstOptional && firstValue === null) {
+      return { found: true, value: null, owner: scope };
+    }
+
     if (!members.length) return { found: true, value: firstValue, owner: scope };
     const resolved = resolveDownward(firstValue, members, options);
     return resolved.found ? resolved : { found: false, value: undefined, owner: resolved.owner };
   }
 
-  return { found: false, value: undefined, owner: undefined };
+  return firstOptional
+    ? { found: true, value: null, owner: undefined }
+    : { found: false, value: undefined, owner: undefined };
 }
 
 export interface AsyncExpressionPathResolutionOptions {
@@ -180,6 +251,9 @@ async function dynamicPathKeyAsync(
   options: AsyncExpressionPathResolutionOptions,
 ): Promise<string | number> {
   if (typeof member === 'string' || typeof member === 'number') return member;
+  if (member.kind !== 'dynamic-path') {
+    throw new ExpressionEvaluationError('Invalid dynamic CTX path segment.');
+  }
   const value = await options.evaluateDynamicPath(member.expression);
   if (typeof value === 'string' && value.length > 0) return value;
   if (typeof value === 'number' && Number.isInteger(value) && value >= 0) return value;
@@ -196,12 +270,25 @@ async function resolveDownwardAsync(
 ): Promise<ResolvedExpressionVariable> {
   let value = start;
   let owner: unknown = undefined;
+
   for (const rawMember of members) {
-    const member = await dynamicPathKeyAsync(rawMember, options);
+    const resolved = resolution(rawMember);
+    const member = await dynamicPathKeyAsync(resolved.member, options);
+
     owner = value;
     value = resolveMemberForExpression(value, member);
-    if (value === undefined) return { found: false, value: undefined, owner };
+
+    if (value === undefined) {
+      return resolved.optional
+        ? { found: true, value: null, owner }
+        : { found: false, value: undefined, owner };
+    }
+
+    if (resolved.optional && value === null) {
+      return { found: true, value: null, owner };
+    }
   }
+
   return { found: true, value, owner };
 }
 
@@ -222,12 +309,27 @@ export async function resolveExpressionVariableAsync(
       : { found: true, value: ctxRoot, owner: undefined };
   }
 
-  const first = members.shift()!;
-  if (typeof first !== 'string') return { found: false, value: undefined, owner: undefined };
+  const firstResolution = resolution(members.shift()!);
+  const first = firstResolution.member;
+  const firstOptional = firstResolution.optional;
 
-  if (['#', '#level', '#control', '#data', '#layout', '#state'].includes(first)) {
+  if (typeof first !== 'string') {
+    return { found: false, value: undefined, owner: undefined };
+  }
+
+  if (['#', '#level', '#control', '#data', '#layout', '#state', '#flowstep'].includes(first)) {
     const selected = selectedRelativeScope(first, ctxRoot, currentCtxNode);
-    if (selected === undefined) return { found: false, value: undefined, owner: undefined };
+
+    if (selected === undefined) {
+      return firstOptional
+        ? { found: true, value: null, owner: undefined }
+        : { found: false, value: undefined, owner: undefined };
+    }
+
+    if (firstOptional && selected === null) {
+      return { found: true, value: null, owner: undefined };
+    }
+
     return members.length
       ? resolveDownwardAsync(selected, members, options)
       : { found: true, value: selected, owner: undefined };
@@ -238,10 +340,17 @@ export async function resolveExpressionVariableAsync(
     const scope = ancestry[index];
     const firstValue = resolveContextMember(scope, first);
     if (firstValue === undefined) continue;
+
+    if (firstOptional && firstValue === null) {
+      return { found: true, value: null, owner: scope };
+    }
+
     if (!members.length) return { found: true, value: firstValue, owner: scope };
     const resolved = await resolveDownwardAsync(firstValue, members, options);
     return resolved.found ? resolved : { found: false, value: undefined, owner: resolved.owner };
   }
 
-  return { found: false, value: undefined, owner: undefined };
+  return firstOptional
+    ? { found: true, value: null, owner: undefined }
+    : { found: false, value: undefined, owner: undefined };
 }

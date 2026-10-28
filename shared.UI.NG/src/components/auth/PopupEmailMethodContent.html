@@ -1,0 +1,17 @@
+<!-- PopupEmailMethodContent template: one email-based method action and its localized description. -->
+<button
+  #method
+  type="button"
+  class="auth-email-registration-button"
+  [attr.data-popup-layout-id]="item().id"
+  (click)="requestEmail()(item().actionId)"
+>
+  <span class="auth-email-registration-icon" aria-hidden="true"
+    ><i class="bi bi-envelope"></i
+  ></span>
+  <span class="auth-email-registration-copy">
+    <strong>{{ multilingual().resolve(item().label) }}</strong>
+    <small>{{ multilingual().resolve(item().description) }}</small>
+  </span>
+  <i class="bi bi-chevron-right auth-provider-chevron" aria-hidden="true"></i>
+</button>

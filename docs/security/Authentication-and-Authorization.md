@@ -2,7 +2,7 @@
 
 Registration creates SysUser role Guest. A customer relationship later promotes an ordinary Guest to User. Admin is not automatically changed by commercial relationships.
 
-Every authenticated user may read their own `SysUser` record. Guest/User may update their own account where record/field policy permits; Superuser remains inspection-only; Admin has full User administration subject to explicit safety rules. Role assignment remains Admin-only and self-deletion remains prohibited.
+Every authenticated user may read their own `SysUser` record. Guest/User may update their own account where record/field policy permits; Superuser generally has inspection-only generic permissions but retains the self-service User update exception; Admin has full User administration subject to explicit safety rules. Role assignment remains Admin-only and self-deletion remains prohibited.
 
 ## Email registration
 
@@ -74,23 +74,23 @@ PUT  /api/v1/auth/password
 
 `GET /sessions` lists the current user's active API sessions. `POST /logout` revokes only the current session. `POST /logout-all` revokes every active API session for that user, including the session making the request.
 
-API access-token sessions are separate from client presentation/session state and are not business data. The current Express/EJS client uses a server-side website session as one concrete client topology.
+API access-token sessions are separate from client presentation/session state and are not business data. The NG1/EJS1 Node hosts use secure server-side browser sessions; EJS0 retains its established separate session model.
 
 ## Authentication response convention
 
-Registration, login, logout, logout-all and password changes are commands, so successful responses include a root `message` alongside `success` and `data`. Read endpoints such as `/me` and `/sessions` return `success + data` without a success message. Failures expose the user-facing message at the root and inside the `error` object.
+Registration, login, logout, logout-all and password changes are commands, so successful responses include a root `message` alongside `success` and `data`. Read endpoints such as `/me` and `/sessions` return `success + data` without a success message. Failures expose the user-safe message as root `errorMessage` and nested `error.message`; the root `errorCode` identifies the error. This differs from successful commands, which use the root `message` property. See [Error Model](../system/Error-Model.md).
 
 ---
 
 # Authorization model and Capability Projection
 
-This document describes the current ManatOS authorization architecture and runtime contracts.
+This document describes the concrete TypeScript authorization implementation and API contracts. The broader organization/Person/License policy model is specified in [Authorization Policy Architecture](Authorization-Policy-Architecture.md).
 
 ## 1. Security authority
 
 `api/src/auth/authorization-service.ts` is the authoritative SysBO and platform authorization service. Authorization is evaluated on the API side against the authenticated subject and, when required, persisted records and relationship/license data.
 
-No client implementation grants API access. Clients may consume resolved capability facts for presentation, but every API read or mutation is independently authorized again when the operation executes. The current Express web client follows this rule, and future Angular/React/mobile clients must do the same.
+No client implementation grants API access. Clients may consume resolved capability facts for presentation, but every API read or mutation is independently authorized again when the operation executes. All three TypeScript UI hosts follow this boundary, as must any additional compatible client.
 
 The canonical SysBO authorization actions are:
 
@@ -258,24 +258,25 @@ This is the same end-to-end rule used by canonical list-exception predicates: se
 
 ## 8. Client capability/context projection
 
-A UI-capable client is a capability consumer, not a policy engine. In the current Express client, `ui/src/sysbo/permissions.ts::resolveUIEntityPermissions()` implements that boundary. It requests collection or record `$capabilities` and exposes the canonical shape:
+Clients consume **API-derived capability facts**; neither the browser nor a UI expression reconstructs the server's role/organization/record policy. `api/src/auth/authorization-service.ts` produces action capabilities, while `api/src/http/routes/authorization-capability-router.ts` exposes authorized projections. `shared.UI/src/authorization/ui-authorization.ts` uses the API resource `/api/v1/authorization/context/:platformId/$capabilities` to populate the modern authenticated-user runtime projection.
 
 ```text
-permissions.read
-permissions.create
-permissions.update
-permissions.delete
+API AuthorizationService
+    ├─ role/record/organization checks (read, create, update, delete)
+    └─ authorized capability projection
+                 │ HTTP
+                 ▼
+shared.UI UiAuthorizationClient
+                 │
+                 ▼
+      $runtime.user.permissions
+         ├─ userRole
+         └─ platforms.<platform>.capabilities.platformAccess
 ```
 
-Persisted records use record-scoped projection. Owner-managed `draft:*` records do not yet exist in the API, so their temporary editor `update` capability is derived from the authoritative collection `create` capability. This is lifecycle adaptation, not local policy reconstruction.
+`UiAuthorizationClient` is a projection consumer. Collection-level capabilities do not automatically authorize update/delete of an arbitrary record; the API checks the persisted target on each operation. An unpersisted `draft:*` identity is not an API record and must be governed by the appropriate creation/transaction policy, not a fabricated persisted-record permission.
 
-Platform capability projection is loaded by `ui/src/middleware/page-context.ts` and copied to:
-
-```text
-ctx.user.permissions.platforms.<platform>.capabilities.platformAccess
-```
-
-`ctx.user.permissions.userRole` remains available as an identity fact for genuinely role-specific presentation. Generic infrastructure must not use it to recreate CRUD or platform authorization policy.
+A selected platform with pending capability loading receives a fail-closed false projection rather than reusing permissions from the previously selected platform. The established EJS0 UI retains its own `ui.EJS0/src/` rendering/permission integration; the modern root above describes EJS1/NG1.
 
 ## 9. Metadata and navigation
 
@@ -284,7 +285,7 @@ Metadata expressions consume already-resolved CTX facts. Examples include:
 ```text
 permissions.update === true
 permissions.delete === true
-$user.permissions.platforms.protocrm.capabilities.platformAccess === true
+$runtime.user.permissions.platforms.protocrm.capabilities.platformAccess === true
 ```
 
 Those expressions decide presentation only. Generic renderers must not add entity-specific role or entitlement branches after metadata has been resolved.
@@ -310,3 +311,16 @@ The following are current ManatOS security contracts:
 The current authoritative policy is implemented directly in `AuthorizationService`; ManatOS does not currently translate API authorization rules into evaluator expression strings.
 
 That separation is intentional. The evaluator already serves declarative presentation and deterministic calculations over resolved facts. Moving server authorization policy into expressions would add value only when ManatOS needs configurable policy metadata or several independently authored policy sets. Until such a requirement exists, the centralized typed authorization service is the simpler and more explicit security implementation.
+
+## Distinct session and OAuth surfaces
+
+The browser-facing NG1/EJS1 UI hosts and the API maintain separate security contexts. A browser session can retain sign-in across refreshes without requiring application JavaScript to store an API token; the UI host bridges authorized API calls. A protected operation can demand sign-in without forcing every public page to authenticate merely because it loaded.
+
+Native OAuth follows a different client topology: an installed client initiates an API-owned attempt, uses the system browser for provider authentication and claims the result with proof plus user approval. That protocol reuses API sessions but does not rely on the NG1/EJS1 login screens. See [Native OAuth](Native-OAuth.md).
+
+
+## Relationship to the full license and authorization model
+
+The `AuthorizationService` currently combines role and selected record/organization rules. Its platform-capability projection is based on Admin/Superuser role; it does not evaluate purchased-license `rules` as executable entitlement policy. The License entity stores platform/application scope, quantity, validity and textual rules, while a comprehensive purchase/delegation/resource policy has distinct architectural responsibilities. These are documented in [Authorization Policy Architecture](Authorization-Policy-Architecture.md) and [License Entitlements and Rules](../company/License-Entitlements-and-Rules.md).
+
+A user-visible platform capability is a safe UI projection. It does not replace the current API's per-operation `can()` / `assertCan()` enforcement or validate a future license entitlement by itself.

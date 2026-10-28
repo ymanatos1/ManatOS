@@ -3,8 +3,10 @@ import { fileURLToPath } from 'node:url';
 
 import { compile, renderFile } from 'ejs';
 import { describe, expect, it } from 'vitest';
+import { resolveMetadataText } from '@manatos/shared';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const metadataText = (value: string) => resolveMetadataText(value, 'EN');
 const tabContentPath = resolve(
   testDirectory,
   '../../views/components/sysbo/entry/shell/entry-tab-content.ejs',
@@ -71,6 +73,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
     };
 
     const html = await renderFile(tabContentPath, {
+      metadataText,
       tabs: [
         { id: 'general', label: 'General', order: 1, content: [{ kind: 'field', field: 'name' }] },
       ],
@@ -116,6 +119,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
 
   it('renders a collection-bearing metadata component with canonical related entity metadata', async () => {
     const html = await renderFile(metadataComponentPath, {
+      metadataText,
       component: {
         key: 'collection-editor',
         options: {
@@ -190,6 +194,7 @@ describe('metadata-driven entry EJS runtime composition', () => {
     const formatValue = (value: unknown) => String(value ?? '');
 
     const html = await renderFile(tabContentPath, {
+      metadataText,
       tabs: [
         {
           id: 'summary',

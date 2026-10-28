@@ -63,11 +63,11 @@
         title="Collapse or expand <%= o.label || 'items' %>"
       >
         <i class="bi bi-<%= component.icon || o.rowIcon || 'list-ul' %> me-2"></i>
-        <span><%= o.label || 'Items' %></span>
+        <span><%= metadataText(o.label || 'Items') %></span>
         <i class="bi bi-chevron-down metadata-collection-title-chevron ms-1" aria-hidden="true"></i>
       </button>
     <% } else { %>
-      <h3 class="h6 mb-0"><i class="bi bi-<%= component.icon || o.rowIcon || 'list-ul' %> me-2"></i><%= o.label || 'Items' %></h3>
+      <h3 class="h6 mb-0"><i class="bi bi-<%= component.icon || o.rowIcon || 'list-ul' %> me-2"></i><%= metadataText(o.label || 'Items') %></h3>
     <% } %>
     <% if (!isViewMode && o.allowAdd !== false) { %>
       <button class="btn btn-sm btn-outline-primary" type="button" data-collection-add><i class="bi bi-plus-lg me-1"></i>Add</button>
@@ -83,7 +83,7 @@
         <% for (const field of itemFieldDefinitions) { %>
           <div class="col-md-<%= Number(field.inputSpan || 12) %> metadata-collection-field" data-collection-field-container="<%= field.key %>">
             <label class="form-label small mb-1">
-              <%= field.label || field.key %>:
+              <%= metadataText(field.label || field.key) %>:
               <% if (field.required !== false) { %>
                 <span class="metadata-field-required-marker" aria-label="required"> (*)</span>
               <% } %>
@@ -166,7 +166,7 @@
       </div>
     <% } else { %>
       <label class="form-label small mb-1" data-collection-scalar-label>
-        <%= o.itemLabel || String(o.label || 'Item').replace(/s$/, '') %>:
+        <%= metadataText(o.itemLabel || String(o.label || 'Item').replace(/s$/, '')) %>:
         <% if (o.required !== false) { %>
           <span class="metadata-field-required-marker" aria-label="required"> (*)</span>
         <% } %>

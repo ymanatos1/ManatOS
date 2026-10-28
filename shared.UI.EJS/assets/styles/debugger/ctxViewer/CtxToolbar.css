@@ -1,0 +1,54 @@
+.debug-panel-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.15rem;
+  padding: 0.25rem 0.42rem;
+  border-bottom: 1px solid var(--debug-border);
+  background: #fff;
+}
+
+.debug-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16rem;
+}
+
+.debug-toolbar-group + .debug-toolbar-group {
+  margin-left: 0.48rem;
+}
+
+.debug-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #52606d;
+  cursor: pointer;
+}
+
+.debug-tool-button:hover:not(:disabled),
+.debug-tool-button.is-active {
+  border-color: #b8c7d9;
+  background: #eef5ff;
+  color: #0d6efd;
+}
+
+.debug-tool-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ctx-debug-stats {
+  margin-left: auto;
+  margin-right: 0.65rem;
+  color: var(--debug-muted);
+  font-size: 0.72rem;
+  font-weight: 400;
+  white-space: nowrap;
+}

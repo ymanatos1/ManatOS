@@ -1,0 +1,48 @@
+<!-- Popup chrome composes the EXISTING ListPageHost; no separate List runtime. -->
+<div
+  class="sign-in-backdrop manatos-list-popup-backdrop"
+  [class.has-foreground-debugger]="debuggerForeground() && debuggerDocked()"
+  [style.--popup-debugger-dock-width.px]="debuggerDockWidth()"
+  (click)="backdrop($event)"
+  (keydown)="keyboard($event)"
+>
+  <section
+    #dialog
+    class="sign-in-dialog manatos-list-popup-dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="title().title"
+    tabindex="-1"
+    [style.--manatos-font-scale]="fontScalePercent() / 100"
+  >
+    <manatos-popup-title
+      [model]="title()"
+      [currentLanguage]="currentLanguage()"
+      [languages]="languages()"
+      [showLanguageSelection]="true"
+      [fontScalePercent]="fontScalePercent()"
+      (languageSelected)="languageSelected.emit($event)"
+      (fontScaleChanged)="setFontScale($event)"
+      [debuggerForeground]="debuggerForeground()"
+      [debuggerAllowed]="debuggerAllowed()"
+      [showCloseButton]="true"
+      (debuggerRequested)="inspect()"
+      (closeRequested)="dismiss()"
+    />
+    @if (selectionError()) {
+    <p role="alert" class="manatos-entry-selection-error">{{ selectionError() }}</p>
+    }
+    <manatos-list-page-host
+      [contextTree]="contextTree()"
+      [entityKey]="entityKey()"
+      [parentLevelPath]="parentLevelPath()"
+      hostKind="popup"
+      selectionMode="single"
+      [language]="language()"
+      [selectionBusy]="selecting()"
+      (pendingSelectionChanged)="selectionError.set('')"
+      (rowSelected)="choose($event)"
+      (actionRequested)="action($event)"
+    />
+  </section>
+</div>

@@ -1,0 +1,47 @@
+.breadcrumb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  margin: 0 0 0.45rem;
+}
+
+.page-breadcrumb {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.15rem;
+  color: var(--manatos-muted);
+  font-size: calc(0.78rem * var(--manatos-font-scale));
+}
+
+.page-breadcrumb a {
+  color: var(--manatos-blue);
+  text-decoration: none;
+}
+
+.page-breadcrumb a:hover,
+.page-breadcrumb a:focus-visible {
+  text-decoration: underline;
+}
+
+.page-breadcrumb .bi {
+  flex: 0 0 auto;
+  font-size: calc(0.6rem * var(--manatos-font-scale));
+}
+
+.breadcrumb-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+@media (max-width: 575.98px) {
+  .breadcrumb-row {
+    align-items: flex-start;
+  }
+}

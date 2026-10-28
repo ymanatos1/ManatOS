@@ -2,7 +2,12 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { sysBOUsersMetadata, sysBOUsersUIMetadata, tabContentKeys } from '@manatos/shared';
+import {
+  sysBOUsersMetadata,
+  sysBOUsersUIMetadata,
+  tabContentKeys,
+  resolveMetadataText,
+} from '@manatos/shared';
 import { describe, expect, it } from 'vitest';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
@@ -11,7 +16,9 @@ const uiSource = (relativePath: string) =>
 
 describe('metadata-driven SysUser presentation', () => {
   it('places Photo with identity/state, then Description on its own full row', () => {
-    const general = sysBOUsersUIMetadata.record?.tabs?.find((tab) => tab.label === 'General');
+    const general = sysBOUsersUIMetadata.record?.tabs?.find(
+      (tab) => resolveMetadataText(tab.label, 'EN') === 'General',
+    );
     const content = general?.content ?? [];
     const fields = content
       .filter(
@@ -55,7 +62,7 @@ describe('metadata-driven SysUser presentation', () => {
 
   it('projects the Principal-owned identity endpoint as a non-persistent inverse User field', () => {
     const authentication = sysBOUsersUIMetadata.record?.tabs?.find(
-      (tab) => tab.label === 'Authentication',
+      (tab) => resolveMetadataText(tab.label, 'EN') === 'Authentication',
     );
 
     expect(sysBOUsersMetadata.relationships?.principal).toBeUndefined();

@@ -1,0 +1,13 @@
+@if (wizard(); as state) {
+<div class="storage-tab-body" data-popup-layout-id="storage-data">
+  @if (state.stepById('data'); as step) {
+  <manatos-storage-tab-status [wizard]="state" [popup]="popup()" [step]="step" />
+  <manatos-storage-metadata-fields [wizard]="wizard()" [step]="step" />
+  <div class="alert alert-secondary mt-3" data-popup-layout-id="storage-data-operations">
+    {{ wizard().t('Data migration is not implemented in this version.', 'Η μετεγκατάσταση δεδομένων
+    δεν έχει υλοποιηθεί.') }}
+  </div>
+  <manatos-storage-tab-status [wizard]="state" [popup]="popup()" [step]="step" [footer]="true" />
+  }
+</div>
+}

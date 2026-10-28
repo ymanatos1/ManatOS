@@ -1,0 +1,26 @@
+<section class="content-card platform-page">
+  {{#if platform.headerImage}}
+  <img
+    class="platform-hero-image"
+    src="{{ pageAsset(platform.headerImage.src) }}"
+    alt="{{ platform.headerImage.alt }}"
+  />
+  {{/if}}
+
+  <p class="platform-intro">{{ platform.presentation.intro ?? platform.description }}</p>
+
+  {{#if platform.presentation.features}}
+  <div class="platform-feature-grid">
+    {{#each platform.presentation.features as feature}}
+    <article class="platform-feature-card">
+      <div class="platform-feature-icon" aria-hidden="true">
+        <i class="bi {{ feature.icon ?? 'bi-eye-fill' }}"></i>
+      </div>
+
+      <h3>{{ feature.title }}</h3>
+      <p>{{ feature.description }}</p>
+    </article>
+    {{/each}}
+  </div>
+  {{/if}}
+</section>

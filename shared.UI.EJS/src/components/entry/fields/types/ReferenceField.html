@@ -1,0 +1,102 @@
+<!-- Typed Field owns its reusable FieldTools child, when supported. -->
+<span data-entry-field-tools-slot></span>
+<!-- Reference field owns the selected representation and authenticated native selector. -->
+<select
+  data-entry-control
+  class="manatos-reference-native"
+  tabindex="-1"
+  aria-hidden="true"
+></select>
+<div class="manatos-reference-quick-wrapper" data-entry-related-entity="">
+  <div class="manatos-reference-selection-line">
+    <button
+      type="button"
+      class="manatos-form-input manatos-reference-trigger"
+      data-entry-reference-open
+    >
+      <span data-entry-reference-icons></span>
+      <img
+        class="manatos-field-reference-photo"
+        data-entry-reference-photo
+        hidden
+        alt=""
+        loading="lazy"
+      />
+      <span data-entry-reference-name></span>
+    </button>
+    <button
+      type="button"
+      class="manatos-reference-history-action"
+      data-entry-reference-undo
+      title="Undo"
+      aria-label="Undo"
+      hidden
+    >
+      <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+    </button>
+    <button
+      type="button"
+      class="manatos-reference-history-action"
+      data-entry-reference-redo
+      title="Redo"
+      aria-label="Redo"
+      hidden
+    >
+      <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+    </button>
+    <button
+      class="manatos-reference-view"
+      type="button"
+      data-entry-reference-view
+      disabled
+      title="View selected entry"
+      aria-label="View selected entry"
+    >
+      <i class="bi bi-eye" aria-hidden="true"></i>
+    </button>
+    <button
+      class="manatos-reference-chevron-action"
+      type="button"
+      data-entry-reference-open-arrow
+      title="Select entry"
+      aria-label="Select entry"
+    >
+      <i class="bi bi-chevron-down" data-entry-reference-chevron aria-hidden="true"></i>
+    </button>
+  </div>
+  <section class="manatos-reference-quick-panel" data-entry-reference-selector hidden>
+    <input
+      type="search"
+      class="manatos-reference-selector-search"
+      data-entry-reference-search
+      aria-label="Search entries"
+      placeholder="Search entries…"
+    />
+    <p
+      data-entry-reference-catalogue-status
+      role="status"
+      class="manatos-reference-catalogue-status"
+      hidden
+    ></p>
+    <div
+      class="manatos-reference-selector-rows"
+      data-entry-reference-candidate-list
+      role="listbox"
+    ></div>
+    <p data-entry-reference-error role="alert" class="manatos-reference-selection-error" hidden></p>
+    <footer>
+      <button type="button" data-entry-reference-clear>
+        <i class="bi bi-x-circle" aria-hidden="true"></i>
+        <span data-entry-reference-clear-text>Empty</span>
+      </button>
+      <button type="button" data-entry-reference-create>
+        <i class="bi bi-plus-circle" aria-hidden="true"></i>
+        <span data-entry-reference-add-text>Add new…</span>
+      </button>
+      <button type="button" data-entry-reference-browse>
+        <i class="bi bi-list-ul" aria-hidden="true"></i>
+        <span data-entry-reference-browse-text>Browse list…</span>
+      </button>
+    </footer>
+  </section>
+</div>

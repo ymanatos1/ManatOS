@@ -1,0 +1,39 @@
+<section class="api-traffic-panel" [attr.aria-label]="multilingual().ApiTrafficViewer">
+  <manatos-api-traffic-toolbar
+    [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+    [paused]="pausedSnapshot() !== null"
+    [errorsOnly]="errorsOnly()"
+    [ignoreRoutes]="ignoreRoutes()"
+    [searchText]="searchText()"
+    [visibleCount]="visibleEntries().length"
+    [totalCount]="baseEntries().length"
+    [routes]="routes()"
+    (pause)="togglePause()"
+    (clear)="clear()"
+    (errors)="toggleErrorsOnly()"
+    (toggleIgnoreRoutes)="toggleIgnoreRoutes()"
+    (searchChanged)="searchText.set($event)"
+    (routeVisibilityChanged)="setRouteVisibility($event)"
+    (showAllRoutes)="showAllRoutes()"
+    (hideAllRoutes)="hideAllRoutes()"
+  />
+
+  @if (selectedEntry(); as entry) {
+  <manatos-api-traffic-properties
+    [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+    [entry]="entry"
+    [allEntries]="baseEntries()"
+    [heightPreference]="detailsHeight()"
+    (closeRequested)="selectedId.set(null)"
+  />
+  }
+
+  <manatos-api-traffic-list
+    [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+    [entries]="visibleEntries()"
+    [selectedId]="selectedId()"
+    [columnWidthsPreference]="columnWidths()"
+    (columnWidthsChanged)="saveColumnWidths($event)"
+    (selected)="selectEntry($event)"
+  />
+</section>

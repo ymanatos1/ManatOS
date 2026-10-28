@@ -1,12 +1,12 @@
 import {
   ForbiddenAppError,
-  operationContext,
   SysBOUserRole,
   type EntityCollectionAuthorizationCapabilities,
   type SysBOAuthorizationCapabilities,
   type PlatformAuthorizationCapabilities,
   type SysBOEntity,
 } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import type { InMemoryDataStore } from '../storage/in-memory-data-store.js';
 
@@ -157,6 +157,17 @@ export class AuthorizationService {
     if (action === 'delete' && sysBOKey === 'sys-users') {
       return (
         subject.role === SysBOUserRole.Admin && record !== undefined && record.id !== subject.userId
+      );
+    }
+
+    /** Platform-owned Surveillance entities follow Panoptes platform-access policy.
+     * Platform capabilities currently grant access to Admin/Superuser only;
+     * Superusers inspect but cannot modify records. Enforce it at the API boundary.
+     */
+    if (sysBOKey === 'sys-guards' || sysBOKey === 'sys-projects' || sysBOKey === 'sys-posts') {
+      return (
+        subject.role === SysBOUserRole.Admin ||
+        (subject.role === SysBOUserRole.Superuser && action === 'read')
       );
     }
 

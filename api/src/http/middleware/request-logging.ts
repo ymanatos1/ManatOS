@@ -13,14 +13,14 @@ export const requestLoggingMiddleware: RequestHandler = (req, res, next) => {
 
   logger.info('HTTP request started', {
     method: req.method,
-    path: req.originalUrl,
+    path: req.originalUrl.split('?')[0] ?? req.path,
     ipAddress: req.ip,
   });
 
   res.on('finish', () => {
     logger.info('HTTP request completed', {
       method: req.method,
-      path: req.originalUrl,
+      path: req.originalUrl.split('?')[0] ?? req.path,
       statusCode: res.statusCode,
       durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
     });

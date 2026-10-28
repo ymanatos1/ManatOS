@@ -9,6 +9,8 @@ import {
   type ManatOSContext,
   type ManatOSDynamicValue,
   type NavigationContribution,
+  type NavigationMenuEntry,
+  type NavigationReference,
   type SysBOAuthorizationCapabilities,
   type SysPlatform,
 } from '@manatos/shared';
@@ -24,7 +26,9 @@ export interface AppNavMenuItem {
   dockBottom?: boolean;
   /** Static or evaluator-backed visibility against the current CTX root. */
   visible?: ManatOSDynamicValue<boolean>;
-  /** API-projected collection-read capability required for this entry. */
+  /** Canonical entity navigation target; requires API-projected collection-read access. */
+  entityKey?: string;
+  /** API-projected collection-read dependency (including non-entity actions). */
   requiresEntityRead?: string;
 }
 
@@ -104,20 +108,48 @@ export function horizontalNavigation(
   ];
 }
 
+function isNavigationReference(entry: NavigationMenuEntry): entry is NavigationReference {
+  return 'navigationId' in entry;
+}
+
+function resolveSurfaceContribution(
+  entry: NavigationMenuEntry,
+  catalogue: ReadonlyMap<string, NavigationContribution>,
+): NavigationContribution {
+  if (!isNavigationReference(entry)) return entry;
+
+  const contribution = catalogue.get(entry.navigationId);
+  if (!contribution) {
+    throw new Error(`Navigation reference '${entry.navigationId}' was not found.`);
+  }
+
+  return entry.order === undefined ? contribution : { ...contribution, order: entry.order };
+}
+
 /**
- * Compose the left navigation from Company contributions plus the selected
- * Platform contributions. Parent containers with the same id are merged, so
- * both owners can contribute entries to shared collections such as
- * Administration and Configuration without hard-coding the final menu in the
- * UI project.
+ * Compose the left navigation from the explicit Company + Platform workspace
+ * surfaces. This keeps primary-only entries such as Platform out of the left
+ * navigation while still allowing both owners to contribute to shared groups.
  */
 export function composeVerticalNavigation(
   company: CompanyInfo = MANATOS_COMPANY,
   platform: SysPlatform = resolvePlatform(company),
 ): AppNavMenuItem[] {
   const entityKeys = effectiveEntityKeys(company, platform);
-  const contributions = [...company.navigation, ...platform.navigation]
-    .filter((item) => (item.requiresEntityKeys ?? []).every((key) => entityKeys.has(key)))
+  const catalogue = new Map(
+    [...company.navigation, ...platform.navigation].map((contribution) => [
+      contribution.id,
+      contribution,
+    ]),
+  );
+  const contributions = [...company.workspaceNavigation, ...platform.workspaceNavigation]
+    .map((entry) => resolveSurfaceContribution(entry, catalogue))
+    .filter(
+      (item, index, all) =>
+        all.findIndex((candidate) => candidate.id === item.id) === index &&
+        (!item.entityKey || entityKeys.has(item.entityKey)) &&
+        (item.requiresEntityKeys ?? []).every((key) => entityKeys.has(key)),
+    )
     .sort((a, b) => a.order - b.order);
 
   const roots = new Map<string, AppNavMenuItem>();
@@ -148,7 +180,12 @@ function toMenuItem(item: NavigationContribution): AppNavMenuItem {
     id: item.id,
     text: item.text,
     ...(item.icon ? { icon: item.icon } : {}),
-    ...(item.url ? { url: item.url } : {}),
+    ...(item.entityKey
+      ? { url: `/bo/${encodeURIComponent(item.entityKey)}` }
+      : item.url
+        ? { url: item.url }
+        : {}),
+    ...(item.entityKey ? { entityKey: item.entityKey } : {}),
     ...(item.separatorBefore ? { separatorBefore: true } : {}),
     ...(item.action === 'open-preferences' ? { action: 'open-preferences' as const } : {}),
     ...(item.dockBottom ? { dockBottom: true } : {}),
@@ -223,10 +260,8 @@ export function navigationFor(
   };
   const filter = (items: AppNavMenuItem[]): AppNavMenuItem[] =>
     items.flatMap((item) => {
-      if (
-        item.requiresEntityRead &&
-        access.entityCapabilities?.[item.requiresEntityRead]?.read !== true
-      ) {
+      const readEntity = item.entityKey ?? item.requiresEntityRead;
+      if (readEntity && access.entityCapabilities?.[readEntity]?.read !== true) {
         return [];
       }
       const evaluatedVisible = dynamicNavigationVisible(item.visible, evaluationCtx, item.id);

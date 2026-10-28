@@ -21,7 +21,7 @@ Canonical metadata describes durable/business semantics such as:
 - exposure/internal-support status;
 - relationship/delete/integrity behavior.
 
-Canonical metadata is UI-neutral. It must remain meaningful to the API, storage planner and future clients without understanding EJS, Bootstrap or browser DOM structure.
+Canonical metadata is UI-neutral. It must remain meaningful to the API, storage planner and client technologies without understanding EJS, Bootstrap or browser DOM structure.
 
 ## UI metadata
 
@@ -37,12 +37,6 @@ UI metadata describes framework-neutral presentation and interaction composition
 - dynamic expression-backed presentation policy.
 
 UI metadata does not own the persisted meaning of a field or relationship.
-
-### Named entry UI views
-
-One entity can expose multiple keyed entry UI views over the same canonical record. Common `record` UI metadata is shared; a selected view contributes only its presentation differences. The view key (`main`, `quickView`, `quick`, ...) is concrete identity, while `viewType` (`full`, `quick`, ...) describes the presentation family.
-
-View selection is independent of the UI host. Page, popup and embedded describe hosting/lifecycle; a UI view describes which record presentation is composed. See [Entity UI Views](UI-Views.md).
 
 ## Metadata flow
 
@@ -63,7 +57,7 @@ The same canonical metadata is exposed through the API so the UI server does not
 
 ## Generic entity infrastructure versus SysBO
 
-`SysBO` is a naming/category convention for system-owned business objects belonging to foundation-level Company scope or platform scope. It is **not** the name of the generic entity framework.
+`SysBO` is a naming/category convention for system-owned business objects belonging to technical `Company` scope or platform scope. It is **not** the name of the generic entity framework.
 
 The reusable infrastructure should therefore be described as entity infrastructure, metadata-driven entity runtime, or business-object infrastructure depending context.
 
@@ -117,9 +111,9 @@ A registry should compose definitions, not become a switch statement full of pro
 
 ## Platform contributions
 
-Company and platform layers can contribute metadata-driven entities and presentation/navigation behavior. Ownership remains explicit: Users, Principals, Licenses and External Authentication Providers are foundation-level Company-domain entities; Applications is currently protoCRM platform-owned.
+Company and platform layers can contribute metadata-driven entities and presentation/navigation behavior. Ownership remains explicit: Users, Principals, Licenses and External Authentication Providers are company-owned; Applications is currently protoCRM platform-owned.
 
-Platform composition must not move Company-domain entities under protoCRM merely because protoCRM consumes their services/licensing.
+Platform composition must not move company entities under protoCRM merely because protoCRM consumes their services/licensing.
 
 ## Expressions in metadata
 
@@ -167,3 +161,9 @@ When adding metadata:
 - **Reference:** [Metadata Catalog](Metadata-Catalog.md), [Entity Catalog](../entities/Entity-Catalog.md).
 - **Storage:** [Data and Storage Architecture](../storage/Data-and-Storage-Architecture.md).
 - **Runtime:** [Context Architecture](../context/Context-Architecture.md), [Expression Architecture](../expressions/Expression-Architecture.md).
+
+## Named views as composable UI metadata
+
+Entity UI metadata may declare multiple keyed views rather than assuming one List or Entry arrangement. `resolveSysBOUIView`, `resolveSysBOUIListView` and `resolveSysBOUIRelatedCollection` are separate resolution contracts under `shared/src/metadata/ui/view-resolution.ts`. They accept common metadata and view-specific contributions and produce effective presentation metadata; they do not mutate canonical field or relationship definitions.
+
+View selection affects layout, columns, tabs, action visibility and related collection presentation. It does not create a new entity type or bypass field/API constraints. Unknown selected keys fail explicitly. See [Named UI Views](UI-Views.md).

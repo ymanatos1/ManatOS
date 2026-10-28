@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "githubTarget": "repository-actions-secrets",
+  "applications": [
+    {
+      "id": "api",
+      "file": "api/.env",
+      "secret": "MANATOS_CI_API_DOTENV",
+      "keyIndexVariable": "MANATOS_CI_API_DOTENV_KEYS"
+    },
+    {
+      "id": "ejs1",
+      "file": "ui.EJS1/.env",
+      "secret": "MANATOS_CI_EJS1_DOTENV",
+      "keyIndexVariable": "MANATOS_CI_EJS1_DOTENV_KEYS"
+    },
+    {
+      "id": "ng1",
+      "file": "ui.NG1/.env",
+      "secret": "MANATOS_CI_NG1_DOTENV",
+      "keyIndexVariable": "MANATOS_CI_NG1_DOTENV_KEYS"
+    }
+  ],
+  "ciScopeApplications": {
+    "all": [
+      "api",
+      "ejs1",
+      "ng1"
+    ],
+    "api": [
+      "api"
+    ],
+    "uis": [
+      "ejs1",
+      "ng1"
+    ],
+    "ng1": [
+      "ng1"
+    ],
+    "ejs1": [
+      "ejs1"
+    ]
+  }
+}

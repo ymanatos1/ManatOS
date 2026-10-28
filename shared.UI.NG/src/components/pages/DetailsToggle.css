@@ -1,0 +1,29 @@
+.details-toggle {
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.6rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface);
+  color: var(--manatos-navigation-text);
+  font: inherit;
+  font-size: calc(0.78rem * var(--manatos-font-scale));
+  cursor: pointer;
+}
+
+.details-toggle:hover,
+.details-toggle:focus-visible,
+.details-toggle.active {
+  border-color: #b9cbe1;
+  background: var(--manatos-navigation-hover-bg);
+  color: var(--manatos-blue);
+}
+
+@media (max-width: 575.98px) {
+  .details-toggle {
+    white-space: nowrap;
+  }
+}

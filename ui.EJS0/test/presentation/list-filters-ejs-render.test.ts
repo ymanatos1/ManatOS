@@ -3,8 +3,10 @@ import { fileURLToPath } from 'node:url';
 
 import { renderFile } from 'ejs';
 import { describe, expect, it } from 'vitest';
+import { resolveMetadataText } from '@manatos/shared';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const metadataText = (value: string) => resolveMetadataText(value, 'EN');
 const filtersPath = resolve(testDirectory, '../../views/components/sysbo/list/list-filters.ejs');
 
 const metadata = {
@@ -23,6 +25,7 @@ const metadata = {
 describe('metadata list filter EJS transport contract', () => {
   it('renders canonical browser form names without escaped quote characters', async () => {
     const html = await renderFile(filtersPath, {
+      metadataText,
       selectorMode: false,
       filterFields: ['name', 'principalType'],
       hasActiveFilters: true,
@@ -43,6 +46,7 @@ describe('metadata list filter EJS transport contract', () => {
 
   it('keeps selector filters as data attributes rather than form fields', async () => {
     const html = await renderFile(filtersPath, {
+      metadataText,
       selectorMode: true,
       filterFields: ['name'],
       hasActiveFilters: false,

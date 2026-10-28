@@ -1,0 +1,279 @@
+<manatos-preferences
+  [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+  [theme]="preferencesTheme()"
+  (save)="savePreferences($event)"
+/>
+<manatos-ctx-diagnostics
+  [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+  [runtime]="state.diagnostics"
+/>
+
+<!-- Only the central surfaces host knows how to instantiate individual popups. -->
+<manatos-surfaces-host
+  [contextTree]="state.context"
+  [busyRuntime]="busy"
+  [debuggerAllowed]="debuggerAllowed()"
+  [externalProvidersLoader]="loadExternalProviders"
+  [initialFontScalePercent]="fontScalePercent()"
+  (fontScaleChanged)="setFontScalePercent($event)"
+  [languages]="state.languages"
+  [currentLanguage]="currentLanguage()"
+  [entityCapabilitiesFor]="entityPopupPermissions"
+  (languageSelected)="selectLanguage($event)"
+  (debuggerRequested)="revealPopupContext($event)"
+  (flowDebuggerRequested)="revealPopupFlowStep($event)"
+  [debuggerForeground]="popupDebuggerForeground()"
+  [debuggerDocked]="!debuggerDetached()"
+  [debuggerDockWidth]="developerToolsWidth()"
+  (opened)="resetPopupDebuggerLayer()"
+  (closed)="resetPopupDebuggerLayer()"
+  [signInHandler]="signIn"
+  (externalProviderRequested)="startExternalSignIn($event)"
+/>
+
+@if (authNotice(); as notice) {
+  <div
+    class="auth-status-notice"
+    [class.is-warning]="notice.severity === 'warning'"
+    [class.is-danger]="notice.severity === 'danger'"
+    [attr.role]="notice.severity === 'danger' ? 'alert' : 'status'"
+  >
+    <i
+      class="bi"
+      [class.bi-exclamation-triangle-fill]="notice.severity === 'warning'"
+      [class.bi-x-circle-fill]="notice.severity === 'danger'"
+      aria-hidden="true"
+    ></i>
+    <span>{{ multilingual().status(notice.message) }}</span>
+    @if (notice.retry) {
+      <button type="button" class="auth-notice-retry" (click)="retryAuthentication()">
+        {{ multilingual().Retry }}
+      </button>
+    }
+    <button
+      type="button"
+      class="auth-notice-close"
+      [attr.aria-label]="multilingual().DismissNotification"
+      (click)="dismissAuthNotice()"
+    >
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+  </div>
+}
+
+<manatos-shell
+  [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+  [workspaceNavigationCollapsed]="workspaceNavigationCollapsed()"
+  [workspaceNavigationAvailable]="signedIn() && !systemOutage()"
+  (workspaceNavigationCollapsedChange)="setWorkspaceNavigationCollapsed($event)"
+>
+  <manatos-header
+    [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+    [versionLabel]="state.versionLabel"
+    [statusLabel]="'Angular UI · API ' + apiHeaderStatus()"
+    [apiStatus]="apiHeaderStatus()"
+    [apiFailureCount]="bootstrap().consecutiveFailures"
+    [signedIn]="signedIn()"
+    [accountName]="accountIdentity()?.name ?? multilingual().Account"
+    [accountRole]="accountIdentity()?.role ?? ''"
+    [accountPhotoUrl]="signedIn() ? '/_manatos/auth/photo?v=' + photoVersion() : null"
+    [accountOpen]="openMenu() === 'account'"
+    (loginRequested)="openSignIn()"
+    (registerRequested)="openRegister()"
+    (accountRequested)="toggleMenu('account')"
+    (changePasswordRequested)="openChangePassword()"
+    (signOutRequested)="signOut()"
+  >
+    <manatos-platform-selector
+      [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+      [current]="currentPlatform()"
+      [platforms]="platforms()"
+      [navigation]="platformNavigation()"
+      [open]="openMenu() === 'platform'"
+      (openRequested)="toggleMenu('platform')"
+      (platformSelected)="selectPlatform($event)"
+    />
+  </manatos-header>
+
+  <manatos-primary-navigation
+    [items]="primaryNavigation()"
+    [languages]="state.languages"
+    [developerItems]="developerMenu()"
+    [currentLanguage]="currentLanguage()"
+    [fontScalePercent]="fontScalePercent()"
+    [navigationOpen]="openMenu() === 'navigation'"
+    [languageOpen]="openMenu() === 'language'"
+    [debuggerAllowed]="debuggerAllowed()"
+    [developerOpen]="openMenu() === 'developer'"
+    (navigationOpenRequested)="toggleMenu('navigation')"
+    (languageOpenRequested)="toggleMenu('language')"
+    (developerOpenRequested)="toggleMenu('developer')"
+    (itemSelected)="selectNavigation($event)"
+    (fontScaleChanged)="setFontScalePercent($event)"
+    (documentationRequested)="openDocumentation()"
+    (languageSelected)="selectLanguage($event)"
+    (developerItemSelected)="selectDeveloperItem($event)"
+  />
+
+  <manatos-workspace-navigation
+    [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+    [items]="workspaceNavigation()"
+    [pathname]="pagePath()"
+    (itemSelected)="selectNavigation($event)"
+  />
+
+  <manatos-workspace>
+    @if (systemOutage()) {
+      <section class="system-unavailable" role="alert" aria-live="assertive">
+        <div class="system-unavailable-body">
+          <i class="bi bi-wifi-off system-unavailable-icon" aria-hidden="true"></i>
+          <div>
+            <h1>
+              {{ multilingual().ManatOsSystemUnavailable }}
+            </h1>
+            <p>
+              {{ multilingual().ManatOsUnresponsive }}
+            </p>
+            <p class="system-unavailable-detail">
+              {{ multilingual().Ng1PollingStopped }}
+            </p>
+            <div class="system-unavailable-retry">
+              <button type="button" [disabled]="systemRetrying()" (click)="retrySystemOutage()">
+                {{ multilingual().Retry }}
+              </button>
+              <span role="status">{{ multilingual().status(systemRetryStatus()) }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    } @else {
+      <manatos-page
+        [presentation]="pagePresentation()"
+        [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+      >
+        @if (entryPageRoute()) {
+          @if (entryViewHost(); as entry) {
+            <manatos-entry-ui-view-selector
+              page-title-actions
+              [views]="entry.uiViews()"
+              [busy]="entry.uiViewBusy()"
+              [error]="entry.uiViewError()"
+              [selected]="entry.uiViewKey()"
+              [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+              (selectedChange)="entry.selectUIView($event)"
+            />
+          }
+        }
+        @if (listPageEntityKey() || entryPageRoute()) {
+          <manatos-surface-title-tools
+            page-title-actions
+            hostKind="page"
+            [showFontScale]="false"
+            [debuggerAllowed]="debuggerAllowed()"
+            [flowStepPath]="pageFlowStepPath()"
+            (debuggerRequested)="revealPageContext()"
+            (flowDebuggerRequested)="revealPageFlowStep($event)"
+          />
+        }
+        @if (documentationPageActive()) {
+          <manatos-surface-action
+            page-title-actions
+            [label]="multilingual().resolve('@CM.OpenNewDocumentationPopup')"
+            icon="bi-box-arrow-up-right"
+            (requested)="openDocumentationPopup()"
+          />
+        }
+
+        <div page-content>
+          <ng-template #entryPageTemplate let-route>
+            <manatos-entry-page-host
+              [parentLevelPath]="entryParentLevelPath()"
+              [inspectorAllowed]="debuggerAllowed()"
+              [contextTree]="state.context"
+              [entityKey]="route.entityKey"
+              [recordId]="route.recordId"
+              (dismissed)="closeEntryPage()"
+              (titleViewHostReady)="registerEntryViewHost($event)"
+              (titleViewHostDestroyed)="unregisterEntryViewHost($event)"
+              (captionChanged)="rememberEntryCaption(route, $event)"
+              (changeReportRequested)="openEntryChangeReport($event)"
+              [permissions]="state.entityCapabilitiesFor(route.entityKey)"
+              [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+            />
+          </ng-template>
+          @if (displayedListEntityKey(); as entityKey) {
+            @for (ownedEntity of [entityKey]; track ownedEntity) {
+              <div [hidden]="!!entryPageRoute()">
+                <manatos-list-page-host
+                  [contextTree]="state.context"
+                  [entityKey]="ownedEntity"
+                  [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+                />
+              </div>
+              @if (entryPageRoute(); as route) {
+                <ng-container
+                  [ngTemplateOutlet]="entryPageTemplate"
+                  [ngTemplateOutletContext]="{ $implicit: route }"
+                />
+              }
+            }
+          } @else if (entryPageRoute(); as route) {
+            <ng-container
+              [ngTemplateOutlet]="entryPageTemplate"
+              [ngTemplateOutletContext]="{ $implicit: route }"
+            />
+          } @else if (systemSettingsPageActive()) {
+            <manatos-storage-page-host
+              [contextTree]="state.context"
+              [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+              [readOnly]="configurationReadOnly()"
+              [languages]="state.languages"
+              [currentLanguage]="currentLanguage()"
+              [debuggerAllowed]="debuggerAllowed()"
+              [debuggerForeground]="popupDebuggerForeground()"
+              [debuggerDocked]="!debuggerDetached()"
+              [debuggerDockWidth]="developerToolsWidth()"
+              [initialFontScalePercent]="fontScalePercent()"
+              (debuggerRequested)="revealPopupContext($event)"
+              (flowDebuggerRequested)="revealPopupFlowStep($event)"
+              (fontScaleChanged)="setFontScalePercent($event)"
+              (languageSelected)="selectLanguage($event)"
+            />
+          } @else if (configurationPageActive()) {
+            <manatos-configuration-page-host
+              [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'"
+              [readOnly]="configurationReadOnly()"
+            />
+          } @else {
+            <manatos-page-host
+              [page]="currentPage()"
+              [context]="pageContext()"
+              [language]="currentLanguage().id"
+              (documentationLocationChanged)="state.rememberDocumentationPage($event)"
+            />
+          }
+        </div>
+      </manatos-page>
+    }
+  </manatos-workspace>
+
+  <manatos-debugger
+    [context]="state.context"
+    [state]="state"
+    [expressionCapabilityDelegate]="expressionCapabilityDelegate"
+    [visible]="debuggerVisible() && debuggerAllowed()"
+    [activeView]="debuggerActiveView()"
+    [developerToolsWidth]="developerToolsWidth()"
+    (closeRequested)="setDebuggerVisible(false)"
+    (activeViewChanged)="selectDebuggerView($event)"
+    (developerToolsWidthChanged)="saveDeveloperToolsWidth($event)"
+    [requestedRevealPath]="debuggerRevealPath()"
+    [requestedRevealToken]="debuggerRevealToken()"
+    [popupDebuggerForeground]="popupDebuggerForeground() && debuggerAllowed()"
+    (detachedChanged)="debuggerDetached.set($event)"
+  />
+
+  <manatos-footer [state]="state" [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'" />
+</manatos-shell>
+
+<manatos-busy-overlay [runtime]="busy" [language]="currentLanguage().id === 'el' ? 'EL' : 'EN'" />

@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import {
+  entryRepresentationRuntime,
+  resolveEntryRepresentation,
+  sysBOPrincipalsMetadata,
+  sysBOPrincipalsUIMetadata,
+} from '@manatos/shared';
+
 import { sourceWithoutWhitespace } from '../support/source-contract.js';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
@@ -41,7 +48,24 @@ describe('owner-managed hierarchy quick ui-view presentation', () => {
     const commonCanonical = await sharedSource('src/metadata/bo/common.ts');
     expect(commonCanonical).toContain('createDefaultValue: true');
     expect(canonical).toContain("createDefaultValue: 'Person'");
-    expect(metadata).toContain("icon: { mode: 'composed', entityScale: 0.72, typeScale: 1.15");
+    // Entity/type icons and available photos are resolved from canonical metadata,
+    // not duplicated in the Principal's UI Entry declaration.
+    expect(
+      entryRepresentationRuntime(sysBOPrincipalsMetadata, sysBOPrincipalsUIMetadata).icon,
+    ).toEqual({ mode: 'composed' });
+    const representation = resolveEntryRepresentation(
+      sysBOPrincipalsMetadata,
+      sysBOPrincipalsUIMetadata,
+      {
+        id: 'principal-1',
+        name: 'Example Principal',
+        principalType: 'Person',
+        photo: '/photo.jpg',
+      },
+    );
+    expect(representation.icons).toEqual(['diagram-3-fill', 'person']);
+    expect(representation.photo).toBe('/photo.jpg');
+    expect(metadata).not.toMatch(/^\s*entry:\s*\{/m);
     expect(hierarchyPage).toContain('entryRepresentation: entryRepresentationRuntime');
     expect(metadata).not.toContain("entityIcon: 'people-fill'");
     expect(hierarchyPage).toContain(
@@ -414,7 +438,7 @@ describe('hierarchy draft persistence and relation selection', () => {
     expect(recordSelectorScript).toContain("kind: 'selector'");
     expect(recordSelectorScript).not.toContain('const displayCellHtml =');
     expect(recordSelectorScript).toContain('invocation: { ...resolvedInvocation }');
-    expect(recordSelectorScript).toContain('originalEntries: snapshot.originalEntries.map');
+    expect(recordSelectorScript).not.toContain('originalEntries: snapshot.originalEntries.map');
     expect(recordSelectorScript).toContain('popupRuntime?.toggleInspection?.({');
     expect(recordSelectorScript).toContain('popupRuntime.clearInspection?.(selectorCtxButton)');
     expect(recordSelectorScript).toContain(

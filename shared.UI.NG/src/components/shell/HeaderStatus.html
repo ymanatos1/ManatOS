@@ -1,0 +1,24 @@
+<div class="header-status">
+  <span class="header-status-line">{{ multilingual().AngularUi }}</span>
+  <span class="header-version-line" [title]="multilingual().ManatOsVersion"
+    ><b>{{ versionLabel() }}</b></span
+  >
+  <span
+    class="header-status-line header-api-status"
+    [class.is-retrying]="effectiveApiStatus() === 'retrying'"
+    [class.is-checking]="effectiveApiStatus() === 'checking'"
+    [class.is-offline]="effectiveApiStatus() === 'offline'"
+    role="status"
+    aria-live="polite"
+  >
+    API @switch (effectiveApiStatus()) { @case ('checking') { checking } @case ('retrying') {
+    retrying ({{ apiFailureCount() }}/3) } @case ('online') { online } @case ('offline') { offline }
+    }
+    <span
+      class="header-api-indicator"
+      [class.is-online]="effectiveApiStatus() === 'online'"
+      [class.is-spinning]="effectiveApiStatus() === 'checking' || effectiveApiStatus() === 'retrying'"
+      aria-hidden="true"
+    ></span>
+  </span>
+</div>

@@ -1,0 +1,19 @@
+.configuration-page {
+  padding: 0.5rem 0 1.2rem;
+  color: var(--manatos-text);
+  font-size: calc(0.95rem * var(--manatos-font-scale, 1));
+}
+.configuration-setting .form-text {
+  min-height: 1.15em;
+}
+.configuration-setting label {
+  overflow-wrap: anywhere;
+}
+.configuration-page .card-header h2 {
+  font-size: calc(1.1rem * var(--manatos-font-scale, 1));
+}
+.configuration-setting .form-control,
+.configuration-setting .form-select,
+.configuration-setting .btn {
+  font-size: inherit;
+}

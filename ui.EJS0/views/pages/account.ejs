@@ -26,7 +26,7 @@
         aria-selected="true"
       >
         <i class="bi bi-info-circle me-1"></i>
-        General
+        <%= metadataText('@CM.AccountGeneral') %>
       </button>
     </li>
 
@@ -42,7 +42,7 @@
         aria-selected="false"
       >
         <i class="bi bi-shield-lock me-1"></i>
-        Authentication
+        <%= metadataText('@CM.Authentication') %>
       </button>
     </li>
 
@@ -58,7 +58,7 @@
         aria-selected="false"
       >
         <i class="bi bi-clock-history me-1"></i>
-        System details
+        <%= metadataText('@CM.SystemDetails') %>
       </button>
     </li>
 
@@ -75,7 +75,7 @@
           aria-selected="false"
         >
           <i class="bi bi-bug me-1" aria-hidden="true"></i>
-          Debugging
+          <%= metadataText('@CM.Debugging') %>
         </button>
       </li>
     <% } %>
@@ -91,7 +91,7 @@
     >
       <div class="account-general-layout">
         <div class="account-summary-grid account-general-summary">
-          <div class="account-summary-label">User</div>
+          <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.User') %></div>
           <div class="account-summary-value">
             <a
               class="metadata-reference-link"
@@ -105,7 +105,7 @@
             </a>
           </div>
 
-          <div class="account-summary-label">Email</div>
+          <div class="account-summary-label"><%= metadataText('@CM.Email') %></div>
           <div class="account-summary-value"><%- include('../components/sysbo/entry/content/readonly-value', {
             field: { type: 'email', readOnly: true },
             presentation: {},
@@ -113,35 +113,35 @@
             enhancedReadonlyPresentation: true
           }) %></div>
 
-          <div class="account-summary-label">Website role</div>
+          <div class="account-summary-label"><%= metadataText('@CM.WebsiteRole') %></div>
           <div class="account-summary-value">
             <span class="badge rounded-pill text-bg-light border"><%= currentUser.role %></span>
           </div>
 
           <% const calculatedFullName = ctxUserFieldValue('fullName'); %>
           <% if (calculatedFullName) { %>
-            <div class="account-summary-label">Full name</div>
+            <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.FullName') %></div>
             <div class="account-summary-value"><%= calculatedFullName %></div>
           <% } %>
 
           <% if (currentUser.firstName) { %>
-            <div class="account-summary-label">First name</div>
+            <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.FirstName') %></div>
             <div class="account-summary-value"><%= currentUser.firstName %></div>
           <% } %>
 
           <% if (currentUser.lastName) { %>
-            <div class="account-summary-label">Last name</div>
+            <div class="account-summary-label"><%= metadataText('@EN.manatos.auth.users.label.LastName') %></div>
             <div class="account-summary-value"><%= currentUser.lastName %></div>
           <% } %>
 
           <% if (currentUser.description) { %>
-            <div class="account-summary-label">Description</div>
+            <div class="account-summary-label"><%= metadataText('@CM.Description') %></div>
             <div class="account-summary-value"><%= currentUser.description %></div>
           <% } %>
         </div>
 
         <% if (currentUser.photo) { %>
-          <div class="account-summary-photo" aria-label="User photo">
+          <div class="account-summary-photo" aria-label="<%= metadataText('@CM.UserPhoto') %>">
             <img
               src="<%= persistedScalarPictureSource('sys-users', currentUser.id, 'photo', currentUser.photo) || '' %>"
               alt="<%= currentUser.name %>"
@@ -177,19 +177,19 @@
       tabindex="0"
     >
       <div class="account-summary-grid">
-        <div class="account-summary-label">Id</div>
+        <div class="account-summary-label"><%= metadataText('@EN.common.label.Id') %></div>
         <div class="account-summary-value"><%- include('../components/sysbo/entry/content/readonly-value', { field: { type: 'guid', readOnly: true }, presentation: {}, rendered: currentUser.id, enhancedReadonlyPresentation: true }) %></div>
 
-        <div class="account-summary-label">Created</div>
+        <div class="account-summary-label"><%= metadataText('@EN.common.label.Created') %></div>
         <div class="account-summary-value"><%= formatMetadataValue(currentUser.createdAt, { format: 'datetime-elapsed', emptyText: '—' }) %></div>
 
-        <div class="account-summary-label">Created by</div>
+        <div class="account-summary-label"><%= metadataText('@EN.common.label.CreatedBy') %></div>
         <div class="account-summary-value"><%- include('../components/sysbo/entry/content/readonly-value', { field: { type: 'string', readOnly: true }, presentation: { format: 'name' }, rendered: currentUser.createdBy || '—', enhancedReadonlyPresentation: true }) %></div>
 
-        <div class="account-summary-label">Updated</div>
+        <div class="account-summary-label"><%= metadataText('@EN.common.label.Updated') %></div>
         <div class="account-summary-value"><%= formatMetadataValue(currentUser.updatedAt, { format: 'datetime-elapsed', emptyText: '—' }) %></div>
 
-        <div class="account-summary-label">Updated by</div>
+        <div class="account-summary-label"><%= metadataText('@EN.common.label.UpdatedBy') %></div>
         <div class="account-summary-value"><%- include('../components/sysbo/entry/content/readonly-value', { field: { type: 'string', readOnly: true }, presentation: { format: 'name' }, rendered: currentUser.updatedBy || '—', enhancedReadonlyPresentation: true }) %></div>
       </div>
     </div>

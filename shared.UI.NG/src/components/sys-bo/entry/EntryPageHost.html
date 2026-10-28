@@ -1,0 +1,54 @@
+<!-- EntryPageHost template: Entry Surface lifecycle, dirty-close decisions and action dispatch; embedded children own tabs and field markup. -->
+<div class="manatos-entry-page-host" [attr.data-ui-level-path]="entry.levelPath">
+  <section class="manatos-entry" data-entry-layout="Entry">
+    <header
+      class="manatos-entry-header"
+      data-entry-layout="Header"
+      [hidden]="!entry.level()?.state?.entry?.loading && !entry.level()?.state?.entry?.error"
+    >
+      @if (entry.level()?.state?.entry?.loading) {
+      <span role="status">{{ entry.language() === 'EL' ? 'Φόρτωση…' : 'Loading…' }}</span>
+      } @if (entry.level()?.state?.entry?.error; as error) { <span role="alert">{{ error }}</span> }
+    </header>
+    <manatos-entry-tabs
+      [attr.inert]="entry.level()?.state?.entry?.recoveryFailed ? '' : null"
+      [hidden]="!entry.viewNavigationVisible()"
+      [tabs]="entry.tabs()"
+      [active]="entry.level()?.state?.entry?.activeTab ?? ''"
+      (selected)="entry.selectTab($event)"
+    />
+    @for (tab of entry.tabs(); track uiViewKey() + ':' + tab.id; let i = $index) {
+    <section
+      class="manatos-entry-panel"
+      [attr.data-entry-tab-index]="i"
+      [attr.id]="'entry-panel-' + tab.id"
+      role="tabpanel"
+      [hidden]="entry.level()?.state?.entry?.activeTab !== tab.id"
+      [attr.inert]="entry.level()?.state?.entry?.recoveryFailed ? '' : null"
+    >
+      <manatos-entry-layout [items]="tab.layout" />
+    </section>
+    }
+    <div class="manatos-entry-action-bar">
+      <manatos-entry-change-status
+        [attr.inert]="entry.level()?.state?.entry?.recoveryFailed ? '' : null"
+        [dirty]="entry.level()?.state?.entry?.dirty === true"
+        [language]="language()"
+        (reviewRequested)="reviewChanges()"
+      />
+      <manatos-surface-actions
+        kind="entry"
+        [hostKind]="hostKind()"
+        [entityKey]="entityKey()"
+        [language]="language() === 'EL' ? 'EL' : 'EN'"
+        [saveReady]="entry.level()?.state?.entry?.saveReady === true && !entry.level()?.state?.entry?.recoveryFailed"
+        [dirty]="entry.level()?.state?.entry?.dirty === true"
+        (actionRequested)="surfaceAction($event)"
+        data-entry-layout="Actions"
+      />
+    </div>
+  </section>
+  @if (entry.pictureRequest(); as picture) {
+  <manatos-picture-editor-popup [request]="picture" [language]="language()" />
+  }
+</div>

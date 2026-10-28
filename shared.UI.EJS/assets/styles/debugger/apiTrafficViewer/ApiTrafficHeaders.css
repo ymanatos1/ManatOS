@@ -1,0 +1,48 @@
+.api-traffic-header-matrix {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(8rem, 34%) minmax(0, 1fr);
+  border-top: 1px dotted #dbe3ec;
+}
+
+.api-traffic-header-matrix-heading,
+.api-traffic-header-matrix-row {
+  display: contents;
+}
+
+.api-traffic-header-matrix-heading > span,
+.api-traffic-header-matrix-row > code {
+  min-width: 0;
+  padding: 0.22rem 0.3rem;
+  border-bottom: 1px dotted #dbe3ec;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.api-traffic-header-matrix-heading > span {
+  background: #f8fafc;
+  color: #52606d;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.api-traffic-header-matrix-row > code {
+  color: #172b4d;
+  font-size: 0.66rem;
+}
+
+.api-traffic-header-matrix-row > code:first-child {
+  color: #52606d;
+  font-weight: 600;
+}
+
+.api-traffic-header-matrix > .api-traffic-empty {
+  grid-column: 1 / -1;
+  padding: 0.5rem 0.3rem;
+  font-size: 0.68rem;
+}
+
+.api-traffic-header-matrix > .api-traffic-empty {
+  color: #7a8795;
+}

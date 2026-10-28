@@ -1,0 +1,51 @@
+<div class="ctx-debug-tree" role="tree" [attr.aria-label]="multilingual().ManatOsContextTree">
+  @for (row of rows(); track row.node.path) {
+  <div
+    class="ctx-debug-row"
+    [class.is-selected]="row.node.path === selectedPath()"
+    [class.is-derived]="row.node.calculated"
+    [class.is-flow-step]="row.node.kind === 'flow-step'"
+    [class.is-watch-changed]="row.node.path === watchChangedPath()"
+    [style.padding-left.px]="row.depth * 16"
+    [attr.data-ctx-path]="row.node.path"
+    role="treeitem"
+    [attr.aria-selected]="row.node.path === selectedPath()"
+    [attr.aria-expanded]="row.node.hasChildren ? effectiveExpanded().has(row.node.path) : null"
+    [attr.data-debug-tooltip]="tooltipTitle(row.node)"
+    [attr.data-debug-tooltip-value]="tooltipValue(row.node)"
+    [attr.data-debug-tooltip-detail]="tooltipDetail(row.node)"
+    (mouseenter)="hover(row.node.path)"
+    (mouseleave)="unhover(row.node.path)"
+    (click)="select(row.node.path)"
+    (dblclick)="toggle(row, $event)"
+  >
+    <button
+      class="ctx-debug-toggle"
+      type="button"
+      [disabled]="!row.node.hasChildren"
+      (click)="toggle(row, $event)"
+      [attr.aria-label]="effectiveExpanded().has(row.node.path) ? 'Collapse' : 'Expand'"
+    >
+      @if (row.node.hasChildren) {
+      <i
+        [class]="'bi ' + (effectiveExpanded().has(row.node.path) ? 'bi-caret-down-fill' : 'bi-caret-right-fill')"
+      ></i>
+      }
+    </button>
+    <i [class]="'bi ' + icon(row.node) + ' ctx-debug-node-icon'" aria-hidden="true"></i>
+    <span class="ctx-debug-key">{{ row.node.displayKey ?? row.node.key }}</span>
+    @if (row.node.badge) {
+    <span
+      class="ctx-debug-ui-level-badge"
+      [class.is-flow-badge]="row.node.kind === 'flow-step' || row.node.kind === 'flow'"
+      >{{ row.node.badge }}</span
+    >
+    } @if (rootPath() === 'ctx' || row.node.path !== rootPath() || !row.node.hasChildren) { @if
+    (row.node.preview !== '{0}') {
+    <span class="ctx-debug-value">{{ row.node.preview }}</span>
+    } }
+  </div>
+  } @empty {
+  <div class="ctx-debug-empty">{{ multilingual().CtxPathUnavailable }}</div>
+  }
+</div>

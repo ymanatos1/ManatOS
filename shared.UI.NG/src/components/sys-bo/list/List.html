@@ -1,0 +1,57 @@
+<!-- List template: the header, columns, keyed rows, pagination and optional actions; only row children are replaced when record identities change. -->
+<section
+  class="manatos-list"
+  [class.manatos-list-embedded]="embeddedRows() !== null"
+  [class.manatos-list-panel-layout]="embeddedRows() !== null && embeddedLayout() === 'panel-list'"
+  data-list
+  data-list-layout="List"
+  [style.--manatos-list-column-count]="embeddedRows() !== null ? displayColumns().length : (context?.columns()?.length ?? 0)"
+>
+  @if (embeddedRows(); as rows) {
+  <div class="manatos-list-table" role="table" data-list-table>
+    <manatos-list-columns-row [embeddedColumns]="displayColumns()" />
+    <div class="manatos-list-rows" role="rowgroup">
+      @for (row of rows; track row['id'] ?? $index) {
+      <manatos-list-row
+        [index]="$index"
+        [embeddedRow]="row"
+        [embeddedColumns]="displayColumns()"
+        [embeddedEntityKey]="embeddedEntityKey()"
+        [embeddedLanguage]="embeddedLanguage()"
+        [embeddedReferences]="embeddedReferences()"
+        (click)="openEmbedded(row, $event)"
+      />
+      } @empty {
+      <div class="manatos-list-empty">
+        {{ embeddedLanguage() === 'EL' ? 'Δεν υπάρχουν σχετικές εγγραφές.' : 'No related entries.'
+        }}
+      </div>
+      }
+    </div>
+  </div>
+  } @else {
+  <manatos-list-header />
+  @if (context?.level()?.state?.list?.loading) {
+  <div data-list-status role="status">
+    {{context?.language() === 'EL' ? 'Φόρτωση…' : 'Loading…'}}
+  </div>
+  } @if (context?.level()?.state?.list?.error) {
+  <div data-list-status role="alert">{{context?.level()?.state?.list?.error}}</div>
+  }
+  <div class="manatos-list-table" role="table" [attr.aria-label]="context?.entityLabel()">
+    <manatos-list-columns-row />
+    <div class="manatos-list-rows" role="rowgroup">
+      @for (row of context?.level()?.data?.list ?? []; track row['id'] ?? $index) {
+      <manatos-list-row
+        [index]="$index"
+        (rowSelected)="rowSelected.emit($event)"
+        (rowConfirmed)="rowConfirmed.emit($event)"
+      />
+      } @empty {
+      <div class="manatos-list-empty">{{ context?.emptyMessage() }}</div>
+      }
+    </div>
+  </div>
+  <manatos-list-pagination />
+  }
+</section>

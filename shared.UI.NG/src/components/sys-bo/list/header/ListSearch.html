@@ -1,0 +1,11 @@
+<!-- ListSearch template: the query input; the List Surface handles search application. -->
+<label class="manatos-list-search" data-list-layout="ListSearch">
+  <span class="visually-hidden">{{ context.language() === 'EL' ? 'Αναζήτηση' : 'Search' }}</span>
+  <input
+    type="search"
+    data-list-search
+    [placeholder]="context.searchPlaceholder()"
+    [value]="context.level()?.data?.filters?.search ?? ''"
+    (change)="onSearch($event)"
+  />
+</label>

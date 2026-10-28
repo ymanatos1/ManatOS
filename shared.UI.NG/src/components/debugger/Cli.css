@@ -1,0 +1,220 @@
+:host {
+  min-height: 96px;
+  display: flex;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.debugging-cli {
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.debugging-cli-dock {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0.55rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--debug-border);
+  background: #f8fafc;
+}
+
+.debugging-cli-resize {
+  position: absolute;
+  z-index: 2;
+  top: -1px;
+  right: 0;
+  left: 0;
+  height: 7px;
+  cursor: ns-resize;
+  touch-action: none;
+  background: linear-gradient(to bottom, transparent 1px, #9aa9bb 1px, #9aa9bb 2px, transparent 2px)
+    center / 2rem 4px no-repeat;
+}
+
+.debugging-cli-dock-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  padding: 0;
+  font-size: 0.68rem;
+}
+
+.debugging-cli-dock-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+/* The CLI toolbar uses its own font scale, independently of the shell. */
+.debugging-cli-dock-heading-actions manatos-font-scale {
+  --manatos-font-scale-min-height: 1.15rem;
+  --manatos-navigation-text: #526071;
+}
+
+.debugging-cli-dock-heading small {
+  color: #7a8796;
+}
+
+.debugging-cli-console {
+  margin: 0;
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #374151;
+  border-radius: 0.28rem;
+  background: #111827;
+  color: #d1d5db;
+  cursor: text;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: calc(0.7rem * var(--cli-local-scale, 1));
+}
+
+.debugging-cli-transcript {
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+  overflow: auto;
+  scrollbar-width: none;
+  padding: 0.45rem 0.5rem 0;
+  user-select: text;
+}
+
+.debugging-cli-transcript::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.debugging-cli-transcript pre {
+  margin: 0 0 0.25rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+
+.debugging-cli-command {
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.debugging-cli-result {
+  margin-left: 1rem;
+  color: #d1fae5;
+}
+
+.debugging-cli-error {
+  margin-left: 1rem;
+  color: #fca5a5;
+}
+
+.debugging-cli-info {
+  color: #cbd5e1;
+}
+
+.debugging-cli-input-line {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.45rem -0.5rem -0.5rem;
+  padding: 0.5rem;
+  border-top: 1px solid #374151;
+}
+
+.debugging-cli-prompt-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.debugging-cli-prompt {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #93c5fd;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.debugging-cli-prompt:hover,
+.debugging-cli-prompt:focus-visible {
+  color: #fff;
+}
+
+.debugging-cli-input {
+  min-width: 0;
+  min-height: 1.4em;
+  height: 22px;
+  max-height: 10rem;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  resize: none;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  color: #f9fafb;
+  caret-color: #f9fafb;
+  font: inherit;
+}
+
+.debugging-cli-history {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  bottom: calc(100% + 0.25rem);
+  min-width: 18rem;
+  max-width: 28rem;
+  max-height: 12rem;
+  overflow: auto;
+  padding: 0.2rem;
+  border: 1px solid #94a3b8;
+  border-radius: 0.25rem;
+  background: #e2e8f0;
+  box-shadow: 0 0.45rem 1rem rgb(0 0 0 / 35%);
+}
+
+.debugging-cli-history-item {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.2rem;
+  padding: 0.25rem 0.35rem;
+  background: #e2e8f0;
+  color: #1e293b;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  cursor: pointer;
+}
+
+.debugging-cli-history-item:hover,
+.debugging-cli-history-item:focus {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+.debugging-cli-history-empty {
+  padding: 0.35rem;
+  color: #64748b;
+}
+
+:host.is-detached-global-cli {
+  height: 100% !important;
+  min-height: 100%;
+}
+:host.is-detached-global-cli .debugging-cli-resize {
+  display: none;
+}

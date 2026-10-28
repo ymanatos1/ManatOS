@@ -1,4 +1,4 @@
-import { enumItemsForField, type SysBOFieldMetadata } from '@manatos/shared';
+import { enumItemsForField, resolveMetadataText, type SysBOFieldMetadata } from '@manatos/shared';
 
 /**
  * Generic metadata value-presentation helpers shared by server-rendered views.
@@ -22,13 +22,19 @@ export interface MetadataValuePresentation {
   emptyText?: string;
 }
 
+/** Keep enum codes intact; resolve only the selected option's presentation label. */
 export const metadataOptionItemForField = (
   field: MetadataOptionField | null | undefined,
   value: unknown,
-): MetadataOptionItem | null =>
-  [...(field?.optionItems ?? []), ...enumItemsForField(field)].find(
+  language: 'EN' | 'EL' = 'EN',
+): MetadataOptionItem | null => {
+  const item = [...(field?.optionItems ?? []), ...enumItemsForField(field)].find(
     (candidate) => candidate?.value === value,
-  ) ?? null;
+  );
+  if (!item) return null;
+  const { label, ...other } = item;
+  return label === undefined ? other : { ...other, label: resolveMetadataText(label, language) };
+};
 
 /** Resolve semantic field representation without entity-specific metadata duplication. */
 export const metadataFieldRepresentation = (

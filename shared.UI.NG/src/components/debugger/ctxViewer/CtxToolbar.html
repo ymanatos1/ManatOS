@@ -1,0 +1,90 @@
+<div
+  class="debug-panel-tools ctx-toolbar"
+  role="toolbar"
+  [attr.aria-label]="multilingual().CtxViewerControls"
+>
+  <span class="debug-toolbar-group">
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().PreviousCtxSelection"
+      [disabled]="!canBack()"
+      (click)="back.emit()"
+    >
+      <i class="bi bi-arrow-left"></i>
+    </button>
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().NextCtxSelection"
+      [disabled]="!canForward()"
+      (click)="forward.emit()"
+    >
+      <i class="bi bi-arrow-right"></i>
+    </button>
+  </span>
+  <span class="debug-toolbar-group">
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().CopyCtxJson"
+      (click)="copy.emit()"
+    >
+      <i class="bi bi-copy"></i>
+    </button>
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().WatchCtxValue"
+      [class.is-active]="watched()"
+      (click)="watch.emit()"
+    >
+      <i class="bi bi-eye"></i>
+    </button>
+  </span>
+  <span class="debug-toolbar-group">
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().SelectedNodeProperties"
+      [class.is-active]="propertiesOpen()"
+      (click)="properties.emit()"
+    >
+      <i class="bi bi-info-square"></i>
+    </button>
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().FindCtxVariable"
+      [class.is-active]="findOpen()"
+      (click)="find.emit()"
+    >
+      <i class="bi bi-search"></i>
+    </button>
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().OpenCtxCli"
+      [class.is-active]="cliOpen()"
+      (click)="cli.emit()"
+    >
+      <i class="bi bi-terminal"></i>
+    </button>
+    <button
+      class="debug-tool-button"
+      type="button"
+      [title]="multilingual().OpenCtxViewTab"
+      (click)="openView.emit()"
+    >
+      <i class="bi bi-window-plus"></i>
+    </button>
+  </span>
+  @if (stats()) {
+  <span
+    class="ctx-debug-stats"
+    [attr.data-debug-tooltip]="multilingual().CtxSize"
+    [attr.data-debug-tooltip-detail]="multilingual().CtxSizeDescription"
+    >{{ stats() }}</span
+  >
+  }
+</div>

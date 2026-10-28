@@ -21,7 +21,7 @@ describe('generic hosted metadata entry popup', () => {
     const runtimeEntry = await source('src/browser/runtime-entry.ts');
 
     expect(reference).toContain("action: 'view-entry'");
-    expect(reference).toContain('View selected entry');
+    expect(reference).toContain("label: '@CM.FieldToolView'");
     expect(reference).toContain("action: 'add-entry'");
     expect(reference).toContain('referenceRelationship?.selection?.createRelated');
     expect(reference).toContain(

@@ -1,0 +1,36 @@
+{
+  "name": "@manatos/ui-ng1",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "concurrently -k -n resources,angular \"tsx src/host/server.ts\" \"ng serve --port 3002 --proxy-config proxy.conf.json\"",
+    "build": "ng build && tsc -p tsconfig.host.json",
+    "start": "node dist-host/host/server.js"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4",
+    "@angular/build": "20.3.1",
+    "@angular/cli": "20.3.1",
+    "@angular/compiler-cli": "20.3.1",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.0",
+    "tsx": "^4.20.5",
+    "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "@angular/common": "20.3.1",
+    "@angular/compiler": "20.3.1",
+    "@angular/core": "20.3.1",
+    "@angular/platform-browser": "20.3.1",
+    "@manatos/shared-ui": "0.1.0",
+    "@manatos/shared-ui-ng": "0.1.0",
+    "rxjs": "^7.8.0",
+    "tslib": "^2.8.0",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "express": "^5.1.0"
+  }
+}

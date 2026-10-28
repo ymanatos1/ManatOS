@@ -84,7 +84,7 @@ GET /api/v1/<Entity>/$metadata-ui
 
 Canonical metadata is UI-neutral. UI metadata is framework-neutral presentation metadata; it still does not contain EJS/Bootstrap-specific rendering code.
 
-UI-capable clients consume these API contracts to construct presentation/runtime state. The current Express UI server uses them for initial server-rendered composition and browser bootstrap; future clients may consume them directly through another approved client topology.
+UI-capable clients consume these API contracts to construct presentation/runtime state. The TypeScript UI hosts uses them for initial server-rendered composition and browser bootstrap; future clients may consume them directly through another approved client topology.
 
 ## Query/list contract
 
@@ -161,7 +161,7 @@ Application/service code throws semantic errors such as validation, not-found or
 
 This separation permits the same application semantics to be reused by another transport in the future.
 
-Operation Context may attach a semantic operation trace to an error. The API error envelope can expose a sanitized trace for developer tooling while preserving a concise user-facing message.
+Operation Context attaches a nested semantic operation trace to an `AppError` at the request failure boundary. The API exposes `errorCode`, `errorMessage` and `error`; `error.operationTrace` is conditional on the configured detail level (`operations` or `full`). The UIS ErrorInfo popup can display a supplied trace as expandable formatted JSON. See [Error Model](../system/Error-Model.md).
 
 ## Request correlation
 
@@ -185,7 +185,7 @@ API CTX is not synchronized with client CTX/context state.
 
 Canonical relationship metadata is enforced on the API side. Client components may present relationship editors, but integrity/delete semantics cannot depend on any client having behaved correctly.
 
-Operations that affect multiple records should execute as one logical transaction when required by the relationship/aggregate contract. The active storage strategy is responsible for preserving atomicity.
+Operations that affect multiple records should execute as one logical transaction when required by the relationship/aggregate contract. The active storage adapter enforces its documented operation boundary; explicit JSON multi-request transactions use compensation and must not be represented as isolated database transactions. See [In-Memory/JSON Transactions](../storage/InMemory-JSON-Transactions.md).
 
 ## Storage neutrality
 
@@ -221,3 +221,9 @@ When adding API behavior:
 - **API implementers:** [Adding an API Capability](Adding-an-API-Capability.md).
 - **Reference:** [API Catalog](API-Catalog.md), [Entity Catalog](../entities/Entity-Catalog.md).
 - **Diagnostics:** [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md).
+
+## Workspace commit and generic semantic operations
+
+Besides generic record operations, the API exposes a workspace commit boundary in `api/src/http/routes/workspace-commit-router.ts`. A commit plan consists of identified create/update/delete operations, persistent or temporary workspace identities, explicit dependencies and an execution order. The API validates plan shape and identity mapping before executing protected mutations; pending image bytes follow a separate validated resource transport.
+
+This is more than a sequence of unrelated CRUD calls: multiple related edits require dependency correctness and transactional behavior at the authoritative boundary. A UI entry may report `saveReady` and issue intent, but only the API response can establish a persisted result. See [Workspace Commit](../entities/Workspace-Commit-and-Recovery.md), [Storage](../storage/README.md) and [Security](../security/README.md).

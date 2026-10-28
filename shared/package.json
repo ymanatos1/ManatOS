@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
     "./metadata/ui": {
       "types": "./dist/metadata/ui/index.d.ts",
       "import": "./dist/metadata/ui/index.js"
@@ -28,14 +32,23 @@
     "./presentation/picture-value": {
       "types": "./dist/presentation/picture-value.d.ts",
       "import": "./dist/presentation/picture-value.js"
+    },
+    "./domain/company-platform": {
+      "types": "./dist/domain/company-platform.d.ts",
+      "import": "./dist/domain/company-platform.js"
+    },
+    "./errors/app-error": {
+      "types": "./dist/errors/app-error.d.ts",
+      "import": "./dist/errors/app-error.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput"
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "typescript": "^5.9.2"
+    "vitest": "^3.2.4"
   }
 }

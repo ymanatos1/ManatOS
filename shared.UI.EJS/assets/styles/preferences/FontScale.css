@@ -1,0 +1,78 @@
+.font-scale {
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  padding: 0 0.28rem 0 0.42rem;
+  color: var(--manatos-navigation-text);
+  user-select: none;
+}
+
+.font-scale-value {
+  min-width: 2.35rem;
+  text-align: right;
+  font-size: calc(0.72rem * var(--manatos-font-scale));
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.font-scale-controls {
+  width: 0.95rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+}
+
+.font-scale .font-scale-button {
+  width: 0.95rem;
+  min-width: 0;
+  height: 0.72rem;
+  min-height: 0;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-bottom: 0;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  font-size: calc(0.58rem * var(--manatos-font-scale));
+  font-weight: 800;
+  line-height: 0.72rem;
+  cursor: pointer;
+}
+
+.font-scale .font-scale-button:hover,
+.font-scale .font-scale-button:focus-visible {
+  border-bottom-color: transparent;
+  background: transparent;
+  color: var(--manatos-blue);
+}
+
+.font-scale .font-scale-button[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.28;
+}
+
+.font-scale .font-scale-reset {
+  width: 0.95rem;
+  min-width: 0;
+  height: 0.55rem;
+  min-height: 0;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  font-size: calc(0.42rem * var(--manatos-font-scale));
+  line-height: 0.55rem;
+  cursor: pointer;
+}
+
+.font-scale .font-scale-reset:hover,
+.font-scale .font-scale-reset:focus-visible {
+  color: var(--manatos-blue);
+}

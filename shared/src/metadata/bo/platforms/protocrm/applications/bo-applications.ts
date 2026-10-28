@@ -6,8 +6,9 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
   key: 'sys-applications',
   name: 'sysApplications',
   subsystem: 'applications',
-  label: 'Application',
-  pluralLabel: 'Applications',
+  label: '@EN.manatos.licensing.licenses.label.Application' /* Application */,
+  pluralLabel:
+    '@EN.platforms.protocrm.applications.applications.pluralLabel.Applications' /* Applications */,
 
   primaryField: 'name',
 
@@ -17,7 +18,7 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
 
     fullName: {
       key: 'fullName',
-      label: 'Full name',
+      label: '@EN.manatos.auth.users.label.FullName' /* Full name */,
       type: 'string',
       order: 30,
 
@@ -27,7 +28,7 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
 
     version: {
       key: 'version',
-      label: 'Version',
+      label: '@EN.platforms.protocrm.applications.applications.label.Version' /* Version */,
       type: 'version',
       order: 40,
 
@@ -38,7 +39,7 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
 
     description: {
       key: 'description',
-      label: 'Description',
+      label: '@EN.manatos.auth.users.label.Description' /* Description */,
       type: 'string',
       order: 50,
 
@@ -47,7 +48,7 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
 
     pictures: {
       key: 'pictures',
-      label: 'Pictures',
+      label: '@EN.platforms.protocrm.applications.applications.label.Pictures' /* Pictures */,
       type: 'pictures',
       order: 60,
       nullable: true,
@@ -56,7 +57,7 @@ export const sysBOApplicationsMetadata: SysBOMetadata<SysBOApplication> = {
 
     details: {
       key: 'details',
-      label: 'Details',
+      label: '@EN.platforms.protocrm.applications.applications.label.Details' /* Details */,
       type: 'richText',
       order: 70,
       nullable: true,

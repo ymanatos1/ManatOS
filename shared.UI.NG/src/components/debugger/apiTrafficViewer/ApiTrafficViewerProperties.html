@@ -1,0 +1,111 @@
+<section class="api-traffic-details" [attr.aria-label]="multilingual().SelectedApiDetails">
+  <div class="api-traffic-details-heading">
+    <manatos-api-traffic-caption [language]="language()" [entry]="entry()" />
+    <button
+      class="btn-close-debug"
+      type="button"
+      [title]="multilingual().CloseRequestDetails"
+      (click)="closeRequested.emit()"
+    >
+      ×
+    </button>
+  </div>
+  <div class="api-traffic-details-tab-row">
+    <div
+      #tabStrip
+      class="api-traffic-details-tabs"
+      role="tablist"
+      [attr.aria-label]="multilingual().ApiRequestDetails"
+    >
+      @for (tab of availableTabs(); track tab.id) {
+      <button
+        type="button"
+        [attr.data-api-detail-tab]="tab.id"
+        [attr.data-debug-tooltip]="tab.label"
+        [attr.data-debug-tooltip-detail]="tab.detail"
+        [class.is-active]="effectiveTab() === tab.id"
+        [attr.aria-selected]="effectiveTab() === tab.id"
+        (click)="selectTab(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
+      }
+    </div>
+    @if (tabsOverflowing()) {
+    <div class="api-traffic-details-tab-overflow">
+      <button
+        class="debug-tool-button api-traffic-details-tab-overflow-toggle"
+        type="button"
+        [title]="multilingual().ShowAllApiTabs"
+        [attr.aria-label]="multilingual().ShowAllApiTabs"
+        [attr.aria-expanded]="overflowOpen()"
+        (click)="toggleOverflow($event)"
+      >
+        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+      </button>
+      @if (overflowOpen()) {
+      <div class="api-traffic-details-tab-overflow-menu" role="menu">
+        @for (tab of availableTabs(); track tab.id) {
+        <button
+          type="button"
+          class="api-traffic-details-tab-overflow-item"
+          [class.is-active]="effectiveTab() === tab.id"
+          role="menuitem"
+          (click)="selectTab(tab.id)"
+        >
+          <i
+            [class]="'bi ' + (effectiveTab() === tab.id ? 'bi-check2' : 'bi-dot')"
+            aria-hidden="true"
+          ></i>
+          <span>{{ tab.label }}</span>
+        </button>
+        }
+      </div>
+      }
+    </div>
+    }
+  </div>
+  <div class="api-traffic-details-body">
+    @switch (effectiveTab()) { @case ('request') {
+    <manatos-api-traffic-payload-tab
+      [language]="language()"
+      [metadata]="requestMetadata()"
+      [headers]="entry().requestHeaders"
+      [body]="entry().requestBody"
+      [identity]="entry().requestId + ':request'"
+    />
+    } @case ('response') {
+    <manatos-api-traffic-payload-tab
+      [language]="language()"
+      [metadata]="responseMetadata()"
+      [headers]="entry().responseHeaders"
+      [body]="responseBody()"
+      [identity]="entry().requestId + ':response'"
+    />
+    } @case ('apiCtx') { @if (entry().diagnostics?.apiContext; as context) {
+    <manatos-api-traffic-context-tab
+      [language]="language()"
+      [value]="context"
+      [expandAllInitially]="true"
+    />
+    } } @case ('storageCtx') { @for (context of entry().diagnostics?.storageContexts ?? []; track
+    $index) {
+    <manatos-api-traffic-context-tab [language]="language()" [value]="context" />
+    } } @case ('logs') {
+    <manatos-api-traffic-logs-tab
+      [language]="language()"
+      [logs]="entry().diagnostics?.logs ?? []"
+    />
+    } @case ('transaction') { @if (entry().transactionId; as transactionId) {
+    <manatos-api-traffic-transaction-tab
+      [transactionId]="transactionId"
+      [entries]="transactionEntries()"
+    />
+    } } }
+  </div>
+  <div
+    class="api-traffic-details-resize"
+    data-debug-vertical-resize="api-details"
+    [title]="multilingual().DragResize"
+  ></div>
+</section>

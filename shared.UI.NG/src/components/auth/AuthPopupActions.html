@@ -1,0 +1,23 @@
+<!-- AuthPopupActions template: native popup action activation and busy/validation guards, delegating transitions to popup runtime. -->
+@if (tab().actions.length > 0) {
+<manatos-popup-actions>
+  @for (action of tab().actions; track action.id) { @if (popup().actionVisible(action.id)) {
+  <button
+    [attr.data-popup-layout-id]="tab().id + '-action-' + action.id"
+    [attr.type]="action.type"
+    [class.sign-in-cancel]="action.type !== 'submit' && action.primary !== true"
+    [class.sign-in-submit]="action.type === 'submit' || action.primary === true"
+    [class.register-back]="action.alignment === 'start'"
+    [class.popup-action-danger]="action.tone === 'danger'"
+    [disabled]="!popup().actionEnabled(action.id)"
+    (click)="requestAction(action.id, action.type)"
+  >
+    @if (action.id === 'signin' && popup().busy()) {
+    <span class="auth-action-spinner" aria-hidden="true"></span>
+    {{ multilingual().resolve('@CM.SigningInProgress') }} } @else { @if (action.icon) {
+    <i [class]="'bi ' + action.icon" aria-hidden="true"></i>
+    } {{ multilingual().resolve(action.label) }} }
+  </button>
+  } }
+</manatos-popup-actions>
+}

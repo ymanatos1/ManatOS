@@ -1,87 +1,57 @@
 # Platform and Application Architecture
 
+The foundation supports shared system domains, a platform that designs and hosts multiple applications, and special-purpose applications using the same semantics. These levels differ in **responsibility**, not in whether they have their own copy of the entity, UIS or API infrastructure.
+
 ## Composition model
 
-ManatOS separates company scope, platform scope and application scope so reusable infrastructure is not accidentally owned by one product surface.
-
 ```text
-Company: ManatOS
-├── foundation-level Company entities/capabilities/navigation
-└── Platforms
-    └── protoCRM
-        ├── platform-owned entities/capabilities/navigation
-        └── Applications
-            └── future application-defined entities/features
+Application foundation
+├─ shared domain (technical identifier: Company)
+│  └─ Users / Principals / contact / Licenses / providers
+├─ protoCRM  (multi-application platform)
+│  ├─ Applications catalogue
+│  ├─ Apps Playground
+│  └─ application definition / design / execution model
+└─ Panoptes  (special-purpose application)
+   └─ surveillance subsystem: Projects / Posts / Guards
 ```
 
-The composition model sits above individual entities. A platform contributes domain/presentation/navigation capability while reusing the same metadata, API, CTX, expression, security and storage foundations.
+**Platform** in the source is a registered metadata/presentation contribution: stable identity, navigation, subsystems and platform-scoped capabilities. **Application** is a business solution described by its own model and execution contract. The current code registers Panoptes as a platform because that is the existing composition mechanism; conceptually it illustrates a single-purpose application rather than another general multi-application design environment.
 
-## Company scope
+## Shared domain ownership
 
-Current foundation-level Company-domain concerns include:
+Users, Person/Organization Principals, organizational hierarchy, contact information, Licenses and external authentication configuration are system-shared concepts. They retain the technical `Company` metadata scope even when an application consumes them. The project itself is a software foundation, not a Company entity.
 
-- Account / Users;
-- Principals and organization hierarchy;
-- contact information infrastructure;
-- Licenses;
-- External Authentication Providers;
-- company-wide navigation/configuration/capabilities.
+A License belongs to a Principal, targets a platform and can optionally narrow scope to an application. An application's UI can display the relation, but does not own the License's record semantics or decide effective authorization. See [License Entitlements](../company/License-Entitlements-and-Rules.md).
 
-These are not protoCRM features merely because protoCRM consumes identity/licensing services.
+## protoCRM as a multi-application platform
 
-## Platform scope
+The platform's architectural contribution extends beyond its current catalogue entity. A full application model describes domain entities, fields, relationships, expressions, named UI Views, UIS surfaces, flows, security requirements and storage behavior. The common runtime interprets those declarations, allowing integrated design/test/run experiences and, at the architectural level, execution under a compatible independent host.
 
-The current concrete platform is **protoCRM**. Its current system-owned entity is Applications, and Apps Playground is a platform-level surface. Future platform tooling belongs here when it is specific to protoCRM rather than the ManatOS foundation/application infrastructure.
+The current TypeScript implementation supplies the platform definition, `SysBOApplication` metadata, full/quick views, related License presentation and Apps Playground navigation/actions. It does **not** by itself demonstrate a complete metadata design studio, deployable application package or independently operating application host. Those belong to the separately described architectural model, not the claims of the current code.
 
-## Application scope
+Read [Application Design and Execution](protocrm/Application-Design-and-Execution.md) for the design/runtime contract and [Application Model](Application-Model.md) for general ownership concepts.
 
-An Application entry represents a platform application/business capability. Future application-defined entities should reuse the generic entity infrastructure but need not become system-owned `SysBO` objects.
+## Panoptes as an example
 
-Application-defined behavior should be composed through metadata, policies, APIs and runtime extension mechanisms rather than by copying the framework into each application.
+The specialized surveillance domain contributes Project, Post and Guard metadata. Its significance here is architectural: the subsystem uses the common entities/metadata/API/UIS mechanisms without requiring a second business-object engine. Further domain walkthroughs are deliberately limited; the documentation concentrates on the reusable foundation and multi-application design architecture.
 
-## Licenses and platform access
+## Authority and runtime boundaries
 
-Licenses are foundation-level Company-domain records because they describe customer/principal entitlement to platforms/applications. Platform access is resolved by the API into a safe capability fact.
+```text
+Application declarations
+       │
+Canonical model / UI Views
+       │
+UIS surface + selected adapter ───────► user interaction
+       │                                   │
+       └──────────── API security ◄─────────┘
+                         │
+                      storage
+```
 
-The UI should consume the resolved fact for navigation/presentation. It should not fetch all license/principal rows and reconstruct the authorization algorithm.
+An application's layout cannot redefine a canonical field, bypass organizational policy, or persist a value by mutating client CTX alone. Navigation is capability-informed presentation, while record operations are individually authorized by the API. A storage adapter changes physical realization, not declared business meaning.
 
-This keeps company licensing reusable across platforms and keeps sensitive authorization inputs server-owned.
+## References
 
-## Navigation
-
-Navigation is composed from company/platform contributions plus authoritative capability facts. Visibility is presentation; it does not replace API authorization.
-
-A role may be allowed to see an entity surface while row-level policy filters its records. For example, a User can see Licenses but should receive only licenses belonging to the user's organization, possibly none.
-
-## Shared foundation
-
-All scopes reuse the same Application Foundation:
-
-- canonical metadata and UI metadata;
-- generic entity API/runtime;
-- CTX/expression model;
-- security/capability projection;
-- storage adapter boundary;
-- components, selectors and workspaces;
-- diagnostics and testing contracts.
-
-Scope ownership should therefore be represented in composition metadata/directories/docs, not by forking infrastructure implementations.
-
-## Extension rules
-
-- company-wide identity/licensing/configuration stays outside individual platforms;
-- platform-specific system objects stay under the owning platform;
-- generic infrastructure should not branch on `protoCRM` unless the behavior is genuinely platform-specific;
-- application-defined entities reuse generic entity infrastructure without inheriting `SysBO` terminology automatically;
-- navigation/capability composition should be declarative where possible;
-- server authorization remains authoritative regardless of navigation visibility.
-
-## Audience-specific follow-up
-
-- [Application Design](../README.md)
-- [Platform Model](Platform-Model.md)
-- [Application Model](Application-Model.md)
-- [Company Domain](../company/README.md)
-- [protoCRM Design](protocrm/README.md)
-- [Metadata Architecture](../metadata/Metadata-Architecture.md)
-- [Authentication and Authorization](../security/Authentication-and-Authorization.md)
+[protoCRM](protocrm/README.md) · [Metadata-driven Application Design](Metadata-Driven-Application-Design.md) · [Company](../company/README.md) · [UIS](../clients/UIS-Architecture.md) · [Authorization](../security/Authorization-Policy-Architecture.md). 

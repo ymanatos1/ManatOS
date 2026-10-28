@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { resolveMetadataText } from '@manatos/shared';
 /**
  * Domain-neutral semantic presentation for change/report consumers.
  *
@@ -12,6 +13,20 @@ browserWindow.ManatOS ||= {};
 
 export class SemanticChangePresentation {
   install(): void {
+    // The browser language cookie is also used by EJS0's SSR metadata resolver.
+    // Resolve at presentation time so changing language never retains stale labels.
+    const language = (): 'EN' | 'EL' => {
+      const cookie = typeof document === 'undefined' ? '' : document.cookie;
+      return /(?:^|;\s*)manatos_ui_language=el(?:;|$)/.test(cookie) ? 'EL' : 'EN';
+    };
+    const translated = (value: unknown): string => {
+      if (typeof value === 'string') return resolveMetadataText(value, language());
+      if (value && typeof value === 'object' && typeof (value as any).EN === 'string')
+        return resolveMetadataText(value as { EN: string; EL?: string }, language());
+      if (value == null) return '';
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      return '…'; // Never leak a raw structured object into a report label.
+    };
     const entityContext = (entityKey: any): any => {
       const registry = browserWindow.ManatOS?.ctx?.value?.entities;
       if (!registry || typeof registry !== 'object') return null;
@@ -26,7 +41,7 @@ export class SemanticChangePresentation {
 
     const entityLabel = (entityKey: any) => {
       const metadata = entityContext(entityKey)?.metadata;
-      return String(metadata?.pluralLabel || metadata?.label || entityKey || 'Entity');
+      return translated(metadata?.pluralLabel || metadata?.label || entityKey || 'Entity');
     };
 
     const entityIcon = (entityKey: any) => {
@@ -39,7 +54,7 @@ export class SemanticChangePresentation {
 
     const fieldLabel = (entityKey: any, fieldKey: any) => {
       const metadata = fieldMetadata(entityKey, fieldKey);
-      return String(metadata?.label || fieldKey || 'Field');
+      return translated(metadata?.label || fieldKey || 'Field');
     };
 
     const effectiveFieldOptions = (
@@ -109,20 +124,22 @@ export class SemanticChangePresentation {
       value: any,
       ownerPath: string | null = null,
     ) => {
-      if (value == null || String(value) === '') return { label: '∅', icons: [] };
+      const identity = scalarIdentity(value);
+      if (identity == null || identity === '') return { label: '∅', icons: [] };
       const relationship = relationshipForField(entityKey, fieldKey);
       if (!relationship) return null;
       const option = referenceOptions(entityKey, fieldKey, ownerPath).find(
         (candidate) =>
           String(
             candidate?.[relationship.targetField] ?? candidate?.id ?? candidate?.value ?? '',
-          ) === String(value),
+          ) === String(identity),
       );
-      if (!option) return { label: String(value), icons: [] };
+      if (!option) return descriptor(value);
+
       const presentation = browserWindow.ManatOS?.entryRepresentation?.projected?.(option, value);
-      if (!presentation) return { label: String(value), icons: [] };
+      if (!presentation) return descriptor(value);
       return {
-        label: String(presentation.name ?? value),
+        label: translated(presentation.name ?? identity),
         icons: (presentation.icons || []).map(
           (icon: any) => `bi-${String(icon).replace(/^bi-/, '')}`,
         ),
@@ -130,10 +147,24 @@ export class SemanticChangePresentation {
       };
     };
 
+    // EJS0 option/reference state can hand a selected-item object to a report.
+    // Compare by its canonical scalar identity, never by object stringification.
+    const scalarIdentity = (value: any): unknown => {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const identity = value.value ?? value.id;
+        if (typeof identity === 'string' || typeof identity === 'number') return identity;
+      }
+      return value;
+    };
+
     const descriptor = (value: any) => {
-      if (value && typeof value === 'object' && !Array.isArray(value) && 'label' in value)
-        return value;
-      return { label: value == null || String(value) === '' ? '∅' : String(value) };
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        if (typeof value.label === 'string') return { ...value, label: translated(value.label) };
+        // A structured value without a semantic descriptor must not leak
+        // JavaScript's [object Object] into the user-facing change report.
+        return { label: '…' };
+      }
+      return { label: value == null || String(value) === '' ? '∅' : translated(value) };
     };
 
     const fieldDescriptor = (
@@ -163,7 +194,12 @@ export class SemanticChangePresentation {
               : positive
                 ? 'Yes'
                 : 'No';
-        return { label, kind: 'boolean-badge', positive, rawValue: value };
+        return {
+          label: translated(`@CM.${label === 'Not verified' ? 'NotVerified' : label}`),
+          kind: 'boolean-badge',
+          positive,
+          rawValue: value,
+        };
       }
       if (fieldType === 'email' || component === 'email') {
         if (value == null || String(value) === '') return { label: '∅', rawValue: value };
@@ -219,12 +255,13 @@ export class SemanticChangePresentation {
           : fieldType === 'enum' && enumItems.length
             ? enumItems
             : configuredItems;
+        const selectedIdentity = scalarIdentity(value);
         const option = candidates.find((candidate: any) =>
-          Object.is(candidate?.value ?? null, value),
+          Object.is(candidate?.value ?? null, selectedIdentity),
         );
         if (option) {
           return {
-            label: String(option.label ?? value),
+            label: translated(option.label ?? value),
             kind: 'option-badge',
             rawValue: value,
             ...(option.icon ? { icon: `bi-${String(option.icon).replace(/^bi-/, '')}` } : {}),

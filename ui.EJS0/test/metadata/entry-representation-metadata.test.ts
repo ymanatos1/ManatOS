@@ -114,7 +114,6 @@ describe('canonical entry representation metadata', () => {
     };
     const ui: SysBOUIMetadata = {
       key: 'orders',
-      entry: { icon: { mode: 'type' } },
       list: {
         visibleFields: ['id'],
         filterFields: [],
@@ -138,7 +137,7 @@ describe('canonical entry representation metadata', () => {
     expect(result.icons).toEqual(['shop']);
   });
 
-  it('does not create a second calculated-field projection inside entry representation', () => {
+  it('does not recalculate fields and falls back to the canonical primary value', () => {
     const metadata: SysBOMetadata<Record<string, unknown>> = {
       key: 'people',
       subsystem: 'test',
@@ -170,6 +169,6 @@ describe('canonical entry representation metadata', () => {
       record: { tabs: [], fieldOverrides: {} },
     };
 
-    expect(resolveEntryRepresentation(metadata, ui, { id: '1', firstName: 'Ada' }).name).toBe('');
+    expect(resolveEntryRepresentation(metadata, ui, { id: '1', firstName: 'Ada' }).name).toBe('1');
   });
 });

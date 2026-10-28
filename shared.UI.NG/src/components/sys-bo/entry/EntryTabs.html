@@ -1,0 +1,15 @@
+<!-- EntryTabs template: the canonical tab navigation and per-tab child mounts; tab visibility is recalculated from metadata and permissions. -->
+<nav class="manatos-entry-tabs" data-entry-layout="Tabs" role="tablist">
+  @for (tab of tabs(); track tab.id) {
+  <button
+    type="button"
+    role="tab"
+    [attr.aria-selected]="active() === tab.id"
+    [attr.aria-controls]="'entry-panel-' + tab.id"
+    (click)="selected.emit(tab.id)"
+  >
+    <i class="bi" [class]="'bi bi-' + (tab.icon || 'info-circle')" aria-hidden="true"></i> {{
+    tab.label }}
+  </button>
+  }
+</nav>

@@ -1,0 +1,74 @@
+<section class="documentation-browser" data-documentation-browser>
+  <header class="documentation-browser-header">
+    <div class="documentation-browser-toolbar" role="toolbar" aria-label="Πλοήγηση τεκμηρίωσης">
+      <button
+        type="button"
+        class="documentation-browser-tool"
+        data-doc-back
+        title="Πίσω"
+        aria-label="Πίσω"
+      >
+        <i class="bi bi-arrow-left"></i>
+      </button>
+
+      <button
+        type="button"
+        class="documentation-browser-tool"
+        data-doc-forward
+        title="Εμπρός"
+        aria-label="Εμπρός"
+      >
+        <i class="bi bi-arrow-right"></i>
+      </button>
+
+      <button
+        type="button"
+        class="documentation-browser-tool"
+        data-doc-home
+        title="Αρχική τεκμηρίωσης"
+        aria-label="Documentation home"
+      >
+        <i class="bi bi-house"></i>
+      </button>
+
+      <div class="documentation-browser-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input
+          type="search"
+          data-doc-filter
+          placeholder="Φιλτράρισμα αρχείων…"
+          aria-label="Φιλτράρισμα αρχείων τεκμηρίωσης"
+        />
+      </div>
+    </div>
+  </header>
+
+  <div class="documentation-browser-workspace">
+    <aside
+      class="documentation-browser-explorer"
+      data-doc-explorer
+      aria-label="Φάκελοι και αρχεία τεκμηρίωσης"
+    >
+      <div class="documentation-browser-explorer-caption">Τεκμηρίωση</div>
+
+      <div class="documentation-browser-tree" data-doc-tree role="tree"></div>
+    </aside>
+
+    <div
+      class="documentation-browser-resizer"
+      data-doc-resizer
+      title="Σύρετε για να αλλάξετε το πλάτος της εξερεύνησης τεκμηρίωσης"
+      aria-hidden="true"
+    ></div>
+
+    <main class="documentation-browser-viewer" data-doc-viewer>
+      <div class="documentation-browser-loading" data-doc-loading>Φόρτωση τεκμηρίωσης…</div>
+
+      <article class="documentation-markdown" data-doc-content hidden></article>
+
+      <div class="documentation-resource" data-doc-resource hidden></div>
+    </main>
+  </div>
+
+  <footer class="documentation-browser-status" data-doc-status></footer>
+</section>

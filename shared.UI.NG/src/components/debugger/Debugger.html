@@ -1,0 +1,132 @@
+@if (keepCliMounted()) {
+<aside
+  #dock
+  class="developer-tools-dock"
+  [style.display]="visible() ? null : 'none'"
+  [class.is-detached-developer-tools]="detached()"
+  [style.width.px]="detached() ? null : width()"
+  [class.is-popup-debugger-foreground]="popupDebuggerForeground()"
+  [attr.aria-label]="multilingual().DebuggingTools"
+  manatosDebugTooltipHost
+>
+  <div
+    class="developer-tools-resize"
+    [title]="multilingual().ResizeDebuggingTools"
+    (pointerdown)="resizeStart($event)"
+    (pointermove)="resizeMove($event)"
+    (pointerup)="resizeEnd()"
+    (pointercancel)="resizeEnd()"
+    (dblclick)="resetWidth()"
+  ></div>
+
+  <div class="developer-tools-tabs">
+    <div
+      class="developer-tools-tab-strip"
+      role="tablist"
+      [attr.aria-label]="multilingual().DebuggingTools"
+    >
+      <button
+        class="developer-tools-tab"
+        type="button"
+        [class.is-active]="activeTab() === 'ctx'"
+        [attr.aria-selected]="activeTab() === 'ctx'"
+        [attr.data-debug-tooltip]="multilingual().CtxViewerTooltip"
+        [attr.data-debug-tooltip-detail]="multilingual().CtxViewerDescription"
+        (click)="selectView('ctx')"
+      >
+        <span class="developer-tools-tab-caption">{{ multilingual().CtxViewerTitle }}</span>
+        <span class="developer-tools-tab-subtitle">(live context tree)</span>
+      </button>
+
+      @for (view of targetViews(); track view.id) {
+      <span class="developer-tools-target-tab-wrap">
+        <button
+          class="developer-tools-tab developer-tools-target-tab"
+          type="button"
+          [class.is-active]="activeTab() === view.id"
+          [attr.aria-selected]="activeTab() === view.id"
+          [attr.data-debug-tooltip]="view.label"
+          [attr.data-debug-tooltip-detail]="multilingual().format('@CM.DedicatedCtxRoot', { path: view.label })"
+          (click)="selectView(view.id)"
+        >
+          <span class="developer-tools-tab-caption">{{ view.label }}</span>
+        </button>
+        <button
+          class="developer-tools-target-tab-close"
+          type="button"
+          [title]="multilingual().CloseCtxView"
+          (click)="closeTarget(view, $event)"
+        >
+          ×
+        </button>
+      </span>
+      }
+
+      <button
+        class="developer-tools-tab"
+        type="button"
+        [class.is-active]="activeTab() === 'apiTraffic'"
+        [attr.aria-selected]="activeTab() === 'apiTraffic'"
+        [attr.data-debug-tooltip]="multilingual().ApiTrafficTooltip"
+        [attr.data-debug-tooltip-detail]="multilingual().ApiTrafficDescription"
+        (click)="selectView('apiTraffic')"
+      >
+        <span class="developer-tools-tab-caption">{{ multilingual().ApiTrafficTitle }}</span>
+        <span class="developer-tools-tab-subtitle">(UI → API)</span>
+      </button>
+    </div>
+
+    <button
+      class="debug-tool-button developer-tools-detach"
+      type="button"
+      [attr.data-debug-tooltip]="multilingual().select(detached(), '@CM.AttachDebuggingTools', '@CM.DetachDebuggingTools')"
+      [attr.data-debug-tooltip-detail]="multilingual().select(detached(), '@CM.AttachDebuggingToolsDetail', '@CM.DetachDebuggingToolsDetail')"
+      [attr.aria-label]="multilingual().select(detached(), '@CM.AttachDebuggingTools', '@CM.DetachDebuggingTools')"
+      (click)="toggleDetached()"
+    >
+      <i
+        [class]="detached() ? 'bi bi-box-arrow-in-down-left' : 'bi bi-box-arrow-up-right'"
+        aria-hidden="true"
+      ></i>
+    </button>
+
+    <button
+      class="developer-tools-close"
+      type="button"
+      [title]="multilingual().CloseDebuggingTools"
+      [attr.aria-label]="multilingual().CloseDebuggingTools"
+      (click)="close()"
+    >
+      ×
+    </button>
+  </div>
+
+  <div class="developer-tools-body">
+    <manatos-ctx-viewer
+      [hidden]="activeTab() !== 'ctx'"
+      [context]="context()"
+      [state]="state()"
+      [expressionCapabilityDelegate]="expressionCapabilityDelegate()"
+      rootPath="ctx"
+      (cliDetachedChanged)="cliWindowDetached.set($event)"
+      (openPathRequested)="openPath($event)"
+      [requestedRevealPath]="requestedRevealPath()"
+      [requestedRevealToken]="requestedRevealToken()"
+    />
+
+    @for (view of targetViews(); track view.id) {
+    <manatos-ctx-viewer
+      [hidden]="activeTab() !== view.id"
+      [context]="context()"
+      [state]="state()"
+      [expressionCapabilityDelegate]="expressionCapabilityDelegate()"
+      [rootPath]="view.path"
+      [closeable]="false"
+      (openPathRequested)="openPath($event)"
+    />
+    }
+
+    <manatos-api-traffic-viewer [hidden]="activeTab() !== 'apiTraffic'" [state]="state()" />
+  </div>
+</aside>
+}

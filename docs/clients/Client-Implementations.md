@@ -2,7 +2,7 @@
 
 ## Scope
 
-This guide is for contributors implementing or extending a ManatOS client. The current repository client is Node.js/Express + EJS/Bootstrap + browser runtime, but the contracts below are deliberately usable by Angular, React, mobile, desktop or other clients.
+This guide is for contributors implementing or extending a ManatOS client. The repository contains three TypeScript UI applications: `ui.EJS0` as the established separate EJS implementation, and `ui.NG1` / `ui.EJS1` as hosts of the `shared.UI` semantic framework through the `shared.UI.NG` and `shared.UI.EJS` adapters. The contracts below also support other UI technologies without transferring API authority to their presentation layers.
 
 ## Start from contracts, not templates
 
@@ -16,7 +16,7 @@ A new client should treat these as authoritative inputs:
 6. entity relationship/default/calculation semantics exposed through the API;
 7. diagnostic correlation IDs for calls the client originates.
 
-Do not port EJS templates first and then infer architecture from them. Templates are one implementation of the portable contracts.
+Do not infer common contracts from one adapter's templates. Begin with shared metadata and `shared.UI` ownership; an EJS or Angular template is a projection of those contracts.
 
 ## Minimum client responsibilities
 
@@ -34,8 +34,8 @@ Current role semantics provide an important acceptance matrix: Admin is full adm
 
 If the client implements the ManatOS metadata-driven UI model, preserve canonical ownership:
 
-- field live values are the mutable scalar authority;
-- original/current records are projections/baselines, not competing stores;
+- modern UIS Entry working values are owned by `#data.current`, with `#data.original` as the baseline;
+- field interaction/validation states belong under `#state.fields`, not a second writable record;
 - nested surfaces have explicit lifecycle/ownership;
 - invocation/defaults have provenance;
 - facts are non-persisted observations;
@@ -46,7 +46,7 @@ A framework adapter may map these concepts into React state, Angular services/si
 
 ## API and authentication topology
 
-The current web client uses an Express BFF that keeps the API bearer token out of browser JavaScript. Do not assume a future client can call internal BFF endpoints. Select an authentication topology appropriate to that client and expose new trusted endpoints only through an explicit security design.
+The TypeScript UI hosts use Node browser-session and API-bridge boundaries appropriate to their implementations; NG1/EJS1 keep the API Bearer token outside ordinary browser JavaScript. EJS0 maintains its separate established integration. Do not assume a future client can call internal BFF endpoints. Select an authentication topology appropriate to that client and expose new trusted endpoints only through an explicit security design.
 
 ## Diagnostics
 
@@ -54,11 +54,18 @@ Generate/propagate a request correlation ID where the client/API contract suppor
 
 Client-local diagnostics should inspect the client's own runtime/context rather than pretending to display API CTX as live client state.
 
-## Current Express client source map
+## TypeScript client source map
 
-For work on the existing implementation, the `ui` workspace owns Express routes/middleware, EJS templates, browser runtime assets, sessions, API-client bridging and the built-in developer tools. Implementation guides such as Adding a Component may refer directly to EJS/DOM/Bootstrap because their audience is specifically this implementation.
+| Workspace | Responsibility |
+|---|---|
+| `shared.UI` | Semantic surface host, embedded components, List/Entry/Flow runtime, state ownership and lifecycle |
+| `shared.UI.NG` | Angular adapter components, templates, DOM events and host integration |
+| `shared.UI.EJS` | EJS adapter components, templates and rendering integration |
+| `ui.NG1` | Angular application and its Node-hosted browser/API integration |
+| `ui.EJS1` | EJS application and its Node-hosted browser/API integration |
+| `ui.EJS0` | Separate established EJS implementation and legacy-compatible presentation behavior |
 
-That source layout is not a requirement for another client.
+A new TypeScript component should respect this dependency direction. Adapter-specific CSS, DOM and focus handling must not redefine canonical field semantics or authorization. The established EJS0 source is a concrete behavioral reference, not the current shared UIS state model.
 
 ## Acceptance checklist for a new client
 

@@ -1,5 +1,6 @@
 import type { Request } from 'express';
-import { operationContext, type AppError, type OperationNodeSnapshot } from '@manatos/shared';
+import { type AppError, type OperationNodeSnapshot } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 import { uiBootstrapState } from '../bootstrap/ui-bootstrap.js';
 export interface SessionErrorEntry {
   timestamp: string;

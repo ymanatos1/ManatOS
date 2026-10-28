@@ -31,7 +31,7 @@ describe('SysBO route responsibility boundaries', () => {
       source('../../src/sysbo/definitions.ts'),
       source('../../src/sysbo/types.ts'),
       source('../../src/navigation.ts'),
-      source('../../src/sysbo/api-path.ts'),
+      source('../../../shared/src/metadata/sysbo-api-path.ts'),
       source('../../src/routes/sysbo/entry/form-payload.ts'),
       source('../../../shared/src/presentation/entry-representation.ts'),
       source('../../src/routes/sysbo/list/renderer.ts'),

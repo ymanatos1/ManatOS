@@ -53,10 +53,13 @@
         : null; %>
     <% const tone = toneExpression ? null : toneDeclaration; %>
     <% const stateIcon = iconExpression ? null : iconDeclaration; %>
-    <% const rendered = field.type === 'reference'
-      ? referenceLabel(key, rawValue)
-      : formatValue(rawValue, presentation); %>
-    <div class="account-summary-label"><%= fieldLabel(field) %>:</div>
+    <% const displayOption = (field.optionItems || []).find((candidate) => candidate.value === rawValue);
+       const rendered = field.type === 'reference'
+         ? referenceLabel(key, rawValue)
+         : displayOption?.label
+           ? metadataText(displayOption.label)
+           : formatValue(rawValue, presentation); %>
+    <div class="account-summary-label"><%= metadataText(fieldLabel(field)) %>:</div>
     <div
       class="account-summary-value"
       data-v2-summary-presentation

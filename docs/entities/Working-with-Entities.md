@@ -1,361 +1,154 @@
 # Working with Entity Lists and Entries
 
-## Purpose
+Generic Lists and Entries are the principal interactive realizations of canonical entity metadata. They expose collection queries, editable records, typed fields, relationships and semantic actions through the shared UIS runtime. The API remains authoritative for data, authorization and persistence. Different presentation adapters render the same semantic contracts without redefining the business model.
 
-This guide is the authoritative structural reference for metadata-driven entity **list pages, entry surfaces and the existing-record selector surface**. Current system-owned entities use SysBO routes/names, but these surfaces are driven by generic canonical entity metadata, UI metadata and CTX; entity-specific templates must not recreate field, reference, representation or query semantics.
+The source reference for modern behavior is `shared.UI/src/components/list/`, `shared.UI/src/components/entry/`, `shared.UI/src/components/fields/` and `shared.UI/src/runtime/surface/`. The established `ui.EJS0` client contains a separate mature implementation whose own CTX and presentation rules should be understood within that client, not substituted for the modern UIS runtime.
 
-## End-to-end page model
-
-```text
-[M] Canonical BO metadata
-[C] CTX + evaluator
-[U] UI metadata
-[L] List page
-[E] Entry page
-[S] Existing-record selector
-[A] API/domain/storage
-
-Flow:
-  M --> C
-  U --> C
-  C --> L
-  L --[open/add]--> E
-  E --[reference tools]--> S
-  S --[selected canonical entry]--> E
-  E --[save/delete]--> A
-  A --> C
-```
-
-## 1. List page
-
-### Presentation structure
+## 1. End-to-end architecture
 
 ```text
-Entity list page
-├── breadcrumb / page title + canonical entity icon
-├── page actions
-├── count
-├── Filters
-├── Search
-├── table
-│   ├── metadata-defined columns
-│   ├── canonical value / entry representation
-│   └── row actions
-└── paging / rows-per-page
+Canonical entity and UI metadata
+           │
+           ▼
+  authorized API resource port
+           │
+           ▼
+      UIS Surface Host
+   ctx.ui.level[.level...]
+   #control #state #layout #data
+           │
+      ┌────┴─────┐
+      │          │
+ List content  Entry content
+      │          │
+ filter/query   typed field components
+ selection      editable #data.current
+      │          │
+      └────┬─────┘
+           ▼
+   Angular/EJS presentation
+           │
+       API commands
+           │
+   authorization + validation
+           │
+    persistence and results
 ```
 
-### Important CTX structure
+A generic entity client consumes the stable **entity key** and metadata-defined fields, views, relationships and policies. It does not need one bespoke List or Entry controller per entity. Specific entities can still supply their own business invariants through canonical metadata and authoritative server operations.
+
+## 2. Surface identity and ownership
+
+`UiSurfaceHostRuntime` publishes exactly one level beneath the active parent and creates four namespaces together:
+
+| Level namespace | Purpose |
+|---|---|
+| `#control` | host mode (`page` or `popup`), kind, identity and invocation/resource contract |
+| `#state` | selection, editing mode, interaction status, errors, validation and action readiness |
+| `#layout` | component-owned semantic layout and composition |
+| `#data` | authoritative working data, query facts and supporting resource projections |
+
+A List can open an Entry or a reference-selector List. A nested popup occupies a child `level` and may return a typed result to the invoker. Parent data remains parent-owned throughout the nested interaction. Surface publication is atomic, subscriptions are owned and disposal checks surface identity and active children. See [UI Surfaces and Levels](../clients/UI-Surfaces-and-Levels.md).
+
+## 3. List content
+
+`UiListContentRuntime` and `ListPageRuntime` define query, paging, selection and semantic List state. Embedded List components independently contribute header, actions, search, views, filters, columns, rows/cells and pagination. A rendering adapter should expose the same actions without duplicating query semantics.
 
 ```text
-ctx.ui
-└── level                         # owning list UI level
-    ├── control (name / kind / mode / invocation / presentation / state / facts)        # list surface identity
-    ├── list
-    │   ├── originalEntries[]     # baseline list projection when meaningful
-    │   └── entries[]             # current projected list records
-    ├── control.facts            # observable query/presentation facts when published
-    └── control.state            # list-surface lifecycle/interaction state
+#control                    host/list identity, invocation
+#data.list                  visible record projections
+#data.filters               search and structured filter input
+#data.listModel             query, paging, selected IDs and descriptor
+#data.references            authorized referenced-entry data
+#data.imageVariants         image presentation resources
+#state.list                 view, sort, direction, page, loading, errors
+#layout                     embedded List/row/cell components
 ```
 
-List filtering/search/sorting is a query contract, not a browser-only rendering concern. Structured exception expressions must remain canonical so a future RDBMS adapter can translate them to storage predicates.
+List state distinguishes **selection mode** (`none`, `single`, `multiple`) from record-editing authority. Search, sort and paging are query semantics, not merely DOM convenience. The request/query runtime owns result versions, loading, stale-result suppression and cancellation. Per-row names/icons/thumbnails should come from canonical entry representation, not ad hoc field labels.
 
-### Calling example
+The API applies row authorization before consumer-visible filtering, sorting and paging. A browser query result is not a security boundary; a direct record read must be independently authorized as well.
 
-Opening `/bo/sys-principals` loads the Principal BO/UI metadata, projects the declared list fields (`parentId`, `rootPrincipalId`, `name`, `principalType`, `enabled`) and renders all reference values through the same entity-aware entry representation resolver used by selectors and related collections.
+### A List as a selector
 
-## 2. Entry page
+A reference selector reuses List semantics while supplying a selection result instead of ordinary navigation. Its parent retains ownership of the reference field. On successful selection, the parent invokes its own Entry field-update contract using the chosen stable record ID. Cancel or failure does not modify the parent record.
 
-### Presentation structure
+## 4. Entry content and its canonical record
+
+`UiEntryContentRuntime` and `UiEntryRuntime` own Entry semantics; the embedded registry composes the Entry, tabs, field host and typed field components. The modern Entry level has the following core shape:
 
 ```text
-Entity entry page
-├── breadcrumb
-├── title = Create/Edit + canonical entry representation
-├── metadata-defined tabs
-│   ├── form fields
-│   ├── summary fields
-│   ├── related collections
-│   └── reusable components
-└── entry actions
-    ├── Delete
-    ├── Close / Cancel
-    └── Save / Save and Close
+#control
+  host, kind='entry', entityName, instanceId, invocation
+#data
+  original           server baseline or null for create
+  current            canonical working record
+  references         authorized reference catalogues
+  imageVariants      visual resources
+#state
+  fields             per-field validation, readonly and dirty projection
+  entry              mode, activeTab, loading, saving, dirty, valid,
+                     blocked, saveReady, errors and permissions
+#layout
+  Entry > Tabs > FormField > typed Field
 ```
 
-The first visible editable field in the first editable tab receives initial focus. This is determined from rendered metadata order after reactive visibility/editability initialization; no entity-specific autofocus rule is required.
+**`#data.current` is the single editable record authority.** Its comparison baseline is `#data.original`. A field component decodes typed input, requests `setField(field, value)`, and observes the Entry's resulting projection. It does not install a separate writable `fields.<key>.value` authority in this UIS model. The EJS0 browser runtime uses a different, legacy field-node model; descriptions of that model must be explicitly scoped to EJS0.
 
-### Important CTX structure
+New-entry initialization applies canonical field defaults and applicable invocation-projected values. Existing-record loading uses the authorized resource port. The Entry checks request/edit generations to avoid applying late results to a newer surface state. The selected UI View determines visible tabs, presentation and actions without redefining canonical business fields.
+
+### Field types and option sources
+
+The reusable field behavior registry supports text, number, boolean, date/time, duration, version, GUID, email, telephone, enums, references, rich text and picture types. Enum fields can resolve effective options from referenced subsystem enums or field-inline option metadata through one semantic mechanism. Display labels are localized projections; stored enum identity remains canonical. Reference fields store record identity rather than the rendered related-entry name.
+
+A field's read-only status can originate in canonical metadata, Entry mode, API-derived capabilities or effective UI metadata. A visual read-only control does not authorize an API operation. Source and design references: [Fields](Fields.md), [Field Components](Field-Components-Detail.md) and [Metadata Model](../metadata/Metadata-Model.md).
+
+## 5. Changes, calculations and validation
 
 ```text
-ctx.ui
-└── level                         # list or other parent level
-    └── level                     # entry UI level
-        ├── control (name / kind / mode / invocation / presentation / state / facts)
-        ├── fields
-        │   └── <fieldKey>
-        │       ├── value         # sole live scalar authority
-        │       ├── originalValue # sole scalar baseline authority
-        │       └── dirty         # derived from value vs baseline
-        ├── entry
-        │   ├── current           # read-only record mirror of field values
-        │   └── original          # read-only record mirror of baselines
-        ├── component/resource state
-        └── state                 # aggregate form/workspace state
-            ├── dirty
-            ├── valid
-            ├── saving
-            └── deleting
+Browser/native input
+        │
+Typed Field decoding and semantic intent
+        │
+EntryRuntime.setField(field, value)
+        │
+#data.current updated by Entry owner
+        ├──► #state.fields / #state.entry derive status
+        ├──► reactive expressions reevaluate dependencies
+        └──► rendering adapters present new projections
 ```
 
-### Field and calculation example: Person Principal
+Calculated/defaulted and normalized values follow canonical metadata semantics. The evaluator is pure with respect to persistence: evaluating an expression cannot independently commit, grant API access or mutate an unrelated field. API-side validation and normalization remain authoritative for writes from every client, including non-UI clients.
 
-Principal keeps the canonical persisted `name` field but presents it as **Full name**. For `principalType == 'Person'`, `firstName` and `lastName` are visible and editable while `name` becomes read-only and is evaluator-calculated/materialized from those fields. For non-Person principals, first/last names are hidden and `name` is directly editable.
+Entry dirty state compares the editable record with its baseline. Composite child editors can have separately owned draft/aggregate contributions. The save decision must consider relevant validation, readonly/permission state, active children and compound changes rather than only whether one input emitted a DOM event.
+
+## 6. Popups, invocation and relationships
+
+A popup adds presentation hosting, focus and close behavior to semantic content. A List in selection mode remains a List; an Entry opened to inspect or create a related record remains an Entry. The invocation identifies entity, host, view or mode, resource context and the calling surface's continuation contract.
 
 ```text
-Principal type        Enabled
-First name            Last name       # Person only
-Full name             User            # User Person only; Full name readonly for Person
-Description                           # full row
-Parent principal      Root principal
+Entry level (#data.current.referenceField)
+   └── ReferenceField requests selector
+        └── List popup level (own #state and #data)
+             ├── Select stable related-record ID
+             └── Return result to parent
+                  └── Entry.setField('referenceField', id)
 ```
 
-Because `Principal type` is the first control, it receives initial focus and its CTX value can drive the visibility/editability of all following fields before the user reaches them.
+Related-record creation may open an Entry popup with fixed/default values required by relationship metadata. Successful persistence returns the created ID and representation to the parent; failure or cancellation leaves the parent value unchanged. The API validates relationship integrity, authorization and any transaction constraints.
 
-## 3. Existing-record selector page surface
+This arrangement separates the **host shell** from reusable List/Entry semantics and prevents each selector or relationship from inventing its own entity display or editing engine. See [Popups and Selectors](Popups-and-Selectors.md) and [Relationships](Relationships.md).
 
-The selector is popup-hosted, but it is documented here because it is an entity browse/select surface that deliberately reuses list-page metadata, canonical entry presentation, filters, search and paging. Popup hosting/lifecycle details are in [`Components.md`](Components.md).
+## 7. Commit and recovery
 
-### Presentation structure
+An Entry's working values are not committed simply because CTX is dirty or a popup closes. A save/commit operation crosses the API boundary, where authorization, normalization, relationships, calculations and storage transactions apply. The returned persisted record can then reconcile both `#data.current` and `#data.original`.
 
-```text
-Record selector
-├── title derived from caller/presentation policy
-├── Filters
-├── Search
-├── canonical entity table
-│   ├── same list columns
-│   ├── same reference formatting/icons/names
-│   └── candidate availability/selection state
-├── paging
-├── context note
-└── Cancel / Select
-```
+For compound workspaces, pending child rows and `draft:*` identities can participate in an aggregate transaction. A draft ID is not an existing persisted record. Browser-local recovery is similarly separate from server persistence and must never silently acquire commit authority. Picture/binary resources require their own resource-transport and atomicity contracts; the existence of an editor does not prove that every adapter supports complete binary persistence. See [Workspace Commit and Recovery](Workspace-Commit-and-Recovery.md).
 
-A selector must never have a second answer for "what is this entry called?". Entity-aware canonical entry representation is the single holder of truth for list rows, reference fields, selectors, hierarchy selectors and related collections.
+## 8. Responsibilities and testing
 
-### Important CTX structure
+A generic List/Entry feature should be verified across more than one entity and more than one presentation adapter. Important cases include record and collection authorization, stale requests, view changes, enum/inline options, reference selection, nested popup closure, default/calculated fields, compound dirtiness, save response reconciliation and cancellation without mutation.
 
-```text
-ctx.ui
-└── ... level                     # caller surface
-    └── level                     # selector popup surface
-        ├── control
-        │   ├── host = "popup"
-        │   ├── kind = "selector"
-        │   ├── invocation
-        │   │   ├── entityName
-        │   │   ├── purpose = "select"
-        │   │   ├── caller?
-        │   │   ├── presentation?
-        │   │   ├── rules?
-        │   │   │   ├── values
-        │   │   │   ├── fields
-        │   │   │   ├── query
-        │   │   │   └── actions
-        │   │   └── behavior?
-        │   ├── presentation
-        │   ├── facts
-        │   │   ├── search
-        │   │   ├── filters
-        │   │   └── paging
-        │   └── state
-        ├── list
-        │   ├── originalEntries[]
-        │   └── entries[]
-        ├── selection
-        │   ├── current
-        │   ├── selected[]
-        │   └── facts
-        └── row
-            ├── current
-            └── facts
-```
+The shared semantic runtime owns meaning and lifetime; the concrete Angular/EJS adapter owns focus, DOM/event bridging, presentation and window mechanics; the API owns security and persistent business truth. These boundaries make the same metadata meaningful in multiple client technologies without treating visual parity as a substitute for semantic correctness.
 
-`invocation.rules.query` carries canonical query restrictions in a generic form. Expression-bearing restrictions carry authored expression source only; the browser resolves ASTs lazily through the canonical expression runtime and never stores AST objects in semantic CTX or invocation state. Relationship-specific concepts such as hierarchy placement or uniqueness are translated by the caller into those generic restrictions before the selector opens.
-
-### Reference-field call example
-
-```text
-User(Admin).principalId
-  -> field tools / Select existing entry...
-  -> caller creates SurfaceInvocation
-       entityName = SysBOPrincipal
-       purpose = select
-       caller.surfaceRef = <User entry surface>
-       rules.query = <generic candidate restrictions>
-       behavior = <generic selector behavior>
-  -> selector returns selected Principal record
-  -> caller-side continuation knows target field principalId
-  -> reference field value + CTX update
-  -> ordinary Save transaction
-```
-
-The child selector never receives `targetField` as part of its semantic invocation. The destination belongs to the caller's continuation state.
-
-### Hierarchy call example
-
-```text
-Organization workspace / Add existing entry...
-  -> caller creates SurfaceInvocation
-       entityName = SysBOPrincipal
-       purpose = select
-       caller.surfaceRef = <Organization surface>
-       rules.query = <generic hierarchy eligibility restriction>
-  -> selector returns selected Principal record
-  -> Organization continuation applies sibling/child placement
-  -> hierarchy draft relation
-  -> Commit
-```
-
-## Current reference entities
-
-### Users
-
-Users model ordinary editable text/contact fields, metadata-driven enum selection, calculated/readonly fields, the optional one-to-one Principal reference, authentication summary content and external identities.
-
-### Principals
-
-Principals are the strongest reference/reference-field and hierarchy model. Their General tab demonstrates conditional field visibility/editability, an assisted persisted Full-name calculation, inverse one-to-one User reference selection, editable Parent and calculated Root references, and initial focus driven entirely by metadata order.
-
-### Applications
-
-Applications are the compact baseline system-entity model and demonstrate straightforward metadata-driven entry/list behavior plus related Licenses.
-
-### Licenses
-
-Licenses demonstrate reference, enum, numeric, date, duration and version-like structured field presentation. The Contents tab is the model for date-duration composition and reference selection to Applications.
-
-## Responsibility checklist for new entity surfaces
-
-A new entity should normally require metadata, not a new renderer. Before adding entity-specific code, confirm that the requirement cannot be expressed by canonical field metadata, UI layout metadata, evaluator-backed visibility/editability/calculation, canonical entry representation, generic query predicates, or a reusable component.
-
-Red flags include entity-specific reference formatting, selector-side ID/name maps, browser reparsing of expressions, duplicated list columns for popup selectors, or hard-coded field names in generic components.
-
-## Hosted entity-entry popup
-
-The metadata-driven entry renderer is host-neutral. The same entity entry that is reached from a
-list page can also be hosted inside a modal popup; the popup does **not** own a second form renderer.
-It loads the canonical `/bo/<entity>/new` or `/bo/<entity>/<id>` route in an embedded entry host and
-therefore reuses the same tabs, fields, evaluator rules, CTX construction, validation, save path and
-entry representation.
-
-Popup completion is returned to callers as one canonical surface-result envelope (`outcome`, `value`, `record`, and `metadata`). Callers do not receive or depend on the transport `postMessage` payload as a parallel compatibility result.
-
-### Invocation layering
-
-A caller may supply a canonical `SurfaceInvocation` in addition to canonical entity/UI metadata. Effective field behavior is resolved in one direction:
-
-```text
-canonical BO metadata
-        +
-canonical UI metadata
-        +
-SurfaceInvocation.rules
-        +
-normal mode + authorization rules
-        =
-effective hosted entry
-```
-
-`rules.values.<field>.default` seeds create-mode values while leaving them editable. `rules.values.<field>.fixed` expresses a caller-imposed fixed value; `rules.fields` supplies generic field behavior restrictions, and field-domain restrictions such as allowed enum values belong there rather than in relationship-specific parameters.
-
-A reference field may declare `referenceSelection.createRelated` metadata. The caller-side reference runtime translates that relationship declaration into the generic invocation contract rather than teaching the hosted entry about Users, Principals or any other concrete relationship. For the User -> Person Principal identity relationship, that translation can seed First/Last name, fix the inverse User field to the calling User, and restrict Principal type to Person. Full name is still calculated by ordinary Principal metadata.
-
-### Create-related sequence
-
-```text
-Parent entry / reference-select
-        |
-        | Add entry...
-        v
-Entry popup (mode=create)
-        |
-        | canonical target entry renderer
-        | + caller defaults / UI overrides
-        v
-POST canonical target /save
-        |
-        | create succeeds
-        v
-popup result { entityKey, id, record, representation }
-        |
-        v
-calling reference-select inserts/reloads candidate,
-selects it and marks parent form dirty
-```
-
-Cancel or a failed create never changes the calling reference field. A successful target create is
-real persistence; in a one-to-one inverse relationship such as User <-> Principal, saving the new
-Principal with its fixed User field establishes the relationship transactionally. The caller then
-refreshes/selects the returned Principal as presentation state; it does not create the relationship a
-second time.
-
-### Existing-entry view popup
-
-The same host supports existing records. A hierarchy visualization can open a node with
-`mode:'view'`; the canonical entry renderer then applies global view-mode readonly behavior over the
-entity's normal UI metadata. This is intentionally the same entry surface, not a hierarchy-specific
-Principal viewer.
-
-### Popup CTX
-
-A popup is only one possible **container** for a hosted surface. The hosted entry owns its normal canonical CTX and receives the same host-neutral `SurfaceInvocation` contract used by first-level and nested pages.
-
-```text
-ctx.ui
-└── ... level                     # caller surface
-    └── level                     # outer popup host/provenance surface
-        ├── host = "popup"
-        ├── kind = "entry"
-        ├── invocation
-        │   ├── entityName
-        │   ├── purpose = view | create | inspect
-        │   ├── caller?
-        │   ├── presentation?
-        │   ├── rules?
-        │   └── behavior?
-        ├── presentation
-        └── state.popup           # host geometry/lifecycle only
-
-hosted iframe ctx.ui.level       # sole owner of live entry semantics
-├── entry
-├── fields
-├── facts
-└── state                         # entry lifecycle/validation/etc.
-```
-
-Navigation hierarchy, popup nesting and semantic ownership are separate concerns. The child does not receive a parent `targetField` or parent mutation instruction; the caller keeps the continuation that decides what to do with the returned create/update/view result.
-
-### Hosted-entry interaction rules
-
-Hosted metadata entries follow the same popup contract as every other ManatOS popup. In developer
-mode the popup header exposes the standard **CTX** inspection action for the outer popup host/provenance
-surface. The hosted iframe retains sole ownership of its live entry CTX; the parent does not mirror
-`entry`, `fields`, `facts` or entry lifecycle state into the outer surface. The host sizes itself
-from the embedded entry's live content and remeasures after tab/layout changes, subject to viewport
-limits; short tabs therefore do not inherit a permanently tall dialog.
-
-Reference creation is a capability of the generic reference field, not a relationship-specific
-feature. Every editable reference whose target entity is known can offer **Add entry...**.
-`referenceSelection.createRelated` remains optional metadata that supplies relationship-specific
-caller defaults, fixed values, or UI constraints when those are required.
-
-Caller-supplied entry defaults are field assignments. On hosted-entry initialization they are
-published through the same CTX field-update/event pipeline as interactive and other programmatic
-changes, so calculated fields and evaluator-driven UI properties react regardless of how the source
-field obtained its value.
-
-A hosted entry is currently a single child-interaction boundary: opening another hosted full-entry
-popup from inside it is deliberately suppressed. This prevents recursive iframe/modal ownership,
-focus, CTX and close-state ambiguity. Nested lightweight editors inside the entry remain independent
-of this restriction.
+See [Entity Lists](Entity-Lists.md), [Entity Entries](Entity-Entries.md), [UIS Architecture](../clients/UIS-Architecture.md), [CTX Architecture](../context/Context-Architecture.md) and [API Architecture](../api/API-Architecture.md).

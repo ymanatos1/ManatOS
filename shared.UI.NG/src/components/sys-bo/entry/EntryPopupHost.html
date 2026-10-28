@@ -1,0 +1,61 @@
+<!-- Popup chrome wraps the same EntryPageHost used by normal Entry routes. -->
+<div
+  class="sign-in-backdrop manatos-list-popup-backdrop"
+  [class.has-foreground-debugger]="debuggerForeground() && debuggerDocked()"
+  [style.--popup-debugger-dock-width.px]="debuggerDockWidth()"
+  (click)="backdrop($event)"
+  (keydown)="keyboard($event)"
+>
+  <section
+    #dialog
+    class="sign-in-dialog manatos-list-popup-dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="title().title"
+    tabindex="-1"
+    [style.--manatos-font-scale]="fontScalePercent() / 100"
+  >
+    <manatos-popup-title
+      [model]="title()"
+      [currentLanguage]="currentLanguage()"
+      [languages]="languages()"
+      [showLanguageSelection]="true"
+      [fontScalePercent]="fontScalePercent()"
+      (languageSelected)="languageSelected.emit($event)"
+      (fontScaleChanged)="setFontScale($event)"
+      [debuggerForeground]="debuggerForeground()"
+      [debuggerAllowed]="debuggerAllowed()"
+      [showCloseButton]="true"
+      (debuggerRequested)="inspect()"
+      (closeRequested)="dismissed.emit()"
+    >
+      @if (entryContent(); as entry) {
+      <manatos-entry-ui-view-selector
+        [views]="entry.uiViews()"
+        [busy]="entry.uiViewBusy()"
+        [error]="entry.uiViewError()"
+        [selected]="entry.uiViewKey()"
+        [language]="language()"
+        (selectedChange)="entry.selectUIView($event)"
+      />
+      }
+    </manatos-popup-title>
+    @if (selectionError()) {
+    <p role="alert" class="manatos-entry-selection-error">{{ selectionError() }}</p>
+    }
+    <manatos-entry-page-host
+      [contextTree]="contextTree()"
+      [entityKey]="entityKey()"
+      [recordId]="recordId()"
+      [entryMode]="entryMode()"
+      [permissions]="permissions()"
+      hostKind="popup"
+      [parentLevelPath]="parentLevelPath()"
+      [language]="language()"
+      [inspectorAllowed]="debuggerAllowed()"
+      (saved)="created.emit($event)"
+      (changeReportRequested)="changeReportRequested.emit($event)"
+      (dismissed)="dismissed.emit()"
+    />
+  </section>
+</div>

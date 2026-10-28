@@ -35,10 +35,10 @@
       role="button"
       data-bs-toggle="dropdown"
       aria-expanded="false"
-      title="<%= itemTooltip %>"
+      title="<%= metadataText(itemTooltip) %>"
     >
       <% if (item.icon) { %><i class="bi <%= item.icon %> me-1"></i><% } %>
-      <%= item.text %>
+      <%= metadataText(item.text) %>
     </a>
     <ul class="dropdown-menu shadow-sm">
       <% for (const child of item.children) { %>
@@ -51,10 +51,10 @@
     <a
       class="<%= level === 0 ? 'nav-link' : 'dropdown-item' %>"
       href="<%= item.url || '#' %>"
-      title="<%= itemTooltip %>"
+      title="<%= metadataText(itemTooltip) %>"
     >
       <% if (item.icon) { %><i class="bi <%= item.icon %> me-1"></i><% } %>
-      <%= item.text %>
+      <%= metadataText(item.text) %>
     </a>
   </li>
 <% } %>

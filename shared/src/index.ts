@@ -5,8 +5,8 @@ export * from './metadata/bo/index.js';
 export * from './metadata/ui/index.js';
 
 export * from './errors/app-error.js';
-
-export * from './context/operation-context.js';
+export * from './security/rate-limit-policy.js';
+export * from './security/rate-limiter.js';
 
 export * from './policies/password-rules.js';
 
@@ -37,3 +37,11 @@ export * from './context/root-context.js';
 export * from './metadata/subsystems/enum-registry.js';
 export * from './metadata/subsystems/registry.js';
 export * from './metadata/subsystems/types.js';
+
+export * from './http/api-diagnostics.js';
+
+export * from './multilingual/index.js';
+
+export * from './multilingual/metadata/index.js';
+
+export * from './metadata/sysbo-api-path.js';

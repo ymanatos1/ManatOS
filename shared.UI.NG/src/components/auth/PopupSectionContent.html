@@ -1,0 +1,19 @@
+<!-- PopupSectionContent template: a section header and explicit registered descendants; it does not flatten child ownership. -->
+<section
+  [class.auth-method-card]="methods()"
+  [class.reset-form-card]="tabId() === 'reset'"
+  [class.auth-registration-form-card]="!methods() && tabId() !== 'reset'"
+  [class.change-password-form-card]="tabId() === 'change'"
+  [attr.data-popup-layout-id]="item().id"
+  [attr.data-popup-column-id]="tabId() + '-column' + columnIndex()"
+>
+  <h3 class="auth-modal-section-heading">
+    <i [class]="'bi ' + item().icon" aria-hidden="true"></i>
+    {{ multilingual().resolve(item().heading) }}
+  </h3>
+  @if (item().description; as description) {
+  <p class="auth-method-description">{{ multilingual().resolve(description) }}</p>
+  } @for (child of item().children; track child.id) {
+  <ng-container *ngComponentOutlet="renderer(child.kind); inputs: childInputs(child)" />
+  }
+</section>

@@ -41,9 +41,15 @@ describe('subsystem metadata architecture', () => {
 
   it('derives availability from selected subsystems rather than company/platform entity lists', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
-    expect(effectiveObjectKeys(MANATOS_COMPANY, platform)).toEqual(
-      new Set(Object.keys(allManatOSObjectMetadata)),
-    );
+    const effectiveKeys = effectiveObjectKeys(MANATOS_COMPANY, platform);
+    const expectedKeys = Object.values(subsystemContextCatalogue(MANATOS_COMPANY, platform))
+      .filter((subsystem) => subsystem.selected)
+      .flatMap((subsystem) => subsystem.entities);
+    expect(effectiveKeys).toEqual(new Set(expectedKeys));
+    // Other platforms' registered objects must not leak into this projection.
+    expect(effectiveKeys.has('sys-guards')).toBe(false);
+    expect(effectiveKeys.has('sys-projects')).toBe(false);
+    expect(effectiveKeys.has('sys-posts')).toBe(false);
     expect(MANATOS_COMPANY).not.toHaveProperty('entities');
     expect(platform).not.toHaveProperty('entities');
   });

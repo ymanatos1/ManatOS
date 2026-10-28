@@ -1,0 +1,8 @@
+<!-- EntryLayoutGroupComponent template: the recursive nested layout items contained in this group; layout groups are first-class owners. -->
+<div
+  class="manatos-entry-group"
+  [attr.data-entry-layout-id]="item().layoutId"
+  [style.grid-column]="'span ' + item().span"
+>
+  <manatos-entry-layout [items]="item().content" />
+</div>

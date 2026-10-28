@@ -1,0 +1,79 @@
+<manatos-field-control-shell [field]="field()">
+  <div class="manatos-picture-field" data-entry-control>
+    <button
+      type="button"
+      class="manatos-picture-thumbnail"
+      (click)="choose()"
+      [disabled]="field().readOnly"
+      [attr.aria-label]="field().language === 'EL' ? (source() ? 'Αντικατάσταση εικόνας' : 'Επιλογή εικόνας') : (source() ? 'Click to replace picture' : 'Click to choose picture')"
+      [attr.title]="field().language === 'EL' ? (source() ? 'Κλικ για αντικατάσταση εικόνας' : 'Κλικ για επιλογή εικόνας') : (source() ? 'Click to replace picture' : 'Click to choose picture')"
+    >
+      @if (source(); as src) {
+      <img data-entry-photo-thumbnail [src]="src" [alt]="field().label" loading="lazy" />
+      } @else {
+      <span class="manatos-picture-placeholder" data-entry-photo-empty
+        ><i class="bi bi-image" aria-hidden="true"></i
+      ></span>
+      } @if (pickerOpening()) {
+      <span
+        class="manatos-picture-launch-feedback"
+        role="status"
+        [attr.aria-label]="field().language === 'EL' ? 'Άνοιγμα επιλογής αρχείου…' : 'Opening file chooser…'"
+      >
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      </span>
+      }
+    </button>
+    @if (source() && !field().readOnly) {
+    <button
+      type="button"
+      class="manatos-picture-delete"
+      (click)="remove($event)"
+      [attr.aria-label]="field().language === 'EL' ? 'Διαγραφή φωτογραφίας' : 'Delete photo'"
+      [attr.title]="field().language === 'EL' ? 'Διαγραφή φωτογραφίας' : 'Delete photo'"
+    >
+      <i class="bi bi-trash" aria-hidden="true"></i>
+    </button>
+    }
+    <div class="manatos-picture-help-column">
+      @if (historyVisible()) {
+      <div
+        class="manatos-picture-history-actions"
+        role="group"
+        [attr.aria-label]="field().language === 'EL' ? 'Ιστορικό επεξεργασίας' : 'Edit history'"
+      >
+        <button
+          type="button"
+          (click)="undo()"
+          [disabled]="!undoReady()"
+          [attr.title]="field().language === 'EL' ? 'Αναίρεση' : 'Undo'"
+          [attr.aria-label]="field().language === 'EL' ? 'Αναίρεση' : 'Undo'"
+        >
+          <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          (click)="redo()"
+          [disabled]="!redoReady()"
+          [attr.title]="field().language === 'EL' ? 'Επανάληψη' : 'Redo'"
+          [attr.aria-label]="field().language === 'EL' ? 'Επανάληψη' : 'Redo'"
+        >
+          <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+        </button>
+      </div>
+      }
+      <small class="manatos-picture-help">{{ helpText() }}</small>
+    </div>
+    @if (selectionError()) {
+    <span role="alert" class="manatos-picture-input-error">{{ selectionError() }}</span> }
+    <input
+      #fileInput
+      type="file"
+      hidden
+      accept="image/jpeg,image/png,image/webp,image/gif"
+      (change)="picked($event)"
+      (cancel)="cancelPicker()"
+      [disabled]="field().readOnly"
+    />
+  </div>
+</manatos-field-control-shell>

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
@@ -77,6 +77,10 @@ export interface SystemSettingsDocument {
 export const DEFAULT_STORAGE_CONFIGURATION_ID = 'default-json';
 export const DEFAULT_API_STORAGE_DEBUG_DIRECTORY = '../data/logs/api/';
 
+/** A successful target check is short-lived evidence, never a persisted UI assertion. */
+const STORAGE_VERIFICATION_TTL_MS = 30 * 60 * 1000;
+const MAX_STORAGE_VERIFICATIONS = 512;
+
 function defaultStorageConfiguration(defaultDataFile: string): StorageConfigurationRecord {
   const dataFile = defaultDataFile || '../data/database.json';
   return {
@@ -138,6 +142,8 @@ export class SystemSettingsStore {
   private document!: SystemSettingsDocument;
   /** Configuration actually serving this API process; fixed for the process lifetime. */
   private runningConfigurationId = '';
+  private readonly verificationKey = randomBytes(32);
+  private readonly verifiedTargets = new Map<string, number>();
 
   constructor(
     filePath: string,
@@ -366,18 +372,139 @@ export class SystemSettingsStore {
     const configuration = this.document.storage.configurations.find((entry) => entry.id === id);
     if (!configuration) throw new ValidationAppError('Storage configuration not found.');
     const definition = storageAdapterRegistry.get(configuration.adapterId);
-    if (configuration.status !== 'ready') {
-      throw new ValidationAppError(
-        'Only a storage configuration whose saved status is Ready can be selected for activation.',
-      );
-    }
     if (!definition.runtimeAvailable) {
       throw new ValidationAppError(
         `${definition.name} can be configured in this build, but its datastore runtime is not implemented yet.`,
       );
     }
+    if (configuration.status !== 'ready') {
+      throw new ValidationAppError(
+        'Only a storage configuration whose saved status is Ready can be selected for activation.',
+      );
+    }
     this.document.storage.currentConfigurationId = id;
     await this.persist();
+  }
+
+  /**
+   * Record only successful API target checks. The Admin browser never receives
+   * or supplies verification tokens, and no plaintext credential is retained.
+   * The database name may be supplied separately while a new target is chosen.
+   */
+  recordVerifiedStorageTarget(
+    configuration: StorageConfigurationRecord,
+    stage: 'connection' | 'database' | 'schema',
+    database?: string,
+  ): void {
+    // Operational target records have already had their secrets decrypted.
+    const key = this.storageVerificationFingerprint(configuration, stage, database, true);
+    const now = Date.now();
+
+    // Keep verification evidence bounded and limited to recent successful checks.
+    for (const [existingKey, timestamp] of this.verifiedTargets) {
+      if (now - timestamp > STORAGE_VERIFICATION_TTL_MS) {
+        this.verifiedTargets.delete(existingKey);
+      }
+    }
+    if (this.verifiedTargets.size >= MAX_STORAGE_VERIFICATIONS) {
+      const oldest = this.verifiedTargets.keys().next().value;
+      if (oldest) this.verifiedTargets.delete(oldest);
+    }
+    this.verifiedTargets.set(key, now);
+  }
+
+  private hasVerifiedStorageTarget(
+    configuration: StorageConfigurationRecord,
+    stage: 'connection' | 'database' | 'schema',
+  ): boolean {
+    const key = this.storageVerificationFingerprint(configuration, stage);
+    const timestamp = this.verifiedTargets.get(key);
+    return timestamp !== undefined && Date.now() - timestamp <= STORAGE_VERIFICATION_TTL_MS;
+  }
+
+  /**
+   * Match checks to the *effective* target settings, not the random encrypted
+   * envelope or configuration name. The connection stage excludes the eventual
+   * database choice because EJS0/NG1 test the server before choosing a catalog.
+   */
+  private storageVerificationFingerprint(
+    configuration: StorageConfigurationRecord,
+    stage: 'connection' | 'database' | 'schema' | 'settings',
+    database?: string,
+    resolvedSettings = false,
+  ): string {
+    const definition = storageAdapterRegistry.get(configuration.adapterId);
+    const databaseKey = definition.targetWorkflow?.databaseFieldKey;
+    const settings = resolvedSettings
+      ? { ...configuration.settings }
+      : this.resolveSecrets(configuration).settings;
+    if (databaseKey && database !== undefined) {
+      settings[databaseKey] = database;
+    }
+    if (stage === 'connection' && databaseKey) {
+      delete settings[databaseKey];
+    }
+
+    // New candidates may omit optional fields that saved configurations store
+    // as empty strings. Fingerprint the adapter's complete effective settings
+    // so those two representations share the same verification evidence.
+    const canonical = allFields(definition)
+      .map((field) => [field.key, settings[field.key] ?? field.defaultValue ?? ''] as const)
+      .sort(([left], [right]) => left.localeCompare(right));
+    const digest = createHmac('sha256', this.verificationKey)
+      .update(JSON.stringify([configuration.adapterId, canonical]))
+      .digest('hex');
+    return `${stage}:${digest}`;
+  }
+
+  /** Existing Ready entries remain Ready on name-only edits, including migrated records. */
+  private unchangedTarget(
+    existing: StorageConfigurationRecord,
+    candidate: StorageConfigurationRecord,
+  ): boolean {
+    return (
+      existing.adapterId === candidate.adapterId &&
+      this.storageVerificationFingerprint(existing, 'settings') ===
+        this.storageVerificationFingerprint(candidate, 'settings')
+    );
+  }
+
+  /**
+   * Derive operational readiness exclusively from server-observed target checks.
+   * File-backed JSON has no remote target: complete mandatory paths are its
+   * readiness contract; its runtime performs filesystem initialization at boot.
+   */
+  private verifiedStage(configuration: StorageConfigurationRecord): StorageConfigurationStage {
+    const definition = storageAdapterRegistry.get(configuration.adapterId);
+    const settings = this.resolveSecrets(configuration).settings;
+
+    for (const field of allFields(definition)) {
+      const visible =
+        !field.visibleWhen || settings[field.visibleWhen.key] === field.visibleWhen.equals;
+      const required =
+        field.required ||
+        Boolean(
+          field.requiredWhen && settings[field.requiredWhen.key] === field.requiredWhen.equals,
+        );
+      if (visible && required && !String(settings[field.key] ?? '').trim()) {
+        return 'configuration';
+      }
+    }
+
+    const workflow = definition.targetWorkflow;
+    if (workflow?.connectionTest && !this.hasVerifiedStorageTarget(configuration, 'connection')) {
+      return 'connection';
+    }
+    if (
+      (workflow?.databaseDiscovery || workflow?.databasePreparation) &&
+      !this.hasVerifiedStorageTarget(configuration, 'database')
+    ) {
+      return 'database';
+    }
+    if (workflow?.schemaPreparation && !this.hasVerifiedStorageTarget(configuration, 'schema')) {
+      return 'schema';
+    }
+    return 'complete';
   }
 
   private normalizeStorageDebugging(
@@ -525,7 +652,7 @@ export class SystemSettingsStore {
       throw new ValidationAppError('Storage configuration status is invalid.');
     }
 
-    return {
+    const record: StorageConfigurationRecord = {
       id: existing?.id ?? (String(value.id ?? '').trim() || randomUUID()),
       name,
       adapterId,
@@ -536,6 +663,23 @@ export class SystemSettingsStore {
       status: requestedStatus,
       settings,
     };
+
+    // Existing documents retain their historical workflow status at startup.
+    // For browser writes, never promote a client-supplied Ready claim without
+    // complete target checks. Unmodified, previously Ready targets remain Ready.
+    if (!storedInput && requestedStatus === 'ready') {
+      const previouslyReady =
+        existing?.status === 'ready' && this.unchangedTarget(existing, record);
+      if (previouslyReady) {
+        record.stage = 'complete';
+      } else {
+        const verifiedStage = this.verifiedStage(record);
+        record.stage = verifiedStage;
+        record.status = verifiedStage === 'complete' ? 'ready' : 'incomplete';
+      }
+    }
+
+    return record;
   }
 
   private adminConfiguration(record: StorageConfigurationRecord): StorageConfigurationAdminRecord {

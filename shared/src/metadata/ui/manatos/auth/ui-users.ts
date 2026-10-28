@@ -21,11 +21,11 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
   uiViews: {
     main: {
       viewType: 'full',
-      label: 'Standard',
+      label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */,
     },
     quickView: {
       viewType: 'quick',
-      label: 'Quick view',
+      label: '@EN.common.label.QuickView' /* Quick view */,
       record: {
         /*
          * Generic read-only SysUser presentation. The Account route uses this
@@ -35,7 +35,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
          */
         readOnly: true,
         tabs: [
-          tab('general', 'General', 10, {
+          tab('general', '@CM.AccountGeneral', 10, {
             icon: 'info-circle',
             layout: 'details',
             representation: 'summary',
@@ -65,7 +65,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
               },
             ],
           }),
-          tab('authentication', 'Authentication', 20, {
+          tab('authentication', '@CM.Authentication', 20, {
             icon: 'shield-lock',
             layout: 'details',
             representation: 'summary',
@@ -93,8 +93,8 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           systemTab(),
         ],
         fieldOverrides: {
-          name: { label: 'User' },
-          role: { label: 'Website role' },
+          name: { label: '@EN.manatos.auth.externalIdentities.label.User' /* User */ },
+          role: { label: '@EN.manatos.auth.users.label.WebsiteRole' /* Website role */ },
         },
         actionOverrides: {
           setPassword: {
@@ -125,10 +125,10 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['name', 'email'],
       },
     },
@@ -136,7 +136,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
   record: {
     // Entry tabs / layout
     tabs: [
-      tab('general', 'General', 10, {
+      tab('general', '@CM.AccountGeneral', 10, {
         icon: 'info-circle',
         layout: 'form',
         // SysUser keeps Email directly after identity/state, then forces a generic row
@@ -156,7 +156,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
           { kind: 'field', field: 'role', span: 6 },
         ],
       }),
-      tab('authentication', 'Authentication', 20, {
+      tab('authentication', '@CM.Authentication', 20, {
         icon: 'shield-lock',
         layout: 'summary',
         visible: {
@@ -217,11 +217,11 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       // Shorter Authentication-tab labels and summary formatting are genuine
       // presentation overrides; canonical readOnly already controls editing.
       emailVerifiedAt: {
-        label: 'Verified at',
+        label: '@EN.manatos.auth.users.label.VerifiedAt' /* Verified at */,
         presentation: { mode: 'summary', format: 'datetime-elapsed', emptyText: '—' },
       },
       emailVerificationSource: {
-        label: 'Verification source',
+        label: '@EN.manatos.auth.users.label.VerificationSource' /* Verification source */,
         presentation: { mode: 'summary', emptyText: '—' },
       },
 
@@ -253,7 +253,8 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
          * - Reusable row calculations live in the canonical related-entity
          *   metadata; UI metadata supplies only visual formatting/decoration.
          */
-        label: 'External identities',
+        label:
+          '@EN.manatos.auth.externalIdentities.pluralLabel.ExternalIdentities' /* External identities */,
         icon: 'person-badge',
         entityKey: 'external-identities',
         relatedListView: 'default',
@@ -263,7 +264,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       setPassword: {
         kind: 'navigate',
         visible: false,
-        label: 'Set password',
+        label: '@EN.manatos.auth.users.label.SetPassword' /* Set password */,
         icon: 'key',
         tone: 'primary',
         emphasis: 'outline',
@@ -272,7 +273,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
       changePassword: {
         kind: 'navigate',
         visible: false,
-        label: 'Change password',
+        label: '@EN.manatos.auth.users.label.ChangePassword' /* Change password */,
         icon: 'key',
         tone: 'primary',
         emphasis: 'outline',
@@ -290,7 +291,7 @@ export const sysBOUsersUIMetadata: SysBOUIMetadata = {
             'id !== $user.fields.id.value && ' +
             'emailVerified !== true',
         },
-        label: 'Verify email',
+        label: '@EN.manatos.auth.users.label.VerifyEmail' /* Verify email */,
         icon: 'envelope-check',
         tone: 'success',
         emphasis: 'outline',

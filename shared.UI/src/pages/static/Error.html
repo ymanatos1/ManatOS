@@ -1,0 +1,13 @@
+<section class="content-card static-error-page" role="alert">
+  <div class="static-error-icon" aria-hidden="true">
+    <i class="bi bi-exclamation-triangle"></i>
+  </div>
+
+  <p>ManatOS could not prepare this page.</p>
+
+  {{#if errorMessage}}
+  <p class="static-error-detail">{{ errorMessage }}</p>
+  {{/if}}
+
+  <p><a href="/">Return to Home</a></p>
+</section>

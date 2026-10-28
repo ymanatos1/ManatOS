@@ -13,7 +13,14 @@ export interface ManatOSPlatformContext extends SysPlatform {
 export interface ManatOSCompanyContext extends Omit<CompanyInfo, 'platforms'> {
   sysBO: Readonly<Record<string, ManatOSSysBOContext>>;
   platforms: readonly ManatOSPlatformContext[];
-  currentPlatform: string;
+  currentPlatform: string | null;
+  currentPlatformIndex: number;
+}
+
+/** Company catalogue used by the modern runtime without duplicated entity catalogues. */
+export interface ManatOSRuntimeCompanyContext extends Omit<CompanyInfo, 'platforms'> {
+  platforms: readonly SysPlatform[];
+  currentPlatform: string | null;
   currentPlatformIndex: number;
 }
 
@@ -33,13 +40,17 @@ export interface ManatOSClientContext {
   features: Readonly<Record<string, boolean>>;
 }
 
-/** Runtime/host facts grouped away from business/user/company context. */
-export interface ManatOSSystemContext {
+/** Stable runtime/host facts grouped away from business/user/company context. */
+export interface ManatOSHostSystemContext {
   /** Active runtime/application scope for the root ManatOS context. */
   scope: string;
   runtime: ManatOSRuntimeContext;
   server: ManatOSServerContext;
   client: ManatOSClientContext;
+}
+
+/** Legacy system context retained for EJS0/API compatibility. */
+export interface ManatOSSystemContext extends ManatOSHostSystemContext {
   /** Effective ManatOS + selected-platform subsystem catalogue. */
   subsystems: Readonly<Record<string, ManatOSSubsystemContextProjection>>;
 }
@@ -191,6 +202,9 @@ export function contextCollectionMemberKey(value: unknown): string | null {
  * underlying CTX value remains a normal array and is not duplicated into a
  * second keyed object.
  */
+/** Marks a modern CTX root whose legacy names are resolver aliases, not members. */
+export const MODERN_CTX_ALIASES = Symbol.for('manatos.ctx.runtime-aliases');
+
 export function resolveContextMember(container: unknown, member: string | number): unknown {
   if (container == null) return undefined;
 
@@ -205,6 +219,15 @@ export function resolveContextMember(container: unknown, member: string | number
   }
 
   if (typeof container !== 'object') return undefined;
+  // The expression evaluator and CTX share this lookup. Only the marked root
+  // redirects these names; ordinary nested objects retain their own members.
+  if (
+    (container as Record<symbol, unknown>)[MODERN_CTX_ALIASES] === true &&
+    (member === 'entities' || member === 'enums' || member === 'user')
+  ) {
+    const runtime = (container as { runtime?: Record<string, unknown> }).runtime;
+    return runtime?.[member];
+  }
   return (container as Record<string, unknown>)[String(member)];
 }
 
@@ -276,6 +299,46 @@ export interface ManatOSEnumContext {
 }
 
 export type ManatOSEnumsContext = Record<string, ManatOSEnumContext>;
+
+/**
+ * Canonical effective execution projection for modern ManatOS clients.
+ *
+ * Immutable metadata defines what can exist. This branch defines what is
+ * effective for the currently selected Company + Platform + User combination.
+ */
+export interface ManatOSEffectiveRuntimeContext {
+  subsystems: Readonly<Record<string, ManatOSSubsystemContextProjection>>;
+  entities: ManatOSEntitiesContext;
+  enums: ManatOSEnumsContext;
+  user: ManatOSUserContext | null;
+}
+
+/**
+ * Modern root CTX used by EJS1/NG1 and later clients.
+ *
+ * `$entities`, `$enums` and `$user` are resolver aliases of `runtime.*`.
+ * They are deliberately not enumerable root members.
+ */
+/** Live Flow CTX identity; step payloads are owned by the FlowRunner. */
+export interface ManatOSRuntimeFlowContext {
+  readonly control: {
+    readonly host: 'flow';
+    readonly kind: 'flow';
+    readonly name: string;
+    readonly instanceId: string;
+    readonly status: string;
+    readonly currentStep: { readonly kind: 'pointer'; readonly value: string } | null;
+  };
+  readonly steps: Record<string, unknown>;
+}
+
+export interface ManatOSRuntimeRootContext {
+  system: ManatOSHostSystemContext;
+  company: ManatOSRuntimeCompanyContext;
+  runtime: ManatOSEffectiveRuntimeContext;
+  /** Current Flow execution, or null when no Flow is running. */
+  flow?: ManatOSRuntimeFlowContext | null;
+}
 
 export interface ManatOSContext {
   /**

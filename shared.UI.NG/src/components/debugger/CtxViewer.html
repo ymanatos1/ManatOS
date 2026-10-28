@@ -1,0 +1,108 @@
+<section class="ctx-viewer debug-panel" [attr.aria-label]="multilingual().CtxViewer">
+  <manatos-ctx-toolbar
+    [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+    [canBack]="canBack()"
+    [canForward]="canForward()"
+    [watched]="watchedPath() === selectedPath()"
+    [propertiesOpen]="propertiesOpen()"
+    [findOpen]="findOpen()"
+    [cliOpen]="cliMode() !== 'closed'"
+    [stats]="rootPath() === 'ctx' ? statistics() : ''"
+    (back)="back()"
+    (forward)="forward()"
+    (copy)="copySelected()"
+    (watch)="toggleWatch()"
+    (properties)="toggleProperties()"
+    (find)="toggleFind()"
+    (cli)="toggleCli()"
+    (openView)="openSelectedView()"
+  />
+
+  <div class="ctx-viewer-caption-row">
+    <manatos-ctx-caption
+      [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+      [rootPath]="rootPath()"
+      [selectedPath]="selectedPath()"
+      [revision]="revision()"
+    />
+    @if (closeable()) {
+    <button
+      class="btn-close-debug"
+      type="button"
+      [title]="multilingual().CloseCtxView"
+      (click)="closeRequested.emit()"
+    >
+      ×
+    </button>
+    }
+  </div>
+
+  @if (findOpen()) {
+  <manatos-ctx-find
+    [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+    [searchText]="searchText()"
+    [mode]="searchMode()"
+    [syntax]="searchSyntax()"
+    [history]="searchHistory()"
+    [matchCount]="searchResults().length"
+    (searchChanged)="setSearch($event)"
+    (modeChanged)="setSearchMode($event)"
+    (syntaxChanged)="setSearchSyntax($event)"
+    (previous)="find(-1)"
+    (next)="find(1)"
+    (historySelected)="selectSearchHistory($event)"
+    (closeRequested)="closeFind()"
+  />
+  } @if (propertiesOpen()) {
+  <manatos-ctx-properties
+    [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+    [context]="context()"
+    [path]="selectedPath()"
+    [revision]="revision()"
+    [heightPreference]="ctxPropertiesHeight()"
+    (closeRequested)="closeProperties()"
+    (navigate)="select($event)"
+  />
+  }
+
+  <manatos-ctx-tree
+    [language]="state()?.currentLanguage?.id === 'el' ? 'EL' : 'EN'"
+    [context]="context()"
+    [rootPath]="rootPath()"
+    [selectedPath]="selectedPath()"
+    [expandedPaths]="expandedPaths()"
+    [watchChangedPath]="watchChangedPath()"
+    [revealToken]="revealToken()"
+    [layoutHighlightEnabled]="layoutHighlightEnabled()"
+    [revealLastChildFirst]="
+      rootPath() === 'ctx' &&
+      requestedRevealToken() > 0 &&
+      selectedPath() === requestedRevealPath()
+    "
+    [revision]="revision()"
+    (selected)="select($event)"
+    (expandedPathsChanged)="setExpandedPaths($event)"
+  />
+
+  @if (cliMode() === 'opened') {
+  <manatos-debug-cli
+    [initialSession]="cliSession()"
+    [caption]="rootPath() === 'ctx' ? 'Global CLI' : 'CTX CLI'"
+    [language]="state()?.currentLanguage?.id?.toUpperCase() === 'EL' ? 'EL' : 'EN'"
+    [detached]="cliMode() === 'detached'"
+    [canDetach]="rootPath() === 'ctx'"
+    [fontScalePercent]="cliFontScale()"
+    (detachRequested)="detachCli()"
+    (fontScaleChanged)="setCliFontScale($event)"
+    [context]="context()"
+    [startPath]="cliCurrentPath()"
+    [heightPreference]="cliHeight()"
+    [historyRuntime]="state()?.cliHistory ?? null"
+    [expressionCapabilityDelegate]="expressionCapabilityDelegate()"
+    [expressionDiagnosticSink]="state()?.diagnostics?.expressionDiagnosticSink ?? null"
+    (closeRequested)="closeCli()"
+    (currentPathChanged)="setCliCurrentPath($event)"
+    (sessionChanged)="saveCliSession($event)"
+  />
+  }
+</section>

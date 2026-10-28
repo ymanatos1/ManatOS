@@ -3124,6 +3124,9 @@
         {
           "name": "UI Bootstrap",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -3131,9 +3134,33 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "{{apiVersion}}", "public", "ui-bootstrap"]
             },
-            "description": "Anonymous-safe, no-store runtime bootstrap used by the UI for API/server status and persisted UI configuration."
+            "description": "Anonymous-safe, no-store runtime bootstrap used by UIs for server/API status and persisted server-owned UI configuration. The selectable UI language catalogue is compiled from @manatos/shared and is available to UI clients without calling the API."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(json.success).to.eql(true));",
+                  "pm.test('UI bootstrap configuration is returned', () => {",
+                  "  const ui = json.data && json.data.ui;",
+                  "  pm.expect(ui).to.be.an('object');",
+                  "  pm.expect(ui.pageSizeOptions).to.be.an('array').and.not.empty;",
+                  "  pm.expect(ui.defaultPageSize).to.be.a('number');",
+                  "  pm.expect(ui.showTechnicalErrorDetails).to.be.a('boolean');",
+                  "  pm.expect(ui.sessionErrorLogMaxEntries).to.be.a('number');",
+                  "  pm.expect(ui.donationsShow).to.be.a('boolean');",
+                  "  pm.expect(ui).not.to.have.property('languages');",
+                  "  pm.expect(ui).not.to.have.property('defaultLanguage');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Public external authentication providers",

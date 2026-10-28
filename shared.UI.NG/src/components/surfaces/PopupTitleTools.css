@@ -1,0 +1,21 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+
+  /* Keep the existing FontScale compact in popup titles. */
+  --manatos-font-scale-min-height: 2rem;
+}
+
+.popup-title-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Adjacent CTX and Flow debugger controls form one compact pair. */
+.popup-debugger-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.05rem;
+}

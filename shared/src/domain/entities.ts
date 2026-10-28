@@ -292,6 +292,11 @@ export interface SysPrincipalAddress extends SysBOEntity {
   addressId: string;
 }
 
+/** Panoptes Surveillance domain entities. */
+export type SysBOGuard = SysBOEntity;
+export type SysBOProject = SysBOEntity;
+export type SysBOPost = SysBOEntity;
+
 /**
  * Application known and managed by the platform.
  */

@@ -429,11 +429,11 @@ export function createPageRoutes() {
           purpose: 'open-account-entry',
           uiViewKey: 'quickView',
           showEntryActions: false,
-          title: `Account details - [${user.name}]`,
+          title: `${res.locals.metadataText('@CM.AccountDetails')} - [${user.name}]`,
           titleIcon: 'bi-person-vcard',
           breadcrumbItems: [
             { label: 'ManatOS', href: '/' },
-            { label: 'Account details', href: null },
+            { label: '@CM.AccountDetails', href: null },
           ],
           ...(req.query.message === 'password-saved-email-warning'
             ? {

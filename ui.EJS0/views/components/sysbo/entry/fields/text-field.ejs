@@ -31,8 +31,8 @@
     type="button"
     data-bs-toggle="dropdown"
     aria-expanded="false"
-    title="Text field tools"
-    aria-label="Text field tools for <%= fieldLabel(field) %>">
+    title="<%= metadataText('@CM.FieldToolsText') %>"
+    aria-label="<%= metadataText('@CM.FieldToolsText') %>: <%= metadataText(fieldLabel(field)) %>">
     <% if (field.type === 'email') { %><i class="bi bi-envelope" aria-hidden="true"></i><% } else { %><span class="metadata-field-type-glyph" aria-hidden="true">Tt</span><% } %>
   </button>
   <input

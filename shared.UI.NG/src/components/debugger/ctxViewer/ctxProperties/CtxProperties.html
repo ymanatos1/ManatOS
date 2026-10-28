@@ -1,0 +1,73 @@
+<section class="ctx-debug-properties" [attr.aria-label]="multilingual().CtxNodeProperties">
+  <div class="ctx-debug-properties-heading">
+    <strong [title]="path()">Node Properties · {{ displayPath() }}</strong>
+    <button
+      class="btn-close-debug"
+      type="button"
+      [title]="multilingual().CloseProperties"
+      (click)="closeRequested.emit()"
+    >
+      ×
+    </button>
+  </div>
+  <div
+    class="ctx-debug-properties-tabs"
+    role="tablist"
+    [attr.aria-label]="multilingual().CtxPropertySections"
+  >
+    <button
+      type="button"
+      [title]="multilingual().MainNodeInformation"
+      [class.is-active]="activeTab() === 'main'"
+      (click)="selectTab('main')"
+    >
+      Main
+    </button>
+    <button
+      type="button"
+      [title]="multilingual().SemanticNodeProperties"
+      [class.is-active]="activeTab() === 'properties'"
+      (click)="selectTab('properties')"
+    >
+      {{ multilingual().Properties }}
+    </button>
+    <button
+      type="button"
+      [title]="multilingual().SemanticNodeAttributes"
+      [class.is-active]="activeTab() === 'attributes'"
+      (click)="selectTab('attributes')"
+    >
+      {{ multilingual().Attributes }}
+    </button>
+    <button
+      type="button"
+      [title]="multilingual().CtxRuntimeSubscribers"
+      [class.is-active]="activeTab() === 'subscribers'"
+      (click)="selectTab('subscribers')"
+    >
+      {{ multilingual().Subscribers }}
+    </button>
+  </div>
+  <div class="ctx-debug-properties-body">
+    @switch (activeTab()) { @case ('main') {
+    <manatos-ctx-properties-main [rows]="projection().main" /> } @case ('properties') {
+    <manatos-ctx-properties-props
+      [language]="language()"
+      [rows]="projection().properties"
+      (navigate)="navigate.emit($event)"
+    />
+    } @case ('attributes') {
+    <manatos-ctx-properties-attrs [language]="language()" [rows]="projection().attributes" /> }
+    @case ('subscribers') {
+    <manatos-ctx-properties-subscribers
+      [language]="language()"
+      [subscribers]="projection().subscriberRegistrations"
+    />
+    } }
+  </div>
+  <div
+    class="ctx-debug-properties-resize"
+    data-debug-vertical-resize="ctx-properties"
+    [title]="multilingual().DragResize"
+  ></div>
+</section>

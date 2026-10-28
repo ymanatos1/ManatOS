@@ -1,0 +1,69 @@
+<div class="platform-selector">
+  @if (navigation()?.url; as url) {
+  <a
+    class="platform-current"
+    [href]="url"
+    [title]="current()?.description ?? current()?.name ?? multilingual().resolve('@CM.NoPlatformSelected')"
+  >
+    @if (current(); as platform) {
+    <i [class]="'platform-icon bi ' + platform.icon" aria-hidden="true"></i>
+    <span>{{ platform.shortName }}</span>
+    } @else {
+    <span>{{ multilingual().resolve('@CM.None') }}</span>
+    }
+  </a>
+  } @else {
+  <span
+    class="platform-current"
+    [class.platform-none]="current() === null"
+    [title]="current()?.description ?? current()?.name ?? multilingual().resolve('@CM.NoPlatformSelected')"
+  >
+    @if (current(); as platform) {
+    <i [class]="'platform-icon bi ' + platform.icon" aria-hidden="true"></i>
+    <span>{{ platform.shortName }}</span>
+    } @else {
+    <span>{{ multilingual().resolve('@CM.None') }}</span>
+    }
+  </span>
+  }
+
+  <button
+    type="button"
+    class="platform-toggle"
+    [attr.aria-label]="multilingual().resolve('@CM.SelectPlatform')"
+    [title]="multilingual().resolve('@CM.SelectPlatform')"
+    [attr.aria-expanded]="open()"
+    (click)="toggle($event)"
+  >
+    ▾
+  </button>
+
+  @if (open()) {
+  <div class="platform-menu">
+    <button
+      type="button"
+      class="platform-option"
+      [title]="multilingual().resolve('@CM.NoPlatformSelected')"
+      [class.selected]="current() === null"
+      (click)="select(null, $event)"
+    >
+      <span class="check">{{ current() === null ? '✓' : '' }}</span>
+      <span>{{ multilingual().resolve('@CM.None') }}</span>
+    </button>
+
+    @for (platform of platforms(); track platform.id) {
+    <button
+      type="button"
+      class="platform-option"
+      [class.selected]="current()?.id === platform.id"
+      [title]="platform.description"
+      (click)="select(platform.id, $event)"
+    >
+      <span class="check">{{ current()?.id === platform.id ? '✓' : '' }}</span>
+      <i [class]="'platform-option-icon bi ' + platform.icon" aria-hidden="true"></i>
+      <span>{{ platform.shortName }}</span>
+    </button>
+    }
+  </div>
+  }
+</div>

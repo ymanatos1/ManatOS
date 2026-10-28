@@ -1,0 +1,133 @@
+.workspace-navigation {
+  background: var(--manatos-surface);
+  border-right: 1px solid var(--manatos-border);
+  height: 100%;
+  padding: 1.1rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    'Noto Sans',
+    'Liberation Sans',
+    Arial,
+    sans-serif;
+}
+
+.workspace-navigation .heading {
+  padding: 0 0.65rem 0.55rem;
+  color: var(--manatos-muted);
+  font-size: calc(0.68rem * var(--manatos-font-scale));
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.workspace-navigation nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-navigation-entry {
+  margin: 0.1rem 0;
+}
+
+.workspace-navigation-entry.separator-before {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--manatos-border);
+}
+
+.workspace-navigation-group > summary,
+.workspace-navigation-item {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font: inherit;
+  font-size: calc(0.9rem * var(--manatos-font-scale));
+  font-weight: 400;
+  text-decoration: none;
+  text-align: left;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.workspace-navigation-group > summary {
+  justify-content: space-between;
+  list-style: none;
+}
+
+.workspace-navigation-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.workspace-navigation-item {
+  justify-content: flex-start;
+}
+
+.workspace-navigation-group > summary:hover,
+.workspace-navigation-item:hover,
+.workspace-navigation-item:focus-visible {
+  background: var(--manatos-navigation-hover-bg);
+  color: var(--manatos-blue);
+}
+
+.workspace-navigation-caption {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.workspace-navigation-caption > .bi,
+.workspace-navigation-item > .bi {
+  width: 1.15rem;
+  flex: 0 0 1.15rem;
+  text-align: center;
+}
+
+.workspace-navigation-children {
+  padding-left: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.workspace-navigation-children .workspace-navigation-item {
+  font-size: calc(0.86rem * var(--manatos-font-scale));
+  font-weight: 400;
+}
+
+.workspace-navigation-chevron {
+  font-size: calc(0.72rem * var(--manatos-font-scale));
+  transition: transform 0.15s ease;
+}
+
+.workspace-navigation-group[open] > summary .workspace-navigation-chevron {
+  transform: rotate(180deg);
+}
+
+.workspace-navigation-bottom {
+  margin-top: auto;
+}
+
+/* EJS0 parity: selected page persists for nested entity routes. */
+.workspace-navigation-item.is-active,
+.workspace-navigation-item.is-active:hover,
+.workspace-navigation-item.is-active:focus-visible {
+  background: #dfeeff;
+  color: var(--manatos-blue);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--manatos-blue);
+}

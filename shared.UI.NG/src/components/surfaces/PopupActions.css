@@ -1,0 +1,16 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.popup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.95rem 1.35rem 1.05rem;
+  border-top: 1px solid var(--manatos-border);
+  background: var(--manatos-surface);
+  color: inherit;
+}

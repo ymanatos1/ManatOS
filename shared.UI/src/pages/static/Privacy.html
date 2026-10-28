@@ -1,0 +1,301 @@
+<section class="content-card legal-page">
+  <p class="legal-eyebrow">Privacy and data protection</p>
+  <h2>Privacy &amp; Cookies</h2>
+  <p class="legal-updated">Last updated: 17 October 2026</p>
+
+  <p>
+    This notice explains how personal data is handled when you visit or use {{ company.name }}
+    applications and services, including our public API, account registration, authentication and
+    security functions.
+  </p>
+
+  <section>
+    <h3>1. Who is responsible for your data?</h3>
+    <p>
+      ManatOS is the name of the application platform. The data controller responsible for the
+      operation of this website and its user accounts is:
+    </p>
+    <p>
+      <strong>Legal operator:</strong> [REGISTERED LEGAL NAME]<br />
+      <strong>Registered address:</strong> [FULL POSTAL ADDRESS, GREECE]<br />
+      <strong>Privacy contact:</strong> [PRIVACY EMAIL ADDRESS]<br />
+      <strong>Company registration or VAT details:</strong> [WHERE APPLICABLE]
+    </p>
+    <p>
+      Where an organization uses ManatOS to process personal information for its own business
+      purposes, that organization may be the data controller and the ManatOS service operator may
+      act as its processor. The applicable service agreement and data-processing arrangements define
+      those responsibilities.
+    </p>
+  </section>
+
+  <section>
+    <h3>2. Personal data we process</h3>
+    <ul>
+      <li>
+        <strong>Account data:</strong> user name, email address, account identifiers, roles,
+        verification status and related account details.
+      </li>
+      <li>
+        <strong>Authentication data:</strong> protected password representations, authentication
+        session records, security tokens, login attempts and linked external-provider identifiers
+        where used.
+      </li>
+      <li>
+        <strong>Technical and security data:</strong> IP addresses, request information, timestamps,
+        error records and information necessary to detect abuse and protect our services.
+      </li>
+      <li>
+        <strong>Application data:</strong> business records and information entered or managed
+        through services to which you have access.
+      </li>
+      <li>
+        <strong>Preferences:</strong> selected interface theme, language, font scaling and other
+        user-interface settings.
+      </li>
+      <li>
+        <strong>Communications:</strong> information you submit when requesting assistance or
+        contacting us.
+      </li>
+    </ul>
+    <p>
+      We do not require you to provide sensitive personal data unless a specific application
+      lawfully requires it. Please avoid submitting unnecessary personal or confidential
+      information.
+    </p>
+  </section>
+
+  <section>
+    <h3>3. Why we process data and our legal bases</h3>
+    <p>Depending on the activity, processing is based on:</p>
+    <ul>
+      <li>
+        <strong>Contractual necessity (GDPR Article 6(1)(b)):</strong>
+        providing accounts, access to requested services and related account functionality.
+      </li>
+      <li>
+        <strong>Legitimate interests (Article 6(1)(f)):</strong>
+        protecting services against unauthorized access, investigating technical problems,
+        preventing abuse and maintaining operational security, subject to applicable safeguards.
+      </li>
+      <li>
+        <strong>Legal obligations (Article 6(1)(c)):</strong>
+        complying with applicable accounting, regulatory and other statutory requirements.
+      </li>
+      <li>
+        <strong>Consent (Article 6(1)(a)):</strong> only where we specifically request consent for
+        an optional activity for which consent is the appropriate legal basis.
+      </li>
+    </ul>
+    <p>
+      Additional legal bases may apply to business information processed on behalf of an
+      organization. Those purposes and responsibilities must be communicated by the relevant
+      controller.
+    </p>
+  </section>
+
+  <section>
+    <h3>4. Registration, passwords and account security</h3>
+    <p>
+      We use account information to verify identities, manage access permissions and operate
+      authentication sessions. Passwords are protected using password-hashing mechanisms rather than
+      stored as readable passwords.
+    </p>
+    <p>
+      Email verification, password recovery and external identity-provider functions, when enabled,
+      may require short-lived security credentials and the processing of relevant email addresses or
+      provider identifiers.
+    </p>
+    <p>
+      The publicly accessible API and the UI authentication server apply security controls such as
+      rate limiting. These controls process network and authentication-attempt information to
+      discourage password guessing, account abuse and automated attacks.
+    </p>
+    <p>
+      The API may retain security-related records in its existing datastore where persistence is
+      needed. UI servers do not require a separate database for browser-session management; their
+      temporary session state can be maintained in server memory.
+    </p>
+  </section>
+
+  <section>
+    <h3>5. Cookies and browser storage</h3>
+    <p>
+      ManatOS uses essential authentication and security storage to provide the account
+      functionality requested by users.
+    </p>
+
+    <div class="legal-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Name or category</th>
+            <th scope="col">Purpose</th>
+            <th scope="col">Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>manatos_ng1_auth</code></td>
+            <td>
+              First-party session cookie used for browser authentication and CSRF-protected
+              operations. It contains an opaque identifier, not a password or API access token.
+            </td>
+            <td>
+              Up to 30 minutes, or less when the underlying API session expires. It may also be
+              cleared on Sign Out.
+            </td>
+          </tr>
+          <tr>
+            <td><code>manatos.ui.preferences.v2</code></td>
+            <td>
+              Browser local storage for interface preferences such as theme, language and font
+              scaling.
+            </td>
+            <td>
+              Persists in the browser until cleared, replaced or removed by the user or application.
+            </td>
+          </tr>
+          <tr>
+            <td>UI state storage</td>
+            <td>
+              Browser local or session storage used to restore navigation, window, tab and interface
+              state.
+            </td>
+            <td>Depends on the specific state record and browser storage mechanism.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      In production, the authentication cookie is configured as
+      <code>HttpOnly</code>, <code>Secure</code> and <code>SameSite=Lax</code>. The cookie is
+      restricted to the authentication endpoint path. API access tokens are retained on the server
+      rather than deliberately stored in this cookie or in browser local storage.
+    </p>
+    <p>
+      Strictly necessary authentication and security cookies do not require prior consent under
+      applicable Greek electronic communications rules. Optional storage requested by a user for
+      interface preferences is treated separately according to its function and the applicable
+      rules.
+    </p>
+    <p>
+      The current authentication implementation does not require advertising or behavioral-tracking
+      cookies. If we introduce non-essential analytics, advertising or similar technologies, we will
+      provide the required information and consent controls before activating them.
+    </p>
+    <p>
+      You can manage or delete cookies and local storage through your browser settings. Removing
+      essential authentication data may require you to sign in again or may prevent authenticated
+      functions from working.
+    </p>
+  </section>
+
+  <section>
+    <h3>6. Sharing and service providers</h3>
+    <p>
+      Personal data may be made available, only where necessary, to hosting and infrastructure
+      providers, email-delivery services, technical support providers, authorized personnel, and
+      organizations responsible for the business data they manage.
+    </p>
+    <p>
+      If you choose to authenticate with an external provider, that provider processes information
+      according to its own privacy documentation. We do not treat an external provider's privacy
+      practices as part of this notice.
+    </p>
+    <p>
+      We may disclose information where legally required or necessary to protect legitimate rights.
+      We do not authorize the sale of account data to advertisers.
+    </p>
+  </section>
+
+  <section>
+    <h3>7. International transfers</h3>
+    <p>
+      If a service provider processes personal data outside the European Economic Area, applicable
+      GDPR transfer requirements must be met, such as an adequacy decision or appropriate safeguards
+      including standard contractual clauses where relevant. Details of actual destinations and
+      safeguards can be requested through our privacy contact.
+    </p>
+  </section>
+
+  <section>
+    <h3>8. Retention and deletion</h3>
+    <p>
+      We keep personal data only for as long as necessary for its purpose, including account
+      operation, security, contractual responsibilities and any applicable legal retention period.
+    </p>
+    <ul>
+      <li>
+        Browser authentication sessions expire automatically and may be invalidated earlier by
+        signing out.
+      </li>
+      <li>
+        Temporary verification and recovery credentials expire according to their security policies.
+      </li>
+      <li>
+        Rate-limiting counters are temporary and expire under the applicable security windows.
+      </li>
+      <li>
+        Account, business and security records may require longer retention where justified by an
+        active service relationship, investigation or legal obligation.
+      </li>
+    </ul>
+    <p>
+      <strong>Before publication:</strong> the operator must publish its verified retention periods
+      or objective retention criteria for account, audit, backup and security records.
+    </p>
+  </section>
+
+  <section>
+    <h3>9. Your data-protection rights</h3>
+    <p>
+      Subject to the conditions of the GDPR, you may request access to your personal data,
+      correction, erasure, restriction of processing and data portability. You may object to
+      processing based on legitimate interests and withdraw consent wherever processing relies on
+      consent.
+    </p>
+    <p>
+      We will respond within the time limits required by the GDPR. We may request reasonable
+      identity verification before disclosing or changing account information.
+    </p>
+    <p>
+      Please direct requests to the privacy contact identified in Section 1. You may also lodge a
+      complaint with the
+      <a
+        href="https://www.dpa.gr/en/individuals/complaint-to-the-hellenic-dpa"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Hellenic Data Protection Authority</a
+      >, or another competent supervisory authority.
+    </p>
+  </section>
+
+  <section>
+    <h3>10. Automated decisions and security</h3>
+    <p>
+      Automated rate limiting and authorization checks protect access to the service. They are not
+      intended to make solely automated decisions producing legal or similarly significant effects
+      concerning individuals.
+    </p>
+    <p>
+      We apply proportionate technical and organizational protections, including access controls,
+      security monitoring and credential protection. No online service can guarantee absolute
+      security.
+    </p>
+  </section>
+
+  <section>
+    <h3>11. Changes to this notice</h3>
+    <p>
+      We may update this notice to reflect changes in functionality, legal requirements or
+      processing practices. The updated version will show a revision date. Material changes will be
+      communicated where required by law.
+    </p>
+    <p>
+      For the conditions governing use of the service, see our
+      <a href="/terms">Terms of Use</a>.
+    </p>
+  </section>
+</section>

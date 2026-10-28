@@ -32,14 +32,18 @@
   }).toString()}`;
 %>
 <tr>
-  <% if (!headerSelectorMode && headerStartActions.length) { %><th class="list-row-actions-start"><span class="visually-hidden">Actions</span></th><% } %>
+  <% if (!headerSelectorMode && headerStartActions.length) { %>
+    <th class="list-row-actions-start">
+      <span class="visually-hidden"><%= metadataText('@CM.Actions') %></span>
+    </th>
+  <% } %>
   <% for (const key of listMetadata.visibleFields) { %>
     <% const field = metadata.fieldDefinition[key]; %>
     <% if (!field) continue; %>
     <th data-list-field="<%= key %>">
       <% if (!headerSelectorMode && listMetadata.sortableFields.includes(key)) { %>
         <a class="table-sort-link" href="<%= sortHrefFor(key) %>">
-          <%= field.label %>
+          <%= metadataText(field.label) %>
           <% if (query.sort === key) { %>
             <i class="bi <%= query.direction === 'desc' ? 'bi-sort-down' : 'bi-sort-up' %>"></i>
           <% } else { %>
@@ -47,9 +51,9 @@
           <% } %>
         </a>
       <% } else { %>
-        <%= field.label %>
+        <%= metadataText(field.label) %>
       <% } %>
     </th>
   <% } %>
-  <% if (!headerSelectorMode && headerEndActions.length) { %><th class="text-end">Actions</th><% } %>
+  <% if (!headerSelectorMode && headerEndActions.length) { %><th class="text-end"><%= metadataText('@CM.Actions') %></th><% } %>
 </tr>

@@ -1,0 +1,236 @@
+.manatos-debugger-host {
+  --manatos-font-scale: 1;
+  font-size: 1rem;
+  display: contents;
+}
+
+.developer-tools-dock {
+  --debug-border: var(--manatos-border, #d5dee8);
+  --debug-muted: #6c757d;
+  --debug-blue: #0d6efd;
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  align-self: stretch;
+  min-height: min(15rem, 100dvh);
+  height: auto;
+  max-height: 100vh;
+  max-height: 100dvh;
+  contain: size;
+  min-width: 420px;
+  max-width: 75vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--debug-border);
+  background: #f8fafc;
+  box-shadow: -0.4rem 0 1rem rgb(15 23 42 / 8%);
+  color: #26384d;
+}
+
+.developer-tools-resize {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  background: linear-gradient(
+    to right,
+    transparent 4px,
+    rgb(69 94 122 / 32%) 4px,
+    rgb(69 94 122 / 32%) 5px,
+    transparent 5px
+  );
+}
+
+.developer-tools-resize:hover {
+  background: linear-gradient(to right, transparent 3px, #0d6efd 3px, #0d6efd 6px, transparent 6px);
+}
+
+.developer-tools-tabs {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--debug-border);
+  background: #f8fafc;
+}
+
+.developer-tools-tab-strip {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.developer-tools-tab {
+  flex: 1 1 8.5rem;
+  min-width: 7.25rem;
+  max-width: 14rem;
+  overflow: hidden;
+  border: 0;
+  border-right: 1px solid var(--debug-border);
+  border-bottom: 2px solid transparent;
+  padding: 0.48rem 0.62rem 0.4rem;
+  background: transparent;
+  color: #52606d;
+  text-align: left;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.developer-tools-tab:hover:not(:disabled) {
+  background: #eef5ff;
+}
+
+.developer-tools-tab:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.developer-tools-tab.is-active {
+  border-bottom-color: #0d6efd;
+  background: #fff;
+  color: #0d6efd;
+}
+
+.developer-tools-tab-caption {
+  color: #172b4d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.developer-tools-tab.is-active .developer-tools-tab-caption {
+  color: #0d6efd;
+  font-weight: 700;
+}
+
+.developer-tools-tab-subtitle {
+  margin-left: 0.2rem;
+  color: #7a8796;
+  font-size: 0.66rem;
+}
+
+.developer-tools-close,
+.btn-close-debug {
+  border: 0;
+  background: transparent;
+  color: #6b7785;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.developer-tools-close {
+  flex: 0 0 auto;
+  width: 2.2rem;
+  font-size: 1.35rem;
+}
+
+.btn-close-debug {
+  font-size: 1.1rem;
+}
+
+.developer-tools-close:hover,
+.btn-close-debug:hover {
+  color: #0d6efd;
+}
+
+.developer-tools-target-tab-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  flex: 1 1 8rem;
+  min-width: 6.25rem;
+  max-width: 13rem;
+  overflow: hidden;
+  border-right: 1px solid var(--debug-border);
+}
+
+.developer-tools-target-tab {
+  width: 0;
+  min-width: 0;
+  max-width: none;
+  border-right: 0;
+  padding-right: 1.75rem;
+}
+
+.developer-tools-target-tab-close {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 0.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: #7a8796;
+  cursor: pointer;
+}
+
+.developer-tools-target-tab-close:hover {
+  background: rgb(13 110 253 / 10%);
+  color: #0d6efd;
+}
+
+.developer-tools-dock[hidden],
+.developer-tools-dock [hidden] {
+  display: none !important;
+}
+
+.developer-tools-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .developer-tools-dock {
+    width: min(94vw, 640px) !important;
+    max-width: 94vw;
+  }
+}
+
+.developer-tools-detach {
+  width: 1.75rem;
+  height: 1.65rem;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  margin: 0 0.15rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #52606d;
+  cursor: pointer;
+}
+
+.developer-tools-detach:hover {
+  border-color: #b8c7d9;
+  background: #eef5ff;
+  color: #0d6efd;
+}
+
+.developer-tools-dock.is-detached-developer-tools {
+  contain: none;
+  max-height: none;
+}
+
+.developer-tools-dock.is-detached-developer-tools > .developer-tools-resize {
+  display: none !important;
+}

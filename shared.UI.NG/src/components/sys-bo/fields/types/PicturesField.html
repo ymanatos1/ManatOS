@@ -1,0 +1,72 @@
+<manatos-field-control-shell [field]="field()">
+  <div class="manatos-pictures-field" data-entry-control [attr.aria-label]="field().label">
+    @for (picture of pictures(); track picture.id ?? $index; let i = $index) {
+    <div
+      class="manatos-pictures-item"
+      [draggable]="!field().readOnly"
+      (dragstart)="dragStart($event, i)"
+      (dragover)="$event.preventDefault()"
+      (drop)="drop($event, i)"
+    >
+      @if (source(picture); as src) {
+      <img [src]="src" [alt]="field().label" loading="lazy" />
+      } @else { <i class="bi bi-image" aria-hidden="true"></i> } @if (!field().readOnly) {
+      <button
+        type="button"
+        (click)="remove(i)"
+        [attr.aria-label]="field().language === 'EL' ? 'Διαγραφή φωτογραφίας' : 'Delete picture'"
+        [attr.title]="field().language === 'EL' ? 'Διαγραφή φωτογραφίας' : 'Delete picture'"
+      >
+        <i class="bi bi-trash" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
+        (click)="move(i,-1)"
+        [disabled]="i===0"
+        [attr.aria-label]="field().language === 'EL' ? 'Μετακίνηση αριστερά' : 'Move picture left'"
+      >
+        ←
+      </button>
+      <button
+        type="button"
+        (click)="move(i,1)"
+        [disabled]="i===pictures().length-1"
+        [attr.aria-label]="field().language === 'EL' ? 'Μετακίνηση δεξιά' : 'Move picture right'"
+      >
+        →
+      </button>
+      }
+    </div>
+    } @if (!field().readOnly) {
+    <button
+      type="button"
+      class="manatos-pictures-add"
+      (click)="choose()"
+      [attr.aria-label]="field().language === 'EL' ? 'Προσθήκη φωτογραφιών' : 'Add pictures'"
+    >
+      <i class="bi bi-plus-lg" aria-hidden="true"></i>
+      @if (pickerOpening()) {
+      <span
+        class="manatos-picture-launch-feedback"
+        role="status"
+        [attr.aria-label]="field().language === 'EL' ? 'Άνοιγμα επιλογής αρχείου…' : 'Opening file chooser…'"
+      >
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      </span>
+      }
+    </button>
+    } @if (selectionError()) {
+    <p role="alert" class="manatos-picture-input-error">{{ selectionError() }}</p>
+    }
+    <input
+      #fileInput
+      type="file"
+      multiple
+      hidden
+      accept="image/jpeg,image/png,image/webp,image/gif"
+      (change)="picked($event)"
+      (cancel)="cancelPicker()"
+      [disabled]="field().readOnly"
+    />
+  </div>
+</manatos-field-control-shell>

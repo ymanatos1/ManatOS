@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+
+    <link rel="icon" type="image/x-icon" href="/assets/m1/favicon.ico?v=4" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/m1/favicon-16x16.png?v=4" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/m1/favicon-32x32.png?v=4" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/m1/favicon-48x48.png?v=4" />
+    <link rel="apple-touch-icon" href="/assets/m1/apple-touch-icon.png?v=4" />
+
+    <meta name="theme-color" content="#557da9" />
+
+    <script>
+      (() => {
+        try {
+          const parse = (raw) => {
+            try {
+              return raw ? JSON.parse(raw) : null;
+            } catch {
+              return null;
+            }
+          };
+          const preferences = parse(localStorage.getItem('manatos.ui.preferences.v2'));
+          const legacy =
+            preferences?.version === 2
+              ? null
+              : parse(localStorage.getItem('manatos.ui.preferences.v1'));
+          const theme =
+            preferences?.version === 2
+              ? preferences?.paint?.theme
+              : legacy?.version === 1
+                ? legacy?.theme
+                : null;
+          document.documentElement.dataset.uiTheme = theme === 'darker' ? 'darker' : 'lighter';
+        } catch {
+          document.documentElement.dataset.uiTheme = 'lighter';
+        }
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/theme/Theme.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/administration/Storage.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/administration/Configuration.css" />
+
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/shell/Shell.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/shell/Header.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/shell/PlatformSelector.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/shell/PrimaryNavigation.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/shell/WorkspaceNavigation.css" />
+
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/workspace/Workspace.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/workspace/Content.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/workspace/ContentDetails.css" />
+
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/surfaces/Title.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/surfaces/PopupTitle.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/surfaces/PopupTitleDocs.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/surfaces/SurfaceAction.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/pages/Breadcrumb.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/pages/DetailsToggle.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/pages/PageTitle.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/pages/PageContent.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/pages/PageDetails.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/pages/Page.css" />
+
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/Debugger.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/DebugTooltipHost.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/CtxViewer.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/Cli.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/ApiTrafficViewer.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/ctxViewer/CtxCaption.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/ctxViewer/CtxToolbar.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/ctxViewer/CtxFind.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/debugger/ctxViewer/CtxTree.css" />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/ctxViewer/ctxProperties/CtxProperties.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/ctxViewer/ctxProperties/CtxPropertiesMain.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/ctxViewer/ctxProperties/CtxPropertiesProps.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/ctxViewer/ctxProperties/CtxPropertiesAttrs.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/ctxViewer/ctxProperties/CtxPropertiesSubscribers.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/ApiTrafficViewerCaption.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/ApiTrafficViewerToolbar.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/ApiTrafficViewerList.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/ApiTrafficViewerProperties.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/ApiTrafficHeaders.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/tabs/ApiTrafficPayloadTab.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/tabs/ApiTrafficContextTab.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/tabs/ApiTrafficLogsTab.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/shared-ui-ejs/styles/debugger/apiTrafficViewer/tabs/ApiTrafficTransactionTab.css"
+    />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/diagnostics/CtxDiagnostics.css" />
+
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/shell/Footer.css" />
+
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/preferences/FontScale.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/preferences/Preferences.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/documentation/DocumentationPopup.css" />
+
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/fields/FieldDisplay.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/fields/FormField.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/fields/PictureEditor.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/list/List.css" />
+    <link rel="stylesheet" href="/shared-ui-ejs/styles/entry/Entry.css" />
+    <link rel="stylesheet" href="/styles/app.css" />
+    <link rel="stylesheet" href="<%= pageStylesheetHref %>" data-manatos-page-style />
+    <link rel="stylesheet" href="/_manatos/pages/entities/FieldTools.css" />
+    <link rel="stylesheet" href="/_manatos/pages/entities/EntryUIViewSelector.css" />
+  </head>
+
+  <body>
+    <%- shell %> <%- preferences %>
+
+    <% for (const name of fieldTemplateNames) { %>
+      <template data-manatos-field-template="<%= name %>"><%- include(fieldTemplateRoot + '/' + name + '.html') %></template>
+    <% } %>
+    <% for (const [name, folder] of [
+      ['List', 'list'],
+      ['ListHeader', 'list'],
+      ['ListFilter', 'list'],
+      ['ListSearch', 'list'],
+      ['ListViews', 'list'],
+      ['ListViewOption', 'list'],
+      ['ListAdd', 'list'],
+      ['ListColumnsRow', 'list'],
+      ['ListColumnHeader', 'list'],
+      ['ListColumnHeaderPlain', 'list'],
+      ['ListRow', 'list'],
+      ['ListEmpty', 'list'],
+      ['ListCell', 'list'],
+      ['ListPageHost', 'list'],
+      ['ListPagination', 'list'],
+      ['ListFilterField', 'list'],
+      ['ListFilterSelect', 'list'],
+      ['ListFilterOption', 'list'],
+      ['ListFilterText', 'list'],
+      ['ListPageSizeOption', 'list'],
+      ['EntryPageHost', 'entry'],
+      ['PictureEditorPopup', 'entry'],
+      ['PictureEditor', 'entry'],
+      ['EntryChangeStatus', 'entry'],
+      ['Entry', 'entry'],
+      ['EntryPanel', 'entry'],
+      ['EntryTabs', 'entry'],
+      ['EntryTab', 'entry'],
+      ['EntryFields', 'entry'],
+      ['EntryLayoutField', 'entry'],
+      ['EntryDeferred', 'entry'],
+      ['EntrySummary', 'entry'],
+      ['EntryRelatedCollection', 'entry'],
+      ['EntryBreak', 'entry'],
+      ['EntrySpacer', 'entry'],
+      ['EntryGroup', 'entry'],
+      ['FormField', 'entry'],
+      ['EntryEnumOption', 'entry'],
+      ['AuthIntro', 'auth'],
+      ['AuthSection', 'auth'],
+      ['AuthEmailMethod', 'auth'],
+      ['AuthProviders', 'auth'],
+      ['AuthNote', 'auth'],
+      ['AuthNotice', 'auth'],
+      ['AuthCredentials', 'auth'],
+      ['AuthCredentialField', 'auth'],
+      ['AuthCredentialFields', 'auth'],
+      ['AuthCredentialColumn', 'auth'],
+      ['AuthCredentialLabel', 'auth'],
+      ['AuthCredentialInput', 'auth'],
+      ['AuthCredentialPasswordVisibility', 'auth'],
+      ['AuthCredentialRecoveryAction', 'auth'],
+      ['AuthCredentialRecoveryHelp', 'auth'],
+      ['AuthCredentialRecoveryFeedback', 'auth'],
+      ['AuthPasswordGuidance', 'auth'],
+      ['AuthPasswordRule', 'auth'],
+
+      ['ConfigurationPageHost', 'administration'],
+      ['StoragePageHost', 'administration'],
+      ['StorageConfigurationTab', 'administration/storage'],
+      ['StorageFilesTab', 'administration/storage'],
+      ['StorageConnectionTab', 'administration/storage'],
+      ['StorageDatabaseTab', 'administration/storage'],
+      ['StorageSchemaTab', 'administration/storage'],
+      ['StorageDataTab', 'administration/storage'],
+      ['StorageCapabilitiesTab', 'administration/storage'],
+      ['StorageMetadataFields', 'administration/storage'],
+      ['StorageTabStatus', 'administration/storage'],
+      ['StorageConnectionOperations', 'administration/storage'],
+      ['StorageDatabaseOperations', 'administration/storage'],
+      ['StorageSchemaOperations', 'administration/storage'],
+      ['StorageCapabilities', 'administration/storage'],
+      ['StorageConfigurationForm', 'administration/storage'],
+      ['AuthProviderButton', 'auth'],
+      ['AuthProviderNotice', 'auth'],
+      ['AuthProviderStatus', 'auth'],
+      ['AuthProviderChevron', 'auth'],
+    ]) { %>
+      <template data-uis-component-template="<%= name %>"><%- include(componentTemplateRoot + '/' + folder + '/templates/' + name + '.html') %></template>
+    <% } %>
+    <script type="module" src="/dist/manatos-runtime.js"></script>
+  </body>
+</html>

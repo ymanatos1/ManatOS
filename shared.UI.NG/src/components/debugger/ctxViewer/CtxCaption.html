@@ -1,0 +1,9 @@
+<div class="ctx-caption">
+  <strong class="ctx-caption-root" [title]="display(rootPath())">{{ display(rootPath()) }}</strong>
+  @if (selectedPath() !== rootPath()) {
+  <span class="ctx-caption-selection" [title]="selectedPath()">{{ display(selectedPath()) }}</span>
+  }
+  <span class="ctx-caption-revision" [title]="multilingual().CtxRevisionDescription">
+    r{{ revision() }}
+  </span>
+</div>

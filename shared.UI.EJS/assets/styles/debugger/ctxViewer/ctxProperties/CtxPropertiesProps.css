@@ -1,0 +1,37 @@
+.ctx-debug-property-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 32%) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.18rem 0;
+  border-bottom: 1px dotted #e1e7ee;
+}
+
+.ctx-debug-property-label {
+  color: #52606d;
+}
+
+.ctx-debug-property-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #172b4d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+button.ctx-debug-property-value {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ctx-debug-property-value.is-link {
+  color: #0d6efd;
+  text-decoration: underline dotted;
+}
+
+.ctx-debug-properties-empty {
+  padding: 0.65rem;
+  color: #7a8795;
+  font-size: 0.72rem;
+}

@@ -1,0 +1,57 @@
+.manatos-debug-tooltip {
+  position: fixed;
+  z-index: 2147483000;
+  max-width: min(28rem, calc(100vw - 1rem));
+  pointer-events: none;
+  border: 1px solid #e5dcc0;
+  border-radius: 0.28rem;
+  padding: 0.38rem 0.5rem;
+  background: #fffde7;
+  color: #1f2937;
+  box-shadow: 0 0.2rem 0.55rem rgb(15 23 42 / 16%);
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.manatos-debug-tooltip-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.manatos-debug-tooltip-detail {
+  margin-top: 0.18rem;
+  color: #4b5563;
+  font-size: 0.6rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.manatos-debug-tooltip-value-line {
+  display: flex;
+  align-items: baseline;
+  max-width: min(42rem, calc(100vw - 1rem));
+  white-space: nowrap;
+}
+
+.manatos-debug-tooltip.is-value-tooltip .manatos-debug-tooltip-title {
+  flex: 0 0 auto;
+  font-weight: 400;
+}
+
+.manatos-debug-tooltip-separator {
+  flex: 0 0 auto;
+  font-size: 0.65rem;
+}
+
+.manatos-debug-tooltip-value {
+  min-width: 0;
+  overflow: hidden;
+  color: #111827;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

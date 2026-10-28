@@ -16,42 +16,34 @@ Depending on metadata and invocation, an entry can provide:
 - related-record read-only collections;
 - compound collection editors and hierarchy workspaces;
 - dirty/baseline state across scalar and aggregate contributors;
-- Save, Cancel and Delete actions with capability checks;
-- cancellation protection plus explicitly scoped draft/outage-recovery support;
+- Create submission, Cancel/close protection and capability-driven actions; broader API update/delete capabilities are separate from current shared UIS Entry Save wiring;
+- draft/recovery support where the client provides it;
 - nested popup/selector levels and developer inspection.
 
 ## Canonical working state
 
-For each scalar field, `fields.<key>.value` is the live semantic authority and `fields.<key>.originalValue` is its baseline authority. The entry-level record shapes are read-only projections:
+For an existing record, the entry distinguishes:
 
 ```text
-fields.<key>.value          = live scalar authority
-fields.<key>.originalValue  = baseline scalar authority
-entry.current.<key>         = read-only current-record projection
-entry.original.<key>        = read-only baseline-record projection
+#data.original = authorized persisted baseline (or null for create)
+#data.current  = canonical editable working record
 ```
 
-For an existing record, the server record seeds both current and baseline field state. For a new record, canonical defaults and allowed invocation-projected values seed the current field state. Older documentation/code discussions may call the projected record shapes `dataCurrent` and `dataOriginal`; those names are migration terminology, not additional V2 CTX authorities.
+The Entry initializes `#data.current` from `#data.original` and changes it only through the Entry-owned `setField()` semantic mutation path. For a new record, canonical defaults populate the initial working state.
 
 A field component, rich-text editor, picture cropper or child component must not become a second owner of the semantic current value.
-
-## UI view and host
-
-Before rendering, an entry resolves a named UI view from the entity's common UI metadata plus the selected view contribution. `main`, `account` and `quick` are view keys; `full` and `quick` are view types. The selected view can alter tabs/content, field presentation, actions and related collections without creating another canonical entity record.
-
-This is independent of hosting. The same entry architecture can be page-, popup- or embedded-hosted. Host controls placement/lifecycle; UI view controls record presentation. See [Entity UI Views](../metadata/UI-Views.md).
 
 ## Opening an entry
 
 Opening resolves:
 
 1. entity identity and canonical metadata;
-2. selected UI view and its effective UI metadata, followed by invocation-local UI overrides;
+2. effective UI metadata for the invocation;
 3. record data (or new-entry defaults);
 4. authorization/capabilities;
 5. CTX UI level and field owners;
 6. components/resources required by the declared tabs;
-7. initial derived expressions and browser field/component validity state.
+7. initial derived expressions and validation.
 
 Only then is the entry semantically ready for interaction.
 
@@ -79,42 +71,42 @@ Some tabs own working state that is not reducible to one scalar field—for exam
 
 The component's private draft remains owned by that component until commit/reconciliation. The parent entry must not pretend the draft is already persisted.
 
-## Save
+## Persistence and baseline reconciliation
 
-A save approximately follows:
+The following is the **authoritative persistence contract**, not an assertion that every UIS Entry mode supports Save. In the inspected shared UIS Entry runtime, API-backed **create** is implemented; existing-record `saveReady` remains disabled even when the record is editable. The API and EJS0 have separate update paths.
+
+A supported persistence operation follows:
 
 ```text
-authoritative field values + aggregate contributions
+Entry #data.current + aggregate contributions
             |
             v
-browser validity / working-state checks where appropriate
+client validation / normalization where appropriate
             |
             v
-API create/update request
+supported API create (or update from an independently verified caller)
             |
             v
 server authorization
-canonical defaults/normalization/persisted calculations
-domain/integrity enforcement where applicable
-storage uniqueness/schema/transaction behavior
+canonical defaults/normalization/calculations
+relationship/integrity work
+storage transaction
             |
             v
 saved authoritative record
             |
             v
-reconcile field values/baselines + entry.current/entry.original projections
+reconcile #data.original + #data.current
 clear successful draft state
 ```
 
-The returned authoritative record is the new baseline. This avoids keeping a stale pre-save baseline after server-generated/application-managed values change.
+Only a successful authoritative server result becomes the new baseline. In `EntryRuntime.create()` this reconciliation is executable; do not attribute generic existing-record update submission to the current shared UIS Entry runtime. This avoids keeping a stale baseline after server-generated/application-managed values change.
 
 ## Cancel and close
 
-For ordinary entries, closing a dirty transaction does not persist it. Cancellation protection can offer Save or Discard: Save crosses the API persistence boundary; Discard abandons the working transaction. A clean close simply disposes the surface. Normal navigation/closure does not create a general-purpose resumable entry draft.
+Cancel/discard semantics restore or abandon working state according to surface/component ownership. Unsaved drafts can require confirmation/recovery behavior, but Cancel must not silently mutate the persisted record.
 
-Create Organization is the explicit exception: its unfinished create-workspace graph can be kept as a browser-local continuation draft across normal navigation/closure. Edit Organization does not have that behavior. Successful hierarchy Commit clears the create draft. Abnormal outage recovery is a separate mechanism and must not be confused with this exception.
-
-See [Persistence, Commit, Discard and Recovery](Persistence-Commit-and-Recovery.md).
+Successful create workflows can close the owning creation surface and clear its draft so a later Create begins cleanly.
 
 ## Delete
 
@@ -126,4 +118,12 @@ Relationship delete policy can require restrict/cascade/set-null/unlink/retain b
 
 Entry state, fields, resources and nested levels are inspectable through CTX tooling. Expression inspection can distinguish formula definition from current calculated value. API Traffic shows save/delete calls and correlated server diagnostics.
 
-See [Entry/Form Detail](Entity-Entries-Forms-Detail.md) for deeper state ownership mechanics and [Generic List and Entry Contracts](Generic-List-and-Entry-Contracts.md) for the host-neutral aggregate/authority contract.
+See [Entry/Form Detail](Entity-Entries-Forms-Detail.md) for deeper state ownership mechanics.
+
+## Entry working model
+
+The shared Entry distinguishes `#data.original` from `#data.current`. The former is the persisted baseline, or `null` for a new record; the latter is the editable working projection. `#state.entry` tracks mode, active tab, permissions, loading/saving, dirty/valid/blocked/save-ready and errors. Individual field states are derived in `EntryEditState.ts` rather than maintained independently by each text input.
+
+The Entry host handles ownership, resource loading and disposal. Embedded components contribute semantic layout for tabs, forms and typed fields. A field event goes through the type-aware component and Entry's mutation authority (`setField`); the actual DOM is neither the canonical record nor the place to store authorization decisions.
+
+Async loading and reference projections are version-sensitive: a response belonging to a prior record or disposed Entry must not overwrite the current owner. Validation and client-level editing rules improve feedback, while server validation and commit remain authoritative. See [UIS Components](../clients/UIS-Component-Contracts.md) and [Workspace Commit](Workspace-Commit-and-Recovery.md).

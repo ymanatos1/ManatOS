@@ -1,0 +1,26 @@
+<!-- Typed Field owns its reusable FieldTools child, when supported. -->
+<span data-entry-field-tools-slot></span>
+<!-- PicturesField owns collection thumbnails, removal, order and Add action. -->
+<div class="manatos-pictures-field" data-entry-control role="group">
+  <div data-pictures-items class="manatos-pictures-items"></div>
+  <button
+    type="button"
+    data-picture-choose
+    class="manatos-pictures-add"
+    title="Add pictures"
+    aria-label="Add pictures"
+  >
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    <span class="manatos-picture-launch-feedback" data-picture-loading hidden role="status"
+      ><span class="spinner-border spinner-border-sm" aria-hidden="true"></span
+    ></span>
+  </button>
+  <span data-picture-error role="alert" hidden></span>
+  <input
+    type="file"
+    multiple
+    data-picture-input
+    hidden
+    accept="image/jpeg,image/png,image/webp,image/gif"
+  />
+</div>

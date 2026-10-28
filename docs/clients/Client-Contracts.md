@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This catalog identifies the portable contracts a ManatOS client may consume. It deliberately separates those contracts from the current Node.js/Express/EJS implementation.
+This catalog identifies the portable contracts a ManatOS client may consume. It deliberately separates those contracts from the TypeScript UIS implementations and established EJS0 client.
 
 | Contract                          | Server authority               | Client use                                                                         |
 | --------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------- |
@@ -38,6 +38,14 @@ Superuser's Apps Playground access is a **platform capability** and does not imp
 
 Portable: metadata meanings, capabilities, API operations, security outcomes, context semantics, correlation identity.
 
-Current Express client only: EJS template paths, Bootstrap markup, Express middleware/session mechanics, DOM implementation, local filesystem discovery of API diagnostic artifacts.
+Host-specific rather than portable: Angular/EJS components, EJS templates, browser DOM/focus handling, Node session middleware and development filesystem access. EJS0 has its own established renderer and state model; NG1/EJS1 consume the common `shared.UI` contracts.
 
 See the specialized catalogs for exact API, metadata, CTX, storage and configuration shapes.
+
+## Semantic host contract and error ownership
+
+The runtime must receive the same category of canonical inputs regardless of presentation technology: metadata, current CTX facts, authorization projections, resource/query services, invocation parameters and lifecycle control. The host may change routing or how a popup is drawn; it must not change which source owns the Entry values or which API rule authorizes a save.
+
+Host operations have three distinct results: (1) transport resources and remote data; (2) semantic state transitions in shared runtime; (3) presentation effects such as focus, scroll or window management. Do not represent failure at one boundary as success at another. For example, a dismissed modal says nothing about whether a transaction was committed, and a disabled button is not a server-side authorization check.
+
+The integration between a runtime and its host is explicit through surface invocation and resource interfaces (`shared.UI/src/runtime/surface/{invocation,resource-port}.ts`); adapters use the same concepts while their concrete implementations differ. Async result delivery must check surface identity and lifecycle before updating state.

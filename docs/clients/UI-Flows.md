@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide documents the **supported end-to-end UI flows** that exercise the page, form, field-component, composite-component and system-surface architecture described elsewhere under `docs/ui/`.
+This guide documents the **supported end-to-end UI flows** that exercise the page, form, field-component, composite-component and system-surface architecture described elsewhere under `docs/clients/`.
 
 It is intentionally flow-oriented: each section answers **which screens participate, what owns each step, where state lives, and which reusable UI contracts are involved**. Use it together with:
 
@@ -47,22 +47,22 @@ The flows share one important rule: **page/workflow state may differ, but canoni
 ### Screens and components
 
 ```text
-Participants: U=User | SI=Sign-in page | UI=UI server | API=API auth endpoints | S=Browser session | W=Authenticated workspace
+Participants: U=User | SI=Sign-in surface (NG1/EJS1 popup; EJS0 page) | UI=UI host | API=API auth endpoints | S=Browser session | W=Authenticated workspace
 
  1. U --> SI  Enter user name/email + password
- 2. SI --> UI  Submit protected form
+ 2. SI --> UI  Submit credentials through host-owned authentication workflow
  3. UI --> API  Authenticate credentials
  4. API --> UI  Auth result/session material
  5. UI --> S  Establish browser/API session
- 6. UI --> U  Redirect to authenticated workspace
+ 6. UI --> U  Resolve Flow and refresh authenticated UI state/navigation
  7. U --> W  Navigate with session context
 ```
 
-The authentication page is a **system page**, not a metadata-driven entity entry form. Password visibility and password-policy behavior belong to reusable system/form infrastructure, not to SysBO field components. See [`../system/System-and-Account-Pages.md`](../system/System-and-Account-Pages.md) and the system-input guidance in [`Components.md`](../entities/Components.md).
+The authentication UI is a **system/authentication surface**, not a metadata-driven entity entry form. NG1/EJS1 present `SignInPopup` through the shared surface/Flow contracts; EJS0 retains its separate page-oriented authentication implementation. Password visibility and password-policy behavior belong to reusable system/form infrastructure, not to SysBO field components. See [`../system/System-and-Account-Pages.md`](../system/System-and-Account-Pages.md) and the system-input guidance in [`Components.md`](../entities/Components.md).
 
 ### Responsibilities
 
-- **Sign-in page**: captures credentials and displays validation/errors.
+- **Sign-in surface**: NG1/EJS1 popup captures credentials and delegates decisions to the owning authentication Flow; EJS0 uses its distinct system page.
 - **UI authentication route/session layer**: orchestrates browser-session establishment.
 - **API**: remains authoritative for authentication/security decisions.
 - **Application shell**: changes anonymous actions into authenticated navigation/account actions after session establishment.
@@ -89,7 +89,7 @@ Flow:
   F --> G
 ```
 
-Registration uses system-page controls and shared password-policy behavior. The resulting SysUser later appears through the normal metadata-driven Users administration pages; **registration UI and SysUser administration are different presentation/workflow layers over related business data**.
+NG1/EJS1 registration uses shared popup/Flow components and host-owned account workflows; EJS0 retains its separate page/form presentation. Registration uses shared password-policy behavior. The resulting SysUser later appears through the normal metadata-driven Users administration pages; **registration UI and SysUser administration are different presentation/workflow layers over related business data**.
 
 For the metadata-driven User entry model, see [`../company/Users-and-Principals.md`](../company/Users-and-Principals.md).
 
@@ -167,44 +167,42 @@ See [`../system/System-and-Account-Pages.md`](../system/System-and-Account-Pages
 
 ## 5. Generic entity administration flow
 
-This is the model flow for Users, Principals, Applications, Licenses and future metadata-driven entities.
+This is the semantic List/Entry interaction model for Users, Principals, Applications and Licenses. The shared UIS implementation and the established EJS0 implementation have different CTX representations; the example below uses the modern UIS Entry model.
 
 ```text
-Participants: U=Operator | L=Generic list page | E=Generic entry page | CTX=Page CTX | API=current system-entity API
+Participants: U=Operator | L=Generic List surface | E=Generic Entry surface | CTX=owning UIS level | API=system-entity API
 
  1. U --> L  Search/filter/sort/select
  2. L --> E  Open existing or Add new
- 3. E --> CTX  Initialize field values/baselines + entry mirrors
+ 3. E --> CTX  Initialize #data.current/#data.original and derived #state
  4. U --> E  Edit canonical fields
- 5. E --> CTX  DOM -> canonical field value
+ 5. E --> CTX  typed field intent -> EntryRuntime.setField()
  6. CTX --> CTX  Evaluate dependent expressions
- 7. CTX --> E  Calculated/current values refresh through field components
- 8. U --> E  Save
- 9. E --> API  Persist current form state
-10. API --> E  Persisted record
-11. E --> CTX  Reconcile current/original baseline
-12. E --> U  Stay or close according to Save action
+ 7. CTX --> E  calculated/derived state updates through components
+ 8. U --> E  Create a new record where supported
+ 9. E --> API  Submit the create transaction
+10. API --> E  Return durable GUID and authoritative record
+11. E --> CTX  Reconcile #data.original / #data.current
+12. E --> U  Caller decides selection or close behavior
 ```
 
 ### Entry state contract
 
 ```text
-[O] fields.<key>.originalValue / canonical baseline
-[C] Compare
-[W] fields.<key>.value / canonical live value
-[D] Dirty
-[N] Clean
-[S] Save enabled when valid / and no child editor active
+[O] #data.original      canonical baseline record
+[W] #data.current       canonical working record
+[C] controlled comparison and validation
+[D] #state.fields / #state.entry (derived dirty/valid status)
+[S] authorized API create + authoritative baseline reconciliation (modern UIS)
 
-Flow:
-  O --> C
-  W --> C
-  C --[different]--> D
-  C --[same]--> N
-  D --> S
+O ──┐
+    ├──> C ───> D ───> S
+W ──┘
 ```
 
-The form lifecycle is documented in detail in [`Entity-Entries-Forms-Detail.md`](../entities/Entity-Entries-Forms-Detail.md). Canonical field rendering is documented in [`Field-Components-Detail.md`](../entities/Field-Components-Detail.md).
+The working record belongs to the Entry; a reusable field component submits typed input via the Entry mutation boundary. Loading/editing an existing modern UIS Entry does not currently enable its general Save transaction (`saveReady: false`); the API and EJS0 have broader independent update mechanisms. The established EJS0 client has a separate legacy field-node runtime, and its `fields.<key>.value` should not be read as the modern cross-client model.
+
+The form lifecycle is documented in [Entity Entries and Forms](../entities/Entity-Entries-Forms-Detail.md). Reusable field rendering is documented in [Field Components](../entities/Field-Components-Detail.md).
 
 ### Changed-field feedback
 
@@ -302,8 +300,7 @@ The Organization tab is an owner-managed hierarchy workspace rather than ordinar
 [A] Add / relate / remove / reorganize
 [C] Commit organization
 [API] Persist hierarchy changes
-[K] Keep create draft & leave (create mode only)
-[X] Close/leave
+[X] Close organization page / clear draft
 
 Flow:
   P --> O
@@ -313,13 +310,9 @@ Flow:
   W --> C
   C --> API
   API --> X
-  W --[Create Organization only]--> K
-  K --> X
 ```
 
 The hierarchy workspace owns its transactional graph/draft behavior. Quick-record editors inside it may render canonical entity fields through `entity-field.ejs`, but the workspace — not those field components — owns the draft transaction and final Commit operation.
-
-Create Organization deliberately supports a browser-local continuation draft across normal navigation/closure; Edit Organization does not. This is separate from system-unavailability recovery, which can capture recoverable UI transactions before abnormal disposal. Neither browser mechanism is application persistence: only Commit changes the hierarchy in API/storage. See [`Persistence-Commit-and-Recovery.md`](../entities/Persistence-Commit-and-Recovery.md).
 
 ---
 
@@ -422,3 +415,9 @@ Flow:
 ```
 
 The purpose of this guide is to make supported behavior easy to trace **without encouraging flow-specific duplicates of generic UI infrastructure**.
+
+## Executable Flow model
+
+A Flow is an orchestration of steps and optional substeps, not a sequence of UI pages hardwired in a component. The runner owns step status, transitions, cancellation and the `ctx.flow` state tree. The current step is referenced by a pointer. A visible surface lives independently under `ctx.ui.level...` and participates through explicitly bound events and invocation results.
+
+`shared.UI/src/flows/flowRunner.ts` defines step states (`pending`, `running`, `waiting`, `completed`, `failed`, `cancelled`) and registered Flow definitions. Sign-in, registration, password reset and password change illustrate multi-step operations whose credential/API handling remains outside inspectable UI state. See [Flow Execution](Flow-Execution.md) for its definitive lifecycle and security boundaries.

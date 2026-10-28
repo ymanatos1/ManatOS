@@ -1,102 +1,68 @@
-# ManatOS System Map
+# System Map
 
-## Semantic system and current repository/runtime map
+The architecture separates canonical business declarations, semantic execution, authoritative operations, presentation and persistence. This separation permits multiple clients to interpret the same metadata without making a browser component, database engine or application-specific screen the owner of business meaning.
 
-```text
-                         ManatOS
-                            |
-        +-------------------+-------------------+
-        |                   |                   |
-      shared               API                  UI
-        |                   |                   |
- domain contracts      HTTP boundary       server-render host
- metadata              authentication      browser UI engine
- policies              authorization       CTX runtime
- expressions           business commands   metadata presentation
- platforms             storage boundary    components/workspaces
-        |                   |                   |
-        +-------------------+-------------------+
-                            |
-                         protoCRM
-                  current concrete platform
-```
-
-The workspaces are separate implementation units but participate in one semantic system. The shown `ui` workspace is the **current Express web client implementation**, not the only client architecture ManatOS permits. `shared` supplies contracts rather than acting as a second runtime owner for API or UI concerns.
-
-## Runtime request boundary
-
-In the current web implementation the UI and API are separate processes. Deployment may expose them behind one site, but server business/storage contracts do not depend on that topology. The API remains the authority for protected business operations; each client owns only its own interactive presentation state. Future Angular/React/mobile clients may use different presentation hosts while consuming the same server contracts.
-
-## Metadata path
+## Logical system
 
 ```text
-canonical entity metadata -------> API/business/storage understanding
-           |
-           +----------------------> UI metadata composition
-                                      |
-                                      v
-                              list / entry / component
-                                      |
-                                      v
-                                     CTX
-                                      |
-                                      v
-                            expressions + interaction
+                        Application foundation
+                                 │
+         ┌───────────────────────┴────────────────────────┐
+         │                                                │
+ Shared identity/licensing                            Platforms/apps
+ Users · Principals · Organizations                   protoCRM · Panoptes
+         │                                                │
+         └───────────────────────┬────────────────────────┘
+                                 ▼
+                         Shared contracts
+                Metadata · Entities · Expressions
+                        CTX · Multilingual
+                                 │
+           ┌─────────────────────┴──────────────────────┐
+           │                                            │
+       Semantic UIS                                Authoritative API
+      surfaces, fields                             auth, CRUD, storage
+      lists, entries, flows                        capabilities, policy
+           │                                            │
+     ┌─────┴─────┐                                      ▼
+     ▼           ▼                                Storage boundary
+   Angular      EJS                              adapter + transaction
 ```
 
-## Interactive state path
+This is the conceptual relationship, not a claim that every envisioned application designer, relational provider or license-entitlement rule executes today. The shared source has active concrete implementations in the TypeScript workspaces described below.
 
-For entry fields, live scalar authority is intentionally singular:
+## Actual TypeScript workspace composition
 
 ```text
-fields.<k>.value  -----> entry.current.<k>
-       |
-       +---------------> derived field dirty
-
-fields.<k>.originalValue -----> entry.original.<k>
+shared ───────────────────────────────► api
+   │                                     ▲
+   └─► shared.UI                            │ HTTP
+           ├─► shared.UI.NG  ─► ui.NG1 ─────┤
+           └─► shared.UI.EJS ─► ui.EJS1 ────┤
+                     ui.EJS0 ───────────────┘
 ```
 
-The projected records are convenient read models, not alternative mutation stores.
+`ui.EJS0` is a distinct established EJS client using the common API. `ui.NG1` and `ui.EJS1` are separate hosts consuming UIS through their respective adapters. The semantic core does not contain Angular-specific or EJS-specific authorization rules. For details see [Repository Structure](../development/Repository-Structure.md).
 
-## Security path
+## Request and interaction boundaries
 
-```text
-user/session facts
-      |
-      +--> UI capability projection --> presentation decision
-      |
-      +--> API authorization --------> protected operation
-```
+1. **Canonical declarations:** metadata declares entities, fields, relationships, enums, view choices and calculations.
+2. **Client composition:** a host resolves page/list/entry/popup content, creates its owned CTX level and projects semantic layout through an adapter.
+3. **Expression execution:** the interpreter evaluates declared expressions using the host's scoped facts and permitted capabilities; reactive changes propagate through observers.
+4. **Authoritative request:** a client requests an operation from the API; the server authenticates the subject, checks resource/record authorization and executes storage operations.
+5. **Response and reconciliation:** the client incorporates the authorized result into its working state, maintaining baseline/dirty and ownership rules.
 
-The two paths serve different purposes. Presentation can explain or suppress an unavailable operation; the API independently authorizes every protected command.
+API CTX and UI CTX are separate host-owned runtime trees. Authentication sessions, UIS state, transactions and diagnostics have distinct ownership and lifetime. This distinction is crucial when interpreting runtime behavior.
 
-## Application composition
+## Applications and reusable capabilities
 
-```text
-Foundation-level technical Company domain
-  +-- Users / Account
-  +-- Principals / hierarchy / contact values
-  +-- Licenses
-  +-- External Authentication Providers
-  +-- foundation-level navigation/capabilities
-  +-- Platform: protoCRM
-        +-- Applications
-        +-- Apps Playground
-        +-- future platform/application tools
-```
+**protoCRM** is the multi-application platform and application-design environment. Its architecture encompasses declarative design, in-foundation testing/execution and a possible independently hosted runtime model. **Panoptes** is a specialized domain application represented through the platform metadata structure in the TypeScript repository. The technical `Company` scope contains shared Person/Organization principals, users and licenses; it is not a description of the project itself.
 
-For portable client/UI semantics see [Client and UI Architecture](../clients/Client-Architecture.md). For deeper treatment, continue with [Architecture](../README.md), [Design](../README.md), or [Application Design](../README.md).
+## Follow the subject boundaries
 
-For storage specifically, see [Data and Storage Architecture](../storage/Data-and-Storage-Architecture.md) and [Storage Catalog](../storage/Storage-Catalog.md). For request correlation, logs, Operation Context and CTX snapshots, see [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md).
-
-## Client surface topology
-
-```text
-ctx.ui.level                         page host
-    |
-    +-- level                       popup or embedded child
-         |
-         +-- level                  further child when owned
-```
-
-The current browser runtime has one production host authority for this topology. `page`, `popup`, and `embedded` are the fundamental host choices. Entry/list/selector/custom identify what a level is presenting; `uiView` independently selects a named entity-record presentation such as `main`, `account`, or `quick`. This prevents presentation variants from becoming parallel runtime architectures.
+- [System Architecture](../system/System-Architecture.md) — complete responsibility model.
+- [Metadata Architecture](../metadata/Metadata-Architecture.md) — canonical declarations and views.
+- [CTX](../context/Context-Architecture.md) and [Expressions](../expressions/Expression-Architecture.md) — semantic execution.
+- [UIS](../clients/UIS-Architecture.md) and [Surfaces](../clients/UI-Surfaces-and-Levels.md) — client composition.
+- [Security](../security/Security-Architecture.md) and [Authorization](../security/Authorization-Policy-Architecture.md) — trust and permission boundaries.
+- [Storage](../storage/Data-and-Storage-Architecture.md) — adapter and transaction contracts.

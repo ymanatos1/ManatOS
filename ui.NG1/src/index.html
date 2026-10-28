@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ManatOS NG1</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="theme-color" content="#557da9" />
+    <script src="/manatos-config.js"></script>
+
+    <script>
+      (() => {
+        try {
+          const parse = (raw) => {
+            try {
+              return raw ? JSON.parse(raw) : null;
+            } catch {
+              return null;
+            }
+          };
+          const preferences = parse(localStorage.getItem('manatos.ui.preferences.v2'));
+          const legacy =
+            preferences?.version === 2
+              ? null
+              : parse(localStorage.getItem('manatos.ui.preferences.v1'));
+          const theme =
+            preferences?.version === 2
+              ? preferences?.paint?.theme
+              : legacy?.version === 1
+                ? legacy?.theme
+                : null;
+          document.documentElement.dataset.uiTheme = theme === 'darker' ? 'darker' : 'lighter';
+        } catch {
+          document.documentElement.dataset.uiTheme = 'lighter';
+        }
+      })();
+    </script>
+
+    <link rel="icon" type="image/x-icon" href="/assets/m1/favicon.ico?v=4" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/m1/favicon-16x16.png?v=4" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/m1/favicon-32x32.png?v=4" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/m1/favicon-48x48.png?v=4" />
+    <link rel="apple-touch-icon" href="/assets/m1/apple-touch-icon.png?v=4" />
+  </head>
+
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

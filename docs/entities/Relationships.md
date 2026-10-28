@@ -6,14 +6,6 @@ Delete behavior lives under the relationship's keyed `policies` collection. `pol
 
 Many-to-many data should normally use an explicit canonical junction object with two many-to-one relationships. A future semantic `many-to-many` relationship can expose convenient navigation/report/designer metadata through the junction while the junction remains the physical integrity source of truth.
 
-## Integrity authority
-
-The generic API `RelationshipIntegrityService` discovers incoming references by scanning canonical relationship metadata. Delete preview reports impacts and whether execution is possible/confirmation is requested; execution recalculates and applies the canonical policy rather than trusting a browser preview.
-
-Current actions are `restrict`, `cascade`, `set-null`, `unlink` and `retain`. `retain` deliberately permits a semantic/non-destructive reference to outlive target configuration. Confirmation (`silent`, `confirm`, `inherit`) is a separate interaction policy and does not alter referential consequences.
-
-The same metadata also supports a generic orphan-repair pass: repairable historical orphans follow their relationship delete policy, while `restrict` cases remain unresolved for explicit attention.
-
 ## Examples
 
 ### Many Principals -> one parent Principal
@@ -109,3 +101,9 @@ Relationship metadata answers what records are related and what integrity policy
 Reference fields use one canonical `referenceSelection` pipeline for every presentation path. `filterExpression` narrows valid target records, `uniqueThrough` and `excludeCurrent` project unavailable candidates with reasons, and `createRelated.uiOverrides.allowedValues` constrains the target entity when **Add entry** is used. Inline reference dropdowns and record-selector popups consume the same projected candidates; browser callers must not reimplement relationship eligibility.
 
 A selected reference can also be opened through the generic **View selected entry** action. That action hosts the same metadata-driven EntityEntry route as a `POPUP · ENTRY` surface in `view` mode, so reference components do not own a second read-only entry renderer. The current persisted reference target is retained in the render catalogue even if candidate policy has subsequently narrowed; candidate policy governs what may be newly selected, not whether stored data can be faithfully displayed.
+
+## UI relationships versus canonical integrity
+
+Relationship metadata is authoritative for reference topology and deletion consequences. A nested List can offer related candidates, and an Entry can display a canonical name/icon/photo for the chosen record, but neither operation redefines relationship identity. The UI's selected GUID and visible entry text are different projections of the same reference.
+
+Cross-record changes need a coherent commit boundary. A workspace may contain multiple created or edited Entries with temporary identities; reference mapping must resolve those identities in a valid execution order before persistent results are considered committed. See [Workspace Commit](Workspace-Commit-and-Recovery.md) and [API Architecture](../api/API-Architecture.md).

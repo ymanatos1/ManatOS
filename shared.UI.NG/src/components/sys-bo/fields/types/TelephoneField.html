@@ -1,0 +1,12 @@
+<!-- TelephoneField: Native telephone input with downstream canonical validation. -->
+<manatos-field-control-shell [field]="field()">
+  <input
+    [manatosNativeFieldInteraction]="field()"
+    data-entry-control
+    class="manatos-form-input"
+    [type]="nativeInputType"
+    [value]="displayText()"
+    [readOnly]="field().readOnly"
+    [attr.aria-label]="field().label"
+  />
+</manatos-field-control-shell>

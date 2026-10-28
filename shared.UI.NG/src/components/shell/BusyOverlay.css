@@ -1,0 +1,95 @@
+.manatos-busy-panel {
+  box-sizing: border-box;
+  width: min(92vw, 470px);
+  max-width: 470px;
+  margin: auto;
+  padding: 1.2rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 0.85rem;
+  background: #fff;
+  color: #10294d;
+  box-shadow: 0 22px 55px rgba(7, 26, 61, 0.28);
+  font-family: system-ui, sans-serif;
+}
+
+.manatos-busy-panel::backdrop {
+  background: rgba(7, 26, 61, 0.52);
+  backdrop-filter: blur(1.5px);
+}
+
+.manatos-busy-layout {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.manatos-busy-animation {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+}
+
+.manatos-busy-provider {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #eef5ff, #dceaff);
+  color: #0d6efd;
+  font-size: 1.65rem;
+  box-shadow: 0 5px 14px rgba(7, 26, 61, 0.14);
+}
+
+.manatos-busy-pulse {
+  position: absolute;
+  inset: 0;
+  border: 3px solid rgba(13, 110, 253, 0.22);
+  border-top-color: #0d6efd;
+  border-radius: 50%;
+  animation: manatos-busy-spin 0.9s linear infinite;
+}
+
+.manatos-busy-copy {
+  min-width: 0;
+}
+
+.manatos-busy-copy h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.manatos-busy-copy p {
+  margin: 0;
+  color: #68798f;
+  line-height: 1.4;
+}
+
+.manatos-busy-actions {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.manatos-busy-actions button {
+  padding: 0.35rem 0.75rem;
+  background: #fff;
+  border: 1px solid #8794a4;
+  border-radius: 0.35rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+@keyframes manatos-busy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manatos-busy-pulse {
+    animation-duration: 1.8s;
+  }
+}

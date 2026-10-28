@@ -1,8 +1,16 @@
+import {
+  parseWorkspaceFamily,
+  workspaceBelongsToFamily,
+  workspaceFamilies,
+} from './workspace-families.mjs';
 import { spawn } from 'node:child_process';
 import { stripVTControlCharacters } from 'node:util';
 
 const isWindows = process.platform === 'win32';
 const npmCommand = isWindows ? process.env.ComSpec || 'cmd.exe' : 'npm';
+const family = parseWorkspaceFamily();
+
+const familyPaths = family === null ? [] : workspaceFamilies[family];
 
 const colors = {
   green: '\u001b[32m',
@@ -21,14 +29,20 @@ const steps = [
     key: 'lint',
     label: 'ESLint',
     command: npmCommand,
-    args: npmArgs('run', 'lint'),
+    args:
+      family === null
+        ? npmArgs('run', 'lint')
+        : npmArgs('exec', '--', 'eslint', ...familyPaths),
     kind: 'quality',
   },
   {
     key: 'formatCheck',
     label: 'Prettier',
     command: npmCommand,
-    args: npmArgs('run', 'format:check'),
+    args:
+      family === null
+        ? npmArgs('run', 'format:check')
+        : npmArgs('exec', '--', 'prettier', '--check', ...familyPaths),
     kind: 'quality',
   },
   {
@@ -37,6 +51,31 @@ const steps = [
     command: npmCommand,
     args: npmArgs('run', 'build', '--workspace', 'shared'),
     kind: 'build',
+    workspace: 'shared',
+  },
+  {
+    key: 'sharedUIBuild',
+    label: 'Shared UI build',
+    command: npmCommand,
+    args: npmArgs('run', 'build', '--workspace', 'shared.UI'),
+    kind: 'build',
+    workspace: 'shared.UI',
+  },
+  {
+    key: 'sharedUINGBuild',
+    label: 'Shared UI.NG build',
+    command: npmCommand,
+    args: npmArgs('run', 'build', '--workspace', 'shared.UI.NG'),
+    kind: 'build',
+    workspace: 'shared.UI.NG',
+  },
+  {
+    key: 'sharedUIEJSBuild',
+    label: 'Shared UI.EJS build',
+    command: npmCommand,
+    args: npmArgs('run', 'build', '--workspace', 'shared.UI.EJS'),
+    kind: 'build',
+    workspace: 'shared.UI.EJS',
   },
   {
     key: 'apiBuild',
@@ -44,13 +83,31 @@ const steps = [
     command: npmCommand,
     args: npmArgs('run', 'build', '--workspace', 'api'),
     kind: 'build',
+    workspace: 'api',
   },
   {
     key: 'uiEJS0Build',
-    label: 'UI build',
+    label: 'UI.EJS0 build',
     command: npmCommand,
     args: npmArgs('run', 'build', '--workspace', 'ui.EJS0'),
     kind: 'build',
+    workspace: 'ui.EJS0',
+  },
+  {
+    key: 'uiNG1Build',
+    label: 'UI.NG1 build',
+    command: npmCommand,
+    args: npmArgs('run', 'build', '--workspace', 'ui.NG1'),
+    kind: 'build',
+    workspace: 'ui.NG1',
+  },
+  {
+    key: 'uiEJS1Build',
+    label: 'UI.EJS1 build',
+    command: npmCommand,
+    args: npmArgs('run', 'build', '--workspace', 'ui.EJS1'),
+    kind: 'build',
+    workspace: 'ui.EJS1',
   },
   {
     key: 'apiTests',
@@ -58,6 +115,39 @@ const steps = [
     command: npmCommand,
     args: npmArgs('run', 'test', '--workspace', 'api'),
     kind: 'test',
+    workspace: 'api',
+  },
+  {
+    key: 'sharedTests',
+    label: 'Shared tests',
+    command: npmCommand,
+    args: npmArgs('run', 'test', '--workspace', 'shared'),
+    kind: 'test',
+    workspace: 'shared',
+  },
+  {
+    key: 'sharedUITests',
+    label: 'Shared UI tests',
+    command: npmCommand,
+    args: npmArgs('run', 'test', '--workspace', 'shared.UI'),
+    kind: 'test',
+    workspace: 'shared.UI',
+  },
+  {
+    key: 'sharedUINGTests',
+    label: 'Shared UI.NG tests',
+    command: npmCommand,
+    args: npmArgs('run', 'test', '--workspace', 'shared.UI.NG'),
+    kind: 'test',
+    workspace: 'shared.UI.NG',
+  },
+  {
+    key: 'sharedUIEJSTests',
+    label: 'Shared UI.EJS tests',
+    command: npmCommand,
+    args: npmArgs('run', 'test', '--workspace', 'shared.UI.EJS'),
+    kind: 'test',
+    workspace: 'shared.UI.EJS',
   },
   {
     key: 'uiEJS0Tests',
@@ -65,11 +155,32 @@ const steps = [
     command: npmCommand,
     args: npmArgs('run', 'test', '--workspace', 'ui.EJS0'),
     kind: 'test',
+    workspace: 'ui.EJS0',
+  },
+  {
+    key: 'uiNG1Tests',
+    label: 'UI.NG1 tests',
+    command: npmCommand,
+    args: npmArgs('run', 'test', '--workspace', 'ui.NG1'),
+    kind: 'test',
+    workspace: 'ui.NG1',
+  },
+  {
+    key: 'uiEJS1Tests',
+    label: 'UI.EJS1 tests',
+    command: npmCommand,
+    args: npmArgs('run', 'test', '--workspace', 'ui.EJS1'),
+    kind: 'test',
+    workspace: 'ui.EJS1',
   },
 ];
 
+const selectedSteps = steps.filter(
+  (step) => !step.workspace || workspaceBelongsToFamily(step.workspace, family),
+);
+
 const results = Object.fromEntries(
-  steps.map((step) => [
+  selectedSteps.map((step) => [
     step.key,
     {
       label: step.label,
@@ -123,10 +234,9 @@ function runStep(step) {
          * Failed run:
          *   Tests  1 failed | 64 passed (65)
          *
-         * ANSI colour/control sequences may be present in captured terminal output,
-         * so strip them before parsing.
+         * ANSI colour/control sequences may be present in captured terminal
+         * output, so strip them before parsing.
          */
-        //const cleanOutput = output.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
         const cleanOutput = stripVTControlCharacters(output);
 
         const summaryLine = cleanOutput.split(/\r?\n/).find((line) => /^\s*Tests\s+/.test(line));
@@ -174,56 +284,59 @@ function colorResult(status, passed, total) {
 }
 
 function printSummary(success) {
-  const api = results.apiTests;
-  const uiEJS0 = results.uiEJS0Tests;
+  const testResults = selectedSteps
+    .filter((step) => step.kind === 'test')
+    .map((step) => results[step.key]);
 
-  const numericResults = [api, uiEJS0].filter(
+  const numericResults = testResults.filter(
     (result) => result.passed !== null && result.total !== null,
   );
 
   const totalPassed = numericResults.reduce((sum, result) => sum + result.passed, 0);
-
   const totalTests = numericResults.reduce((sum, result) => sum + result.total, 0);
-
+  const allSelectedTestsRan = numericResults.length === testResults.length;
   const overallStatus = success ? 'PASS' : 'FAIL';
-
-  const totalText =
-    numericResults.length === 2
-      ? colorResult(overallStatus, totalPassed, totalTests)
-      : colorStatus('NOT RUN');
-
+  const totalText = allSelectedTestsRan
+    ? colorResult(overallStatus, totalPassed, totalTests)
+    : colorStatus('NOT RUN');
   const titleColor = success ? colors.green : colors.red;
+  const scope = family ? ` (${family} family)` : '';
 
   console.log('');
   console.log('============================================================');
   console.log(
-    `  ${colors.bold}${titleColor}ManatOS verification ${
+    `  ${colors.bold}${titleColor}ManatOS verification${scope} ${
       success ? 'PASSED' : 'FAILED'
     }${colors.reset}`,
   );
   console.log('============================================================');
 
-  console.log(`  ESLint:       ${colorStatus(results.lint.status)}`);
-  console.log(`  Prettier:     ${colorStatus(results.formatCheck.status)}`);
+  for (const step of selectedSteps.filter((candidate) => candidate.kind === 'quality')) {
+    console.log(`  ${step.label.padEnd(20)} ${colorStatus(results[step.key].status)}`);
+  }
 
   console.log('');
-  console.log(`  Shared build: ${colorStatus(results.sharedBuild.status)}`);
-  console.log(`  API build:    ${colorStatus(results.apiBuild.status)}`);
-  console.log(`  UI.EJS0 build: ${colorStatus(results.uiEJS0Build.status)}`);
+  for (const step of selectedSteps.filter((candidate) => candidate.kind === 'build')) {
+    console.log(`  ${(step.label + ':').padEnd(20)} ${colorStatus(results[step.key].status)}`);
+  }
 
   console.log('');
-  console.log(`  API tests:    ${colorResult(api.status, api.passed, api.total)}`);
-  console.log(`  UI.EJS0 tests: ${colorResult(uiEJS0.status, uiEJS0.passed, uiEJS0.total)}`);
+  for (const step of selectedSteps.filter((candidate) => candidate.kind === 'test')) {
+    const result = results[step.key];
+    console.log(
+      `  ${(step.label + ':').padEnd(20)} ${colorResult(result.status, result.passed, result.total)}`,
+    );
+  }
 
   console.log('');
-  console.log(`  Total tests:  ${totalText}`);
+  console.log(`  ${'Total tests:'.padEnd(20)} ${totalText}`);
   console.log('============================================================');
   console.log('');
 }
 
 let success = true;
 
-for (const step of steps) {
+for (const step of selectedSteps) {
   const exitCode = await runStep(step);
 
   if (exitCode !== 0) {

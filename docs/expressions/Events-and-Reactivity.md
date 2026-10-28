@@ -1,71 +1,54 @@
 # Events and Reactivity
 
-Reactivity connects canonical CTX mutations to calculations, validation and presentation policy. The production browser contract is deliberately small: **one canonical CTX mutation authority, one `manatos:ctx-change` notification stream, resolved canonical dependency paths, and one shared path-overlap/queue-key policy.**
+Reactivity connects canonical CTX mutations to dependent calculations and presentation updates. The central invariant is that one logical state change has one authoritative mutation path and one causal event story.
 
-## Production dependency flow
+## Dependency flow
+
+A canonical field mutation enters through the CTX mutation boundary. Dependency matching identifies calculations/dynamic policy affected by the changed path, evaluates them, writes derived results through their canonical authority and notifies presentation consumers.
 
 ```text
-authored expression source
-        |
-        v
-UI compile boundary -> cached canonical AST
-        |
-        v
-resolve variable nodes against the owning entry CTX scope
-        |
-        v
-register canonical dependency paths
-        |
-canonical CTX mutation
-        |
-        v
-manatos:ctx-change
-        |
-        v
-queue path + causal identity
-        |
-        v
-shared path-overlap match
-        |
-        v
-reevaluate affected calculation / UX policy
-        |
-        v
-canonical derived mutation (when applicable)
+canonical mutation
+      |
+      v
+CTX change event
+      |
+      v
+dependency matching
+      |
+      v
+calculation / dynamic policy
+      |
+      v
+canonical derived mutation
+      |
+      v
+presentation refresh
 ```
 
-The AST is not reparsed to discover dependencies. `form-runtime.js` walks the already compiled AST and resolves each variable through the same CTX variable resolver used by evaluation. Dependencies are therefore **materialized canonical CTX paths for the entry runtime that owns the expression**, not a second abstract dependency namespace.
+Reactive queues prevent duplicate work from becoming competing semantic writers. Path-overlap rules and queue keys are shared policy rather than page-specific string matching. Aggregate form/workspace state can observe the resulting changes while retaining ownership of its own non-scalar transaction semantics.
 
-## One semantic change stream
+See [State, Mutation and Events](../context/State-Mutation-and-Events.md) and [Event Catalog](Event-Catalog.md).
 
-The browser CTX runtime publishes `manatos:ctx-change` after a canonical mutation. The event carries the changed `path`, optional `relatedPaths`, old/new values, and causal data including `source`, `eventId`, `rootEventId` and `triggerPath`. `relatedPaths` are observable consequences/aliases, not additional writable authorities.
+### One event-to-dependency matching boundary
 
-Entry modules also use form/component DOM events for lifecycle and coordination. Those events are not a competing semantic CTX bus. In particular, the deterministic initial reactive pass is tied to the actual `manatos:form-initialized` browser boundary.
+Reactive consumers must not reinterpret `value:changed` or `ctx:changed` independently.
+`dependencyChangePathsForEvent()` is the canonical event-to-identity projection and
+`reactiveEventMatchesDependencies()` is the canonical invalidation predicate. This keeps
+calculated values/UX, validation, tab visibility, and future metadata consumers aligned on
+local, inherited-surface, and root CTX ownership semantics. The production browser uses the
+same shared `reactivePathsOverlap()` policy for metadata components such as hierarchy views;
+components must not embed their own path-overlap implementation.
 
-## Dependency matching and queueing
+### Validation uses the same initialization and event boundary
 
-The shared production policy is `shared/src/policies/reactive-runtime-policy.ts`:
+Reactive validation is gated by the same entry lifecycle as calculated values and declarative UX: `value:changed` and `ctx:changed` do not evaluate validators until `entry:initialized`. The initialization event performs one complete validation pass. After that boundary, each canonical runtime event is matched once through `reactiveEventMatchesDependencies()`; local projection aliases therefore cannot cause duplicate validation of the same target.
 
-- `reactivePathsOverlap(left, right)` — paths match when equal or when either is an ancestor of the other;
-- `reactiveDependencyMatchesChange(...)` — the shared dependency/change predicate;
-- `reactiveChangeQueueKey(changedPath, cause)` — deduplicates the same changed path within one causal event identity.
+### Declarative UI policy starts after entry initialization
 
-The entry runtime queues both the canonical event `path` and any `relatedPaths`, deduplicates them by queue key, and evaluates only registered entries whose resolved dependency paths overlap the queued path. Feature code must not invent another path-overlap algorithm for the same semantics.
+Dynamic tab visibility follows the same lifecycle boundary as calculations and validation. Field and CTX events emitted while an entry is still assembling its server values, metadata defaults, invocation defaults, and fixed caller values do not evaluate tab policy against that partial snapshot. `EntityEntryRuntime` performs one deterministic visibility refresh immediately after entry initialization completes; subsequent canonical events remain reactive through the shared event-to-dependency matcher.
 
-A calculated field writes its result with `runtime.updateField(...)`. If that value changes, the normal CTX event is emitted and downstream calculations wake naturally. Cascades therefore use the same mutation/event path as user edits rather than a private calculation channel.
+## Reaction ownership and update scope
 
-## Initialization
+Reactivity depends on recorded semantic reads, not arbitrary full-screen refreshes. When CTX notifies an observed path, an owning consumer can re-evaluate the affected rule and update its presentation state or calculated projection. The mutation/event mechanism provides notification and cause; the canonical value still lives in CTX, not in a broadcast event object.
 
-Reactive entries are registered while the form is being assembled, but the runtime performs one deterministic full pass only after entry initialization has settled. This ensures calculations and declarative UX see server values, metadata defaults, invocation defaults and fixed caller values as one coherent starting snapshot. Later changes are incremental and dependency-driven.
-
-Validation and tab/action policy have their own owning modules but follow the same architectural rule: do not evaluate policy against a partially initialized entry, and consume canonical CTX state rather than reconstructing business state from DOM controls.
-
-## Async capability ownership
-
-One reactive queue drain owns one explicit evaluation pass. Resolver-backed calls such as `TraverseEntity()` may be deduplicated by promise **inside that pass only**. The promise map is not global state and is not shared between independent events. This prevents concurrent reactive events from accidentally sharing persistence results while still avoiding duplicate remote work within one settlement pass.
-
-## Runaway protection
-
-The current browser scheduler stops a drain after more than **512 reactive-entry executions** and reports a possible dependency cycle. This is a safety guard, not a cycle-resolution algorithm. Metadata calculations should still form understandable terminating dependency relationships.
-
-See [State, Mutation and Events](../context/State-Mutation-and-Events.md), [Expression Architecture](Expression-Architecture.md), and [Event Catalog](Event-Catalog.md).
+Care is required with cycles, async evaluation and stale subscriptions. A calculated value should not reenter itself through a dependency loop, and a callback belonging to a disposed UI level must not update a newly opened surface at the same path. See [CTX State Mutation](../context/State-Mutation-and-Events.md) and [UI Surfaces](../clients/UI-Surfaces-and-Levels.md).

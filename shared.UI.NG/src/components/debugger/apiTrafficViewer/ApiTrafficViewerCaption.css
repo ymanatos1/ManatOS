@@ -1,0 +1,35 @@
+:host {
+  min-width: 0;
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.api-traffic-caption {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow: hidden;
+  font-size: 0.68rem;
+}
+
+.api-traffic-caption > strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.api-traffic-caption code {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-traffic-caption > strong,
+.api-traffic-caption code,
+.api-traffic-caption > span {
+  user-select: text;
+  cursor: text;
+}

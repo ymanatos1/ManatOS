@@ -1,0 +1,67 @@
+<div class="manatos-picture-editor" data-picture-editor>
+  <div class="manatos-picture-editor-toolbar" role="toolbar">
+    <button
+      type="button"
+      [class.active]="tool()==='move'"
+      [disabled]="!ready()"
+      (click)="chooseTool('move')"
+    >
+      <i class="bi bi-arrows-move"></i> {{ toolLabel('move') }}
+    </button>
+    <button
+      type="button"
+      [class.active]="tool()==='crop'"
+      [disabled]="!ready()"
+      (click)="chooseTool('crop')"
+    >
+      <i class="bi bi-crop"></i> {{ toolLabel('crop') }}
+    </button>
+    @if (tool() === 'crop' && policy().cropModes.length > 1) { @for (mode of policy().cropModes;
+    track mode) {
+    <button
+      type="button"
+      [class.active]="cropMode()===mode"
+      [disabled]="!ready()"
+      (click)="chooseCropMode(mode)"
+    >
+      {{ language() === 'EL' ? (mode === 'free' ? 'Ελεύθερη' : 'Αναλογική') : (mode === 'free' ?
+      'Free' : 'Proportional') }}
+    </button>
+    } }
+  </div>
+  <canvas
+    #canvas
+    class="manatos-picture-editor-canvas"
+    width="560"
+    [attr.height]="canvasHeight()"
+    [style.cursor]="tool()==='crop' ? 'crosshair' : 'grab'"
+    (pointerdown)="down($event)"
+    (pointermove)="move($event)"
+    (pointerup)="up($event)"
+    (pointercancel)="up($event)"
+    role="img"
+    aria-label="Picture crop preview"
+  ></canvas>
+  <p class="manatos-picture-editor-help">
+    {{ language() === 'EL' ? 'Μετακινήστε ή μεγεθύνετε την εικόνα. Επιλέξτε περιοχή περικοπής
+    σύροντας πάνω στην εικόνα.' : 'Move or zoom the picture, or select Crop area and drag over the
+    portion to keep.' }}
+  </p>
+  <label class="manatos-picture-editor-zoom">
+    <i class="bi bi-image" aria-hidden="true"></i>
+    <input
+      [disabled]="!ready()"
+      type="range"
+      min="1"
+      max="3"
+      step="0.01"
+      [value]="zoom()"
+      (input)="changeZoom($event)"
+      [attr.aria-label]="language()==='EL' ? 'Μεγέθυνση' : 'Picture zoom'"
+    />
+    <i class="bi bi-zoom-in" aria-hidden="true"></i>
+  </label>
+  @if (error()) {
+  <p role="alert" class="manatos-picture-editor-error">{{ error() }}</p>
+  }
+</div>

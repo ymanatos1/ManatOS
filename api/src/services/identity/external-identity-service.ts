@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import {
-  ConflictError,
-  NotFoundError,
-  operationContext,
-  type SysBOExternalIdentity,
-} from '@manatos/shared';
+import { ConflictError, NotFoundError, type SysBOExternalIdentity } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
+
 import type { InMemoryDataStore } from '../../storage/in-memory-data-store.js';
 import type { SysBOUserService } from '../sysbo/user-service.js';
 import { auditService, type AuditActor } from '../../audit/audit-service.js';

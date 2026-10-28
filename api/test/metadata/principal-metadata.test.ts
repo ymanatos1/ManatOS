@@ -21,9 +21,9 @@ describe('SysBOPrincipal declarative enum metadata', () => {
       delete: {
         kind: 'delete',
         visible: { expression: "mode !== 'create' && permissions.delete === true" },
-        label: 'Delete entry',
+        label: '@EN.common.label.DeleteEntry',
       },
-      save: { kind: 'save', label: 'Save' },
+      save: { kind: 'save', label: '@EN.common.label.Save' },
     });
     expect(sysBOPrincipalsUIMetadata.record.entryActions?.save?.visible).toEqual({
       expression: "mode !== 'view' && (permissions.create === true || permissions.update === true)",
@@ -66,7 +66,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
   it('keeps canonical name as Full name and materializes Person names from first/last components', async () => {
     expect(sysBOPrincipalsMetadata.fieldDefinition.name).toMatchObject({
       key: 'name',
-      label: 'Full name',
+      label: '@EN.manatos.auth.users.label.FullName',
       required: true,
     });
     expect(sysBOPrincipalsMetadata.fieldDefinition.name?.calculation).toMatchObject({
@@ -289,7 +289,7 @@ describe('SysBOPrincipal declarative enum metadata', () => {
     expect(sysBOTelephoneNumbersMetadata.exposure).toBe('internal');
     expect(sysBOTelephoneNumbersMetadata.fieldDefinition.countryCode).toMatchObject({
       required: true,
-      label: 'Country code',
+      label: '@EN.manatos.contacts.telephoneNumbers.label.CountryCode',
     });
     expect(
       sysBOPrincipalTelephoneNumbersMetadata.relationships?.telephoneNumber?.references.objectKey,

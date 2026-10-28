@@ -67,9 +67,7 @@ A UI can rearrange fields, choose tabs/components, restrict an enum for a specif
 
 ## Entity metadata versus storage
 
-Storage adapters consume projected semantic requirements but do not define the entity. The relational desired-schema projection currently carries semantics such as required/nullability, maximum length, uniqueness, references and persisted fields into adapter planning. Different adapters can realize a semantic requirement differently.
-
-Keep **declaration** and **enforcement** distinct: canonical metadata says what the entity requires; repository, domain service, relationship service, authorization layer or storage adapter supplies the concrete enforcement. Do not assume that the existence of a metadata property means one universal generic API validator currently enforces it.
+Storage adapters consume projected semantic requirements but do not define the entity. A JSON adapter and PostgreSQL adapter must preserve the same entity-level behavior even when they realize constraints/calculations differently.
 
 ## Example: Principal
 

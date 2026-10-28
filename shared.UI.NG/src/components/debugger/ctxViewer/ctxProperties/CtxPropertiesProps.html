@@ -1,0 +1,21 @@
+<div class="ctx-property-list">
+  @for (row of rows(); track row.name) {
+  <div class="ctx-debug-property-row">
+    <span class="ctx-debug-property-label">{{ row.name }}</span>
+    @if (row.path) {
+    <button
+      class="ctx-debug-property-value is-link"
+      type="button"
+      [title]="row.path"
+      (click)="navigate.emit(row.path)"
+    >
+      {{ row.value }}
+    </button>
+    } @else {
+    <code class="ctx-debug-property-value">{{ row.value }}</code>
+    }
+  </div>
+  } @empty {
+  <div class="ctx-debug-properties-empty">{{ multilingual().NoProperties }}</div>
+  }
+</div>

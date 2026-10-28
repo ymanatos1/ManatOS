@@ -2,7 +2,8 @@ import { Router } from 'express';
 
 import createError from 'http-errors';
 
-import { AppError, operationContext, SysBOUserRole, compileExpression } from '@manatos/shared';
+import { AppError, SysBOUserRole, compileExpression } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { apiClient } from '../../api/client.js';
 
@@ -238,7 +239,9 @@ export function createSysBORoutes() {
       const breadcrumbItems = [
         ...parentOwnerContext.breadcrumbItems,
         {
-          label: `${ownerEntryMode === 'create' ? 'Create' : 'Edit'} ${definition.boMetadata.label}`,
+          label: `${res.locals.metadataText(
+            ownerEntryMode === 'create' ? '@CM.Create' : '@CM.Edit',
+          )} ${res.locals.metadataText(definition.boMetadata.label)}`,
           href: null,
         },
       ];

@@ -11,10 +11,10 @@ export const sysBOExternalIdentitiesUIMetadata: SysBOUIMetadata = {
       addAction: { ...standardAddAction('Add external identity'), visible: false },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['provider', 'email'],
       },
     },
@@ -22,11 +22,11 @@ export const sysBOExternalIdentitiesUIMetadata: SysBOUIMetadata = {
   relatedListView: 'default',
   relatedListViews: {
     default: {
-      label: 'Default',
+      label: '@EN.manatos.configuration.configurations.label.Default' /* Default */,
       layout: 'panel-list',
       icon: 'person-badge',
       rowIcon: 'person-badge',
-      emptyText: 'No external authentication providers are linked.',
+      emptyText: '@CM.NoExternalProvidersLinked',
       fields: {
         provider: { representation: 'badge' },
         email: {},
@@ -36,18 +36,23 @@ export const sysBOExternalIdentitiesUIMetadata: SysBOUIMetadata = {
       },
     },
     compact: {
-      label: 'Compact',
+      label: '@EN.manatos.auth.externalIdentities.label.Compact' /* Compact */,
       layout: 'panel-list',
       icon: 'person-badge',
       fields: { provider: {}, email: {} },
     },
   },
   defaultUIView: 'compact',
-  uiViews: { compact: { viewType: 'quick', label: 'External identity' } },
+  uiViews: {
+    compact: {
+      viewType: 'quick',
+      label: '@EN.manatos.auth.externalIdentities.label.ExternalIdentity' /* External identity */,
+    },
+  },
   record: {
     readOnly: true,
     tabs: [
-      tab('general', 'External identity', 10, {
+      tab('general', '@EN.manatos.auth.externalIdentities.label.ExternalIdentity', 10, {
         icon: 'person-badge',
         layout: 'details',
         representation: 'summary',

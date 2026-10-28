@@ -257,7 +257,7 @@ class Parser {
     if (
       identifier.startsWith('#') &&
       identifier !== '#' &&
-      !['#level', '#control', '#data', '#layout', '#state'].includes(identifier)
+      !['#level', '#control', '#data', '#layout', '#state', '#flowstep'].includes(identifier)
     ) {
       throw new ExpressionParseError(
         `Unknown CTX relative selector ${identifier}`,
@@ -270,6 +270,39 @@ class Parser {
     let path = identifier;
 
     for (;;) {
+      if (this.match('?.')) {
+        const previous = members[members.length - 1];
+        if (previous === undefined) {
+          throw new ExpressionParseError(
+            'Optional path traversal requires a preceding path member',
+            this.current().position,
+            this.source,
+          );
+        }
+
+        members[members.length - 1] = {
+          kind: 'resolved-path',
+          member: previous,
+          optional: true,
+        };
+
+        if (this.match('(')) {
+          const start = this.current().position;
+          const expression = this.parseConditional();
+          const closing = this.expect('punctuation', ')');
+          const source = this.source.slice(start, closing.position);
+
+          members.push({ kind: 'dynamic-path', expression, source });
+          path += `?.(${source})`;
+          continue;
+        }
+
+        const member = this.expect('identifier');
+        members.push(member.text);
+        path += `?.${member.text}`;
+        continue;
+      }
+
       if (this.match('.')) {
         if (this.match('(')) {
           const start = this.current().position;
@@ -379,9 +412,20 @@ export function expressionCapabilities(ast: ExpressionNode): readonly Expression
   const capabilities = new Set<ExpressionCapability>();
   const visit = (node: ExpressionNode): void => {
     if (node.kind === 'variable') {
-      node.members.forEach((member) => {
-        if (typeof member === 'object' && member?.kind === 'dynamic-path') visit(member.expression);
-      });
+      const visitPathMember = (member: ExpressionPathMember): void => {
+        if (typeof member !== 'object') return;
+
+        if (member.kind === 'dynamic-path') {
+          visit(member.expression);
+          return;
+        }
+
+        if (member.kind === 'resolved-path') {
+          visitPathMember(member.member);
+        }
+      };
+
+      node.members.forEach(visitPathMember);
       return;
     }
     if (node.kind === 'array') {

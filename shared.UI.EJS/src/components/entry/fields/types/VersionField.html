@@ -1,0 +1,30 @@
+<!-- Typed Field owns its reusable FieldTools child, when supported. -->
+<span data-entry-field-tools-slot></span>
+<!-- VersionField template: structured version value and its individual segment parts. -->
+<span class="manatos-form-leading"><span aria-hidden="true">v</span></span>
+<div data-entry-control class="manatos-form-parts manatos-form-version">
+  <input
+    class="manatos-form-part"
+    type="number"
+    min="0"
+    data-version-part="major"
+    readonly
+    aria-label="Major"
+  /><span>.</span
+  ><input
+    class="manatos-form-part"
+    type="number"
+    min="0"
+    data-version-part="minor"
+    readonly
+    aria-label="Minor"
+  /><span>.</span
+  ><input
+    class="manatos-form-part"
+    type="number"
+    min="0"
+    data-version-part="patch"
+    readonly
+    aria-label="Patch"
+  />
+</div>

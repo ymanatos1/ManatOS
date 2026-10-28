@@ -1,0 +1,25 @@
+@if (footer()) {
+<div class="small text-secondary mt-3" data-popup-layout-id="storage-workflow-state">
+  {{ wizard().t('Stage:', 'Στάδιο:') }}
+  <strong>{{ wizard().translate(wizard().workflow().stage) }}</strong> · {{ wizard().t('Status:',
+  'Κατάσταση:') }}
+  <strong>{{ wizard().translate(wizard().workflow().status) }}</strong>
+</div>
+} @else {
+<div data-popup-layout-id="storage-tab-notices">
+  @if (wizard().error()) {
+  <div class="alert alert-danger" role="alert">{{ wizard().error() }}</div>
+  } @if (wizard().notice()) {
+  <div class="alert alert-info" role="status">{{ wizard().notice() }}</div>
+  } @if (popup().notice()) {
+  <div class="alert alert-success" role="status">{{ popup().notice() }}</div>
+  } @if (wizard().stepById(step().id); as actualStep) { @if
+  (wizard().stepNeedsCurrentVerification(actualStep)) {
+  <div class="alert alert-warning small" role="status">
+    {{ wizard().t( 'Saved settings can be reviewed, but current prerequisites must be verified again
+    before target operations.', 'Οι αποθηκευμένες ρυθμίσεις είναι διαθέσιμες για έλεγχο, αλλά
+    απαιτείται νέα επαλήθευση πριν από ενέργειες στον στόχο.' ) }}
+  </div>
+  } }
+</div>
+}

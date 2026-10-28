@@ -1,12 +1,13 @@
-digraph G {
- graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - Authentication, Session and Organization-scoped Read Flow"];
- node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=LR;
- login [label="Login\nidentity + credential"];
- user [label="SysUser\nrole + principalId"];
- token [label="AccessTokenStore\nconcurrent sessions"];
- request [label="Authenticated API request\nBearer + x-request-id"];
- policy [label="AuthorizationService\nAdmin: all rows\nUser/Superuser: organization scope\nGuest: restricted areas"];
- org [label="Organization scope\nuser.principalId -> principal\nrootPrincipalId"];
- result [label="Authorized collection\nthen filter/sort/page"];
- login -> user -> token -> request -> policy -> result; user -> org -> policy;
+digraph Auth {
+ graph [fontname="Arial",fontsize=11,bgcolor="white",labelloc="t",label="User Authentication, Principal Scope and API Authorization",pad="0.25",rankdir=LR];
+ node [fontname="Arial",fontsize=10,shape=box,style="rounded,filled",fillcolor="white"];
+ login [label="Login credentials / OAuth result",fillcolor="#dcecff"];
+ user [label="Authenticated SysUser\nid, role and session facts",fillcolor="#dcecff"];
+ session [label="API AccessTokenStore\nopaque session"];
+ request [label="API request\nBearer + correlation identity"];
+ principal [label="SysPrincipal (Person)\nlinked by principal.userId\nrootId establishes organization",fillcolor="#e8f4e5"];
+ policy [label="AuthorizationService\nrole, target record and organization",fillcolor="#fff3cd"];
+ result [label="Permitted rows / operation\nrow filter before query pagination",fillcolor="#fce8e6"];
+ login -> user -> session -> request -> policy -> result;
+ user -> principal -> policy;
 }

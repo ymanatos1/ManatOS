@@ -1,0 +1,39 @@
+<dl class="api-traffic-meta">
+  @for (item of metadata(); track item.label) {
+  <dt>{{ item.label }}</dt>
+  <dd>{{ item.value }}</dd>
+  }
+</dl>
+<div
+  class="api-traffic-payload-tabs"
+  role="tablist"
+  [attr.aria-label]="multilingual().PayloadSections"
+>
+  <button
+    type="button"
+    [attr.data-debug-tooltip]="multilingual().Headers"
+    [attr.data-debug-tooltip-detail]="multilingual().HttpHeaderDescriptions"
+    [class.is-active]="activeTab() === 'headers'"
+    (click)="selectTab('headers')"
+  >
+    {{ multilingual().Headers }}
+  </button>
+  @if (hasBody()) {
+  <button
+    type="button"
+    [attr.data-debug-tooltip]="multilingual().Body"
+    [attr.data-debug-tooltip-detail]="multilingual().ApiBodyDescription"
+    [class.is-active]="activeTab() === 'body'"
+    (click)="selectTab('body')"
+  >
+    {{ multilingual().Body }}
+  </button>
+  }
+</div>
+<div class="api-traffic-payload-body">
+  @if (activeTab() === 'headers') {
+  <manatos-api-traffic-headers [language]="language()" [headers]="headers()" />
+  } @else {
+  <pre class="api-traffic-payload-pre">{{ format(body()) }}</pre>
+  }
+</div>

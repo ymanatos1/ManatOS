@@ -29,6 +29,7 @@ import {
   allManatOSObjectMetadata,
   allSysBOUIMetadata,
   resolveEntryRepresentation,
+  resolveMetadataText,
   type ExpressionDiagnostic,
   type ManatOSContext,
   type ManatOSObjectMetadata,
@@ -63,6 +64,21 @@ export async function renderPage(res: Response, view: string, model: Record<stri
     persistedCollectionPictureSource,
   };
 
+  // Error pages can render before page-context hydrates its EJS locals.
+  // Never mask the original error with a secondary metadataText ReferenceError.
+  const fallbackLanguage = /(?:^|;\s*)manatos_ui_language=el(?:;|$)/.test(
+    res.req?.headers.cookie ?? '',
+  )
+    ? 'EL'
+    : 'EN';
+  const language =
+    viewModel.language === 'EL' || viewModel.language === 'EN'
+      ? viewModel.language
+      : fallbackLanguage;
+  const metadataText =
+    typeof viewModel.metadataText === 'function'
+      ? viewModel.metadataText
+      : (value: string) => resolveMetadataText(value, language);
   const ctx = viewModel.ctx as ManatOSContext | undefined;
 
   /*
@@ -179,6 +195,8 @@ export async function renderPage(res: Response, view: string, model: Record<stri
 
   const renderedModel: Record<string, unknown> = {
     ...viewModel,
+    language,
+    metadataText,
     app: shellApp,
     // Error/navigation rendering may run after page-context hydration itself
     // failed. Keep the complete shell/partials contract defined in that case.
@@ -190,7 +208,12 @@ export async function renderPage(res: Response, view: string, model: Record<stri
     buildCalculatedContextDebuggingRows,
     formatMetadataValue,
     metadataFieldRepresentation,
-    metadataOptionItemForField,
+    // Option values remain canonical; only their displayed labels follow the
+    // currently selected UI language (including role and provider enums).
+    metadataOptionItemForField: (
+      field: Parameters<typeof metadataOptionItemForField>[0],
+      value: unknown,
+    ) => metadataOptionItemForField(field, value, viewModel.language === 'EL' ? 'EL' : 'EN'),
     metadataOptionToneClass,
     describeRelatedCollectionField,
     resolveProjectedRelatedCollectionValue,

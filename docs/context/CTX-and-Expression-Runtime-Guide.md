@@ -1,189 +1,113 @@
 # CTX and Expression Runtime Guide
 
-This is the consolidated developer-facing reference for ManatOS V2 CTX, surfaces, expressions and reactivity. It describes the runtime contract rather than a particular entity. When code and metadata evolve, preserve these ownership and lifecycle rules first.
+CTX and the expression evaluator provide a common semantic execution foundation. CTX owns an observable tree of application facts; expressions interpret declarative formulas against a caller-supplied scope; UIS and API hosts determine which facts, capabilities and side effects are permitted. No component can become a second canonical owner by rendering or inspecting a value.
 
-## 1. Mental model
+This guide describes the current shared TypeScript contracts. For detailed root vocabulary, see [Client Context Model](Client-Context-Model.md), [API Context Model](API-Context-Model.md) and [CTX Catalog](CTX-Catalog.md).
 
-CTX is the observable semantic runtime model. It is not a persistence database, DOM mirror, dependency graph, AST store, callback registry or lifecycle bookkeeping bag. A value belongs in CTX when application/runtime semantics need to observe it. Private implementation state stays with the runtime that owns it.
+## 1. Architectural responsibilities
 
-The root is `ctx`. Root facts (`system`, `company`, `entities`, `user`) coexist with one recursively projected active UI chain under `ctx.ui.level`. A page, popup and embedded child use the same semantic UI-level contract; `host` says where the level is mounted. `kind` says what it contains and `mode` says how it operates. `embedded` is not a lesser CTX object: it is a real child UI level whose parent deliberately remains active while the embedded editor is open.
+```text
+             Domain / UI metadata declarations
+                              │
+                              ▼
+                expression source + facts
+                              │
+                tokenizer → parser → AST
+                              │
+          ┌───────────────────┴───────────────────┐
+          ▼                                       ▼
+ Host-owned CTX context                    capability policy
+ root · current scope                      pure / clock / ctx
+ revisions · subscriptions                 entityResolver
+          └───────────────────┬───────────────────┘
+                              ▼
+                typed evaluation or error
+                              │
+                              ▼
+                owning service / UI surface
+                 decides whether to mutate
+```
 
-The authoritative UI runtime may retain a richer ownership registry internally. Public `ctx.ui` deliberately projects only the currently displayed **navigation** chain. Therefore `parentId`/`children` ownership bookkeeping is not copied into public CTX merely because the runtime needs it internally.
+The interpreter never independently commits a database operation, authorizes a request, publishes a UI level or acquires a browser capability. An AST is execution infrastructure, not authoritative CTX state. A metadata expression's source text is the portable authored contract.
 
-## 2. Root CTX vocabulary
+## 2. CTX roots and aliases
 
-| Path                               | Meaning                                 | Owner / creation            | Mutation and lifetime           |
-| ---------------------------------- | --------------------------------------- | --------------------------- | ------------------------------- |
-| `ctx.system`                       | safe host/runtime facts                 | root bootstrap              | runtime-owned; system lifetime  |
-| `ctx.system.scope`                 | active root application/runtime scope   | root bootstrap              | read-only to consumers          |
-| `ctx.system.runtime.*`             | safe runtime mode/developer facts       | bootstrap/config            | read-only                       |
-| `ctx.system.server.*`              | safe server/API facts                   | bootstrap                   | read-only                       |
-| `ctx.system.client.*`              | client kind/version/features            | UI bootstrap                | read-only                       |
-| `ctx.entities.<name>`              | canonical entity knowledge              | metadata/entity registry    | registry-owned                  |
-| `ctx.entities.<name>.key`          | canonical entity key                    | registry                    | read-only                       |
-| `ctx.entities.<name>.metadata`     | canonical entity metadata               | metadata loading            | registry-owned                  |
-| `ctx.entities.<name>.uiMetadata`   | canonical UI metadata                   | metadata loading            | registry-owned                  |
-| `ctx.company`                      | company/platform catalogue              | root bootstrap              | catalogue/runtime-owned         |
-| `ctx.company.sysBO`                | company-wide entity contributions       | company catalogue           | read-only                       |
-| `ctx.company.platforms[]`          | platform contexts                       | company catalogue           | read-only catalogue             |
-| `ctx.company.currentPlatform`      | active platform identity                | platform/navigation runtime | controlled mutation             |
-| `ctx.company.currentPlatformIndex` | active platform index                   | platform/navigation runtime | controlled mutation             |
-| `ctx.user`                         | authenticated-user projection or `null` | session/login projection    | session-owned                   |
-| `ctx.ui.level`                     | first displayed V2 surface or `null`    | surface runtime projection  | changes with displayed UI chain |
+Modern EJS1/NG1 clients have `system`, `company`, `runtime`, optional `flow` and dynamically created `ui` branches. The `runtime` branch owns effective `subsystems`, `entities`, `enums` and `user`. `$runtime` addresses the effective branch, while `$entities`, `$enums` and `$user` are aliases into that branch. They are not independent copies that require synchronization.
 
-### User branch
+A modern UI surface owns `ctx.ui.level[.level...]` with the four canonical namespaces `control`, `state`, `layout`, `data`. An Entry owns its current working record under `#data.current`; a List owns its rows and query state under `#data.list`, `#data.listModel` and `#state.list`.
 
-`ctx.user` is field-shaped so the same expression semantics can consume authenticated-user facts and entry fields. `ctx.user.fields.<key>.value` is the safe current value. Optional `.option`/`.options` decorate enum/reference values. `.expression`, when present, is authored source only. `ctx.user.permissions.userRole` and `ctx.user.permissions.platforms.<id>.capabilities.platformAccess` are safe projected authorization facts; protected operations remain server-authorized.
+The API constructs a separate CTX root and request-level branches. `ui.EJS0` has its own established CTX and browser runtime. Its field-node authority (`fields.<key>.value`) does **not** redefine modern UIS Entry ownership. Never use an EJS0-only path as the generic shared runtime contract.
 
-## 3. Every UI surface variable
+## 3. Tree mutation and observation
 
-Each `ctx.ui.level` and nested `.level` has the same host-neutral shape. Universal level-control semantics live under the real `control` folder; kind-specific/domain payload stays beside it. The CTX Viewer reflects this schema directly and does not manufacture a display-only grouping.
+`ContextTreeRuntime<T>` in `shared/src/context/context-tree-runtime.ts` provides canonical path addressing and structural operations:
 
-| Node                                    | Meaning                                  | Owner / lifecycle           |
-| --------------------------------------- | ---------------------------------------- | --------------------------- |
-| `control`                               | universal UI-level control plane         | surface/UI runtime          |
-| `entityKey` / `entityName` / `recordId` | optional entity/record identity          | entity-backed surfaces only |
-| `selection` / `row`                     | selector/list semantics                  | selector/list runtime       |
-| `resources`                             | component-owned host-neutral read models | component runtime           |
-| `entry` / `fields`                      | entry record/field semantics             | entry/field runtime         |
-| `list`                                  | list record projection                   | list runtime                |
-| `level`                                 | next displayed child surface             | navigation projection       |
+| Method | Role |
+|---|---|
+| `get(path)` | Read the value at a CTX path |
+| `set(path, value)` | Update a known path |
+| `setMembers(path, members)` | Coordinate updates to multiple members as one structural mutation |
+| `add(parentPath, key, value)` | Create a child at a named parent |
+| `delete(path)` | Remove an owned path |
+| `subscribe(listener, options)` | Observe all changes or a path-filtered set; recursive and optional asynchronous delivery |
+| `registerSemanticKind` / `unregisterSemanticKind` | Annotate the meaning of an owned path for tooling |
 
-Every level always contains these `control` children:
+Each mutation has a monotonically increasing revision, a kind, directly affected path and affected-path collection. Subscribers observe changes according to their registered path/recursive policy. Synchronous delivery is the default; a subscriber can opt into microtask delivery. Consumers must not treat UI event handler order as a substitute for semantic revision/lifecycle ownership.
 
-| `control.*` node      | Meaning                                                                      |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `id`                  | stable surface identity                                                      |
-| `host`                | `page`, `popup` or `embedded`                                                |
-| `kind`                | `static`, `list`, `entry`, `selector`, `hierarchy`, `custom`                 |
-| `mode`                | `browse`, `create`, `edit`, `view`, `select`, `manage`                       |
-| `name`                | semantic surface name                                                        |
-| `path`                | canonical CTX/surfaceRef address                                             |
-| `scope`               | lexical expression scope                                                     |
-| `invocation`          | immutable caller/open constraints and behavior                               |
-| `presentation`        | effective visual semantics                                                   |
-| `state`               | observable operational state                                                 |
-| `facts`               | surface-owned semantic facts; present as an empty object when there are none |
-| `supportsUserChanges` | whether this level participates in the generic user-change/recovery contract |
+`GlobalContextStatistics` tracks logical node and byte statistics. The Viewer is a consumer of the observable tree rather than the authority for its contents.
 
-### `control.invocation`
+## 4. Lexical expressions
 
-`control.invocation` is caller/open provenance and declarative input, not mutable working state. In the current browser host, `entityName` identifies the target when needed; `purpose` describes the request (`view`, `create`, selector-specific purposes, etc.) and remains distinct from `control.mode`; `caller.surfaceRef` is a stable reference to the caller, optionally accompanied by caller entity/record identity. `rules` carries declarative value/field/query/action constraints where a surface needs them. `behavior` carries opening/lifecycle behavior such as recoverability or selector behavior. Exact members are purpose-specific: consumers must not assume that every invocation contains every possible member.
+The parser recognizes literals, arrays, groups, registered functions, arithmetic, comparison, membership (`IN`), bitwise/logical operators, lazy conditional (`? :`), nullish fallback (`??`) and optional path traversal (`?.`). Operator and grammar details are in [Expressions](../expressions/Expressions.md).
 
-### `control.presentation`
+Only the first ordinary identifier is sought lexically (current scope outward through ancestry). Once resolved, its remaining path members traverse strictly downward. A missing mandatory member is not silently resolved from a different ancestor. The optional operator marks the preceding receiver and returns `null` when that receiver is absent or null; it does not disable all missing-name errors. Both sync and async resolvers implement this contract.
 
-`control.presentation.kind` mirrors the semantic surface kind for visual composition; title, icon, subtitle and layout are visual semantics. Presentation must not become a second source for operational mode or entity state.
+Dynamic path segments may resolve strings or nonnegative integer indices; invalid dynamic member types produce an expression error. Absolute `$runtime` and relative selectors such as `#level`, `#data` and `#state` are preferable when ownership matters.
 
-### `control.state`
+## 5. Compilation and evaluation
 
-A newly materialized browser level starts with `control.state.lifecycle = created` and `active = true`. Opening a non-embedded child deactivates its parent (`deactivating`, `active=false`); closing a child drives that child through `closing` → `closed` → `disposed` before removal, then reactivates a non-embedded parent. An embedded child leaves its parent active. `dirty`, `valid`, `loading`, `saving`, `deleting` and `blocked` are observable operational state. `control.state.navigation.activeTabId` and `activeInternalTabIds` track navigation. Popup-hosted surfaces may additionally expose `control.state.popup.x`, `.y` and `.openedPopupsCounter`.
+Compilation tokenizes and parses the source into an AST. The parser validates registered function existence and signatures. Evaluation is separately supplied with root, current scope, clock, capability set, diagnostics and (where required) the asynchronous persisted-entity resolver. Pure and clock/CTX expressions should not accidentally gain authorization or write capabilities.
 
-### `control.facts`
+`TraverseEntity` requires an authorized asynchronous resolver; client expressions that lack it must not be made equivalent by hidden network calls. Expression errors and diagnostics are reported at their owning boundary. A calculation failure should not silently produce an authorized operation or replace a trusted business value.
 
-The folder exists on every level, even when empty. It contains safe semantic facts owned by the surface. Bare lexical expressions may still expose appropriate control/fact conveniences, but explicit CTX paths must use the real `#level.control...` structure.
+## 6. Reactive UI execution
 
-### Entry projection and fields
+`shared.UI/src/runtime/reactivity.ts` extracts CTX dependencies from the compiled AST. Static `#data`, `#state`, `#layout` and `#control` paths are mapped to the owning level; lexically ambiguous or dynamic dependencies conservatively depend on the root rather than missing valid changes. Subscribers react to mutation notifications and reevaluate their own declared expression outputs.
 
-`entry.original` is the baseline record projection. `entry.current` is the current record projection. Once a field runtime exists, field state is authoritative and `entry.current` is a read-only projection/mirror of those field values. `control.facts` are API-safe non-persisted record facts and must not be absorbed into persisted current data.
+A field edit follows this ownership path:
 
-For every `fields.<key>`:
+```text
+Native input event
+       │
+       ▼
+Registered typed Field behavior
+       │ semantic field intent
+       ▼
+EntryRuntime.setField()
+       │
+       ▼
+#data.current  ──► #state.fields / #state.entry
+       │                     │
+       └──────────┬──────────┘
+                  ▼
+             CTX mutation
+                  │
+                  ▼
+        reactive dependent expressions
+```
 
-| Child                | Meaning / ownership                                                                                         |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `value`              | sole live scalar authority; canonical mutation publishes semantic change                                    |
-| `originalValue`      | baseline authority; initialized from source/default and advanced only by a legitimate baseline operation    |
-| `dirty`              | derived comparison of live value vs baseline; never an independent writer                                   |
-| `valid`              | validation-derived field validity                                                                           |
-| `validationIssues[]` | validation output owned by validation runtime                                                               |
-| `option`             | selected enum/reference decoration when applicable                                                          |
-| `options[]`          | effective option-domain authority after metadata/caller/server restrictions                                 |
-| `ux`                 | effective presentation state such as visible/read-only/required/enabled, including expression-derived state |
+The Entry runtime, not the DOM or a generic wrapper, performs the working-value mutation. Derived fields, validation, action enablement and tab visibility may be projected from canonical facts. All resulting UI state remains presentation; authorization is checked again by the API.
 
-`state.dirty` and `state.valid` are aggregate transaction state. Compound editors may contribute through private contributor contracts; they must not create parallel CTX authorities merely to participate in aggregation.
+## 7. Flow execution is separate
 
-### Lists, selectors and hierarchy/component resources
+`FlowRunner` owns a `ctx.flow` branch with control/status and step subtrees. Flow steps can request surfaces, but their operation lifecycle is not represented by recursively adding a UI level for every step. A Popup remains under `ctx.ui.level.level...`; a Flow's current step is a pointer to step state. This separation prevents a browser navigation event from accidentally mutating the orchestration authority.
 
-`list.originalEntries` is the list baseline and `list.entries` is the current projected record set. Calculated fields are projected before publication. `selection.current`, `selection.selected[]` and `selection.facts` belong to selector/list semantics. `row.current` and `row.facts` provide current-row evaluation state without mutating the record catalogue. `resources` contains component-owned host-neutral read models only when a component has legitimate semantic data to publish.
+## 8. Diagnostics, safety and extension
 
-## 4. UI level lifecycle and nesting
+The Viewer, CLI and debugging tools inspect CTX using the same path/identity semantics. Detaching a debugger window or showing a node does not create a second source of state. Sensitive server data and credentials should not be projected into client-visible CTX for convenience. Each expression host must explicitly authorize capabilities, limit untrusted operations and handle errors without revealing secrets.
 
-The root displayed level may be page-hosted; runtime-created children are currently `popup` or `embedded`. All use the same recursive `.level` topology. A popup child temporarily deactivates its parent; an embedded child intentionally leaves the parent active. Closing/disposal removes the child's public level and all transient semantic state owned by that level. Result routing/continuation remains outside the child's semantic CTX: the caller decides what parent mutation, if any, follows.
+When extending the evaluator, update the shared tokenizer/parser/resolver/evaluator only where the grammar truly changes; registered business functions normally belong in `shared/src/expressions/functions/registry.ts`. When extending UIS, use semantic owners and adapters rather than introducing host-local mutable mirrors.
 
-Initialization is a semantic boundary. Calculations, validation and declarative tab visibility ignore reactive field/CTX events while an entry is partially initialized. the browser's `manatos:form-initialized` boundary establishes the deterministic first evaluation/validation/visibility pass. Implementation bookkeeping used to decide whether initialization has settled remains private runtime state rather than CTX.
+## Related references
 
-## 5. Expression ownership and lifecycle
-
-Authored expression **source text** is the portable contract. ASTs are execution infrastructure.
-
-- API process: one process-local global AST cache, initially empty at API startup.
-- UI process: one separate process-local global AST cache, initially empty at UI startup.
-- Exact source string is the cache key. Parsing is lazy and happens once per exact source per process.
-- Browser: never tokenizes/parses authored expression grammar. It requests compilation through the UI compile boundary and keeps only a document-lifetime non-semantic source→AST execution mirror.
-- ASTs never belong under `ctx.*`, metadata, `SurfaceInvocation`, popup/page state or copied parent/child state.
-
-The AST is context-neutral. Every evaluation supplies an explicit owner/scope and capabilities. Concurrent/async evaluations therefore cannot change one another's lexical owner. Resolver-call promise de-duplication is per reactive evaluation pass, not global semantic state.
-
-## 6. Resolution and dependency identity
-
-Variable resolution is lexical: resolve the **first** identifier at the owning UI scope, then its parent levels, then root; after that first identifier resolves, remaining members traverse strictly downward. Explicit root references remain absolute. Arrays support numeric indexing and stable semantic `id`/`key` lookup; arbitrary keys use quoted bracket syntax.
-
-Compilation produces a context-neutral AST. The browser entry runtime discovers dependencies by walking that cached AST and resolving each variable node through `runtime.resolveVariableWithPath(...)` at the entry path captured when the runtime starts. The resulting **canonical CTX paths** are registered as dependencies. There is no separate owner-qualified `surface:<id>` dependency namespace.
-
-## 7. Reactive event contract
-
-Canonical CTX mutation emits `manatos:ctx-change`. Its `path` is the canonical changed path; `relatedPaths` may identify observable projections/consequences. The entry scheduler queues those paths, deduplicates them with `reactiveChangeQueueKey(...)`, and matches them to registered dependencies with the shared ancestor/descendant overlap rule.
-
-The same authored expression is not reparsed during invalidation. AST acquisition is cached, dependency paths are bound once for the owning entry runtime, and only matching reactive entries reevaluate. A calculated result is written through `runtime.updateField(...)`; if the value changes, that canonical write emits the next normal CTX event and downstream calculations cascade naturally.
-
-One queue drain owns one explicit evaluation pass. Async resolver-backed function promises may be deduplicated inside that pass only; independent reactive events never share the promise map. The scheduler has a 512-execution runaway guard for accidental cycles.
-
-Entry lifecycle/coordination DOM events are not a second CTX event bus. The deterministic initial calculation/policy pass occurs at the actual `manatos:form-initialized` boundary after initialization has settled; subsequent work is driven by canonical CTX changes.
-
-## 8. Mutation and authority rules
-
-1. Mutate canonical owners, never mirrors.
-2. Field UI controls adapt user input into canonical field mutation; they are not expression state.
-3. Calculations write their result through canonical field mutation, preserving events/cascades.
-4. `entry.current`/`entry.original` are projections, not alternate writers.
-5. Child surfaces return results; they do not directly own parent continuation mutations.
-6. Safe authorization facts in CTX may drive presentation but never replace API authorization.
-7. Remote/entity-resolver calculations execute only where the required capability legitimately exists; do not fabricate server UI context or force asynchronous resolver semantics into a synchronous projection.
-
-## 9. Debugger contract
-
-The debugger observes CTX; it does not define CTX. Path lookup delegates to the canonical browser context runtime. Keyed arrays, bracket syntax and future path semantics must therefore resolve exactly as application expressions/mutation routing do. Debugger aliases, icons, provenance links, history, expansion, watches, layout and subscriber telemetry are presentation/runtime diagnostics and never semantic CTX children.
-
-Subscriber registrations are private telemetry beside CTX. The debugger may show direct/dependent/global counts and registration details (`kind`, `label`, paths), but those registrations do not become application state. In the current document model, runtime scripts register against the document-local CTX runtime; navigation creates a new document/runtime and therefore a new telemetry registry.
-
-The debugger may display authored expression source and live calculated values. It must not expose an AST as though it were a semantic child of a calculated variable.
-
-## 10. V1 → V2 interpretation
-
-When reading older code/documentation, apply these convergence rules:
-
-- “page state” and “popup state” are not separate semantic models; both are V2 surfaces.
-- `kind` and `mode` are distinct dimensions; `entry` is a kind, `create/edit/view` are modes.
-- public `ctx.ui.level[.level...]` is the displayed navigation chain, not the private surface ownership registry.
-- scalar live/baseline state belongs to `fields.<k>.value/originalValue`; `entry.current/original` are projections.
-- `list.entries`/`list.originalEntries` are the canonical V2 list projections; older `dataList` terminology should be read as legacy shorthand, not a second CTX collection authority.
-- expression source remains metadata; compiled AST state is private process/browser execution infrastructure.
-- lifecycle gates and contributor registries are private runtime bookkeeping unless they have independent semantic meaning.
-- reactive consumers use canonical event projection/matching instead of feature-local path heuristics.
-
-## 11. Worked examples
-
-### Calculated entry field
-
-An entry owns `fields.firstName.value`, `fields.lastName.value` and calculated `fields.displayName.value`. The calculation AST depends on first/last name. During initialization those source values may change without running the calculation. At the form-initialized boundary, `displayName` evaluates once. Later a user mutation of `firstName` emits one value event; even if local and owner-qualified dependency identities both match, `displayName` evaluates once and writes through canonical field mutation.
-
-### Selector popup
-
-An entry opens a popup-hosted selector. The selector receives purpose, caller reference, query/field/action rules and behavior in its invocation. Its selection lives in the child level. On completion it returns a generic selection result. The parent's private continuation maps that result to the parent field through the canonical mutation route. No destination-field callback is stored in child CTX.
-
-### Cross-surface/root dependency
-
-A child expression may depend on an ancestor value or `ctx.user.permissions...`. At binding time the variable node resolves to the actual canonical CTX path owned by that ancestor/root. The shared overlap policy decides invalidation. The expression is evaluated in its own explicit owner scope, not by changing a global “current context”.
-
-## 12. Architectural review checklist
-
-Before adding a CTX node or expression feature, ask: Is this observable semantic state or merely lifecycle/implementation bookkeeping? Who owns it, when is it created/changed/disposed, and who may mutate it? Is there already a canonical authority or projection? Can a pure CTX-observable decision be metadata expression rather than hardcoded imperative policy? Does the change preserve one parser/cache model, one mutation route, one event/dependency contract and host-neutral page/popup/embedded semantics? If the answer requires a second authority, parser, matcher, mirror writer or copied invocation state, redesign the boundary first.
+[Context Architecture](Context-Architecture.md), [State Mutation and Events](State-Mutation-and-Events.md), [Expressions](../expressions/Expressions.md), [UIS Architecture](../clients/UIS-Architecture.md), [Flow Execution](../clients/Flow-Execution.md), [Debugger](../diagnostics/Developer-Tools.md).

@@ -1,0 +1,42 @@
+@if (entries().length > 0) {
+<section
+  class="ctx-diagnostic-panel"
+  role="region"
+  [attr.aria-label]="multilingual().CtxDiagnostics"
+>
+  <header class="ctx-diagnostic-panel-header">
+    <div class="ctx-diagnostic-panel-heading">
+      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+      <strong>{{ multilingual().CtxDiagnostics }}</strong>
+      <span class="ctx-diagnostic-total">{{ totalCount() }}</span>
+    </div>
+    <button
+      type="button"
+      class="ctx-diagnostic-close"
+      [title]="multilingual().CloseDiagnostics"
+      [attr.aria-label]="multilingual().CloseDiagnostics"
+      (click)="clear()"
+    >
+      ×
+    </button>
+  </header>
+
+  <div class="ctx-diagnostic-panel-body">
+    @for (entry of entries(); track entry.key) {
+    <article class="ctx-diagnostic-item">
+      <div class="ctx-diagnostic-item-title">
+        <strong>{{ title(entry) }}</strong>
+        @if (entry.count > 1) {
+        <span class="ctx-diagnostic-count">×{{ entry.count }}</span>
+        }
+      </div>
+      <div class="ctx-diagnostic-message">{{ entry.diagnostic.message }}</div>
+      <details>
+        <summary>{{ multilingual().Details }}</summary>
+        <pre>{{ details(entry) }}</pre>
+      </details>
+    </article>
+    }
+  </div>
+</section>
+}

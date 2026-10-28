@@ -157,7 +157,9 @@ export function uiContextCapabilitiesOperation() {
         },
       ],
       responses: {
-        '200': { description: 'Combined platform and entity capability projection.' },
+        '200': {
+          description: 'Combined platform, current-user and entity capability projection.',
+        },
         '401': failureResponse('Authentication required.'),
         '404': failureResponse('Unknown platform.'),
       },
@@ -173,6 +175,16 @@ export function entityCollectionCapabilitiesOperation() {
         'Returns one API-resolved collection capability map for the effective Company + Platform entity catalogue. Shell/navigation clients consume this projection instead of reproducing role/entity visibility policy.',
       tags: ['System Business Objects'],
       security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: 'platformId',
+          in: 'query',
+          required: false,
+          schema: { type: 'string' },
+          description:
+            'Optional selected platform. Omitted for legacy/default-platform compatibility.',
+        },
+      ],
       responses: {
         '200': {
           description: 'Current entity collection capability projection.',
@@ -185,6 +197,7 @@ export function entityCollectionCapabilitiesOperation() {
                   data: {
                     type: 'object',
                     properties: {
+                      platformId: { type: 'string' },
                       entities: {
                         type: 'object',
                         additionalProperties: {
@@ -292,6 +305,20 @@ export const genericOperations = (name: string, tag = 'System Business Objects')
         schema: { type: 'boolean' },
         description: 'Include UI metadata and canonical SysBO metadata.',
       },
+      {
+        name: 'includeReferences',
+        in: 'query',
+        schema: { type: 'boolean', default: false },
+        description:
+          'Return direct, authorized Entry-presentation references grouped as entity arrays.',
+      },
+      {
+        name: 'variant',
+        in: 'query',
+        schema: { type: 'string', enum: ['none', 'thumbnail', 'original'] },
+        description:
+          'Optionally include image-delivery descriptors without changing entity field values.',
+      },
     ],
     security: [{ bearerAuth: [] }],
     responses: {
@@ -325,6 +352,15 @@ export function genericItemOperations(name: string, tag = 'System Business Objec
     get: {
       ...common,
       summary: `Get ${name} by id`,
+      parameters: [
+        ...parameters,
+        { name: 'includeReferences', in: 'query', schema: { type: 'boolean', default: false } },
+        {
+          name: 'variant',
+          in: 'query',
+          schema: { type: 'string', enum: ['none', 'thumbnail', 'original'] },
+        },
+      ],
       responses: standardItemResponses(name, 'returned'),
     },
     put: {
@@ -377,7 +413,16 @@ export function pictureOperations(name: string, tag = 'System Business Objects')
       summary: `Read ${name} picture bytes`,
       tags: [tag],
       security: [{ bearerAuth: [] }],
-      parameters,
+      parameters: [
+        ...parameters,
+        {
+          name: 'variant',
+          in: 'query',
+          schema: { type: 'string', enum: ['original', 'thumbnail'] },
+          description:
+            'A thumbnail is generated server-side when the configured image processor is available; otherwise the original is returned with an explicit variant response header.',
+        },
+      ],
       responses: {
         '200': {
           description: 'Picture bytes.',

@@ -31,11 +31,11 @@
           aria-hidden="true"
         ></i>
       <% } %>
-      <%= title || 'Home' %>
+      <%= metadataText(title || '@CO.Navigation.Home') %>
     </h1>
 
     <% if (typeof titleSubtitle === 'string' && titleSubtitle) { %>
-      <p class="workspace-title-subtitle"><%= titleSubtitle %></p>
+      <p class="workspace-title-subtitle"><%= metadataText(titleSubtitle) %></p>
     <% } %>
   </div>
   <span class="surface-owner-context-badge badge text-bg-light border d-none" data-owner-context-badge></span>

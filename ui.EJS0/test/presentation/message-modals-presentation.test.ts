@@ -4,13 +4,16 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { resolveMetadataText } from '@manatos/shared';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const metadataText = (value: string) => resolveMetadataText(value, 'EN');
 const view = resolve(testDirectory, '../../views/popups/messages/message-modals.ejs');
 
 describe('message modal presentation', () => {
   it('supports a success title, message and explicit follow-up action', async () => {
     const html = await ejs.renderFile(view, {
+      metadataText,
       informationTitle: 'Password updated',
       informationMessage: 'Your password was updated successfully.',
       informationActionLabel: 'Sign in',
@@ -26,6 +29,7 @@ describe('message modal presentation', () => {
 
   it('supports a warning-specific title independently from success messages', async () => {
     const html = await ejs.renderFile(view, {
+      metadataText,
       warningTitle: 'Password changed with a warning',
       warningMessage: 'The confirmation email could not be sent.',
     });
@@ -37,6 +41,7 @@ describe('message modal presentation', () => {
 
   it('projects the transport-safe application error into popup invocation for CTX inspection', async () => {
     const html = await ejs.renderFile(view, {
+      metadataText,
       applicationError: {
         name: 'ConflictError',
         code: 'RELATIONSHIP_CONFLICT',

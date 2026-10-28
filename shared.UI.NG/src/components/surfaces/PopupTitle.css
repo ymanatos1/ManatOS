@@ -1,0 +1,20 @@
+:host {
+  display: block;
+  min-width: 0;
+
+  /* Common functional-popup header appearance. */
+  padding: 1.1rem 1.35rem;
+  border-bottom: 1px solid var(--manatos-modal-title-border);
+  background: var(--manatos-modal-title-bg);
+  color: inherit;
+
+  /* Common popup title typography. */
+  --manatos-title-font-size: calc(1.15rem * var(--manatos-font-scale));
+}
+
+/* Separate the common toolbar from the rightmost Close button. */
+.popup-title-close {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.75rem;
+}

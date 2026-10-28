@@ -1,0 +1,13 @@
+<button
+  type="button"
+  class="detach-toggle"
+  [title]="detached() ? 'Attach ' + subject() : 'Detach ' + subject()"
+  [attr.aria-label]="detached() ? 'Attach ' + subject() : 'Detach ' + subject()"
+  [attr.aria-pressed]="detached()"
+  (click)="toggleRequested.emit()"
+>
+  <i
+    [class]="detached() ? 'bi bi-box-arrow-in-down-left' : 'bi bi-box-arrow-up-right'"
+    aria-hidden="true"
+  ></i>
+</button>

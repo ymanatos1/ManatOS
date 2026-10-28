@@ -1,0 +1,11 @@
+<!-- RichTextField: Safe text-only preview; untrusted content must never become native innerHTML. -->
+<manatos-field-control-shell [field]="field()">
+  <span
+    data-entry-control
+    class="manatos-form-rich"
+    [textContent]="safePreviewText()"
+    role="textbox"
+    aria-readonly="true"
+    [attr.aria-label]="field().label"
+  ></span>
+</manatos-field-control-shell>

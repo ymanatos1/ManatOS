@@ -11,7 +11,7 @@
   <p class="company-product-tagline"><strong><%= app.company.branding.tagline %></strong></p>
 
   <% if (app.company.description) { %>
-    <p><%= app.company.description %></p>
+    <p><%= metadataText(app.company.description) %></p>
   <% } %>
 
   <section class="company-foundation mt-4" aria-labelledby="companyFoundationHeading">
@@ -41,7 +41,7 @@
                 <span><%= platform.name %></span>
               </span>
               <% if (platform.description) { %>
-                <span class="company-platform-card-description"><%= platform.description %></span>
+                <span class="company-platform-card-description"><%= metadataText(platform.description) %></span>
               <% } %>
             </span>
             <i class="bi bi-arrow-right company-platform-card-arrow" aria-hidden="true"></i>

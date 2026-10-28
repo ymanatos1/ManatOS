@@ -426,7 +426,7 @@ describe('CTX debugger presentation state', () => {
     expect(horizontalNavSource).toContain('app.ui?.debugTools');
     expect(shellViewSource).toContain('app.ui?.debugTools');
     expect(fieldToolsSource).toContain('showDeveloperTools');
-    expect(fieldToolsSource).toContain('Inspect in CTX Viewer');
+    expect(fieldToolsSource).toContain("metadataText('@CM.FieldToolInspect')");
     expect(fieldRuntimeSource).toContain('manatos:ctx-viewer-show');
     expect(fieldRuntimeSource.indexOf('manatos:ctx-viewer-show')).toBeLessThan(
       fieldRuntimeSource.indexOf('manatos:ctx-viewer-select'),

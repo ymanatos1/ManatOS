@@ -1,0 +1,14 @@
+@if (wizard().adapter()?.targetWorkflow?.connectionTest) {
+<div class="storage-operation-panel mt-3" data-popup-layout-id="storage-connection-operations">
+  <h3 class="h6">{{ wizard().t('Connection verification', 'Έλεγχος σύνδεσης') }}</h3>
+  <button
+    type="button"
+    class="btn btn-outline-primary btn-sm"
+    [disabled]="wizard().readOnly() || wizard().busy() || !wizard().canOperate('test-connection')"
+    (click)="wizard().operation('test-connection')"
+  >
+    <i class="bi bi-plug me-1"></i>{{ wizard().t('Test connection', 'Έλεγχος σύνδεσης') }}
+  </button>
+  <span class="ms-2 small">{{ wizard().translate(wizard().connectionState()) }}</span>
+</div>
+}

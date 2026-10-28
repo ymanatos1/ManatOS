@@ -42,6 +42,10 @@ export const openApiTags = [
       'SysApplication CRUD, metadata, capabilities, ordered Pictures resources and aggregate commit.',
   },
   {
+    name: 'SysBO / Panoptes Surveillance',
+    description: 'Panoptes Guards, Projects and Posts generic CRUD and metadata resources.',
+  },
+  {
     name: 'SysBO / Licenses',
     description: 'SysLicense CRUD, metadata, capabilities and aggregate commit.',
   },

@@ -1,0 +1,103 @@
+.ctx-diagnostic-panel {
+  position: fixed;
+  z-index: 2000;
+  top: 5.25rem;
+  right: 1rem;
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: min(70vh, 48rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--manatos-border, #dce3ed);
+  border-radius: 0.7rem;
+  background: var(--manatos-surface, #fff);
+  color: var(--manatos-text, #202a38);
+  box-shadow: var(--manatos-shadow, 0 8px 24px rgb(17 39 73 / 7%));
+}
+
+.ctx-diagnostic-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--manatos-border, #dce3ed);
+  background: var(--manatos-title-bg, #f3f7fc);
+}
+
+.ctx-diagnostic-panel-heading,
+.ctx-diagnostic-item-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ctx-diagnostic-total,
+.ctx-diagnostic-count {
+  display: inline-flex;
+  min-width: 1.45rem;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.42rem;
+  background: #6c757d;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.ctx-diagnostic-close {
+  border: 0;
+  background: transparent;
+  color: var(--manatos-muted, #657286);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ctx-diagnostic-close:hover {
+  color: #0d6efd;
+}
+
+.ctx-diagnostic-panel-body {
+  overflow: auto;
+  padding: 0.65rem;
+}
+
+.ctx-diagnostic-item {
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--manatos-border, #dce3ed);
+  border-radius: 0.5rem;
+  background: var(--manatos-surface, #fff);
+}
+
+.ctx-diagnostic-item + .ctx-diagnostic-item {
+  margin-top: 0.55rem;
+}
+
+.ctx-diagnostic-item-title {
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.ctx-diagnostic-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ctx-diagnostic-item details {
+  margin-top: 0.5rem;
+}
+
+.ctx-diagnostic-item summary {
+  cursor: pointer;
+  color: var(--manatos-muted, #657286);
+}
+
+.ctx-diagnostic-item pre {
+  max-height: 18rem;
+  margin: 0.5rem 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+}

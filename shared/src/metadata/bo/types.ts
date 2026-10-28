@@ -1,3 +1,4 @@
+import type { MultilingualLiteral } from '../../multilingual/metadata/index.js';
 /**
  * Supported canonical business-object field types.
  *
@@ -40,7 +41,7 @@ export interface SysBOEnumItemMetadata {
   value: string;
 
   /** Optional human-readable caption; value is the fallback. */
-  label?: string;
+  label?: string | MultilingualLiteral;
 
   /** Optional semantic icon key consumed by capable UI renderers. */
   icon?: string;
@@ -288,6 +289,8 @@ export type ManatOSEntryValueSourceMetadata =
  * therefore remains identical to ordinary metadata calculations.
  */
 export interface ManatOSEntryMetadata {
+  /** Explicit picture used by canonical Entry presentation; never infer from field names. */
+  image?: Readonly<{ field: string }>;
   name?: ManatOSEntryValueSourceMetadata;
   type?: ManatOSEntryValueSourceMetadata;
   description?: ManatOSEntryValueSourceMetadata;
@@ -304,6 +307,8 @@ export interface ManatOSObjectMetadata<T> {
   name: string;
   /** Human-facing singular label; presentation only, never entity identity. */
   label: string;
+  /** Optional language-specific grammatical forms for contextual captions. */
+  labelForms?: Readonly<{ genitive?: string; accusative?: string }>;
   /** Human-facing plural label; presentation only, never entity identity. */
   pluralLabel: string;
 
@@ -331,12 +336,12 @@ export interface ManatOSObjectMetadata<T> {
  * independently managed resource when suitable UI metadata exists. `internal`
  * marks a supporting/canonical entity that participates in storage, API and
  * relationships but should not acquire standalone administration UI merely
- * because it is a SysBO. It can still be edited through another object's
+ * because it is first-class. It can still be edited through another object's
  * metadata-driven component.
  */
 export type SysBOExposure = 'standard' | 'internal';
 
-/** Canonical metadata for a first-class SysBO exposed through generic SysBO CRUD. */
+/** Canonical metadata for a systemic first-class entity exposed through generic SysBO CRUD. */
 export interface SysBOMetadata<T> extends ManatOSObjectMetadata<T> {
   /** Omitted means `standard`, preserving all existing entity behavior. */
   exposure?: SysBOExposure;

@@ -23,10 +23,10 @@
     <span>© <%= new Date().getFullYear() %> ManatOS Software Solutions</span>
   </div>
   <div class="footer-links">
-    <a href="/company">Company</a>
-    <a href="#">Privacy</a>
-    <a href="#">Terms</a>
-    <a href="#">Contact</a>
+    <a href="/company"><%= metadataText('@CM.Company') %></a>
+    <a href="#"><%= metadataText('@CM.Privacy') %></a>
+    <a href="#"><%= metadataText('@CM.Terms') %></a>
+    <a href="#"><%= metadataText('@CM.Contact') %></a>
     <span class="footer-version">v<%= app.version %></span>
   </div>
 </footer>

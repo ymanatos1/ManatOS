@@ -1,0 +1,32 @@
+{
+  "name": "@manatos/ui.EJS1",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:browser && tsx watch src/server.ts",
+    "build": "npm run build:browser && tsc -p tsconfig.json",
+    "build:browser": "esbuild src/browser.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=public/dist/manatos-runtime.js",
+    "start": "node dist/server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@manatos/shared-ui": "0.1.0",
+    "@manatos/shared-ui-ejs": "0.1.0",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^6.0.3",
+    "esbuild": "^0.25.0",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.5",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

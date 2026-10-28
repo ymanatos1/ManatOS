@@ -18,7 +18,7 @@
 %>
 <% const effectiveTabDomPrefix = typeof tabDomPrefix === 'string' && tabDomPrefix ? tabDomPrefix : 'metadata'; %>
 
-<ul class="nav nav-tabs entity-tabs align-items-center" role="tablist" aria-label="Metadata-driven record tabs">
+<ul class="nav nav-tabs entity-tabs align-items-center" role="tablist" aria-label="<%= metadataText('@CM.RecordTabs') %>">
       <% for (let tabIndex = 0; tabIndex < tabs.length; tabIndex += 1) { %>
         <% const tab = tabs[tabIndex]; %>
         <li class="nav-item" role="presentation">
@@ -44,7 +44,7 @@
             <% if (tab.icon) { %>
               <i class="bi bi-<%= tab.icon %> me-1" aria-hidden="true"></i>
             <% } %>
-            <%= tab.label %>
+            <%= metadataText(tab.label) %>
           </button>
         </li>
       <% } %>

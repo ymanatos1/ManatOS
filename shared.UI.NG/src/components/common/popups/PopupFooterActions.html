@@ -1,0 +1,18 @@
+<!-- Popup-wide actions are mounted once, outside every tab's content. -->
+<manatos-popup-actions data-popup-layout-id="popup-root-actions">
+  @for (action of actions(); track action.id) { @if (popup().actionVisible(action.id)) {
+  <button
+    [attr.data-popup-layout-id]="'popup-root-action-' + action.id"
+    [attr.type]="action.type"
+    [class.sign-in-cancel]="!action.primary"
+    [class.sign-in-submit]="action.primary === true"
+    [class.popup-action-danger]="action.tone === 'danger'"
+    [disabled]="!popup().actionEnabled(action.id)"
+    (click)="actionRequested.emit(action.id)"
+  >
+    @if (action.icon) {
+    <i [class]="'bi ' + action.icon" aria-hidden="true"></i>
+    } {{ actionLabel(action) }}
+  </button>
+  } }
+</manatos-popup-actions>

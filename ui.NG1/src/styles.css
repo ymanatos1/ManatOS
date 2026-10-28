@@ -1,0 +1,30 @@
+:root {
+  font-family: var(
+    --bs-font-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif
+  );
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+body {
+  color: var(--manatos-text);
+  background: var(--manatos-background);
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}

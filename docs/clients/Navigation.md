@@ -20,3 +20,9 @@ Shell
 This ownership matters because state and field writes belong to the surface that created them, not simply whichever surface is currently deepest.
 
 If an expected administrative item is absent, check the current identity/role, platform access and required entity capability before assuming the feature is missing. Admin should receive full administrative navigation. Superuser may see read-only inspection surfaces and Apps Playground because those are separately projected capabilities. User/Guest receive narrower navigation.
+
+## Metadata-defined navigation and selected-platform context
+
+Navigation is a presentation of authorized destinations, not the source of authorization. The selected platform determines which platform-owned navigation contributions are relevant; Company-domain destinations remain shared when permitted. A route can request a Page/List/Entry host but should not fabricate independent semantic surface roots or treat browser history as the authority for active CTX ownership.
+
+The shared navigation code under `shared.UI/src/navigation/` works with platform configuration under `shared.UI/src/platform/`. The visual implementations adapt layout and input to each client. Consistent identity and lifecycle are more important than identical DOM or menu structure.

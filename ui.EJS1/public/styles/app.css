@@ -1,0 +1,440 @@
+@import url('./popup.css');
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(
+    --bs-font-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif
+  );
+  color: var(--manatos-text);
+  background: var(--manatos-background);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.surface {
+  background: var(--manatos-surface);
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.65rem;
+  box-shadow: var(--manatos-shadow);
+  padding: 1.4rem;
+  min-height: 260px;
+}
+
+.surface h2 {
+  margin-top: 0;
+  font-size: calc(1.15rem * var(--manatos-font-scale));
+}
+
+.surface p {
+  color: var(--manatos-muted);
+}
+
+.preferences-trigger {
+  width: 100%;
+  padding: 0.65rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.status {
+  font-size: calc(0.85rem * var(--manatos-font-scale));
+}
+
+/* EJS1 trusted-session projection (never stores tokens or credentials). */
+[data-ejs1-auth-actions] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  position: relative;
+}
+.ejs1-session-button {
+  border: 1px solid #c8d9ef;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.65rem;
+  color: #173b65;
+  background: #f6faff;
+  cursor: pointer;
+}
+.ejs1-session-anonymous {
+  font-size: 0.82rem;
+  color: #dce8fb;
+}
+.ejs1-oauth-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  background: #fff2d5;
+  color: #6e4e12;
+  border-radius: 0.3rem;
+  font-size: 0.84rem;
+}
+
+.ejs1-oauth-notice button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1.1rem;
+  flex: none;
+}
+
+/* Session-only account actions, matching the current NG1 header contract. */
+.ejs1-account-menu-host {
+  position: relative;
+}
+.ejs1-account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 2600;
+  min-width: 245px;
+  padding: 0.55rem;
+  border: 1px solid #c1d1e5;
+  border-radius: 0.55rem;
+  background: var(--manatos-surface, #fff);
+  color: var(--manatos-text, #15304d);
+  box-shadow: 0 12px 24px rgb(0 0 0 / 0.18);
+}
+.ejs1-account-menu[hidden] {
+  display: none;
+}
+.ejs1-account-person {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.55rem;
+}
+.ejs1-account-person-fallback {
+  font-size: 2rem;
+  color: var(--manatos-muted);
+}
+.ejs1-account-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+}
+.ejs1-account-identity .header-account-role {
+  border: 1px solid var(--manatos-border);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.69rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ejs1-account-divider {
+  border-top: 1px solid var(--manatos-border);
+  margin: 0.35rem 0;
+}
+.ejs1-account-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ejs1-account-menu-item:hover:not(:disabled) {
+  background: #e8f0fa;
+}
+.ejs1-account-menu-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.manatos-busy-panel {
+  box-sizing: border-box;
+  width: min(92vw, 470px);
+  max-width: 470px;
+  margin: auto;
+  padding: 1.2rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 0.85rem;
+  background: #fff;
+  color: #10294d;
+  box-shadow: 0 22px 55px rgba(7, 26, 61, 0.28);
+  font-family: system-ui, sans-serif;
+}
+
+.manatos-busy-panel::backdrop {
+  background: rgba(7, 26, 61, 0.52);
+  backdrop-filter: blur(1.5px);
+}
+
+.manatos-busy-layout {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.manatos-busy-animation {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+}
+
+.manatos-busy-provider {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #eef5ff, #dceaff);
+  color: #0d6efd;
+  font-size: 1.65rem;
+  box-shadow: 0 5px 14px rgba(7, 26, 61, 0.14);
+}
+
+.manatos-busy-pulse {
+  position: absolute;
+  inset: 0;
+  border: 3px solid rgba(13, 110, 253, 0.22);
+  border-top-color: #0d6efd;
+  border-radius: 50%;
+  animation: manatos-busy-spin 0.9s linear infinite;
+}
+
+.manatos-busy-copy {
+  min-width: 0;
+}
+
+.manatos-busy-copy h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.manatos-busy-copy p {
+  margin: 0;
+  color: #68798f;
+  line-height: 1.4;
+}
+
+.manatos-busy-actions {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.manatos-busy-actions button {
+  padding: 0.35rem 0.75rem;
+  background: #fff;
+  border: 1px solid #8794a4;
+  border-radius: 0.35rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+@keyframes manatos-busy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manatos-busy-pulse {
+    animation-duration: 1.8s;
+  }
+}
+
+/* Shared header status semantics and feedback match NG1. */
+.header-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.header-status-line {
+  font-size: calc(0.85rem * var(--manatos-font-scale));
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.header-version-line {
+  font-size: calc(0.75rem * var(--manatos-font-scale));
+  font-weight: 400;
+  opacity: 0.78;
+}
+
+.header-api-status.is-retrying,
+.header-api-status.is-checking {
+  color: #ffe08a;
+  opacity: 1;
+  font-weight: 600;
+}
+
+.header-api-status.is-offline {
+  color: #ffe0e3;
+  opacity: 1;
+}
+
+.header-api-indicator {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #dc3545;
+  margin-left: 0.25rem;
+}
+
+.header-api-indicator.is-online {
+  background: #22c55e;
+}
+
+.header-api-indicator.is-spinning {
+  box-sizing: border-box;
+  width: 0.72rem;
+  height: 0.72rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  background: transparent;
+  animation: header-api-spin 0.75s linear infinite;
+}
+
+@keyframes header-api-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-api-indicator.is-spinning {
+    animation-duration: 2s;
+  }
+}
+
+/* NG1-equivalent application-level authentication and outage presentation. */
+.auth-status-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #dfc486;
+  background: #fff5dd;
+  color: #634610;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 100;
+}
+.auth-status-notice.is-danger {
+  border-color: #ecacac;
+  background: #fff0f0;
+  color: #872424;
+}
+.auth-status-notice span:first-child {
+  flex: 1;
+}
+.auth-status-notice button {
+  background: #fff;
+  color: inherit;
+  border: 1px solid currentColor;
+  border-radius: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+.auth-status-notice button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+/* Match NG1's outage surface, keeping the EJS page and CTX mounted but inert. */
+.system-unavailable {
+  margin: 1.5rem 2.5rem;
+  border: 1px solid var(--bs-danger-border-subtle, #f1aeb5);
+  border-radius: 0.375rem;
+  background: var(--manatos-surface, #fff);
+  box-shadow: 0 0.125rem 0.25rem rgb(0 0 0 / 8%);
+  color: var(--manatos-text, #142942);
+  font-family: var(--bs-font-sans-serif, system-ui, 'Segoe UI', Arial, sans-serif);
+  position: relative;
+  z-index: 50;
+}
+.system-unavailable-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 2.5rem 3rem;
+}
+.system-unavailable-icon {
+  flex: 0 0 auto;
+  font-size: calc(2rem * var(--manatos-font-scale));
+  color: var(--bs-danger, #dc3545);
+}
+.system-unavailable h1 {
+  margin: 0 0 0.5rem;
+  font-size: calc(1.4rem * var(--manatos-font-scale));
+  font-weight: 500;
+}
+.system-unavailable p {
+  margin: 0 0 0.5rem;
+  font-size: calc(0.96rem * var(--manatos-font-scale));
+  max-width: 75ch;
+  line-height: 1.5;
+}
+.system-unavailable-detail,
+.system-unavailable-retry span {
+  color: var(--manatos-muted);
+}
+.system-unavailable-retry {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.system-unavailable-retry button {
+  padding: 0.55rem 0.8rem;
+  color: #fff;
+  background: #0d6efd;
+  border: 1px solid #0d6efd;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+.system-unavailable-retry button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+@media (max-width: 650px) {
+  .system-unavailable {
+    margin: 1rem;
+  }
+  .system-unavailable-body {
+    padding: 1.25rem;
+  }
+}
+/* Once the API outage is latched, keep stale application data inaccessible. */
+body:has(#ejs1-system-outage) [data-manatos-page] {
+  display: none;
+}

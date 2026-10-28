@@ -53,6 +53,11 @@ describe('canonical semantic report presentation boundary', () => {
       'views/components/sysbo/entry/fields/field-representation.ejs',
     );
     expect(semantic).toContain("kind: 'system-identifier'");
+    expect(semantic).toContain('resolveMetadataText');
+    expect(semantic).toContain('translated(metadata?.label');
+    expect(semantic).toContain('const scalarIdentity =');
+    expect(semantic).toContain('const selectedIdentity = scalarIdentity(value)');
+    expect(semantic).toContain("return { label: '…' }");
     expect(semantic).not.toContain("startsWith('draft:')");
     expect(semantic).toContain('pictureValuePresentation?.scalarDescriptor');
     expect(semantic).toContain('pictureValuePresentation?.collectionDescriptor');

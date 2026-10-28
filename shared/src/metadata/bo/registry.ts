@@ -10,6 +10,9 @@ import { sysBOAddressesMetadata } from './manatos/contacts/bo-addresses.js';
 import { sysBOPrincipalAddressesMetadata } from './manatos/principals/bo-principal-addresses.js';
 import { sysBOPrincipalsMetadata } from './manatos/principals/bo-principals.js';
 import { sysBOApplicationsMetadata } from './platforms/protocrm/applications/bo-applications.js';
+import { sysBOGuardsMetadata } from './platforms/panoptes/surveillance/bo-guards.js';
+import { sysBOProjectsMetadata } from './platforms/panoptes/surveillance/bo-projects.js';
+import { sysBOPostsMetadata } from './platforms/panoptes/surveillance/bo-posts.js';
 import { sysBOLicensesMetadata } from './manatos/licensing/bo-licenses.js';
 import { sysBOConfigurationsMetadata } from './manatos/configuration/bo-configurations.js';
 import { resolveRelationshipDefinitions, validateRelationshipMetadata } from './relationships.js';
@@ -31,6 +34,9 @@ export const allSysBOMetadata = {
   [sysBOAddressesMetadata.key]: sysBOAddressesMetadata,
   [sysBOPrincipalAddressesMetadata.key]: sysBOPrincipalAddressesMetadata,
   [sysBOApplicationsMetadata.key]: sysBOApplicationsMetadata,
+  [sysBOGuardsMetadata.key]: sysBOGuardsMetadata,
+  [sysBOProjectsMetadata.key]: sysBOProjectsMetadata,
+  [sysBOPostsMetadata.key]: sysBOPostsMetadata,
   [sysBOLicensesMetadata.key]: sysBOLicensesMetadata,
   [sysBOExtAuthProvidersMetadata.key]: sysBOExtAuthProvidersMetadata,
   [sysBOConfigurationsMetadata.key]: sysBOConfigurationsMetadata,
@@ -43,6 +49,12 @@ export const allManatOSObjectMetadata = {
 } as const;
 
 for (const metadata of Object.values(allManatOSObjectMetadata)) {
+  const entryImage = metadata.entry?.image?.field;
+  if (entryImage) {
+    const imageField = metadata.fieldDefinition[entryImage];
+    if (imageField?.type !== 'picture' || imageField.sensitive)
+      throw new Error(`Entry image ${metadata.key}.${entryImage} is not a readable picture field`);
+  }
   validateRelationshipMetadata(metadata);
   for (const [relationshipKey, relationship] of Object.entries(metadata.relationships ?? {})) {
     const target =

@@ -1,0 +1,14 @@
+/* Modal chrome only; ListPageHost retains List/Row/Cell presentation. */
+.manatos-list-popup-dialog {
+  width: min(1080px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+.manatos-list-popup-dialog .manatos-list-page-host {
+  padding: 10px 16px;
+}
+
+.manatos-list-popup-dialog {
+  min-width: min(480px, calc(100vw - 24px));
+  min-height: min(240px, calc(100dvh - 24px));
+}

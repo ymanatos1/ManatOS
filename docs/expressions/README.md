@@ -1,6 +1,6 @@
 # Expressions and Reactivity
 
-ManatOS expressions are a constrained declarative language used by canonical/UI metadata for side-effect-free calculations and decisions. Expression source is portable. The API and UI Node processes each own an independent lazy process-local compiled-expression cache; the browser never parses the language and keeps only a document-lifetime source→AST execution mirror obtained through the UI compile boundary.
+ManatOS expressions are a constrained declarative language used by canonical/UI metadata for side-effect-free calculations and decisions. Expression source is portable; each process owns its own parser/AST cache and evaluator capabilities.
 
 ## Reading map
 
@@ -12,4 +12,14 @@ ManatOS expressions are a constrained declarative language used by canonical/UI 
 - [`Events-and-Reactivity.md`](Events-and-Reactivity.md) — dependency invalidation, events and recalculation.
 - [`Event-Catalog.md`](Event-Catalog.md) — runtime event catalogue.
 
-For CTX ownership/path semantics see [`context/`](../context/).
+For CTX ownership/path semantics see [`context/`](../context/README.md).
+
+## Evaluator and reactive semantics
+
+- [Expression Architecture](Expression-Architecture.md) — parser/AST/cache/evaluator and security capabilities.
+- [Expressions](Expressions.md) — language and type semantics.
+- [Expression Catalog](Expression-Catalog.md) — checked built-in functions.
+- [Events and Reactivity](Events-and-Reactivity.md) — dependency observation and update causality.
+- [Adding an Expression](Adding-an-Expression.md) — extension and integration.
+
+An expression computes a result under host-supplied capabilities; it does not implicitly authorize or commit an operation.

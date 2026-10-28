@@ -1,0 +1,64 @@
+<div class="manatos-change-report-frame" [class.is-nested]="nested()">
+  @if (!nested()) {
+  <div class="manatos-change-report-controls">
+    <span class="manatos-change-report-summary">{{ summary() }}</span>
+    <button type="button" (click)="setExpanded(true)">{{ tr('ChangesExpandAll') }}</button>
+    <button type="button" (click)="setExpanded(false)">{{ tr('ChangesCollapseAll') }}</button>
+  </div>
+  }
+  <div class="manatos-change-report-tree">
+    @for (node of nodes(); track node.id) {
+    <details
+      class="manatos-change-report-node"
+      [open]="expanded(node)"
+      (toggle)="onNodeToggle(node, $event)"
+    >
+      <summary>
+        <i [class]="icon(node.icon)" aria-hidden="true"></i>
+        {{ node.label }} @if (node.status) {
+        <span class="manatos-change-report-status">{{ node.status }}</span> } @if (node.count !==
+        undefined) { <span class="manatos-change-report-count">{{ node.count }}</span> }
+      </summary>
+      @if (node.details?.length || node.children?.length) {
+      <div class="manatos-change-report-children">
+        @for (detail of node.details ?? []; track detail.key) {
+        <div class="manatos-change-report-detail">
+          <span class="manatos-change-report-label">{{ detail.label }}</span>
+          @if (detail.from) {
+          <span
+            class="manatos-change-report-value"
+            [class.manatos-change-report-success]="detail.from.tone === 'success'"
+            [class.manatos-change-report-danger]="detail.from.tone === 'danger'"
+          >
+            @if (detail.from.imageUrl) { <img [src]="detail.from.imageUrl" alt="" /> } @if
+            (detail.from.icon) { <i [class]="icon(detail.from.icon)" aria-hidden="true"></i> } {{
+            detail.from.label }}
+          </span>
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
+          } @if (detail.to || detail.value; as value) {
+          <span
+            class="manatos-change-report-value"
+            [class.manatos-change-report-success]="value.tone === 'success'"
+            [class.manatos-change-report-danger]="value.tone === 'danger'"
+          >
+            @if (value.imageUrl) { <img [src]="value.imageUrl" alt="" /> } @if (value.icon) {
+            <i [class]="icon(value.icon)" aria-hidden="true"></i> } {{ value.label }}
+          </span>
+          }
+        </div>
+        } @if (node.children?.length) {
+        <manatos-hierarchical-report
+          [nodes]="node.children ?? []"
+          [language]="language()"
+          [nested]="true"
+          [parentPath]="path(node)"
+          [expansionState]="nested() ? expansionState() : localExpansion()"
+          (nodeExpanded)="onChildExpanded($event)"
+        />
+        }
+      </div>
+      }
+    </details>
+    }
+  </div>
+</div>

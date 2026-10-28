@@ -132,11 +132,11 @@ export async function renderMetadataDrivenList(
   );
 
   await renderPage(res, 'pages/sysbo/list', {
-    title: metadata.pluralLabel,
+    title: res.locals.metadataText(metadata.pluralLabel),
     titleIcon: definition.icon,
     breadcrumbItems: [
       { label: 'ManatOS', href: '/' },
-      { label: metadata.pluralLabel, href: null },
+      { label: res.locals.metadataText(metadata.pluralLabel), href: null },
     ],
     definition,
     metadata,
@@ -145,7 +145,7 @@ export async function renderMetadataDrivenList(
     listUIViewKey: resolvedListUIView.key,
     listUIViewCatalog: Object.entries(metadataUI.list.views).map(([key, view]) => ({
       key,
-      label: view.label || (key === 'main' ? 'Standard' : key),
+      label: res.locals.metadataText(view.label || (key === 'main' ? 'Standard' : key)),
       visibleFields: resolveSysBOUIListView(metadataUI, key).metadata.visibleFields,
     })),
     permissions,

@@ -5,6 +5,9 @@ import {
   type CompanyInfo,
   type SysPlatform,
   sysBOApplicationsMetadata,
+  sysBOGuardsMetadata,
+  sysBOProjectsMetadata,
+  sysBOPostsMetadata,
   sysBOConfigurationsMetadata,
   sysBOExtAuthProvidersMetadata,
   sysBOEmailAddressesMetadata,
@@ -71,6 +74,21 @@ export const sysBODefinitions: Record<string, SysBODefinition> = {
     key: 'sys-applications',
     boMetadata: sysBOApplicationsMetadata,
     icon: 'bi-window-stack',
+  },
+  'sys-guards': {
+    key: 'sys-guards',
+    boMetadata: sysBOGuardsMetadata,
+    icon: 'bi-person-badge-fill',
+  },
+  'sys-projects': {
+    key: 'sys-projects',
+    boMetadata: sysBOProjectsMetadata,
+    icon: 'bi-briefcase-fill',
+  },
+  'sys-posts': {
+    key: 'sys-posts',
+    boMetadata: sysBOPostsMetadata,
+    icon: 'bi-geo-alt-fill',
   },
   'sys-configurations': {
     key: 'sys-configurations',

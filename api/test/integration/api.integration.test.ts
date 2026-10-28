@@ -26,6 +26,8 @@ describe('API integration - server and generic SysBO behavior', () => {
       api: { version: 'v1' },
       ui: { donationsShow: false },
     });
+    expect(response.body.data.ui).not.toHaveProperty('languages');
+    expect(response.body.data.ui).not.toHaveProperty('defaultLanguage');
     expect(response.headers['cache-control']).toBe('no-store');
   });
 
@@ -200,7 +202,7 @@ describe('API integration - server and generic SysBO behavior', () => {
       expect(metadata.body.data.metadata).toMatchObject({
         key: 'sys-applications',
         name: 'sysApplications',
-        label: 'Application',
+        label: '@EN.manatos.licensing.licenses.label.Application',
       });
 
       const metadataUI = await request(context.app)
@@ -217,9 +219,9 @@ describe('API integration - server and generic SysBO behavior', () => {
             filterFields: ['name', 'fullName'],
           },
           views: {
-            main: { label: 'Standard' },
+            main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' },
             simple: {
-              label: 'Simple',
+              label: '@EN.manatos.auth.extAuthProviders.label.Simple',
               visibleFields: ['name', 'version'],
             },
           },
@@ -390,6 +392,14 @@ describe('API integration - server and generic SysBO behavior', () => {
 
       expect(response.body.components.securitySchemes).toHaveProperty('internalApiKey');
 
+      expect(response.body.components.schemas).not.toHaveProperty('LanguageDefinition');
+      expect(response.body.components.schemas).not.toHaveProperty('LanguageCatalogue');
+      expect(
+        response.body.paths['/api/v1/public/ui-bootstrap'].get.responses['200'].content[
+          'application/json'
+        ].schema,
+      ).toEqual({ $ref: '#/components/schemas/UiBootstrapResponse' });
+
       expect(response.body.tags.map((tag: { name: string }) => tag.name)).toEqual([
         'Server',
         'Authentication',
@@ -397,6 +407,7 @@ describe('API integration - server and generic SysBO behavior', () => {
         'SysBO / Users',
         'SysBO / Principals',
         'SysBO / Applications',
+        'SysBO / Panoptes Surveillance',
         'SysBO / Licenses',
         'SysBO Aux / Email Addresses',
         'SysBO Aux / Principal Email Addresses',

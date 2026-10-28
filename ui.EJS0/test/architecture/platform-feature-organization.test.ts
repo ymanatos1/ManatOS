@@ -76,7 +76,7 @@ describe('platform feature organization', () => {
     expect(companyPlatform).toContain(
       "import { PROTOCRM_PLATFORM, PROTOCRM_PLATFORM_ID } from '../platforms/protocrm/platform.js'",
     );
-    expect(companyPlatform).toContain('platforms: [PROTOCRM_PLATFORM]');
+    expect(companyPlatform).toContain('platforms: [PROTOCRM_PLATFORM, PANOPTES_PLATFORM]');
     expect(companyPlatform).not.toContain("id: PROTOCRM_PLATFORM_ID,\n      code: 'protoCRM'");
     expect(shell).toContain('app.currentPlatform?.presentation?.stylesheet');
     expect(css).toContain('.app-playground-welcome');

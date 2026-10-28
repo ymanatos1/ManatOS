@@ -1,0 +1,28 @@
+<!-- FormField template: the field label/container and mounted typed control; the Field child, not FormField, owns tools and decoding. -->
+<div
+  class="manatos-form-field"
+  [class.is-changed]="changed()"
+  [class.is-invalid]="!field().valid"
+  [class.is-readonly]="field().readOnly"
+  [attr.data-entry-field]="field().field"
+>
+  <label class="manatos-form-field-label"
+    >{{ field().label }}:@if (field().required) {
+    <strong class="manatos-form-required">(*)</strong> }</label
+  >
+  <div
+    class="manatos-form-field-control"
+    [class.is-semantic]="policy().semantic && policy().tools.length === 0"
+    [class.has-field-tools]="policy().tools.length > 0"
+    data-entry-value
+  >
+    <div class="manatos-typed-field" [attr.data-entry-typed-field]="field().type">
+      <ng-container *ngComponentOutlet="controlType(); inputs: componentInputs()" />
+    </div>
+  </div>
+  @if (!field().valid) {
+  <div class="manatos-form-field-issues" role="status">
+    @for (issue of field().issues; track issue) { <small>{{ issue }}</small> }
+  </div>
+  }
+</div>

@@ -98,6 +98,12 @@
     const field = recordSelectorMetadata.fieldDefinition?.[fieldKey];
     return [fieldKey, field?.type === 'enum' || field?.type === 'reference' || field?.type === 'boolean' ? 'exact' : 'contains'];
   }));
+  const recordSelectorSearchPlaceholder = metadataText('@CM.SearchEntries').replace(
+    '{entity}',
+    metadataText(recordSelectorMetadata.pluralLabel).toLocaleLowerCase(
+      typeof language !== 'undefined' && language === 'EL' ? 'el' : 'en'
+    )
+  );
 %>
 <template data-record-selector-template="<%= recordSelectorTemplateKey %>">
   <section
@@ -139,7 +145,7 @@
         filterCollapseId: recordSelectorFilterId,
         query: {},
         definition: recordSelectorDefinition,
-        searchPlaceholder: `Search ${recordSelectorMetadata.pluralLabel.toLowerCase()}`
+        searchPlaceholder: recordSelectorSearchPlaceholder
       }) %>
 
       <%- include('../../components/sysbo/list/list-filters', {

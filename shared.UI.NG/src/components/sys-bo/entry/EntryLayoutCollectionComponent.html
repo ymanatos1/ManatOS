@@ -1,0 +1,58 @@
+<!-- RelatedEntries owns the title and View control; canonical List owns its rows/cells. -->
+<div
+  class="manatos-entry-related"
+  [attr.data-entry-layout-id]="item().layoutId"
+  [attr.data-entry-related]="item().reference"
+  [style.grid-column]="'span ' + item().span"
+>
+  @if (collection(); as definition) {
+  <header class="manatos-entry-related-header">
+    @if (definition.icon) { <i [class]="'bi bi-' + definition.icon" aria-hidden="true"></i> }
+    <strong>{{ title() }}</strong>
+    <div class="manatos-entry-related-views">
+      <button
+        class="manatos-list-btn"
+        type="button"
+        (click)="viewsOpen.set(!viewsOpen())"
+        [attr.aria-expanded]="viewsOpen()"
+        [attr.aria-label]="entry.language() === 'EL' ? 'Προβολή' : 'View'"
+      >
+        <i class="bi bi-grid" aria-hidden="true"></i>{{entry.language() === 'EL' ? 'Προβολή' :
+        'View'}} ({{ view()?.label }})
+      </button>
+      @if (viewsOpen()) {
+      <div class="manatos-entry-related-view-menu" role="group">
+        @for (candidate of views(); track candidate.key) {
+        <button
+          type="button"
+          [attr.aria-pressed]="candidate.key === view()?.key"
+          (click)="entry.selectRelatedView(item().reference, candidate.key); viewsOpen.set(false)"
+        >
+          {{candidate.label}}
+        </button>
+        }
+      </div>
+      }
+    </div>
+  </header>
+  @if (resource()?.loading) {
+  <p role="status">{{entry.language() === 'EL' ? 'Φόρτωση…' : 'Loading…'}}</p>
+  } @else if (resource()?.error) {
+  <p role="alert">{{resource()?.error}}</p>
+  } @else if (view() && list().rows.length > 0) {
+  <manatos-list
+    [embeddedRows]="list().rows"
+    [embeddedColumns]="list().columns"
+    [embeddedEntityKey]="entityKey()"
+    [embeddedLanguage]="entry.language()"
+    [embeddedLayout]="view()!.layout"
+    [embeddedReferences]="references()"
+    [embeddedViewAction]="true"
+    (embeddedRowOpen)="open($event)"
+  />
+  } @else {
+  <p class="manatos-entry-related-empty">
+    {{entry.language() === 'EL' ? 'Δεν υπάρχουν σχετικές εγγραφές.' : 'No related entries.'}}
+  </p>
+  } }
+</div>

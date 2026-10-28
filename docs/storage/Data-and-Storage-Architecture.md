@@ -260,7 +260,7 @@ The same principle applies to check constraints: native checks are useful only w
 
 ## Atomicity and transactions
 
-The current JSON transaction strategy snapshots the in-memory Maps, performs the logical operation, writes persistence atomically and restores the snapshot if the operation fails. This gives callers an all-or-nothing semantic behavior despite the absence of a database transaction manager.
+The active JSON adapter snapshots its Maps at the outer ordinary `executeTransaction()` boundary, persists the complete resulting JSON state through temporary-file replacement, and restores Maps in place when that operation fails. Explicit **multi-request** transactions use a session-owned compensation journal: participating operations persist as they execute and rollback attempts to re-persist earlier state. This is not a relational transaction with isolation across the multi-request interval. See [In-Memory/JSON Transactions](InMemory-JSON-Transactions.md) for the implemented guarantees and limits.
 
 A relational adapter should normally use a native transaction. Savepoints may be used for nested/partial units where the system transaction model requires them, but savepoint support is a capability, not itself a behavioral requirement.
 
@@ -452,9 +452,9 @@ The storage architecture should continue to obey these rules:
 - authorization/query predicates should move toward datastore selection for capable adapters rather than post-materialization filtering;
 - diagnostic CTX/logging must not become part of persistence semantics.
 
-## Current maturity and next steps
+## Available implementation and architectural boundary
 
-The architecture is ahead of some runtime implementations. The JSON provider is the current active persistence implementation. Relational definitions, capability inheritance, target operations, semantic desired schema and initial additive preparation exist, while complete relational business-data runtime adapters and versioned migration strategy remain future implementation work.
+The JSON provider is the active business-data persistence implementation. Relational adapter definitions, capability inheritance, target operations, semantic desired-schema preparation and additive preparation are present, but they are not equivalent to runnable relational business-data adapters. Provider-neutral storage architecture is described independently from the concrete availability of each engine.
 
 That is an intentional staged development path: configuration and architecture are established before claiming runtime readiness.
 
@@ -467,3 +467,9 @@ That is an intentional staged development path: configuration and architecture a
 - **Readers new to ManatOS:** see [Concepts](../overview/Concepts.md) and [System Map](../overview/System-Map.md).
 
 Related architecture: [Metadata Architecture](../metadata/Metadata-Architecture.md), [API Architecture](../api/API-Architecture.md), [Runtime Architecture](../system/Runtime-Architecture.md), [Context Architecture](../context/Context-Architecture.md), and [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md).
+
+## Cross-record commits and pending resources
+
+The workspace commit API provides a multi-operation boundary over the generic entity/storage layer. Plans identify operations and dependency order, including temporary identities that must be mapped to persistent records. Pending picture data is transmitted as bounded, validated resource content rather than being silently treated as an already persisted image reference.
+
+The storage implementation must preserve failure semantics: a successful response means the authoritative operation completed according to the adapter's guarantees; a failed operation must not leave UI assumptions about mapped identities or dirty state inconsistent with the server outcome. Source availability of a route is not a substitute for validating transaction behavior under the active adapter. See [Workspace Commit](../entities/Workspace-Commit-and-Recovery.md).

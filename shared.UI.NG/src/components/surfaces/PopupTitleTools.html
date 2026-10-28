@@ -1,0 +1,39 @@
+<div
+  class="popup-title-tools"
+  role="group"
+  [attr.aria-label]="multilingual().resolve('@CM.PopupTools')"
+>
+  @if (showLanguageSelection()) { @if (currentLanguage(); as language) {
+  <manatos-language-selection
+    variant="popup"
+    [languages]="languages()"
+    [currentLanguage]="language"
+    [open]="languageOpen()"
+    (openRequested)="toggleLanguage()"
+    (languageSelected)="selectLanguage($event)"
+  />
+  } } @if (debuggerAllowed()) {
+  <span class="popup-debugger-pair">
+    <manatos-surface-action
+      [label]="hostKind() === 'popup' ? multilingual().select(debuggerForeground(), '@CM.DebuggerBehindPopup', '@CM.DebuggerInFrontOfPopup') : 'Inspect Surface in CTX Viewer'"
+      icon="bi-bug"
+      [pressed]="debuggerForeground()"
+      (requested)="debuggerRequested.emit()"
+    />
+    @if (flowStepPath(); as stepPath) {
+    <manatos-surface-action
+      [label]="multilingual().resolve('@CM.InspectOpeningFlowStep')"
+      icon="bi-diagram-3"
+      (requested)="flowDebuggerRequested.emit(stepPath)"
+    />
+    }
+  </span>
+  } @if (showFontScale()) {
+  <manatos-font-scale
+    [percent]="fontScalePercent()"
+    context="Popup"
+    [language]="currentLanguage()?.id?.toUpperCase() === 'EL' ? 'EL' : 'EN'"
+    (percentChanged)="fontScaleChanged.emit($event)"
+  />
+  }
+</div>

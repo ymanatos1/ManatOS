@@ -5,6 +5,7 @@ import {
   PROTOCRM_PLATFORM,
   SysBOUserRole,
   resolvePlatform,
+  resolveMetadataText,
 } from '@manatos/shared';
 
 import { createManatOSContext } from '../../src/context/manatos-context.js';
@@ -75,14 +76,18 @@ describe('company/platform navigation composition', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
 
     expect(platform).toBe(PROTOCRM_PLATFORM);
-    expect(MANATOS_COMPANY.description).toBe(
+    expect(resolveMetadataText(MANATOS_COMPANY.description, 'EN')).toBe(
       'We build semantic business application platforms on reusable Application Foundations',
     );
-    expect(MANATOS_COMPANY.branding.tagline).toBe(
+    expect(resolveMetadataText(MANATOS_COMPANY.branding.tagline, 'EN')).toBe(
       'ManatOS — the operational platform for ManatOS applications.',
     );
-    expect(platform.description).toContain('on the ManatOS operational platform');
-    expect(platform.presentation?.intro).toContain('ManatOS application');
+    expect(resolveMetadataText(platform.description, 'EN')).toContain(
+      'on the ManatOS operational platform',
+    );
+    expect(resolveMetadataText(platform.presentation!.intro!, 'EN')).toContain(
+      'ManatOS application',
+    );
     expect(platform.presentation?.stylesheet).toBe('/css/platforms/protocrm.css');
   });
 
@@ -101,7 +106,14 @@ describe('company/platform navigation composition', () => {
       'platform',
       'resources',
     ]);
-    expect(navigation.find((item) => item.id === 'platform')?.url).toBe('/platform/protocrm');
+
+    const platformItem = navigation.find((item) => item.id === 'platform');
+
+    expect(platformItem?.url).toBeUndefined();
+    expect(platformItem?.children?.map((item) => resolveMetadataText(item.text, 'EN'))).toEqual([
+      'protoCRM',
+      'Panoptes',
+    ]);
   });
 
   it('turns Platform into a catalogue dropdown when multiple platforms are enabled', () => {
@@ -125,7 +137,11 @@ describe('company/platform navigation composition', () => {
     ).horizontal.find((item) => item.id === 'platform');
 
     expect(platformItem?.url).toBeUndefined();
-    expect(platformItem?.children?.map((item) => item.text)).toEqual(['protoCRM', 'Analytics']);
+    expect(platformItem?.children?.map((item) => resolveMetadataText(item.text, 'EN'))).toEqual([
+      'protoCRM',
+      'Panoptes',
+      'Analytics',
+    ]);
   });
 
   it('merges Company and protoCRM contributions into the current left-nav order', () => {
@@ -184,6 +200,10 @@ describe('company/platform navigation composition', () => {
           visible: { expression: '$user.permissions.userRole !== null' },
         },
       ],
+      workspaceNavigation: [
+        ...resolvePlatform(MANATOS_COMPANY).workspaceNavigation,
+        { navigationId: 'platform-settings' },
+      ],
     };
 
     const configuration = navigationFor(
@@ -229,17 +249,17 @@ describe('company/platform navigation composition', () => {
     const platform = resolvePlatform(MANATOS_COMPANY);
     const playground = platform.navigation.find((item) => item.id === 'app-playground');
     expect(playground?.visible).toEqual({
-      expression: '$user.permissions.platforms.protocrm.capabilities.platformAccess === true',
+      expression: '$user?.permissions.platforms.protocrm.capabilities.platformAccess ?? false',
     });
   });
 
-  it('declares entity-backed navigation through API collection-read capabilities, not role copies', () => {
+  it('declares canonical entity navigation targets and separately gated non-entity actions', () => {
     const byId = new Map(MANATOS_COMPANY.navigation.map((item) => [item.id, item]));
-    expect(byId.get('users')).toMatchObject({ requiresEntityRead: 'sys-users' });
-    expect(byId.get('principals')).toMatchObject({ requiresEntityRead: 'sys-principals' });
-    expect(byId.get('licenses')).toMatchObject({ requiresEntityRead: 'sys-licenses' });
+    expect(byId.get('users')).toMatchObject({ entityKey: 'sys-users' });
+    expect(byId.get('principals')).toMatchObject({ entityKey: 'sys-principals' });
+    expect(byId.get('licenses')).toMatchObject({ entityKey: 'sys-licenses' });
     expect(byId.get('external-authentication')).toMatchObject({
-      requiresEntityRead: 'sys-ext-auth-providers',
+      entityKey: 'sys-ext-auth-providers',
     });
     expect(byId.get('principals')?.visible).toBeUndefined();
     expect(byId.get('licenses')?.visible).toBeUndefined();
@@ -248,7 +268,7 @@ describe('company/platform navigation composition', () => {
       resolvePlatform(MANATOS_COMPANY).navigation.map((item) => [item.id, item]),
     );
     expect(platformById.get('applications')).toMatchObject({
-      requiresEntityRead: 'sys-applications',
+      entityKey: 'sys-applications',
     });
     expect(platformById.get('app-playground')).toMatchObject({
       requiresEntityRead: 'sys-applications',

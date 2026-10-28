@@ -15,7 +15,7 @@
           <form method="post" action="/configuration/<%= item.id %>" class="p-3 border-bottom" data-config-setting>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <div class="d-flex justify-content-between gap-3 mb-1"><label class="fw-semibold" for="cfg-<%= item.id %>"><%= item.name %></label><div><% if (item.restartRequired) { %><span class="badge text-bg-warning">Restart required</span><% } %> <% if (item.sensitive && item.secretConfigured) { %><span class="badge text-bg-success"><i class="bi bi-lock-fill"></i> Secret configured</span><% } %></div></div>
-            <p class="small text-secondary mb-2"><%= item.description || '' %></p>
+            <p class="small text-secondary mb-2"><%= metadataText(item.description || '') %></p>
             <div class="input-group">
               <% if (item.valueType === 'boolean') { %>
                 <select class="form-select" <%= inspectionOnly ? 'disabled aria-readonly="true"' : '' %> id="cfg-<%= item.id %>" name="value"><option value="true" <%= item.value === 'true' ? 'selected' : '' %>>Enabled / true</option><option value="false" <%= item.value === 'false' ? 'selected' : '' %>>Disabled / false</option></select>

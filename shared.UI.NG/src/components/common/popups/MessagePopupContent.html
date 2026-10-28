@@ -1,0 +1,18 @@
+<div
+  class="message-semantic-body"
+  [class.message-semantic-error]="popup().definition.id === 'message.error'"
+  data-popup-layout-id="message-body"
+>
+  @if (popup().definition.id !== 'message.error') { @if (illustration(); as image) {
+  <img class="message-semantic-illustration" [src]="image" alt="" aria-hidden="true" />
+  } }
+  <div class="message-semantic-text" [innerHTML]="html()"></div>
+  @if (loadError()) {
+  <p role="alert">{{ multilingual().MessageLoadError }}</p>
+  } @if (trace(); as details) {
+  <details data-popup-layout-id="message-details">
+    <summary>{{ multilingual().OperationDetails }}</summary>
+    <pre>{{ details }}</pre>
+  </details>
+  }
+</div>

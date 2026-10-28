@@ -35,7 +35,7 @@
     <% if (popupAction.id) { %>id="<%= popupAction.id %>"<% } %>
   >
     <% if (popupAction.icon) { %><i class="bi <%= popupAction.icon %> me-1" aria-hidden="true"></i><% } %>
-    <%= popupAction.label %>
+    <%= metadataText(popupAction.label) %>
   </a>
 <% } else { %>
   <button
@@ -54,6 +54,6 @@
     <% }} %>
   >
     <% if (popupAction.icon) { %><i class="bi <%= popupAction.icon %> me-1" aria-hidden="true"></i><% } %>
-    <%= popupAction.label %>
+    <%= metadataText(popupAction.label) %>
   </button>
 <% } %>

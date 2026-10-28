@@ -1,0 +1,114 @@
+<section class="home-hero content-card">
+  <div class="home-hero-grid">
+    <div class="home-hero-copy">
+      <span class="home-page-eyebrow">{{ company.home.eyebrow }}</span>
+      <h2>{{ company.home.title }}</h2>
+      <p class="home-product-tagline">{{ company.branding.tagline }}</p>
+      <p class="home-hero-lead">{{ company.home.description }}</p>
+
+      {{#if auth.anonymous}}
+      <div class="home-hero-actions">
+        <button type="button" class="home-hero-action is-primary" data-home-auth-flow="auth.signin">
+          <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+          Σύνδεση
+        </button>
+        <button
+          type="button"
+          class="home-hero-action is-secondary"
+          data-home-auth-flow="auth.register"
+        >
+          <i class="bi bi-person-plus" aria-hidden="true"></i>
+          Δημιουργία λογαριασμού
+        </button>
+      </div>
+      {{/if}}
+
+      <div class="home-benefits" aria-label="Πλεονεκτήματα της υποδομής ManatOS">
+        <div class="home-benefit">
+          <span class="home-benefit-icon is-security">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+          </span>
+          <div>
+            <strong>Έλεγχος εξ ορισμού</strong>
+            <span
+              >Η ταυτοποίηση, η εξουσιοδότηση και οι πολιτικές ορίζονται ρητά και εφαρμόζονται
+              κεντρικά.</span
+            >
+          </div>
+        </div>
+
+        <div class="home-benefit">
+          <span class="home-benefit-icon is-metadata">
+            <i class="bi bi-diagram-3" aria-hidden="true"></i>
+          </span>
+          <div>
+            <strong>Επιχειρησιακή σημασιολογία</strong>
+            <span
+              >Τα μεταδεδομένα και το CTX περιγράφουν επιχειρησιακά αντικείμενα, σχέσεις, κανόνες
+              και συμπεριφορά ανάλογα με το πλαίσιο.</span
+            >
+          </div>
+        </div>
+
+        <div class="home-benefit">
+          <span class="home-benefit-icon">
+            <i class="bi bi-braces" aria-hidden="true"></i>
+          </span>
+          <div>
+            <strong>Ένα μοντέλο, πολλές εμπειρίες</strong>
+            <span
+              >Η κοινή σημασιολογία εξασφαλίζει συνέπεια στο περιβάλλον χρήστη, στα API και στις
+              μελλοντικές εφαρμογές.</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-platform-map" aria-label="Αρχιτεκτονική υποδομής εφαρμογών ManatOS">
+      <div class="home-platform-node home-platform-app">
+        <span class="home-platform-node-icon">
+          <i class="bi bi-layers" aria-hidden="true"></i>
+        </span>
+        <div>
+          <strong>Επιχειρησιακές πλατφόρμες και εφαρμογές</strong>
+          <span>Εφαρμογές προσαρμοσμένες στην επιχειρησιακή σημασιολογία</span>
+        </div>
+      </div>
+
+      <div class="home-platform-connector home-platform-connector-top" aria-hidden="true"></div>
+
+      <div class="home-platform-services">
+        <div class="home-platform-service is-auth">
+          <span><i class="bi bi-boxes" aria-hidden="true"></i></span>
+          <strong>Επιχειρησιακά αντικείμενα</strong>
+          <small>Μοντέλα, σχέσεις<br />και παρουσίαση</small>
+        </div>
+
+        <div class="home-platform-service is-sysbo">
+          <span><i class="bi bi-diagram-3-fill" aria-hidden="true"></i></span>
+          <strong>Πλαίσιο + Κανόνες</strong>
+          <small>CTX, υπολογισμοί<br />και δηλωτική συμπεριφορά</small>
+        </div>
+
+        <div class="home-platform-service">
+          <span><i class="bi bi-braces" aria-hidden="true"></i></span>
+          <strong>Πολιτικές + API</strong>
+          <small>Δυνατότητες, εξουσιοδότηση<br />και σημεία πρόσβασης REST</small>
+        </div>
+      </div>
+
+      <div class="home-platform-connector home-platform-connector-bottom" aria-hidden="true"></div>
+
+      <div class="home-platform-node home-platform-foundation">
+        <span class="home-platform-node-icon">
+          <i class="bi bi-database-fill" aria-hidden="true"></i>
+        </span>
+        <div>
+          <strong>Υποδομή εφαρμογών ManatOS</strong>
+          <span>Ελεγχόμενο, επαναχρησιμοποιήσιμο σημασιολογικό περιβάλλον εκτέλεσης</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

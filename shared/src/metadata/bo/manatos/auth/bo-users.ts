@@ -7,10 +7,13 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
   key: 'sys-users',
   name: 'sysUsers',
   subsystem: 'auth',
-  label: 'User',
-  pluralLabel: 'Users',
+  label: '@EN.manatos.auth.users.label.User' /* User */,
+  labelForms: { genitive: '@EN.manatos.auth.users.label.UserGenitive' },
+  pluralLabel: '@EN.manatos.auth.users.pluralLabel.Users' /* Users */,
 
   primaryField: 'name',
+  // The resolver falls back to the canonical primary field when fullName is missing.
+  entry: { image: { field: 'photo' }, name: { expression: 'fullName' } },
 
   // Canonical fields
   fieldDefinition: {
@@ -18,7 +21,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     fullName: {
       key: 'fullName',
-      label: 'Full name',
+      label: '@EN.manatos.auth.users.label.FullName' /* Full name */,
       type: 'string',
       order: 90,
       readOnly: true,
@@ -29,16 +32,24 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
     },
     emailVerificationStatus: {
       key: 'emailVerificationStatus',
-      label: 'Email verification',
+      label: '@EN.manatos.auth.users.label.EmailVerification' /* Email verification */,
       type: 'string',
+      optionItems: [
+        { value: 'Verified', label: '@CM.Verified' },
+        { value: 'Not verified', label: '@CM.NotVerified' },
+      ],
       order: 33,
       readOnly: true,
       calculation: { expression: "emailVerified ? 'Verified' : 'Not verified'" },
     },
     localPasswordStatus: {
       key: 'localPasswordStatus',
-      label: 'Local password',
+      label: '@EN.manatos.auth.users.label.LocalPassword' /* Local password */,
       type: 'string',
+      optionItems: [
+        { value: 'Configured', label: '@CM.Configured' },
+        { value: 'Not configured', label: '@CM.NotConfigured' },
+      ],
       order: 51,
       readOnly: true,
       calculation: {
@@ -56,12 +67,12 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
      */
     name: {
       ...commonSysBOFields.name!,
-      label: 'User name',
+      label: '@EN.manatos.auth.users.label.UserName' /* User name */,
     },
 
     principalId: {
       key: 'principalId',
-      label: 'Principal',
+      label: '@EN.manatos.auth.userInvitations.label.Principal' /* Principal */,
       type: 'reference',
       order: 15,
       nullable: true,
@@ -71,7 +82,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     email: {
       key: 'email',
-      label: 'Email',
+      label: '@EN.manatos.auth.externalIdentities.label.Email' /* Email */,
       type: 'email',
       order: 20,
 
@@ -86,7 +97,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     telephoneNumber: {
       key: 'telephoneNumber',
-      label: 'Telephone number',
+      label: '@EN.manatos.auth.users.label.TelephoneNumber' /* Telephone number */,
       type: 'telephone',
       order: 21,
       nullable: true,
@@ -98,7 +109,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     photo: {
       key: 'photo',
-      label: 'Photo',
+      label: '@EN.manatos.auth.users.label.Photo' /* Photo */,
       type: 'picture',
       order: 22,
       nullable: true,
@@ -107,7 +118,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     emailVerified: {
       key: 'emailVerified',
-      label: 'Email verified',
+      label: '@EN.manatos.auth.externalIdentities.label.EmailVerified' /* Email verified */,
       type: 'boolean',
       order: 30,
 
@@ -118,7 +129,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     emailVerifiedAt: {
       key: 'emailVerifiedAt',
-      label: 'Email verified at',
+      label: '@EN.manatos.auth.users.label.EmailVerifiedAt' /* Email verified at */,
       type: 'datetime',
       order: 31,
 
@@ -128,7 +139,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     emailVerificationSource: {
       key: 'emailVerificationSource',
-      label: 'Email verification source',
+      label: '@EN.manatos.auth.users.label.EmailVerificationSource' /* Email verification source */,
       type: 'string',
       order: 32,
 
@@ -137,7 +148,11 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
       // Presentation-only catalogue: verification sources remain stored as a
       // string while every renderer gets the same framework-neutral labels/icons.
       optionItems: [
-        { value: 'internal', label: 'ManatOS', icon: 'shield-check' },
+        {
+          value: 'internal',
+          label: '@EN.manatos.auth.users.label.ManatOS' /* ManatOS */,
+          icon: 'shield-check',
+        },
         ...externalAuthProviderOptionItems,
       ],
     },
@@ -150,7 +165,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
      */
     passwordHash: {
       key: 'passwordHash',
-      label: 'Password hash',
+      label: '@EN.manatos.auth.users.label.PasswordHash' /* Password hash */,
       type: 'string',
       order: 40,
 
@@ -161,7 +176,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     passwordChangedAt: {
       key: 'passwordChangedAt',
-      label: 'Password changed',
+      label: '@EN.manatos.auth.users.label.PasswordChanged' /* Password changed */,
       type: 'datetime',
       order: 50,
 
@@ -171,7 +186,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     role: {
       key: 'role',
-      label: 'Role',
+      label: '@EN.manatos.auth.users.label.Role' /* Role */,
       type: 'enum',
       order: 60,
 
@@ -181,7 +196,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     firstName: {
       key: 'firstName',
-      label: 'First name',
+      label: '@EN.manatos.auth.users.label.FirstName' /* First name */,
       type: 'string',
       order: 70,
 
@@ -193,7 +208,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     lastName: {
       key: 'lastName',
-      label: 'Last name',
+      label: '@EN.manatos.auth.users.label.LastName' /* Last name */,
       type: 'string',
       order: 80,
 
@@ -205,7 +220,7 @@ export const sysBOUsersMetadata: SysBOMetadata<SysBOUser> = {
 
     description: {
       key: 'description',
-      label: 'Description',
+      label: '@EN.manatos.auth.users.label.Description' /* Description */,
       type: 'string',
       order: 100,
 

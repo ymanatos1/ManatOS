@@ -105,16 +105,16 @@ See [Diagnostics and Observability](../diagnostics/Diagnostics-and-Observability
 
 ## API CTX versus Client CTX
 
-| Concern                           | API CTX                            | Client CTX                                      |
-| --------------------------------- | ---------------------------------- | ----------------------------------------------- |
-| Owner                             | API process                        | Interactive client                              |
-| Concurrency shape                 | sibling request levels             | active recursive UI-level chain                 |
-| User projection                   | beneath each request level         | client root/session projection                  |
-| Main transient scope              | request + nested server operations | page/popup/embedded surface + fields/components |
-| Authoritative server capabilities | available/projected here           | consumed as safe facts                          |
-| Storage nested levels             | yes                                | no                                              |
-| UI fields/components              | no                                 | yes                                             |
-| Synchronization between trees     | none                               | none                                            |
+| Concern | API CTX | Client CTX |
+| --- | --- | --- |
+| Owner | API process | Interactive client |
+| Concurrency shape | sibling request levels | active recursive UI-level chain |
+| User projection | beneath each request level | client root/session projection |
+| Main transient scope | request + nested server operations | page/popup/surface + fields/components |
+| Authoritative server capabilities | available/projected here | consumed as safe facts |
+| Storage nested levels | yes | no |
+| UI fields/components | no | yes |
+| Synchronization between trees | none | none |
 
 They share CTX semantics, not state identity. A client request can lead to an API CTX branch, but that branch is built from authoritative server/request facts rather than copied from the caller's CTX.
 

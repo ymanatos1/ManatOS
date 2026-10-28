@@ -11,10 +11,10 @@ export const sysBOTelephoneNumbersUIMetadata: SysBOUIMetadata = {
       addAction: { ...standardAddAction('Add telephone number'), visible: false },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['fullNumber'],
       },
     },
@@ -35,7 +35,12 @@ export const sysBOTelephoneNumbersUIMetadata: SysBOUIMetadata = {
     },
   },
   defaultUIView: 'compact',
-  uiViews: { compact: { viewType: 'quick', label: 'Telephone number' } },
+  uiViews: {
+    compact: {
+      viewType: 'quick',
+      label: '@EN.manatos.auth.users.label.TelephoneNumber' /* Telephone number */,
+    },
+  },
   record: {
     tabs: [
       tab('general', 'Telephone number', 10, {

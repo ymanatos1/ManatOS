@@ -1,64 +1,66 @@
 # Context Architecture
 
-CTX is ManatOS's **system-wide observable semantic runtime context model**. It provides structured, scoped runtime state for system execution, expressions, reactivity and diagnostics. CTX is not defined by one host: the API and interactive clients maintain independently owned trees with common semantics where appropriate. They are not synchronized copies.
+CTX is the shared model for **host-owned, scoped and observable runtime facts**. It offers hierarchical lookup, explicit mutation, change observation, ownership and cleanup. It is not a database, an application-wide event bus or the Debugger itself. The API and each interactive client construct independent CTX trees; neither synchronizes its entire tree with another host.
 
-At the generic level, CTX provides hierarchical ownership, lexical/scoped resolution, observable mutation and deterministic lifecycle. Host-specific topology is then built from those semantics:
+## Roots and owners
 
 ```text
-ManatOS CTX semantics
-├── Client CTX
-│   ├── system / entities / company / user
+ContextTreeRuntime (common engine)
+├── TypeScript UIS host
+│   ├── system / company
+│   ├── runtime
+│   │   ├── subsystems
+│   │   ├── entities
+│   │   ├── enums
+│   │   └── user
+│   ├── flow                  optional operation execution
 │   └── ui
-│       └── level
-│           └── level ...
-└── API CTX
-    ├── system / entities / company
+│       └── level             active semantic surface
+│           └── level         optional nested surface
+└── API host
+    ├── system / company / entities / enums
     └── api
-        └── level-<request>
-            └── level-<subsystem> ...
+        └── level-<request>   parallel request branches
+            └── level-<nested operation>
 ```
 
-CTX is not persistence and it is not a second domain model. Semantic runtime state belongs in CTX when it needs the model's ownership, scoping, observability or lifecycle. Private implementation bookkeeping should remain private runtime state unless there is a deliberate architectural reason to expose it semantically.
+The modern UI uses `$runtime` for the canonical runtime branch; `$entities`, `$enums` and `$user` are convenience aliases to its contents, not competing stores. `ui.EJS0` has a distinct established legacy context representation. It is documented where its behavior matters and is not imposed on the shared UIS contract.
 
-A UiLevel may therefore own **private runtime resources** alongside its CTX without placing those resources in CTX. Large component payloads are the first concrete case: an ordinary Entry picture component owns its pending binary while that Entry is live; when an Organization accepts an owned Entry result, the Organization UiLevel owns any pending picture/pictures binaries referenced by its semantic member rows. Those resources follow the same UiLevel lifetime across owner handoff, Create-Organization draft restoration and outage recovery, but remain outside CTX. A recovery image is only a temporary serialization of the live UiLevel state and its private resources; after restoration, the live UiLevel is again the owner.
+## Shared engine
 
-### Client CTX
+The context engine in `shared/src/context/` owns path resolution, mutations, revisions, observation and lifetime. Consumers select an explicit host root and lexical scope. A subscription belongs to its owner and must be disposed with that owner; a UI adapter may display a value but must not silently become its authoritative writer.
 
-The current web client uses long-lived `system`, `entities`, `company` and `user` branches plus a recursive `ui` surface chain. Lists, entries, selectors and popups use the same nesting model rather than parallel context trees.
+The expression evaluator provides lexical lookup, CTX aliases, mandatory traversal and `?.` optional traversal. Optional receivers yield `null` when absent; mandatory traversal remains strict. Observers invalidate dependent expressions after canonical mutations, without requiring unrelated component state to be re-created.
 
-The client architecture enforces a single scalar field authority: `fields.<key>.value` is live state and `fields.<key>.originalValue` is its baseline. `entry.current` and `entry.original` are read-only whole-record projections. Field dirty state derives from live versus baseline; aggregate surface dirty state may additionally include compound editors.
+## UIS level ownership
 
-Related ownership rules follow the same principle:
+`UiSurfaceHostRuntime` in `shared.UI/src/runtime/surface/host-runtime.ts` owns the active `ctx.ui.level.level...` chain. Each level has four namespaces:
 
-- `fields.<key>.options` is the effective option domain for an entry field and is the selector/policy authority for that field; rendered `<option>` elements are presentation, not metadata storage.
-- `resources.referenceData` is supporting factual resource data for consumers that genuinely need the resource; it is not a competing entry-field selector catalogue.
-- `invocation.defaults` is caller provenance/input for a hosted create surface. Browser runtime reads it from CTX; hidden form values may transport it across HTTP boundaries but are not a second runtime authority.
-- field mutations pass through the canonical field-mutation boundary so dirty state, option decoration, projections and dependent expressions observe one causal write.
+| Namespace | Responsibility |
+|---|---|
+| `#control` | invocation, capability/resource contracts and surface control |
+| `#state` | reactive interaction, validation, dirty and action state |
+| `#layout` | semantic composition and embedded component placement |
+| `#data` | current semantic content and supporting data |
 
-See [Client Context Model](Client-Context-Model.md) for client mechanics, [API Context Model](API-Context-Model.md) for server/request mechanics, and [CTX Catalog](CTX-Catalog.md) for the path-by-path reference.
+A nested selector or popup is a *child* of its invoking level. A child cannot acquire ownership of the parent's record merely by rendering a field selector. Level construction initializes the semantic subtree before observers encounter it; identity-checked disposal prevents an old instance from deleting a newer level.
 
-### Debugger resolution boundary
+### List and Entry
 
-The CTX debugger is a diagnostic observer of the same browser context runtime used by expression lookup and mutation routing. It must use the runtime's canonical path APIs (for example `get()`, and `tokenize()` when tokenization is actually required) rather than carrying a private path parser or keyed-array resolver. Debug presentation may add aliases, icons, provenance, watch state and other non-semantic annotations, but those annotations never define an alternate CTX topology or resolution rule.
+A modern **Entry** owns editable record data in `#data.current`, with `#data.original` as the comparison baseline. `#state.fields` and `#state.entry` contain derived field, validation and entry status. Field components submit typed changes to the Entry runtime (`setField`), rather than writing an alternative scalar-value store. Working aggregates and resource data have explicit owners.
 
-## API CTX
+A modern **List** owns results and query inputs under `#data.list`, `#data.filters`, `#data.listModel`, with interaction/selection status under `#state.list`. List queries preserve API authorization and stale-response protections.
 
-The API process owns one global CTX tree. Long-lived semantic branches (`company`, `system`, `entities`) coexist with `api`, whose children are short-lived request levels:
+The legacy EJS0 model stores some live field values as `fields.<key>.value`. That model must never be substituted for the modern Entry record authority in cross-client specifications.
 
-```text
-$
-├── company
-├── system
-├── entities
-└── api
-    ├── level-<call-id>
-    │   ├── user
-    │   └── level-<subsystem>
-    └── level-<parallel-call-id>
-```
+## Flows and API execution
 
-Each request creates a unique call level and its own request-scoped user context. Major subsystem work can create nested levels beneath that call; STORAGE uses this mechanism and persisted-calculation work may nest further. Recursive lexical CTX lookup lets nested work resolve request/ancestor context without a process-global mutable “current level”.
+`ctx.flow` is the execution state of an operation under `FlowRunner` (`shared.UI/src/flows/flowRunner.ts`). Steps and substeps are **not** UI levels. A Flow can invoke a surface; the Flow owns transitions while the surface owns its nested UI lifecycle.
 
-Execution-local `AsyncLocalStorage` carries only the pointer to the current call/level; semantic state remains in the single API CTX tree. Parallel requests and parallel nested operations therefore keep independent identities. Request and nested levels are removed deterministically after execution.
+The API owns independently addressable parallel request branches under `api`. Node's `AsyncLocalStorage` tracks the current operation pointer; semantic facts remain in the CTX tree. A request branch is removed after its operation ends. The client cannot manufacture authorization by modifying CTX.
 
-The API and UI CTX trees are independently constructed from authoritative sources. They share semantic contracts where appropriate but are not synchronized copies.
+## Integration and assurance
+
+A typed field input becomes an Entry semantic intent, then a controlled `#data.current` mutation; subscribers and reactive expressions observe the resulting change. API persistence is a separate, validated and authorized operation. The same boundary separates debugging from mutation: CTX Viewer, CLI and API Traffic display source-owned state and may never define an alternative state model.
+
+See [Client Context](Client-Context-Model.md), [API Context](API-Context-Model.md), [CTX Catalog](CTX-Catalog.md), [Expressions](../expressions/Expressions.md), [UIS Architecture](../clients/UIS-Architecture.md) and [Flow Execution](../clients/Flow-Execution.md).

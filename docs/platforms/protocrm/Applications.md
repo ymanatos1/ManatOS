@@ -1,9 +1,26 @@
 # Applications
 
-Applications are protoCRM platform-owned business capability definitions. They belong to the selected platform and are the current platform-level system entities that exercise the generic entity infrastructure.
+An **Application** has a durable catalogue identity and descriptive metadata, while the complete application-design architecture defines the semantics of a composed business solution. Keeping the two concepts distinct prevents a catalogue row from being mistaken for an already executable model package.
 
-Applications can expose related Company-domain Licenses, but the License entity and licensing policy remain under the foundation-level Company domain.
+## Current canonical entity
 
-The **Apps Playground** is also a protoCRM platform surface. It operates on Applications and future platform/application tooling; it should not be described as a company-wide administration surface.
+`SysBOApplication` is a platform-owned system entity. Its metadata defines `fullName`, semantic-version `version` (default `0.0.1`), `description`, collection-valued `pictures` and `details` of `richText` type, alongside common SysBO fields. The UI metadata provides a full Entry, a read-only quick view, List variants, image-editing presentation policy and a Play action.
 
-See [Company-domain Licensing](../../company/Licensing.md) for the licensing side of the relationship.
+```text
+Application catalogue record
+├─ identity and name
+├─ fullName / version
+├─ description / rich details
+├─ pictures (resource descriptors)
+└─ UI views and related Licenses
+       │
+       └─ Play navigation / Apps Playground
+```
+
+A related License may restrict a customer's entitlement to this Application. That record belongs to the shared licensing domain and is governed by the API's actual authorization policy. A visible License tab does not authorize mutation of the License or the Application.
+
+## Design versus execution
+
+The architecture distinguishes a **design definition** (entities, views, rules, relationships, required capabilities) from a **runtime instance** (state, authenticated users, resources, API operations and persistence). The design can be evaluated in an integrated platform environment and, as an architectural objective, interpreted by an independent compatible host. A Play route is a UI entry point, not proof that an application package compiler or independent host already exists.
+
+The full architectural contracts are in [Application Design and Execution](Application-Design-and-Execution.md); [Application Licensing](Applications-and-Licenses.md) explains the commercial relationship and [Named UI Views](../../metadata/UI-Views.md) the shared presentation mechanism.

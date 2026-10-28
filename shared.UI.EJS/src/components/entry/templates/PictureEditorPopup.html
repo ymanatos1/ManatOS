@@ -1,0 +1,15 @@
+<!-- Native PictureEditorPopup owns batch, busy feedback, title-hosted content and actions. -->
+<main class="ejs-picture-editor-content" data-picture-editor-surface>
+  <div class="ejs-picture-batch" data-picture-batch></div>
+  <div class="ejs-picture-loading" data-picture-loading role="status" aria-live="polite">
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span
+    ><span data-picture-loading-text></span>
+  </div>
+  <!-- UIS:Editor -->
+</main>
+<footer class="ejs-picture-actions" data-picture-editor-actions>
+  <button type="button" data-picture-cancel>Cancel</button>
+  <button type="button" data-picture-apply class="primary" disabled>
+    <i class="bi bi-crop" aria-hidden="true"></i> <span data-picture-apply-text>Use photo</span>
+  </button>
+</footer>

@@ -6,8 +6,10 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
   key: 'sys-ext-auth-providers',
   name: 'sysExtAuthProviders',
   subsystem: 'auth',
-  label: 'External authentication provider',
-  pluralLabel: 'External authentication providers',
+  label:
+    '@EN.manatos.auth.extAuthProviders.label.ExternalAuthenticationProvider' /* External authentication provider */,
+  pluralLabel:
+    '@EN.manatos.auth.extAuthProviders.pluralLabel.ExternalAuthenticationProviders' /* External authentication providers */,
   // Provider is the human/business identity shown as the clickable list value.
   primaryField: 'provider',
   // Entry identity / representation
@@ -23,12 +25,12 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     enabled: { ...commonSysBOFields.enabled! },
     name: {
       ...commonSysBOFields.name!,
-      label: 'Provider name',
+      label: '@EN.manatos.auth.extAuthProviders.label.ProviderName' /* Provider name */,
       readOnly: true,
     },
     provider: {
       key: 'provider',
-      label: 'Provider',
+      label: '@EN.manatos.auth.extAuthProviders.label.Provider' /* Provider */,
       type: 'enum',
       order: 20,
 
@@ -41,7 +43,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     clientId: {
       key: 'clientId',
-      label: 'Client ID',
+      label: '@EN.manatos.auth.extAuthProviders.label.ClientID' /* Client ID */,
       type: 'string',
       order: 30,
 
@@ -49,7 +51,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     clientSecretEncrypted: {
       key: 'clientSecretEncrypted',
-      label: 'Client secret',
+      label: '@EN.manatos.auth.extAuthProviders.label.ClientSecret' /* Client secret */,
       type: 'string',
       order: 40,
 
@@ -59,7 +61,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     callbackPath: {
       key: 'callbackPath',
-      label: 'Callback path',
+      label: '@EN.manatos.auth.extAuthProviders.label.CallbackPath' /* Callback path */,
       type: 'string',
       order: 50,
 
@@ -74,7 +76,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     tenant: {
       key: 'tenant',
-      label: 'Tenant',
+      label: '@EN.manatos.auth.extAuthProviders.label.Tenant' /* Tenant */,
       type: 'string',
       order: 60,
 
@@ -83,7 +85,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     secretUpdatedAt: {
       key: 'secretUpdatedAt',
-      label: 'Secret updated',
+      label: '@EN.manatos.auth.extAuthProviders.label.SecretUpdated' /* Secret updated */,
       type: 'datetime',
       order: 70,
 
@@ -92,7 +94,8 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     credentialsVerified: {
       key: 'credentialsVerified',
-      label: 'Credentials verified',
+      label:
+        '@EN.manatos.auth.extAuthProviders.label.CredentialsVerified' /* Credentials verified */,
       type: 'boolean',
       order: 75,
 
@@ -102,7 +105,8 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     credentialsVerifiedAt: {
       key: 'credentialsVerifiedAt',
-      label: 'Credentials verified at',
+      label:
+        '@EN.manatos.auth.extAuthProviders.label.CredentialsVerifiedAt' /* Credentials verified at */,
       type: 'datetime',
       order: 76,
 
@@ -112,7 +116,7 @@ export const sysBOExtAuthProvidersMetadata: SysBOMetadata<SysBOExtAuthProvider> 
     },
     hasClientSecret: {
       key: 'hasClientSecret',
-      label: 'Secret stored',
+      label: '@EN.manatos.auth.extAuthProviders.label.SecretStored' /* Secret stored */,
       type: 'boolean',
       order: 80,
 

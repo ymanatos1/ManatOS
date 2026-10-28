@@ -1,0 +1,197 @@
+.preferences-backdrop {
+  font-size: calc(1rem * var(--manatos-font-scale));
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 35%);
+}
+
+.preferences-dialog {
+  width: min(560px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  background: var(--manatos-surface);
+  border-radius: 0.65rem;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+}
+
+.preferences-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--manatos-modal-title-border);
+  background: var(--manatos-modal-title-bg);
+}
+
+.preferences-header h2 {
+  margin: 0;
+  font-size: calc(1.15rem * var(--manatos-font-scale));
+}
+
+.preferences-header p {
+  margin: 0.25rem 0 0;
+  color: var(--manatos-muted);
+  font-size: calc(0.875rem * var(--manatos-font-scale));
+}
+
+.preferences-body {
+  padding: 1.25rem;
+}
+
+.preferences-body fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.preferences-body legend {
+  margin-bottom: 1rem;
+  font-size: calc(1rem * var(--manatos-font-scale));
+  font-weight: 600;
+}
+
+.preferences-theme-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.preferences-theme-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.65rem;
+  background: var(--manatos-surface);
+  cursor: pointer;
+}
+
+.preferences-theme-option:has(input:checked) {
+  border-color: #7ba8d9;
+  box-shadow: 0 0 0 2px rgb(21 89 166 / 8%);
+  background: #f4f8fd;
+}
+
+.preferences-theme-option strong,
+.preferences-theme-option small {
+  display: block;
+}
+
+.preferences-theme-option small {
+  margin-top: 0.2rem;
+  color: var(--manatos-muted);
+  line-height: 1.35;
+}
+
+.preferences-theme-preview {
+  --preview-header: #142d4c;
+  --preview-title: #dce7f5;
+  --preview-text: #eef7ff;
+  --preview-date: #eaf7ef;
+  --preview-enum: #fff4dc;
+  --preview-reference: #f2ecff;
+
+  margin-top: 1rem;
+}
+
+.preferences-theme-preview[data-preview-theme='lighter'] {
+  --preview-header: #d9ebfb;
+  --preview-title: #eaf4fd;
+  --preview-text: #f3fbff;
+  --preview-date: #f0fbf4;
+  --preview-enum: #fff8e8;
+  --preview-reference: #f7f2ff;
+}
+
+.preferences-preview-caption {
+  margin-bottom: 0.5rem;
+  color: var(--manatos-muted);
+  font-size: calc(0.875rem * var(--manatos-font-scale));
+}
+
+.preferences-theme-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.preferences-theme-preview-swatch {
+  min-height: 3.2rem;
+  display: flex;
+  align-items: end;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.55rem;
+  color: #24364a;
+  font-size: calc(0.75rem * var(--manatos-font-scale));
+  font-weight: 600;
+}
+
+.preferences-theme-preview-swatch.is-header {
+  background: var(--preview-header);
+  color: #fff;
+}
+
+.preferences-theme-preview[data-preview-theme='lighter']
+  .preferences-theme-preview-swatch.is-header {
+  color: #17324f;
+}
+
+.preferences-theme-preview-swatch.is-title {
+  background: var(--preview-title);
+}
+
+.preferences-theme-preview-swatch.is-text {
+  background: var(--preview-text);
+}
+
+.preferences-theme-preview-swatch.is-date {
+  background: var(--preview-date);
+}
+
+.preferences-theme-preview-swatch.is-enum {
+  background: var(--preview-enum);
+}
+
+.preferences-theme-preview-swatch.is-reference {
+  background: var(--preview-reference);
+}
+
+.preferences-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--manatos-border);
+}
+
+.preferences-footer button {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #b9c3d0;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.preferences-footer .secondary {
+  background: var(--manatos-surface);
+  color: var(--manatos-navigation-text);
+}
+
+.preferences-footer .primary {
+  border-color: var(--manatos-blue);
+  background: var(--manatos-blue);
+  color: #fff;
+}
+
+@media (max-width: 575.98px) {
+  .preferences-theme-options {
+    grid-template-columns: 1fr;
+  }
+
+  .preferences-theme-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

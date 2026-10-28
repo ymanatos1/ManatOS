@@ -1,0 +1,9 @@
+digraph Contexts {
+ graph [fontname="Arial",fontsize=11,bgcolor="white",labelloc="t",label="UI Surface Ownership and Flow Execution Are Distinct",pad="0.22",rankdir=LR];
+ node [fontname="Arial",fontsize=10,shape=box,style="rounded,filled",fillcolor="white"];
+ parent [label="ctx.ui.level\n#control / #state / #layout / #data",fillcolor="#dcecff"];
+ child [label=".level (nested Popup)\nindependent child lifetime",fillcolor="#e8f4e5"];
+ flow [label="ctx.flow\nsteps / status / currentStep pointer",fillcolor="#fff3cd"];
+ api [label="Trusted API operation\nvalidation / authorization / commit",fillcolor="#fce8e6"];
+ parent -> child [label="opens"];flow -> child [style=dashed,label="invokes / receives event"];child -> api [label="semantic request"];flow -> api [style=dashed,label="host service action"];
+}

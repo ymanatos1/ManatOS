@@ -298,6 +298,119 @@ describe('bootstrap System Settings storage configuration', () => {
     );
   });
 
+  it('ignores forged relational Ready claims without successful server target checks', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'manatos-system-settings-proof-'));
+    const store = new SystemSettingsStore(
+      join(directory, 'system-settings.json'),
+      join(directory, 'database.json'),
+      encryption(),
+    );
+    await store.initialize();
+
+    const unverified = await store.addStorageConfiguration({
+      name: 'Unverified relational target',
+      adapterId: SQL_SERVER_ADAPTER_ID,
+      stage: 'complete',
+      status: 'ready',
+      settings: {
+        server: 'localhost',
+        database: 'ManatOS',
+        authentication: 'sql-password',
+        userName: 'sa',
+        password: 'credential',
+      },
+    });
+
+    expect(unverified.status).toBe('incomplete');
+    expect(unverified.stage).toBe('connection');
+  });
+
+  it('accepts relational Ready only after matching server-observed target checks', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'manatos-system-settings-verified-'));
+    const store = new SystemSettingsStore(
+      join(directory, 'system-settings.json'),
+      join(directory, 'database.json'),
+      encryption(),
+    );
+    await store.initialize();
+
+    const targetSettings = {
+      server: 'localhost',
+      database: 'ManatOS',
+      authentication: 'sql-password',
+      userName: 'sa',
+      password: 'credential',
+    };
+    const target = store.operationalStorageConfiguration({
+      adapterId: SQL_SERVER_ADAPTER_ID,
+      settings: targetSettings,
+    });
+    store.recordVerifiedStorageTarget(target, 'connection');
+    store.recordVerifiedStorageTarget(target, 'database');
+    store.recordVerifiedStorageTarget(target, 'schema');
+
+    const ready = await store.addStorageConfiguration({
+      name: 'Verified relational target',
+      adapterId: SQL_SERVER_ADAPTER_ID,
+      stage: 'complete',
+      status: 'ready',
+      settings: targetSettings,
+    });
+    expect(ready.stage).toBe('complete');
+    expect(ready.status).toBe('ready');
+
+    const renamed = await store.updateStorageConfiguration(ready.id, {
+      name: 'Renamed verified target',
+      stage: 'complete',
+      status: 'ready',
+      settings: {},
+    });
+    expect(renamed.status).toBe('ready');
+
+    const changed = await store.updateStorageConfiguration(ready.id, {
+      name: renamed.name,
+      stage: 'complete',
+      status: 'ready',
+      settings: { database: 'DifferentDatabase' },
+    });
+    expect(changed.status).toBe('incomplete');
+    expect(changed.stage).toBe('database');
+  });
+
+  it('derives file-backed JSON readiness from required fields without trusting the browser', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'manatos-system-settings-json-ready-'));
+    const store = new SystemSettingsStore(
+      join(directory, 'system-settings.json'),
+      join(directory, 'database.json'),
+      encryption(),
+    );
+    await store.initialize();
+
+    const incomplete = await store.addStorageConfiguration({
+      name: 'Missing binary folder',
+      adapterId: IN_MEMORY_JSON_ADAPTER_ID,
+      stage: 'complete',
+      status: 'ready',
+      settings: { dataFile: join(directory, 'new.json'), binaryRoot: '' },
+    });
+    expect(incomplete.status).toBe('incomplete');
+    expect(incomplete.stage).toBe('configuration');
+    await expect(store.selectStorageConfiguration(incomplete.id)).rejects.toThrow(
+      'saved status is Ready',
+    );
+
+    const complete = await store.updateStorageConfiguration(incomplete.id, {
+      name: incomplete.name,
+      stage: 'complete',
+      status: 'ready',
+      settings: { binaryRoot: join(directory, 'images') },
+    });
+    expect(complete.status).toBe('ready');
+    expect(complete.stage).toBe('complete');
+    await store.selectStorageConfiguration(complete.id);
+    expect(store.adminStorageSnapshot().selectedConfigurationId).toBe(complete.id);
+  });
+
   it('resolves a transient target independently of the selected active datastore', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'manatos-system-settings-target-'));
     const path = join(directory, 'system-settings.json');

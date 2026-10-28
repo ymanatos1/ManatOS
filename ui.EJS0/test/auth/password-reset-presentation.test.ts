@@ -4,15 +4,18 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { resolveMetadataText } from '@manatos/shared';
 
 import { popupContent } from '../../src/presentation/popup/popup-content.js';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const metadataText = (value: string) => resolveMetadataText(value, 'EN');
 const resetView = resolve(testDirectory, '../../views/pages/password-reset.ejs');
 
 describe('password reset presentation', () => {
   it('renders a validated password modal for a usable token', async () => {
     const html = await ejs.renderFile(resetView, {
+      metadataText,
       csrfToken: 'test-csrf',
       popupContent,
       token: 'token-value',
@@ -30,6 +33,7 @@ describe('password reset presentation', () => {
 
   it('offers a new recovery request when the link is unusable', async () => {
     const html = await ejs.renderFile(resetView, {
+      metadataText,
       csrfToken: 'test-csrf',
       popupContent,
       token: 'expired-token',

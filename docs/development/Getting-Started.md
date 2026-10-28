@@ -1,210 +1,80 @@
 # Getting Started for Developers
 
-## Development model
+This is the TypeScript engineering entry point. The system comprises a shared metadata/domain foundation, an authoritative API, a framework-independent semantic UI runtime, two new presentation adapters and an established EJS client. Understand those boundaries before choosing a directory in which to extend behavior.
 
-The repository is an npm workspace. `api` and `ui` are independent applications and can be developed separately. `shared` contains only genuinely common contracts and runtime helpers.
+## First orientation
 
 ```text
-shared -> domain + BO metadata + AppError + OperationContext
-api    -> REST + storage + services + Swagger
-ui     -> EJS + sessions + external auth + generic CRUD
+                  canonical declarations
+                      shared/
+                     /       \
+                    ▼         ▼
+               API server   semantic UIS
+                 api/       shared.UI/
+                              /     \
+                    Angular adapter  EJS adapter
+                          |               |
+                        ui.NG1         ui.EJS1
+
+              ui.EJS0: established separate EJS client
 ```
 
-The UI uses the API over HTTP. It never reads `data/database.json` directly.
+The API is the authorization and persistence authority. UIS controls UI state, surface lifetime, semantic actions and reusable List/Entry/Field behavior. The browser adapters own presentation, event bridging, DOM behavior and framework lifecycles; they do not define business policy. The established `ui.EJS0` client has its own UI implementation and continues to use the common API/domain contracts.
 
-The metadata-driven entity UI and the shared expression engine are core platform infrastructure rather than SysUser-specific code. Canonical and UI metadata may contain expressions. Authored expression source is the portable contract: the API process and UI process each compile lazily into their own process-local AST cache, while the browser never parses grammar itself and requests AST execution data through the UI compile boundary when needed. Do not add renderer special cases for one system entity when the behavior can be represented as metadata or a generic evaluator rule. Treat these rules as universal across already-migrated and future entities: a common feature added while working on one current SysBO must be checked against all registered metadata-driven entities. Live entry state belongs in CTX: `fields.<key>.value` is the scalar value authority, `fields.<key>.originalValue` is its baseline, and `entry.current`/`entry.original` are read-only record mirrors; list data is published through the owning UI level's canonical `list.entries` projection (with `list.originalEntries` when a baseline is meaningful); calculated mutations use the same canonical CTX mutation/events as user changes. Canonical field calculations may opt into generic persistence with `calculation.persisted: true`; entity-specific service/UI hardcoding is not an acceptable substitute.
+The repository structure is explained in [Repository Structure](Repository-Structure.md), including every workspace and its real source directories.
 
-## Commands
+## Build, verify and run
 
-```bash
-npm run dev
-npm run dev:api
-npm run dev:ui
+Use the exact scripts provided by the root `package.json`:
+
+```sh
+npm install
 npm run build
 npm run test
 npm run verify
-npm run verifyrun
-npm run lint
-npm run format:check
-npm run quality:check
-npm run format
-npm run reset:data
+npm run verify-run
 ```
 
-### Verification and quality policy
+For focused development, use `npm run dev:api`, `npm run dev:ui.NG1`, `npm run dev:ui.EJS1` or `npm run dev:ui.EJS0`. A full coordinated launcher is available as `npm run dev`. The workspace-specific forms of `npm run build --workspace <name>` and `npm run test --workspace <name>` are also supported by npm. See [Building and Running](Building-and-Running.md) for the complete script reference.
 
-`npm run verify` is the preferred full validation command before committing significant work. It runs the repository quality gate first (`npm run lint`, then `npm run format:check`), builds `shared`, `api` and `ui`, runs both automated test suites, and prints a compact final summary covering quality checks, builds, API/UI tests and total passed-test counts. Verification stops at the first failing stage, so later stages are reported as `NOT RUN` rather than masking the original failure.
+The available example environment files are `api/.env.example`, `ui.EJS0/.env.example`, `ui.EJS1/.env.example`, and `ui.NG1/.env.example`. Configuration remains host-specific; never place API trust secrets in browser-delivered assets. Consult the [Configuration Reference](../system/Configuration-Catalog.md) and actual host `config.ts` modules.
 
-`npm run verifyrun` performs that same complete quality/build/test verification and starts the normal development processes only when every stage passes. It is useful for the normal development/regression loop because a failed lint, formatting, build or test stage cannot accidentally start a stale runtime.
+## Before modifying a subsystem
 
-`npm run lint` and `npm run format:check` remain available as focused checks during development. `npm run quality:check` runs them in the same order as the quality portion of `verify`. Keep ESLint findings meaningful: fix the implementation when a rule exposes a genuine problem rather than weakening the rule or adding a cosmetic suppression. `format:check` is deliberately non-mutating; use `npm run format` when you intentionally want Prettier to rewrite supported files.
+**Canonical business semantics** belong under `shared/src/metadata/`, `shared/src/domain/`, `shared/src/expressions/` and related domain services. When adding an entity, declare its canonical schema and relationships; the API must validate and authorize the resulting operations independently of the UI.
 
-Source and documentation files use LF as their canonical repository line ending. `.editorconfig` guides editors and `.gitattributes` makes the Git representation platform-independent, so Windows development does not introduce CRLF-only diffs or repeated line-ending warnings.
+**Shared UI semantics** belong under `shared.UI/src/`: `runtime/surface/` for hosts/lifecycle; `components/list/`, `components/entry/` and `components/fields/` for entity UI behavior; `flows/` for multi-step operations; `popups/` for reusable popup definitions; `navigation/` and `preferences/` for shared UI behavior.
 
-## Package guide
+**Concrete presentation** belongs under `shared.UI.NG/src/components/` and `shared.UI.EJS/src/components/`. Keep a readable correspondence between the concrete component class, its template and the shared semantic contract. The application hosts, `ui.NG1/` and `ui.EJS1/`, manage integration, bootstrap, routes, host-side sessions and resource delivery.
 
-### Shared/core development
+**API behavior** belongs under `api/src/http/`, `api/src/services/`, `api/src/auth/` and `api/src/storage/`. HTTP is a boundary; it must not delegate authorization to a UI permission projection. The server's record authorization decision is always authoritative.
 
-- **TypeScript** — compile-time contracts, strict typing and adapter compatibility.
-- **tsx** — executes/restarts TypeScript during development without a manual build loop.
-- **dotenv** — loads local `.env` configuration.
-- **zod** — runtime validation of environment/external input.
-- **helmet** — defensive HTTP headers.
-- **expression engine** (`shared/src/expressions`) — parser, typed AST, lexical CTX resolver, evaluator, built-in function registry and structured diagnostics used by canonical/UI metadata decisions.
+**Established EJS UI** belongs under `ui.EJS0/src/`, `ui.EJS0/views/` and `ui.EJS0/public/`. Its mature functionality can be used as a behavioral reference, but its browser runtime does not define the semantic ownership contract of the newer UIS implementation.
 
-### API
+## Typical extension paths
 
-- **express** — Express 5 HTTP server, middleware and REST routing.
-- **argon2** — Argon2id password hashing/verification.
-- **swagger-ui-express** — interactive API explorer at `/api-docs/`.
+| Requirement | Start with | Then inspect |
+|---|---|---|
+| New canonical entity or relationship | `shared/src/metadata/bo/` | `api/src/services/`, `api/src/storage/`, UI metadata |
+| Expression grammar change | `shared/src/expressions/tokenizer.ts` and `parser.ts` | `resolver.ts`, `evaluator.ts`, shared expression tests |
+| Registered function | `shared/src/expressions/functions/registry.ts` | host capabilities, metadata use, tests |
+| New typed field semantics | `shared.UI/src/components/fields/` | Entry embedded components, Angular/EJS counterparts |
+| List or Entry interaction | `shared.UI/src/components/{list,entry}/` | resource ports and adapter templates |
+| Popup/surface lifetime | `shared.UI/src/runtime/surface/` | adapter modal/focus ownership, nesting tests |
+| Authentication workflow | `api/src/auth/` and `shared.UI/src/node/auth/` | host adapters; browser session policy |
+| Platform capability | `shared/src/platforms/` | source-specific platform UI routes and API controls |
+| Language presentation | `shared/src/multilingual/` | `shared.UI/src/multilingual/` and adapter rendering |
 
-OpenAPI is generated programmatically from the canonical BO metadata; no separate swagger-jsdoc dependency is required. The raw specification is available at `/api/openapi.json`.
+The preferred extension adds canonical meaning once, then connects each consumer through the correct contract. A change to a shared field/type contract must be reflected in every affected adapter rather than leaving divergent behavior behind.
 
-### UI
+## Authentication and local testing
 
-- **express** — separate UI HTTP process.
-- **ejs** — server-side HTML templates.
-- **bootstrap** — responsive layout, forms, modals, dropdowns and tables.
-- **bootstrap-icons** — consistent icons for user/SysPrincipal, applications, actions, warnings, etc.
-- **express-session** — server-side browser session state. Sessions never enter business JSON.
-- **http-errors** — basic UI HTTP/navigation errors that deserve full error pages.
-- **passport** — external-provider protocol mechanics only.
-- **passport-google-oauth20** — Google browser registration/sign-in.
-- **passport-facebook** — Facebook browser registration/sign-in.
+An authenticated user, a Person/Organization Principal and a browser/UI session are distinct concepts. Browser sessions belong to each UI host; API Bearer token sessions belong to the API. Password, OAuth and privilege decisions cross separate trust boundaries. See [Authentication](../security/Authentication-and-Account.md), [Authorization](../security/Authorization-Policy-Architecture.md) and [Native OAuth](../security/Native-OAuth.md).
 
-### Testing
+The test suites run through Vitest and are grouped by subsystem inside each workspace. The authorization matrix, expression tests and surface/adapter tests are important regression evidence; neither a passing build nor a rendered screen substitutes for authorization, transactional or browser-behavior verification. See [Testing](Testing.md).
 
-- **vitest** — unit/integration test runner.
-- **supertest** — calls Express applications without opening a TCP port.
-- **cheerio** — parses rendered HTML for structural UI assertions.
+## Source navigation discipline
 
-### Quality/tooling
+Locate the *semantic owner* of a behavior before changing any concrete template. Prefer one authoritative shared contract over duplicating state or policy between Angular and EJS. For troubleshooting, inspect the runtime CTX path and the host request boundary independently: they are different lifetimes and may not contain the same facts.
 
-- **ESLint / typescript-eslint** — static code-quality checks.
-- **Prettier** — formatting only; eliminates formatting debates.
-- **concurrently** — runs shared/API/UI watchers together for a full-stack developer.
-- **EditorConfig** — consistent line endings/indentation across Windows, Linux and macOS.
-
-Playwright, Husky/lint-staged and Testcontainers are intentionally deferred until they provide immediate value.
-
-## Environment and runtime configuration
-
-Copy:
-
-```text
-api/.env.example -> api/.env
-ui/.env.example  -> ui/.env
-```
-
-The `INTERNAL_API_KEY` values must match.
-
-Environment files now form the **bootstrap/default layer**, not the only application-configuration source. Admin-maintainable runtime settings are represented by persisted `SysConfiguration` records. Missing records are seeded from environment/default values on API startup. Sensitive settings such as `SMTP_PASSWORD` are encrypted before persistence; root trust secrets (`SECRETS_ENCRYPTION_KEY`, `INTERNAL_API_KEY`, `SESSION_SECRET`) stay outside the datastore.
-
-### Session idle timeout
-
-```text
-SESSION_IDLE_TIMEOUT_MINUTES=30
-```
-
-This is a rolling inactivity timeout. The value is intentionally specified in minutes for maintainability.
-
-## Email development
-
-`ConsoleEmailService` prints verification/reset URLs in the UI terminal. This lets a developer test all flows without SMTP.
-
-## External authentication providers
-
-Microsoft, Google, Facebook and GitHub provider definitions are code-defined/declarative, while the UI isolates unavoidable executable OAuth differences behind the shared `ui/src/auth/providers/` adapter registry. Admin-supplied Client ID/Client Secret pairs are stored by the API. Secrets are encrypted at rest. New or replacement credential pairs may be persisted securely without successful verification. They are marked `credentialsVerified=false` and remain unavailable to sign-in/registration until the stored pair successfully completes the real provider OAuth flow. Successful verification persists `credentialsVerified=true` together with `credentialsVerifiedAt`. The UI owns Passport/browser redirects; the API owns provider configuration and normalized external-identity persistence.
-
-For API consumers, keep the surface mentally separated into **Admin provider configuration**, **trusted Admin/BFF credential management**, **internal UI verification workflow**, and the **public runtime provider projection**. The Swagger descriptions state the required access for each operation. Endpoints requiring `x-internal-api-key` are server-to-server/BFF operations and are not intended for browser or third-party clients; where bearer authentication is also required, the bearer subject must be an Admin.
-
-## VS Code
-
-Recommended extensions and workspace defaults live in `.vscode/`. They are recommendations, not a requirement to use VS Code.
-
-## Commenting approach
-
-Source comments explain **why**: security invariants, ownership, metadata contracts, persistence semantics, operation tracing and extension points. Trivial syntax is deliberately left uncommented.
-
-## API response convention
-
-The REST API uses one global response-envelope rule:
-
-- successful GET/query operations return `success + data`;
-- successful command operations (`POST`, `PUT`, `PATCH`, `DELETE`) return `success + message + data`;
-- failures return `success: false` plus a root `message` and an `error` object. The root message mirrors `error.message` so clients have one predictable user-facing message location.
-
-Current generic system-entity list responses place the collection in `data.items` and pagination information in `data.paging`. BO metadata is available through `GET /$metadata` or can be included in a list with `?includeMetadata=true`.
-
-## Server operational endpoints
-
-Server-level endpoints are grouped separately from versioned business resources:
-
-```text
-GET  /health
-GET  /ready
-POST /flush-db
-```
-
-`/health` is a public liveness check. `/ready` is a public readiness check and currently verifies the active datastore. `/flush-db` requires an authenticated Admin and delegates persistence semantics to the active storage adapter.
-
-## Automated API testing
-
-The API test suite is intentionally split by architectural concern:
-
-```text
-api/test/support/test-helpers.ts
-api/test/storage/storage.contract.test.ts
-api/test/integration/api.integration.test.ts
-api/test/integration/api.auth.integration.test.ts
-```
-
-`storage.contract.test.ts` exercises persistence behavior intended to remain stable across future datastore adapters. `api.integration.test.ts` uses `SysApplication` as the representative current generic system entity instead of repeating identical CRUD tests for every resource. `api.auth.integration.test.ts` concentrates the security-sensitive registration, login, password and multi-session flows.
-
-Each integration test constructs the real Express application with a temporary in-memory datastore and temporary JSON persistence file; it does not require a listening server and never touches the development database.
-
-See `docs/Testing.md` for the coverage policy and detailed test responsibilities.
-
-## API presentation and access groups
-
-Swagger and Postman use the same responsibility-oriented API model. Swagger gives each registered SysBO its own tag (for example **SysBO / Users**, **SysBO / Principals**, **SysBO / Applications** and the supporting contact SysBOs) instead of flattening every business object into one generic section. Server/authentication, System Configuration, Public UI, External Authentication, protected credential operations and trusted internal workflow operations remain separate endpoint families. Postman mirrors those boundaries while grouping reusable contact objects by domain (email, telephone and postal address) and separating canonical-value requests from Principal-link requests.
-
-Access remains operation-specific: public endpoints explicitly say so; Admin-only operations require an Admin Bearer token; trusted external-provider credential commands require both Admin Bearer authentication and `x-internal-api-key`; credential-test workflow endpoints are internal UI/BFF mechanics rather than routine client operations.
-
-### Platform-owned UI code
-
-Keep generic routers/templates platform-neutral. Platform catalogue metadata belongs under `shared/src/platforms/<platform>/`; platform-specific feature routes belong under `ui/src/platforms/<platform>/`, pages under `ui/views/pages/platforms/<platform>/`, assets under `ui/public/assets/platforms/<platform>/`, and platform-specific CSS under `ui/public/css/platforms/<platform>.css`. Register feature routers through `ui/src/platforms/routes.ts`; do not add protoCRM-specific branches to `routes/pages/index.ts`, `routes/sysbo/index.ts` or the shell. The platform catalogue/presentation metadata should select platform assets/styles where practical.
-
-The protoCRM Apps Playground has two related surfaces: `app-playground.ejs` is the platform-level Apps Playground landing/workspace; `application-playground.ejs` is the selected-`SysBOApplication` playground reached by `/bo/sys-applications/:id/play`. Both are protoCRM-owned and therefore live under the protoCRM platform folder.
-
-## Expression/debugging regression expectations
-
-Changes to the expression grammar, precedence, registered functions, CTX path resolution, field normalization, dynamic-value resolution, navigation/action policy, or Debugging CLI must include regression coverage. Numeric and semantic indexing of CTX collections are both contracts. The browser reactive evaluator must obtain AST execution data through the UI compile boundary, never by parsing source locally or consuming API-owned AST state, and must remain behaviorally aligned with the canonical evaluator; UI components must not hardcode registered normalization function names. Tests should protect the ownership split: CTX provides facts, metadata provides policy, the evaluator resolves it, and renderers must not add duplicate permission/entitlement gates.
-
-### In-place metadata entry Save
-
-For an existing metadata-driven record, the primary **Save** action uses the normal UI save route but requests an in-place JSON completion. The route persists through the same API/domain path, then returns the authoritative persisted record. The browser promotes its current form snapshot to the new baseline and reconciles canonical field values/baselines and the `entry.current`/`entry.original` mirrors in CTX without replacing the document. **Save and Close** and first-save create flows retain navigation semantics. This behavior belongs to shared form infrastructure and must not be reimplemented per entity.
-
-### Child-editor lifecycle contract
-
-Reusable inline/collection editors participate through the owning entry form's private aggregate-contributor contract. A collection contributor reports committed-value `dirty` state and active-draft `blocksPersistence` state without publishing the draft or contributor bookkeeping into CTX. Parent Save/navigation consume the aggregate policy, while CTX exposes only `control.state.dirty`, `control.state.valid`, and `control.state.blocked`. Do not add entity-specific Save guards or parallel child-editor DOM/event state.
-
-## Adding expression functions
-
-Every registered expression function must document and declare the narrowest capability it requires (`pure`, `clock`, `ctx`, or `entityResolver`). Functions must remain entity-agnostic and must never import storage adapters directly. Persistence-backed behavior belongs behind `EntityResolver`; browser-owned formulas delegate only reached unavailable-capability calls and then resume locally. See [Expression Parsing and Evaluation Mechanics](../expressions/Expression-Architecture.md).
-
-## Browser runtime service namespace
-
-Shared browser runtime services live under the single `window.ManatOS` namespace rather than exporting unrelated top-level globals. Shell services use `ManatOS.connectivity` and `ManatOS.busy`; reusable entity-field behavior uses `ManatOS.fieldComponents`; debugger-only services live under `ManatOS.debug.*`. Cross-window Developer Tools adoption follows the same `ManatOS.debug` contract. Keep mutable lifecycle/cache/registry state private behind those service APIs; do not use the namespace as a semantic state bag or mirror CTX into it.
-
-Private runtime state is retained only when it owns lifecycle, cache, registry, presentation, or in-flight coordination that is not itself a semantic application fact. Examples include contributor registries, popup presentation maps, initialization owner sets, debugger UI state, and the browser document-lifetime expression execution mirror. Such state must remain private behind its owning runtime; moving it into CTX merely to make it visible would create a second semantic authority. Conversely, a private map that starts carrying business/UI meaning observable by expressions must be re-evaluated for CTX ownership instead of silently becoming shadow state.
-
-Storage-key suffixes such as `.v1` or `.v2` are storage-schema/version labels, not evidence of V1/V2 CTX architecture by themselves. Compatibility readers may exist only for an active migration with a concrete consumer. Once migration has served its purpose, remove the fallback rather than preserving a permanent second read contract.
-
-## API traffic diagnostics
-
-`ui/src/debug/api-traffic-store.ts` is the development-only **UI-server** sanitized trace buffer for the ManatOS UI -> API boundary. `ApiClient` records requests centrally so entity routes and individual features must not implement their own traffic logging. This is intentionally different from the CTX Viewer: live CTX state is browser-owned and therefore has no corresponding UI-server trace store. Both visual tools are tabs of the one shell-owned Developer Tools dock; do not reintroduce independent CTX/API dock panels or an internal split divider. The traffic viewer is transport-generic; future expression/resolver diagnostics may enrich entries without coupling the panel to `TraverseEntity` or any particular entity.
-
-The browser diagnostic poll must remain singleton-safe and sequential. Route-pattern show/hide choices may persist as user preferences, while route counters are scoped to the current UI-server boot. The shared connectivity watchdog owns consecutive transport-failure handling; after three sequential transport failures, automatic polls stop until explicit user refresh/navigation.
-
-Never add raw authentication headers, cookies, tokens, credentials or secrets to developer traces. Sanitization must happen before a trace is stored, not only when it is rendered.
+See [Documentation Standards](Documentation-Standards.md), [Coding Principles](Coding-Principles.md), [Extension Points](Extension-Points.md), [UIS Architecture](../clients/UIS-Architecture.md) and [API Architecture](../api/API-Architecture.md).

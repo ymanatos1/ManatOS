@@ -1,0 +1,173 @@
+:host {
+  min-height: 96px;
+  height: 260px;
+  display: flex;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.api-traffic-details {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  width: 100%;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: 1px solid #b8c7d9;
+  background: #f8fafc;
+}
+
+.api-traffic-details-heading {
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border-bottom: 1px solid var(--debug-border);
+  font-size: 0.7rem;
+}
+
+.api-traffic-details-tab-row {
+  min-width: 0;
+  min-height: 2rem;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  background: #f8fafc;
+}
+
+.api-traffic-details-tabs {
+  min-width: 0;
+  min-height: 2rem;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.22rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.3rem 0.5rem 0;
+  scrollbar-width: thin;
+}
+
+.api-traffic-details-tabs button {
+  min-height: 1.65rem;
+  flex: 0 0 auto;
+  border: 1px solid #b8c7d9;
+  border-bottom: 0;
+  border-radius: 0.25rem 0.25rem 0 0;
+  padding: 0.23rem 0.55rem;
+  background: #eef2f6;
+  color: #425466;
+  font-size: 0.68rem;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.api-traffic-details-tabs button.is-active {
+  background: #fff;
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+.api-traffic-details-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 0.5rem 0.6rem;
+  background: #fff;
+  font-size: 0.7rem;
+}
+
+.api-traffic-details-body pre {
+  overflow-x: auto;
+  margin: 0;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  background: #111c2e;
+  color: #dce8f7;
+  font-size: 0.68rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.api-traffic-details-resize {
+  flex: 0 0 6px;
+  height: 6px;
+  cursor: ns-resize;
+  touch-action: none;
+  border-top: 1px solid #d5dde7;
+  background: linear-gradient(to bottom, transparent 1px, #9aa9bb 1px, #9aa9bb 2px, transparent 2px)
+    center / 2rem 4px no-repeat;
+}
+
+.api-traffic-details-tab-overflow {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+}
+
+.api-traffic-details-tab-overflow-toggle {
+  width: 1.55rem;
+  height: 100%;
+  border-left: 1px solid #b8c7d9;
+  border-radius: 0;
+}
+
+.api-traffic-details-tab-overflow-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 0.15rem);
+  right: 0;
+  width: max-content;
+  min-width: 10rem;
+  max-width: min(24rem, 78vw);
+  max-height: min(20rem, 70vh);
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid #b8c7d9;
+  border-radius: 0.3rem;
+  background: #fff;
+  box-shadow: 0 0.35rem 0.8rem rgb(15 23 42 / 16%);
+}
+
+.api-traffic-details-tab-overflow-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.45rem;
+  border: 0;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: #344054;
+  text-align: left;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.api-traffic-details-tab-overflow-item:hover,
+.api-traffic-details-tab-overflow-item.is-active {
+  background: #eef5ff;
+  color: #0d6efd;
+}
+
+.api-traffic-details-tab-overflow .debug-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #52606d;
+  cursor: pointer;
+}
+
+.api-traffic-details-tab-overflow .debug-tool-button:hover {
+  border-color: #b8c7d9;
+  background: #eef5ff;
+  color: #0d6efd;
+}

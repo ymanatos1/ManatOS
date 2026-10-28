@@ -4,7 +4,7 @@ import type { ManatOSSubsystemMetadata } from '../types.js';
 export const SYSBO_PRINCIPAL_TYPE_ENUM = {
   key: 'SysBOPrincipalType',
   name: 'SysBOPrincipalType',
-  label: 'Principal type',
+  label: '@SS.manatos.principals.label.PrincipalType' /* Principal type */,
   calculatedProperties: {
     canBeOrganizationRoot: { expression: 'isContainer' },
     canStandAloneOrganization: { expression: '!isContainer' },
@@ -12,28 +12,28 @@ export const SYSBO_PRINCIPAL_TYPE_ENUM = {
   values: {
     Person: {
       value: SysBOPrincipalType.Person,
-      label: 'Person',
+      label: { EN: 'Person', EL: 'Φυσικό πρόσωπο' },
       icon: 'person',
       isContainer: false,
       canHaveParent: true,
     },
     Company: {
       value: SysBOPrincipalType.Company,
-      label: 'Company',
+      label: { EN: 'Company', EL: 'Εταιρεία' },
       icon: 'building',
       isContainer: true,
       canHaveParent: false,
     },
     Group: {
       value: SysBOPrincipalType.Group,
-      label: 'Group',
+      label: { EN: 'Group', EL: 'Ομάδα' },
       icon: 'people',
       isContainer: true,
       canHaveParent: true,
     },
     System: {
       value: SysBOPrincipalType.System,
-      label: 'System',
+      label: { EN: 'System', EL: 'Σύστημα' },
       icon: 'gear',
       isContainer: false,
       canHaveParent: true,
@@ -44,8 +44,9 @@ export const SYSBO_PRINCIPAL_TYPE_ENUM = {
 export const PRINCIPALS_SUBSYSTEM = {
   key: 'principals',
   name: 'principals',
-  label: 'Principals',
-  description: 'Reusable people, organizations, groups and other business/security principals.',
+  label: '@SS.manatos.principals.label.Principals' /* Principals */,
+  description:
+    '@SS.manatos.principals.description.ReusablePeopleOrganizationsGroupsAndOther' /* Reusable people, organizations, groups and other business/security principals. */,
   owner: { kind: 'manatos' },
   enums: { [SYSBO_PRINCIPAL_TYPE_ENUM.key]: SYSBO_PRINCIPAL_TYPE_ENUM },
 } as const satisfies ManatOSSubsystemMetadata;

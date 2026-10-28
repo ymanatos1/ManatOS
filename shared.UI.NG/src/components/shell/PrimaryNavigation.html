@@ -1,0 +1,82 @@
+<nav class="primary-navigation" [attr.aria-label]="multilingual().resolve('@CM.PrimaryNavigation')">
+  <div class="primary-navigation-items">
+    @for (item of items(); track item.id) {
+    <manatos-primary-navigation-item
+      [item]="item"
+      [depth]="0"
+      [open]="navigationOpen() && openNavigationItemId() === item.id"
+      (openRequested)="toggleNavigation($event)"
+      (itemSelected)="selectNavigation($event)"
+    />
+    }
+  </div>
+
+  <div class="primary-navigation-tools">
+    <manatos-language-selection
+      [languages]="languages()"
+      [currentLanguage]="currentLanguage()"
+      [open]="languageOpen()"
+      variant="navigation"
+      (openRequested)="requestLanguageOpen()"
+      (languageSelected)="languageSelected.emit($event)"
+    />
+
+    <button
+      type="button"
+      class="primary-navigation-tool primary-navigation-documentation"
+      [title]="multilingual().resolve('@CM.OpenDocumentation')"
+      [attr.aria-label]="multilingual().resolve('@CM.OpenDocumentation')"
+      data-documentation-open
+      (click)="documentationRequested.emit()"
+    >
+      <i class="bi bi-book" aria-hidden="true"></i>
+    </button>
+
+    @if (debuggerAllowed()) {
+    <div class="primary-navigation-dropdown">
+      <button
+        type="button"
+        class="primary-navigation-tool primary-navigation-developer-toggle"
+        [title]="multilingual().resolve('@CM.DebuggingTools')"
+        [attr.aria-expanded]="developerOpen()"
+        (click)="toggleDeveloper($event)"
+      >
+        <i class="bi bi-bug" aria-hidden="true"></i>
+        <i class="bi bi-caret-down-fill navigation-caret" aria-hidden="true"></i>
+      </button>
+
+      @if (developerOpen()) {
+      <div
+        class="primary-navigation-menu primary-navigation-tool-menu primary-navigation-developer-menu"
+        role="menu"
+      >
+        @for (item of developerItems(); track item.id) { @if (item.separatorBefore) {
+        <div class="primary-navigation-menu-divider" role="separator"></div>
+        }
+        <button
+          type="button"
+          [title]="item.description"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="item.checked === true"
+          (click)="selectDeveloper(item, $event)"
+        >
+          <i
+            [class]="'bi ' + (item.checked === true ? 'bi-check-square' : 'bi-square') + ' primary-navigation-menu-check'"
+            aria-hidden="true"
+          ></i>
+          <i [class]="'bi ' + item.icon" aria-hidden="true"></i>
+          <span>{{ item.label }}</span>
+        </button>
+        }
+      </div>
+      }
+    </div>
+    }
+
+    <manatos-font-scale
+      [percent]="fontScalePercent()"
+      [language]="currentLanguage().id.toUpperCase() === 'EL' ? 'EL' : 'EN'"
+      (percentChanged)="fontScaleChanged.emit($event)"
+    />
+  </div>
+</nav>

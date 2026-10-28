@@ -1,11 +1,18 @@
-digraph G {
- graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - API Surface and Generic Entity Pipeline"];
- node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"]; edge [fontname="Arial", fontsize=8]; rankdir=TB;
- routes [label="Express API routes\n/auth | /SysUsers | generic entity routes\n/system-settings | /platforms/.../capabilities", fillcolor="#dcecff"];
- auth [label="Authentication + AuthorizationService\nentity capability + row visibility policy"];
- meta [label="Canonical entity metadata\nfields | relationships | calculations | UI metadata"];
- service [label="Generic entity/business-object services\nvalidation + relationship workflows"];
- query [label="Collection pipeline\nauthorization BEFORE client filter/sort/page"];
- store [label="StorageAdapter / repositories"];
- routes -> auth -> service; meta -> service; service -> query; query -> store; service -> store;
+digraph Api {
+ graph [fontname="Arial",fontsize=11,bgcolor="white",labelloc="t",label="API: Request, Policy and Entity Operation",pad="0.25",rankdir=TB];
+ node [fontname="Arial",fontsize=10,shape=box,style="rounded,filled",fillcolor="white"];
+ request [label="Authorized HTTP request\n/api/v1 entity, auth and command routes",fillcolor="#dcecff"];
+ authn [label="Authentication and request context\nBearer session / operation identity"];
+ policy [label="AuthorizationService\nrole, record and organizational checks",fillcolor="#fff3cd"];
+ meta [label="Canonical metadata\nfields / relationships / calculations",fillcolor="#e8f4e5"];
+ service [label="Entity or named application service\nvalidation / integrity / transaction"];
+ query [label="Collection read\nrow policy BEFORE filter / sort / page"];
+ storage [label="Active persistence adapter\nInMemory/JSON",fillcolor="#fce8e6"];
+ result [label="Validated response envelope\ncapabilities are projections, not enforcement"];
+ request -> authn -> policy -> service;
+ meta -> service;
+ service -> query [label="reads"];
+ query -> storage;
+ service -> storage [label="writes"];
+ storage -> result;
 }

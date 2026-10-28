@@ -2,6 +2,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import {
   sysBOApplicationsMetadata,
+  sysBOGuardsMetadata,
+  sysBOProjectsMetadata,
+  sysBOPostsMetadata,
   sysBOConfigurationsMetadata,
   sysBOExtAuthProvidersMetadata,
   sysBOEmailAddressesMetadata,
@@ -13,8 +16,10 @@ import {
   sysBOLicensesMetadata,
   sysBOPrincipalsMetadata,
   sysBOUsersMetadata,
-  operationContext,
   type SysBOApplication,
+  type SysBOGuard,
+  type SysBOProject,
+  type SysBOPost,
   type SysBOConfiguration,
   type SysBOExternalIdentity,
   type SysBOExtAuthProvider,
@@ -30,6 +35,7 @@ import {
   type SysBOUserInvitation,
   type SysBOPictureValue,
 } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { InMemoryRepository } from './in-memory-repository.js';
 
@@ -74,6 +80,9 @@ export class InMemoryDataStore implements StorageAdapter {
   public sysPrincipalAddresses!: InMemoryRepository<SysPrincipalAddress>;
 
   public sysApplications!: InMemoryRepository<SysBOApplication>;
+  public sysGuards!: InMemoryRepository<SysBOGuard>;
+  public sysProjects!: InMemoryRepository<SysBOProject>;
+  public sysPosts!: InMemoryRepository<SysBOPost>;
 
   public sysConfigurations!: InMemoryRepository<SysBOConfiguration>;
 
@@ -216,6 +225,12 @@ export class InMemoryDataStore implements StorageAdapter {
           return this.state.sysPrincipalAddresses;
         case 'sys-applications':
           return this.state.sysApplications;
+        case 'sys-guards':
+          return this.state.sysGuards;
+        case 'sys-projects':
+          return this.state.sysProjects;
+        case 'sys-posts':
+          return this.state.sysPosts;
         case 'sys-configurations':
           return this.state.sysConfigurations;
         case 'sys-licenses':
@@ -394,6 +409,9 @@ export class InMemoryDataStore implements StorageAdapter {
     restoreMap(this.state.sysAddresses, snapshot.sysAddresses);
     restoreMap(this.state.sysPrincipalAddresses, snapshot.sysPrincipalAddresses);
     restoreMap(this.state.sysApplications, snapshot.sysApplications);
+    restoreMap(this.state.sysGuards, snapshot.sysGuards);
+    restoreMap(this.state.sysProjects, snapshot.sysProjects);
+    restoreMap(this.state.sysPosts, snapshot.sysPosts);
     restoreMap(this.state.sysConfigurations, snapshot.sysConfigurations);
     restoreMap(this.state.sysLicenses, snapshot.sysLicenses);
     restoreMap(this.state.sysExtAuthProviders, snapshot.sysExtAuthProviders);
@@ -493,6 +511,9 @@ export class InMemoryDataStore implements StorageAdapter {
       this.state.sysApplications,
       sysBOApplicationsMetadata,
     );
+    this.sysGuards = new InMemoryRepository(this.state.sysGuards, sysBOGuardsMetadata);
+    this.sysProjects = new InMemoryRepository(this.state.sysProjects, sysBOProjectsMetadata);
+    this.sysPosts = new InMemoryRepository(this.state.sysPosts, sysBOPostsMetadata);
 
     this.sysConfigurations = new InMemoryRepository(
       this.state.sysConfigurations,

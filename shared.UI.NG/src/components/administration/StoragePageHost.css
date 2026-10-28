@@ -1,0 +1,72 @@
+.storage-page {
+  padding: 0.5rem 0 1.2rem;
+  font-size: calc(0.95rem * var(--manatos-font-scale, 1));
+}
+
+.storage-page .form-control,
+.storage-page .form-select,
+.storage-page .btn {
+  font-size: inherit;
+}
+
+.storage-page td {
+  vertical-align: middle;
+}
+
+/* The entire configuration row is draggable; the grip makes that discoverable. */
+.storage-configuration-drag-handle {
+  width: 2rem;
+  cursor: grab;
+  user-select: none;
+}
+
+.storage-configuration-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* EJS0-style picker without a global Bootstrap JS dependency. */
+.storage-rich-picker {
+  position: relative;
+}
+.storage-rich-picker > summary {
+  list-style: none;
+}
+.storage-rich-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.storage-rich-picker-menu {
+  position: absolute;
+  z-index: 1050;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 18rem;
+  overflow: auto;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.16);
+  padding: 0.25rem 0;
+}
+.storage-rich-option {
+  display: flex;
+  border: 0;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: inherit;
+  width: 100%;
+  text-align: left;
+}
+.storage-rich-option:hover:not(:disabled),
+.storage-rich-option.active {
+  background: var(--bs-primary-bg-subtle);
+}
+.storage-rich-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.storage-rich-option img,
+.storage-rich-picker summary img {
+  flex-shrink: 0;
+}

@@ -6,7 +6,7 @@ This guide describes how to add an entity without creating a parallel CRUD/prese
 
 Determine whether the entity is:
 
-- foundation-level Company-domain;
+- the `Company` domain-owned;
 - platform-owned (for example protoCRM);
 - future application-defined.
 

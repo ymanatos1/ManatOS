@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
-import { AppError, operationContext, validatePassword, type SysBOUser } from '@manatos/shared';
+import { AppError, validatePassword, type SysBOUser } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { apiClient } from '../../api/client.js';
 import { emailService } from '../../email/email-service.js';

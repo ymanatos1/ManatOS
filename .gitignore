@@ -1,5 +1,7 @@
+.angular/
 node_modules/
 dist/
+dist-host/
 coverage/
 *.log
 data/logs/
@@ -21,3 +23,9 @@ ui.EJS0/public/vendor/
 
 # Generated ManatOS browser application bundles.
 ui.EJS0/public/dist/
+
+# Local EJS1 host configuration.
+ui.EJS1/.env
+
+# Local NG1 UI-resource host configuration.
+ui.NG1/.env

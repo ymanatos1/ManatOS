@@ -1,0 +1,10 @@
+.popup-title {
+  padding: 1.1rem 1.35rem;
+  border-bottom: 1px solid #d3dfed;
+  background: var(--manatos-modal-title-bg);
+  color: inherit;
+}
+
+.popup-title h1 {
+  font-size: calc(1.15rem * var(--manatos-font-scale));
+}

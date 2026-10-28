@@ -32,7 +32,7 @@ describe('V2 EntityEntry visual runtime', () => {
       "const isEntryPopupHost = typeof entryPopupHost !== 'undefined' && entryPopupHost",
     );
     expect(component).toContain('<% if (isEntryPopupHost) { %>');
-    expect(component).toContain("<%= compactEntryDensity ? 'Cancel' : 'Close' %>");
+    expect(component).toContain("metadataText(compactEntryDensity ? '@CM.Cancel' : '@CM.Close')");
     expect(component).toContain('const v2DeleteAction = isViewMode');
     expect(component).toContain('const v2CommandActions = isViewMode');
   });

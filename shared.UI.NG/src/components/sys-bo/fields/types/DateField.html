@@ -1,0 +1,12 @@
+<!-- DateField: Local calendar date input; preserve date-only semantics without UTC conversion. -->
+<manatos-field-control-shell [field]="field()">
+  <input
+    [manatosNativeFieldInteraction]="field()"
+    data-entry-control
+    class="manatos-form-input"
+    type="date"
+    [value]="dateValue()"
+    [readOnly]="field().readOnly"
+    [attr.aria-label]="field().label"
+  />
+</manatos-field-control-shell>

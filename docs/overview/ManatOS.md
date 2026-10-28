@@ -1,15 +1,27 @@
 # System Overview
 
-ManatOS is a **technology foundation** for building and operating metadata-driven, multi-platform business applications, and this repository contains its current implementation. The design targets business systems in which domain entities, UI composition, runtime context, declarative decisions, security and persistence can share explicit contracts instead of being repeatedly encoded in page-specific logic.
+ManatOS is a **TypeScript application foundation** for describing business domains and composing software applications from reusable metadata, semantic runtimes and authoritative API services. Its design places business meaning in canonical entity metadata, interaction semantics in the shared UIS runtime, scoped facts in CTX, pure decisions in expressions, and persistence and access control behind server-owned contracts.
 
-The implementation is a TypeScript workspace with `shared`, `api` and `ui` packages. Shared contracts define the semantic vocabulary. The API owns business/security authority and persistence operations. The UI server/browser compose interaction from metadata and safe facts; the browser owns live CTX and reactive UI state.
+A business application therefore does not need a separate handwritten CRUD stack for every entity, UI technology or database engine. The foundation supplies common behavior, and each application contributes the domain vocabulary, views, rules and use cases that distinguish it.
 
-The first concrete platform is **protoCRM**. Its current platform-owned system scope centers on Applications and Apps Playground. Users/Account, Principals, Licenses, normalized Principal contact information, organization hierarchy and authentication-provider administration belong to the foundation-level technical Company domain and are reusable across platforms.
+```text
+                    Application foundation
+         Metadata · Entities · Expressions · CTX
+                 API · Security · Storage
+                          │
+               shared UIS semantics
+                /              \
+        Angular adapter      EJS adapter
+         (ui.NG1)            (ui.EJS1)
+                          │
+             Business applications
+               protoCRM · Panoptes
+```
 
-The central design objective is not “no code”. It is **code at the correct semantic layer**: canonical metadata for entity structure, UI metadata for presentation, expressions for pure observable decisions, server policy for authorization, components for reusable interaction, commands for side effects and storage adapters for persistence mechanics.
+The TypeScript monorepo comprises eight npm workspaces: `shared`, `api`, `shared.UI`, `shared.UI.NG`, `shared.UI.EJS`, `ui.EJS0`, `ui.NG1` and `ui.EJS1`. The established EJS0 client has a separate implementation, while NG1 and EJS1 use shared UIS semantics. The API is independently authoritative for validation, authorization, business operations and persistence.
 
-For a quick technical model read [Concepts](Concepts.md) and [System Map](System-Map.md). For deep responsibility boundaries read [Architecture](../README.md).
+The source identifier `Company` denotes a shared *technical business domain*—Users, Person/Organization Principals, contacts, licenses and external identity configuration. It is not a legal or organizational classification of the software project.
 
-## Identity versus technical Company scope
+**protoCRM** is the multi-application design and execution platform: its model can define application metadata, views and behavior and use the common runtime, with independently hosted applications as a broader architectural realization. **Panoptes** is a small specialized example of domain composition, represented by platform metadata in the present source. The documentation gives protoCRM substantially more design treatment than Panoptes.
 
-Documentation uses **ManatOS** to mean the technology foundation and its architecture/software ecosystem. `Company` is retained as an implemented technical catalog/composition concept, including `ctx.company`; it must not be read as a statement that ManatOS is a company, corporation, or other particular legal organization.
+For the architecture read [Concepts](Concepts.md) and [System Map](System-Map.md). For subsystem depth use the [Documentation Index](../README.md); for a self-contained technical overview use the [Repository README](../../README.md).

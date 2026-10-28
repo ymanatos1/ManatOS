@@ -1,0 +1,45 @@
+<div
+  class="api-traffic-columns"
+  [style.grid-template-columns]="gridColumns()"
+  aria-hidden="true"
+  (dblclick)="resetColumns()"
+>
+  @for (column of [multilingual().Time, multilingual().Method, multilingual().Path,
+  multilingual().Status, multilingual().Duration]; track $index) {
+  <span class="api-traffic-column-heading">
+    {{ column }}
+    <i
+      class="api-traffic-column-resize"
+      [title]="multilingual().ResizeApiColumn"
+      (pointerdown)="resizeStart($index, $event)"
+      (pointermove)="resizeMove($index, $event)"
+      (pointerup)="resizeEnd($index)"
+      (pointercancel)="resizeEnd($index)"
+    ></i>
+  </span>
+  }
+</div>
+<div class="api-traffic-list" role="list" [attr.aria-label]="multilingual().CapturedApiRequests">
+  @for (entry of entries(); track entry.id) {
+  <button
+    type="button"
+    class="api-traffic-row"
+    [style.grid-template-columns]="gridColumns()"
+    [class.is-selected]="entry.id === selectedId()"
+    [class.is-error]="entry.ok === false"
+    [attr.data-api-entry-id]="entry.id"
+    role="listitem"
+    (click)="selected.emit(entry.id)"
+  >
+    <span>{{ time(entry.startedAt) }}</span>
+    <span class="api-traffic-method">{{ entry.method }}</span>
+    <span class="api-traffic-path" [title]="entry.path">{{ entry.path }}</span>
+    <span class="api-traffic-status">{{ entry.status ?? '…' }}</span>
+    <span class="api-traffic-duration"
+      >{{ entry.durationMs === null ? '…' : entry.durationMs + ' ms' }}</span
+    >
+  </button>
+  } @empty {
+  <div class="api-traffic-empty">{{ multilingual().NoMatchingApiTraffic }}</div>
+  }
+</div>

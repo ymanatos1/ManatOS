@@ -18,15 +18,15 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
   uiViews: {
     main: {
       viewType: 'full',
-      label: 'Standard',
+      label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */,
     },
     quickView: {
       viewType: 'quick',
-      label: 'Quick view',
+      label: '@EN.common.label.QuickView' /* Quick view */,
       record: {
         readOnly: true,
         tabs: [
-          tab('general', 'General', 10, {
+          tab('general', '@CM.AccountGeneral', 10, {
             icon: 'info-circle',
             layout: 'details',
             representation: 'summary',
@@ -55,7 +55,8 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
                   {
                     kind: 'field',
                     field: 'validFrom',
-                    label: 'Validity period',
+                    label:
+                      '@EN.manatos.licensing.licenses.label.ValidityPeriod' /* Validity period */,
                     representation: 'period',
                     relatedFields: ['validUntil'],
                   },
@@ -79,15 +80,17 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
   relatedListView: 'default',
   relatedListViews: {
     default: {
-      label: 'Default',
+      label: '@EN.manatos.configuration.configurations.label.Default' /* Default */,
       layout: 'table-list',
       rowIcon: 'key',
       rowHref: '/bo/sys-licenses/{id}',
       emptyText: 'No related licenses.',
       fields: {
         name: {},
-        principalId: { label: 'Customer' },
-        applicationId: { label: 'Application' },
+        principalId: { label: '@EN.manatos.licensing.licenses.label.Customer' /* Customer */ },
+        applicationId: {
+          label: '@EN.manatos.licensing.licenses.label.Application' /* Application */,
+        },
         platformId: {},
         status: {},
         validUntil: {},
@@ -95,7 +98,7 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
       },
     },
     compact: {
-      label: 'Compact',
+      label: '@EN.manatos.auth.externalIdentities.label.Compact' /* Compact */,
       layout: 'table-list',
       rowIcon: 'key',
       rowHref: '/bo/sys-licenses/{id}',
@@ -131,10 +134,10 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
       },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['name', 'status'],
       },
     },
@@ -142,7 +145,7 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
   record: {
     // Entry tabs / layout
     tabs: [
-      tab('general', 'General', 10, {
+      tab('general', '@CM.AccountGeneral', 10, {
         icon: 'info-circle',
         layout: 'form',
         content: [
@@ -195,7 +198,7 @@ export const sysBOLicensesUIMetadata: SysBOUIMetadata = {
        * the generic FirstCtx(...) function; an empty option collection yields
        * null. CurrentDay() supplies the current calendar day at local midnight.
        */
-      name: { label: 'License name' },
+      name: { label: '@EN.manatos.licensing.licenses.label.LicenseName' /* License name */ },
     },
 
     // Entry commands

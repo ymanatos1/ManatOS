@@ -1,0 +1,10 @@
+<div class="api-traffic-transaction">
+  <strong>Transaction {{ transactionId() }}</strong>
+  @for (entry of entries(); track entry.id) {
+  <div class="api-traffic-transaction-row">
+    <code>{{ entry.method }} {{ entry.path }}</code>
+    <span>{{ entry.status ?? '…' }}</span>
+    <span>{{ entry.durationMs === null ? '…' : entry.durationMs + ' ms' }}</span>
+  </div>
+  }
+</div>

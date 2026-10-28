@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 
-import { PROTOCRM_PLATFORM_ID, SysBOUserRole } from '@manatos/shared';
+import { PANOPTES_PLATFORM_ID, PROTOCRM_PLATFORM_ID, SysBOUserRole } from '@manatos/shared';
 import { SYSTEM_AUDIT_ACTOR } from '../../src/audit/audit-service.js';
 
 import {
@@ -93,6 +93,53 @@ describe('SysBO authorization capability API', () => {
     expect(response.body.data.platformCapabilities.platformAccess).toBe(true);
     expect(response.body.data.entities['sys-users']?.read).toBe(true);
     expect(response.body.data.entities['sys-principals']?.read).toBe(true);
+  });
+
+  it('projects authorization context for the requested non-default platform', async () => {
+    const context = await createTestApi();
+    await seedAdmin(context.services.users);
+    const token = await loginAdmin(context.app);
+
+    const response = await request(context.app)
+      .get(`/api/v1/authorization/context/${PANOPTES_PLATFORM_ID}/$capabilities`)
+      .set('authorization', bearer(token));
+
+    expect(response.status).toBe(200);
+    expectQuerySuccess(response.body);
+    expect(response.body.data.platformId).toBe(PANOPTES_PLATFORM_ID);
+    expect(response.body.data.user.role).toBe(SysBOUserRole.Admin);
+    expect(response.body.data.platformCapabilities.platformAccess).toBe(true);
+    expect(response.body.data.entities['sys-users']?.read).toBe(true);
+    expect(response.body.data.entities['sys-principals']?.read).toBe(true);
+    expect(response.body.data.entities['sys-applications']).toBeUndefined();
+  });
+
+  it('scopes the compatibility entity-capability route when platformId is supplied', async () => {
+    const context = await createTestApi();
+    await seedAdmin(context.services.users);
+    const token = await loginAdmin(context.app);
+
+    const response = await request(context.app)
+      .get(`/api/v1/authorization/entities/$capabilities?platformId=${PANOPTES_PLATFORM_ID}`)
+      .set('authorization', bearer(token));
+
+    expect(response.status).toBe(200);
+    expectQuerySuccess(response.body);
+    expect(response.body.data.platformId).toBe(PANOPTES_PLATFORM_ID);
+    expect(response.body.data.entities['sys-users']?.read).toBe(true);
+    expect(response.body.data.entities['sys-applications']).toBeUndefined();
+  });
+
+  it('rejects an unknown selected platform instead of silently falling back to the default', async () => {
+    const context = await createTestApi();
+    await seedAdmin(context.services.users);
+    const token = await loginAdmin(context.app);
+
+    const response = await request(context.app)
+      .get('/api/v1/authorization/context/not-a-platform/$capabilities')
+      .set('authorization', bearer(token));
+
+    expect(response.status).toBe(404);
   });
 
   it('returns collection capabilities from the authoritative API policy', async () => {

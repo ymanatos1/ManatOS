@@ -88,15 +88,37 @@ describe('metadata-driven field/content component infrastructure', () => {
     expect(entityField).toContain("include('reference-select'");
     expect(reference).toContain('inverseReferenceDeclaration');
     expect(reference).toContain('inverseReferenceRelationship');
-    expect(reference).toContain("label: 'View selected entry'");
-    expect(reference).toContain("label: 'Add entry…'");
-    expect(reference).toContain("label: 'Select existing entry…'");
+    expect(reference).toContain("label: '@CM.FieldToolView'");
+    expect(reference).toContain("label: '@CM.FieldToolAdd'");
+    expect(reference).toContain("label: '@CM.FieldToolSelect'");
     expect(entityField).toContain("include('number-field'");
     expect(entityField).toContain("include('boolean-field'");
     expect(formField).toContain('const calculation = field.calculation');
     expect(formField).toContain('data-field-calculation-expression');
     expect(entityField).not.toContain('calculation');
     expect(entityField).not.toContain('derived');
+  });
+
+  it('localizes every EJS0 field-tool action in EN and EL', async () => {
+    const catalogue = await sharedSource('src/multilingual/metadata/cm.ts');
+    const tools = await uiSource('views/components/sysbo/entry/fields/field-tools-menu.ejs');
+    const reference = await uiSource('views/components/sysbo/entry/fields/reference-select.ejs');
+    const enumSelect = await uiSource('views/components/sysbo/entry/fields/enum-select.ejs');
+
+    expect(tools).toContain('metadataText(action.label)');
+    expect(enumSelect).toContain("metadataText('@CM.FieldToolsEnum')");
+    const usedKeys = new Set(
+      [tools, reference, enumSelect]
+        .flatMap((template) => [...template.matchAll(/@CM\.(FieldTool\w+)/g)])
+        .map((match) => match[1])
+        .filter((key): key is string => Boolean(key)),
+    );
+    expect(usedKeys.size).toBeGreaterThan(0);
+    for (const key of usedKeys) {
+      expect(catalogue, `Missing EN/EL translations for ${key}`).toMatch(
+        new RegExp(`\\b${key}:\\s*\\{\\s*EN:\\s*'[^']+',\\s*EL:\\s*'[^']+'\\s*\\}`),
+      );
+    }
   });
 
   it('uses enhanced canonical controls only through the entity-field dispatcher', async () => {
@@ -184,10 +206,10 @@ describe('metadata-driven field/content component infrastructure', () => {
     const reference = await uiSource('views/components/sysbo/entry/fields/reference-select.ejs');
     const runtime = await uiSource('public/js/sysbo/entry/field-runtime.js');
 
-    expect(tools).toContain('Copy current value');
-    expect(tools).toContain('Revert change');
+    expect(tools).toContain("metadataText('@CM.FieldToolCopy')");
+    expect(tools).toContain("metadataText('@CM.FieldToolRevert')");
     expect(tools).toContain('data-field-input-action="revert"');
-    expect(tools).toContain('Inspect in CTX Viewer');
+    expect(tools).toContain("metadataText('@CM.FieldToolInspect')");
     expect(tools).toContain('showDeveloperTools && inspectCtx');
     expect(tools).toContain('const actionEnabled = (action) =>');
     expect(tools).toContain('editable || action.mutates === false');
@@ -196,7 +218,7 @@ describe('metadata-driven field/content component infrastructure', () => {
     const policy = await uiSource('public/js/sysbo/entry/entry-policy-runtime.js');
     expect(policy).toContain('[data-field-action-mutates="true"]');
     expect(policy).toContain("action.title = 'This field is read-only.'");
-    expect(enumSelect).toContain('Enumeration field tools');
+    expect(enumSelect).toContain("metadataText('@CM.FieldToolsEnum')");
     expect(enumSelect).toContain('data-enum-choice');
     expect(reference).toContain('projectedReferenceRepresentation(reference');
     expect(reference).toContain('metadata-entry-icons');
@@ -207,7 +229,7 @@ describe('metadata-driven field/content component infrastructure', () => {
       'Keep value selection and field tools as two independent dropdown hosts',
     );
     expect(reference).toContain('aria-readonly="true"');
-    expect(reference).toContain('Select existing entry…');
+    expect(reference).toContain("label: '@CM.FieldToolSelect'");
     expect(runtime).toContain("case 'select-existing'");
     expect(runtime).toContain("case 'copy'");
     expect(runtime).toContain("case 'revert'");
@@ -275,18 +297,10 @@ describe('metadata-driven field/content component infrastructure', () => {
 
     expect(identity).toContain("enum: 'SysBOUserRole'");
     expect(identity).not.toContain('enumItems:');
-    expect(authSubsystem).toContain(
-      "{ value: SysBOUserRole.Admin, label: 'Admin', icon: 'shield-lock-fill' }",
-    );
-    expect(authSubsystem).toContain(
-      "{ value: SysBOUserRole.Superuser, label: 'Superuser', icon: 'shield-check' }",
-    );
-    expect(authSubsystem).toContain(
-      "{ value: SysBOUserRole.User, label: 'User', icon: 'person-fill' }",
-    );
-    expect(authSubsystem).toContain(
-      "{ value: SysBOUserRole.Guest, label: 'Guest', icon: 'person' }",
-    );
+    expect(authSubsystem).toContain("label: { EN: 'Admin', EL: 'Διαχειριστής' }");
+    expect(authSubsystem).toContain("label: { EN: 'Superuser', EL: 'Υπερχρήστης' }");
+    expect(authSubsystem).toContain("label: { EN: 'User', EL: 'Χρήστης' }");
+    expect(authSubsystem).toContain("label: { EN: 'Guest', EL: 'Επισκέπτης' }");
     expect(business).toContain("enum: 'SysPlatform'");
     expect(business).not.toContain('enumItems:');
     expect(configurationSubsystem).toContain(

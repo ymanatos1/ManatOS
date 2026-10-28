@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { operationContext } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 /**
  * Run one Express pipeline middleware inside a semantic operation.

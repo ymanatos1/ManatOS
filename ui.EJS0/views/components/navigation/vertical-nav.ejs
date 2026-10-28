@@ -26,12 +26,12 @@
     <li>
       <% if (item.children?.length) { %>
         <details <%= level === 0 ? 'open' : '' %>>
-          <summary title="<%= item.text %>">
+          <summary title="<%= metadataText(item.text) %>">
             <span class="vertical-menu-caption">
               <% if (item.icon) { %>
                 <i class="bi <%= item.icon %> me-2"></i>
               <% } %>
-              <span><%= item.text %></span>
+              <span><%= metadataText(item.text) %></span>
             </span>
 
             <i class="bi bi-chevron-down menu-chevron"></i>
@@ -50,23 +50,23 @@
           class="vertical-menu-action"
           data-bs-toggle="modal"
           data-bs-target="#preferencesModal"
-          title="<%= item.text %>"
-          aria-label="<%= item.text %>"
+          title="<%= metadataText(item.text) %>"
+          aria-label="<%= metadataText(item.text) %>"
         >
           <span class="vertical-menu-caption">
             <% if (item.icon) { %>
               <i class="bi <%= item.icon %> me-2"></i>
             <% } %>
-            <span><%= item.text %></span>
+            <span><%= metadataText(item.text) %></span>
           </span>
         </button>
       <% } else { %>
-        <a href="<%= item.url || '#' %>" title="<%= item.text %>">
+        <a href="<%= item.url || '#' %>" title="<%= metadataText(item.text) %>">
           <span class="vertical-menu-caption">
             <% if (item.icon) { %>
               <i class="bi <%= item.icon %> me-2"></i>
             <% } %>
-            <span><%= item.text %></span>
+            <span><%= metadataText(item.text) %></span>
           </span>
         </a>
       <% } %>

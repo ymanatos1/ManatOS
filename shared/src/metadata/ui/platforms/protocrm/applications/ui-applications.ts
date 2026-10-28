@@ -20,15 +20,15 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
   uiViews: {
     main: {
       viewType: 'full',
-      label: 'Standard',
+      label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */,
     },
     quickView: {
       viewType: 'quick',
-      label: 'Quick view',
+      label: '@EN.common.label.QuickView' /* Quick view */,
       record: {
         readOnly: true,
         tabs: [
-          tab('general', 'General', 10, {
+          tab('general', '@CM.AccountGeneral', 10, {
             icon: 'info-circle',
             layout: 'details',
             representation: 'summary',
@@ -73,20 +73,21 @@ export const sysBOApplicationsUIMetadata: SysBOUIMetadata = {
           kind: 'navigate',
           order: 10,
           visible: true,
-          label: 'Play',
+          label: '@EN.platforms.protocrm.applications.applications.label.Play' /* Play */,
           icon: 'play-fill',
           tone: 'primary',
           emphasis: 'solid',
-          title: 'Open application playground',
+          title:
+            '@EN.platforms.protocrm.applications.applications.title.OpenApplicationPlayground' /* Open application playground */,
           href: '/bo/sys-applications/{id}/play',
         },
       },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['name', 'version'],
       },
     },

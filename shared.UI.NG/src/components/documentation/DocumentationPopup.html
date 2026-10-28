@@ -1,0 +1,27 @@
+<section class="documentation-popup">
+  <manatos-popup-title-docs [model]="title">
+    <manatos-font-scale
+      [percent]="fontScalePercent()"
+      [language]="language()"
+      (percentChanged)="setFontScalePercent($event)"
+    />
+    <manatos-surface-action
+      [label]="multilingual().resolve('@CM.OpenNewDocumentationPopup')"
+      icon="bi-window-plus"
+      (requested)="openNew()"
+    />
+    <manatos-surface-action
+      [label]="multilingual().resolve('@CM.AttachDocumentation')"
+      icon="bi-box-arrow-in-down-left"
+      (requested)="attach()"
+    />
+    <manatos-surface-action
+      [label]="multilingual().resolve('@CM.CloseAllDocumentationPopups')"
+      icon="bi-x-square"
+      (requested)="closeAllRequested.emit()"
+    />
+  </manatos-popup-title-docs>
+
+  <div class="documentation-popup-content" #browser></div>
+  <manatos-footer [state]="state()" [interactive]="false" />
+</section>

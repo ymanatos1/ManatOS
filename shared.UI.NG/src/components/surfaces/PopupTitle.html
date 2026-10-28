@@ -1,0 +1,30 @@
+<manatos-title [model]="model()">
+  <!-- Additional tools specific to the owning popup. -->
+  <ng-content />
+
+  <!-- Standard functional-popup toolbar. -->
+  <manatos-popup-title-tools
+    [showLanguageSelection]="showLanguageSelection()"
+    [languages]="languages()"
+    [currentLanguage]="currentLanguage()"
+    [fontScalePercent]="fontScalePercent()"
+    [debuggerForeground]="debuggerForeground()"
+    [debuggerAllowed]="debuggerAllowed()"
+    [flowStepPath]="flowStepPath()"
+    (languageSelected)="languageSelected.emit($event)"
+    (debuggerRequested)="debuggerRequested.emit()"
+    (flowDebuggerRequested)="flowDebuggerRequested.emit($event)"
+    (fontScaleChanged)="fontScaleChanged.emit($event)"
+  />
+
+  <!-- Close is separate from the other tools and always rightmost. -->
+  @if (showCloseButton()) {
+  <span class="popup-title-close">
+    <manatos-surface-action
+      [label]="multilingual().resolve('@CM.ClosePopup')"
+      icon="bi-x-lg"
+      (requested)="closeRequested.emit()"
+    />
+  </span>
+  }
+</manatos-title>

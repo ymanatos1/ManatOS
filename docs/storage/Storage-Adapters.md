@@ -230,8 +230,17 @@ At minimum, changes should keep coverage for:
 - snapshot behavior/redaction/non-fatal I/O;
 - authorization/query behavior that storage adapters must later push down.
 
-The authoritative full repository `npm run verifyrun` remains the final integration gate.
+The authoritative full repository `npm run verify-run` remains the final integration gate.
 
 ## Related documentation
 
 Start with [Data and Storage Architecture](Data-and-Storage-Architecture.md) for the complete model. Use [Storage Catalog](Storage-Catalog.md) for exact keys and [Configuration Catalog](../system/Configuration-Catalog.md) for settings. Diagnostics are covered by [Diagnostics and Observability Architecture](../diagnostics/Diagnostics-and-Observability-Architecture.md).
+
+## Adapter declarations versus runtime availability
+
+Provider registration describes a storage family and its advertised native capabilities; it is not evidence that a complete adapter is currently selectable. The TypeScript application uses InMemory/JSON as its operational reference adapter. SQLite, SQL Server, MariaDB and PostgreSQL have adapter definitions and capability profiles but must not be presented as interchangeable running backends without executable verification.
+
+Portable semantics are stated once at the repository/storage contract: identity, query behavior, unique constraints, relationship integrity, transactions, calculations and resource persistence. An adapter may use native indexes, generated columns or transactions, or a documented fallback, provided the externally observable contract remains the same.
+
+
+The active JSON adapter implements snapshot restoration, temporary-file persistence and a separate explicit compensation journal; its exact transaction and isolation limits are documented in [In-Memory/JSON Transactions](InMemory-JSON-Transactions.md).

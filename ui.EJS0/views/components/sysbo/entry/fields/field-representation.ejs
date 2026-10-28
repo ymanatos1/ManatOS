@@ -38,7 +38,7 @@
   const optionItem = optionItems.find((candidate) => candidate?.value === value);
   const rendered = field.type === 'reference'
     ? referenceLabel(key, value)
-    : (optionItem?.label || formatValue(value, presentation));
+    : (optionItem?.label ? metadataText(optionItem.label) : formatValue(value, presentation));
   const toneDeclaration = presentation.tone;
   const badgeTone = representation === 'badge'
     ? (field.type === 'boolean'
@@ -87,13 +87,13 @@
 %>
 <% if (representation === 'portrait') { %>
   <% if (pictureSrc) { %>
-    <div class="metadata-field-portrait" aria-label="<%= fieldLabel(field) %>">
-      <img src="<%= pictureSrc %>" alt="<%= fieldLabel(field) %>">
+    <div class="metadata-field-portrait" aria-label="<%= metadataText(fieldLabel(field)) %>">
+      <img src="<%= pictureSrc %>" alt="<%= metadataText(fieldLabel(field)) %>">
     </div>
   <% } %>
 <% } else { %>
   <div class="metadata-field-summary">
-    <div class="metadata-field-summary-label" data-metadata-field-label="<%= key %>"><%= effectiveLabel %></div>
+    <div class="metadata-field-summary-label" data-metadata-field-label="<%= key %>"><%= metadataText(effectiveLabel) %></div>
     <div
       class="metadata-field-summary-value"
       data-v2-summary-presentation

@@ -1,0 +1,83 @@
+@if (wizard(); as state) {
+<div class="storage-tab-body" data-popup-layout-id="storage-capabilities">
+  <manatos-storage-tab-status
+    [wizard]="state"
+    [popup]="popup()"
+    [step]="state.stepById('capabilities')!"
+  />
+  <!-- Use the authoritative resolved capabilities, including inherited definitions. -->
+  <div data-popup-layout-id="storage-capabilities-body">
+    <h3 class="h6">
+      {{ wizard().t('Effective adapter capabilities', 'Δυνατότητες προσαρμογέα') }}
+    </h3>
+    <p class="small text-secondary">
+      {{ wizard().t('Native support and its defining adapter family are shown separately from
+      runtime availability.', 'Η εγγενής υποστήριξη και η προέλευσή της εμφανίζονται χωριστά από τη
+      διαθεσιμότητα εκτέλεσης.') }}
+    </p>
+    <nav
+      class="nav nav-pills flex-nowrap overflow-auto gap-1 mb-3"
+      data-popup-layout-id="storage-capabilities-categories"
+      [attr.aria-label]="wizard().t('Capability categories', 'Κατηγορίες δυνατοτήτων')"
+    >
+      @for (group of wizard().capabilityGroups(); track group.name) {
+      <button
+        type="button"
+        class="nav-link text-nowrap"
+        [class.active]="wizard().activeCapabilityCategory() === group.name"
+        [attr.aria-pressed]="wizard().activeCapabilityCategory() === group.name"
+        (click)="wizard().selectCapabilityCategory(group.name)"
+      >
+        {{ wizard().translate(group.name) }}
+      </button>
+      }
+    </nav>
+    <div
+      class="table-responsive storage-capability-table-scroll"
+      data-popup-layout-id="storage-capabilities-table"
+    >
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">{{ wizard().t('Capability', 'Δυνατότητα') }}</th>
+            <th scope="col">{{ wizard().t('Native support', 'Εγγενής υποστήριξη') }}</th>
+            <th scope="col">
+              {{ wizard().t('Inherited / defined by', 'Κληρονομείται / ορίζεται από') }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (capability of wizard().selectedCapabilities(); track capability.key) {
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ wizard().translate(capability.label) }}</div>
+              <div class="small text-secondary">
+                {{ wizard().translate(capability.description) }}
+              </div>
+            </td>
+            <td>
+              <span
+                class="badge"
+                [class.text-bg-success]="capability.supported"
+                [class.text-bg-secondary]="!capability.supported"
+              >
+                {{ capability.supported ? wizard().t('Supported', 'Υποστηρίζεται') : wizard().t('Not
+                native', 'Όχι εγγενώς') }}
+              </span>
+            </td>
+            <td>{{ wizard().translate(capability.sourceName || capability.sourceId) }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <manatos-storage-tab-status
+    [wizard]="state"
+    [popup]="popup()"
+    [step]="state.stepById('capabilities')!"
+    [footer]="true"
+  />
+</div>
+}

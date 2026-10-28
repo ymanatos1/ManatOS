@@ -87,7 +87,7 @@ describe('V2 License rich-entry acceptance', () => {
       ).toMatchObject({
         kind: 'field',
         field: 'validFrom',
-        label: 'Validity period',
+        label: '@EN.manatos.licensing.licenses.label.ValidityPeriod',
         representation: 'period',
         relatedFields: ['validUntil'],
       });

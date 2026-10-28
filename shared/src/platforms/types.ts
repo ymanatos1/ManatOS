@@ -27,6 +27,8 @@ export interface NavigationContribution {
   dockBottom?: boolean;
   /** Static or evaluator-backed visibility against the current CTX root. */
   visible?: ManatOSDynamicValue<boolean>;
+  /** An entity navigation target; the generic List route and read guard are derived from it. */
+  entityKey?: string;
   requiresEntityKeys?: string[];
   /**
    * Canonical collection-read capability required before this contribution is
@@ -37,13 +39,33 @@ export interface NavigationContribution {
   requiresEntityRead?: string;
 }
 
+/** Reference to a reusable contribution in the owner's navigation catalogue. */
+export interface NavigationReference {
+  navigationId: string;
+  /** Optional placement override when the same contribution is reused on a specific surface. */
+  order?: number;
+}
+
+/**
+ * One contribution to a concrete navigation surface.
+ *
+ * Reusable items reference navigation[]; surface-specific items may be declared
+ * inline without entering the general navigation catalogue.
+ */
+export type NavigationMenuEntry = NavigationReference | NavigationContribution;
+
 /** One subsystem selection contributed by ManatOS or the selected platform. */
 export interface SubsystemSelection {
   key: string;
   selected: boolean;
 }
 
-/** Code-defined ManatOS platform catalogue entry. */
+/** Logical UI page identity. Presentation technology and physical resource extension are resolved later. */
+export interface UiPageIdentity {
+  folder: string;
+  name: string;
+}
+
 export interface SysPlatform {
   id: string;
   code: string;
@@ -58,8 +80,16 @@ export interface SysPlatform {
   presentation?: {
     subtitle?: string;
     intro?: string;
-    /** Renderer asset selected declaratively by platform metadata. */
+    /** Logical landing page selected declaratively by platform metadata. */
+    page?: UiPageIdentity;
+
+    /**
+     * Legacy platform stylesheet consumed by EJS0.
+     * New UI page hosts derive page-family styling from pages/<folder>/Styles.css.
+     * Remove when EJS0 is retired.
+     */
     stylesheet?: string;
+
     features?: Array<{
       id: string;
       title: string;
@@ -69,6 +99,9 @@ export interface SysPlatform {
   };
   subsystems: SubsystemSelection[];
   navigation: NavigationContribution[];
+  platformNavigation?: NavigationMenuEntry;
+  primaryNavigation: NavigationMenuEntry[];
+  workspaceNavigation: NavigationMenuEntry[];
 }
 
 /**
@@ -90,6 +123,8 @@ export interface CompanyInfo {
   };
   subsystems: SubsystemSelection[];
   navigation: NavigationContribution[];
+  primaryNavigation: NavigationMenuEntry[];
+  workspaceNavigation: NavigationMenuEntry[];
   defaultPlatformId: string;
   /** Company-owned Home-page presentation. */
   home: {

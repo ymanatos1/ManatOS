@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { RequestHandler } from 'express';
 
-import { operationContext } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { apiContextRuntime } from '../../context/api-context-runtime.js';
 

@@ -1,0 +1,12 @@
+<!-- PopupIntroContent template: intro HTML loading with cancellation on content change; it does not own popup navigation. -->
+<div
+  class="auth-static-intro"
+  [attr.data-popup-layout-id]="item().id"
+  [attr.aria-busy]="html() === null && !loadError()"
+  [innerHTML]="html()"
+></div>
+@if (loadError()) {
+<p class="auth-static-intro-error" role="alert">
+  {{ multilingual().resolve('@CM.AuthIntroductionLoadError') }}
+</p>
+}

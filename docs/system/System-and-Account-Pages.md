@@ -98,3 +98,9 @@ Flow:
 ```
 
 Examples of non-entity controls include sign-in credentials, password-reset values, search terms and transient external-provider secrets. They belong to their owning system/workflow component. They do not receive entity field-tools or the owning `ctx.ui...level.fields` branch bindings unless a future canonical metadata model explicitly makes them entity fields.
+
+## Document and account surface ownership
+
+Documentation, sign-in, registration, password reset and account pages all use presentation hosts but have different authority. Documentation loads Markdown from the repository and maintains navigation/window state; authentication prompts request trusted server operations through a Flow and host/API bridge. A common modal or page renderer does not mean their business semantics are interchangeable.
+
+See [Documentation Browser](Documentation-Browser.md), [Flow Execution](../clients/Flow-Execution.md) and [Authentication](../security/Authentication-and-Account.md).

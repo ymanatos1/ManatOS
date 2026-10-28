@@ -1,67 +1,54 @@
 # UI Surfaces and Levels
 
-A UI **level** is one node in the active recursive interaction topology. The root level is page-hosted. A level may own one child level, allowing popup and embedded interactions to extend the same semantic tree rather than creating parallel context models.
+A **UI Surface** is a semantic unit of interaction with an explicit owner, lifecycle, CTX state and component layout. A **level** is the surface's location in the active recursive UI hierarchy. Page-hosted and popup-hosted experiences may use the same kinds of semantic content; their rendering hosts differ, but the data and ownership contracts should not.
+
+## Hierarchy and canonical namespaces
 
 ```text
 ctx.ui
-└── level  page: list/entry/system
-    └── level  popup: entry/selector/...
-        └── level  popup or embedded child
-            └── ...
+└── level                      outer surface
+    ├── control                identity, kind, ownership
+    ├── state                  interaction state
+    ├── layout                 semantic component tree
+    ├── data                   selected/current presentation data
+    └── level                  nested child surface
+        ├── control
+        ├── state
+        ├── layout
+        └── data
 ```
 
-## Three hosts
+A List may open an Entry; an Entry may open a selector; a selector may open another owned surface. Nesting follows the invocation chain rather than creating parallel top-level trees. Source modules `host-runtime.ts`, `host-level-runtime.ts`, `embedded-runtime.ts`, `lifecycle.ts`, and `invocation.ts` establish these related but distinct responsibilities under `shared.UI/src/runtime/surface/`.
 
-ManatOS has three fundamental UI hosts:
+A `#level` denotes an explicit surface owner. `#layout` components are *children in its semantic composition*, not automatically child surfaces. A tab is usually a state selection within one surface; it should not create a new `#level` merely because different embedded content becomes visible.
 
-- **page** — the root routed surface;
-- **popup** — a child surface that temporarily owns interaction over its parent;
-- **embedded** — a child UI level rendered/edited locally inside its owning surface.
+## Construction order and observability
 
-`host` answers where the level is mounted and how parent activation behaves. `kind` describes what the level means, such as `entry`, `list`, `selector` or another interaction. `mode` describes operation semantics such as `view`, `edit` or `create`.
+The host creates and publishes the four namespaces together, establishes semantic roles and then exposes the surface to observers. Child content attaches to its declared parent. A rendering adapter may mount corresponding DOM or template elements only after the semantic contract is available. This prevents transiently observable partial levels and avoids rendering components that do not yet have a stable CTX owner.
 
-A popup is not a separate context architecture, and an embedded entry is not a second entity framework.
+`#control`, `#state`, `#layout` and `#data` have complementary purposes. For example, field values belong to the Entry's current working data; visibility and tab selection are state; field positions and embedded child composition are layout; invocation/ownership and lifecycle belong to control or host-owned bindings. A component must not copy the whole Entry into its own state node simply to render an input.
 
-## One browser host authority
+## Nested lifetime and identity
 
-The current browser implementation uses one UI-host runtime to create, update and dispose UI levels. Browser-created popup and embedded children both call the canonical `uiHost.openSurface(...)` / `uiHost.closeSurface(...)` lifecycle; neither host owns a parallel CTX-opening mechanism. Routed page roots are materialized from server bootstrap through the same canonical surface model.
+The parent retains its original CTX path while a child is open. The active leaf receives the focused interaction, but parent ownership does not move. Child disposal must occur before parent disposal. An asynchronous completion from an old popup must not delete a replacement owner at a reused path: the host's identity check prevents that category of stale mutation.
 
-The architectural contract is the important part: surface host (`page`, `popup`, `embedded`) and semantic purpose (`entry`, `selector`, `list`, ...) are orthogonal. Browser-created child surfaces use one recursive opener; page roots use the same surface model at bootstrap rather than pretending that navigation is a child operation.
+Dirty-close coordination belongs to the surface/Entry interaction boundary. A nested Entry with pending changes must not disappear solely because a parent modal receives a generic close event. The user-facing close decision and the authoritative edit state need to agree.
 
-## Parent activation
+## Surface types and content reuse
 
-Popup and embedded children intentionally differ in parent activation:
+| Surface/content | Semantic role | Hosting consideration |
+|---|---|---|
+| Page | Route-owned content and shell integration | Ordinary navigation and page lifetime |
+| List | Query state, collection data, selection/actions | Page or related-record selector popup |
+| Entry | Working values, baseline, fields, validation and actions | Page or nested editor popup |
+| Popup | Contextual invocation, modality, result, close policy | Browser modal/window handling |
+| Embedded component | Controlled contribution to a parent's layout | Adapter rendering and input handling |
+| Flow | Cross-step execution at `ctx.flow` | **Not** a UI surface or nested level |
 
-- opening a **popup** deactivates its parent while the child is active and reactivates the parent when the child closes;
-- opening an **embedded** child leaves its parent active because the child is part of the parent's local interaction/composition.
+A generic Popup Host may display the same List/Entry content used on a Page; it must not construct a second independent implementation of List or Entry semantics. See [UIS Architecture](UIS-Architecture.md) for the architecture and [Flow Execution](Flow-Execution.md) for the separate execution model.
 
-Both still have their own UI-level identity, lifecycle, invocation and semantic ownership path.
+## Engineering considerations
 
-## Lifecycle
+Components and surfaces should report actions through defined semantic contracts. The rendering host manages modal focus, keyboard interaction, detachable windows and DOM lifetime. No browser click handler independently grants authorization or persists canonical data. Verify nested open/close, parent identity, repeated invocation, stale asynchronous responses, focus restoration and CTX observer cleanup.
 
-A created child becomes active. Disposal is explicit and passes through the closing lifecycle before the child node is removed. Surface-owned browser runtimes are notified before deletion so subscriptions can retire while their lexical CTX scope still exists.
-
-Closing a popup restores the immediate parent rather than searching for or reconstructing another page state. Closing an embedded child does not require parent reactivation because the parent was never deactivated.
-
-## Ownership
-
-Each level owns its own invocation, control/lifecycle state, effective presentation identity and resources appropriate to its kind. Entry levels own their field/current/baseline semantics. A child never takes ownership of its parent's fields merely because it is the deepest level.
-
-Parent runtimes retain anchored CTX ownership paths. This is important when nested children open: a mutation intended for the parent must not be redirected merely because the global leaf changed.
-
-## UI views are a separate dimension
-
-An entity **UI view** (`main`, `quickView`, `quick`, etc.) selects a named presentation of the same canonical record. `viewType` (`full`, `quick`, ...) describes the view family. Neither concept is a host.
-
-Consequently:
-
-```text
-host       = page | popup | embedded
-kind       = entry | selector | list | ...
-UI view    = main | quickView | quick | ...
-viewType   = full | quick | ...
-```
-
-A `quick` UI view can therefore be hosted in a popup without “quick popup” becoming a fourth runtime surface.
-
-See [Entity UI Views](../metadata/UI-Views.md), [Entity Entries](../entities/Entity-Entries.md), [Popups and Selectors](../entities/Popups-and-Selectors.md), and [CTX Catalog](../context/CTX-Catalog.md).
+Related: [Client Context Model](../context/Client-Context-Model.md), [Entity Lists](../entities/Entity-Lists.md), [Entry Forms](../entities/Entity-Entries-Forms-Detail.md), [Popups and Selectors](../entities/Popups-and-Selectors.md).

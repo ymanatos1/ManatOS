@@ -1,0 +1,39 @@
+<div class="font-scale" role="group" [attr.aria-label]="multilingual().size">
+  <span class="font-scale-value" aria-live="polite" [attr.aria-label]="multilingual().value">
+    {{ percent() }}%
+  </span>
+
+  <span class="font-scale-controls">
+    <button
+      type="button"
+      class="font-scale-button"
+      [title]="multilingual().increase"
+      [attr.aria-label]="multilingual().increase"
+      [attr.aria-disabled]="percent() >= maxPercent ? 'true' : 'false'"
+      (click)="increase()"
+    >
+      <i class="bi bi-caret-up-fill" aria-hidden="true"></i>
+    </button>
+
+    <button
+      type="button"
+      class="font-scale-reset"
+      [title]="multilingual().reset"
+      [attr.aria-label]="multilingual().reset"
+      (click)="reset()"
+    >
+      <span aria-hidden="true">●</span>
+    </button>
+
+    <button
+      type="button"
+      class="font-scale-button"
+      [title]="multilingual().decrease"
+      [attr.aria-label]="multilingual().decrease"
+      [attr.aria-disabled]="percent() <= minPercent ? 'true' : 'false'"
+      (click)="decrease()"
+    >
+      <i class="bi bi-caret-down-fill" aria-hidden="true"></i>
+    </button>
+  </span>
+</div>

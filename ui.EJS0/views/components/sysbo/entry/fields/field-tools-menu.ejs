@@ -42,7 +42,7 @@
 <ul class="dropdown-menu metadata-field-input-menu <%= editable ? 'is-enabled' : 'is-readonly' %>">
   <li>
     <button class="dropdown-item" type="button" data-field-input-action="copy">
-      <i class="bi bi-copy me-2" aria-hidden="true"></i>Copy current value
+      <i class="bi bi-copy me-2" aria-hidden="true"></i><%= metadataText('@CM.FieldToolCopy') %>
     </button>
   </li>
   <li>
@@ -54,13 +54,13 @@
       disabled
       aria-disabled="true"
     >
-      <i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>Revert change
+      <i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i><%= metadataText('@CM.FieldToolRevert') %>
     </button>
   </li>
   <% if (showDeveloperTools && inspectCtx) { %>
     <li>
       <button class="dropdown-item" type="button" data-field-input-action="inspect-ctx" data-field-key="<%= key %>">
-        <i class="bi bi-bug me-2" aria-hidden="true"></i>Inspect in CTX Viewer
+        <i class="bi bi-bug me-2" aria-hidden="true"></i><%= metadataText('@CM.FieldToolInspect') %>
       </button>
     </li>
   <% } %>
@@ -76,7 +76,7 @@
           <%= action.requiresValue ? 'data-field-action-requires-value="true"' : '' %>
           <%= actionEnabled(action) ? '' : 'disabled aria-disabled="true"' %>
         >
-          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-2" aria-hidden="true"></i><% } %><%= action.label %>
+          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-2" aria-hidden="true"></i><% } %><%= metadataText(action.label) %>
         </button>
       </li>
     <% } %>

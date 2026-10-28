@@ -1,0 +1,34 @@
+<div
+  class="ctx-debug-subscriber-tabs"
+  role="tablist"
+  [attr.aria-label]="multilingual().CtxSubscriberRegistrations"
+>
+  @for (category of categories; track category.key) {
+  <button
+    type="button"
+    role="tab"
+    [class.is-active]="activeCategory() === category.key"
+    [class.has-registrations]="count(category.key) > 0"
+    [attr.aria-selected]="activeCategory() === category.key"
+    [title]="category.description"
+    (click)="selectCategory(category.key)"
+  >
+    {{ category.label }} @if (count(category.key) > 0) {
+    <span>({{ count(category.key) }})</span>
+    }
+  </button>
+  }
+</div>
+
+<ul class="ctx-debug-subscriber-list">
+  @for (subscriber of visibleSubscribers(); track subscriber.id) {
+  <li>
+    <span class="ctx-debug-subscriber-kind">{{ subscriber.label }}</span>
+    <code class="ctx-debug-subscriber-paths"
+      >{{ subscriber.displayPath }}{{ subscriber.recursive ? ' · recursive' : '' }}</code
+    >
+  </li>
+  } @empty {
+  <li class="ctx-debug-properties-empty">{{ multilingual().NoRegistrations }}</li>
+  }
+</ul>

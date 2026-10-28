@@ -1,3 +1,4 @@
+<% const displayText = typeof metadataText === "function" ? metadataText : (value) => value; %>
 <section class="content-card platform-page">
   <% if (platform.headerImage) { %>
     <img
@@ -8,7 +9,7 @@
   <% } %>
 
   <% if (platform.presentation?.intro || platform.description) { %>
-    <p class="platform-intro mt-4 mb-0"><%= platform.presentation?.intro || platform.description %></p>
+    <p class="platform-intro mt-4 mb-0"><%= displayText(platform.presentation?.intro || platform.description) %></p>
   <% } %>
 
   <% const features = platform.presentation?.features || []; %>
@@ -19,8 +20,8 @@
           <div class="platform-feature-icon" aria-hidden="true">
             <i class="bi <%= feature.icon || 'bi-boxes' %>"></i>
           </div>
-          <h2 class="h5"><%= feature.title %></h2>
-          <p class="mb-0"><%= feature.description %></p>
+          <h2 class="h5"><%= displayText(feature.title) %></h2>
+          <p class="mb-0"><%= displayText(feature.description) %></p>
         </article>
       <% } %>
     </div>

@@ -1,0 +1,132 @@
+<section class="configuration-page" aria-label="Configuration">
+  <div class="alert alert-info d-flex gap-2" role="note">
+    <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
+    <div>
+      <strong>{{ t('Secrets stay protected.', 'Τα μυστικά παραμένουν προστατευμένα.') }}</strong>
+      {{ t('Sensitive values are encrypted and never returned to this page. Enter a replacement only
+      when necessary.', 'Οι ευαίσθητες τιμές είναι κρυπτογραφημένες και δεν εμφανίζονται. Εισαγάγετε
+      νέα τιμή μόνο για αντικατάσταση.') }}
+    </div>
+  </div>
+  @if (readOnly()) {
+  <div class="alert alert-info" role="note">
+    <i class="bi bi-eye me-2" aria-hidden="true"></i>
+    <strong>{{ t('Inspection mode.', 'Λειτουργία επιθεώρησης.') }}</strong>
+    {{ t('Only Administrators can change settings.', 'Μόνο οι διαχειριστές μπορούν να αλλάζουν
+    ρυθμίσεις.') }}
+  </div>
+  } @if (error()) {
+  <div role="alert" class="alert alert-danger d-flex gap-2 align-items-center">
+    <span>{{ error() }}</span>
+    <button type="button" class="btn btn-sm btn-outline-danger" (click)="reload()">
+      {{ t('Retry', 'Επανάληψη') }}
+    </button>
+  </div>
+  } @if (loading()) {
+  <p role="status" class="text-secondary">
+    {{ t('Loading configuration…', 'Φόρτωση ρυθμίσεων…') }}
+  </p>
+  } @else {
+  <div class="row g-4">
+    @for (group of groups(); track group.name) {
+    <div class="col-12 col-xl-6">
+      <section class="card shadow-sm h-100">
+        <div class="card-header bg-body-tertiary">
+          <h2 class="h5 mb-0">
+            <i [class]="'bi '+groupIcon(group.name)+' me-2'" aria-hidden="true"></i>{{ group.name }}
+          </h2>
+        </div>
+        <div class="card-body p-0">
+          @for (item of group.items; track item.id) {
+          <form
+            class="configuration-setting p-3 border-bottom"
+            (submit)="$event.preventDefault(); apply(item)"
+          >
+            <div class="d-flex justify-content-between gap-3 mb-1">
+              <label class="fw-semibold" [for]="'cfg-' + item.id">{{ item.name }}</label>
+              <div class="d-flex gap-1 flex-wrap justify-content-end">
+                @if (item.restartRequired) {
+                <span class="badge text-bg-warning"
+                  >{{ t('Restart required', 'Απαιτείται επανεκκίνηση') }}</span
+                >
+                } @if (item.sensitive && item.secretConfigured) {
+                <span class="badge text-bg-success"
+                  ><i class="bi bi-lock-fill" aria-hidden="true"></i> {{ t('Secret configured', 'Το
+                  μυστικό έχει οριστεί') }}</span
+                >
+                }
+              </div>
+            </div>
+            @if (item.description) {
+            <p class="small text-secondary mb-2">{{ item.description }}</p>
+            }
+            <div class="input-group">
+              @if (item.valueType === 'boolean') {
+              <select
+                class="form-select"
+                [id]="'cfg-' + item.id"
+                [value]="draft(item)"
+                [disabled]="!canEdit(item) || saving().has(item.id)"
+                (change)="edit(item, $event)"
+              >
+                <option value="true">{{ t('Enabled / true', 'Ενεργό / true') }}</option>
+                <option value="false">{{ t('Disabled / false', 'Ανενεργό / false') }}</option>
+              </select>
+              } @else if (item.valueType === 'enum') {
+              <select
+                class="form-select"
+                [id]="'cfg-' + item.id"
+                [value]="draft(item)"
+                [disabled]="!canEdit(item) || saving().has(item.id)"
+                (change)="edit(item, $event)"
+              >
+                @for (option of item.allowedValues ?? []; track option) {
+                <option [value]="option">{{ option }}</option>
+                }
+              </select>
+              } @else {
+              <input
+                class="form-control"
+                [id]="'cfg-' + item.id"
+                [type]="item.sensitive ? 'password' : (item.valueType === 'number' ? 'number' : 'text')"
+                [value]="draft(item)"
+                (input)="edit(item, $event)"
+                [attr.min]="item.valueType === 'number' ? '1' : null"
+                [attr.autocomplete]="item.sensitive ? 'new-password' : 'off'"
+                [placeholder]="item.sensitive && item.secretConfigured ? t('Leave blank to keep the stored secret', 'Αφήστε κενό για διατήρηση') : ''"
+                [readOnly]="!canEdit(item) || saving().has(item.id)"
+              />
+              } @if (canEdit(item)) {
+              <button
+                class="btn btn-outline-primary"
+                type="submit"
+                [disabled]="saving().has(item.id) || (item.sensitive && !draft(item))"
+              >
+                @if (saving().has(item.id)) {
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> }
+                <i class="bi bi-check2" aria-hidden="true"></i> {{ t('Apply', 'Εφαρμογή') }}
+              </button>
+              }
+            </div>
+            <div
+              class="form-text"
+              aria-live="polite"
+              [class.text-success]="result(item.id)?.ok"
+              [class.text-danger]="result(item.id) && !result(item.id)?.ok"
+            >
+              {{ result(item.id)?.message ?? '' }}
+            </div>
+            @if (item.defaultValue && !item.sensitive) {
+            <div class="form-text">
+              {{ t('Default:', 'Προεπιλογή:') }} <code>{{ item.defaultValue }}</code>
+            </div>
+            }
+          </form>
+          }
+        </div>
+      </section>
+    </div>
+    }
+  </div>
+  }
+</section>

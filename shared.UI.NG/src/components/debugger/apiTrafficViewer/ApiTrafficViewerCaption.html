@@ -1,0 +1,9 @@
+<div class="api-traffic-caption">
+  <strong>{{ multilingual().ApiTrafficTitle }}</strong>
+  @if (entry(); as item) {
+  <code [title]="item.requestId">{{ item.method }} {{ item.path }}</code>
+  <span>{{ item.status ?? '…' }}</span>
+  } @else {
+  <span>{{ multilingual().SelectApiRequest }}</span>
+  }
+</div>

@@ -50,8 +50,8 @@
 <% if (!hasAnyEntries) { %>
   <section class="empty-entity-state" data-ui-engine="v2" data-v2-entity-list>
     <i class="bi bi-inbox" aria-hidden="true"></i>
-    <strong>No entries found</strong>
-    <span>This entity does not contain any entries yet.</span>
+    <strong><%= metadataText('@CM.NoEntriesFound') %></strong>
+    <span><%= metadataText('@CM.EntityHasNoEntries') %></span>
 
     <div class="d-flex gap-2 flex-wrap justify-content-center mt-2">
       <a
@@ -59,25 +59,25 @@
         href="<%= clientAddAction.href %>"
         data-v2-list-action="add"
         data-action-href="<%= clientAddAction.href %>"
-        data-action-title="<%= clientAddAction.label %>"
-        title="<%= clientAddAction.label %>"
+        data-action-title="<%= metadataText(clientAddAction.label) %>"
+        title="<%= metadataText(clientAddAction.label) %>"
         hidden
       >
         <i class="bi bi-plus-circle me-1"></i>
-        Add the first entry
+        <%= metadataText('@CM.AddFirstEntry') %>
       </a>
       <% for (const action of clientPageActions) { %>
         <% if (action.kind !== 'navigate') continue; %>
         <a
           class="<%= action.cssClass %>"
           href="<%= action.href %>"
-          title="<%= action.title || action.label %>"
+          title="<%= metadataText(action.title || action.label) %>"
           data-v2-list-action="page:<%= action.key %>"
           data-action-href="<%= action.href %>"
-          data-action-title="<%= action.title || action.label %>"
+          data-action-title="<%= metadataText(action.title || action.label) %>"
           hidden
         >
-          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= action.label %>
+          <% if (action.icon) { %><i class="bi bi-<%= action.icon %> me-1" aria-hidden="true"></i><% } %><%= metadataText(action.label) %>
         </a>
       <% } %>
     </div>
@@ -115,6 +115,12 @@
     };
     const rowActionHref = (action, item) =>
       String(action.href || '').replaceAll('{id}', encodeURIComponent(String(item.id || '')));
+    const listSearchPlaceholder = metadataText('@CM.SearchEntries').replace(
+      '{entity}',
+      metadataText(metadata.pluralLabel).toLocaleLowerCase(
+        typeof language !== 'undefined' && language === 'EL' ? 'el' : 'en'
+      )
+    );
   %>
 
   <section
@@ -130,7 +136,7 @@
       <div class="alert alert-<%= listMetadata.notice.tone || 'info' %> border d-flex gap-2 align-items-start mb-3" role="note" data-metadata-list-notice>
         <% if (listMetadata.notice.icon) { %><i class="bi bi-<%= listMetadata.notice.icon %> mt-1" aria-hidden="true"></i><% } %>
         <div>
-          <% if (listMetadata.notice.title) { %><strong><%= listMetadata.notice.title %></strong> <% } %><%= listMetadata.notice.text %>
+          <% if (listMetadata.notice.title) { %><strong><%= metadataText(listMetadata.notice.title) %></strong> <% } %><%= metadataText(listMetadata.notice.text) %>
         </div>
       </div>
     <% } %>
@@ -146,7 +152,7 @@
       definition,
       clientPageActions,
       clientAddAction,
-      searchPlaceholder: `Search ${metadata.pluralLabel.toLowerCase()}`
+      searchPlaceholder: listSearchPlaceholder
     }) %>
 
     <%- include('../sysbo/list/list-filters', { filterFields, hasActiveFilters, filterCollapseId, metadata, query, enumItem, listReferenceValues, definition }) %>
@@ -162,8 +168,8 @@
             <tr>
               <td class="empty-table-state" colspan="<%= listMetadata.visibleFields.length + (startRowActions.length ? 1 : 0) + (endRowActions.length ? 1 : 0) %>">
                 <i class="bi bi-search"></i>
-                <strong>No entries found</strong>
-                <span>No existing entries match the current filter. Change or clear the filters.</span>
+                <strong><%= metadataText('@CM.NoEntriesFound') %></strong>
+                <span><%= metadataText('@CM.NoEntriesMatchFilters') %></span>
               </td>
             </tr>
           <% } %>

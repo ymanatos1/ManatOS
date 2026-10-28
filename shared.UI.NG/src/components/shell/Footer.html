@@ -1,0 +1,16 @@
+<footer class="corporate-footer">
+  <div class="footer-brand">
+    <strong>{{ state().company.shortName }}</strong>
+    <span>© {{ currentYear }} {{ state().company.name }}</span>
+  </div>
+
+  <div class="footer-links">
+    @if (interactive()) {
+    <a href="/company">{{ language() === 'EL' ? 'Εταιρεία' : 'Company' }}</a>
+    <a href="/privacy">{{ language() === 'EL' ? 'Απόρρητο' : 'Privacy' }}</a>
+    <a href="/terms">{{ language() === 'EL' ? 'Όροι χρήσης' : 'Terms' }}</a>
+    <a href="#">{{ language() === 'EL' ? 'Επικοινωνία' : 'Contact' }}</a>
+    }
+    <span class="footer-version">{{ state().versionLabel }}</span>
+  </div>
+</footer>

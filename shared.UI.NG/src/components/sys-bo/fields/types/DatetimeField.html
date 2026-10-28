@@ -1,0 +1,12 @@
+<!-- DatetimeField: Local date/time input; timezone conversion remains canonical policy. -->
+<manatos-field-control-shell [field]="field()">
+  <input
+    [manatosNativeFieldInteraction]="field()"
+    data-entry-control
+    class="manatos-form-input"
+    type="datetime-local"
+    [value]="dateTimeValue()"
+    [readOnly]="field().readOnly"
+    [attr.aria-label]="field().label"
+  />
+</manatos-field-control-shell>

@@ -1,0 +1,95 @@
+<div class="row g-3" [attr.data-popup-layout-id]="'storage-' + step().id + '-fields'">
+  @for (field of step().fields; track field.key) { @if (wizard().visible(field) &&
+  !excludeKeys().includes(field.key)) {
+  <div
+    [class]="field.columnClass ?? 'col-12 col-md-6'"
+    [attr.data-popup-layout-id]="'storage-setting-' + wizard().draft()?.adapterId + '-' + field.key"
+  >
+    <label class="form-label fw-semibold" [for]="'storage-field-' + field.key">
+      {{ wizard().translate(field.label) }} @if (wizard().required(field)) {
+      <span aria-hidden="true">*</span>
+      }
+    </label>
+
+    @if (field.type === 'boolean' && field.presentation === 'checkbox') {
+    <label class="form-check">
+      <input
+        class="form-check-input"
+        [id]="'storage-field-' + field.key"
+        type="checkbox"
+        [checked]="wizard().value(field) === 'true'"
+        [disabled]="wizard().readOnly() || wizard().busy()"
+        (change)="wizard().edit(field, $any($event.target).checked ? 'true' : 'false')"
+      />
+      <span class="form-check-label">{{ wizard().t('Enabled', 'Ενεργό') }}</span>
+    </label>
+    } @else if (field.type === 'boolean') {
+    <select
+      class="form-select"
+      [id]="'storage-field-' + field.key"
+      [value]="wizard().value(field)"
+      [disabled]="wizard().readOnly() || wizard().busy()"
+      (change)="wizard().edit(field, $any($event.target).value)"
+    >
+      <option value="">—</option>
+      <option value="true">{{ wizard().translate('True') }}</option>
+      <option value="false">{{ wizard().translate('False') }}</option>
+    </select>
+    } @else if (field.type === 'select') {
+    <select
+      class="form-select"
+      [id]="'storage-field-' + field.key"
+      [value]="wizard().value(field)"
+      [disabled]="wizard().readOnly() || wizard().busy()"
+      (change)="wizard().edit(field, $any($event.target).value)"
+    >
+      <option value="">—</option>
+      @for (option of field.options ?? []; track option.value) {
+      <option [value]="option.value">{{ wizard().translate(option.label) }}</option>
+      }
+    </select>
+    } @else {
+    <div [class.input-group]="field.secret">
+      <input
+        class="form-control"
+        [id]="'storage-field-' + field.key"
+        [type]="field.secret && !visibleSecret(field.key) ? 'password' : field.type === 'number' ? 'number' : 'text'"
+        [attr.autocomplete]="field.secret ? 'new-password' : 'off'"
+        [attr.placeholder]="
+                  wizard().configured(field)
+                    ? wizard().t(
+                        'Stored securely — enter to replace',
+                        'Ασφαλής αποθήκευση — νέα τιμή για αντικατάσταση'
+                      )
+                    : (field.suggestedValue ?? '')
+                "
+        [value]="wizard().value(field)"
+        [disabled]="wizard().readOnly() || wizard().busy()"
+        [required]="wizard().required(field) && !wizard().configured(field)"
+        (input)="wizard().edit(field, $any($event.target).value)"
+      />
+      @if (field.secret) {
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        [disabled]="wizard().busy()"
+        [attr.aria-label]="visibleSecret(field.key) ? wizard().t('Hide password', 'Απόκρυψη κωδικού') : wizard().t('Show password', 'Εμφάνιση κωδικού')"
+        (click)="toggleSecret(field.key)"
+      >
+        <i
+          [class]="visibleSecret(field.key) ? 'bi bi-eye-slash' : 'bi bi-eye'"
+          aria-hidden="true"
+        ></i>
+      </button>
+      }
+    </div>
+    } @if (wizard().configured(field)) {
+    <div class="small text-success">
+      <i class="bi bi-lock-fill me-1"></i>
+      {{ wizard().t('Secret configured', 'Το μυστικό έχει οριστεί') }}
+    </div>
+    }
+    <div class="form-text">{{ wizard().translate(field.description) }}</div>
+  </div>
+  } }
+</div>

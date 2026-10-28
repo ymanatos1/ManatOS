@@ -1,0 +1,578 @@
+/* Canonical framework-neutral field semantics: used by EJS1 and NG1. */
+.manatos-field-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d2dce7;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: calc(11px * var(--manatos-font-scale, 1));
+  white-space: nowrap;
+  background: #f6f8fa;
+  color: #596879;
+}
+.manatos-field-badge--success {
+  background: #ecfaf1;
+  color: #18864b;
+  border-color: #bae5ca;
+}
+.manatos-field-entry-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #1462cf;
+}
+
+.manatos-field-enum {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.manatos-field-enum .bi {
+  color: #395c83;
+}
+manatos-boolean-field,
+manatos-date-field,
+manatos-datetime-field,
+manatos-duration-field,
+manatos-email-field,
+manatos-enum-field,
+manatos-guid-field,
+manatos-number-field,
+manatos-picture-field,
+manatos-pictures-field,
+manatos-reference-field,
+manatos-richtext-field,
+manatos-telephone-field,
+manatos-text-field,
+manatos-version-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Entry references and enum tones reuse type-specific FieldBehavior semantics. */
+.manatos-field-reference {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.manatos-field-reference-unknown {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid #d7dce6;
+  border-radius: 999px;
+  background: #f6f8fc;
+  color: #64748b;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+.manatos-field-reference-photo {
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.manatos-field-badge--danger {
+  background: #fff1f1;
+  border-color: #f0c5c5;
+  color: #af3c3c;
+}
+.manatos-field-badge--warning {
+  background: #fff8e9;
+  border-color: #f5e0af;
+  color: #876016;
+}
+.manatos-field-badge--info {
+  background: #eef8ff;
+  border-color: #bcdff4;
+  color: #176c92;
+}
+.manatos-field-badge--primary {
+  background: #eef3ff;
+  border-color: #cad7f5;
+  color: #3158ad;
+}
+.manatos-field-badge--email {
+  border-radius: 5px;
+  text-decoration: none;
+  background: #eef5ff;
+  color: #265c9a;
+}
+.manatos-field-badge--version {
+  border-radius: 5px;
+  background: #f6f6fa;
+}
+
+.manatos-entry-photo-thumbnail {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* Icon-aware enum editor: one hidden canonical select and one presentational option list. */
+.manatos-enum-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.manatos-enum-rich {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.manatos-enum-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: start;
+  cursor: pointer;
+}
+.manatos-enum-trigger > span,
+.manatos-enum-trigger [data-entry-enum-current] {
+  flex: 1;
+  min-width: 0;
+}
+.manatos-enum-menu {
+  position: absolute;
+  z-index: 35;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #ccd9e6;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px #1d365426;
+}
+.manatos-enum-menu[hidden] {
+  display: none;
+}
+.manatos-enum-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+.manatos-enum-menu button:hover,
+.manatos-enum-menu button:focus-visible,
+.manatos-enum-menu button[aria-selected='true'] {
+  background: #eaf3ff;
+}
+
+/* Authenticated reference-candidate preview; never a substitute for selection workflow. */
+.manatos-reference-candidates {
+  position: relative;
+  margin-left: auto;
+}
+.manatos-reference-candidates > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 9px;
+  color: #487cb9;
+}
+.manatos-reference-candidates > summary::-webkit-details-marker {
+  display: none;
+}
+.manatos-reference-candidate-list {
+  position: absolute;
+  z-index: 35;
+  top: 100%;
+  right: 0;
+  min-width: 230px;
+  max-height: 265px;
+  overflow: auto;
+  border: 1px solid #ccd9e6;
+  background: white;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px #1d365426;
+}
+.manatos-reference-candidate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+}
+.manatos-reference-candidate.is-unavailable {
+  opacity: 0.55;
+}
+
+/* Editable ReferenceField: selected Entry plus native authenticated selector. */
+.manatos-reference-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.manatos-reference-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-align: start;
+  min-width: 0;
+  width: 100%;
+}
+.manatos-reference-trigger:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.manatos-reference-trigger [data-entry-reference-name] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.manatos-reference-chevron {
+  margin-left: auto;
+}
+/* Reference and Enum share the same full-width form-input chrome. */
+.manatos-reference-quick-wrapper {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+.manatos-reference-trigger {
+  box-sizing: border-box;
+  background: #fff;
+  border: 0;
+  border-radius: 0;
+  color: #25344c;
+  font: inherit;
+  font-size: calc(13px * var(--manatos-font-scale, 1));
+}
+.manatos-reference-trigger:disabled {
+  background: #f1f3f6;
+  color: #718096;
+}
+.manatos-reference-selection-line {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: stretch;
+  background: #fff;
+  overflow: hidden;
+}
+.manatos-reference-view {
+  flex: 0 0 auto;
+  border: 0;
+  border-left: 1px solid #dbe4ee;
+  padding: 0 10px;
+  background: #fff;
+  color: #4774a9;
+  cursor: pointer;
+}
+.manatos-reference-view:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.manatos-reference-quick-panel footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.manatos-reference-quick-panel footer button:first-child {
+  margin-inline-end: auto;
+}
+.manatos-reference-quick-panel {
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(100% + 4px);
+  z-index: 55;
+  width: min(420px, 80vw);
+  max-height: 370px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #243951;
+  border: 1px solid #ccd9e6;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px #182c4840;
+}
+.manatos-reference-quick-panel[hidden] {
+  display: none;
+}
+.manatos-reference-selector-search {
+  margin: 12px 16px;
+  padding: 8px 10px;
+  font: inherit;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+}
+.manatos-reference-selector-search:focus-visible {
+  outline: 2px solid #4386f7;
+  outline-offset: 2px;
+  border-color: #82addb;
+}
+.manatos-reference-selector-rows {
+  overflow: auto;
+  min-height: 0;
+  padding: 0 9px;
+}
+.manatos-reference-selector-rows > button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  width: 100%;
+  text-align: start;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+.manatos-reference-selector-rows > button:hover:not(:disabled),
+.manatos-reference-selector-rows > button:focus-visible,
+.manatos-reference-selector-rows > button[aria-selected='true'] {
+  background: #eaf3ff;
+}
+.manatos-reference-selector-rows > button:focus-visible,
+.manatos-reference-quick-panel footer button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.manatos-reference-selector-rows > button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.manatos-reference-selector-rows > button[hidden] {
+  display: none;
+}
+.manatos-reference-catalogue-status {
+  padding: 8px 16px;
+  margin: 0;
+  color: #725417;
+  font: inherit;
+}
+.manatos-reference-selection-error {
+  margin: 0;
+  padding: 8px 16px;
+  color: #991b1b;
+  font: inherit;
+}
+.manatos-reference-selector-empty {
+  padding: 16px;
+  color: #64748b;
+}
+.manatos-reference-quick-panel footer {
+  border-top: 1px solid #dbe4ee;
+  padding: 12px 16px;
+  text-align: end;
+}
+.manatos-reference-quick-panel footer button:hover:not(:disabled),
+.manatos-reference-quick-panel footer button:focus-visible {
+  background: #eaf3ff;
+  border-color: #82addb;
+}
+.manatos-reference-quick-panel footer button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.manatos-reference-quick-panel footer button {
+  font: inherit;
+  color: inherit;
+  padding: 6px 13px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* The view action remains visible even for None; chevron opens the selector independently. */
+.manatos-reference-chevron-action {
+  flex: 0 0 auto;
+  border: 0;
+  padding: 0 9px;
+  background: #fff;
+  color: #4f6682;
+  cursor: pointer;
+}
+.manatos-reference-chevron-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Read-only identifiers share EJS0's compact, selectable badge presentation. */
+.manatos-guid-badge {
+  display: inline-block;
+  width: auto;
+  max-width: 100%;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid #cad7e8;
+  border-radius: 0.35rem;
+  background: #f1f6fc;
+  color: #30537b;
+  font: inherit;
+  font-family: ui-monospace, monospace;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+
+/* The PictureField preview, corner delete button and help mirror EJS0. */
+.manatos-picture-field {
+  display: flex;
+  position: relative;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  width: 100%;
+}
+.manatos-picture-thumbnail {
+  display: inline-flex;
+  flex: 0 0 78px;
+  width: 78px;
+  height: 78px;
+  padding: 3px;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.45rem;
+  background: #f4f6fa;
+  cursor: pointer;
+}
+.manatos-picture-thumbnail:disabled {
+  cursor: default;
+}
+.manatos-picture-thumbnail:not(:disabled):hover,
+.manatos-picture-thumbnail:not(:disabled):focus-visible {
+  border-color: #367df2;
+  outline: 2px solid #bdd7ff;
+}
+.manatos-picture-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.manatos-picture-placeholder {
+  color: #6d7f98;
+  font-size: 1.65rem;
+}
+.manatos-picture-delete {
+  position: absolute;
+  top: 0.2rem;
+  left: 57px;
+  z-index: 2;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  background: #dc3545;
+  cursor: pointer;
+  padding: 0.12rem 0.32rem;
+  line-height: 1.25;
+}
+.manatos-picture-delete:hover {
+  background: #b42330;
+}
+.manatos-picture-help {
+  flex: 1 1 12rem;
+  color: #64748b;
+  font-size: 0.875em;
+  line-height: 1.45;
+}
+.manatos-pictures-field {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.manatos-pictures-item {
+  position: relative;
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  border: 1px solid #d7e2ef;
+  border-radius: 5px;
+  padding: 4px;
+}
+.manatos-pictures-item img {
+  width: 78px;
+  height: 78px;
+  object-fit: cover;
+}
+.manatos-pictures-item button {
+  background: #fff;
+  border: 1px solid #cfdae7;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.manatos-pictures-add {
+  border: 1px dashed #9aafc9;
+  background: #fff;
+  border-radius: 5px;
+  min-width: 75px;
+  min-height: 80px;
+  cursor: pointer;
+}
+
+.manatos-picture-input-error {
+  display: block;
+  color: #991b1b;
+  font-size: 0.85em;
+}
+
+/* Canonical Entry field-history controls: native presentations share Entry #data.history. */
+.manatos-picture-help-column {
+  display: flex;
+  flex: 1 1 11rem;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.manatos-picture-history-actions {
+  display: flex;
+  gap: 5px;
+}
+.manatos-picture-history-actions button,
+.manatos-reference-history-action {
+  background: #fff;
+  color: #285d99;
+  border: 1px solid #cbd9eb;
+  border-radius: 4px;
+  padding: 4px 7px;
+  cursor: pointer;
+  font: inherit;
+}
+.manatos-picture-history-actions button:hover:not(:disabled),
+.manatos-reference-history-action:hover:not(:disabled) {
+  background: #eaf2ff;
+  border-color: #89b4f0;
+}
+.manatos-picture-history-actions button:disabled,
+.manatos-reference-history-action:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+.manatos-picture-help-column .manatos-picture-help {
+  flex: none;
+}
+.manatos-picture-thumbnail,
+.manatos-pictures-add {
+  position: relative;
+}
+.manatos-picture-launch-feedback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: #f4f8ffe8;
+  color: #3073c6;
+  pointer-events: none;
+}

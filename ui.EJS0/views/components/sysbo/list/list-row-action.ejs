@@ -20,8 +20,8 @@
   <a
     class="<%= rowActionClass(action) %>"
     href="<%= rowActionHref(action, item) %>"
-    title="<%= action.title || action.label %>"
-    aria-label="<%= action.title || action.label %>"
+    title="<%= metadataText(action.title || action.label) %>"
+    aria-label="<%= metadataText(action.title || action.label) %>"
     <% if (action.kind === 'open-entry') { %>
       data-open-entry-popup
       data-entry-popup-entity-key="<%= definition.key %>"
@@ -31,7 +31,7 @@
   >
     <% if (action.icon) { %><i class="bi bi-<%= action.icon %>" aria-hidden="true"></i><% } %>
     <% if (!action.iconOnly) { %>
-      <span class="<%= action.icon ? 'd-none d-xl-inline ms-1' : '' %>"><%= action.label %></span>
+      <span class="<%= action.icon ? 'd-none d-xl-inline ms-1' : '' %>"><%= metadataText(action.label) %></span>
     <% } %>
   </a>
 <% } %>

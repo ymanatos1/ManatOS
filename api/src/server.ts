@@ -25,7 +25,9 @@ import { apiContextRuntime } from './context/api-context-runtime.js';
 import {
   apiContextSnapshotCapture,
   configureApiContextSnapshots,
+  composeApiContextSnapshotCaptures,
 } from './context/api-context-snapshot.js';
+import { apiRequestDiagnostics } from './debug/request-diagnostics.js';
 
 /**
  * Application composition root.
@@ -59,7 +61,9 @@ configureApiContextSnapshots(() => {
     outputDirectory: debugging.outputDirectory,
   };
 });
-apiContextRuntime.setSnapshotCapture(apiContextSnapshotCapture());
+apiContextRuntime.setSnapshotCapture(
+  composeApiContextSnapshotCaptures(apiContextSnapshotCapture(), apiRequestDiagnostics),
+);
 const storageConfiguration = systemSettings.currentStorageConfiguration();
 
 if (storageConfiguration.adapterId !== IN_MEMORY_JSON_ADAPTER_ID) {

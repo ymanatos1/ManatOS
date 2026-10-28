@@ -1,18 +1,36 @@
-# protoCRM Design
+# protoCRM — Multi-Application Platform
 
-protoCRM is the current CRM-oriented platform built on the reusable ManatOS foundation.
+protoCRM is the application-design and multi-application platform of the shared TypeScript foundation. Its purpose is to turn coherent declarative business models into reusable application behavior, including presentation, interaction and authoritative execution. It also supports CRM-oriented application vocabulary; the system is not limited to one set of CRM entities.
 
-Its currently implemented platform-owned system entity is **Applications**, with **Apps Playground** as the related platform capability. Users/Account, Principals, organization hierarchy, Licenses, External Authentication Providers and Principal contact entities are ManatOS **company-level** concerns. protoCRM may consume those capabilities but does not own their canonical semantics.
+The central separation is between **a platform that defines and hosts applications** and **an application with its own business model and runtime requirements**.
+
+```text
+protoCRM
+├─ Application catalogue
+│  └─ identities / versions / descriptive resources
+├─ Apps Playground
+│  └─ application entry and execution/test surface
+└─ Application design architecture
+   ├─ canonical entities / relationships / expressions
+   ├─ named UI Views / UIS / Flows
+   ├─ API authorization / licensing
+   └─ application/runtime portability contract
+```
+
+The currently implemented `SysBOApplication` catalogue, UI Views, platform/navigation metadata and Playground entry points support this model. A full graphical designer and independently deployable application host are architectural capabilities, not established executable facilities in the inspected TypeScript source.
 
 ## Reading map
 
-- [Purpose and Scope](Purpose-and-Scope.md) — ownership boundary between the foundation-level Company domain and protoCRM.
-- [Domain Model](Domain-Model.md) — platform-owned concepts and relationships to shared/company concepts.
-- [Navigation](Navigation.md) — current protoCRM navigation and capability-driven visibility.
-- [Applications](Applications.md) — the platform-owned Applications entity and related behavior.
-- [Business Rules](Business-Rules.md) — protoCRM-specific rules and current scope.
-- [Application Licensing — protoCRM Perspective](Applications-and-Licenses.md) — how protoCRM Applications participate in the Company-domain License model without taking ownership of it.
+- [Application Design and Execution](Application-Design-and-Execution.md) — **principal reference** for multi-application design, interaction/runtime composition and independent hosting architecture.
+- [Purpose and Scope](Purpose-and-Scope.md) — platform identity, boundaries and application-design objectives.
+- [Domain Model](Domain-Model.md) — relationship of Applications to shared entities and common runtime.
+- [Applications](Applications.md) — current Application entity, presentation and metadata contracts.
+- [Application Licensing](Applications-and-Licenses.md) — commercial scope and platform integration.
+- [Business Rules](Business-Rules.md) — where application design rules and authoritative constraints belong.
+- [Navigation](Navigation.md) — platform contributions and capability-derived visibility.
 
-Foundation-level Company-domain identity, organizations, contact information and licensing are documented canonically under [Company Domain](../../company/README.md). Generic hierarchy/collection-editor mechanisms are documented under [Entities](../../entities/README.md).
+## Related architecture
 
-This folder intentionally avoids duplicate `Users-and-Principals`, `Organizations-and-Hierarchies` and `Contact-Information` documents: those concepts are referenced from protoCRM where relevant but owned elsewhere.
+[Platform and Application Architecture](../Platform-and-Application-Architecture.md) · [Metadata-Driven Application Design](../Metadata-Driven-Application-Design.md) · [UIS](../../clients/UIS-Architecture.md) · [License Entitlements](../../company/License-Entitlements-and-Rules.md) · [Authorization](../../security/Authorization-Policy-Architecture.md).
+
+The shared `Company` metadata domain owns Users, Principals, Organizations and Licenses. Platform consumption of those records does not transfer canonical ownership.

@@ -1,0 +1,4 @@
+.detachable-window {
+  display: block;
+  min-width: 0;
+}

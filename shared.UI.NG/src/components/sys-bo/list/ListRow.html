@@ -1,0 +1,13 @@
+<!-- ListRow template: one row and the ordered Cell children for the selected view; do not move cell ownership to List. -->
+@for (column of embeddedColumns() ?? context?.columns() ?? []; track column.field; let columnIndex =
+$index) {
+<manatos-list-cell
+  [index]="index()"
+  [cellIndex]="columnIndex"
+  [field]="column.field"
+  [embeddedRow]="embeddedRow()"
+  [embeddedEntityKey]="embeddedEntityKey()"
+  [embeddedLanguage]="embeddedLanguage()"
+  [embeddedReferences]="embeddedReferences()"
+/>
+}

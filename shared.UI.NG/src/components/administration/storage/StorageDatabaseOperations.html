@@ -1,0 +1,104 @@
+<div class="storage-operation-panel mt-3" data-popup-layout-id="storage-database-operations">
+  <h3 class="h6">{{ wizard().t('Target database', 'Βάση δεδομένων') }}</h3>
+  @if (wizard().databaseField(); as field) {
+  <fieldset
+    [disabled]="wizard().readOnly() || wizard().busy()"
+    [attr.data-popup-layout-id]="'storage-setting-' + wizard().draft().adapterId + '-' + field.key"
+  >
+    <legend class="form-label fw-semibold fs-6">{{ wizard().translate(field.label) }}</legend>
+    <div class="d-flex flex-wrap gap-3 mb-2">
+      <label class="form-check">
+        <input
+          class="form-check-input"
+          type="radio"
+          name="storage-database-mode"
+          value="existing"
+          [checked]="wizard().databaseMode() === 'existing'"
+          (change)="wizard().selectDatabaseMode('existing')"
+        />
+        <span class="form-check-label"
+          >{{ wizard().t('Existing database', 'Υπάρχουσα βάση') }}</span
+        >
+      </label>
+      <label class="form-check">
+        <input
+          class="form-check-input"
+          type="radio"
+          name="storage-database-mode"
+          value="new"
+          [checked]="wizard().databaseMode() === 'new'"
+          (change)="wizard().selectDatabaseMode('new')"
+        />
+        <span class="form-check-label">{{ wizard().t('New database', 'Νέα βάση') }}</span>
+      </label>
+    </div>
+    @if (wizard().databaseMode() === 'existing') {
+    <select
+      class="form-select"
+      [attr.aria-label]="wizard().t('Existing database', 'Υπάρχουσα βάση')"
+      [value]="wizard().value(field)"
+      (change)="selectExisting($any($event.target).value)"
+    >
+      <option value="">{{ wizard().t('Select a database', 'Επιλέξτε βάση') }}</option>
+      @if (wizard().value(field) && !wizard().databases().includes(wizard().value(field))) {
+      <option [value]="wizard().value(field)" disabled>
+        {{ wizard().value(field) }} ({{ wizard().t('Saved — refresh to verify', 'Αποθηκευμένη —
+        απαιτείται ανανέωση') }})
+      </option>
+      } @for (name of wizard().databases(); track name) {
+      <option [value]="name">{{ name }}</option>
+      }
+    </select>
+    @if (!wizard().databases().length) {
+    <p class="form-text">
+      {{ wizard().t('Discover databases to select an existing target.', 'Αναζητήστε βάσεις για
+      επιλογή υπάρχοντος στόχου.') }}
+    </p>
+    } } @else {
+    <input
+      class="form-control"
+      [id]="'storage-field-' + field.key"
+      type="text"
+      [value]="wizard().value(field)"
+      [required]="wizard().required(field)"
+      [attr.placeholder]="field.suggestedValue ?? ''"
+      (input)="wizard().edit(field, $any($event.target).value)"
+    />
+    }
+    <div class="form-text">{{ wizard().translate(field.description) }}</div>
+  </fieldset>
+  }
+  <div class="d-flex flex-wrap gap-2 mt-3 mb-2">
+    @if (wizard().adapter()?.targetWorkflow?.databaseDiscovery) {
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm"
+      [disabled]="wizard().readOnly() || wizard().busy() || !wizard().canOperate('databases')"
+      (click)="wizard().operation('databases')"
+    >
+      {{ wizard().t('Discover databases', 'Αναζήτηση βάσεων') }}
+    </button>
+    }
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm"
+      [disabled]="wizard().readOnly() || wizard().busy() || !wizard().canOperate('database/inspect')"
+      (click)="wizard().operation('database/inspect')"
+    >
+      {{ wizard().t('Inspect database', 'Έλεγχος βάσης') }}
+    </button>
+    @if (wizard().adapter()?.targetWorkflow?.databasePreparation) {
+    <button
+      type="button"
+      class="btn btn-outline-primary btn-sm"
+      [disabled]="wizard().readOnly() || wizard().busy() || wizard().databaseMode() !== 'new' || !wizard().canOperate('database/prepare')"
+      (click)="wizard().operation('database/prepare')"
+    >
+      {{ wizard().t('Create / prepare database', 'Δημιουργία / προετοιμασία βάσης') }}
+    </button>
+    }
+  </div>
+  <span class="small text-secondary">
+    {{ wizard().t('Readiness:', 'Ετοιμότητα:') }} {{ wizard().translate(wizard().databaseState()) }}
+  </span>
+</div>

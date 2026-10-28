@@ -1,13 +1,13 @@
-digraph G {
- graph [fontname="Arial", fontsize=10, bgcolor="white", labelloc="t", label="ManatOS - Company and protoCRM Domain Ownership"];
- node [fontname="Arial", fontsize=9, shape=box, style="rounded,filled", fillcolor="white"];
- edge [fontname="Arial", fontsize=8]; rankdir=LR;
- company [label="ManatOS / Company scope\nUsers + Account\nPrincipals + organization hierarchy\nLicenses\nExternal Authentication Providers", fillcolor="#dcecff"];
- user [label="SysUser\nauthenticates\noptional principalId"];
- principal [label="SysPrincipal\nPerson / Group / Company / System\nparentId + rootPrincipalId"];
- license [label="SysLicense\nprincipalId + platformId\noptional applicationId"];
- platform [label="Platform\nprotoCRM", fillcolor="#e8f4e5"];
- app [label="SysApplication\nprotoCRM-owned managed application", fillcolor="#e8f4e5"];
- future [label="Future application-defined entities\nreuse generic metadata/CTX/storage infrastructure\nnot automatically SysBO-prefixed", fillcolor="#fff1da"];
- company -> user; company -> principal; company -> license; user -> principal [label="identifies Person"]; principal -> principal [label="parent/root"]; license -> principal [label="customer"]; license -> platform; license -> app [style=dashed,label="restriction"]; platform -> app; app -> future [style=dashed];
+digraph Domains {
+  graph [fontname="Arial",fontsize=11,bgcolor="white",labelloc="t",label="Application Foundation: Shared Domain, Platform and Application",pad="0.25",rankdir=TB,nodesep="0.45",ranksep="0.55"];
+  node [fontname="Arial",fontsize=10,shape=box,style="rounded,filled",fillcolor="#f7f8fa"];
+  foundation [label="Shared application foundation\nMetadata / CTX / Expressions / UIS\nAPI / Authorization / Storage", fillcolor="#dcecff"];
+  shared [label="Shared business domain (code: Company)\nUsers / Person and Organization Principals\nLicenses / Contacts / External identities", fillcolor="#e8f4e5"];
+  proto [label="protoCRM - multi-application platform\nApplication catalogue / Apps Playground\nApplication design and execution architecture", fillcolor="#fff3cd"];
+  pano [label="Panoptes - special-purpose application\nSurveillance: Projects / Posts / Guards", fillcolor="#fff3cd"];
+  foundation -> shared [label="shared model"];
+  foundation -> proto [label="shared runtime"];
+  foundation -> pano [label="shared runtime"];
+  shared -> proto [style=dashed,label="identity / license relationships"];
+  shared -> pano [style=dashed,label="identity / access"];
 }

@@ -5,10 +5,10 @@ import { dirname, join, resolve } from 'node:path';
 import {
   PROTOCRM_PLATFORM_ID,
   StorageAppError,
-  operationContext,
   type SysBOExtAuthProvider,
   type SysBOLicense,
 } from '@manatos/shared';
+import { operationContext } from '@manatos/shared/node';
 
 import { emptyDatabaseState, type DatabaseState, type PersistedDatabaseState } from './types.js';
 
@@ -63,6 +63,9 @@ export class JsonFilePersistence {
           sysPrincipalAddresses: fromPersistedRecords(raw.sysPrincipalAddresses),
 
           sysApplications: fromPersistedRecords(raw.sysApplications),
+          sysGuards: fromPersistedRecords(raw.sysGuards),
+          sysProjects: fromPersistedRecords(raw.sysProjects),
+          sysPosts: fromPersistedRecords(raw.sysPosts),
 
           sysConfigurations: fromPersistedRecords(raw.sysConfigurations),
 
@@ -123,6 +126,9 @@ export class JsonFilePersistence {
         sysPrincipalAddresses: toPersistedRecords(state.sysPrincipalAddresses),
 
         sysApplications: toPersistedRecords(state.sysApplications),
+        sysGuards: toPersistedRecords(state.sysGuards),
+        sysProjects: toPersistedRecords(state.sysProjects),
+        sysPosts: toPersistedRecords(state.sysPosts),
 
         sysConfigurations: toPersistedRecords(state.sysConfigurations),
 

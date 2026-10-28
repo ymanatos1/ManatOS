@@ -23,11 +23,20 @@ export function createAuthorizationCapabilityRouter(authorization: Authorization
   router.get('/entities/$capabilities', async (req, res) => {
     if (!req.auth) throw new AuthenticationError();
 
-    const platform = resolvePlatform(MANATOS_COMPANY);
+    const requestedPlatformId =
+      typeof req.query.platformId === 'string' ? req.query.platformId.trim() : '';
+    const platform = resolvePlatform(
+      MANATOS_COMPANY,
+      requestedPlatformId || MANATOS_COMPANY.defaultPlatformId,
+    );
+    if (requestedPlatformId && platform.id !== requestedPlatformId) {
+      res.status(404).json({ success: false, error: { message: 'Unknown platform.' } });
+      return;
+    }
     const entityKeys = [...effectiveEntityKeys(MANATOS_COMPANY, platform)].sort();
     const entities = await authorization.entityCollectionCapabilities(req.auth, entityKeys);
 
-    sendQuery(res, { entities });
+    sendQuery(res, { platformId: platform.id, entities });
   });
 
   /**
@@ -39,8 +48,8 @@ export function createAuthorizationCapabilityRouter(authorization: Authorization
   router.get('/context/:platformId/$capabilities', async (req, res) => {
     if (!req.auth) throw new AuthenticationError();
 
-    const platform = resolvePlatform(MANATOS_COMPANY);
     const platformId = String(req.params.platformId ?? '').trim();
+    const platform = resolvePlatform(MANATOS_COMPANY, platformId);
     if (platformId !== platform.id) {
       res.status(404).json({ success: false, error: { message: 'Unknown platform.' } });
       return;
@@ -52,7 +61,16 @@ export function createAuthorizationCapabilityRouter(authorization: Authorization
       authorization.entityCollectionCapabilities(req.auth, entityKeys),
     ]);
 
-    sendQuery(res, { platformId, platformCapabilities, entities });
+    sendQuery(res, {
+      platformId,
+      user: {
+        id: req.auth.userId,
+        name: req.auth.userName,
+        role: req.auth.role,
+      },
+      platformCapabilities,
+      entities,
+    });
   });
 
   return router;

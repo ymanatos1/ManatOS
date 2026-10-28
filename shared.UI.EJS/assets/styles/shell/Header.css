@@ -1,0 +1,257 @@
+.header {
+  position: relative;
+  z-index: 1030;
+  min-height: 74px;
+  background: linear-gradient(100deg, var(--manatos-header-start), var(--manatos-header-end));
+  color: var(--manatos-header-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.5rem;
+  box-shadow: 0 2px 12px #071a3d2e;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    'Noto Sans',
+    'Liberation Sans',
+    Arial,
+    sans-serif;
+}
+
+.header .brand-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.header .brand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-right: 4rem;
+  cursor: pointer;
+}
+
+.header .brand:hover .brand-logo,
+.header .brand:focus-visible .brand-logo {
+  filter: brightness(1.08);
+}
+
+.header .brand:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 5px;
+}
+
+.header .version-badge {
+  flex: 0 0 auto;
+  color: var(--manatos-header-text);
+  font-size: calc(0.75rem * var(--manatos-font-scale));
+  font-weight: 400;
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
+.header .brand-logo {
+  display: block;
+  width: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow:
+    0 2px 4px #00000047,
+    0 6px 14px #00000033;
+}
+
+.header .brand-logo-darker {
+  height: 58px;
+  max-width: 360px;
+  transform: scale(1.46);
+  transform-origin: left center;
+}
+
+.header .brand-logo-lighter {
+  display: none;
+  height: 66px;
+  max-width: 390px;
+  transform: scale(1.26);
+  transform-origin: left center;
+}
+
+html[data-ui-theme='lighter'] .header .brand {
+  margin-right: 2.65rem;
+}
+
+html[data-ui-theme='lighter'] .header .brand-logo-darker {
+  display: none;
+}
+
+html[data-ui-theme='lighter'] .header .brand-logo-lighter {
+  display: block;
+}
+
+.header .current-platform-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  gap: 0.5rem;
+  height: 42px;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(18, 54, 93, 0.2);
+  border-radius: 0.42rem;
+  color: #12365d;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0 rgba(18, 54, 93, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.header .current-platform-badge:hover,
+.header .current-platform-badge:focus-visible {
+  color: #0b2c52;
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(18, 54, 93, 0.3);
+}
+
+.header .actions {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: calc(0.85rem * var(--manatos-font-scale));
+}
+
+.header .actions > :last-child {
+  margin-left: auto;
+}
+
+.header .current-platform-code {
+  font-size: calc(0.95rem * var(--manatos-font-scale));
+  font-weight: 800;
+  letter-spacing: 0.035em;
+}
+
+.header .current-platform-icon {
+  font-size: calc(1rem * var(--manatos-font-scale));
+  line-height: 1;
+}
+
+/* Authentication entry actions: EJS0 visual parity. */
+.header .header-auth-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.header .header-auth-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 88px;
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-weight: 600;
+  font-size: calc(0.875rem * var(--manatos-font-scale));
+  line-height: 1.5;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.header .header-sign-in {
+  color: #06234a;
+  background: #63d8f5;
+  border-color: #63d8f5;
+}
+
+.header .header-sign-in:hover {
+  background: #8ce4f8;
+  border-color: #8ce4f8;
+}
+
+.header .header-sign-up {
+  color: #fff;
+  background-color: #198754;
+  border-color: #198754;
+}
+
+.header .header-sign-up:hover {
+  background-color: #157347;
+  border-color: #146c43;
+}
+
+.header .header-auth-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Signed-in actions: EJS0-equivalent outline-light controls. */
+.header .header-notifications-button,
+.header .header-account-button {
+  color: var(--manatos-header-text);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  font-weight: 400;
+}
+
+.header .header-notifications-button:hover,
+.header .header-account-button:hover {
+  color: #12365d;
+  background: #f8f9fa;
+  border-color: #f8f9fa;
+}
+
+.header .header-notifications-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 0.45rem;
+}
+
+.header .header-notifications-button .bi {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.header .header-account-button {
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+}
+
+.header .header-account-caret {
+  display: inline-block;
+  margin-left: 0.2rem;
+  border-top: 0.3em solid currentColor;
+  border-right: 0.3em solid transparent;
+  border-left: 0.3em solid transparent;
+}
+
+.header .header-account-photo {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.header .header-account-menu-photo {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  border: 1px solid var(--manatos-border);
+}

@@ -1,0 +1,12 @@
+<!-- ListAdd template: the Add action node; no other List child should register its selector. -->
+<button
+  data-list-layout="ListAdd"
+  data-list-add
+  type="button"
+  class="manatos-list-btn manatos-list-primary"
+  disabled
+  [title]="context.language() === 'EL' ? 'Διαθέσιμο σε επόμενη έκδοση' : 'Available in a later slice'"
+>
+  <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ context.language() === 'EL' ? 'Προσθήκη νέου'
+  : 'Add new' }}
+</button>

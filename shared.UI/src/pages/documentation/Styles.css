@@ -1,0 +1,390 @@
+.documentation-browser {
+  min-height: 560px;
+  height: min(72vh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--manatos-border);
+  border-top: 0;
+  border-radius: 0 0 0.7rem 0.7rem;
+  background: var(--manatos-surface);
+  box-shadow: var(--manatos-shadow);
+}
+
+/*
+ * The main Documentation page is a workspace-filling surface. Constrain the
+ * application shell to the viewport and let Documentation consume the exact
+ * height left by the real Header / navigation / Footer chrome. This keeps
+ * scrolling inside the Documentation panes rather than on the browser page.
+ * Popup documents do not contain .shell, so these rules never affect them.
+ */
+.shell:has(.documentation-browser) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shell:has(.documentation-browser) > .shell-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shell:has(.documentation-browser) > .shell-body > main,
+.shell:has(.documentation-browser) manatos-workspace,
+.shell:has(.documentation-browser) .workspace,
+.shell:has(.documentation-browser) manatos-page,
+.shell:has(.documentation-browser) .page,
+.shell:has(.documentation-browser) .page-main,
+.shell:has(.documentation-browser) manatos-page-content,
+.shell:has(.documentation-browser) .page-content,
+.shell:has(.documentation-browser) manatos-page-host,
+.shell:has(.documentation-browser) .manatos-page-host {
+  min-height: 0;
+}
+
+.shell:has(.documentation-browser) > .shell-body > main,
+.shell:has(.documentation-browser) manatos-workspace,
+.shell:has(.documentation-browser) .workspace,
+.shell:has(.documentation-browser) manatos-page,
+.shell:has(.documentation-browser) .page-main,
+.shell:has(.documentation-browser) manatos-page-content,
+.shell:has(.documentation-browser) .page-content,
+.shell:has(.documentation-browser) manatos-page-host,
+.shell:has(.documentation-browser) .manatos-page-host {
+  display: flex !important;
+  flex-direction: column;
+}
+
+.shell:has(.documentation-browser) > .shell-body > main,
+.shell:has(.documentation-browser) manatos-workspace,
+.shell:has(.documentation-browser) .workspace,
+.shell:has(.documentation-browser) manatos-page,
+.shell:has(.documentation-browser) manatos-page-content,
+.shell:has(.documentation-browser) .page-content,
+.shell:has(.documentation-browser) manatos-page-host,
+.shell:has(.documentation-browser) .manatos-page-host {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.shell:has(.documentation-browser) .page {
+  flex: 1 1 auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+.shell:has(.documentation-browser) .page-main {
+  overflow: hidden;
+}
+
+.shell:has(.documentation-browser) .documentation-browser {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.documentation-browser-header {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  background: var(--manatos-surface);
+  border-bottom: 1px solid var(--manatos-border);
+}
+
+.documentation-browser-toolbar {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.documentation-browser-tool {
+  width: 2rem;
+  height: 2rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface);
+  color: var(--manatos-navigation-text);
+  cursor: pointer;
+}
+
+.documentation-browser-tool:hover,
+.documentation-browser-tool:focus-visible {
+  color: var(--manatos-blue);
+  background: var(--manatos-navigation-hover-bg);
+}
+
+.documentation-browser-search {
+  position: relative;
+  width: min(300px, 36vw);
+}
+
+.documentation-browser-search > i {
+  position: absolute;
+  left: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--manatos-muted);
+  pointer-events: none;
+}
+
+.documentation-browser-search input {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.35rem 0.6rem 0.35rem 1.9rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface);
+  color: var(--manatos-navigation-text);
+}
+
+.documentation-browser-workspace {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+}
+
+.documentation-browser-explorer {
+  width: 300px;
+  min-width: 180px;
+  max-width: 55%;
+  overflow: auto;
+  background: var(--manatos-surface);
+  border-right: 1px solid var(--manatos-border);
+}
+
+.documentation-browser-explorer-caption {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.7rem 0.8rem 0.55rem;
+  background: var(--manatos-surface);
+  color: var(--manatos-muted);
+  font-size: calc(0.75rem * var(--manatos-font-scale));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.documentation-browser-tree {
+  padding: 0 0.4rem 1rem;
+  font-size: calc(0.88rem * var(--manatos-font-scale));
+}
+
+.documentation-tree-folder,
+.documentation-tree-file {
+  display: block;
+}
+
+.documentation-tree-folder > summary,
+.documentation-tree-file {
+  padding: 0.27rem 0.45rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.documentation-tree-folder > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.documentation-tree-folder > summary:hover,
+.documentation-tree-file:hover {
+  background: var(--manatos-navigation-hover-bg);
+}
+
+.documentation-tree-children {
+  margin-left: 0.7rem;
+  padding-left: 0.55rem;
+  border-left: 1px solid var(--manatos-border);
+}
+
+.documentation-tree-file {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  text-align: left;
+}
+
+.documentation-tree-file > .bi {
+  margin-right: 0.35rem;
+}
+
+.documentation-tree-file.active {
+  background: rgb(21 89 166 / 10%);
+  color: var(--manatos-blue);
+  font-weight: 600;
+}
+
+.documentation-resource-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.03rem 0.3rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.25rem;
+  color: var(--manatos-muted);
+  font-size: calc(0.65rem * var(--manatos-font-scale));
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.documentation-browser-resizer {
+  width: 5px;
+  margin-left: -3px;
+  cursor: col-resize;
+  z-index: 3;
+}
+
+.documentation-browser-resizer:hover {
+  background: rgb(21 89 166 / 20%);
+}
+
+.documentation-browser-viewer {
+  min-width: 0;
+  flex: 1;
+  overflow: auto;
+  background: var(--manatos-surface);
+}
+
+.documentation-browser-loading {
+  padding: 2rem;
+  color: var(--manatos-muted);
+}
+
+.documentation-markdown {
+  width: min(1080px, calc(100% - 4rem));
+  margin: 0 auto;
+  padding: 2.2rem 0 5rem;
+  line-height: 1.65;
+}
+
+.documentation-markdown h1,
+.documentation-markdown h2,
+.documentation-markdown h3,
+.documentation-markdown h4 {
+  margin-top: 1.65em;
+  margin-bottom: 0.65em;
+  color: var(--manatos-navy);
+  scroll-margin-top: 1rem;
+}
+
+.documentation-markdown h1:first-child {
+  margin-top: 0;
+}
+
+.documentation-markdown h2 {
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--manatos-border);
+}
+
+.documentation-markdown pre {
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.45rem;
+  background: #f6f8fa;
+}
+
+.documentation-markdown code {
+  padding: 0.12em 0.3em;
+  border-radius: 0.25rem;
+  background: #f3f5f8;
+  font-size: 0.9em;
+}
+
+.documentation-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.documentation-markdown table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+}
+
+.documentation-markdown th,
+.documentation-markdown td {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--manatos-border);
+  vertical-align: top;
+}
+
+.documentation-markdown th {
+  background: var(--manatos-navigation-hover-bg);
+}
+
+.documentation-markdown blockquote {
+  margin: 1rem 0;
+  padding: 0.2rem 1rem;
+  border-left: 4px solid var(--manatos-border);
+  color: var(--manatos-muted);
+}
+
+.documentation-browser-status {
+  min-height: 27px;
+  padding: 0.25rem 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--manatos-footer);
+  border-top: 1px solid var(--manatos-border);
+  color: var(--manatos-muted);
+  font-size: calc(0.75rem * var(--manatos-font-scale));
+}
+
+.documentation-resource {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow: auto;
+  text-align: center;
+}
+
+.documentation-resource-image,
+.documentation-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem auto;
+}
+
+.documentation-resource-pdf {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  border: 0;
+  background: var(--manatos-surface);
+}
+
+.documentation-dot-source {
+  white-space: pre;
+  text-align: left;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .documentation-browser-explorer {
+    width: 220px;
+  }
+
+  .documentation-markdown {
+    width: calc(100% - 2rem);
+  }
+}

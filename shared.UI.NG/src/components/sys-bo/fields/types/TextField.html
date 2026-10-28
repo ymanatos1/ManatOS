@@ -1,0 +1,12 @@
+<!-- TextField: Single-line native input; common DOM transport is explicitly opt-in on the input. -->
+<manatos-field-control-shell [field]="field()">
+  <input
+    [manatosNativeFieldInteraction]="field()"
+    data-entry-control
+    class="manatos-form-input"
+    [type]="nativeInputType"
+    [value]="displayText()"
+    [readOnly]="field().readOnly"
+    [attr.aria-label]="field().label"
+  />
+</manatos-field-control-shell>

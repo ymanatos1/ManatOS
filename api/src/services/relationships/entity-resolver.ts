@@ -44,6 +44,7 @@ export class DataStoreEntityResolver implements EntityResolver {
     if (!entityKey || !normalizedId) return null;
 
     const metadata = allSysBOMetadata[entityKey as keyof typeof allSysBOMetadata];
+
     if (!metadata) {
       throw new ExpressionEvaluationError(
         `EntityResolver cannot resolve unknown or non-SysBO entity '${entityKey}'.`,

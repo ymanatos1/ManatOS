@@ -1,0 +1,119 @@
+:host {
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.language-selection {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.primary-navigation-language-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  min-height: 50px;
+  padding: 0.85rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  font-family: inherit;
+  font-size: calc(0.9rem * var(--manatos-font-scale));
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary-navigation-language-toggle:hover,
+.primary-navigation-language-toggle:focus-visible {
+  color: var(--manatos-blue);
+  border-bottom-color: var(--manatos-blue);
+}
+
+.navigation-caret {
+  font-size: calc(0.65rem * var(--manatos-font-scale));
+}
+
+.language-flag {
+  width: 1.4rem;
+  height: auto;
+  object-fit: contain;
+  flex: 0 0 1.4rem;
+}
+
+.primary-navigation-language-menu {
+  position: absolute;
+  z-index: 1100;
+  top: 100%;
+  left: 0;
+  right: auto;
+  min-width: min(11.5rem, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.375rem;
+  background: var(--manatos-surface);
+  box-shadow: 0 0.125rem 0.25rem rgb(0 0 0 / 8%);
+}
+
+.primary-navigation-language-menu > button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.45rem 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--manatos-navigation-text);
+  font-family: inherit;
+  font-size: calc(0.9rem * var(--manatos-font-scale));
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary-navigation-language-menu > button:hover,
+.primary-navigation-language-menu > button:focus-visible {
+  background: #f8f9fa;
+}
+
+.primary-navigation-language-menu > button.active,
+.primary-navigation-language-menu > button.active:hover,
+.primary-navigation-language-menu > button.active:focus-visible {
+  color: #fff;
+  background: #0d6efd;
+}
+
+/* Compact presentation when embedded in PopupTitleTools. */
+.language-selection-popup .primary-navigation-language-toggle {
+  min-height: 2rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--manatos-border);
+  border-radius: 0.35rem;
+  background: var(--manatos-surface);
+  font-size: calc(0.75rem * var(--manatos-font-scale));
+}
+
+.language-selection-popup .primary-navigation-language-toggle:hover,
+.language-selection-popup .primary-navigation-language-toggle:focus-visible {
+  border-color: var(--manatos-blue);
+  background: var(--manatos-surface);
+}
+
+.language-selection-popup .language-flag {
+  width: 1.1rem;
+  flex: 0 0 1.1rem;
+}
+
+.language-selection-popup .navigation-caret {
+  font-size: calc(0.5rem * var(--manatos-font-scale));
+}

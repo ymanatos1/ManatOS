@@ -1,0 +1,58 @@
+<!-- ListPagination template: page navigation actions and rows-per-page selection using the current List status. -->
+<footer class="manatos-list-pagination" data-list-layout="ListPagination" hidden>
+  <span data-list-page-indicator hidden>__UIS_Indicator__</span>
+  <span class="manatos-list-pagination-right">
+    <nav data-list-pagination-nav hidden aria-label="__UIS_NavigationLabel__">
+      <div class="manatos-list-page-links">
+        <button
+          type="button"
+          data-list-page-action="first"
+          aria-label="__UIS_FirstLabel__"
+          title="__UIS_FirstLabel__"
+          disabled
+        >
+          <i class="bi bi-chevron-bar-left" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          data-list-page-action="previous"
+          aria-label="__UIS_PreviousLabel__"
+          title="__UIS_PreviousLabel__"
+          disabled
+        >
+          <i class="bi bi-chevron-left" aria-hidden="true"></i>
+        </button>
+        <span class="manatos-list-page-current" aria-current="page" data-list-page-current>1</span>
+        <button
+          type="button"
+          data-list-page-action="next"
+          aria-label="__UIS_NextLabel__"
+          title="__UIS_NextLabel__"
+          disabled
+        >
+          <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          data-list-page-action="last"
+          aria-label="__UIS_LastLabel__"
+          title="__UIS_LastLabel__"
+          disabled
+        >
+          <i class="bi bi-chevron-bar-right" aria-hidden="true"></i>
+        </button>
+      </div>
+    </nav>
+    <label
+      >__UIS_RowsLabel__
+      <select aria-label="Rows per page" data-list-rows-per-page>
+        <option value="2">2</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select></label
+    >
+  </span>
+</footer>

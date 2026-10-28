@@ -1,0 +1,28 @@
+<!-- ListFilter template: the filter toggle/docking actions and the per-field children for the current view. -->
+<div class="manatos-list-filter" data-list-layout="ListFilter">
+  <button
+    class="manatos-list-btn"
+    type="button"
+    data-list-refresh
+    title="__UIS_RefreshTitle__"
+    aria-label="__UIS_RefreshLabel__"
+  >
+    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+    <span data-list-refresh-label>__UIS_RefreshTitle__</span>
+  </button>
+  <button class="manatos-list-btn" type="button" data-list-toggle-filters aria-expanded="false">
+    <i class="bi bi-funnel" aria-hidden="true"></i> __UIS_Label__
+  </button>
+  <div class="manatos-list-filters" hidden data-list-filter-panel>
+    <!-- The dock action is owned by ListFilter, not fabricated by List on updates. -->
+    <button
+      type="button"
+      class="manatos-list-filter-dock"
+      data-list-filter-dock
+      aria-label="Dock filters"
+    >
+      <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+    </button>
+    <!-- UIS: one ListFilterField child per declared canonical filter -->
+  </div>
+</div>

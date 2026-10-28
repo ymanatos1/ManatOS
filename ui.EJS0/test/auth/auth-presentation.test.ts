@@ -5,10 +5,12 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { resolveMetadataText } from '@manatos/shared';
 
 import { popupContent } from '../../src/presentation/popup/popup-content.js';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const metadataText = (value: string) => resolveMetadataText(value, 'EN');
 const authModalsView = resolve(testDirectory, '../../views/popups/auth/auth-modals.ejs');
 const externalLinkView = resolve(testDirectory, '../../views/pages/external-link.ejs');
 const externalRegistrationView = resolve(
@@ -30,6 +32,7 @@ const providerFixtures = [
 describe('authentication presentation', () => {
   it('renders configured Microsoft provider in sign-in and registration', async () => {
     const html = await ejs.renderFile(authModalsView, {
+      metadataText,
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures.map((provider) =>
@@ -57,6 +60,7 @@ describe('authentication presentation', () => {
   it('uses provider metadata to render the external-link illustration and labels', async () => {
     const authProviders = providerFixtures;
     const html = await ejs.renderFile(externalLinkView, {
+      metadataText,
       csrfToken: 'test-csrf',
       authProviders,
       popupContent,
@@ -80,6 +84,7 @@ describe('authentication presentation', () => {
   });
   it('renders purpose-specific welcome content and illustrations for sign-in and registration', async () => {
     const html = await ejs.renderFile(authModalsView, {
+      metadataText,
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures,
@@ -122,6 +127,7 @@ describe('authentication presentation', () => {
 
   it('renders Register with Email as its own visible registration action', async () => {
     const html = await ejs.renderFile(authModalsView, {
+      metadataText,
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures,
@@ -139,6 +145,7 @@ describe('authentication presentation', () => {
 
   it('renders email registration as a polished second step with a Back path', async () => {
     const html = await ejs.renderFile(authModalsView, {
+      metadataText,
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures,
@@ -161,6 +168,7 @@ describe('authentication presentation', () => {
 
   it('keeps external-provider sign-in and registration intent distinct', async () => {
     const html = await ejs.renderFile(authModalsView, {
+      metadataText,
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures.map((provider) =>
@@ -185,6 +193,7 @@ describe('authentication presentation', () => {
 
   it('renders password recovery as a polished second-step modal with a Back path', async () => {
     const html = await ejs.renderFile(authModalsView, {
+      metadataText,
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures,
@@ -209,6 +218,7 @@ describe('authentication presentation', () => {
 
   it('renders email registration as identity and security columns with live-submit hooks', async () => {
     const html = await ejs.renderFile(authModalsView, {
+      metadataText,
       currentUser: null,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures,
@@ -232,6 +242,7 @@ describe('authentication presentation', () => {
 
   it('renders unmatched external sign-in as the shared rich account-creation popup', async () => {
     const html = await ejs.renderFile(externalRegistrationView, {
+      metadataText,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures,
       popupContent,
@@ -266,6 +277,7 @@ describe('authentication presentation', () => {
 
   it('renders a polite existing-account message for registration with an already-linked provider', async () => {
     const html = await ejs.renderFile(externalExistingAccountView, {
+      metadataText,
       csrfToken: 'test-csrf',
       authProviders: providerFixtures,
       popupContent,

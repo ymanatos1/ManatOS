@@ -1,10 +1,11 @@
+import type { MultilingualLiteral } from '../../multilingual/metadata/index.js';
 /** Stable subsystem ownership domain. Platform-owned subsystems name their platform id. */
 export type ManatOSSubsystemOwner =
   Readonly<{ kind: 'manatos' }> | Readonly<{ kind: 'platform'; platformId: string }>;
 
 export interface ManatOSEnumValueMetadata {
   value: string;
-  label?: string;
+  label?: string | MultilingualLiteral;
   icon?: string;
   tone?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info';
   toneStrength?: 'soft' | 'normal' | 'strong';

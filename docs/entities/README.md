@@ -24,11 +24,8 @@ The documents below explain how those capabilities fit together; CTX, expression
 - [`Fields.md`](Fields.md) — every supported canonical field type, value semantics and the field-type/value-source distinction.
 - [`Field-Components-Detail.md`](Field-Components-Detail.md) — how typed fields are rendered/edited and how field components interact with CTX.
 - [`Entity-Lists.md`](Entity-Lists.md) — generic list capabilities and internal request/runtime flow.
-- [`Generic-List-and-Entry-Contracts.md`](Generic-List-and-Entry-Contracts.md) — host-neutral list/entry state, query transport, aggregate persistence readiness and enforcement boundaries.
 - [`Entity-Entries.md`](Entity-Entries.md) — generic entry/form capabilities and lifecycle.
-- [`Entry-Opening-Invocation-and-Optimization-Audit.md`](Entry-Opening-Invocation-and-Optimization-Audit.md) — current entry-opening/caller matrix, duplication audit and staged single-opener optimization baseline.
 - [`Entity-Entries-Forms-Detail.md`](Entity-Entries-Forms-Detail.md) — deeper entry state, baseline, save and composition mechanics.
-- [`Persistence-Commit-and-Recovery.md`](Persistence-Commit-and-Recovery.md) — persistence boundaries, discard semantics, Create Organization continuation drafts and abnormal outage recovery.
 - [`Components.md`](Components.md) — reusable metadata component architecture and ownership rules.
 - [`Component-Catalog.md`](Component-Catalog.md) — current component implementations and their capabilities.
 - [`Composite-Components.md`](Composite-Components.md) — compound components and aggregate state.
@@ -44,4 +41,15 @@ The documents below explain how those capabilities fit together; CTX, expression
 
 ## Related subjects
 
-Canonical metadata schemas live in [`metadata/`](../metadata/); observable runtime ownership in [`context/`](../context/); calculations/reactivity in [`expressions/`](../expressions/); API/storage/security authority in [`api/`](../api/), [`storage/`](../storage/) and [`security/`](../security/).
+Canonical metadata schemas live in [`metadata/`](../metadata/README.md); observable runtime ownership in [`context/`](../context/README.md); calculations/reactivity in [`expressions/`](../expressions/README.md); API/storage/security authority in [`api/`](../api/README.md), [`storage/`](../storage/README.md) and [`security/`](../security/README.md).
+
+## Entry/List and editing contracts
+
+- [Lists](Entity-Lists.md) — query, paging, filtering and selection.
+- [Entries](Entity-Entries.md) and [Entry/Form Detail](Entity-Entries-Forms-Detail.md) — working values, dirty state and composition.
+- [Field Detail](Field-Components-Detail.md) — types, behavior and concrete field contracts.
+- [Selectors and Popups](Popups-and-Selectors.md) — nested reference selection.
+- [Workspace Commit, Drafts and Recovery](Workspace-Commit-and-Recovery.md) — multi-entry commit semantics.
+- [Relationships](Relationships.md) and [Validation](Validation.md) — canonical integrity and enforcement.
+
+A surface or field participates in user interaction, while the API retains authority over authenticated writes.

@@ -1,0 +1,118 @@
+<!-- PopupBase composes common title/body plus optional root actions; Auth keeps legacy tab actions. -->
+@if (popupContext(); as popup) {
+<div
+  class="sign-in-backdrop"
+  [class.has-foreground-debugger]="debuggerForeground() && debuggerDocked()"
+  [style.--popup-debugger-dock-width]="
+    debuggerDockWidth() === null
+      ? 'clamp(420px, 28vw, 640px)'
+      : debuggerDockWidth() + 'px'
+  "
+  (click)="onBackdropClick($event)"
+>
+  <section
+    #dialog
+    class="sign-in-dialog"
+    [class.message-dialog]="definition.presentation?.content === 'message'"
+    [class.error-dialog]="definition.presentation?.variant === 'error'"
+    [attr.data-ui-level-path]="popup.levelPath"
+    [attr.data-popup-active-tab]="popup.activeTab().id"
+    [class.register-dialog]="definition.presentation?.variant === 'register'"
+    [class.reset-dialog]="definition.presentation?.variant === 'reset'"
+    [class.change-dialog]="definition.presentation?.variant === 'change'"
+    [class.unsaved-dialog]="definition.presentation?.variant === 'unsaved'"
+    [class.storage-dialog]="definition.presentation?.variant === 'storage'"
+    [style.--manatos-font-scale]="fontScalePercent() / 100"
+    role="dialog"
+    [attr.aria-modal]="debuggerForeground() ? null : 'true'"
+    [attr.aria-label]="localizedTitle().title"
+    tabindex="-1"
+  >
+    <div class="sign-in-content">
+      <!-- Shared semantic title for the active hidden tab. -->
+      <manatos-popup-title
+        [model]="localizedTitle()"
+        [showCloseButton]="popup.level().control.invocation.allowXClosure"
+        [flowStepPath]="popup.level().control.flow?.stepPath ?? null"
+        [showLanguageSelection]="definition.showLanguageSelection"
+        [languages]="languages()"
+        [currentLanguage]="currentLanguage()"
+        [fontScalePercent]="fontScalePercent()"
+        [attr.data-popup-layout-id]="'popup-title'"
+        (languageSelected)="languageSelected.emit($event)"
+        (debuggerRequested)="requestDebugger()"
+        (flowDebuggerRequested)="requestFlowDebugger($event)"
+        (fontScaleChanged)="setFontScalePercent($event)"
+        [debuggerForeground]="debuggerForeground()"
+        [debuggerAllowed]="debuggerAllowed()"
+        (closeRequested)="requestXClose()"
+      >
+      </manatos-popup-title>
+
+      <!-- Optional visible navigation; Auth keeps its original hidden tabs. -->
+      @if (definition.presentation?.tabNavigation === 'visible') {
+      <nav class="popup-visible-tabs nav nav-tabs flex-nowrap overflow-auto" role="tablist">
+        @for (tab of views(); track tab.id) { @if (popup.tabVisible(tab.id)) {
+        <button
+          type="button"
+          class="nav-link text-nowrap"
+          role="tab"
+          [class.active]="popup.activeTab().id === tab.id"
+          [attr.aria-selected]="popup.activeTab().id === tab.id"
+          [disabled]="popup.busy() || !popup.tabEnabled(tab.id)"
+          (click)="selectVisibleTab(tab.id)"
+        >
+          @if (tabStatusIcon(tab.id); as statusIcon) {
+          <i [class]="'bi me-1 '+statusIcon" aria-hidden="true"></i>
+          } {{ tabTitle(tab) }}
+        </button>
+        } }
+      </nav>
+      }
+      <!-- One popup #level; standalone content does not register PopupTabs. -->
+      @for (tab of views(); track tab.id) {
+      <section
+        class="register-tab"
+        role="tabpanel"
+        [attr.aria-label]="tabTitle(tab)"
+        [attr.data-popup-tab]="tab.id"
+        [hidden]="!popup.tabVisible(tab.id) || popup.activeTab().id !== tab.id"
+      >
+        <form class="register-email-form" (submit)="submit($event, tab.id)">
+          <manatos-popup-body-outlet
+            [kind]="definition.presentation?.content ?? 'standard'"
+            [popup]="popup"
+            [featureContext]="popupFeatureContext()"
+            [tab]="tab"
+            [contentContext]="staticContentContext()"
+            [language]="popupLanguage()"
+            (emailMethodRequested)="requestEmailMethod($event)"
+            (externalProviderRequested)="requestExternalProvider($event)"
+            (passwordRecoveryRequested)="requestPasswordRecovery($event)"
+          />
+
+          @if (!definition.actions) {
+          <manatos-auth-popup-actions
+            [popup]="popup"
+            [tab]="tab"
+            [language]="popupLanguage()"
+            [attr.data-popup-layout-id]="tab.id + '-actions'"
+            (actionRequested)="requestAction($event)"
+          />
+          }
+        </form>
+      </section>
+      } @if (definition.actions) {
+      <manatos-popup-footer-actions
+        [popup]="popup"
+        [actions]="definition.actions"
+        [language]="popupLanguage()"
+        [dirty]="popupDirty()"
+        [saveMode]="popupSaveMode()"
+        (actionRequested)="requestAction($event)"
+      />
+      }
+    </div>
+  </section>
+</div>
+}

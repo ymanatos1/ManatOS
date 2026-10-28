@@ -44,7 +44,7 @@
           : '' %>
       >
         <span <%= isSelectorPaging ? 'data-selector-page-summary' : '' %>>
-          Page <%= paging.page %> of <%= paging.totalPages %>
+          <%= metadataText('@CM.PageOf').replace('{page}', String(paging.page)).replace('{total}', String(paging.totalPages)) %>
         </span>
       </div>
     <% } else { %>
@@ -53,7 +53,7 @@
 
     <div class="sysbo-paging-actions">
       <% if (showPagingControls) { %>
-        <nav aria-label="Result pages" <%= isSelectorPaging ? `data-selector-pagination-nav${pagingInitiallyHidden ? ' hidden' : ''}` : '' %>>
+        <nav aria-label="<%= metadataText('@CM.ResultPages') %>" <%= isSelectorPaging ? `data-selector-pagination-nav${pagingInitiallyHidden ? ' hidden' : ''}` : '' %>>
           <ul class="pagination pagination-sm mb-0">
             <% if (isSelectorPaging) { %>
               <li class="page-item disabled" data-selector-first-item>
@@ -61,8 +61,8 @@
                   type="button"
                   class="page-link pagination-nav"
                   data-selector-first
-                  title="First page"
-                  aria-label="First page"
+                  title="<%= metadataText('@CM.FirstPage') %>"
+                  aria-label="<%= metadataText('@CM.FirstPage') %>"
                 >
                   <i class="bi bi-chevron-bar-left" aria-hidden="true"></i>
                 </button>
@@ -72,8 +72,8 @@
                   type="button"
                   class="page-link pagination-nav"
                   data-selector-prev
-                  title="Previous page"
-                  aria-label="Previous page"
+                  title="<%= metadataText('@CM.PreviousPage') %>"
+                  aria-label="<%= metadataText('@CM.PreviousPage') %>"
                 >
                   <i class="bi bi-chevron-left" aria-hidden="true"></i>
                 </button>
@@ -84,8 +84,8 @@
                   type="button"
                   class="page-link pagination-nav"
                   data-selector-next
-                  title="Next page"
-                  aria-label="Next page"
+                  title="<%= metadataText('@CM.NextPage') %>"
+                  aria-label="<%= metadataText('@CM.NextPage') %>"
                 >
                   <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </button>
@@ -95,8 +95,8 @@
                   type="button"
                   class="page-link pagination-nav"
                   data-selector-last
-                  title="Last page"
-                  aria-label="Last page"
+                  title="<%= metadataText('@CM.LastPage') %>"
+                  aria-label="<%= metadataText('@CM.LastPage') %>"
                 >
                   <i class="bi bi-chevron-bar-right" aria-hidden="true"></i>
                 </button>
@@ -106,8 +106,8 @@
                 <a
                   class="page-link pagination-nav"
                   href="<%= pageHrefFor(1) %>"
-                  title="First page"
-                  aria-label="First page"
+                  title="<%= metadataText('@CM.FirstPage') %>"
+                  aria-label="<%= metadataText('@CM.FirstPage') %>"
                 >
                   <i class="bi bi-chevron-bar-left" aria-hidden="true"></i>
                 </a>
@@ -116,8 +116,8 @@
                 <a
                   class="page-link pagination-nav"
                   href="<%= pageHrefFor(Math.max(1, paging.page - 1)) %>"
-                  title="Previous page"
-                  aria-label="Previous page"
+                  title="<%= metadataText('@CM.PreviousPage') %>"
+                  aria-label="<%= metadataText('@CM.PreviousPage') %>"
                 >
                   <i class="bi bi-chevron-left" aria-hidden="true"></i>
                 </a>
@@ -127,8 +127,8 @@
                 <a
                   class="page-link pagination-nav"
                   href="<%= pageHrefFor(Math.min(paging.totalPages, paging.page + 1)) %>"
-                  title="Next page"
-                  aria-label="Next page"
+                  title="<%= metadataText('@CM.NextPage') %>"
+                  aria-label="<%= metadataText('@CM.NextPage') %>"
                 >
                   <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
@@ -137,8 +137,8 @@
                 <a
                   class="page-link pagination-nav"
                   href="<%= pageHrefFor(paging.totalPages) %>"
-                  title="Last page"
-                  aria-label="Last page"
+                  title="<%= metadataText('@CM.LastPage') %>"
+                  aria-label="<%= metadataText('@CM.LastPage') %>"
                 >
                   <i class="bi bi-chevron-bar-right" aria-hidden="true"></i>
                 </a>
@@ -151,7 +151,7 @@
       <% if (showPageSizeSelector) { %>
         <% if (isSelectorPaging) { %>
           <div class="d-flex align-items-center gap-2" data-selector-page-size-wrap>
-            <label class="small text-secondary" for="metadata-selector-pageSize-<%= definition.key %>">Rows</label>
+            <label class="small text-secondary" for="metadata-selector-pageSize-<%= definition.key %>"><%= metadataText('@CM.Rows') %></label>
             <select class="form-select form-select-sm page-size-select" id="metadata-selector-pageSize-<%= definition.key %>" data-selector-page-size>
               <% for (const size of pageSizeOptions) { %>
                 <option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>>
@@ -174,7 +174,7 @@
                 >
               <% } %>
             <% } %>
-            <label class="small text-secondary" for="metadata-pageSize-<%= definition.key %>">Rows</label>
+            <label class="small text-secondary" for="metadata-pageSize-<%= definition.key %>"><%= metadataText('@CM.Rows') %></label>
             <select class="form-select form-select-sm page-size-select" id="metadata-pageSize-<%= definition.key %>" name="pageSize" data-page-size-select>
               <% for (const size of pageSizeOptions) { %>
                 <option value="<%= size %>" <%= paging.pageSize === size ? 'selected' : '' %>>

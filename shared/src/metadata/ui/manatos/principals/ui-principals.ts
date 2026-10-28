@@ -15,14 +15,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
 
   // ---------------------------------------------------------------------------
   // COMMON ENTITY UI — shared by every SysPrincipals uiView unless overridden.
-  // Entry representation and list behaviour are entity-wide presentation rules.
+  // List behaviour is entity-wide; Entry identity belongs to canonical BO metadata.
   // ---------------------------------------------------------------------------
-  entry: {
-    // Entry representation is deliberately separate from the routed entity icon.
-    // Principals combine the entity cue with the semantic Principal-type cue;
-    // renderers make the type icon visually dominant.
-    icon: { mode: 'composed', entityScale: 0.72, typeScale: 1.15, typeEmphasis: 'primary' },
-  },
   list: {
     common: {
       // Root/Parent are shown first for hierarchy scanning; `name` remains the
@@ -36,11 +30,12 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
           kind: 'navigate',
           order: 10,
           visible: { expression: 'permissions.create === true' },
-          label: 'Add organization',
+          label: '@EN.manatos.principals.principals.label.AddOrganization' /* Add organization */,
           icon: 'diagram-3',
           tone: 'primary',
           emphasis: 'solid',
-          title: 'Create an organization structure',
+          title:
+            '@EN.manatos.principals.principals.title.CreateAnOrganizationStructure' /* Create an organization structure */,
           href: '/bo/sys-principals/hierarchy/new',
         },
       },
@@ -50,20 +45,21 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
           kind: 'navigate',
           order: 10,
           visible: true,
-          label: 'Organization',
+          label: '@EN.manatos.contacts.addresses.label.Organization' /* Organization */,
           icon: 'diagram-3',
           tone: 'primary',
           emphasis: 'outline',
-          title: 'Open principal organization',
+          title:
+            '@EN.manatos.principals.principals.title.OpenPrincipalOrganization' /* Open principal organization */,
           href: '/bo/sys-principals/{id}/hierarchy',
         },
       },
     },
     views: {
-      main: { label: 'Standard' },
+      main: { label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */ },
 
       simple: {
-        label: 'Simple',
+        label: '@EN.manatos.auth.extAuthProviders.label.Simple' /* Simple */,
         visibleFields: ['name', 'principalType'],
       },
     },
@@ -78,15 +74,15 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
   uiViews: {
     main: {
       viewType: 'full',
-      label: 'Standard',
+      label: '@EN.manatos.auth.extAuthProviders.label.Standard' /* Standard */,
     },
     quickView: {
       viewType: 'quick',
-      label: 'Quick view',
+      label: '@EN.common.label.QuickView' /* Quick view */,
       record: {
         readOnly: true,
         tabs: [
-          tab('general', 'General', 10, {
+          tab('general', '@CM.AccountGeneral', 10, {
             icon: 'info-circle',
             layout: 'details',
             representation: 'summary',
@@ -138,7 +134,7 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     },
     quick: {
       viewType: 'quick',
-      label: 'Quick',
+      label: '@EN.manatos.principals.principals.label.Quick' /* Quick */,
       record: {
         // QUICK EDITOR ONLY: one genuine entry tab/pane, with its selector hidden.
         // The popup therefore gets the ordinary EntityEntry runtime/CTX level and
@@ -172,7 +168,7 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
   record: {
     // Entry tabs / layout
     tabs: [
-      tab('general', 'General', 10, {
+      tab('general', '@CM.AccountGeneral', 10, {
         icon: 'info-circle',
         layout: 'form',
         /*
@@ -226,7 +222,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
                 fieldType: 'email',
                 itemLabel: 'Email address',
                 required: true,
-                label: 'Email addresses',
+                label:
+                  '@EN.manatos.contacts.emailAddresses.pluralLabel.EmailAddresses' /* Email addresses */,
                 emptyText: 'No email addresses.',
                 allowAdd: true,
                 allowRemove: true,
@@ -248,7 +245,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
                 relationshipEntityKey: 'sys-principal-telephone-numbers',
                 ownerField: 'principalId',
                 targetField: 'telephoneNumberId',
-                label: 'Telephone numbers',
+                label:
+                  '@EN.manatos.contacts.telephoneNumbers.pluralLabel.TelephoneNumbers' /* Telephone numbers */,
                 emptyText: 'No telephone numbers.',
                 rowIcon: 'telephone',
                 allowAdd: true,
@@ -261,7 +259,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
                   {
                     key: 'countryCode',
                     inputType: 'select',
-                    placeholder: 'Choose country',
+                    placeholder:
+                      '@EN.manatos.principals.principals.placeholder.ChooseCountry' /* Choose country */,
                     validation: 'country-code',
                     inputSpan: 5,
                     options: telephoneCountryOptions,
@@ -269,7 +268,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
                   {
                     key: 'number',
                     inputType: 'tel',
-                    placeholder: 'Telephone number',
+                    placeholder:
+                      '@EN.manatos.auth.users.label.TelephoneNumber' /* Telephone number */,
                     validation: 'telephone-number',
                     normalization: 'digits',
                     inputSpan: 7,
@@ -290,7 +290,7 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
                 relationshipEntityKey: 'sys-principal-addresses',
                 ownerField: 'principalId',
                 targetField: 'addressId',
-                label: 'Addresses',
+                label: '@EN.manatos.contacts.addresses.pluralLabel.Addresses' /* Addresses */,
                 emptyText: 'No addresses.',
                 rowIcon: 'geo-alt',
                 allowAdd: true,
@@ -315,61 +315,69 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
                   {
                     key: 'recipientOrAttention',
                     inputType: 'text',
-                    placeholder: 'Recipient or attention',
+                    placeholder:
+                      '@EN.manatos.principals.principals.placeholder.RecipientOrAttention' /* Recipient or attention */,
                     inputSpan: 6,
                   },
                   {
                     key: 'organization',
                     inputType: 'text',
-                    placeholder: 'Organization',
+                    placeholder:
+                      '@EN.manatos.contacts.addresses.label.Organization' /* Organization */,
                     inputSpan: 6,
                   },
                   {
                     key: 'addressLine1',
                     inputType: 'text',
-                    placeholder: 'Street and number',
+                    placeholder:
+                      '@EN.manatos.principals.principals.placeholder.StreetAndNumber' /* Street and number */,
                     inputSpan: 12,
                   },
                   {
                     key: 'addressLine2',
                     inputType: 'text',
-                    placeholder: 'Building, suite, unit, etc.',
+                    placeholder:
+                      '@EN.manatos.principals.principals.placeholder.BuildingSuiteUnitEtc' /* Building, suite, unit, etc. */,
                     inputSpan: 6,
                   },
                   {
                     key: 'addressLine3',
                     inputType: 'text',
-                    placeholder: 'Additional address information',
+                    placeholder:
+                      '@EN.manatos.principals.principals.placeholder.AdditionalAddressInformation' /* Additional address information */,
                     inputSpan: 6,
                   },
                   {
                     key: 'poBox',
                     inputType: 'text',
-                    placeholder: 'PO Box',
+                    placeholder: '@EN.manatos.contacts.addresses.label.POBox' /* PO Box */,
                     inputSpan: 3,
                   },
                   {
                     key: 'postalCode',
                     inputType: 'text',
-                    placeholder: 'Postal code',
+                    placeholder:
+                      '@EN.manatos.contacts.addresses.label.PostalCode' /* Postal code */,
                     inputSpan: 3,
                   },
                   {
                     key: 'city',
                     inputType: 'text',
-                    placeholder: 'City',
+                    placeholder: '@EN.manatos.contacts.addresses.label.City' /* City */,
                     inputSpan: 3,
                   },
                   {
                     key: 'stateOrProvince',
                     inputType: 'text',
-                    placeholder: 'State / province',
+                    placeholder:
+                      '@EN.manatos.contacts.addresses.label.StateProvince' /* State / province */,
                     inputSpan: 3,
                   },
                   {
                     key: 'country',
                     inputType: 'select',
-                    placeholder: 'Choose country',
+                    placeholder:
+                      '@EN.manatos.principals.principals.placeholder.ChooseCountry' /* Choose country */,
                     inputSpan: 3,
                     options: addressCountryOptions,
                   },
@@ -466,7 +474,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
     relatedCollections: {
       licenses: relatedLicensesCollection('principalId'),
       emailAddresses: {
-        label: 'Email addresses',
+        label:
+          '@EN.manatos.contacts.emailAddresses.pluralLabel.EmailAddresses' /* Email addresses */,
         icon: 'envelope',
         entityKey: 'sys-principal-email-addresses',
         relatedEntityKey: 'sys-email-addresses',
@@ -480,7 +489,8 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         },
       },
       telephoneNumbers: {
-        label: 'Telephone numbers',
+        label:
+          '@EN.manatos.contacts.telephoneNumbers.pluralLabel.TelephoneNumbers' /* Telephone numbers */,
         icon: 'telephone',
         entityKey: 'sys-principal-telephone-numbers',
         relatedEntityKey: 'sys-telephone-numbers',
@@ -494,7 +504,7 @@ export const sysBOPrincipalsUIMetadata: SysBOUIMetadata = {
         },
       },
       addresses: {
-        label: 'Addresses',
+        label: '@EN.manatos.contacts.addresses.pluralLabel.Addresses' /* Addresses */,
         icon: 'geo-alt',
         entityKey: 'sys-principal-addresses',
         relatedEntityKey: 'sys-addresses',

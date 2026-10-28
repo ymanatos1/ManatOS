@@ -1,0 +1,12 @@
+<!-- GuidField: Read-only identity control; GUID values are never editable by generic text handlers. -->
+<manatos-field-control-shell [field]="field()">
+  <input
+    [manatosNativeFieldInteraction]="field()"
+    data-entry-control
+    class="manatos-guid-badge"
+    type="text"
+    [value]="displayText()"
+    [readOnly]="identityReadOnly"
+    [attr.aria-label]="field().label"
+  />
+</manatos-field-control-shell>

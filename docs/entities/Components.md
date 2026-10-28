@@ -1,254 +1,83 @@
 # Components
 
-## Purpose
+Components are reusable participants in metadata-driven presentation. The **UI Semantic Infrastructure (UIS)** separates a component's semantic identity, layout contribution and actions from the concrete controls supplied by an Angular or EJS renderer. Canonical business-field definitions remain in metadata; components do not create a competing value or authorization model.
 
-UI components are reusable presentation/interaction units that are **not themselves canonical entity fields**. They keep repeated page behavior out of entity-specific templates while remaining distinct from the field-component system.
-
-## Component families in the current UI
+## Component architecture
 
 ```text
-ui/views/components/
-├── auth/                  reusable authentication presentation
-├── debugging/             CTX/API/CLI developer tooling
-├── layout/                application-shell presentation
-├── navigation/            horizontal/vertical navigation
-├── presentation/          generic help/information surfaces
-└── sysbo/
-    ├── list/              canonical list/browse presentation
-    ├── entry/
-    │   ├── shell/         entry tabs/actions/orchestration
-    │   ├── fields/        canonical metadata-driven field controls
-    │   └── content/       composite entry-tab content
-    └── hierarchy/         hierarchy workspace interactions
-
-ui/views/popups/
-├── auth/
-├── illustrations/
-├── messages/
-├── preferences/
-├── selectors/
-└── shared/
+Canonical entity metadata + effective UI metadata
+                        │
+                        ▼
+        shared.UI surface host and #level
+          #control · #state · #layout · #data
+                        │
+                        ▼
+            embedded component tree
+           List / Entry / FormField / Field
+                        │
+              ┌─────────┴─────────┐
+              ▼                   ▼
+         shared.UI.NG        shared.UI.EJS
+          ui.NG1                ui.EJS1
+              │                   │
+        Angular views        EJS/DOM views
 ```
 
-The placement rule is responsibility-first: a record selector belongs under `popups/selectors/` because it owns a popup workflow, even though it composes canonical SysBO list components. Likewise, canonical field controls belong under `sysbo/entry/fields/`, while higher-level tab content belongs under `sysbo/entry/content/`.
+`UiSurfaceHostRuntime` owns the `ctx.ui.level.level...` chain and publishes each level's four namespaces atomically. `UiHostLevelRuntime` supplies the content-ownership boundary; `UiSurfaceEmbeddedRuntime` and per-surface registries construct semantic child layout. An adapter renders and delegates interactions; it must not become a second business-state owner.
 
-## Responsibilities
+## Component families
 
-A reusable non-field component may own:
+| Family | Semantic responsibility | Source anchor |
+|---|---|---|
+| List surface | Query/filter/sort/page state, selection and presentation over authorized records | `shared.UI/src/components/list/ListPageRuntime.ts` |
+| Entry surface | Original/current record, field state, validation, dirty state and edit/save actions | `shared.UI/src/components/entry/EntryRuntime.ts` |
+| Embedded components | Explicit `#layout` contribution, owned action/event handling and disposal | `shared.UI/src/runtime/surface/embedded-runtime.ts` |
+| Typed Field behaviors | Type-specific formatting, tools and accepted field interaction semantics | `shared.UI/src/components/fields/registry.ts` |
+| Popup hosts | Placement, interaction focus, modal lifecycle and child-surface results | `shared.UI.NG/src/components/sys-bo/entry/EntryPopupHost.ts` and corresponding EJS host |
+| Diagnostics and shell | CTX inspection, navigation, application-level tools and presentation | `shared.UI/src/debugger/` and adapters |
 
-- presentation and interaction for a non-field concept;
-- rendering a related collection or hierarchy;
-- a reusable panel, toolbar, navigation or status/workflow surface;
-- component-local browser interaction and transient UI state;
-- metadata-declared options/bindings;
-- delegation to canonical field components when it embeds actual entity fields.
+All fifteen registered semantic field types share a consistent field contract. A `FormField` composes the label, type-aware control and reusable Field Tools; it must not hard-code independent type semantics. An embedded component registers its own child layout rather than relying on an invisible host-generated placeholder. The component's semantic state and its visual state are deliberately distinct.
 
-It must not own:
+## Explicit ownership
 
-- a second definition of canonical field type/value semantics;
-- business calculation evaluation;
-- entity-specific display hacks that belong in metadata or generic representation infrastructure;
-- persistence decisions that belong to the page/domain/API layer.
-
-## Metadata component dispatch
+A component can contribute layout nodes, localized captions, action availability, typed input interpretation, reusable presentation and local interaction state. The owning Entry or List remains authoritative for its working data; the API remains authoritative for protected operations and persistence.
 
 ```text
-[M] UI metadata / component key/options/bindings
-[T] entry-tab-content.ejs
-[R] metadata component registry
-[P] registered reusable partial/runtime
-[DOM] DOM
-
-Flow:
-  M --> T
-  T --> R
-  R --> P
-  P --> DOM
+User input
+   │
+   ▼
+Concrete UI adapter ──► semantic component action
+                                 │
+                                 ▼
+                      owning List / Entry runtime
+                                 │
+                                 ▼
+                       canonical CTX mutation
+                                 │
+                                 ▼
+                         reactive projections
 ```
 
-The registry is intentional. Generic renderers use stable semantic component keys; they do not derive filenames from entity names or arbitrary metadata strings.
+The adapter may own focus, scroll, popup stacking and DOM event coordination. It may not independently overwrite a referenced Entry's current value or make a hidden authorization decision. The same separation holds for non-entity workflow inputs, whose transient values are not canonical entity fields.
 
-## Related collections
+## Related collections and selectors
 
-`related-collections.ejs` is the generic read-oriented relationship presentation. It renders rows using canonical related-entity metadata and entry representation; entry icon/name rules are centralized rather than rebuilt by each owner entity.
+A related-record component consumes canonical relationship metadata and reference representation. A record selector is a nested List surface presented in a popup host; its result is an identity or selection returned to the caller. Relationship placement and record ownership are decided by the invoking field/workspace and validated by the API, not embedded in the generic selector.
 
-```text
-owner entry
-└── related collection presentation
-    ├── related entity metadata / entry representation
-    ├── relationship resource rows
-    └── canonical row presentation + navigation
-```
+A related-entry creation action may open an Entry surface as a child of the selector or caller. Child surfaces have their own `#level`, while the parent retains its original current values and invocation state.
 
-`collection-editor.ejs` is the editable aggregate counterpart. Metadata identifies its `sourceKey` and, for structured values, semantic `identityFields`. The same descriptor discovery is used by resource loading and Save persistence, so rendering an editable collection does not create an entity-specific write path.
+## Field Tools
 
-While one collection member is being created or edited, the editor opens an **embedded child UI level** through the universal UI host. That child is a real entry-level CTX surface for the member draft; it is not another persisted transaction and it does not deactivate the parent. The collection editor remains the owner of the local child draft and closes/disposes the embedded level on Add/Update, Cancel, replacement, or editor closure.
+A Field Tools menu is a reusable embedded component, **not** a feature implicitly implemented by a field's HTML input. `uiEntryFieldTools()` composes actions from the concrete registered field's tool capabilities and effective read-only/dirty/required state. Actions include Copy, Revert, Inspect CTX, type-specific Trim/Clear/Zero/Today/Now and reference Select where applicable. `EntryFieldToolsEmbedded` validates requests and returns semantic effects; the Entry owns the resulting mutation. In the Angular adapter, `FieldToolsMenu` owns its trigger/menu and delegates to `EntryContext` rather than directly altering persisted records.
 
-```text
-owner entry transaction
-└── collection-editor
-    ├── committed working collection
-    ├── private active-member draft
-    ├── embedded child entry UI level
-    │   └── canonical member fields / field components
-    └── aggregate contributor -> parent dirty/valid state
-```
+The visibility of an action is not an authorization grant. Its availability is projected from the field presentation contract; the relevant API operation remains independently protected.
 
-The collection contributor accounts for both changes already applied to the working collection and a dirty active member editor. Parent Save serializes the metadata-declared collection payload and reconciles it through the generic entry write path. Focus movement alone is never a persistence command.
+## Established EJS0 client
 
-Current read-only examples include User/Account external identities and Principal/Application license relationships; editable contact collections use the collection-editor model. The owner page may differ, but representation, field and transaction rules must not.
+`ui.EJS0` retains a separate, mature EJS component system under `views/components/` and `views/popups/`. Its `sysbo/list/`, `sysbo/entry/fields/` and hierarchy parts provide concrete examples of presentation and interaction, but **its browser field-node model is not the UIS source of truth**. It may use server-rendered partials and iframe-hosted entries. Those are implementation-specific approaches, not universal requirements of UIS or an instruction for new adapters to recreate legacy CTX state.
 
-## Existing-record selector
+## Extension contract
 
-`views/popups/selectors/record-selector.ejs` plus `public/js/popups/record-selector.js` implement the generic **Select existing entry** surface.
+A component is a correct extension only when its canonical metadata assumptions, shared semantic behavior, layout placement, concrete adapter templates, localization, accessibility and lifecycle have been checked together. Cross-adapter behavioral equivalence is established through actual implementation and verification, never by matching class names.
 
-The selector is not an entity-specific page and not a field component. It is a reusable hosted surface that consumes canonical entity/list metadata and candidate records, then adds selection semantics under a canonical `SurfaceInvocation`. The same invocation model applies to first-level pages, nested pages and popups: presentation/container hierarchy does not define semantic ownership.
-
-```text
-[LM] Canonical entity + list metadata
-[CAND] Candidate records
-[INV] SurfaceInvocation
-[RS] Record selector
-[LIST] Shared list toolbar / filters / header / paging
-[CTX] selector surface CTX state
-[RESULT] Canonical selected record(s)
-
-Flow:
-  LM --> RS
-  CAND --> RS
-  INV --> RS
-  RS --> LIST
-  RS --> CTX
-  RS --> RESULT
-```
-
-The selector deliberately composes the same `list-toolbar`, `list-filters`, `list-table-header` and `list-paging` partials used by ordinary SysBO list pages. That shared structure is an architectural contract: changes to common list presentation must be reviewed for both browse and selection contexts.
-
-### Surface invocation vs selector state
-
-The selector owns its own canonical CTX level. Its invocation describes why/how the surface was opened; mutable selector state remains local to that surface.
-
-```text
-ctx.ui
-└── ... level                     # caller surface
-    └── level                     # selector popup surface
-        ├── control
-        │   ├── host = "popup"
-        │   ├── kind = "selector"
-        │   ├── invocation
-        │   │   ├── entityName
-        │   │   ├── purpose = "select"
-        │   │   ├── caller?
-        │   │   ├── presentation?
-        │   │   ├── rules?
-        │   │   │   ├── values
-        │   │   │   ├── fields
-        │   │   │   ├── query
-        │   │   │   └── actions
-        │   │   └── behavior?
-        │   ├── presentation
-        │   ├── facts
-        │   │   ├── search
-        │   │   ├── filters
-        │   │   └── paging
-        │   └── state
-        ├── list
-        │   ├── originalEntries
-        │   └── entries
-        ├── selection
-        │   ├── current
-        │   ├── selected[]
-        │   └── facts
-        └── row
-            ├── current
-            └── facts
-```
-
-`SurfaceInvocation` is host-neutral and contains only facts/rules the child surface needs to enforce its own behavior. It does **not** contain `targetField`, parent mutation instructions or arbitrary caller state. Those belong to the caller-side continuation registry.
-
-Expression-bearing rules remain authored as canonical expression source. ASTs are resolved lazily through the process-local expression cache/runtime boundary and are never stored in `SurfaceInvocation` or semantic CTX.
-
-Presentation policy still supports generic orientations such as subdued list-like treatment versus entry-oriented treatment, but those are represented as declarative presentation/behavior rules rather than caller-specific selector parameters. Captions and other presentation may be derived from canonical invocation facts or explicit generic presentation values; the selector does not dereference caller internals to construct them.
-
-Current consumers include:
-
-- Principal Organization workspace — **Add existing entry…** with hierarchy eligibility translated into generic query rules;
-- canonical reference fields — **Select existing entry…** with field-domain restrictions translated into generic selector rules.
-
-The selector returns canonical selected record(s). The caller remains responsible for the meaning of that result: a reference field updates its canonical reference value through the field-component runtime; the Organization workspace creates/repositions a hierarchy relation through its own relationship rules. The generic selector must not contain Principal-specific hierarchy policy, field-component DOM logic or direct persistence behavior.
-
-## Hierarchy/workspace components
-
-Hierarchy components under `views/components/sysbo/hierarchy/` present organization/tree interactions over domain relationships. The hierarchy workspace owns the aggregate working graph and delegates member editing to canonical entry/field infrastructure, including the Principal `quick` UI view where a compact member editor is required. It is not a separate architectural surface or record model.
-
-Relationship eligibility remains in the hierarchy caller even when the generic record selector presents candidates. Hierarchy services may calculate or mutate the workspace graph, but they do not redefine Principal field/reference semantics or create another graph authority.
-
-## Debugging components
-
-CTX Viewer, API Traffic, debugging panels and CLI components are system/developer UI. They own debugging interaction and visualization, not entity-field semantics. Their state/lifecycle rules are documented with the system UI rather than embedded into business entity definitions.
-
-## Choosing UI component vs field component
-
-```text
-[Q] Does this represent exactly one canonical field?
-[F] Field component
-[R] Does it compose several canonical fields?
-[C] Composite component
-[U] Reusable UI component
-
-Flow:
-  Q --[yes]--> F
-  Q --[no]--> R
-  R --[yes]--> C
-  R --[no]--> U
-```
-
-## Workflow-input components
-
-Non-entity UI sometimes needs ordinary input controls: transient secrets, search/filter terms, confirmation values, test parameters, CLI text and similar workflow-local state. These are **UI inputs, not entity field-components**.
-
-`views/components/sysbo/entry/content/workflow-input.ejs` is the small reusable server-rendered input primitive for such transient/system workflows where an ordinary Bootstrap input is appropriate. It intentionally does not:
-
-- read canonical `fieldDefinition` metadata;
-- bind `data-ctx-field` into the owning `ctx.ui...level.fields` branch;
-- expose the canonical field-tools menu;
-- claim persistence, calculation or validation semantics belonging to entity fields.
-
-```text
-[UI] UI component
-[W] workflow-input
-[L] component-local/workflow state
-[A] component runtime/action
-[P] save/test/command boundary
-
-Flow:
-  UI --> W
-  W --> L
-  L --> A
-  A --[only through owning workflow]--> P
-```
-
-The External Authentication Provider credential editor is the model example: `clientId` is a canonical entity field and therefore goes through `entity-field.ejs`; plaintext `clientSecret` is transient workflow state and therefore uses the non-entity workflow input.
-
-## Inline collection-editor focus semantics
-
-The reusable collection editor owns a local child draft until Add/Update or Cancel. Focus movement is not a persistence command. To keep the form compact without risking data loss, a pristine open editor closes when interaction focus genuinely leaves that collection, while a dirty editor remains open. Focus transitions inside the collection (including dropdown menus) do not close it.
-
-```text
-[O] Inline editor open
-[F] Focus leaves collection?
-[K] Keep editor
-[D] Draft dirty?
-[C] Close pristine editor
-[X] Only Add/Update or Cancel resolves dirty draft
-
-Flow:
-  O --> F
-  F --[No]--> K
-  F --[Yes]--> D
-  D --[No]--> C
-  D --[Yes]--> K
-  K --> X
-```
-
-This behavior is generic to the collection component; Contact entity metadata does not implement its own blur/focus rules.
+See [Field Components](Field-Components-Detail.md), [UIS Architecture](../clients/UIS-Architecture.md), [UIS Component Contracts](../clients/UIS-Component-Contracts.md), and [Popups and Selectors](Popups-and-Selectors.md).

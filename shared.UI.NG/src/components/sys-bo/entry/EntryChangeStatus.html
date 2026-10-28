@@ -1,0 +1,19 @@
+<!-- Reusable BO Entry status: all editing and change-report ownership remains with Entry. -->
+<div data-entry-layout="ChangeStatus">
+  <button
+    type="button"
+    data-entry-review-changes
+    class="manatos-entry-change-indicator"
+    [disabled]="!dirty()"
+    (click)="reviewRequested.emit()"
+    [attr.aria-label]="text()"
+  >
+    <i
+      class="bi"
+      [class.bi-pencil-square]="dirty()"
+      [class.bi-check-circle]="!dirty()"
+      aria-hidden="true"
+    ></i>
+    {{ text() }}
+  </button>
+</div>

@@ -1,0 +1,46 @@
+<!-- Typed Field owns its reusable FieldTools child, when supported. -->
+<span data-entry-field-tools-slot></span>
+<!-- PictureField owns its thumbnail, Choose/Delete actions and history controls. -->
+<div class="manatos-picture-field" data-entry-control>
+  <button
+    type="button"
+    class="manatos-picture-thumbnail"
+    data-picture-choose
+    title="Click to choose picture"
+  >
+    <img data-entry-photo-thumbnail hidden alt="" loading="lazy" />
+    <span data-entry-photo-empty><i class="bi bi-image" aria-hidden="true"></i></span>
+    <span class="manatos-picture-launch-feedback" data-picture-loading hidden role="status"
+      ><span class="spinner-border spinner-border-sm" aria-hidden="true"></span
+    ></span>
+  </button>
+  <button
+    type="button"
+    class="manatos-picture-delete"
+    data-picture-delete
+    hidden
+    title="Delete picture"
+    aria-label="Delete picture"
+  >
+    <i class="bi bi-trash" aria-hidden="true"></i>
+  </button>
+  <div class="manatos-picture-help-column">
+    <div
+      class="manatos-picture-history-actions"
+      data-picture-history
+      hidden
+      role="group"
+      aria-label="Edit history"
+    >
+      <button type="button" data-picture-undo disabled title="Undo">
+        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+      </button>
+      <button type="button" data-picture-redo disabled title="Redo">
+        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+      </button>
+    </div>
+    <small data-picture-help></small>
+  </div>
+  <span data-picture-error role="alert" hidden></span>
+  <input type="file" data-picture-input hidden accept="image/jpeg,image/png,image/webp,image/gif" />
+</div>

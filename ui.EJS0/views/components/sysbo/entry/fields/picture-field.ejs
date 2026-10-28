@@ -48,15 +48,15 @@
     class="metadata-picture-preview"
     type="button"
     data-picture-change
-    title="<%= editable ? `Choose or change ${fieldLabel(field)}` : fieldLabel(field) %>"
-    aria-label="<%= editable ? `Choose or change ${fieldLabel(field)}` : fieldLabel(field) %>"
+    title="<%= editable ? metadataText('@CM.ChoosePicture').replace('{field}', metadataText(fieldLabel(field))) : metadataText(fieldLabel(field)) %>"
+    aria-label="<%= editable ? metadataText('@CM.ChoosePicture').replace('{field}', metadataText(fieldLabel(field))) : metadataText(fieldLabel(field)) %>"
     <%= editable ? '' : 'disabled' %>
   >
     <% if (pictureSrc) { %>
-      <img src="<%= pictureSrc %>" alt="<%= fieldLabel(field) %> thumbnail" data-picture-image>
+      <img src="<%= pictureSrc %>" alt="<%= metadataText('@CM.PictureThumbnail').replace('{field}', metadataText(fieldLabel(field))) %>" data-picture-image>
       <span class="metadata-picture-placeholder d-none" data-picture-placeholder><i class="bi bi-person-bounding-box"></i></span>
     <% } else { %>
-      <img class="d-none" alt="<%= fieldLabel(field) %> thumbnail" data-picture-image>
+      <img class="d-none" alt="<%= metadataText('@CM.PictureThumbnail').replace('{field}', metadataText(fieldLabel(field))) %>" data-picture-image>
       <span class="metadata-picture-placeholder" data-picture-placeholder><i class="bi bi-person-bounding-box"></i></span>
     <% } %>
   </button>
@@ -65,8 +65,8 @@
       class="btn btn-sm btn-danger metadata-picture-delete <%= picture ? '' : 'd-none' %>"
       type="button"
       data-picture-clear
-      title="Delete picture"
-      aria-label="Delete picture"
+      title="<%= metadataText('@CM.DeletePicture') %>"
+      aria-label="<%= metadataText('@CM.DeletePicture') %>"
     ><i class="bi bi-trash"></i></button>
   <% } %>
   <input type="file" class="d-none" accept="image/jpeg,image/png,image/webp,image/gif" data-picture-file>
@@ -86,8 +86,7 @@
     data-picture-canonical-value
   >
   <div class="form-text metadata-picture-help">
-    Choose JPEG, PNG, WebP or GIF up to <%= Math.round(maxSourceBytes / 1_000_000) %> MB;
-    the selected crop is saved at <%= outputSize %> px.
+    <%= metadataText('@CM.PictureHelp').replace('{maxMb}', String(Math.round(maxSourceBytes / 1_000_000))).replace('{size}', String(outputSize)) %>
   </div>
-  <%- include('picture-editor', { editorId, editorTitle: `Choose ${fieldLabel(field).toLowerCase()}`, applyLabel: 'Use photo' }) %>
+  <%- include('picture-editor', { editorId, editorTitle: metadataText('@CM.ChoosePhoto'), applyLabel: metadataText('@CM.UsePhoto') }) %>
 </div>

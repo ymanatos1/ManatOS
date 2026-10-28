@@ -9,7 +9,12 @@ export function uiBootstrapOperation() {
       responses: {
         '200': {
           description:
-            'Current public UI bootstrap data, including server availability and API/implementation versions. The UI may safely fall back to local defaults and retry when unavailable.',
+            'Current public UI bootstrap data, including server availability, API/implementation versions and anonymous-safe UI configuration. UI language availability is owned by the shared ManatOS runtime and does not depend on this endpoint.',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/UiBootstrapResponse' },
+            },
+          },
         },
       },
     },

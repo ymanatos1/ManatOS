@@ -1,0 +1,33 @@
+<dialog
+  #dialog
+  class="manatos-busy-panel"
+  aria-labelledby="manatosBusyTitle"
+  aria-describedby="manatosBusyMessage"
+  (cancel)="$event.preventDefault()"
+>
+  <div class="manatos-busy-layout">
+    <div class="manatos-busy-animation" aria-hidden="true">
+      <div class="manatos-busy-provider">
+        <i [class]="'bi ' + (state().presentation.icon ?? 'bi-arrow-repeat')"></i>
+      </div>
+      <div class="manatos-busy-pulse"></div>
+    </div>
+
+    <div class="manatos-busy-copy" aria-live="polite">
+      <h2 id="manatosBusyTitle">
+        {{ state().presentation.title ?? multilingual().resolve('@CM.PleaseWait') }}
+      </h2>
+      <p id="manatosBusyMessage">
+        {{ state().presentation.message ?? multilingual().resolve('@CM.CompletingOperation') }}
+      </p>
+    </div>
+  </div>
+
+  @if (state().presentation.onAction) {
+  <div class="manatos-busy-actions">
+    <button type="button" (click)="runAction()">
+      {{ state().presentation.actionLabel ?? multilingual().resolve('@CM.Cancel') }}
+    </button>
+  </div>
+  }
+</dialog>

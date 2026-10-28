@@ -89,14 +89,28 @@
       'en',
   );
 
+  const serverLanguage = document.cookie
+    .split('; ')
+    .find((part) => part.startsWith('manatos_ui_language='))
+    ?.split('=')[1];
   applyLanguage(storedLanguage);
+  if (serverLanguage !== storedLanguage) {
+    document.cookie = `manatos_ui_language=${storedLanguage}; Path=/; SameSite=Lax`;
+    if (document.cookie.includes(`manatos_ui_language=${storedLanguage}`)) {
+      window.location.reload();
+      return;
+    }
+  }
 
   document.querySelectorAll('[data-ui-language]').forEach((option) => {
     option.addEventListener('click', () => {
       const language = normalizeLanguage(option.dataset.uiLanguage);
 
+      const previousLanguage = normalizeLanguage(document.documentElement.dataset.uiLanguage);
       localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
-      applyLanguage(language);
+      document.cookie = `manatos_ui_language=${language}; Path=/; SameSite=Lax`;
+      if (language !== previousLanguage) window.location.reload();
+      else applyLanguage(language);
     });
   });
 

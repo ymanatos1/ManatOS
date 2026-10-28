@@ -1,0 +1,131 @@
+:host {
+  display: block;
+}
+
+.ctx-debug-find-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.15rem;
+  padding: 0.3rem 0.42rem;
+  border-bottom: 1px solid var(--debug-border);
+  background: #f8fafc;
+}
+
+.ctx-debug-find-input-wrap {
+  position: relative;
+  min-width: 7rem;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+}
+
+.ctx-find-input {
+  width: 100%;
+  min-width: 0;
+  height: 1.65rem;
+  border: 1px solid #c8d3df;
+  border-radius: 0.25rem;
+  padding: 0 1.8rem 0 0.42rem;
+  background: #fff;
+  color: #24364b;
+  font-size: 0.7rem;
+}
+
+.ctx-debug-find-row select {
+  height: 1.65rem;
+  border: 1px solid #c8d3df;
+  border-radius: 0.25rem;
+  background: #fff;
+  color: #425466;
+  font-size: 0.68rem;
+}
+
+.ctx-debug-find-history-wrap {
+  position: absolute;
+  right: 0.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.ctx-debug-find-history-wrap summary {
+  list-style: none;
+  color: #6c7785;
+  cursor: pointer;
+}
+
+.ctx-debug-find-history-wrap summary::-webkit-details-marker {
+  display: none;
+}
+
+.ctx-debug-find-history {
+  position: absolute;
+  z-index: 45;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  width: min(24rem, 65vw);
+  max-height: 12rem;
+  overflow: auto;
+  padding: 0.2rem;
+  border: 1px solid #b8c7d9;
+  border-radius: 0.3rem;
+  background: #fff;
+  box-shadow: 0 0.4rem 1rem rgb(15 23 42 / 16%);
+}
+
+.ctx-debug-find-history button {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.2rem;
+  padding: 0.28rem 0.35rem;
+  background: transparent;
+  color: #26384d;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  font:
+    0.68rem ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+}
+
+.ctx-debug-find-history button:hover {
+  background: #eef5ff;
+}
+
+.ctx-find-count {
+  color: #6c757d;
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.debug-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #52606d;
+  cursor: pointer;
+}
+
+.debug-tool-button:hover:not(:disabled) {
+  border-color: #b8c7d9;
+  background: #eef5ff;
+  color: #0d6efd;
+}
+
+.debug-tool-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

@@ -1,0 +1,38 @@
+<!-- ExternalProviders template: the ordered available external sign-in methods and their individual provider children. -->
+<div class="auth-provider-list" [attr.data-popup-layout-id]="tabId() + '-provider-list'">
+  @if (status().status === 'loading' || status().status === 'idle') {
+  <p class="auth-provider-placeholder" [attr.data-popup-layout-id]="tabId() + '-provider-loading'">
+    {{ multilingual().resolve('@CM.ExternalProvidersLoading') }}
+  </p>
+  } @else if (status().status === 'error') {
+  <p
+    class="auth-provider-placeholder"
+    role="alert"
+    [attr.data-popup-layout-id]="tabId() + '-provider-error'"
+  >
+    {{ status().error ?? multilingual().resolve('@CM.ExternalProvidersUnavailable') }}
+  </p>
+  } @else { @for (provider of providers(); track provider.provider) {
+  <button
+    type="button"
+    class="auth-provider-button"
+    [class.is-unavailable]="!presentation(provider).available"
+    [attr.data-popup-layout-id]="tabId() + '-provider-' + provider.provider"
+    [title]="presentation(provider).title"
+    [disabled]="!presentation(provider).available"
+    (click)="providerRequested.emit(provider.provider)"
+  >
+    <i [class]="'bi ' + provider.icon + ' auth-provider-icon'" aria-hidden="true"></i>
+    <span class="auth-provider-label">{{ presentation(provider).label }}</span>
+    @if (presentation(provider).status; as providerStatus) {
+    <span class="auth-provider-status">{{ providerStatus }}</span>
+    } @else {
+    <i class="bi bi-chevron-right auth-provider-chevron" aria-hidden="true"></i>
+    }
+  </button>
+  } @empty {
+  <p class="auth-provider-placeholder" [attr.data-popup-layout-id]="tabId() + '-provider-empty'">
+    {{ multilingual().resolve('@CM.ExternalProvidersEmpty') }}
+  </p>
+  } }
+</div>

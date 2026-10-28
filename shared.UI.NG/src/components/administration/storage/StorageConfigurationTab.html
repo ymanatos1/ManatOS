@@ -1,0 +1,84 @@
+@if (wizard(); as state) {
+<div class="storage-tab-body" data-popup-layout-id="storage-configuration">
+  <manatos-storage-tab-status
+    [wizard]="state"
+    [popup]="popup()"
+    [step]="state.stepById('configuration')!"
+  />
+  @if (wizard().draft(); as draft) {
+  <div class="row g-3" data-popup-layout-id="storage-configuration-form">
+    <div class="col-md-7" data-popup-layout-id="storage-name">
+      <label class="form-label fw-semibold" for="storage-wizard-name">
+        {{ wizard().t('Configuration name', 'Όνομα ρύθμισης') }}
+      </label>
+      <input
+        id="storage-wizard-name"
+        class="form-control"
+        type="text"
+        maxlength="160"
+        [value]="draft.name"
+        [readOnly]="wizard().readOnly()"
+        [disabled]="wizard().busy()"
+        (input)="wizard().rename($any($event.target).value)"
+      />
+    </div>
+    <div class="col-md-5" data-popup-layout-id="storage-adapter">
+      <label class="form-label fw-semibold" for="storage-wizard-adapter">
+        {{ wizard().t('Storage adapter', 'Προσαρμογέας') }}
+      </label>
+      <details class="storage-rich-picker" #adapterPicker>
+        <summary
+          class="btn btn-outline-secondary w-100 d-flex align-items-center gap-2 text-start"
+          [attr.aria-disabled]="wizard().readOnly() || !!wizard().configuration() || wizard().busy()"
+          (click)="wizard().readOnly() || !!wizard().configuration() || wizard().busy() ? $event.preventDefault() : null"
+        >
+          <img [src]="wizard().adapterLogo()" alt="" width="24" height="24" class="rounded" />
+          <span>{{ wizard().translate(wizard().adapter()?.name ?? '') }}</span>
+          <i class="bi bi-chevron-down ms-auto" aria-hidden="true"></i>
+        </summary>
+        <div class="storage-rich-picker-menu">
+          @for (group of wizard().adapterGroups(); track group.family) {
+          <div class="storage-picker-family">{{ group.family }}</div>
+          @for (adapter of group.adapters; track adapter.id) {
+          <button
+            type="button"
+            class="storage-rich-option d-flex align-items-center gap-2"
+            [class.active]="adapter.id === draft.adapterId"
+            (click)="wizard().switchAdapter(adapter.id); adapterPicker.open = false"
+          >
+            <img
+              [src]="adapter.logoUrl || '/images/storage-adapters/json.svg'"
+              alt=""
+              width="24"
+              height="24"
+              class="rounded"
+            />
+            {{ wizard().translate(adapter.name) }}
+          </button>
+          } }
+        </div>
+      </details>
+    </div>
+  </div>
+  <p class="small text-secondary mt-3">
+    {{ wizard().translate(wizard().adapter()?.description ?? '') }}
+  </p>
+  <dl class="row small">
+    <dt class="col-sm-4">{{ wizard().t('Adapter family', 'Οικογένεια') }}</dt>
+    <dd class="col-sm-8">{{ wizard().adapterFamilyLabel() }}</dd>
+    <dt class="col-sm-4">{{ wizard().t('Runtime available', 'Διαθεσιμότητα') }}</dt>
+    <dd class="col-sm-8">
+      {{ wizard().adapter()?.runtimeAvailable ? wizard().t('Yes', 'Ναι') : wizard().t('Configuration
+      and preparation only', 'Μόνο διαμόρφωση και προετοιμασία') }}
+    </dd>
+  </dl>
+  }
+
+  <manatos-storage-tab-status
+    [wizard]="state"
+    [popup]="popup()"
+    [step]="state.stepById('configuration')!"
+    [footer]="true"
+  />
+</div>
+}

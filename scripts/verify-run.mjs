@@ -1,10 +1,12 @@
+import { parseWorkspaceFamily } from './workspace-families.mjs';
 import { spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { resolve } from 'node:path';
 
 const isWindows = process.platform === 'win32';
 const command = isWindows ? process.env.ComSpec || 'cmd.exe' : 'npm';
-const logPath = resolve(process.cwd(), 'verify-run.log');
+const family = parseWorkspaceFamily();
+const logPath = resolve(process.cwd(), family ? `verify-run.${family}.log` : 'verify-run.log');
 const logStream = createWriteStream(logPath, { flags: 'w', encoding: 'utf8' });
 
 const ANSI = {
@@ -116,7 +118,7 @@ function runNpm(args, { greenHealthy = false } = {}) {
 
 printLine();
 printLine('============================================================');
-printLine('  ManatOS Verify & Run');
+printLine(`  ManatOS Verify & Run${family ? ` (${family} family)` : ''}`);
 printLine('============================================================');
 printLine();
 printLine(`  Output log: ${logPath}`);
@@ -128,7 +130,9 @@ printLine();
  * validation, builds and tests. verify-run only tees its output and starts ManatOS
  * when the complete quality/build/test gate returns success.
  */
-const verifyExitCode = await runNpm(['run', 'verify']);
+const verifyArgs = ['run', 'verify'];
+if (family) verifyArgs.push('--', '--family', family);
+const verifyExitCode = await runNpm(verifyArgs);
 
 if (verifyExitCode !== 0) {
   printLine();
@@ -151,7 +155,9 @@ printLine();
  * the console, while verify-run.log stays plain text and keeps both verification
  * and subsequent runtime output for the current invocation.
  */
-const runExitCode = await runNpm(['run', 'dev'], { greenHealthy: true });
+const devArgs = ['run', 'dev'];
+if (family) devArgs.push('--', '--family', family);
+const runExitCode = await runNpm(devArgs, { greenHealthy: true });
 
 await new Promise((resolveEnd) => logStream.end(resolveEnd));
 process.exit(runExitCode);
